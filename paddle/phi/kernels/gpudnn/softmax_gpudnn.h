@@ -225,12 +225,13 @@ struct DataTransFunctor {
 
 template <typename T>
 struct DivSumFunctor {
-  HOSTDEVICE explicit DivSumFunctor(T sum) : sum(sum) {}
+  HOSTDEVICE explicit DivSumFunctor(T sum)
+      : sum_inv(static_cast<T>(1.0) / sum) {}
 
-  HOSTDEVICE inline T operator()(const T& x) const { return x / sum; }
+  HOSTDEVICE inline T operator()(const T& x) const { return x * sum_inv; }
 
  private:
-  T sum;
+  T sum_inv;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -529,12 +530,15 @@ __global__ void WarpSoftmaxForward(T* softmax,
   T inout_data[kBatchSize][kNumElems];
   kps::Init<T, kStep>(&inout_data[0][0], -std::numeric_limits<T>::infinity());
 
-  // tmp_data:
+  // sub_data:
   // 1. store the src_data casted to AccT type
-  // 2. store the data obtained by exp(src_data - max)
-  AccT tmp_data[kBatchSize][kNumElems];
-  kps::Init<AccT, kStep>(&tmp_data[0][0],
+  // 2. store the (src_data - max) for log_softmax
+  AccT sub_data[kBatchSize][kNumElems];
+  kps::Init<AccT, kStep>(&sub_data[0][0],
                          -std::numeric_limits<AccT>::infinity());
+
+  // exp_data: store the data obtained by exp(src_data - max)
+  AccT exp_data[kBatchSize][kNumElems];
 
 // read data from global memory
 #pragma unroll
@@ -545,9 +549,9 @@ __global__ void WarpSoftmaxForward(T* softmax,
     kps::ReadData<VecT, VecT, kLoopsV, 1, true>(
         &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
     // Cast the input data from T to AccT.
-    // tmp_data stores the src_data casted to AccT type
+    // sub_data stores the src_data casted to AccT type
     kps::ElementwiseUnary<T, AccT, kNumElems, 1, DataTransFunctor<T, AccT>>(
-        &tmp_data[i][0], &inout_data[i][0], DataTransFunctor<T, AccT>());
+        &sub_data[i][0], &inout_data[i][0], DataTransFunctor<T, AccT>());
   }
 
   // compute max
@@ -558,14 +562,14 @@ __global__ void WarpSoftmaxForward(T* softmax,
               kBatchSize,
               ReduceMaxFunctor<AccT>,
               ReduceMode::kLocalMode>(
-      &max[0], &tmp_data[0][0], ReduceMaxFunctor<AccT>(), true);
+      &max[0], &sub_data[0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max);
 
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
     // tmp_data stores the data obtained by exp(src_data - max)
     kps::ElementwiseUnary<AccT, AccT, kNumElems, 1, SubExpFunctor<AccT>>(
-        &tmp_data[i][0], &tmp_data[i][0], SubExpFunctor<AccT>(max[i]));
+        &exp_data[i][0], &sub_data[i][0], SubExpFunctor<AccT>(max[i]));
   }
 
   // compute sum
@@ -575,7 +579,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
               kBatchSize,
               kps::AddFunctor<AccT>,
               ReduceMode::kLocalMode>(
-      &sum[0], &tmp_data[0][0], kps::AddFunctor<AccT>(), true);
+      &sum[0], &exp_data[0][0], kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
 // write data to global memory
@@ -585,13 +589,17 @@ __global__ void WarpSoftmaxForward(T* softmax,
         reinterpret_cast<VecT*>(&softmax[(first_batch_id + i) * stride]);
     VecT* reg_v = reinterpret_cast<VecT*>(&inout_data[i][0]);
     if (LogMode) {
-      kps::ElementwiseUnary<T, T, kNumElems, 1, LogSoftmaxForwardFunctor<T>>(
+      kps::ElementwiseUnary<AccT,
+                            T,
+                            kNumElems,
+                            1,
+                            LogSoftmaxForwardFunctor<AccT>>(
           &inout_data[i][0],
-          &inout_data[i][0],
-          LogSoftmaxForwardFunctor<T>(max[i], sum[i]));
+          &exp_data[i][0],
+          LogSoftmaxForwardFunctor<AccT>(max[i], sum[i]));
     } else {
       kps::ElementwiseUnary<AccT, T, kNumElems, 1, DivSumFunctor<AccT>>(
-          &inout_data[i][0], &tmp_data[i][0], DivSumFunctor<AccT>(sum[i]));
+          &inout_data[i][0], &exp_data[i][0], DivSumFunctor<AccT>(sum[i]));
     }
     kps::WriteData<VecT, VecT, kLoopsV, 1, true>(
         &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
@@ -757,6 +765,7 @@ void SwitchWarpSoftmaxForward(const IndexType blocks,
     SOFTMAX_WARP_FORWARD_CASE(7, AccT);
     SOFTMAX_WARP_FORWARD_CASE(8, AccT);
     SOFTMAX_WARP_FORWARD_CASE(9, AccT);
+    SOFTMAX_WARP_FORWARD_CASE(10, AccT);
     default:
       break;
   }
@@ -795,6 +804,7 @@ void SwitchWarpSoftmaxBackward(const int blocks,
     SOFTMAX_WARP_BACKWARD_CASE(7, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(8, AccT);
     SOFTMAX_WARP_BACKWARD_CASE(9, AccT);
+    SOFTMAX_WARP_BACKWARD_CASE(10, AccT);
     default:
       break;
   }
@@ -1223,7 +1233,7 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
 #endif
     }
   }
-  constexpr int max_dim = 512;
+  constexpr int max_dim = 1024;
   if (!cudnn_available || !last_dim ||
       (softmax_dim <= max_dim && sizeof(T) <= 4) ||
       softmax_dim >= MATRIX_SOFTMAX_THREAHOLD) {
@@ -1258,21 +1268,29 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
-      int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
       VLOG(7) << "[WarpSoftmaxForward] N=" << N << ", dim=" << dim
               << ", D=" << D << ", dim_log2=" << dim_log2
-              << ", dim_ceil=" << dim_ceil << ", warp_size=" << warp_size
-              << ", batches_per_warp=" << batches_per_warp;
+              << ", dim_ceil=" << dim_ceil << ", warp_size=" << warp_size;
 
-      // use 128 threads per block to maximimize gpu utilization
-      constexpr int threads_per_block = 128;
+      int batches_per_warp = 1;
+      int warps_per_block = 1;
+      int sm_count = dev_ctx.GetSMCount();
+      if (N < 4 * sm_count) {
+        warps_per_block = 1;
+        batches_per_warp = 1;
+      } else {
+        // use 128 threads per block to maximimize gpu utilization
+        int threads_per_block = 128;
+        warps_per_block = (threads_per_block / warp_size);
+        batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
+      }
 
-      int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
       IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
       VLOG(7) << "[WarpSoftmaxForward] blocks=" << blocks
               << ", warp_size=" << warp_size
               << ", warps_per_block=" << warps_per_block
+              << ", batches_per_warp=" << batches_per_warp
               << ", batches_per_block=" << batches_per_block;
 
       dim3 threads(warp_size, warps_per_block, 1);
