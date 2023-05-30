@@ -2828,7 +2828,7 @@ class Test_Log_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log(x)
             x_expect = np.log(np_x)
-            np.testing.assert_allclose(y.numpy(), x_expect, atol=1e-5)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-5)
         paddle.enable_static()
 
 
@@ -2900,7 +2900,7 @@ class TestLog2_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log2(x)
             x_expect = np.log2(np_x)
-            np.testing.assert_allclose(y.numpy(), x_expect, atol=1e-5)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-5)
         paddle.enable_static()
 
 
@@ -2937,7 +2937,7 @@ class TestLog10_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log10(x)
             x_expect = np.log10(np_x)
-            np.testing.assert_allclose(y.numpy(), x_expect, atol=1e-5)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-5)
         paddle.enable_static()
 
 
@@ -3017,7 +3017,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log1p(x)
             x_expect = np.log1p(np_x)
-            np.testing.assert_allclose(y.numpy(), x_expect, atol=1e-5)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-5)
         paddle.enable_static()
 
 

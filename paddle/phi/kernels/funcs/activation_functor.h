@@ -1998,9 +1998,10 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log {
-  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
-  operator()(const T& val) const {
-    return std::log(val);
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  HOSTDEVICE U operator()(const T& val) const {
+    return static_cast<U>(std::log(val));
   }
 };
 
@@ -2043,9 +2044,10 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log2 {
-  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
-  operator()(const T& val) const {
-    return std::log2(val);
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  HOSTDEVICE U operator()(const T& val) const {
+    return static_cast<U>(std::log2(val));
   }
 };
 
@@ -2089,9 +2091,10 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log10 {
-  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
-  operator()(const T& val) const {
-    return std::log10(val);
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  HOSTDEVICE U operator()(const T& val) const {
+    return static_cast<U>(std::log10(val));
   }
 };
 
@@ -2139,9 +2142,10 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log1p {
-  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
-  operator()(const T& val) const {
-    return std::log1p(val);
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  HOSTDEVICE U operator()(const T& val) const {
+    return static_cast<U>(std::log1p(val));
   }
 };
 
