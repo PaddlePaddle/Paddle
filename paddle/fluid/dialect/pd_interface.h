@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/dialect/utils.h"
-#include "paddle/ir/op_base.h"
+#include "paddle/ir/core/op_base.h"
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
                                std::vector<paddle::dialect::OpAttributeInfo>,

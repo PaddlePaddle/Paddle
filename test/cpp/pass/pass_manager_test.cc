@@ -18,11 +18,11 @@
 
 #include "glog/logging.h"
 
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/op_base.h"
-#include "paddle/ir/operation.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/op_base.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/pass/pass.h"
 #include "paddle/pass/pass_manager.h"
 
@@ -96,8 +96,8 @@ TEST(pass_manager_test, pass_manager_test) {
   std::vector<ir::Type> op_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op =
       ir::Operation::create(op_inputs,
-                            op_output_types,
                             CreateAttributeMap(ctx, "op1_attr1", "op1_attr1"),
+                            op_output_types,
                             op_info);
 
   // (4) Test pass manager for op.

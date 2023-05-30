@@ -1100,9 +1100,10 @@
     x : X
   outputs :
     out : Out
-  backward : hard_swish_grad
+  backward : hardswish_grad (hard_swish_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+  manual_signature : [hardswish]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
@@ -1901,6 +1902,10 @@
 
 - op : relu6
   backward : relu6_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2261,6 +2266,30 @@
     x : X
   outputs :
     out : Out
+
+- op : strided_slice
+  backward : strided_slice_grad
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
+    strides :
+      data_type : int
+      tensor_name : StridesTensor
+      tensors_name : StridesTensorList
+  manual_signature : [strided_slice, strided_slice_grad]
+  get_expected_kernel_type :
+    strided_slice : GetStridedSliceExpectedKernelType
+    strided_slice_grad : GetStridedSliceGradExpectedKernelType
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)

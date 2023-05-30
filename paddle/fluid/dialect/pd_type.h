@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/dialect/pd_type_storage.h"
-#include "paddle/ir/type.h"
+#include "paddle/ir/core/type.h"
 
 namespace paddle {
 namespace dialect {

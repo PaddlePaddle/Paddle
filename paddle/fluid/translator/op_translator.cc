@@ -28,11 +28,11 @@
 #include "paddle/fluid/translator/op_compat_info.h"
 #include "paddle/fluid/translator/program_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
-#include "paddle/ir/builtin_op.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/operation.h"
-#include "paddle/ir/value.h"
+#include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -127,8 +127,8 @@ inline ir::Operation* InsertSliceOperationForTarget(
       defining_info.value.type().dyn_cast<ir::VectorType>();
   ir::Operation* operation =
       ir::Operation::create({defining_info.value},
-                            {src_vec_type[defining_info.idx_in_vector]},
                             op_attribute_map,
+                            {src_vec_type[defining_info.idx_in_vector]},
                             op_info);
   program->InsertOp(operation);
   ir::OpResult target_op_result = operation->GetResultByIndex(0);
@@ -153,7 +153,7 @@ inline ir::Operation* InsertCombineOperationForTarget(
   }
   ir::Type target_vec_type = ir::VectorType::get(ctx, types_in_vec);
   ir::Operation* operation =
-      ir::Operation::create(src_values, {target_vec_type}, {}, op_info);
+      ir::Operation::create(src_values, {}, {target_vec_type}, op_info);
   program->InsertOp(operation);
   return operation;
 }
@@ -374,7 +374,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
+      ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation creation end.";
   program->InsertOp(operation);
 
@@ -399,7 +399,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   };
 
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
+      ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
   program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
@@ -429,7 +429,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   };
 
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
+      ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
   program->InsertOp(operation);
 
   return operation;

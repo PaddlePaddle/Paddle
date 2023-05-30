@@ -20,9 +20,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/program.h"
-#include "paddle/ir/value.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 namespace paddle {
 namespace translator {

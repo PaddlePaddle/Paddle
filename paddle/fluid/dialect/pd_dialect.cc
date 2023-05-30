@@ -22,7 +22,7 @@
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/ir/dialect_interface.h"
+#include "paddle/ir/core/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
