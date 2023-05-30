@@ -187,7 +187,7 @@ TEST(program_test, program) {
                                                 abs_info);
   paddle::dialect::GetOpInfoInterface interface =
       abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
-  EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name_ == "x", true);
+  EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name == "x", true);
 
   // (8) Def SetParameterOp(c, "c")
   std::string op4_name =
