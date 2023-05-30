@@ -45,6 +45,8 @@ set(PHI_DEPS
     cblas
     utf8proc)
 
+set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
+
 if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
@@ -79,6 +81,7 @@ endif()
 
 if(WITH_MKLML)
   list(APPEND PHI_DEPS pocketfft dynload_mklml)
+  list(APPEND INFERENCE_DEPS dynload_mklml)
 endif()
 
 if(WITH_XPU)
@@ -182,6 +185,11 @@ endif()
 if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
 endif()
+
+# for inference static library
+get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
+set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
