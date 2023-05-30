@@ -187,9 +187,11 @@ if(WITH_FLASHATTN)
 endif()
 
 # for inference static library
-get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
-set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
+if(NOT WITH_PHI_SHARED)
+  get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+  set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
+  set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
+endif()
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
