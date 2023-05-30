@@ -24,7 +24,6 @@ from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.fluid.framework import (
-    _non_static_mode,
     default_startup_program,
     in_dygraph_mode,
     program_guard,
@@ -102,7 +101,7 @@ def rnn(
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,

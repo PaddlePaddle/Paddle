@@ -274,7 +274,7 @@ struct FMaxFunctor<int64_t> {
 
 template <typename T>
 struct FMaxGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>((x >= y) || isnan(y));
   }
 };
@@ -308,7 +308,7 @@ struct FMaxGradDx<int64_t> {
 
 template <typename T>
 struct FMaxGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(!((x >= y) || isnan(y)));
   }
 };
@@ -342,7 +342,7 @@ struct FMaxGradDy<int> {
 
 template <typename T>
 struct FMinGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>((x <= y) || isnan(y));
   }
 };
@@ -376,7 +376,7 @@ struct FMinGradDx<int64_t> {
 
 template <typename T>
 struct FMinGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(!((x <= y) || isnan(y)));
   }
 };
@@ -560,6 +560,20 @@ struct RemainderFunctor<dtype::float16> {
     // remainder shall have the same sign as divsor.
     if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
     return static_cast<dtype::float16>(res);
+  }
+};
+
+template <>
+struct RemainderFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(b);
+    float res = fmod(static_cast<float>(a), b_float);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
+    return static_cast<dtype::bfloat16>(res);
   }
 };
 

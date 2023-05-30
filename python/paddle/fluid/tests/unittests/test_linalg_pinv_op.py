@@ -267,6 +267,19 @@ class LinalgPinvTestCaseHermitian5(LinalgPinvTestCase):
         self.hermitian = True
 
 
+class LinalgPinvTestCaseHermitian6(LinalgPinvTestCase):
+    def generate_input(self):
+        self._input_shape = (3, 5, 5)
+        np.random.seed(123)
+        x = np.ones(self._input_shape).astype(self.dtype)
+        self._input_data = x + 0.01
+
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.hermitian = True
+
+
 class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
     def generate_input(self):
         self._input_shape = (3, 5, 5)

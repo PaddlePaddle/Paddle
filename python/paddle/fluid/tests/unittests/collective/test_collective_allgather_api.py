@@ -55,7 +55,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             "uint8",
             "bool",
         ]
-        if self._nccl_version >= 2100:
+        if self._nccl_version >= 21000:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
             self.check_with_place(
@@ -118,7 +118,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             "uint8",
             "bool",
         ]
-        if self._nccl_version >= 2100:
+        if self._nccl_version >= 21000:
             dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
             self.check_with_place(

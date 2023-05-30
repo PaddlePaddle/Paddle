@@ -75,7 +75,9 @@ void ElemwiseExplicitGradCompute(const CPUContext& dev_ctx,
 */
 template <typename T>
 struct IdentityGrad {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
+  HOSTDEVICE T operator()(T x UNUSED, T y UNUSED, T out UNUSED, T dout) const {
+    return dout;
+  }
 };
 
 template <typename T>
@@ -120,12 +122,16 @@ ElementwiseAddGrad(const CPUContext& ctx,
 
 template <typename T>
 struct SubGradDX {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout; }
+  HOSTDEVICE T operator()(T x UNUSED, T y UNUSED, T out UNUSED, T dout) const {
+    return dout;
+  }
 };
 
 template <typename T>
 struct SubGradDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return -dout; }
+  HOSTDEVICE T operator()(T x UNUSED, T y UNUSED, T out UNUSED, T dout) const {
+    return -dout;
+  }
 };
 
 template <typename T>

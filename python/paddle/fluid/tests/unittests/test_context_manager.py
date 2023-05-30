@@ -29,8 +29,8 @@ class TestContextManagerRaiseException(unittest.TestCase):
 
     def test_func2(self):
         # After test_func1 executed, if fluid.dygraph.guard() in test_func1 safely exited,
-        # fluid._non_static_mode() should be false.
-        self.assertEqual(fluid._non_static_mode(), False)
+        # fluid.in_dygraph_mode() should be false.
+        self.assertEqual(fluid.in_dygraph_mode(), False)
 
 
 if __name__ == '__main__':

@@ -61,7 +61,9 @@ HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
 template <typename T,
           typename MT,
           std::enable_if_t<!std::is_same<T, float>::value, bool> = true>
-HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
+HOSTDEVICE bool NeedPrint(MT max_value UNUSED,
+                          MT min_value UNUSED,
+                          int check_nan_inf_level) {
   if (check_nan_inf_level >= 3) {
     return true;
   }

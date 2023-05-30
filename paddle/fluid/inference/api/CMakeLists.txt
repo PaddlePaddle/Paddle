@@ -1,18 +1,3 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 if(APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif()
@@ -56,7 +41,7 @@ if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
 if(WITH_CUSTOM_DEVICE)
-  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi_capi)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
 endif()
 
 cc_library(
@@ -65,7 +50,7 @@ cc_library(
   DEPS ${paddle_inference_api_deps})
 
 if(WIN32)
-  target_link_libraries(paddle_inference_api gflags)
+  target_link_libraries(paddle_inference_api phi)
 endif()
 
 set(inference_deps ${analysis_deps} paddle_inference_api analysis

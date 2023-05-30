@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
@@ -48,60 +48,84 @@ class CCommInitOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
+    if (platform::is_custom_place(place)) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+      auto var = scope.FindVar(Input("X"));
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::InvalidArgument("Input con not be empty."));
+
+      phi::ccl::CCLRootId* comm_id = var->GetMutable<phi::ccl::CCLRootId>();
+
+      int nranks = Attr<int>("nranks");
+      int rid = Attr<int>("ring_id");
+
+      int device_id = place.device;
+      if (Attr<int>("device_id") >= 0) {
+        device_id = Attr<int>("device_id");
+      }
+      int rank_id = Attr<int>("rank");
+      platform::XCCLCommContext::Instance(place.GetDeviceType())
+          .CreateComm(comm_id, nranks, rank_id, device_id, rid);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with custom device."));
+#endif
+    } else {
 // TODO(wangxi): Put this in the unified header file
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    using UniqueId = ncclUniqueId;
-    using CommContext = platform::NCCLCommContext;
+      using UniqueId = ncclUniqueId;
+      using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
-    using UniqueId = BKCLUniqueId;
-    using CommContext = platform::BKCLCommContext;
+      using UniqueId = BKCLUniqueId;
+      using CommContext = platform::BKCLCommContext;
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "PaddlePaddle should be compiled with GPU or XPU."));
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should be compiled with GPU or XPU."));
 #endif
 
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place) || platform::is_xpu_place(place),
-        true,
-        platform::errors::PreconditionNotMet(
-            "CCommInitOp can run on gpu or xpu place only."));
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(place) || platform::is_xpu_place(place),
+          true,
+          platform::errors::PreconditionNotMet(
+              "CCommInitOp can run on gpu or xpu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
-    auto var = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::InvalidArgument("Input con not be empty."));
+      auto var = scope.FindVar(Input("X"));
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::InvalidArgument("Input con not be empty."));
 
-    UniqueId* comm_id = var->GetMutable<UniqueId>();
+      UniqueId* comm_id = var->GetMutable<UniqueId>();
 
-    int nranks = Attr<int>("nranks");
-    int rid = Attr<int>("ring_id");
+      int nranks = Attr<int>("nranks");
+      int rid = Attr<int>("ring_id");
 
-    int device_id = place.device;
-    if (Attr<int>("device_id") >= 0) {
-      device_id = Attr<int>("device_id");
-    }
-    int rank_id = Attr<int>("rank");
-    CommContext::Instance().CreateComm(
-        comm_id, nranks, rank_id, device_id, rid);
+      int device_id = place.device;
+      if (Attr<int>("device_id") >= 0) {
+        device_id = Attr<int>("device_id");
+      }
+      int rank_id = Attr<int>("rank");
+      CommContext::Instance().CreateComm(
+          comm_id, nranks, rank_id, device_id, rid);
 #endif
+    }
   }
 };
 
 class CCommInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
+    AddInput("X", "Raw variable contains a NCCL UniqueId instances.");
     AddComment(R"DOC(
 CCommInit operator
 
-Initialize collective communicatoin context within this trainer
+Initialize collective communication context within this trainer
 )DOC");
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
     AddAttr<int>("device_id",
-                 "(int) The deivce_id on which to initialize the communicator."
+                 "(int) The device_id on which to initialize the communicator."
                  "Now, you only have to set this attr manually for pipeline "
                  "training. Otherwise, make it as default.")
         .SetDefault(-1);
