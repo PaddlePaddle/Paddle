@@ -137,4 +137,8 @@ void SvdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(svd, CPU, ALL_LAYOUT, phi::SvdKernel, float, double) {}
+PD_REGISTER_KERNEL(svd, CPU, ALL_LAYOUT, phi::SvdKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+  kernel->OutputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+  kernel->OutputAt(2).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
