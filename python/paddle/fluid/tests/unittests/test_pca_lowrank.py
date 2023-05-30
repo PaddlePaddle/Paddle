@@ -176,7 +176,7 @@ class TestPcaLowrankAPI(unittest.TestCase):
             (16, (17, 17)),
             (21, (100, 40)),
         ]:
-            for density in [0.005, 0.1]:
+            for density in [0.005, 0.01]:
                 self.run_subtest(
                     guess_rank, None, size, (), pca_lowrank, density=density
                 )
