@@ -23,7 +23,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     load_checkpoint_into_program,
     save_distributed_checkpoint,
 )
