@@ -104,22 +104,22 @@ class Test1F1BPass(unittest.TestCase):
     def test_1f1b_pass(self):
         # navie_pp+gradient_merge training
         engine_pp = self.get_engine()
-        history = engine_pp.fit(
+        history_pp = engine_pp.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_pp._strategy.pipeline.enable is False
 
         # pp2 1f1b training
         engine_1f1b = self.get_engine(True)
-        history = engine_1f1b.fit(
+        history_1f1b = engine_1f1b.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_1f1b._strategy.pipeline.enable is True
 
         # NOTE: every sample data from dataset is all the same
         if paddle.distributed.get_rank() == 1:
-            losses_pp = np.array(history.history["loss"])
-            losses_1f1b = np.array(history.history["loss"])
+            losses_pp = np.array(history_pp.history["loss"])
+            losses_1f1b = np.array(history_1f1b.history["loss"])
             self.check_results(losses_pp, losses_1f1b)
 
 

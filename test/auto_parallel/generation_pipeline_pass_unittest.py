@@ -99,11 +99,10 @@ class GEN(nn.Layer):
 
             out = self.mlp(model_kwargs['input'])
             paddle.increment(cur_step)
-            auto.shard_op(paddle.assign, _g_mesh)(model_kwargs['input'], out)
+            out_assign = auto.shard_op(paddle.assign, _g_mesh)(out)
 
-        output = F.gelu(model_kwargs['input'], approximate=True)
-
-        return output, cur_step
+        model_kwargs['output'] = paddle.assign(out_assign)
+        return model_kwargs['output'], cur_step
 
 
 def get_model():
@@ -145,7 +144,6 @@ class TestGenerationPipeline(unittest.TestCase):
             batch_size=1,  # micro_batch_size
             epochs=1,
         )
-        engine._prepare_reader()
 
         fleet_opt = engine.main_program._pipeline_opt['fleet_opt']
         assert len(fleet_opt['tasks']) == 5
