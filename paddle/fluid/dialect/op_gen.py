@@ -29,7 +29,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 {op_declare}
 #else
 
-#include "paddle/ir/op_base.h"
+#include "paddle/ir/core/op_base.h"
 
 {input}
 #endif
@@ -67,9 +67,9 @@ OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()
 CC_FILE_TEMPLATE = """#include "{h_file}"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/pd_attribute.h"
-#include "paddle/ir/builtin_attribute.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/ir_context.h"
+#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/phi/core/enforce.h"
 
 {input}

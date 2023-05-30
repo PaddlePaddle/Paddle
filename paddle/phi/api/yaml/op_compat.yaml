@@ -1927,6 +1927,10 @@
 
 - op : relu6
   backward : relu6_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

@@ -42,6 +42,7 @@ cc_test_old(
   crop_op
   activation_op
   generated_op
+  generated_static_op
   phi
   transpose_op
   fused_transpose_op

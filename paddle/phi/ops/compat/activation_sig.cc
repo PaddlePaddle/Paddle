@@ -47,11 +47,6 @@ KernelSignature SwishGradOpArgumentMapping(
   return KernelSignature("swish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature Relu6GradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("relu6_grad", {"Out", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
 KernelSignature HardSwishGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hardswish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
@@ -67,11 +62,6 @@ KernelSignature SwishOpArgumentMapping(
   return KernelSignature("swish_raw", {"X"}, {"beta"}, {"Out"});
 }
 
-KernelSignature Relu6OpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("relu6_raw", {"X"}, {"threshold"}, {"Out"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
@@ -79,8 +69,6 @@ PD_REGISTER_BASE_KERNEL_NAME(hard_swish_grad, hardswish_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_swish_grad,
                            phi::HardSwishGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_swish, phi::HardSwishOpArgumentMapping);
