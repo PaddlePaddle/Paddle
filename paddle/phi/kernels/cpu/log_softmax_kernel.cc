@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -42,21 +43,45 @@ struct LogSoftmaxFunctor {
                   const DenseTensor* X,
                   DenseTensor* Y,
                   const int axis) {
+    const auto& in_dims = X->dims();
+    int axis_dim = in_dims[axis];
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
-    constexpr int kAxisDim = 1;
 
-    int axis_dim = X->dims()[axis];
-    const int n = funcs::SizeToAxis(axis, X->dims());
-    const int d = funcs::SizeFromAxis(axis, X->dims());
+    const int num_classes = in_dims[kClassDim];
+    const int batch_size = in_dims[kBatchDim];
+    const int num_remain = num_classes / axis_dim;
+
+    if (num_remain == 1 &&
+        phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
+      const T* in_data = X->data<T>();
+      T* out_data = Y->data<T>();
+      for (int bs = 0; bs < batch_size; ++bs) {
+        T max_val = *std::max_element(in_data, in_data + num_classes);
+        max_val *= static_cast<T>(-1);
+        vec_add_bias<T, phi::backends::cpu::avx>(
+            num_classes, max_val, in_data, out_data);
+        vec_exp<T>(num_classes, out_data, out_data);
+
+        T sum = 0;
+        vec_sum<T, phi::backends::cpu::avx>(num_classes, out_data, &sum);
+        sum = static_cast<T>(1) / sum;
+        vec_add_bias<T, phi::backends::cpu::avx>(
+            num_classes, -std::log(sum), out_data, out_data);
+
+        in_data += num_classes;
+        out_data += num_classes;
+      }
+      return;
+    }
+
+    constexpr int kAxisDim = 1;
+    const int n = funcs::SizeToAxis(axis, in_dims);
+    const int d = funcs::SizeFromAxis(axis, in_dims);
     phi::DDim dim_2d{n, d};
 
     auto logits = EigenMatrixTemplate<T>::From(*X, dim_2d);
     auto log_softmax = EigenMatrixTemplate<T>::From(*Y, dim_2d);
-
-    const int batch_size = logits.dimension(kBatchDim);
-    const int num_classes = logits.dimension(kClassDim);
-    const int num_remain = num_classes / axis_dim;
 
     Eigen::DSizes<int, 1> along_axis(kAxisDim);
     Eigen::DSizes<int, 2> batch_classes(batch_size, num_classes);
