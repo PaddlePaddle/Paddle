@@ -18,11 +18,15 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, tensor, utils
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.auto_parallel.utils import _get_comm_group
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.parallelizer import (
+    AutoParallelizer,
+)
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.process_group import (
+    new_process_group,
+)
+from paddle.distributed.auto_parallel.static.utils import _get_comm_group
 from paddle.distributed.fleet import auto
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list

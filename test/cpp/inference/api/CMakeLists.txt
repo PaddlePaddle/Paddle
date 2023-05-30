@@ -427,15 +427,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
                               analyzer_lac_tester.cc)
 
-  # Pyramid DNN
-  set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
-  download_model_and_data_without_verify(
-    ${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz"
-    "PyramidDNN_data.txt.tar.gz")
-  inference_analysis_api_test(
-    test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR}
-    analyzer_pyramid_dnn_tester.cc)
-
   # Ernie
   set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
   download_model_and_data(

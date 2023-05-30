@@ -1272,6 +1272,10 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
               << ", D=" << D << ", dim_log2=" << dim_log2
               << ", dim_ceil=" << dim_ceil << ", warp_size=" << warp_size;
 
+      int vec_size = 1;
+      if (!std::is_same<T, float>::value && !std::is_same<T, double>::value) {
+        vec_size = (dim % 4 == 0) ? 4 : ((dim % 2 == 0) ? 2 : 1);
+      }
       int batches_per_warp = 1;
       int warps_per_block = 1;
       int sm_count = dev_ctx.GetSMCount();
@@ -1295,7 +1299,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
       dim3 threads(warp_size, warps_per_block, 1);
 
-      if (dim % 4 == 0) {
+      if (vec_size == 4) {
         VLOG(7) << "[WarpSoftmaxForward] vec_size=4, x_ptr=" << x.data<T>()
                 << ", out_ptr=" << out_data;
         SwitchWarpSoftmaxForward<T, IndexType, 4, LogMode>(blocks,
@@ -1307,7 +1311,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim,
                                                            dim,
                                                            dim_log2);
-      } else if (dim % 2 == 0) {
+      } else if (vec_size == 2) {
         VLOG(7) << "[WarpSoftmaxForward] vec_size=2, x_ptr=" << x.data<T>()
                 << ", out_ptr=" << out_data;
         SwitchWarpSoftmaxForward<T, IndexType, 2, LogMode>(blocks,

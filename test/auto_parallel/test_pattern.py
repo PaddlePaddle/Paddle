@@ -112,7 +112,7 @@ class TestGroupOperatorsAndPatterns(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+        from paddle.distributed.auto_parallel.static.tuner.rule_based_tuner import (
             _PATTERNS,
             GraphUtil,
         )

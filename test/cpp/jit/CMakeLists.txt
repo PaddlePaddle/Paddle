@@ -15,6 +15,7 @@ if(WITH_TESTING AND NOT WIN32)
       feed_op
       fetch_op
       generated_op
+      generated_static_op
       transfer_layout_op
       jit_layer)
   cc_test(
