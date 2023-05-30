@@ -23,7 +23,7 @@
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/ir/dialect_interface.h"
+#include "paddle/ir/core/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -133,7 +133,20 @@ void PaddleDialect::initialize() {
               BatchNormGradOp,
               Conv2DGradOp,
               SumOp,
-              FetchV2Op>();
+              FetchV2Op,
+              AddOp,
+              MatMulOp,
+              ReshapeOp,
+              CrossEntropyOp,
+              TopKOp,
+              FullOp,
+              MeanOp,
+              AddNOp,
+              AddGradOp,
+              MatMulGradOp,
+              ReshapeGradOp,
+              CrossEntropyGradOp,
+              TopKGradOp>();
 }
 
 void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {

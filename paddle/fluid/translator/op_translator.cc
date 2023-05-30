@@ -22,12 +22,13 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/translator/op_compat_info.h"
 #include "paddle/fluid/translator/program_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
-#include "paddle/ir/builtin_op.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/value.h"
+#include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -70,11 +71,19 @@ inline bool IsInplace(const OpDesc& op_desc) {
   return inplace;
 }
 
+inline std::string OpNamecompatibleMapping(std::string op_name) {
+  auto& op_normalizer = OpNameNormalizer::instance();
+  return op_normalizer[op_name];
+}
+
 inline ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) {
-  std::string target_op_name = kTargetDialectPrefix + op_desc.Type();
+  std::string target_op_name =
+      kTargetDialectPrefix + OpNamecompatibleMapping(op_desc.Type());
   if (IsInplace(op_desc)) {
     target_op_name += "_";
   }
+  VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
+          << target_op_name;
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
     PADDLE_THROW(platform::errors::PreconditionNotMet(

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ir/op_base.h"
+#include "paddle/ir/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
@@ -79,6 +79,19 @@ REIGSTER_EMPTY_OP(batch_norm_grad,
 REIGSTER_EMPTY_OP(conv2d_grad, Conv2DGradOp);  // To be customized: conv2d_grad
 REIGSTER_EMPTY_OP(sum, SumOp);           // To be customized: sum(reduce_sum)
 REIGSTER_EMPTY_OP(fetch_v2, FetchV2Op);  // To be customized: fetch_v2
+REIGSTER_EMPTY_OP(add, AddOp);
+REIGSTER_EMPTY_OP(add_grad, AddGradOp);
+REIGSTER_EMPTY_OP(matmul, MatMulOp);
+REIGSTER_EMPTY_OP(matmul_grad, MatMulGradOp);
+REIGSTER_EMPTY_OP(reshape, ReshapeOp);
+REIGSTER_EMPTY_OP(reshape_grad, ReshapeGradOp);
+REIGSTER_EMPTY_OP(mean, MeanOp);
+REIGSTER_EMPTY_OP(cross_entropy_with_softmax, CrossEntropyOp);
+REIGSTER_EMPTY_OP(cross_entropy_with_softmax_grad, CrossEntropyGradOp);
+REIGSTER_EMPTY_OP(topk, TopKOp);
+REIGSTER_EMPTY_OP(topk_grad, TopKGradOp);
+REIGSTER_EMPTY_OP(full, FullOp);
+REIGSTER_EMPTY_OP(add_n, AddNOp);
 
 }  // namespace dialect
 }  // namespace paddle
