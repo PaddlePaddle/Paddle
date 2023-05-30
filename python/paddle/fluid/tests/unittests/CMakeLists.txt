@@ -1116,7 +1116,15 @@ set(TEST_CINN_OPS
     test_tile_op
     test_roll_op
     test_sum_op
-    test_elementwise_min_op)
+    test_elementwise_min_op
+    test_bitwise_op
+    test_compare_op
+    test_shape_op
+    test_assign_value_op
+    test_lookup_table_op
+    test_lookup_table_v2_op
+    test_norm_op
+    test_one_hot_v2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1126,14 +1134,6 @@ foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
 endforeach()
 
 if(WITH_CINN AND WITH_TESTING)
-  set_tests_properties(
-    test_resnet50_with_cinn
-    PROPERTIES
-      LABELS
-      "RUN_TYPE=CINN"
-      ENVIRONMENT
-      FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
-  )
   set_tests_properties(
     test_parallel_executor_run_cinn
     PROPERTIES

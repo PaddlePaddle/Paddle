@@ -426,7 +426,14 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     IR_NODE_LINK_TO(new_bias_node, elementwise_add1_node);
     IR_NODE_LINK_TO(elementwise_add1_node, layer_norm_out);
 
-    GraphSafeRemoveNodes(g, {layer_norm_op, layer_norm_bias, layer_norm_scale});
+    std::unordered_set<const Node*> nodes2rm = {};
+    nodes2rm.insert(layer_norm_op);
+    if (layer_norm_bias->outputs.size() <= 1UL)
+      nodes2rm.insert(layer_norm_bias);
+    if (layer_norm_scale->outputs.size() <= 1UL)
+      nodes2rm.insert(layer_norm_scale);
+
+    GraphSafeRemoveNodes(g, nodes2rm);
     found_layer_norm_count++;
   };
 

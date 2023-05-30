@@ -22,6 +22,14 @@ namespace phi {
 // Common InferMeta Functions for fusion operators.
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AddActXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& y,
+                        const MetaTensor& y_max,
+                        int act_type,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -44,7 +52,10 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
-    MetaTensor* out);
+    const MetaTensor& mask,
+    MetaTensor* out,
+    MetaTensor* seq_lod,
+    MetaTensor* max_seq_len);
 
 void FcXPUInferMeta(const MetaTensor& x,
                     const MetaTensor& x_max,
@@ -72,6 +83,8 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const MetaTensor& mask,
+    const MetaTensor& seq_lod,
+    const MetaTensor& max_seq_len,
     int layer_num,
     bool norm_before,
     int hidden_dim,

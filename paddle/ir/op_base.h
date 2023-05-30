@@ -66,18 +66,18 @@ class InterfaceValue {
 
 class OpBase {
  public:
-  explicit OpBase(const Operation *operation) : operation_(operation) {}
+  explicit OpBase(Operation *operation) : operation_(operation) {}
 
-  const Operation *operation() const { return operation_; }
+  Operation *operation() const { return operation_; }
 
   explicit operator bool() const { return operation() != nullptr; }
 
-  operator const Operation *() const { return operation_; }
+  operator Operation *() const { return operation_; }
 
-  const Operation *operator->() const { return operation_; }
+  Operation *operator->() const { return operation_; }
 
  private:
-  const Operation *operation_;  // Not owned
+  Operation *operation_;  // Not owned
 };
 
 ///
@@ -86,9 +86,16 @@ class OpBase {
 template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
-  explicit OpTraitBase(const Operation *op) : OpBase(op) {}
+  explicit OpTraitBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
+
+  static ConcreteTrait dyn_cast(Operation *op) {
+    if (op->HasTrait<ConcreteTrait>()) {
+      return ConcreteTrait(op);
+    }
+    return ConcreteTrait(nullptr);
+  }
 };
 
 ///
@@ -97,11 +104,17 @@ class OpTraitBase : public OpBase {
 template <typename ConcreteInterface>
 class OpInterfaceBase : public OpBase {
  public:
-  // explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
-
-  explicit OpInterfaceBase(const Operation *op) : OpBase(op) {}
+  explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+  static ConcreteInterface dyn_cast(Operation *op) {
+    if (op->HasInterface<ConcreteInterface>()) {
+      return ConcreteInterface(
+          op, op->op_info().GetInterfaceImpl<ConcreteInterface>());
+    }
+    return ConcreteInterface(nullptr, nullptr);
+  }
 };
 
 template <typename ConcreteOp, typename... Args>
@@ -167,6 +180,13 @@ class Op : public OpBase {
 
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
+
+  static ConcreteOp dyn_cast(Operation *op) {
+    if (op->op_info().id() == TypeId::get<ConcreteOp>()) {
+      return ConcreteOp(op);
+    }
+    return ConcreteOp(nullptr);
+  }
 
   static std::vector<InterfaceValue> GetInterfaceMap() {
     constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;
