@@ -10,10 +10,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/contiguous_kernel.h"
+
+#include <set>
+
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
@@ -40,6 +44,50 @@ __global__ void ContiguousFunc(
   }
 }
 
+bool is_only_transposed(const DDim& shape,
+                        const DDim& strides,
+                        DDim& src_shape,           // NOLINT
+                        DDim& src_strides,         // NOLINT
+                        std::vector<int>& axis) {  // NOLINT
+  std::set<int> visited_idx;
+  std::vector<int> tmp_axis;
+  tmp_axis.reserve(strides.size());
+  for (int i = 0; i < strides.size(); i++) {
+    int64_t max_num = 0;
+    int max_idx = -1;
+    for (int j = 0; j < strides.size(); j++) {
+      if (visited_idx.count(j)) {
+        continue;
+      }
+      if (strides[j] < 1) {
+        return false;
+      }
+      if (strides[j] > max_num) {
+        max_num = strides[j];
+        max_idx = j;
+      }
+    }
+    if (max_idx == -1) {
+      return false;
+    }
+    if (i != 0 && src_strides[i - 1] == max_num) {
+      return false;
+    }
+    visited_idx.insert(max_idx);
+    src_strides[i] = max_num;
+    src_shape[i] = shape[max_idx];
+    tmp_axis.push_back(max_idx);
+  }
+
+  if (DenseTensorMeta::calc_strides(src_shape) == src_strides) {
+    axis.resize(tmp_axis.size());
+    for (size_t i = 0; i < axis.size(); i++) {
+      axis[i] = tmp_axis[tmp_axis[i]];
+    }
+    return true;
+  }
+}
+
 template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
@@ -47,6 +95,31 @@ void ContiguousKernel(const Context& dev_ctx,
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims, meta.layout);
   out->set_meta(meta);
+
+  std::vector<int> axis;
+  DDim src_strides = meta.strides;
+  DDim src_shape = meta.dims;
+  if (is_only_transposed(
+          meta.dims, meta.strides, src_shape, src_strides, axis)) {
+    DenseTensor tmp_tensor = input;
+    phi::DenseTensorMeta tmp_meta = meta;
+    tmp_meta.strides = src_strides;
+    tmp_meta.dims = src_shape;
+    tmp_tensor.set_meta(tmp_meta);
+    TransposeKernel<T, Context>(dev_ctx, tmp_tensor, axis, out);
+    return;
+
+    // std::cout << "true src_shape = " << src_shape << ", src_strides = " <<
+    // src_strides << ", axis = "; for (auto a : axis) {
+    //   std::cout << a << " ";
+    // }
+    // std::cout << std::endl;
+  }
+  // std::cout << "false src_shape = " << src_shape << ", src_strides = " <<
+  // src_strides << ", axis = "; for (auto a : axis) {
+  //   std::cout << a << " ";
+  // }
+  // std::cout << std::endl;
 
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
