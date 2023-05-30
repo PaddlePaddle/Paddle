@@ -61,6 +61,13 @@ void MaskCooGPUKernel(const GPUContext& dev_ctx,
       phi::errors::InvalidArgument("the input x and mask must have the shape"));
   const DenseTensor& indices = mask.indices();
   const DenseTensor& values = mask.values();
+  DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, indices);
+  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
+  if (mask.nnz() <= 0) {
+    out->SetMember(out_indices, out_values, dims, true);
+    return;
+  }
+
   const int sparse_dim = mask.sparse_dim();
   DenseTensor sparse_offsets = phi::Empty<GPUContext>(
       dev_ctx,
@@ -74,9 +81,6 @@ void MaskCooGPUKernel(const GPUContext& dev_ctx,
                                      sizeof(int64_t) * sparse_dim,
                                      gpuMemcpyHostToDevice,
                                      dev_ctx.stream());
-
-  DenseTensor out_indices = phi::EmptyLike<T>(dev_ctx, indices);
-  DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, values);
 
   phi::Copy(dev_ctx, indices, dev_ctx.GetPlace(), false, &out_indices);
 

@@ -26,8 +26,11 @@ from paddle.static.quantization import (
     quant_config,
 )
 
-from ..auto_parallel.converter import Converter
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
+from ..auto_parallel.static.converter import Converter
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
 from .pass_base import PassBase, register_pass
 
 TRANSFORM_PASS_OP_TYPES = list(

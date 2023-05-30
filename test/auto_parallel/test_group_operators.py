@@ -112,10 +112,10 @@ class TestGroupOperators(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             DistributedContext,
         )
-        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+        from paddle.distributed.auto_parallel.static.tuner.rule_based_tuner import (
             RuleBasedTuner,
         )
 
