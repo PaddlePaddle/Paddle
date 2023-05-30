@@ -50,10 +50,7 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
       concret_op.InferShape();
     }
 
-    Model() : Concept(InferShape) {
-      static_assert(sizeof(Model) == sizeof(Concept),
-                    "sizeof(Model) != sizeof(Concept)");
-    }
+    Model() : Concept(InferShape) {}
   };
 
   InferShapeInterface(ir::Operation *op, Concept *impl)
