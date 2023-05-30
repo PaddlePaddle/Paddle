@@ -71,7 +71,7 @@ ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
 CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 
-# use thread local to create thread safe global variables.
+# use thread local to create thread save global variables.
 class GlobalThreadLocal(threading.local):
     def __init__(self):
         """
