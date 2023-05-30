@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
-#include "paddle/ir/attribute.h"
-#include "paddle/ir/builtin_attribute.h"
-#include "paddle/ir/ir_context.h"
+#include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/ir_context.h"
 
 #pragma once
 

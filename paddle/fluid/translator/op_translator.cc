@@ -165,7 +165,7 @@ inline ir::Operation* InsertConstantOperationForOptionalArg(
 
   ir::Type null_type = ir::Type(nullptr);
   ir::Operation* operation =
-      ir::Operation::create({}, {null_type}, {}, op_info);
+      ir::Operation::create({}, {}, {null_type}, op_info);
   program->InsertOp(operation);
   return operation;
 }
@@ -205,12 +205,12 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
 
   for (const auto& info : input_infos) {
     std::string legacy_input_name =
-        op_normalizer.GetLegacyArgName(normalized_op_name, info.name_);
+        op_normalizer.GetLegacyArgName(normalized_op_name, info.name);
 
     // return empty type if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
     if (!op_desc.HasInput(legacy_input_name)) {
-      PADDLE_ENFORCE(info.optional_,
+      PADDLE_ENFORCE(info.optional,
                      "Op %s arg %s should be optional if it can be empty",
                      op_desc.Type(),
                      legacy_input_name);
@@ -220,7 +220,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     }
 
     const auto& legacy_input_vars = op_desc.Input(legacy_input_name, true);
-    bool is_vector = (info.typename_.find("VectorType") != std::string::npos);
+    bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
     // if src type is Tensor
     if (!is_vector) {
