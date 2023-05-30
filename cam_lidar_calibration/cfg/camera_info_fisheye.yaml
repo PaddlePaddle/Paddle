@@ -1,0 +1,6 @@
+# distortion_model: "non-fisheye"
+distortion_model: "fisheye"
+width: 1920
+height: 1208
+D: [-0.0540096,-0.0784275,0.0959641,-0.0515253]
+K: [1176.93,0.0,962.275,0.0,1177.72,612.725,0.0,0.0,1]

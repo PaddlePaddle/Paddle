@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- roslaunch cam_lidar_calibration run_optimiser.launch import_samples:=false -->
+
+<launch>
+
+	<rosparam file="$(find cam_lidar_calibration)/cfg/params.yaml" />
+	
+  	<node pkg="cam_lidar_calibration" type="feature_extraction_node" name="feature_extraction" output="screen">
+		<param name="num_lowestvoq" type="int" value="50" /> 
+		<param name="import_samples" value="$(arg import_samples)"/>
+		<param name="import_path" value="$(find cam_lidar_calibration)/data/vlp/poses.csv"/>
+
+		<!-- If your lidar is not calibrated well interally, it may require a distance offset (millimetres) on each point -->
+		<param name="distance_offset_mm" value="0" /> 
+  	</node>
+
+  	<!-- Only open rviz and rqt if not importing samples -->
+  	<group unless="$(arg import_samples)">
+		<node type="rviz" name="rviz" pkg="rviz" args="-d $(find cam_lidar_calibration)/rviz/cam_lidar_calibration.rviz" />
+		<node type="rqt_reconfigure" name="rqt_reconfigure" pkg="rqt_reconfigure"/>
+	</group>
+
+</launch>
