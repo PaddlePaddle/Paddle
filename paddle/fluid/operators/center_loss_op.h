@@ -40,7 +40,7 @@ struct SubFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const { return a - b; }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CenterLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -133,7 +133,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CenterLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

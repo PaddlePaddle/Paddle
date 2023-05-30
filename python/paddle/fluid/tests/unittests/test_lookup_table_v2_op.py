@@ -16,12 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
@@ -57,10 +56,10 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True)
 
 
 class TestLookupTableOpInt16(OpTest):
@@ -88,10 +87,10 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True)
 
 
 @skip_check_grad_ci(
@@ -105,7 +104,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 @skip_check_grad_ci(
@@ -120,7 +119,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):

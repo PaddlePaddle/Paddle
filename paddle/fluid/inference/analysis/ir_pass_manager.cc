@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/errors.h"
 
 namespace paddle {
@@ -60,8 +61,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("tensorrt_transformer_maskid",
               new std::string(argument->tensorrt_transformer_maskid()));
     pass->Set("disable_logs", new bool(argument->disable_logs()));
-    auto precision_mode = argument->tensorrt_precision_mode();
-    bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
+    auto trt_precision_mode = argument->tensorrt_precision_mode();
+    bool enable_int8 =
+        trt_precision_mode == static_cast<int>(phi::DataType::INT8);
     pass->Set("enable_int8", new bool(enable_int8));
     pass->Set("max_input_shape",
               new std::map<std::string, std::vector<int>>(
@@ -99,9 +101,16 @@ void IRPassManager::CreatePasses(Argument *argument,
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
+    pass->Set("enable_custom_device_mixed",
+              new bool(argument->enable_custom_device_mixed()));
     pass->Set("mixed_precision_mode",
               new int(argument->mixed_precision_mode()));
     pass->Set("model_precision", new int(argument->model_precision()));
+    pass->Set("enable_low_precision_io",
+              new bool(argument->enable_low_precision_io()));
+
+    // "use_xpu" is used for passes in subgraphs.
+    pass->Set("use_xpu", new bool(argument->use_xpu()));
 
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -156,10 +165,11 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("use_calib_mode", new bool(use_calib_mode));
-      pass->Set("precision_mode",
-                new AnalysisConfig::Precision(precision_mode));
+      pass->Set("trt_precision_mode", new int(trt_precision_mode));
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
+      pass->Set("use_cuda_graph",
+                new bool(argument->tensorrt_use_cuda_graph()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -194,7 +204,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -235,8 +245,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::unordered_set<std::string>(
                     argument->dlnne_disable_nodes_by_outputs()));
       pass->Set("use_calib_mode", new bool(argument->dlnne_use_calib_mode()));
-      pass->Set("precision_mode",
-                new AnalysisConfig::Precision(precision_mode));
+      pass->Set("dlnne_precision_mode", new int(precision_mode));
       pass->Set("input_shape_dict",
                 new std::map<std::string, std::vector<int64_t>>(
                     argument->dlnne_input_shape_dict()));
@@ -247,8 +256,8 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "build_cinn_pass") {
       pass->Set("is_inference_stage", new bool(argument->use_cinn_compiler()));
     } else if (pass_name == "lite_subgraph_pass") {
-      bool lite_enable_int8 =
-          argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
+      bool lite_enable_int8 = argument->lite_precision_mode() ==
+                              static_cast<int>(phi::DataType::INT8);
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("lite_ops_filter",
@@ -258,7 +267,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(lite_enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
-      pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
       pass->Set("use_opencl", new bool(argument->use_opencl()));
@@ -304,6 +312,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
+    } else if (pass_name == "fused_multi_transformer_xpu_pass") {
+      auto op_types = argument->xpu_quant_post_dynamic_op_types();
+      if (std::count(op_types.begin(),
+                     op_types.end(),
+                     "fused_multi_transformer") > 0) {
+        pass->Set("quant_weight_bits",
+                  new int(argument->xpu_quant_post_dynamic_weight_bits()));
+      }
     }
     pre_pass = pass_name;
 

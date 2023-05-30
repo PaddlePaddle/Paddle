@@ -25,7 +25,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 
@@ -129,7 +129,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embbding = fluid.layers.embedding(
+        lr_embedding = fluid.layers.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
@@ -141,7 +141,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             padding_idx=0,
         )
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
+            input=lr_embedding, pool_type="sum"
         )
 
         merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
@@ -208,7 +208,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             self.test_reader.reset()
 
         pass_time = time.time() - pass_start
-        message = "Distributed Test Succeed, Using Time {}\n".format(pass_time)
+        message = f"Distributed Test Succeed, Using Time {pass_time}\n"
         fleet.util.print_on_rank(message, 0)
 
     def do_pyreader_training(self, fleet):
@@ -395,7 +395,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_persistables(exe, patch_dirname, None, 5)
             fleet.check_save_pre_patch_done()
 
-        # add for gpugrahp
+        # add for gpu graph
         fleet.save_cache_table(0, 0)
         fleet.shrink()
 

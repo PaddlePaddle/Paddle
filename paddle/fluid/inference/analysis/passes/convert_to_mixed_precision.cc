@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/auto_mixed_precision_pass.h"
+#include "paddle/fluid/framework/ir/constant_folding_pass.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/backend.h"
@@ -71,8 +72,13 @@ ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
 
 void ConvertToMixedPrecisionPass::LoadModel() {
   framework::Executor exe{platform::CPUPlace{}};
-
-  auto program_desc = inference::Load(&exe, &scope_, model_file_, params_file_);
+  // If we did not find the provided weight path,
+  // we assume that the model to be converted only has a model file and no
+  // params file, we believe this situation is reasonable. In this case, weight
+  // data may not be loaded.
+  bool load_params = !params_file_.empty();
+  auto program_desc =
+      inference::Load(&exe, &scope_, model_file_, params_file_, load_params);
   main_graph_ = std::unique_ptr<framework::ir::Graph>(
       new framework::ir::Graph(*program_desc));
   main_graph_->SetNotOwned(framework::ir::kParamScopeAttr, &scope_);
@@ -81,6 +87,8 @@ void ConvertToMixedPrecisionPass::LoadModel() {
 void ConvertToMixedPrecisionPass::Run() {
   LoadModel();
 
+  framework::ir::ConstantFoldingPass constant_folding_pass;
+  constant_folding_pass.Apply(main_graph_.get());
   framework::ir::AutoMixedPrecisionPass pass;
   pass.Set("mixed_precision_mode", new int{static_cast<int>(mixed_precision_)});
   if (backend_ == phi::Backend::GPU) {
@@ -92,7 +100,7 @@ void ConvertToMixedPrecisionPass::Run() {
   }
   pass.Set("mixed_black_list",
            new std::unordered_set<std::string>{black_list_});
-  pass.Set("keep_io_types", new bool{keep_io_types_});
+  pass.Set("enable_low_precision_io", new bool{!keep_io_types_});
   pass.Apply(main_graph_.get());
 
   SaveMixedModel();
@@ -102,32 +110,76 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
   framework::ProgramDesc mixed_program_desc;
   framework::ir::GraphToProgram(*main_graph_, &mixed_program_desc);
 
-  auto parameters = scope_.LocalVarNames();
-  std::sort(parameters.begin(), parameters.end());
+  auto SerializeParams = [&](const std::string& path) {
+    auto IsPersistable = [](const framework::VarDesc* var) {
+      if (var->Persistable() &&
+          var->GetType() != framework::proto::VarType::FEED_MINIBATCH &&
+          var->GetType() != framework::proto::VarType::FETCH_LIST &&
+          var->GetType() != framework::proto::VarType::RAW) {
+        return true;
+      }
+      return false;
+    };
+    framework::ProgramDesc save_program;
+    auto* save_block = save_program.MutableBlock(0);
 
-  auto SerializeParams = [&]() -> std::string {
-    std::ostringstream os;
-    phi::CPUContext ctx;
-    for (const auto& param : parameters) {
-      PADDLE_ENFORCE_NOT_NULL(
-          scope_.FindVar(param),
-          platform::errors::NotFound(
-              "Block should already have a '%s' variable", param));
-      auto* tensor = scope_.FindVar(param)->GetMutable<phi::DenseTensor>();
-      framework::SerializeToStream(os, *tensor, ctx);
+    const auto& global_block = mixed_program_desc.Block(0);
+    std::vector<std::string> save_var_list;
+    bool has_persistable_var = false;
+    for (framework::VarDesc* var : global_block.AllVars()) {
+      if (IsPersistable(var)) {
+        framework::VarDesc* new_var = save_block->Var(var->Name());
+        new_var->SetShape(var->GetShape());
+        new_var->SetDataType(var->GetDataType());
+        new_var->SetType(var->GetType());
+        new_var->SetLoDLevel(var->GetLoDLevel());
+        new_var->SetPersistable(true);
+
+        save_var_list.push_back(new_var->Name());
+        has_persistable_var = true;
+      }
     }
-    return os.str();
+    std::string save_params_path = path;
+    if (save_params_path.empty() && has_persistable_var) {
+      LOG(WARNING)
+          << "The [SerializeParams] function did not find the provided weight "
+             "path, "
+             "so we assume that the model to be converted only has a model "
+             "file and no params file, "
+             "we believe this situation is reasonable. After constant folding, "
+             "a weight file will be generated, which is saved in the same "
+             "level file directory "
+             "as the model file by default and ends in pdiparams.";
+      save_params_path = mixed_model_file_;
+      std::string::size_type pos = save_params_path.rfind(".pdmodel");
+      if (pos != std::string::npos) {
+        save_params_path.replace(pos, 8, ".pdiparams");
+        LOG(WARNING) << " The storage path of the converted mixed-precision "
+                        "params has been created: ["
+                     << save_params_path << "]";
+      }
+    }
+
+    std::sort(save_var_list.begin(), save_var_list.end());
+    auto* op = save_block->AppendOp();
+    op->SetType("save_combine");
+    op->SetInput("X", save_var_list);
+    op->SetAttr("file_path", save_params_path);
+    op->CheckAttrs();
+
+    framework::Executor exe(platform::CPUPlace{});
+    exe.Run(save_program, &scope_, 0, true, true);
   };
 
-  auto StrToBinary = [](const std::string& path, const std::string& str) {
+  auto SerializeProg = [&](const std::string& path) {
+    auto str = mixed_program_desc.Proto()->SerializeAsString();
     std::ofstream file(path.c_str(), std::ios::binary);
     file.write(str.c_str(), str.size());
     file.close();
   };
 
-  StrToBinary(mixed_model_file_,
-              mixed_program_desc.Proto()->SerializeAsString());
-  StrToBinary(mixed_params_file_, SerializeParams());
+  SerializeProg(mixed_model_file_);
+  SerializeParams(mixed_params_file_);
 }
 
 bool OpSupportPrecision(const std::string& op_type,

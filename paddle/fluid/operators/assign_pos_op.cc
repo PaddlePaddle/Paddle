@@ -79,6 +79,5 @@ REGISTER_OP_WITHOUT_GRADIENT(assign_pos,
                              ops::AssignPosOp,
                              ops::AssignPosOpMaker);
 
-REGISTER_OP_CPU_KERNEL(assign_pos,
-                       ops::AssignPosOpCPUKernel<int>,
-                       ops::AssignPosOpCPUKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    assign_pos, CPU, ALL_LAYOUT, ops::AssignPosOpCPUKernel, int, int64_t) {}

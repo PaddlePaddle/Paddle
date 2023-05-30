@@ -20,7 +20,7 @@ from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_bf16
 
 

@@ -16,12 +16,11 @@ from collections import defaultdict
 
 import numpy as np
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.framework import Block, Program
+from paddle.fluid import core
+from paddle.framework import Block, Program, in_dynamic_mode
 
 
 class HybridParallelInferenceHelper:
@@ -201,13 +200,11 @@ class HybridParallelInferenceHelper:
         assert isinstance(main_program, Program)
 
         self._device = None
-        if core.is_compiled_with_npu():
-            self._device = "npu"
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self._device = "gpu"
-        assert self._device, "Only gpu and npu are supported."
+        assert self._device, "Only gpu are supported."
 
-        assert not in_dygraph_mode(), "Only static graph mode is supported."
+        assert not in_dynamic_mode(), "Only static graph mode is supported."
 
         op_maker = core.op_proto_and_checker_maker
         self._op_role = op_maker.OpRole

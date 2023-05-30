@@ -16,13 +16,12 @@ import unittest
 import unittest.mock
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.tensor as tensor
-import paddle.utils as utils
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle import nn, static, tensor, utils
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
@@ -191,7 +190,7 @@ class TestMLPAutoCompletion(unittest.TestCase):
     #     #                                     dist_context)
     #     dist_context.finalize_distributed_attr_for_program(
     #         complete_train_program)
-    #     from paddle.distributed.auto_parallel.interface import _g_process_mesh_map
+    #     from paddle.distributed.auto_parallel.static.interface import _g_process_mesh_map
     #     for block in complete_train_program.blocks:
     #         for tensor in block.vars.values():
     #             desc = tensor.desc

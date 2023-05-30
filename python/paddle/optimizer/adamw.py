@@ -90,7 +90,7 @@ class AdamW(Optimizer):
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
-    **Notes**:
+    Notes:
         **Currently, AdamW doesn't support sparse parameter optimization.**
 
     Examples:
@@ -111,7 +111,7 @@ class AdamW(Optimizer):
                     beta1=beta1,
                     beta2=beta2,
                     weight_decay=0.01)
-            out.backward()
+            loss.backward()
             opt.step()
             opt.clear_grad()
 
@@ -135,7 +135,7 @@ class AdamW(Optimizer):
                 }],
                 weight_decay=0.01,
                 beta1=0.9)
-            out.backward()
+            loss.backward()
             opt.step()
             opt.clear_grad()
 
@@ -181,9 +181,7 @@ class AdamW(Optimizer):
                 not core.is_compiled_with_cuda()
                 and not core.is_compiled_with_xpu()
             ):
-                raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, and NPU"
-                )
+                raise NotImplementedError("'lr_ratio' is unimplemented in CPU.")
 
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
@@ -207,7 +205,7 @@ class AdamW(Optimizer):
             self._parameter_list = None
 
         self._name = name
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
@@ -284,6 +282,8 @@ class AdamW(Optimizer):
         self.regularization = None
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
+
+        self._create_master_grad_states()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -530,7 +530,7 @@ class AdamW(Optimizer):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
 
     @imperative_base.no_grad
-    @framework.dygraph_only
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
@@ -553,6 +553,10 @@ class AdamW(Optimizer):
                 opt.step()
                 opt.clear_grad()
         """
+        if paddle.fluid.dygraph.base.in_declarative_mode():
+            self._declarative_step()
+            return
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:

@@ -14,12 +14,15 @@
 
 import numpy as np
 
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
+from paddle.common_ops_import import Variable
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
 )
+from paddle.framework import LayerHelper
 
 __all__ = []
 
@@ -152,6 +155,91 @@ def transpose(x, perm, name=None):
 
     """
     return _C_ops.sparse_transpose(x, perm)
+
+
+def sum(x, axis=None, dtype=None, keepdim=False, name=None):
+    """
+    Computes the sum of sparse tensor elements over the given dimension, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`.
+        if `x.dtype='bool'` or `x.dtype='int32'`, it's data type is `'int64'`,
+        otherwise it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out1 = paddle.sparse.sum(sparse_x)  # [1.]
+            out2 = paddle.sparse.sum(sparse_x, axis=0)  # [-1., 2.]
+            out3 = paddle.sparse.sum(sparse_x, axis=-1)  # [-2., 3.]
+            out4 = paddle.sparse.sum(sparse_x, axis=1, keepdim=True)  # [[-2.], [3.]]
+    """
+    dtype_flag = False
+    if dtype is not None:
+        dtype_flag = True
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.sparse_sum(x, axis, dtype, keepdim)
+    else:
+        if axis is None:
+            axis = []
+        else:
+            axis = [axis]
+        attrs = {'axis': axis, 'dtype': dtype, 'keepdim': keepdim}
+
+        if dtype_flag:
+            attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'sparse_sum',
+        )
+
+        check_type(
+            axis, 'axis', (int, list, tuple, type(None), Variable), 'sparse_sum'
+        )
+
+        op_type = 'sparse_sum'
+        helper = LayerHelper(op_type)
+        if dtype_flag:
+            out = helper.create_sparse_variable_for_type_inference(dtype=dtype)
+        else:
+            out = helper.create_sparse_variable_for_type_inference(
+                dtype=x.dtype
+            )
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs=attrs
+        )
+        return out
 
 
 @dygraph_only
@@ -700,3 +788,51 @@ def reshape(x, shape, name=None):
 
     """
     return _C_ops.sparse_reshape(x, shape)
+
+
+def isnan(x, name=None):
+    """
+
+    Return whether every element of input tensor is `NaN` or not, requiring x to be a SparseCooTensor or SparseCsrTensor.
+
+    Args:
+        x (Tensor): The input tensor (SparseCooTensor or SparseCsrTensor), it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Sparse Tensor with the same shape as ``x``,  the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            format = "coo"
+            np_x = np.asarray([[[0., 0], [1., 2.]], [[0., 0], [3., float('nan')]]])
+            dense_x = paddle.to_tensor(np_x)
+
+            if format == "coo":
+                sparse_x = dense_x.to_sparse_coo(len(np_x.shape))
+            else:
+                sparse_x = dense_x.to_sparse_csr()
+
+            sparse_out = paddle.sparse.isnan(sparse_x)
+            print(sparse_out)
+            # Tensor(shape=[2, 2, 2], dtype=paddle.bool, place=Place(gpu:0), stop_gradient=True,
+            #        indices=[[0, 0, 1, 1],
+            #                 [1, 1, 1, 1],
+            #                 [0, 1, 0, 1]],
+            #        values=[False, False, False, True ])
+
+    """
+    if in_dynamic_mode():
+        return _C_ops.sparse_isnan(x)
+    else:
+        op_type = 'sparse_isnan'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
+        return out

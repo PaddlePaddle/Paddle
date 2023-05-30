@@ -18,8 +18,8 @@ import os
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
-from paddle.framework import in_dygraph_mode
+from paddle.fluid import core
+from paddle.framework import in_dynamic_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
 from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
@@ -63,7 +63,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'bkcl']
+_valid_backend_list = ['nccl', 'gloo', 'heter', 'xccl', 'bkcl']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -128,7 +128,7 @@ def _set_group_map_backend(group, backend):
 
 def _new_ring_id():
     # NOTE(liyurui): For compatible reason, auto parallel and eager mode relay on previous syntax.
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         global _start_ring_id
         _start_ring_id += 1
         return _start_ring_id + max(_get_global_env().nrings, 9)
@@ -172,16 +172,6 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def _destroy_process_group_id_map():
-    """
-
-    Destroy the custom process group. Designed for CustomDevice.
-
-
-    """
-    core.ProcessGroupIdMap.destroy()
-
-
 def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
@@ -208,7 +198,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
     global _custom_gid
     global _group_map
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         global _default_group_name
         gid = _custom_gid if _custom_gid else _new_ring_id()
         group_name = _default_group_name + str(gid)
@@ -288,16 +278,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 core.NCCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
-            elif core.is_compiled_with_npu():
-                place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
-            elif core.is_compiled_with_mlu():
-                place = core.MLUPlace(genv.device_id)
-                core.CNCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
-                )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
@@ -312,7 +292,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     # hang caused by cross-creation of new_group
     tmp = (
         paddle.to_tensor([1], dtype="int32")
-        if in_dygraph_mode()
+        if in_dynamic_mode()
         else paddle.full([0], 1, dtype="int32")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)

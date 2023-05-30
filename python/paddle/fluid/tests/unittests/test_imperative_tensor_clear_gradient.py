@@ -18,13 +18,13 @@ from unittest import TestCase
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if fluid._non_static_mode():
+        if fluid.in_dygraph_mode():
             return func(*args, **kwargs)
         else:
             with fluid.dygraph.guard():

@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
@@ -60,6 +60,7 @@ class TestPipeLayerAPI(unittest.TestCase):
             "mp_degree": 1,
             "pp_degree": self.pipeline_parallel_size,
         }
+        strategy.pipeline_configs = {"accumulate_steps": 2}
         fleet.init(is_collective=True, strategy=strategy)
         self.rank = fleet.worker_index()
         self.hcg = fleet.get_hybrid_communicate_group()

@@ -91,13 +91,12 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "Determine the dst place of tensor copy. "
                  "By Now it support:"
                  "0. CUDAPinnedPlace/CPU <->CUDAPlace"
-                 "1. NPUPinnedPlace/CPU <-> NPUPlace"
-                 "2. CPU <->XPUPlace"
-                 "3. CPU <->IPUPlace"
+                 "1. CPU <->XPUPlace"
+                 "2. CPU <->IPUPlace"
                  "Other place type is Unimplemented and will cause ERROR.");
     AddComment(R"DOC(
     MemcpyD2H Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> CUDAPlace.
     You would have to update it if you want other more capacities.
 Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.
@@ -122,34 +121,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyH2DInferShapeFunctor);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy_h2d,
-                               float,
-                               ops::MemcpyH2DKernel,
-                               double,
-                               ops::MemcpyH2DKernel,
-                               int8_t,
-                               ops::MemcpyH2DKernel,
-                               uint8_t,
-                               ops::MemcpyH2DKernel,
-                               int,
-                               ops::MemcpyH2DKernel,
-                               int64_t,
-                               ops::MemcpyH2DKernel,
-                               bool,
-                               ops::MemcpyH2DKernel,
-                               paddle::platform::bfloat16,
-                               ops::MemcpyH2DKernel,
-                               paddle::platform::complex<float>,
-                               ops::MemcpyH2DKernel,
-                               paddle::platform::complex<double>,
-                               ops::MemcpyH2DKernel,
-                               plat::float16,
-                               ops::MemcpyH2DKernel,
-                               int16_t,
-                               ops::MemcpyH2DKernel);
-#endif
 
 #ifdef PADDLE_WITH_IPU
 REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_h2d,

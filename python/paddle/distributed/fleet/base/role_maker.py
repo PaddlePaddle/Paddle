@@ -20,10 +20,10 @@ from multiprocessing import Manager, Process
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
+from paddle.fluid import core
 
 __all__ = []
 
@@ -185,7 +185,7 @@ class Gloo:
 
     def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
         def __start_kv_server(http_server_d, size_d):
-            print("start http_server: {}, {}".format(port, size_d))
+            print(f"start http_server: {port}, {size_d}")
             from paddle.distributed.fleet.utils.http_server import KVServer
 
             http_server = KVServer(port, size_d)
@@ -203,7 +203,7 @@ class Gloo:
             size_d = {
                 worker_key: self._worker_num,
             }
-            print("worker_key:{}, size: {}".format(worker_key, size_d))
+            print(f"worker_key:{worker_key}, size: {size_d}")
 
             http_server_d["running"] = True
             # child process for http server
@@ -1076,6 +1076,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self._non_distributed = True
         self._worker_endpoints = self._worker_endpoints.split(",")
         self._trainers_num = len(self._worker_endpoints)
+        auto_tuner = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG", None)
+        if auto_tuner is not None:
+            trainers_num = os.getenv("PADDLE_TRAINERS_NUM", None)
+            self._trainers_num = int(trainers_num)
         self._nodes_num = len({x.split(':')[0] for x in self._worker_endpoints})
         self._local_rank = os.getenv("PADDLE_RANK_IN_NODE")
         self._local_device_ids = os.getenv("PADDLE_LOCAL_DEVICE_IDS")
@@ -1172,7 +1176,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.framework.in_dynamic_mode():
+            if not paddle.in_dynamic_mode():
                 self._gloo_init()
 
 

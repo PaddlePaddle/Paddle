@@ -45,8 +45,7 @@ import re
 from functools import partial
 
 import paddle
-import paddle.framework as framework
-import paddle.nn as nn
+from paddle import framework, nn
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from ...utils.log_util import layer_to_str, logger
@@ -82,7 +81,7 @@ class SharedLayerDesc(LayerDesc):
         forward_func=None,
         shared_weight_attr='weight',
         *inputs,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(layer_func, *inputs, **kwargs)
         self.layer_name = key
@@ -110,7 +109,37 @@ class SegmentLayers:
         ), "layer number should be greater than number of segments"
 
     def do_segment(self):
-        if self.method == "uniform":
+
+        if isinstance(self.method, list):
+            seg_method = self.method[:]
+            source_num_parts = len(seg_method) - 1
+
+            def check_sanity():
+                assert seg_method[0] == 0, "seg_method[0] should be 0"
+                for part in seg_method:
+                    assert isinstance(part, int), "part should be int"
+                    assert part >= 0, f"part[{part}] should be greater than 0"
+                    assert (
+                        part <= self.num_items
+                    ), "part[{}] should be less than num_items[{}]".format(
+                        part, self.num_items
+                    )
+
+            check_sanity()
+
+            if self.num_parts == source_num_parts + 1:
+                seg_method.append(self.num_items)
+                return seg_method
+            elif self.num_parts == source_num_parts:
+                return seg_method
+            else:
+                raise ValueError(
+                    "We set seg_method as {}, this length is {}, but the number of stages is {}".format(
+                        seg_method, len(seg_method), self.num_parts
+                    )
+                )
+
+        elif self.method == "uniform":
             return self.uniform(self.num_items, self.num_parts)
 
         elif self.method.startswith('layer:'):
@@ -145,6 +174,8 @@ class SegmentLayers:
                     memory_counter = 0
             result[actual_num_parts] = len(weights)
             return result
+        else:
+            raise ValueError(f"method {self.method} is not supported")
 
     def _gen_layer_weight(self, layername):
         weight_idxs = []
@@ -331,6 +362,9 @@ class PipelineLayer(nn.Layer):
         self._recompute_interval = recompute_interval
         self.recompute_ctx = recompute_ctx
 
+        # Defaults to 1234 to initialize layer parameters
+        self._base_seed = 1234
+
         if recompute_interval > 0:
             assert (
                 recompute_ctx is not None
@@ -499,7 +533,7 @@ class PipelineLayer(nn.Layer):
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
-            if framework.in_dygraph_mode():
+            if framework.in_dynamic_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
                         param.grad
@@ -530,7 +564,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
@@ -560,7 +594,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
@@ -582,26 +616,26 @@ class PipelineLayer(nn.Layer):
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):
-                logger.info("{}: {}".format(index + start, str(layer)))
+                logger.info(f"{index + start}: {str(layer)}")
 
         if self._num_virtual_pipeline_stages > 1:
             for stage in range(self._num_stages):
                 stage_to_virtual_stage_info = (
-                    "stage {} contains virtual stages: ".format(stage)
+                    f"stage {stage} contains virtual stages: "
                 )
                 for i in range(
                     stage,
                     self._total_stages_with_virtual_stages,
                     self._num_stages,
                 ):
-                    stage_to_virtual_stage_info += " {},".format(i)
+                    stage_to_virtual_stage_info += f" {i},"
                 logger.info(stage_to_virtual_stage_info)
 
         if self._loss_fn:
             try:
-                logger.info("loss: {}".format(self._loss_fn.__name__))
+                logger.info(f"loss: {self._loss_fn.__name__}")
             except AttributeError:
-                logger.info("loss: {}".format(self._loss_fn.__class__.__name__))
+                logger.info(f"loss: {self._loss_fn.__class__.__name__}")
 
     def _build_layer_with_interleave(self):
         for i in range(len(self._start_poss)):
@@ -627,8 +661,21 @@ class PipelineLayer(nn.Layer):
             # For 1f1b scheduler, just use run_function list
             run_function = self.run_function
 
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
+
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
+
+            # NOTE(shenliang03): need set different seeds for pipeline parameters initialization.
+            # Since the parameters of model_parallel are controlled by its own RNG_STATE_TRACKER,
+            # only non-mp parameters in pp are controlled here.
+            paddle.seed(self._base_seed + layer_index)
+
             if isinstance(layer, nn.Layer):
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
@@ -667,6 +714,8 @@ class PipelineLayer(nn.Layer):
             else:
                 run_function.append(layer)
 
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
         return run_function
 
     def forward_function(self, start, end):
@@ -716,7 +765,7 @@ class PipelineLayer(nn.Layer):
                     input = recompute_hybrid(
                         self.recompute_ctx,
                         self.forward_function(start_idx, end_idx),
-                        *input
+                        *input,
                     )
                 else:
                     input = self.forward_function(start_idx, end_idx)(*input)
@@ -747,17 +796,15 @@ class PipelineLayer(nn.Layer):
                 pos_offset = self._start_poss[local_chunk_id]
             idx = local_layer_idx + pos_offset
             model_rank = self._topo.get_coord(self.global_rank).model
-            rank_message = "-tensor_" + "{:0>2d}".format(model_rank)
+            rank_message = "-tensor_" + f"{model_rank:0>2d}"
             virtual_pipeline_stage_message = ""
             if self._num_virtual_pipeline_stages > 1:
                 # add virtual pipeline info to the save path
                 assert local_chunk_id is not None
                 virtual_pipeline_stage_message = (
-                    "-virtual_pp_stage_{:0>2d}".format(local_chunk_id)
+                    f"-virtual_pp_stage_{local_chunk_id:0>2d}"
                 )
-            layer_save_path = os.path.join(
-                ckpt_dir, 'layer_{:0>2d}'.format(idx)
-            )
+            layer_save_path = os.path.join(ckpt_dir, f'layer_{idx:0>2d}')
             layer_save_path = (
                 layer_save_path
                 + virtual_pipeline_stage_message
@@ -785,9 +832,7 @@ class PipelineLayer(nn.Layer):
         logger.info("save model state successfully...")
 
     def set_state_dir(self, path):
-        assert os.path.exists(
-            path
-        ), "{} not found, please check the path".format(path)
+        assert os.path.exists(path), f"{path} not found, please check the path"
 
         def _load_model(run_functions, local_chunk_id=None):
             for idx, layer in enumerate(run_functions):
@@ -800,15 +845,13 @@ class PipelineLayer(nn.Layer):
                     assert local_chunk_id < len(self._start_poss)
                     pos_offset = self._start_poss[local_chunk_id]
                 layer_idx = idx + pos_offset
-                layer_save_path = os.path.join(
-                    path, 'layer_{0:0>2d}'.format(layer_idx)
-                )
+                layer_save_path = os.path.join(path, f'layer_{layer_idx:0>2d}')
                 if self._num_virtual_pipeline_stages > 1:
                     # add virtual pipeline info to the path
                     assert local_chunk_id is not None
                     layer_save_path = (
                         layer_save_path
-                        + "-virtual_pp_stage_{:0>2d}".format(local_chunk_id)
+                        + f"-virtual_pp_stage_{local_chunk_id:0>2d}"
                     )
                 model_files = glob.glob(
                     layer_save_path + "*model_states.pdparams"

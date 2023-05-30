@@ -17,6 +17,7 @@
 """remote file system"""
 
 import os
+import re
 import subprocess
 from collections import OrderedDict
 
@@ -24,12 +25,13 @@ import numpy as np
 from google.protobuf import text_format
 
 import paddle
-import paddle.framework as framework
-from paddle.fluid import core, debugger
+from paddle import framework
+from paddle.fluid import core
 from paddle.fluid.proto import framework_pb2
 from paddle.static import Program
 
 from ..utils.fs import FS
+from .graphviz import GraphPreviewGenerator
 
 __all__ = []
 
@@ -356,7 +358,7 @@ class UtilBase:
         block = program.global_block()
         dot_path = os.path.join(output_dir, output_filename + '.dot')
         pdf_path = os.path.join(output_dir, output_filename + '.pdf')
-        debugger.draw_block_graphviz(block, path=dot_path)
+        draw_block_graphviz(block, path=dot_path)
         cmd = ["dot", "-Tpdf", dot_path, "-o", pdf_path]
         p = subprocess.Popen(
             cmd,
@@ -382,8 +384,8 @@ class UtilBase:
             if paddle.static.io.is_persistable(v)
         ]
         pruned_vars = OrderedDict(pruned_vars)
-        pruned_vars_name = [name for name in pruned_vars]
-        print("persistable vars in pruned program: {}".format(pruned_vars_name))
+        pruned_vars_name = list(pruned_vars)
+        print(f"persistable vars in pruned program: {pruned_vars_name}")
 
         # feed and fetch op is added in pruned program when pruning, not need to be found in train program
         feed_fetch_type_list = [
@@ -425,7 +427,7 @@ class UtilBase:
         def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
             def reader(batch_size, fn, dim):
                 data = []
-                if isinstance(dim, list) or isinstance(dim, tuple):
+                if isinstance(dim, (list, tuple)):
                     shape = list(dim)
                     _temp = 1
                     for x in dim:
@@ -688,5 +690,64 @@ class UtilBase:
                 )
             for i, v in enumerate(fetch_list):
                 print("fetch_targets name: %s" % v.name)
-                print("fetch_targets: {}".format(results[i]))
+                print(f"fetch_targets: {results[i]}")
             return results
+
+
+def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
+    '''
+    Generate a debug graph for block.
+    Args:
+        block(Block): a block.
+    '''
+    graph = GraphPreviewGenerator("some graph")
+    # collect parameters and args
+    protostr = block.desc.serialize_to_string()
+    desc = framework_pb2.BlockDesc.FromString(bytes(protostr))
+
+    def need_highlight(name):
+        if highlights is None:
+            return False
+        for pattern in highlights:
+            assert type(pattern) is str
+            if re.match(pattern, name):
+                return True
+        return False
+
+    # draw parameters and args
+    vars = {}
+    for var in desc.vars:
+        # TODO(gongwb): format the var.type
+        # create var
+        if var.persistable:
+            varn = graph.add_param(
+                var.name,
+                str(var.type).replace("\n", "<br />", 1),
+                highlight=need_highlight(var.name),
+            )
+        else:
+            varn = graph.add_arg(var.name, highlight=need_highlight(var.name))
+        vars[var.name] = varn
+
+    def add_op_link_var(op, var, op2var=False):
+        for arg in var.arguments:
+            if arg not in vars:
+                # add missing variables as argument
+                vars[arg] = graph.add_arg(arg, highlight=need_highlight(arg))
+            varn = vars[arg]
+            highlight = need_highlight(op.description) or need_highlight(
+                varn.description
+            )
+            if op2var:
+                graph.add_edge(op, varn, highlight=highlight)
+            else:
+                graph.add_edge(varn, op, highlight=highlight)
+
+    for op in desc.ops:
+        opn = graph.add_op(op.type, highlight=need_highlight(op.type))
+        for var in op.inputs:
+            add_op_link_var(opn, var, False)
+        for var in op.outputs:
+            add_op_link_var(opn, var, True)
+
+    graph(path, show=False)

@@ -17,40 +17,36 @@ set(PADDLE_INFERENCE_INSTALL_DIR
 
 function(phi_header_path_compat TARGET_PATH)
   message(STATUS "phi header path compat processing: ${TARGET_PATH}")
-  string(FIND ${TARGET_PATH} "experimental" pos)
-  if(pos GREATER 1)
-    file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
-    foreach(header ${HEADERS})
-      if(${header} MATCHES ".*.h$")
-        file(READ ${header} HEADER_CONTENT)
-        string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/"
-                       HEADER_CONTENT "${HEADER_CONTENT}")
-        string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/"
-                       HEADER_CONTENT "${HEADER_CONTENT}")
-        file(WRITE ${header} "${HEADER_CONTENT}")
-        message(STATUS "phi header path compat processing complete: ${header}")
-      endif()
-    endforeach()
-  endif()
+  file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
+  foreach(header ${HEADERS})
+    if(${header} MATCHES ".*.h$")
+      file(READ ${header} HEADER_CONTENT)
+      string(REPLACE "paddle/fluid/platform/" "paddle/phi/" HEADER_CONTENT
+                     "${HEADER_CONTENT}")
+      file(WRITE ${header} "${HEADER_CONTENT}")
+      message(STATUS "phi header path compat processing complete: ${header}")
+    endif()
+  endforeach()
 endfunction()
 
+phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle)
 phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi)
 phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api)
 phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/ext)
 phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/include)
 phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/common)
 phi_header_path_compat(
-  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core)
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core)
 
-# In order to be compatible with the original behavior, the header file name needs to be changed
-file(RENAME
-     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
-     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h)
-# Included header file of training and inference can be unified as single file: paddle/extension.h
-file(COPY ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h
-     DESTINATION ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/extension.h)
+# NOTE(liuyuanle): In inference lib, no need include paddle/utils/pybind.h, so we delete this.
+file(READ ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/extension.h
+     HEADER_CONTENT)
+string(REGEX REPLACE "#if !defined\\(PADDLE_ON_INFERENCE\\).*#endif" ""
+                     HEADER_CONTENT "${HEADER_CONTENT}")
+file(WRITE ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/extension.h
+     "${HEADER_CONTENT}")

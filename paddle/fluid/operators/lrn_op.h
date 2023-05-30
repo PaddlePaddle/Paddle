@@ -43,7 +43,7 @@ struct LRNFunctor {
                   const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNKernel : public framework::OpKernel<T> {
  public:
   // f(x) = x * ( k + alpha * SUM((x)^2) )^(-beta)
@@ -136,7 +136,7 @@ struct LRNGradFunctor {
  * The upper and lower is the same as forward. The logic of the sum
  * is also the same as forward.
  */
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class LRNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

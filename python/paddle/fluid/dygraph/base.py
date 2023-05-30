@@ -26,10 +26,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import (
-    _get_paddle_place,
-    _in_eager_without_dygraph_check,
-)
+from ..framework import _get_paddle_place
 import paddle
 import warnings
 
@@ -44,7 +41,7 @@ __all__ = [
     'to_variable',
 ]
 
-# Flag that indicates whether running code under `@to_static`
+NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
 
 def in_declarative_mode():
@@ -109,7 +106,7 @@ def program_desc_tracing_guard(enable):
 @signature_safe_contextmanager
 def param_guard(parameters):
     # Note: parameters is a reference of self._parameters or self._buffers
-    if in_declarative_mode() and not framework.in_dygraph_mode() and parameters:
+    if in_declarative_mode() and not paddle.in_dynamic_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, list):
@@ -125,37 +122,34 @@ def param_guard(parameters):
 
 def _convert_into_variable(tensor):
     """
-    Convert Varbase into Variable.
+    Convert Tensor into Variable.
     """
-    if isinstance(tensor, (core.eager.Tensor, core.VarBase)):
+    if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
-        # Convert ParamBase into Parameter with same attributes in dy2stat.
-        elif isinstance(
-            tensor, (framework.EagerParamBase, framework.ParamBase)
-        ):
+        # Convert EagerParamBase into Parameter with same attributes in dy2stat.
+        elif isinstance(tensor, framework.EagerParamBase):
             new_var = tensor._to_static_var(to_parameter=True)
         else:
-            # Note(Aurelius84): Convert VarBase in self._buffers into Variable with
+            # Note(Aurelius84): Convert Tensor in self._buffers into Variable with
             # same attributes and set persistable=True to allow saving this var.
-            # Because users can create a VarBase in `__init__`  like a
+            # Because users can create a Tensor in `__init__`  like a
             # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
             # and necessary for inferring. It will be pruned if it's not necessary for inferring.
 
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
-            # non-persistable. See case of `drop_state` in lstm api.
-            is_persistable = len(tensor.shape) > 0
+            # non-persistable. See case of `dropout_state` in lstm api.
+            is_persistable = True
+            if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+                is_persistable = False
 
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
             )
         # add param into parameter recorder to collect all the params used in this program.
         if new_var.persistable is True:
-            # TODO(@xiongkun): 0d-tensor may be affected at present,
-            # but there is no particularly good method to identify whether 0d-tensor
-            # is used as buffer or "drop_out_state" in LSTM buffer variable.
             from paddle.jit.dy2static.program_translator import (
                 ProgramTranslator,
             )
@@ -587,7 +581,6 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
-    VarBase = core.VarBase
 
     if place is not None:
         expected_place = _get_paddle_place(place)
@@ -757,24 +750,14 @@ def grad(
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
-                if _in_eager_without_dygraph_check():
-                    assert isinstance(
-                        each_var, core.eager.Tensor
-                    ), "Elements of {} must be Tensor".format(name)
-                else:
-                    assert isinstance(
-                        each_var, core.VarBase
-                    ), "Elements of {} must be Variable".format(name)
+                assert isinstance(
+                    each_var, core.eager.Tensor
+                ), "Elements of {} must be Tensor".format(name)
             return in_out_list
         else:
-            if _in_eager_without_dygraph_check():
-                assert isinstance(
-                    in_out_list, core.eager.Tensor
-                ), "{} must be Tensor or list of Tensor".format(name)
-            else:
-                assert isinstance(
-                    in_out_list, core.VarBase
-                ), "{} must be Variable or list of Variable".format(name)
+            assert isinstance(
+                in_out_list, core.eager.Tensor
+            ), "{} must be Tensor or list of Tensor".format(name)
             return [in_out_list]
 
     outputs = check_in_out(outputs, 'outputs')
@@ -786,14 +769,9 @@ def grad(
 
         for each_var in grad_outputs:
             if each_var is not None:
-                if _in_eager_without_dygraph_check():
-                    assert isinstance(
-                        each_var, core.eager.Tensor
-                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
-                else:
-                    assert isinstance(
-                        each_var, core.VarBase
-                    ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+                assert isinstance(
+                    each_var, core.eager.Tensor
+                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
     else:
         grad_outputs = []
 
@@ -804,30 +782,20 @@ def grad(
 
     if no_grad_vars is None:
         no_grad_vars = []
-    elif isinstance(no_grad_vars, (core.VarBase, core.eager.Tensor)):
+    elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):
         no_grad_vars = list(no_grad_vars)
         for var in no_grad_vars:
-            if _in_eager_without_dygraph_check():
-                assert isinstance(
-                    var, core.eager.Tensor
-                ), "no_grad_vars can only contains Tensor"
-            else:
-                assert isinstance(
-                    var, core.VarBase
-                ), "no_grad_vars can only contains Variable"
+            assert isinstance(
+                var, core.eager.Tensor
+            ), "no_grad_vars can only contains Tensor"
     else:
-        if _in_eager_without_dygraph_check():
-            raise AssertionError(
-                "no_grad_vars must be None, Tensor or list/tuple/set of Tensors"
-            )
-        else:
-            raise AssertionError(
-                "no_grad_vars must be None, Variable or list/tuple/set of Variables"
-            )
+        raise AssertionError(
+            "no_grad_vars must be None, Tensor or list/tuple/set of Tensors"
+        )
 
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
@@ -843,31 +811,16 @@ def grad(
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
 
-    if _in_eager_without_dygraph_check():
-        return core.eager.run_partial_grad(
-            outputs,
-            inputs,
-            grad_outputs,
-            retain_graph,
-            create_graph,
-            only_inputs,
-            allow_unused,
-            no_grad_vars,
-        )
-    else:
-        place = core.Place()
-        place.set_place(framework._current_expected_place())
-        return core.dygraph_partial_grad(
-            inputs,
-            outputs,
-            grad_outputs,
-            no_grad_vars,
-            place,
-            create_graph,
-            retain_graph,
-            allow_unused,
-            only_inputs,
-        )
+    return core.eager.run_partial_grad(
+        outputs,
+        inputs,
+        grad_outputs,
+        retain_graph,
+        create_graph,
+        only_inputs,
+        allow_unused,
+        no_grad_vars,
+    )
 
 
 @framework.dygraph_only
@@ -932,7 +885,6 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
         tuple,
         np.ndarray,
         core.eager.Tensor,
-        core.VarBase,
         framework.Variable,
         core.Tensor,
         core.LoDTensor,
@@ -942,10 +894,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
             % (support_type, type(value))
         )
-    if isinstance(value, (core.eager.Tensor, core.VarBase, framework.Variable)):
+    if isinstance(value, (core.eager.Tensor, framework.Variable)):
         return value
     elif isinstance(value, (core.Tensor, core.LoDTensor)):
-        return core.VarBase(value)
+        return core.eager.Tensor(value)
     else:
         if isinstance(
             framework._current_expected_place(), framework.core.CPUPlace
@@ -974,21 +926,11 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             if value.dtype != dtype:
                 value = value.astype(dtype)
 
-        if _in_eager_without_dygraph_check():
-            return core.eager.Tensor(
-                value,
-                framework._current_expected_place(),
-                False,
-                zero_copy,
-                name if name else None,
-                True,
-            )
-        else:
-            py_var = core.VarBase(
-                value=value,
-                place=framework._current_expected_place(),
-                persistable=False,
-                zero_copy=zero_copy,
-                name=name if name else '',
-            )
-            return py_var
+        return core.eager.Tensor(
+            value,
+            framework._current_expected_place(),
+            False,
+            zero_copy,
+            name if name else None,
+            True,
+        )

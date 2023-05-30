@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -101,7 +103,7 @@ void MatMulFunctionImplWithBlas(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner UNUSED = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -124,7 +126,7 @@ void MatMulFunctionImplWithBlas(
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    Out->Resize({1});
+    Out->Resize(phi::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     blas.GEMM(CblasNoTrans,
               CblasTrans,
@@ -514,7 +516,7 @@ void MatMulFunctionImplWithCublasLt(
             N));
 
     // MatMul's case 0  =>  vector * vector
-    Out->Resize({1});
+    Out->Resize(phi::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     VLOG(3) << "MatMul with blaslt case 1";
     blaslt::Run(dev_ctx,
@@ -923,7 +925,11 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                                              trans_x,
                                              trans_y,
                                              phi::CppTypeToDataType<T>::Type(),
-                                             funcs::MatmulFusedType::kMatmul);
+                                             funcs::MatmulFusedType::kMatmul,
+                                             /* bias_data */ nullptr,
+                                             /* reserve_data */ nullptr,
+                                             /* use_addto */ flag,
+                                             /* no_exchange */ true);
     tuner->Run(ctx,
                matmul_planner.GetKey(),
                ctx,

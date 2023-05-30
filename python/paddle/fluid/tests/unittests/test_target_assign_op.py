@@ -31,10 +31,10 @@ def gen_match_and_neg_indices(num_prior, gt_lod, neg_lod):
     offset = 0
     for n in range(batch_size):
         gt_num = gt_lod[n]
-        ids = random.sample([i for i in range(num_prior)], gt_num)
-        match_indices[n, ids] = [i for i in range(gt_num)]
+        ids = random.sample(list(range(num_prior)), gt_num)
+        match_indices[n, ids] = list(range(gt_num))
 
-        ret_ids = {i for i in range(num_prior)} - set(ids)
+        ret_ids = set(range(num_prior)) - set(ids)
         l = neg_lod[n]
         neg_ids = random.sample(ret_ids, l)
         neg_indices[offset : offset + neg_lod[n], :] = (

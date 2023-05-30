@@ -12,6 +12,11 @@ set(EAGER_GENERETOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CUSTOM_DEVICE)
+  set(EAGER_GENERETOR_DEPS ${EAGER_GENERETOR_DEPS}
+                           custom_device_common_op_registry)
+endif()
+
 add_executable(eager_generator eager_generator.cc)
 target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
 
@@ -45,6 +50,15 @@ if(WIN32)
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
   else()
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+  endif()
+
+  if(WITH_PHI_SHARED)
+    message("Copied phi.dll for Eager AutoCodeGen")
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/phi.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
+      DEPENDS phi)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
   endif()
 
   if(${CBLAS_PROVIDER} STREQUAL MKLML)

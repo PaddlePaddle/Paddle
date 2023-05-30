@@ -19,8 +19,8 @@ from itertools import product
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 
 
@@ -549,7 +549,7 @@ def get_static_double_grad(
         program (Program|None): a Program with forward pass.
             If None, use fluid.default_main_program().
     Returns:
-        A list of numpy array that stores second derivative result calulated by static graph.
+        A list of numpy array that stores second derivative result calculated by static graph.
     """
 
     if program is None:

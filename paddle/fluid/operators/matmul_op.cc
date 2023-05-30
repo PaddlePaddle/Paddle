@@ -1,4 +1,4 @@
-/* Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -16,9 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -303,7 +300,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
     ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
-    framework::DDim dx_dims;
+    phi::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x.dims()) {
@@ -311,7 +308,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::DDim dy_dims;
+    phi::DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
       if (dy_dims != y.dims()) {
@@ -346,23 +343,15 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
-framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
-                               std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
+phi::DDim GetDimForInput(const framework::InferShapeContext &ctx,
+                         std::string input_name) {
   auto dim = ctx.GetInputDim(input_name);
-
   PADDLE_ENFORCE_GT(dim.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The Input(%s) has not been initialized properly. The "
                         "shape of Input(%s) = [%s].",
                         dim));
-
-  if (!shape.empty() && !axis.empty()) {
-    dim = dim.reshape(shape).transpose(axis);
-  }
   return dim;
 }
 
@@ -449,7 +438,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
 
     ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
-    framework::DDim dx_dims;
+    phi::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
       if (dx_dims != x.dims()) {
@@ -457,7 +446,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::DDim dy_dims;
+    phi::DDim dy_dims;
     if (dy) {
       dy_dims = dy->dims();
       if (dy_dims != y.dims()) {
@@ -465,7 +454,7 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::DDim ddout_dims;
+    phi::DDim ddout_dims;
     if (ddout) {
       ddout_dims = ddout->dims();
       if (ddout_dims != dout.dims()) {
@@ -617,7 +606,7 @@ class MatMulOp : public framework::OperatorWithKernel {
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The batch size of the two matrices should be equal, or "
               "at least one is zero.\n"
               "But received X's shape: %s, Y's shape: %s.",
@@ -633,7 +622,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LE(
           head_number,
           mat_dim_x.width_,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Unsatisfied mkl acceleration library requirements: "
               "The number of heads "
               "(%d) must be equal to X's width. But received X's shape: %s.",
@@ -647,7 +636,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 #else
     PADDLE_ENFORCE_EQ(mat_dim_x.width_,
                       mat_dim_y.height_,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input X's width should be equal to the Y's height, "
                           "but received X's shape: [%s], "
                           "Y's shape: [%s].",
@@ -677,20 +666,8 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out.resize(dim_out.size() - 1);
     }
 
-    if (dim_out.empty()) {
-      dim_out = {1};
-    }
+    phi::DDim ddim_out = phi::make_ddim(dim_out);
 
-    framework::DDim ddim_out = phi::make_ddim(dim_out);
-
-#ifdef PADDLE_WITH_MKLDNN
-    auto shape = context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto axis = context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!shape.empty() && !axis.empty()) {
-      ddim_out = ddim_out.transpose(axis).reshape(shape);
-    }
-#endif
     context->SetOutputDim("Out", ddim_out);
     context->ShareLoD("X", "Out");
   }
@@ -748,34 +725,6 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_X",
-                              R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_Y",
-                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_X",
-                              R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_Y",
-                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a shape attribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a axis attribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({})
         .AsExtra();
     AddAttr<bool>(
         "use_quantizer",

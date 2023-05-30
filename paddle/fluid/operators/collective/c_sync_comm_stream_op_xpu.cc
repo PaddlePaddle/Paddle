@@ -17,4 +17,5 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    c_sync_comm_stream, XPU, ALL_LAYOUT, ops::CSyncCommStreamKernel, float) {}

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle.static.amp.amp_nn as amp_nn
+from paddle.static.amp import amp_nn
 
 
 def check_finite_and_unscale_wrapper(x, scale):
@@ -32,7 +32,7 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
         self.python_out_sig = ["out0", "FoundInfinite"]
         self.init_dtype()
         x = np.random.random((1024, 1024)).astype(self.dtype)
-        scale = np.random.random((1)).astype(self.dtype)
+        scale = np.random.random(1).astype(self.dtype)
 
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
@@ -55,7 +55,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
         self.python_out_sig = ["out0", "FoundInfinite"]
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.nan
-        scale = np.random.random((1)).astype(self.dtype)
+        scale = np.random.random(1).astype(self.dtype)
 
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {
@@ -80,7 +80,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
         self.python_out_sig = ["out0", "FoundInfinite"]
         x = np.random.random((1024, 1024)).astype(self.dtype)
         x[128][128] = np.inf
-        scale = np.random.random((1)).astype(self.dtype)
+        scale = np.random.random(1).astype(self.dtype)
 
         self.inputs = {'X': [('x0', x)], 'Scale': scale}
         self.outputs = {

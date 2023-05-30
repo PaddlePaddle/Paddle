@@ -19,10 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.nn as nn
-from paddle import Model, set_device
+from paddle import Model, fluid, nn, set_device
+from paddle.fluid import layers
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.nn import (
     RNN,

@@ -593,7 +593,7 @@ class OperantsAPI(ForwardAPI):
         nullptr,
         phi::errors::Unavailable("The eager_operants pointer of "
                                  "OperantsManager is not initialized"));
-    VLOG(4) << "OperantsManager reaches eager mode";
+    VLOG(4) << "OperantsManager reusing eager mode API ::{func_name}_ad_func";
     return this->eager_operants->{func_name}({func_args_code});
   }} else if (FLAGS_tensor_operants_mode == "static") {{
     PADDLE_ENFORCE_NE(
@@ -601,7 +601,7 @@ class OperantsAPI(ForwardAPI):
         nullptr,
         phi::errors::Unavailable("The static_operants pointer of "
                                  "OperantsManager is not initialized"));
-    VLOG(4) << "OperantsManager reaches static mode";
+    VLOG(4) << "OperantsManager reusing static mode API paddle::prim::{func_name}<DescTensor>";
     return this->static_operants->{func_name}({func_args_code});
   }} else if (FLAGS_tensor_operants_mode == "phi") {{
     PADDLE_ENFORCE_NE(
@@ -609,7 +609,7 @@ class OperantsAPI(ForwardAPI):
         nullptr,
         phi::errors::Unavailable(
             "The phi_operants pointer of OperantsManager is not initialized"));
-    VLOG(4) << "OperantsManager reaches phi mode";
+    VLOG(4) << "OperantsManager reusing phi mode API paddle::experimental::{func_name}";
     return this->phi_operants->{func_name}({func_args_code});
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented(

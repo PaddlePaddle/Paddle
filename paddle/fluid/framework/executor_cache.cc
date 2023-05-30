@@ -50,10 +50,6 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 1;
       break;
     }
-    case platform::DeviceType::NPU: {
-      execution_strategy.num_threads_ = 1;
-      break;
-    }
     case platform::DeviceType::CUSTOM_DEVICE: {
       execution_strategy.num_threads_ = 1;
       break;
@@ -298,7 +294,7 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     framework::Scope *scope) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
-  if (interpretercore_info_cache.Size() > 4u /* max_cached_size*/) {
+  if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
     VLOG(2) << "The cached info size has exceeded max_cached_size: 4, clear "
                "all cache!";
     interpretercore_info_cache.Finalize();

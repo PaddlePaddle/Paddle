@@ -38,7 +38,7 @@ def _all_gather(tensor, buffer_size, group):
     """
 
     assert group is not None
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         out = paddle.zeros([buffer_size], dtype=tensor.dtype)
         task = group.process_group.all_gather(tensor, out)
         return out, task
@@ -231,7 +231,7 @@ class GroupShardedStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute.".format(param.name)
+            ), f"Find {param.name} don't have fw_storage attribute."
 
             param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
@@ -335,7 +335,7 @@ class GroupShardedStage3(nn.Layer):
             buffer_size[param.dtype] += param._numel() + p_align
 
         # Create unslice_params'grad
-        for param in sorted(list(self._unslice_params), key=lambda p: p.name):
+        for param in sorted(self._unslice_params, key=lambda p: p.name):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],
@@ -582,9 +582,9 @@ class GroupShardedStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute".format(param.name)
+            ), f"Find {param.name} don't have fw_storage attribute"
 
-            param.fw_storage = _VarBaseWrapper(param)
+            param.fw_storage = _TensorWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
@@ -1062,17 +1062,17 @@ def _UnsliceParam(param):
     return param
 
 
-def _VarBaseWrapper(param):
-    varbase = param.fw_storage
+def _TensorWrapper(param):
+    var = param.fw_storage
     tmp_param = EagerParamBase(
-        shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name
+        shape=var.shape, dtype=var.dtype, name="slice@" + param.name
     )
-    varbase._share_buffer_to(tmp_param)
+    var._share_buffer_to(tmp_param)
     tmp_param.regularizer = param.regularizer
     tmp_param.optimize_attr['learning_rate'] = param.optimize_attr[
         'learning_rate'
     ]
-    varbase._clear()
+    var._clear()
     return tmp_param
 
 

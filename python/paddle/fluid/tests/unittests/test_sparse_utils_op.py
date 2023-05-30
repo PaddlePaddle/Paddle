@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 devices = ['cpu', 'gpu']
 
@@ -342,14 +342,35 @@ class TestSparseConvert(unittest.TestCase):
         verify(dense_x)
 
         dense_x = paddle.randn(shape)
-        # set the 1th batch to zero
+        # set the 1st batch to zero
         dense_x[1] = 0
         verify(dense_x)
 
         dense_x = paddle.randn(shape)
-        # set the 2th batch to zero
+        # set the 2nd batch to zero
         dense_x[2] = 0
         verify(dense_x)
+
+    def test_zero_nnz(self):
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                paddle.device.set_device(device)
+                x1 = paddle.zeros([2, 2, 2])
+                x2 = paddle.zeros([2, 2, 2])
+                sp_csr_x = x1.to_sparse_csr()
+                sp_coo_x = x2.to_sparse_coo(1)
+                sp_coo_x.stop_gradient = False
+
+                out1 = sp_csr_x.to_dense()
+                out2 = sp_coo_x.to_dense()
+                out2.backward()
+                np.testing.assert_allclose(out1.numpy(), x1.numpy())
+                np.testing.assert_allclose(out2.numpy(), x2.numpy())
+                np.testing.assert_allclose(
+                    sp_coo_x.grad.to_dense().numpy().sum(), 0.0
+                )
 
 
 class TestCooError(unittest.TestCase):

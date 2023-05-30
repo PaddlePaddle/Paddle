@@ -125,9 +125,7 @@ def minimize_lbfgs(
     is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
-    history_size = paddle.full(
-        shape=[1], fill_value=history_size, dtype='int64'
-    )
+    history_size = paddle.full(shape=[], fill_value=history_size, dtype='int64')
     head = paddle.full(shape=[1], fill_value=1, dtype='int64')
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
@@ -177,7 +175,7 @@ def minimize_lbfgs(
         q = paddle.assign(g1)
         # In a array circle, the index may out of range, so must use mod.
         i = paddle.full(
-            shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64'
+            shape=[], fill_value=(head - 1).mod(history_size), dtype='int64'
         )
 
         def cond(i, q):
@@ -193,7 +191,7 @@ def minimize_lbfgs(
 
         r = paddle.matmul(H0, q)
 
-        i = paddle.full(shape=[1], fill_value=tail + 1, dtype='int64')
+        i = paddle.full(shape=[], fill_value=tail + 1, dtype='int64')
 
         def cond(i, r):
             return i != head

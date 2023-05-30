@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestExpandAsBasic(OpTest):
@@ -27,13 +28,24 @@ class TestExpandAsBasic(OpTest):
         self.prim_op_type = "comp"
         self.python_api = paddle.expand_as
         self.public_python_api = paddle.expand_as
-        x = np.random.rand(100).astype("float64")
-        target_tensor = np.random.rand(2, 100).astype("float64")
+        self.init_dtype()
+        self.init_inputs_and_outputs()
+        self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(100).astype(self.dtype)
+        target_tensor = np.random.rand(2, 100).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [2, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -42,14 +54,43 @@ class TestExpandAsBasic(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(100).astype(np.float32)
+        target_tensor = np.random.rand(2, 100).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [2, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
+
+
 class TestExpandAsOpRank2(TestExpandAsBasic):
-    def setUp(self):
-        self.op_type = "expand_as_v2"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.expand_as
-        self.public_python_api = paddle.expand_as
-        x = np.random.rand(10, 12).astype("float64")
-        target_tensor = np.random.rand(10, 12).astype("float64")
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(10, 12).astype(self.dtype)
+        target_tensor = np.random.rand(10, 12).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1]
@@ -57,14 +98,29 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
         self.outputs = {'Out': output}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank2BFP16OP(TestExpandAsBasicBFP16OP):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(10, 12).astype(np.float32)
+        target_tensor = np.random.rand(10, 12).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+
 class TestExpandAsOpRank3(TestExpandAsBasic):
-    def setUp(self):
-        self.op_type = "expand_as_v2"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.expand_as
-        self.public_python_api = paddle.expand_as
-        x = np.random.rand(2, 3, 20).astype("float64")
-        target_tensor = np.random.rand(2, 3, 20).astype("float64")
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(2, 3, 20).astype(self.dtype)
+        target_tensor = np.random.rand(2, 3, 20).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1, 1]
@@ -72,19 +128,53 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
         self.outputs = {'Out': output}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank3BFP16OP(TestExpandAsBasicBFP16OP):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(2, 3, 20).astype(np.float32)
+        target_tensor = np.random.rand(2, 3, 20).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1, 1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+
 class TestExpandAsOpRank4(TestExpandAsBasic):
-    def setUp(self):
-        self.op_type = "expand_as_v2"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.expand_as
-        self.public_python_api = paddle.expand_as
-        x = np.random.rand(1, 1, 7, 16).astype("float64")
-        target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(1, 1, 7, 16).astype(self.dtype)
+        target_tensor = np.random.rand(4, 6, 7, 16).astype(self.dtype)
         self.inputs = {'X': x, "Y": target_tensor}
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank4BFP16OP(TestExpandAsBasicBFP16OP):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(1, 1, 7, 16).astype(np.float32)
+        target_tensor = np.random.rand(4, 6, 7, 16).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
 
 
 class TestExpandAsOpRank5(TestExpandAsBasic):
@@ -102,6 +192,32 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
+
+    def test_check_grad(self):
+        pass
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
+        x = np.random.rand(1, 1, 7, 16).astype("int64")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("float32")
+        self.inputs = {'X': x, "Y": convert_float_to_uint16(target_tensor)}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
         pass

@@ -16,13 +16,15 @@ import logging
 from functools import reduce
 
 import paddle
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     ParallelMode,
     is_data_parallel_reduce_op,
     is_parameter_related,
 )
-from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.process_group import (
+    new_process_group,
+)
+from paddle.distributed.auto_parallel.static.utils import (
     _get_comm_group,
     get_logger,
     get_var_numel,
@@ -35,7 +37,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
-from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
 from paddle.utils import unique_name
@@ -757,7 +758,7 @@ class ShardingPass(PassBase):
                     group = new_process_group(ranks, force_new_group=True)
                 # NOTE here stream is just a presentation with different name,
                 # it is up to executor to create the exact streams given the name.
-                stream = "sharding_param_comm_stream{}".format(i)
+                stream = f"sharding_param_comm_stream{i}"
                 self.param_comm_group_stream_pairs.append(
                     {
                         "comm_group": group,
@@ -893,7 +894,7 @@ class ShardingPass(PassBase):
                     )
 
         # insert deps
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
@@ -1168,7 +1169,7 @@ class ShardingPass(PassBase):
         P.S. this overlap pass is ONLY adapted for standalone executor (graph based) and stream awared allocator.
         """
 
-        if not _is_enable_standalone_executor() or (not self.enable_overlap):
+        if not self.enable_overlap:
             return
 
         self.grad_comm_group_stream_pairs = []
@@ -1182,7 +1183,7 @@ class ShardingPass(PassBase):
                 group = new_process_group(ranks, force_new_group=True)
             # NOTE here stream is just a presentation with different name,
             # it is up to executor to create the exact streams given the name.
-            stream = "sharding_grad_comm_stream{}".format(i)
+            stream = f"sharding_grad_comm_stream{i}"
             self.grad_comm_group_stream_pairs.append(
                 {
                     "comm_group": group,
@@ -1263,7 +1264,7 @@ class ShardingPass(PassBase):
             idx += 1
 
         # insert deps
-        indice = sorted(list(dep_map.keys()), reverse=True)
+        indice = sorted(dep_map.keys(), reverse=True)
         for i in indice:
             for idx, prior_vars, post_vars, comm_stream in dep_map[i][::-1]:
                 depend_op = insert_dependencies_for_vars(
@@ -1304,12 +1305,8 @@ class ShardingPass(PassBase):
             _logger.info(
                 "Sharding Gradient Hierarchical Communication Optimization."
             )
-            _logger.info(
-                "current global rank idx: {}.".format(self.global_rank)
-            )
-            _logger.info(
-                "local inter node ranks idx: {}.".format(inter_node_ranks)
-            )
+            _logger.info(f"current global rank idx: {self.global_rank}.")
+            _logger.info(f"local inter node ranks idx: {inter_node_ranks}.")
             assert (
                 len(inter_node_ranks)
                 == self.sharding_world_size // nranks_per_node
@@ -1320,9 +1317,7 @@ class ShardingPass(PassBase):
                 if rank // nranks_per_node == node_idx
             ]
             assert len(intra_node_ranks) == nranks_per_node
-            _logger.info(
-                "local intra node ranks idx: {}.".format(intra_node_ranks)
-            )
+            _logger.info(f"local intra node ranks idx: {intra_node_ranks}.")
             inter_node_groups = []
             intra_node_groups = []
             for _ in range(self.grad_comm_stream_num):
@@ -1462,7 +1457,7 @@ def _insert_reduce_op(
 ):
     assert (
         root_id >= 0
-    ), "root id should be a positive int, but now root id is {}".format(root_id)
+    ), f"root id should be a positive int, but now root id is {root_id}"
     new_op = block._insert_op_without_sync(
         insert_idx,
         type='c_reduce_sum',
@@ -1668,7 +1663,7 @@ def partition_by_greedy_even(params, group_size):
     for param in params:
         rank = sizes.index(min(sizes))
         mapping[rank].append(param)
-        numel = reduce(lambda x, y: x * y, param.shape)
+        numel = reduce(lambda x, y: x * y, param.shape, 1)
         assert (
             numel > 0
         ), "param [{}] should larger than 0, but it is [{}]".format(
@@ -1692,7 +1687,7 @@ def partition_parameters(params, group_size, algor="greedy_even"):
                 k, sum([get_var_size(var) for var in v])
             )
         )
-        _logger.info("Params in this rank: {}.".format([var.name for var in v]))
+        _logger.info(f"Params in this rank: {[var.name for var in v]}.")
 
     return rank_to_params
 
@@ -1747,9 +1742,7 @@ def re_order_program(block, param_grads, dist_context):
         assert len(block.ops) == num_ops
 
     # TODO reorder gradient clip order
-    _logger.info(
-        "Sharding the Order of param being used: {}.".format(use_order)
-    )
+    _logger.info(f"Sharding the Order of param being used: {use_order}.")
     return [pname_to_pg_pairs[p] for p in use_order]
 
 
@@ -1831,8 +1824,8 @@ class ShardingInfo:
     # and sharding should only broadcast the casted fp16 param
     # instead of the origin fp32 version param.
     def get_broadcast_vars_and_param_usage(self, block):
-        broadcast_vars = set([])
-        fp16_params = set([])
+        broadcast_vars = set()
+        fp16_params = set()
         fp16_to_fp32 = {}
 
         param_usage = {x: 0 for x in self.param_names}
@@ -1861,11 +1854,9 @@ class ShardingInfo:
 
     def get_param_grad(self, param_name):
         if not self.is_in_local_shard(param_name):
-            raise ValueError(
-                "param[{}] not in current rank.".format(param_name)
-            )
+            raise ValueError(f"param[{param_name}] not in current rank.")
         if param_name not in self.params_grads:
-            raise ValueError('param[{}] not in params_grads'.format(param_name))
+            raise ValueError(f'param[{param_name}] not in params_grads')
         return self.params_grads.get(param_name, None)
 
 

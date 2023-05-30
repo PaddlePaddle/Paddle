@@ -224,11 +224,6 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
 
 void FusedDropoutAddInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
-                              const Scalar& p,
-                              bool is_test,
-                              const std::string& mode,
-                              int seed,
-                              bool fix_seed,
                               MetaTensor* out,
                               MetaTensor* seed_offset);
 
@@ -358,6 +353,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
                         MetaTensor* roisnum,
                         MetaConfig config = MetaConfig());
 
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out);
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -380,9 +381,9 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,
@@ -397,6 +398,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool out_int32,
                            bool right,
                            MetaTensor* out);
+
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y);
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,

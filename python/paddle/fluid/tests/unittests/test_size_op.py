@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def size_wrapper(input):
@@ -83,7 +83,6 @@ class TestSizeAPI(unittest.TestCase):
                 },
                 fetch_list=[out_1, out_2],
             )
-            # TODO(zhouwei): will change shape [1] to [] to support zero-dim
             assert np.array_equal(
                 res_1, np.array(np.size(input_1)).astype("int64")
             )

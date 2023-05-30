@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Variable
 
 
 def cyclic_reader(reader):
     def __reader__():
         while True:
-            for data in reader():
-                yield data
+            yield from reader()
 
     return __reader__
 

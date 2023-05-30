@@ -18,7 +18,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import BatchNorm, Linear
@@ -206,7 +206,7 @@ class EncoderNet(paddle.nn.Layer):
             initializer=paddle.nn.initializer.Normal(0.0, 0.02),
             learning_rate=2.0,
         )
-        if fluid.framework._non_static_mode():
+        if fluid.framework.in_dygraph_mode():
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32"
             )

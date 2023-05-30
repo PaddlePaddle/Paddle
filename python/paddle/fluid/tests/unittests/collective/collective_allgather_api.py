@@ -20,9 +20,8 @@ import test_collective_api_base as test_base
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import fluid, framework
+from paddle.fluid import data_feeder
 
 paddle.enable_static()
 
@@ -44,6 +43,7 @@ def all_gather_new(tensor_list, tensor, group=None):
                 'bool',
                 'int8',
                 'uint8',
+                'uint16',
             ],
             op_type,
         )
@@ -59,6 +59,7 @@ def all_gather_new(tensor_list, tensor, group=None):
             'bool',
             'int8',
             'uint8',
+            'uint16',
         ],
         op_type,
     )
@@ -67,8 +68,8 @@ def all_gather_new(tensor_list, tensor, group=None):
     nranks = dist.get_world_size()
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [out]},
+        inputs={'x': [tensor]},
+        outputs={'out': [out]},
         attrs={
             'ring_id': ring_id,
             'nranks': nranks,

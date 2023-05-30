@@ -62,7 +62,7 @@ class TestAffineChannelOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            no_grad_set=set(['Scale', 'Bias']),
+            no_grad_set={'Scale', 'Bias'},
             check_dygraph=False,
         )
 

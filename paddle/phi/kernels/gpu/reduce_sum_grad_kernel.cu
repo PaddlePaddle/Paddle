@@ -48,7 +48,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
   using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<T, kps::IdentityFunctor<T, MPType>>(
+  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
       &new_out_grad,
       x_grad,
@@ -67,7 +67,10 @@ PD_REGISTER_KERNEL(sum_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   int16_t,
                    int,
                    int64_t,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

@@ -19,7 +19,7 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -236,7 +236,7 @@ class TestMathOpPatches(unittest.TestCase):
         b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
         b.desc.set_need_check_feed(False)
         one = paddle.ones(shape=[1], dtype='int32')
-        zero = fluid.layers.zeros(shape=[1], dtype='int32')
+        zero = paddle.zeros(shape=[1], dtype='int32')
         cond = one == zero
         c = paddle.static.nn.cond(cond, lambda: a + b, lambda: a - b)
 

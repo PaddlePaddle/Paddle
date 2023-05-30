@@ -19,7 +19,7 @@ namespace operators {
 
 #if CUDA_VERSION >= 11060  // Use cublasLt to fuse FFN operation.
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -396,7 +396,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         dim_head,
                                         compute_bias);
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -483,7 +483,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         compute_bias);
 
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -685,7 +685,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
 #else
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -1071,7 +1071,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         compute_bias);
 
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -1158,7 +1158,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                                         compute_bias);
 
         // q_transpose_out_data [bs, head_num, seq_len, dim_head]
-        // kv_transpose_out_data [2， bs, head_num, seq_len, dim_head]
+        // kv_transpose_out_data [2, bs, head_num, seq_len, dim_head]
         if (rotary_emb_dims != 0) {
           auto *rotary_emb_data = rotary_tensor->data<T>();
           const int *sequence_lengths_data =
@@ -1370,6 +1370,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fused_multi_transformer,
-                        ops::FusedMultiTransformerOpKernel<plat::float16>,
-                        ops::FusedMultiTransformerOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedMultiTransformerOpKernel,
+                          float,
+                          plat::float16) {}

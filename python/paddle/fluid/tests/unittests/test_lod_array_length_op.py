@@ -17,15 +17,13 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.executor import Executor
 
 
 class TestLoDArrayLength(unittest.TestCase):
     def test_array_length(self):
-        tmp = layers.zeros(shape=[10], dtype='int32')
+        tmp = paddle.zeros(shape=[10], dtype='int32')
         i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=10)
         arr = paddle.tensor.array_write(tmp, i=i)
         arr_len = paddle.tensor.array_length(arr)

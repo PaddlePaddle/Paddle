@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -260,6 +260,19 @@ class LinalgPinvTestCaseHermitian5(LinalgPinvTestCase):
         np.random.seed(123)
         x = np.random.random(self._input_shape).astype(self.dtype)
         self._input_data = x + x.transpose((0, 2, 1))
+
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.hermitian = True
+
+
+class LinalgPinvTestCaseHermitian6(LinalgPinvTestCase):
+    def generate_input(self):
+        self._input_shape = (3, 5, 5)
+        np.random.seed(123)
+        x = np.ones(self._input_shape).astype(self.dtype)
+        self._input_data = x + 0.01
 
     def init_config(self):
         self.dtype = 'float64'

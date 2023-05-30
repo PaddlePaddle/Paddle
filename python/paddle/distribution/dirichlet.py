@@ -15,8 +15,8 @@
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 
 class Dirichlet(exponential_family.ExponentialFamily):
@@ -62,11 +62,11 @@ class Dirichlet(exponential_family.ExponentialFamily):
             dirichlet = paddle.distribution.Dirichlet(paddle.to_tensor([1., 2., 3.]))
 
             print(dirichlet.entropy())
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [-1.24434423])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        -1.24434423)
             print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [10.80000114])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        10.80000114)
 
     """
 
@@ -159,12 +159,15 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
 def _dirichlet(concentration, name=None):
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return paddle._C_ops.dirichlet(concentration)
     else:
         op_type = 'dirichlet'
         check_variable_and_dtype(
-            concentration, 'concentration', ['float32', 'float64'], op_type
+            concentration,
+            'concentration',
+            ['float16', 'float32', 'float64', 'uint16'],
+            op_type,
         )
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(

@@ -105,7 +105,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithoutLoD(OpTest):
@@ -122,7 +122,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
@@ -139,7 +139,7 @@ class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithPerPredictionType(OpTest):
@@ -162,7 +162,7 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithEmptyLoD(OpTest):
@@ -179,7 +179,7 @@ class TestBipartiteMatchOpWithEmptyLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

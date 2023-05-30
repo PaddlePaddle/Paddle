@@ -474,7 +474,7 @@ struct KernelRegistrar {
       variadic_kernel_unfold_marco,                                         \
       __VA_ARGS__);                                                         \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
 /**
  * `template decltype(fn) fn` can work on gcc and clang,
@@ -1326,28 +1326,28 @@ struct KernelRegistrar {
                                          kernel_unfold_macro,          \
                                          variadic_kernel_unfold_marco, \
                                          __VA_ARGS__))
-/** PD_REGISTER_GENERAL_KERNEL
+/** PD_REGISTER_KERNEL_FOR_ALL_DTYPE
  *
  * Basic Kernel register marco, used to register a instantiated kernel function
  * with one template argument.
  */
 
-#define PD_REGISTER_GENERAL_KERNEL(                 \
-    kernel_name, backend, layout, kernel_fn, dtype) \
-  _PD_REGISTER_GENERAL_KERNEL(                      \
-      ::phi::RegType::INNER, kernel_name, backend, layout, kernel_fn, dtype)
+#define PD_REGISTER_KERNEL_FOR_ALL_DTYPE(    \
+    kernel_name, backend, layout, kernel_fn) \
+  _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(         \
+      ::phi::RegType::INNER, kernel_name, backend, layout, kernel_fn)
 
-#define _PD_REGISTER_GENERAL_KERNEL(                                         \
-    reg_type, kernel_name, backend, layout, kernel_fn, dtype)                \
+#define _PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                   \
+    reg_type, kernel_name, backend, layout, kernel_fn)                       \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
       PD_REGISTER_no_t_kernel_ns_check_##kernel_name##_##backend##_##layout, \
       "PD_REGISTER_NO_TEMPLATE_KERNEL must be called in global namespace."); \
-  __PD_REGISTER_GENERAL_KERNEL(                                              \
-      reg_type, kernel_name, backend, layout, kernel_fn, dtype)
+  __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                        \
+      reg_type, kernel_name, backend, layout, kernel_fn)
 
 #ifndef _WIN32
-#define __PD_REGISTER_GENERAL_KERNEL(                                       \
-    reg_type, kernel_name, backend, layout, kernel_fn, dtype)               \
+#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
+    reg_type, kernel_name, backend, layout, kernel_fn)                      \
   template decltype(kernel_fn) kernel_fn;                                   \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
@@ -1365,10 +1365,10 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
-#define __PD_REGISTER_GENERAL_KERNEL(                                       \
-    reg_type, kernel_name, backend, layout, kernel_fn, dtype)               \
+#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
+    reg_type, kernel_name, backend, layout, kernel_fn)                      \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout( \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);           \
   static const ::phi::KernelRegistrar                                       \
@@ -1387,6 +1387,132 @@ struct KernelRegistrar {
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
+
+/** PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE
+ *
+ * Used to register a instantiated kernel function
+ * for all backend with one template argument.
+ */
+#define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
+    kernel_name, layout, meta_kernel_fn)                           \
+  _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(::phi::RegType::INNER, \
+                                            kernel_name,           \
+                                            layout,                \
+                                            meta_kernel_fn,        \
+                                            BACKEND_LIST)
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#define _DEVICE GPU,
+#elif defined(PADDLE_WITH_XPU)
+#define _DEVICE XPU,
+#else
+#define _DEVICE
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#define _CUSTOM Custom,
+#else
+#define _CUSTOM
+#endif
+
+#define BACKEND_LIST _DEVICE _CUSTOM CPU
+
+#define _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                            \
+    reg_type, kernel_name, layout, meta_kernel_fn, ...)                       \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      PD_REGISTER_nt_kernel_ns_check_##kernel_name##_##layout,                \
+      "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE must be called in global "    \
+      "namespace.");                                                          \
+  PD_EXPAND(__PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reg_type,              \
+                                                       kernel_name,           \
+                                                       layout,                \
+                                                       meta_kernel_fn,        \
+                                                       PD_NARGS(__VA_ARGS__), \
+                                                       __VA_ARGS__))
+
+#define __PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(               \
+    reg_type, kernel_name, layout, meta_kernel_fn, N, ...)        \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(   \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel); \
+  PD_EXPAND(PD_CONCATENATE(_PD_FOR_ALL_BACKEND_DTYPE_, N)(        \
+      reg_type,                                                   \
+      kernel_name,                                                \
+      layout,                                                     \
+      meta_kernel_fn,                                             \
+      __PD_KERNEL_args_def_FN_##kernel_name##_##layout,           \
+      __VA_ARGS__) void                                           \
+                __PD_KERNEL_args_def_FN_##kernel_name##_##layout( \
+                    const ::phi::KernelKey& kernel_key UNUSED,    \
+                    ::phi::Kernel* kernel UNUSED))
+#ifndef _WIN32
+#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
+    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)   \
+  template decltype(kernel_fn) kernel_fn;                             \
+  static const ::phi::KernelRegistrar                                 \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(          \
+          reg_type,                                                   \
+          #kernel_name,                                               \
+          #backend,                                                   \
+          DATA_LAYOUT(layout),                                        \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse, \
+          &args_def_fn,                                               \
+          PHI_KERNEL(kernel_fn),                                      \
+          PHI_VARIADIC_KERNEL(kernel_fn));                            \
+  int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { return 0; }
+#else
+#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
+    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)   \
+  static const ::phi::KernelRegistrar                                 \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(          \
+          reg_type,                                                   \
+          #kernel_name,                                               \
+          #backend,                                                   \
+          DATA_LAYOUT(layout),                                        \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse, \
+          &args_def_fn,                                               \
+          PHI_KERNEL(kernel_fn),                                      \
+          PHI_VARIADIC_KERNEL(kernel_fn));                            \
+  int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { return 0; }
+#endif
+#define _PD_FOR_ALL_BACKEND_DTYPE_1(                                     \
+    reg_type, kernel_name, layout, meta_kernel_fn, args_def_fn, backend) \
+  ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                           \
+      reg_type,                                                          \
+      kernel_name,                                                       \
+      backend,                                                           \
+      layout,                                                            \
+      meta_kernel_fn<::phi::backend##Context>,                           \
+      args_def_fn)
+
+#define _PD_FOR_ALL_BACKEND_DTYPE_2(                                          \
+    reg_type, kernel_name, layout, meta_kernel_fn, args_def_fn, backend, ...) \
+  ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                                \
+      reg_type,                                                               \
+      kernel_name,                                                            \
+      backend,                                                                \
+      layout,                                                                 \
+      meta_kernel_fn<::phi::backend##Context>,                                \
+      args_def_fn)                                                            \
+  PD_EXPAND(_PD_FOR_ALL_BACKEND_DTYPE_1(reg_type,                             \
+                                        kernel_name,                          \
+                                        layout,                               \
+                                        meta_kernel_fn,                       \
+                                        args_def_fn,                          \
+                                        __VA_ARGS__))
+#define _PD_FOR_ALL_BACKEND_DTYPE_3(                                          \
+    reg_type, kernel_name, layout, meta_kernel_fn, args_def_fn, backend, ...) \
+  ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                                \
+      reg_type,                                                               \
+      kernel_name,                                                            \
+      backend,                                                                \
+      layout,                                                                 \
+      meta_kernel_fn<::phi::backend##Context>,                                \
+      args_def_fn)                                                            \
+  PD_EXPAND(_PD_FOR_ALL_BACKEND_DTYPE_2(reg_type,                             \
+                                        kernel_name,                          \
+                                        layout,                               \
+                                        meta_kernel_fn,                       \
+                                        args_def_fn,                          \
+                                        __VA_ARGS__))
 
 /** PD_DECLARE_KERNEL
  *

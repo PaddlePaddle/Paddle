@@ -93,18 +93,6 @@ if(WITH_BOX_PS)
   add_definitions(-DPADDLE_WITH_BOX_PS)
 endif()
 
-if(WITH_ASCEND)
-  add_definitions(-DPADDLE_WITH_ASCEND)
-endif()
-
-if(WITH_ASCEND_CL)
-  add_definitions(-DPADDLE_WITH_ASCEND_CL)
-endif()
-
-if(WITH_ASCEND_INT64)
-  add_definitions(-DPADDLE_WITH_ASCEND_INT64)
-endif()
-
 if(WITH_XPU)
   message(STATUS "Compile with XPU!")
   add_definitions(-DPADDLE_WITH_XPU)
@@ -118,11 +106,6 @@ endif()
 if(WITH_IPU)
   message(STATUS "Compile with IPU!")
   add_definitions(-DPADDLE_WITH_IPU)
-endif()
-
-if(WITH_MLU)
-  message(STATUS "Compile with MLU!")
-  add_definitions(-DPADDLE_WITH_MLU)
 endif()
 
 if(WITH_GPU)
@@ -251,4 +234,17 @@ endif()
 
 if(WITH_CUDNN_FRONTEND)
   add_definitions(-DPADDLE_WITH_CUDNN_FRONTEND)
+endif()
+
+set(WITH_PHI_SHARED
+    ON
+    CACHE BOOL "" FORCE)
+if(WIN32 OR WITH_ROCM)
+  set(WITH_PHI_SHARED
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
+
+if(WITH_PHI_SHARED)
+  add_definitions(-DPHI_SHARED)
 endif()

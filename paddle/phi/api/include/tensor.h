@@ -219,40 +219,35 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether tensor is DenseTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_dense_tensor() const;
 
   /**
    * @brief Determine whether tensor is SelectedRows
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_selected_rows() const;
 
   /**
    * @brief Determine whether tensor is SparseCooTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_sparse_coo_tensor() const;
 
   /**
    * @brief Determine whether tensor is SparseCsrTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_sparse_csr_tensor() const;
 
   /**
    * @brief Determine whether tensor is StringTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_string_tensor() const;
 
@@ -268,40 +263,35 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether the tensor device is CPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_cpu() const;
 
   /**
    * @brief Determine whether the tensor device is GPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_gpu() const;
 
   /**
    * @brief Determine whether the tensor device is GPU_PINNED
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_gpu_pinned() const;
 
   /**
    * @brief Determine whether the tensor device is XPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_xpu() const;
 
   /**
    * @brief Determine whether the tensor device is CustomDevice
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_custom_device() const;
 
@@ -416,20 +406,20 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the name of Tensor.
    * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    *
    * @return const std::string&
    */
-  const std::string& name() const { return name_; }
+  const std::string& name() const;
 
   /**
    * @brief Set name of Tensor.
    * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    *
    * @param const std::string& name
    */
-  void set_name(const std::string& name) { name_ = name; }
+  void set_name(const std::string& name);
 
   /* Part 5: Data Transform methods */
   /* Alert!!!!: All copy method can only deep copy impl, autograd info only be
@@ -445,7 +435,7 @@ class PADDLE_API Tensor final {
    * data type template argument
    *
    * @tparam T
-   * @param target_place, the target place of which the tensor will copy to.
+   * @param target_place The target place of which the tensor will copy to.
    * @return Tensor
    */
   template <typename T>
@@ -454,8 +444,8 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param place, The target place of which the tensor will copy to.
-   * @param blocking, Should we copy this in sync way.
+   * @param place The target place of which the tensor will copy to.
+   * @param blocking Should we copy this in sync way.
    * @return Tensor
    */
   Tensor copy_to(const Place& place, bool blocking) const;
@@ -463,8 +453,8 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the source Tensor to current Tensor.
    *
-   * @param src, the source Tensor to be copied.
-   * @param blocking, Should we copy this in sync way.
+   * @param src The source Tensor to be copied.
+   * @param blocking Should we copy this in sync way.
    * @return void
    */
   void copy_(const Tensor& src, const Place& target_place, bool blocking);
@@ -482,16 +472,14 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether it is a meaningful Tensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool defined() const;
 
   /**
    * @brief Determine whether Tensor is initialized.
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool initialized() const;
 
@@ -499,8 +487,7 @@ class PADDLE_API Tensor final {
    * @brief Determine whether Tensor is initialized.
    * This is a deprecated method and may be removed in the future!
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_initialized() const;
 
@@ -602,7 +589,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Convert DenseTensor or SparseCsrTensor to SparseCooTensor
    *
-   * @param sparse_dim, The number of sparse dimensions
+   * @param sparse_dim The number of sparse dimensions
    * @return Tensor
    */
   Tensor to_sparse_coo(const int64_t sparse_dim) const;
@@ -629,7 +616,7 @@ class PADDLE_API Tensor final {
    * unified to Tensor, but Tensor itself is heterogeneous.
    *
    * Tensor can generally be represented by void* and size_t, place.
-   * This is suitable for most scenarios including CPU, GPU, HIP, NPU, etc.,
+   * This is suitable for most scenarios including CPU, GPU, HIP, etc.,
    * but there are a few cases where this definition cannot be described,
    * such as the Tensor representation in third-party lib such as Metal,
    * OpenCL, etc., as well as some special Tensor implementations, including
@@ -657,7 +644,7 @@ class PADDLE_API Tensor final {
 
   /**
    * Tensor name: used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    */
   std::string name_{""};
 

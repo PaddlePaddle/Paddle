@@ -26,12 +26,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/custom_device_common_op_registry.h"
+#include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
-#endif
-#include "paddle/fluid/pybind/eager_generator.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -133,7 +131,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 
 const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
 
-// These operators will skip automatical code generatrion and
+// These operators will skip automatical code generation and
 // need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
 std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
 
@@ -218,7 +216,7 @@ std::string GenerateOpFunctionsBody(
   for (auto& output : op_proto->outputs()) {
     auto& out_name = output.name();
 
-    // skip those dispensable oututs
+    // skip those dispensable outputs
     if (output.dispensable() && !FindOutsMap(op_type, out_name)) {
       continue;
     }
@@ -301,14 +299,14 @@ std::string GenerateOpFunctionsBody(
   }
   outs_initializer += "}";
   if (FindViewOpMap(op_type)) {
-    std::string viwe_input_name = view_op_map[op_type].first;
-    std::string viwe_output_name = view_op_map[op_type].second;
+    std::string view_input_name = view_op_map[op_type].first;
+    std::string view_output_name = view_op_map[op_type].second;
     view_strategy_str +=
         paddle::string::Sprintf(HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT,
-                                viwe_input_name,
-                                viwe_output_name,
-                                viwe_input_name,
-                                viwe_output_name);
+                                view_input_name,
+                                view_output_name,
+                                view_input_name,
+                                view_output_name);
   }
   if (!inplace_map.empty()) {
     // For inplace op, Use the input PyObject directly.
@@ -343,7 +341,7 @@ std::string GenerateOpFunctionsBody(
     function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
   }
 
-  // generate op funtcion body
+  // generate op function body
   auto op_function_str = paddle::string::Sprintf(OP_FUNCTION_TEMPLATE,
                                                  func_name,
                                                  ins_cast_str,
@@ -412,7 +410,7 @@ GenerateOpFunctions() {
       continue;
     }
     auto& op_type = op_proto->type();
-    // Skip operators that will be handwriten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
+    // Skip operators that will be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE.
     if (CUSTOM_HANDWRITE_OPS_SET.count(op_type)) {
       continue;
     }
@@ -484,10 +482,10 @@ int main(int argc, char* argv[]) {
     std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
-  ascend_ptr->InitGEForUT();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // We need a fake device to trigger the registration of the common kernel and
+  // generate api
+  paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
 #endif
 
   std::vector<std::string> headers{
@@ -556,10 +554,6 @@ int main(int argc, char* argv[]) {
       << "} // namespace paddle\n";
 
   out.close();
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  ge::GEFinalize();
-#endif
 
   return 0;
 }

@@ -30,6 +30,8 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace funcs {
 template <typename T>
@@ -188,7 +190,7 @@ template struct SelectedRowsAddTensor<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddTo<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2) {
@@ -286,7 +288,7 @@ template struct SelectedRowsSumTo<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::SelectedRows& input1,
                   phi::DenseTensor* input2) {
     if (UNLIKELY(input1.rows().size() == 0)) {
@@ -393,6 +395,7 @@ template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::float16>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
 
 #ifdef PADDLE_WITH_XPU
@@ -417,7 +420,7 @@ typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
 
 template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<DeviceContext, T>* blas,
+    phi::funcs::BlasT<DeviceContext, T>* blas UNUSED,
     size_t data_len,
     const T* in,
     T* out) {

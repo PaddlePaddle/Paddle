@@ -20,7 +20,7 @@
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 from .base_gate import BaseGate
 

@@ -25,20 +25,20 @@ set(GLOO_LIBRARY_DIR
     "${GLOO_INSTALL_DIR}/lib"
     CACHE PATH "gloo library directory." FORCE)
 # As we add extra features for gloo, we use the non-official repo
-set(GLOO_REPOSITORY ${GIT_URL}/ziyoujiyi/gloo.git)
 set(GLOO_TAG v0.0.3)
 set(GLOO_LIBRARIES
     "${GLOO_INSTALL_DIR}/lib/libgloo.a"
     CACHE FILEPATH "gloo library." FORCE)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/gloo)
 set(GLOO_PATCH_COMMAND "")
 if(WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
                                                   VERSION_GREATER 12.0)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
          native_dst)
-    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
-                           ${native_dst})
+    set(GLOO_PATCH_COMMAND
+        git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
+        ${SOURCE_DIR}/gloo/transport/tcp < ${native_dst})
   endif()
 endif()
 
@@ -54,51 +54,32 @@ if(CMAKE_COMPILER_IS_GNUCC)
          native_dst)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/types.h.patch
          types_header)
+    # See: [Why calling some `git` commands before `patch`?]
     set(GLOO_PATCH_COMMAND
-        patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst} && patch
-        -d ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
+        git checkout -- . && git checkout ${GLOO_TAG} && patch -Nd
+        ${SOURCE_DIR}/gloo/transport/tcp < ${native_dst} && patch -Nd
+        ${SOURCE_DIR}/gloo/ < ${types_header})
   endif()
 endif()
 include_directories(${GLOO_INCLUDE_DIR})
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  ExternalProject_Add(
-    ${GLOO_PROJECT}
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GLOO_REPOSITORY}
-    GIT_TAG ${GLOO_TAG}
-    PREFIX "${GLOO_PREFIX_DIR}"
-    UPDATE_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND
-      mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
-      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . &&
-      mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
-    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
-                    ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/"
-            "${GLOO_INCLUDE_DIR}/gloo"
-    BUILD_BYPRODUCTS ${GLOO_LIBRARIES})
-else()
-  ExternalProject_Add(
-    ${GLOO_PROJECT}
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GLOO_REPOSITORY}
-    GIT_TAG ${GLOO_TAG}
-    PREFIX "${GLOO_PREFIX_DIR}"
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ${GLOO_PATCH_COMMAND}
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND
-      mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
-      .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . &&
-      mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
-    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
-                    ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/"
-            "${GLOO_INCLUDE_DIR}/gloo"
-    BUILD_BYPRODUCTS ${GLOO_LIBRARIES})
-endif()
+ExternalProject_Add(
+  ${GLOO_PROJECT}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
+  PREFIX "${GLOO_PREFIX_DIR}"
+  UPDATE_COMMAND ""
+  PATCH_COMMAND ${GLOO_PATCH_COMMAND}
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND
+    mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
+    ${SOURCE_DIR} -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND}
+    --build . && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/glo
+  INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
+                  ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy_directory "${SOURCE_DIR}/gloo/"
+          "${GLOO_INCLUDE_DIR}/gloo"
+  BUILD_BYPRODUCTS ${GLOO_LIBRARIES})
 
 add_library(gloo STATIC IMPORTED GLOBAL)
 set_property(TARGET gloo PROPERTY IMPORTED_LOCATION ${GLOO_LIBRARIES})

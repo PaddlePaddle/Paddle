@@ -18,7 +18,7 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
@@ -54,7 +54,7 @@ def optimizer_setting(params, parameter_list=None):
         # bd = [step * e for e in ls["epochs"]]
         # base_lr = params["lr"]
         # lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if fluid._non_static_mode():
+        if fluid.in_dygraph_mode():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.01, parameter_list=parameter_list
             )

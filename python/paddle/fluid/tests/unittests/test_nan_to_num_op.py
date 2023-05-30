@@ -18,9 +18,9 @@ from typing import Optional
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
-# from op_test import OpTest
+# from eager_op_test import OpTest
 
 
 def np_nan_to_num(

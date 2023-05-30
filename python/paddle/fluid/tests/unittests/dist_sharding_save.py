@@ -19,9 +19,9 @@ import sys
 from dist_mnist import cnn_model  # noqa: F401
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet.meta_optimizers.sharding as sharding
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed.fleet.base import role_maker
+from paddle.distributed.fleet.meta_optimizers import sharding
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -29,7 +29,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def runtime_main():
-    import paddle.distributed.fleet as fleet
+    from paddle.distributed import fleet
 
     # model definition
     train_prog = paddle.fluid.Program()
@@ -87,7 +87,7 @@ def runtime_main():
 
 
 if __name__ == "__main__":
-    # NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
+    # NOTE(liangjianzhong): dist unittest should be implemented using runtime_main in test_dist_base.py
     # but the runtime_main in test_dist_base.py use the fleet, DistributedStrategy from
     # paddle.incubate.distributed.fleet.collective which is not support by sharding (paddle.distributed.fleet).
     # this should be update in future.

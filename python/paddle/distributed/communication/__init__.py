@@ -18,6 +18,7 @@ from .reduce import reduce, ReduceOp
 from .send import send, isend
 from .recv import recv, irecv
 from .scatter import scatter, scatter_object_list
+from .gather import gather
 from .batch_isend_irecv import batch_isend_irecv, P2POp
 from .reduce_scatter import reduce_scatter
 from .all_to_all import alltoall, alltoall_single

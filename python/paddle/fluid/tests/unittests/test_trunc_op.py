@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -35,10 +36,10 @@ class TestTruncOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5, check_eager=True)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5)
 
 
 class TestFloatTruncOp(TestTruncOp):
@@ -88,6 +89,36 @@ class TestTruncAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [20, 20], 'bool')
             self.assertRaises(TypeError, paddle.trunc, x)
+
+
+class TestTruncFP16OP(TestTruncOp):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestTruncBF16OP(OpTest):
+    def setUp(self):
+        self.python_api = paddle.trunc
+        self.op_type = "trunc"
+        self.dtype = np.uint16
+        np.random.seed(2021)
+        x = np.random.random((20, 20)).astype("float32")
+        out = np.trunc(x)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=1e-5)
 
 
 if __name__ == "__main__":

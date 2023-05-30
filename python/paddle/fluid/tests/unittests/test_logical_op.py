@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,17 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 
 import paddle
-from paddle.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 from paddle.static import Executor, Program, program_guard
 
 SUPPORTED_DTYPES = [
     bool,
     np.int8,
     np.int16,
+    np.uint16,
     np.int32,
     np.int64,
     np.float16,
@@ -119,6 +121,9 @@ def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 def np_data_generator(np_shape, dtype, *args, **kwargs):
     if dtype == bool:
         return np.random.choice(a=[True, False], size=np_shape).astype(bool)
+    elif dtype == np.uint16:
+        x = np.random.uniform(0.0, 1.0, np_shape).astype(np.float32)
+        return convert_float_to_uint16(x)
     else:
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
@@ -133,9 +138,8 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
-                if (
-                    not (paddle.is_compiled_with_cuda() and use_gpu)
-                    and data_type == np.float16
+                if not (paddle.is_compiled_with_cuda() and use_gpu) and (
+                    data_type in [np.float16, np.uint16]
                 ):
                     continue
                 meta_data['x_np'] = np_data_generator(
@@ -178,11 +182,11 @@ def test_type_error(unit_test, use_gpu, type_str_map):
         if binary_op:
             if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            if not _non_static_mode():
+            if not in_dynamic_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
-            if not _non_static_mode():
+            if not in_dynamic_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
@@ -194,8 +198,8 @@ def test_type_error(unit_test, use_gpu, type_str_map):
             paddle.is_compiled_with_cuda()
             and use_gpu
             and (
-                type_str_map['x'] == np.float16
-                or type_str_map['y'] == np.float16
+                type_str_map['x'] in [np.float16, np.uint16]
+                or type_str_map['y'] in [np.float16, np.uint16]
             )
         ):
             continue

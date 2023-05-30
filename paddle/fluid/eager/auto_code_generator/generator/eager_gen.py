@@ -48,7 +48,7 @@ from codegen_utils import (
 # But because there is no check in old dygraph mode, in order to
 # keeping the code compatible, here we also skip inplace check in new dygraph temporarily,
 # and this will be fixed in the futrue.
-inplace_check_blacklist = set(["assign_out_"])
+inplace_check_blacklist = {"assign_out_"}
 
 # Black Ops list that's NO NEED to apply code generation
 black_ops_list = [
@@ -57,7 +57,24 @@ black_ops_list = [
     "conv2d_grad_grad",
     "add_n",
     "add_n_grad",
+    "sync_batch_norm_",
 ]
+
+
+# white ops list whose kernel can be deleted after performance analysis
+# original kernel and its derivative kernel can be deleted when composite_grad
+# kernel performs same to it.
+prim_white_list = [
+    "matmul_double_grad",
+    "subtract_double_grad",
+    "silu_double_grad",
+]
+
+# dict of special api that forward api's output will affect bacward api's output
+# bacward api's output usually affected by backward api's input
+special_prune_dict = {
+    "matmul_grad": {"x": "grad_y", "y": "grad_x"},
+}
 
 
 #########
@@ -260,6 +277,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 {}
   // Forward API Call
 {}
+  // Check NaN and Inf if needed
+{}
   // Get Outputs
 {}
   VLOG(4) << \"Finish AD API: {}";
@@ -279,6 +298,10 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
 
     // Node Construction
 {}
+    // Set for forward trace
+  if (FLAGS_check_nan_inf) {{
+    grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+  }}
     // SetAttributes if needed
 {}
     // Set TensorWrappers for Forward Inputs if needed
@@ -323,6 +346,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "glog/logging.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/fused_backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -338,7 +362,8 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
-DECLARE_bool(check_nan_inf);
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(check_nan_inf);
 {}
 """
 
@@ -365,8 +390,10 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
-DECLARE_bool(check_nan_inf);
-DECLARE_string(tensor_operants_mode);
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(check_nan_inf);
+PHI_DECLARE_string(tensor_operants_mode);
 {}
 {}
 """
@@ -466,7 +493,23 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
     }}
   }}"""
 
-CHECK_NAN_AND_INF_TEMPLATE = """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
+CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
+  if (FLAGS_check_nan_inf) {{
+      egr::CheckTensorHasNanOrInf("{}", {});
+  }}
+"""
+
+CHECK_NAN_AND_INF_TEMPLATE_BACKWARD = """
+  if (FLAGS_check_nan_inf) {{
+     try{{
+       egr::CheckTensorHasNanOrInf("{}", {});
+     }} catch(...) {{
+       LOG(WARNING) << "There are nan/inf in ({})";
+       auto forward_trace = GetForwardTrace();
+       std::cout<<forward_trace<<std::endl;
+       std::rethrow_exception(std::current_exception());
+     }}
+  }}
 """
 
 inplace_optional_out_type_map = {
@@ -977,12 +1020,25 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
             grad_node_out_list.append(name)
             is_optional = name in self.optional_inputs
+            is_special_forward_api = (
+                True if forward_api_name in special_prune_dict else False
+            )
+
             if is_optional:
                 set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
             else:
-                set_grad_out_meta = (
-                    f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
-                )
+                if (
+                    is_special_forward_api
+                    and name in special_prune_dict[forward_api_name]
+                ):
+                    meta_name = GetAutoGradMetaName(
+                        special_prune_dict[forward_api_name][name]
+                    )
+                    set_grad_out_meta = f"{indent}grad_node->SetGradOutMeta({name}, {meta_name}, {pos});"
+                else:
+                    set_grad_out_meta = (
+                        f"{indent}grad_node->SetGradOutMeta({name}, {pos});"
+                    )
 
             set_grad_out_meta_list.append(set_grad_out_meta)
         set_grad_out_meta_str = "\n".join(set_grad_out_meta_list)
@@ -1395,7 +1451,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         )
 
         # Check Nan and Inf
-        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE_FORWARD.format(
             function_name, "api_result"
         )
 
@@ -1644,6 +1700,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     before_log_str,
                     forward_call_str,
+                    check_nan_inf_str,
                     get_outputs_str,
                     forward_api_name,
                     check_inplace_str,
@@ -1834,10 +1891,27 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
-        if is_composite_grad_api and next_grad_node_creation_str != '':
-            next_grad_node_creation_str = f"""
+        if is_composite_grad_api:
+            if next_grad_node_creation_str != '':
+                next_grad_node_creation_str = f"""
  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
     {next_grad_node_creation_str}
+ }}
+  """
+            else:
+                if not (
+                    self.grad_api_contents["backward_op"] in prim_white_list
+                    or is_invoke_forward_api
+                ):
+
+                    next_grad_node_creation_str = f"""
+ if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+    if(trace_backward) {{
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have any grad\"
+    \"op. If you don't intend calculating higher order\"
+    \"derivatives, please set `create_graph`to False.\"));
+  }}
  }}
   """
 
@@ -1859,6 +1933,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
   }}"""
+
         return (
             has_higher_order_node,
             is_invoke_forward_api,
@@ -2255,13 +2330,33 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   """
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
-            grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+            if composite_grad_api_name in prim_white_list:
+                grad_function_call_str = f"""
+{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+    }}
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+    }}
+  """
+            else:
+                grad_function_call_str = f"""
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
+    }}
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+    }}
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
-  VLOG(4) << "Fused api {backward_api_name} is called ";
+  {indent}VLOG(4) << "Fused api {backward_api_name} is called ";
   }}
   """
         else:
@@ -2269,8 +2364,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
 
         # Check Nan and Inf
-        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
-            backward_api_name, "returns"
+        check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE_BACKWARD.format(
+            backward_api_name, "returns", backward_api_name
         )
 
         # Prepare for Node Creation if Necessary

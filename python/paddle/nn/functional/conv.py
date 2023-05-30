@@ -16,10 +16,9 @@ from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
-    is_compiled_with_npu,
     is_compiled_with_rocm,
 )
-from paddle.fluid.framework import _global_flags, in_dygraph_mode
+from paddle.fluid.framework import _global_flags
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
@@ -98,7 +97,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
             padding_algorithm = "EXPLICIT"
             padding = convert_to_list(padding, num_dims, 'padding')
         else:
-            raise ValueError("In valid padding: {}".format(padding))
+            raise ValueError(f"In valid padding: {padding}")
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
@@ -130,7 +129,7 @@ def _conv_nd(
 ):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dygraph_mode() and op_type == "conv2d":
+    if in_dynamic_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
             weight,
@@ -159,7 +158,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dygraph_mode() and op_type == "depthwise_conv2d":
+    if in_dynamic_mode() and op_type == "depthwise_conv2d":
         pre_bias = _C_ops.depthwise_conv2d(
             x,
             weight,
@@ -178,7 +177,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dygraph_mode() and op_type == "conv3d":
+    if in_dynamic_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
             x,
             weight,
@@ -237,7 +236,7 @@ def _conv_nd(
             "data_format": data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], op_type
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], op_type
         )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -465,17 +464,10 @@ def conv1d(
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
-
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
                 x,
@@ -715,7 +707,7 @@ def conv2d(
         else:
             use_cudnn = False
     else:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             pre_bias = _C_ops.conv2d(
                 x,
                 weight,
@@ -754,13 +746,6 @@ def conv2d(
                 return pre_bias
 
     use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
 
     if (
         is_compiled_with_cuda()
@@ -1027,7 +1012,7 @@ def conv1d_transpose(
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = getattr(_C_ops, op_type)(
             x,
             weight,
@@ -1308,7 +1293,7 @@ def conv2d_transpose(
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         op = (
             _C_ops.conv2d_transpose
             if op_type == 'conv2d_transpose'
@@ -1344,7 +1329,10 @@ def conv2d_transpose(
             'data_format': data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'conv2d_transpose'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'conv2d_transpose',
         )
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
@@ -1788,7 +1776,7 @@ def conv3d_transpose(
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pre_bias = _C_ops.conv3d_transpose(
             x,
             weight,

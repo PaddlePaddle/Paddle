@@ -6,14 +6,111 @@
   kernel :
     func : all
 
-- op : embedding_with_eltwise_add_xpu
-  args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
-  output: Tensor
+- op : all_gather
+  args : (Tensor x, int ring_id = 0, int nranks=0)
+  output : Tensor(out)
   infer_meta :
-    func: EmbeddingWithEltwiseAddXPUInferMeta
-  kernel:
-    func: embedding_with_eltwise_add_xpu
-    data_type: tables
+    func : AllGatherInferMeta
+    param: [x, nranks]
+  kernel :
+    func : all_gather
+    param: [x, nranks]
+
+- op : all_reduce
+  args : (Tensor x, int ring_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllReduceInferMeta
+    param: [x]
+  kernel :
+    func : all_reduce
+    param: [x, reduce_type]
+
+- op : arange
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeInferMeta
+  kernel :
+    func : arange
+  data_transform :
+    skip_transform : start, end, step
+
+- op : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : assign
+  optional : x
+  inplace : (x -> out)
+  backward : assign_grad
+
+- op : assign_value
+  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
+  output : Tensor(out)
+  infer_meta :
+    func : AssignValueInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : assign_value
+    param : [shape, dtype, values]
+    data_type : dtype
+
+- op : broadcast
+  args : (Tensor x, int ring_id = 0, int root = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistBroadcastInferMeta
+    param: [x]
+  kernel :
+    func : broadcast
+    param: [x, root]
+
+- op : decode_jpeg
+  args : (Tensor x, str mode = "unchanged")
+  output : Tensor(out)
+  infer_meta :
+    func : DecodeJpegInferMeta
+    param : [x, mode]
+  kernel :
+    func : decode_jpeg
+    param : [x, mode]
+
+- op : deformable_conv
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64)
+  output : Tensor(out)
+  infer_meta :
+    func : DeformableConvInferMeta
+  kernel :
+    func : deformable_conv
+    data_type : x
+  backward : deformable_conv_grad
+
+- op : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
+  output : Tensor
+  infer_meta :
+    func : EmbeddingInferMeta
+    param : [x, weight, padding_idx]
+  kernel :
+    func : embedding {dense, dense -> dense}
+           sparse_weight_embedding {dense, selected_rows -> dense}
+    param : [x, weight, padding_idx]
+    data_type : weight
+  backward : embedding_grad
+
+- op : empty
+  args : (IntArray shape = {}, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : empty
+    param : [shape, dtype]
+    data_type : dtype
 
 - op : equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -27,15 +124,16 @@
     backend : x
     force_backend : force_cpu
 
-- op : fc_xpu
-  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
-  output : Tensor(out), Tensor(out_max)
+- op : eye
+  args : (Scalar(int64_t) num_rows, Scalar(int64_t) num_columns = -1, DataType dtype = DataType::FLOAT32)
+  output : Tensor(out)
   infer_meta :
-    func : FcXPUInferMeta
+    func : EyeInferMeta
+    param : [num_rows, num_columns, dtype]
   kernel :
-    func : fc_xpu
-    data_type : x
-  optional : bias, x_max
+    func : eye
+    param : [num_rows, num_columns, dtype]
+    data_type : dtype
 
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
@@ -47,23 +145,15 @@
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
 
-- op : fused_multi_transformer_xpu
-  args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkvw, Tensor[] qkvw_max, Tensor[] qkv_bias, Tensor[] out_linear_w, Tensor[] out_linear_wmax, Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_weight, Tensor[] ffn1_weight_max, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_weight_max, Tensor[] ffn2_bias, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id)
-  output : Tensor(out), Tensor[](cache_kv_out){out_linear_w.size()}
+- op : gaussian
+  args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
+  output: Tensor(out)
   infer_meta :
-    func : FusedMultiTransformerXpuInferMeta
+    func : GaussianInferMeta
+    param : [shape, mean, std, seed, dtype]
   kernel :
-    func : fused_multi_transformer_xpu
-    data_type : x
-  optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask
-
-- op : generate_sequence_xpu
-  args : (Tensor x, DataType dtype)
-  output : Tensor
-  infer_meta :
-    func : GenerateSequenceXPUInferMeta
-  kernel :
-    func : generate_sequence_xpu
+    func : gaussian
+    param : [shape, mean, std, seed, dtype]
     data_type : dtype
 
 - op : greater_equal
@@ -90,6 +180,17 @@
     backend : x
     force_backend : force_cpu
 
+- op : hardswish
+  args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardswish
+    param : [x]
+  backward : hardswish_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -114,15 +215,30 @@
     backend : x
     force_backend : force_cpu
 
-- op : multi_encoder_xpu
-  args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
-  output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
+- op : linspace
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  output : Tensor(out)
   infer_meta :
-    func : MultiEncoderXPUInferMeta
+    func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
   kernel :
-    func : multi_encoder_xpu
+    func : linspace
+    param: [start, stop, number, dtype]
+    data_type : dtype
+  data_transform :
+    skip_transform : start, stop, number
+
+- op : matrix_rank
+  args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankStaticInferMeta
+    param : [x, tol_tensor, use_default_tol, hermitian]
+  optional : tol_tensor
+  kernel :
+    func : matrix_rank {dense -> dense},
+           matrix_rank_tol {dense, dense -> dense}
     data_type : x
-  optional : mask, x_fp16, out_fp16
 
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
@@ -136,6 +252,102 @@
     backend : x
     force_backend : force_cpu
 
+- op : one_hot
+  args : (Tensor x, Scalar(int) depth = -1, DataType dtype = DataType::FLOAT32, bool allow_out_of_range = false)
+  output : Tensor(out)
+  infer_meta :
+    func : OneHotRawInferMeta
+  kernel :
+    func : one_hot_raw
+    data_type : x
+
+- op : p_recv
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
+  output : Tensor(out)
+  infer_meta :
+    func : PRecvInferMeta
+    param : [peer, dtype]
+  kernel :
+    func : p_recv
+    param : [peer, dtype, dynamic_shape]
+    data_type : dtype
+
+- op : p_recv_array
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : PRecvArrayInferMeta
+    param : [peer, dtype, out_shape]
+  kernel :
+    func : p_recv_array
+    param : [peer, dtype, out_shape]
+
+- op : randint
+  args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : RandintInferMeta
+    param : [low, high, shape, dtype]
+  kernel :
+    func : randint
+    param : [low, high, shape, dtype]
+    data_type : dtype
+
+- op : randperm
+  args : (int n, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : RandpermInferMeta
+    param : [n, dtype]
+  kernel :
+    func : randperm
+    param : [n, dtype]
+    data_type : dtype
+
+- op : reduce
+  args : (Tensor x, int ring_id = 0, int root_id = 0, int reduce_type = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param: [x]
+  kernel :
+    func : reduce
+    param: [x, root_id, reduce_type]
+
+- op : reduce_scatter
+  args : (Tensor x, int ring_id = 0, int nranks = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceScatterInferMeta
+    param: [x, nranks]
+  kernel :
+    func : reduce_scatter
+    param: [x, nranks]
+
+- op : relu6
+  args : (Tensor x, float threshold = 6.0f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6_raw
+  backward : relu6_grad
+
+- op : rnn
+  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
+  output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
+  infer_meta:
+    func: RnnInferMeta
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+  kernel:
+    func: rnn
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+    data_type: x
+  backward: rnn_grad
+  optional : sequence_length, dropout_state_out
+  intermediate : reserve
+
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}
@@ -143,3 +355,98 @@
     func : ShareBufferInferMeta
   kernel :
     func : share_buffer
+
+- op : softmax
+  args : (Tensor x, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxInferMeta
+  kernel :
+    func : softmax
+  inplace : (x -> out)
+  backward : softmax_grad
+
+- op : strided_slice
+  args : (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={})
+  output : Tensor
+  infer_meta :
+    func : StridedSliceRawInferMeta
+  kernel :
+    func : strided_slice
+    param : [x, axes, starts, ends, strides]
+  backward : strided_slice_grad
+
+- op : tril_indices
+  args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilIndicesInferMeta
+    param : [rows, cols, offset, dtype]
+  kernel :
+    func : tril_indices
+    param : [rows, cols, offset, dtype]
+    data_type : dtype
+
+- op : tril_triu
+  args : (Tensor x, int diagonal = 0, bool lower = false)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilTriuInferMeta
+  kernel :
+    func : tril_triu
+  backward : tril_triu_grad
+
+- op : triu_indices
+  args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)
+  output : Tensor(out)
+  infer_meta :
+    func : TriuIndicesInferMeta
+    param : [row, col, offset, dtype]
+  kernel :
+    func : triu_indices
+    param : [row, col, offset, dtype]
+    data_type : dtype
+
+- op : truncated_gaussian_random
+  args : (int[] shape, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype=DataType::FLOAT32)
+  output : Tensor(out)
+  infer_meta :
+    func : TruncatedGaussianRandomInferMeta
+    param : [shape, mean, std, seed, dtype]
+  kernel :
+    func : truncated_gaussian_random
+    param : [shape, mean, std, seed, dtype]
+    data_type : dtype
+
+- op : uniform
+  args : (IntArray shape = {},  DataType dtype = DataType::FLOAT32, Scalar min = -1.0f, Scalar max = 1.0f, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UniformRandomInferMeta
+    param: [shape, dtype]
+  kernel :
+    func : uniform
+    param: [shape, dtype, min, max, seed]
+    data_type : dtype
+
+- op : unique
+  args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  optional : indices, counts
+  infer_meta :
+    func : UniqueRawInferMeta
+  kernel :
+    func : unique
+    data_type : x
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+    param : [x, indices, ksize, strides, paddings,output_size, data_format]
+  kernel:
+    func: unpool
+    data_type: x
+    param : [x, indices, ksize, strides, paddings,output_size, data_format]
+  backward: unpool_grad

@@ -102,7 +102,7 @@ __global__ void KernelUpdateParam(int C,
 }
 
 template <typename T>
-class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class DataNormKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -154,7 +154,7 @@ class DataNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class DataNormGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<phi::DenseTensor>("X");
@@ -267,9 +267,8 @@ class DataNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(data_norm,
-                        ops::DataNormKernel<phi::GPUContext, float>,
-                        ops::DataNormKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(data_norm_grad,
-                        ops::DataNormGradKernel<phi::GPUContext, float>,
-                        ops::DataNormGradKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm, GPU, ALL_LAYOUT, ops::DataNormKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    data_norm_grad, GPU, ALL_LAYOUT, ops::DataNormGradKernel, float, double) {}

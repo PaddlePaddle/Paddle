@@ -109,7 +109,7 @@ __global__ void gpu_compute_remove_accidental_hits(const int size,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -235,7 +235,7 @@ class SampleLogitsCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -287,9 +287,15 @@ class SampleLogitsGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(sample_logits,
-                        ops::SampleLogitsCUDAKernel<float>,
-                        ops::SampleLogitsCUDAKernel<double>);
-REGISTER_OP_CUDA_KERNEL(sample_logits_grad,
-                        ops::SampleLogitsGradCUDAKernel<float>,
-                        ops::SampleLogitsGradCUDAKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(sample_logits,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SampleLogitsCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(sample_logits_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SampleLogitsGradCUDAKernel,
+                          float,
+                          double) {}

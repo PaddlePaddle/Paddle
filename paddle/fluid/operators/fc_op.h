@@ -51,7 +51,7 @@ inline void FCOutputSize(const framework::DDim& in_dims,
   out_dims.push_back(w_dims1);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {

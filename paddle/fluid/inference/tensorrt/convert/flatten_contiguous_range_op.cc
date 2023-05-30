@@ -12,15 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 /*
@@ -31,7 +22,7 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid flatten_contiguous_range op to tensorrt layer";
+    VLOG(3) << "convert a flatten_contiguous_range op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -39,7 +30,6 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
     const int dims = input_dim.nbDims;
     int start_axis = PADDLE_GET_CONST(int, op_desc.GetAttr("start_axis"));
     int stop_axis = PADDLE_GET_CONST(int, op_desc.GetAttr("stop_axis"));
-
     nvinfer1::IShuffleLayer* layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     if (!engine_->with_dynamic_shape()) {
@@ -67,32 +57,38 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
       }
       layer->setReshapeDimensions(flatten_dim);
     } else {
-      if (start_axis < 0) start_axis += dims;
-      if (stop_axis < 0) stop_axis += dims;
-
-      int dim_prod = 1;
-      int dim_negative = 0;
       nvinfer1::Dims flatten_dim;
-      flatten_dim.nbDims = dims - (stop_axis - start_axis);
       bool need_slice = false;
-      for (int i = 0, j = 0; i < dims; ++i) {
-        int dim_i = input_dim.d[i];
-        if (start_axis <= i && i <= stop_axis) {
-          if (dim_i < 0) {
-            need_slice = true;
-            break;
+      if (dims == 0) {
+        flatten_dim.nbDims = 1;
+        flatten_dim.d[0] = 1;
+      } else {
+        if (start_axis < 0) start_axis += dims;
+        if (stop_axis < 0) stop_axis += dims;
+
+        int dim_prod = 1;
+        int dim_negative = 0;
+
+        flatten_dim.nbDims = dims - (stop_axis - start_axis);
+        for (int i = 0, j = 0; i < dims; ++i) {
+          int dim_i = input_dim.d[i];
+          if (start_axis <= i && i <= stop_axis) {
+            if (dim_i < 0) {
+              need_slice = true;
+              break;
+            }
+            dim_prod *= dim_i;
+            if (i == stop_axis) {
+              flatten_dim.d[j++] = dim_prod;
+            }
+          } else {
+            if (dim_i < 0) dim_negative++;
+            if (dim_negative > 1) {
+              need_slice = true;
+              break;
+            }
+            flatten_dim.d[j++] = input_dim.d[i];
           }
-          dim_prod *= dim_i;
-          if (i == stop_axis) {
-            flatten_dim.d[j++] = dim_prod;
-          }
-        } else {
-          if (dim_i < 0) dim_negative++;
-          if (dim_negative > 1) {
-            need_slice = true;
-            break;
-          }
-          flatten_dim.d[j++] = input_dim.d[i];
         }
       }
 

@@ -143,9 +143,6 @@ class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
         self.x_shape = []
         self.y_shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def init_shape(self):
@@ -161,9 +158,6 @@ class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
     def init_shape(self):
@@ -178,9 +172,6 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return -1 * grad_out * out / y
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -460,7 +451,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                     check_args.insert(0, self.place)
                     self.check_grad_with_place(*check_args, **check_kwargs)
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestElementwiseDivFP16Op.__name__ = cls_name
     globals()[cls_name] = TestElementwiseDivFP16Op
 

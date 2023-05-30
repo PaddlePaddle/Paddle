@@ -19,10 +19,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import framework
+from paddle import framework, nn
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 from paddle.nn import Layer
 
@@ -88,7 +87,7 @@ class TransformerNet(Layer):
 
 class EmbeddingPipe(EmbeddingNet):
     def forward(self, tensors):
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_mode():
             stable, x = tensors
             return stable, super().forward(x)
         else:
@@ -97,7 +96,7 @@ class EmbeddingPipe(EmbeddingNet):
 
 class TransformerNetPipe(TransformerNet):
     def forward(self, tensors):
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_mode():
             stable, x = tensors
             output = super().forward(x)
             return stable, output
@@ -110,7 +109,7 @@ class CriterionPipe(Layer):
         super().__init__()
 
     def forward(self, out, label):
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_mode():
             out = out[-1]
         loss = out.mean()
         return loss
@@ -180,7 +179,7 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
-            input_ = (x, x) if framework.in_dygraph_mode() else x
+            input_ = (x, x) if framework.in_dynamic_mode() else x
             loss = model.train_batch([input_, x], optimizer, scheduler)
             # TODO(shenliang03) add utest for loss
             print("loss: ", loss)

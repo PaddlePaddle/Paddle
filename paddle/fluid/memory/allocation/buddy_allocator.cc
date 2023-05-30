@@ -16,13 +16,12 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/phi/core/flags.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_MLU) || defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define USE_DEVICE
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -57,15 +56,11 @@ BuddyAllocator::BuddyAllocator(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     init_allocate_size_func_ = &platform::GpuInitAllocSize;
     re_allocate_size_func_ = &platform::GpuReallocSize;
-#elif defined(PADDLE_WITH_ASCEND_CL)
-    init_allocate_size_func_ = &platform::NPUInitAllocSize;
-    re_allocate_size_func_ = &platform::NPUReallocSize;
-#elif defined(PADDLE_WITH_MLU)
-    init_allocate_size_func_ = &platform::MLUInitAllocSize;
-    re_allocate_size_func_ = &platform::MLUReallocSize;
 #endif
   }
 #endif
+  VLOG(1) << "min_chunk_size_: " << min_chunk_size_
+          << ", max_chunk_size_:" << max_chunk_size_;
 }
 
 BuddyAllocator::~BuddyAllocator() {
@@ -235,7 +230,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;
   void* p = system_allocator_->Alloc(&index, size);
 
-  VLOG(10) << "Allocated " << p << " from system allocator.";
+  VLOG(8) << "Allocated " << p << " size " << size << " from system allocator.";
 
   if (p == nullptr) return nullptr;
 
@@ -257,12 +252,6 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   allocate_bytes = DeviceAllocateSize(
       &platform::GpuInitAllocSize, &platform::GpuReallocSize, request_bytes);
-#elif defined(PADDLE_WITH_ASCEND_CL)
-  allocate_bytes = DeviceAllocateSize(
-      &platform::NPUInitAllocSize, &platform::NPUReallocSize, request_bytes);
-#elif defined(PADDLE_WITH_MLU)
-  allocate_bytes = DeviceAllocateSize(
-      &platform::MLUInitAllocSize, &platform::MLUReallocSize, request_bytes);
 #endif
 #endif
 
@@ -271,8 +260,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 
   if (p == nullptr) return pool_.end();
 
-  VLOG(10) << "Creating and inserting new block " << p
-           << " from system allocator";
+  VLOG(8) << "Creating and inserting new block " << p << " size "
+          << allocate_bytes << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->Init(&cache_,
                                      MemoryBlock::FREE_CHUNK,

@@ -15,8 +15,8 @@
 import numpy as np
 
 import paddle
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -102,7 +102,7 @@ def all_gather_object(object_list, obj, group=None):
             # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "all_gather_object doesn't support static graph mode."
 
     tensor, len_of_tensor = convert_object_to_tensor(obj)

@@ -18,8 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.tensor as tensor
+from paddle import fluid, tensor
 from paddle.fluid import Program, program_guard
 
 
@@ -30,7 +29,7 @@ class TestUnbind(unittest.TestCase):
         x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(
@@ -88,7 +87,7 @@ class TestLayersUnbind(unittest.TestCase):
         x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
         [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
         input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
         [res_1, res_2] = exe.run(
@@ -200,8 +199,33 @@ class TestUnbindOp4(TestUnbindOp):
         self.out[1] = self.out[1].reshape((3, 2))
 
 
+class TestUnbindFP16Op(OpTest):
+    def setUp(self):
+        paddle.disable_static()
+        self.op_type = "unbind"
+        self.python_api = paddle.unbind
+        self.dtype = self.get_dtype()
+        self.axis = 0
+        self.num = 3
+        x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
+        self.out = np.split(x, self.num, self.axis)
+        self.inputs = {'X': x}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {
+            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+        }
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+
+    def get_dtype(self):
+        return np.float16
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestUnbindBF16Op(OpTest):
     def setUp(self):
+        paddle.disable_static()
         self._set_op_type()
         self.python_api = paddle.unbind
         self.dtype = self.get_dtype()
@@ -246,6 +270,27 @@ class TestUnbindAxisError(unittest.TestCase):
                 tensor.unbind(input=x, axis=2)
 
             self.assertRaises(ValueError, test_invalid_axis)
+
+
+class TestUnbindBool(unittest.TestCase):
+    def test_bool(self):
+        x = paddle.to_tensor([[True, True], [False, False]])
+        xs = paddle.unbind(x, axis=0)
+        self.assertEqual(len(xs), 2)
+        np.testing.assert_array_equal(xs[0].numpy(), [True, True])
+
+
+class TestUnbindGradOptionalInput(unittest.TestCase):
+    def test_grad(self):
+        a = paddle.zeros([3, 2, 3])
+        a.stop_gradient = False
+        x, y = a.unbind(-2)
+        x.sum().backward()  # y_grad is empty
+
+        a_grad = a.detach()
+        a_grad[:, 0, :] = 1
+
+        np.testing.assert_array_equal(a.grad.numpy(), a_grad.numpy())
 
 
 if __name__ == '__main__':

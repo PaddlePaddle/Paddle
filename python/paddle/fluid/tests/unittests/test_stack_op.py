@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
@@ -37,7 +37,7 @@ class TestStackOpBase(OpTest):
     def get_x_names(self):
         x_names = []
         for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
+            x_names.append(f'x{i}')
         return x_names
 
     def setUp(self):
@@ -63,12 +63,10 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            self.get_x_names(), 'Y', check_eager=True, check_prim=True
-        )
+        self.check_grad(self.get_x_names(), 'Y', check_prim=True)
 
 
 class TestStackOp1(TestStackOpBase):
@@ -107,6 +105,47 @@ class TestStackOp_ZeroDim(TestStackOpBase):
         self.enable_cinn = False
 
 
+class TestStackFP16Op(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+
+
+class TestStackFP16Op1(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.num_inputs = 8
+
+
+class TestStackFP16Op2(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.num_inputs = 10
+
+
+class TestStackFP16Op3(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = -1
+
+
+class TestStackFP16Op4(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = -4
+
+
+class TestStackFP16Op5(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = 1
+
+
+class TestStackFP16Op6(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = 3
+
+
 class TestStackBF16Op(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -120,7 +159,7 @@ class TestStackBF16Op(OpTest):
     def get_x_names(self):
         x_names = []
         for i in range(self.num_inputs):
-            x_names.append('x{}'.format(i))
+            x_names.append(f'x{i}')
         return x_names
 
     def setUp(self):
@@ -149,11 +188,11 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         # concat_grad unspport bfloat16 dtype, skip check_prim
-        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
+        self.check_grad(self.get_x_names(), 'Y')
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

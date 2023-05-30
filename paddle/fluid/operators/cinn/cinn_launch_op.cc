@@ -17,12 +17,15 @@
 #include <functional>
 #include <vector>
 
+#include "cinn/common/target.h"
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/phi/core/generator.h"
 
-DECLARE_bool(cudnn_deterministic);
+PHI_DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace operators {
@@ -84,6 +87,17 @@ void SetCinnRuntimeFlags() {
   VLOG(4) << "Set FLAGS_cinn_cudnn_deterministic to "
           << FLAGS_cudnn_deterministic;
   ::cinn::runtime::SetCinnCudnnDeterministic(FLAGS_cudnn_deterministic);
+}
+
+template <>
+void SetCinnRandomSeed<phi::CPUContext>() {
+  auto seed = phi::DefaultCPUGenerator()->GetCurrentSeed();
+  ::cinn::runtime::RandomSeed::GetOrSet(seed);
+}
+
+void SetCinnTarget(const ::cinn::common::Target& target) {
+  VLOG(4) << "Set CINN compile target to " << target;
+  ::cinn::runtime::CurrentTarget::SetCurrentTarget(target);
 }
 
 }  // namespace details
@@ -188,5 +202,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 /* see [Why use single type kernel] */
-REGISTER_OP_CPU_KERNEL(cinn_launch,
-                       ops::CinnLaunchOpKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    cinn_launch, CPU, ALL_LAYOUT, ops::CinnLaunchOpKernel, float) {}

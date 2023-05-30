@@ -20,9 +20,8 @@ from .framework import (
     Variable,
     default_main_program,
     default_startup_program,
-    _non_static_mode,
+    in_dygraph_mode,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
 )
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
@@ -88,25 +87,15 @@ class LayerHelperBase:
 
         """
         if isinstance(value, np.ndarray):
-            if _in_eager_without_dygraph_check():
-                return core.eager.Tensor(
-                    value,
-                    _current_expected_place(),
-                    False,
-                    False,
-                    name if name else None,
-                    True,
-                )
-            else:
-                py_var = core.VarBase(
-                    value=value,
-                    name=name if name else '',
-                    persistable=False,
-                    place=_current_expected_place(),
-                    zero_copy=False,
-                )
-                return py_var
-        elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
+            return core.eager.Tensor(
+                value,
+                _current_expected_place(),
+                False,
+                False,
+                name if name else None,
+                True,
+            )
+        elif isinstance(value, (Variable, core.eager.Tensor)):
             return value
         else:
             raise TypeError(
@@ -420,7 +409,7 @@ class LayerHelperBase:
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if _non_static_mode():
+        if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             # check parameter name
@@ -538,7 +527,7 @@ class LayerHelperBase:
             initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if _non_static_mode():
+        if in_dygraph_mode():
             initializer(var, self.main_program.global_block())
         else:
             self.startup_program.global_block().create_var(

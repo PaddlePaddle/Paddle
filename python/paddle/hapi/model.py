@@ -24,16 +24,17 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import _get_paddle_place, _non_static_mode
+from paddle.fluid.framework import _get_paddle_place
+from paddle.framework import in_dynamic_mode
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -58,10 +59,10 @@ def to_list(value):
 
 def to_numpy(var):
     assert isinstance(
-        var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
+        var, (Variable, fluid.core.eager.Tensor)
     ), "not a variable"
-    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
-        return var.numpy()
+    if isinstance(var, fluid.core.eager.Tensor):
+        return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
 
@@ -156,33 +157,6 @@ def init_communicator(
                 'ring_id': 0,
             },
         )
-    elif core.is_compiled_with_npu():
-        hccl_id_var = block.create_var(
-            name=fluid.unique_name.generate('hccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW,
-        )
-        block.append_op(
-            type='c_gen_hccl_id',
-            inputs={},
-            outputs={'Out': hccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints,
-            },
-        )
-        block.append_op(
-            type='c_comm_init_hccl',
-            inputs={'X': hccl_id_var},
-            outputs={},
-            attrs={
-                'rank': rank,
-                'ring_id': 0,
-                'device_id': int(os.getenv("FLAGS_selected_npus")),
-                'rank_ids': nranks,
-            },
-        )
     elif core.is_compiled_with_xpu():
         bkcl_id_var = block.create_var(
             name=fluid.unique_name.generate('bkcl_id'),
@@ -204,6 +178,37 @@ def init_communicator(
         block.append_op(
             type='c_comm_init',
             inputs={'X': bkcl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
+    elif (
+        paddle.distributed.ParallelEnv().device_type
+        in paddle.device.get_all_custom_device_type()
+    ):
+        xccl_id_var = block.create_var(
+            name=fluid.unique_name.generate('xccl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_xccl_id',
+            inputs={},
+            outputs={'Out': xccl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': xccl_id_var},
             outputs={},
             attrs={
                 'nranks': nranks,
@@ -252,7 +257,7 @@ def prepare_distributed_context(place=None):
             exe = fluid.Executor(place)
             exe.run(communicator_prog)
 
-        if fluid._non_static_mode():
+        if in_dynamic_mode():
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
@@ -494,7 +499,7 @@ class StaticGraphAdapter:
 
             assert (
                 var.name in converted_state
-            ), "variable [{}] is not in optimizer state file".format(var.name)
+            ), f"variable [{var.name}] is not in optimizer state file"
             self._set_var(var, converted_state[var.name])
 
     def _set_var(self, var, ndarray):
@@ -695,7 +700,7 @@ class StaticGraphAdapter:
                         amp_lists=amp_lists,
                         use_pure_fp16=self._amp_level == "O2",
                         use_fp16_guard=self._use_fp16_guard,
-                        **self._amp_configs
+                        **self._amp_configs,
                     )
 
                 self.model._optimizer.minimize(self._loss_endpoint)
@@ -827,7 +832,7 @@ class DynamicGraphAdapter:
         with paddle.amp.auto_cast(
             enable=self._amp_level != 'O0',
             **self._amp_custom_lists,
-            level=self._amp_level
+            level=self._amp_level,
         ):
             if self._nranks > 1:
                 outputs = self.ddp_model(*[to_variable(x) for x in inputs])
@@ -1166,7 +1171,7 @@ class Model:
         self._test_dataloader = None
         self.stop_training = False
 
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             if not isinstance(inputs, (list, tuple, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or tuple or dict, and couldn't be None."
@@ -1178,7 +1183,7 @@ class Model:
         self._labels = self._verify_spec(labels)
 
         # init backend
-        if fluid._non_static_mode():
+        if in_dynamic_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -1234,7 +1239,7 @@ class Model:
 
         """
         loss = self._adapter.train_batch(inputs, labels, update)
-        if fluid._non_static_mode() and self._input_info is None:
+        if in_dynamic_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1288,7 +1293,7 @@ class Model:
 
         """
         loss = self._adapter.eval_batch(inputs, labels)
-        if fluid._non_static_mode() and self._input_info is None:
+        if in_dynamic_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1337,7 +1342,7 @@ class Model:
 
         """
         loss = self._adapter.predict_batch(inputs)
-        if fluid._non_static_mode() and self._input_info is None:
+        if in_dynamic_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1482,9 +1487,7 @@ class Model:
         def _check_match(key, param):
             state = param_state.get(key, None)
             if state is None:
-                raise ValueError(
-                    "{} is not found in the providing file.".format(key)
-                )
+                raise ValueError(f"{key} is not found in the providing file.")
             if list(state.shape) != list(param.shape):
                 raise ValueError(
                     "{} receives a shape {}, but the expected shape is {}.".format(
@@ -1500,7 +1503,7 @@ class Model:
                 '.pdparams',
                 '.pdopt',
                 '.pdmodel',
-            ], "Unknown postfix {} from weights".format(ext)
+            ], f"Unknown postfix {ext} from weights"
             return path
 
         path = _strip_postfix(path)
@@ -1513,9 +1516,7 @@ class Model:
                 match_res = _check_match(key, param)
             except ValueError as err:
                 if skip_mismatch:
-                    warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err))
-                    )
+                    warnings.warn(f"Skip loading for {key}. " + str(err))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
@@ -1527,7 +1528,7 @@ class Model:
         )
 
         # TODO: support save/load scaler state in static graph
-        if _non_static_mode():
+        if in_dynamic_mode():
             scaler_state = None
             if hasattr(self, '_scaler') and self._scaler is not None:
                 if os.path.exists(path + '.pdscaler'):
@@ -1644,7 +1645,7 @@ class Model:
                 )
 
             if 'use_fp16_guard' in amp_config_key_set:
-                if _non_static_mode():
+                if in_dynamic_mode():
                     raise ValueError(
                         "'use_fp16_guard' is supported in static graph mode only."
                     )
@@ -1702,7 +1703,7 @@ class Model:
                 paddle.distributed.ParallelEnv().nranks > 1
                 and not _parallel_context_initialized
             ):
-                if fluid._non_static_mode():
+                if in_dynamic_mode():
                     main_prog_seed = fluid.default_main_program().random_seed
                     startup_prog_seed = (
                         fluid.default_startup_program().random_seed
@@ -1731,7 +1732,7 @@ class Model:
         for metric in to_list(metrics):
             assert isinstance(
                 metric, Metric
-            ), "{} is not sub class of Metric".format(metric.__class__.__name__)
+            ), f"{metric.__class__.__name__} is not sub class of Metric"
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
@@ -2228,7 +2229,7 @@ class Model:
             None
         """
 
-        if fluid._non_static_mode():
+        if in_dynamic_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
                 if self._input_info is None:  # No provided or inferred
@@ -2428,7 +2429,7 @@ class Model:
                 if (
                     shapes is not None
                     and dtypes is not None
-                    and fluid._non_static_mode()
+                    and in_dynamic_mode()
                 ):
                     out_specs = [
                         Input(name=n, dtype=dtypes[i], shape=shapes[i])

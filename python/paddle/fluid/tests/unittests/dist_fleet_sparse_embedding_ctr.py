@@ -21,7 +21,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def fake_ctr_reader():
@@ -92,11 +92,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         elif initializer == 2:
             init = paddle.nn.initializer.Normal()
         else:
-            raise ValueError("error initializer code: {}".format(initializer))
+            raise ValueError(f"error initializer code: {initializer}")
 
         entry = paddle.distributed.ShowClickEntry("show", "click")
         dnn_layer_dims = [128, 64, 32]
-        dnn_embedding = fluid.contrib.layers.sparse_embedding(
+        dnn_embedding = paddle.static.nn.sparse_embedding(
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             is_test=inference,
@@ -120,7 +120,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embbding = fluid.contrib.layers.sparse_embedding(
+        lr_embedding = paddle.static.nn.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
             is_test=inference,
@@ -132,7 +132,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         )
 
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
+            input=lr_embedding, pool_type="sum"
         )
         merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 

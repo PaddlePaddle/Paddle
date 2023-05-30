@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ResNetUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -223,7 +223,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ResNetUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -419,7 +419,11 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION >= 8000
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(resnet_unit, ops::ResNetUnitKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(resnet_unit_grad,
-                        ops::ResNetUnitGradKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(
+    resnet_unit, GPU, ALL_LAYOUT, ops::ResNetUnitKernel, plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ResNetUnitGradKernel,
+                          plat::float16) {}
 #endif

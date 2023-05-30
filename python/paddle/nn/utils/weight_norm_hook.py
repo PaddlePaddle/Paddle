@@ -16,7 +16,7 @@ from paddle import _C_ops
 
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...framework import in_dygraph_mode
+from ...framework import in_dynamic_mode
 
 __all__ = []
 
@@ -25,7 +25,7 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
     if len(x.shape) == 1:
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, norm = _C_ops.norm(x, 1 if axis is None else axis, epsilon, False)
         return paddle.squeeze(norm, axis=[axis])
 
@@ -242,4 +242,4 @@ def remove_weight_norm(layer, name='weight'):
             del layer._forward_pre_hooks[k]
             return layer
 
-    raise ValueError("weight_norm of '{}' not found in {}".format(name, layer))
+    raise ValueError(f"weight_norm of '{name}' not found in {layer}")

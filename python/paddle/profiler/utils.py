@@ -184,7 +184,7 @@ def wrap_optimizers():
     global _has_optimizer_wrapped
     if _has_optimizer_wrapped:
         return
-    import paddle.optimizer as optimizer
+    from paddle import optimizer
 
     for classname in optimizer.__all__:
         if classname != 'Optimizer':

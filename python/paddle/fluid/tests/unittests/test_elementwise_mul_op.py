@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class ElementwiseMulOp(OpTest):
@@ -93,14 +93,60 @@ class ElementwiseMulOp(OpTest):
         pass
 
 
+class TestComplexElementwiseMulOpWithCheckGrad(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.python_api = paddle.multiply
+        self.public_python_api = paddle.multiply
+        self.dtype = np.complex128
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.if_enable_cinn()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis}
+
+    def init_input_output(self):
+        self.x = np.array([3 + 4j, 1 + 2j]).astype(self.dtype)
+        self.y = np.array([3 + 4j, 5 + 6j]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+        )
+
+
 class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
@@ -109,18 +155,12 @@ class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestBF16ElementwiseMulOp(OpTest):
@@ -156,10 +196,20 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out', check_prim=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_prim=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_prim=True,
+        )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_prim=True,
+        )
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -356,6 +406,39 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
 
     def if_enable_cinn(self):
         pass
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(not self.use_mkldnn))
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
+
+    def test_check_grad_ingore_x(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
+
+    def test_check_grad_ingore_y(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+        )
 
 
 class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):

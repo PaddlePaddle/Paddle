@@ -15,13 +15,14 @@
 from .fs import LocalFS  # noqa: F401
 from .fs import HDFSClient  # noqa: F401
 from .ps_util import DistributedInfer  # noqa: F401
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 from paddle.distributed import fleet
 
 import paddle
 from . import log_util  # noqa: F401
 from . import hybrid_parallel_util  # noqa: F401
 from . import tensor_parallel_utils  # noqa: F401
+from . import mix_precision_utils  # noqa: F401
 
 
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]  # noqa

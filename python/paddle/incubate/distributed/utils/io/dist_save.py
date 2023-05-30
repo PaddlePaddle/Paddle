@@ -18,7 +18,7 @@ import sys
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import dygraph_only
 

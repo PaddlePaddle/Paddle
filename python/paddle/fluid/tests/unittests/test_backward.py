@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.static as static
+from paddle import fluid, static
+from paddle.fluid import backward
 
 
 class BackwardNet:
@@ -188,16 +188,14 @@ class TestBackward(unittest.TestCase):
 class SimpleNet(BackwardNet):
     def __init__(self):
         super().__init__()
-        self.stop_gradient_grad_vars = set(
-            [
-                'x_no_grad@GRAD',
-                'x2_no_grad@GRAD',
-                'x3_no_grad@GRAD',
-                'label_no_grad@GRAD',
-            ]
-        )
+        self.stop_gradient_grad_vars = {
+            'x_no_grad@GRAD',
+            'x2_no_grad@GRAD',
+            'x3_no_grad@GRAD',
+            'label_no_grad@GRAD',
+        }
         self.no_grad_vars = set()
-        self.params_names = set(['w2v', 'fc_predict.b_0', 'fc_w'])
+        self.params_names = {'w2v', 'fc_predict.b_0', 'fc_w'}
         self.op_path = [
             'lookup_table_v2',
             'lookup_table_v2',  # embedding
@@ -450,6 +448,19 @@ class TestBackwardUninitializedVariable(unittest.TestCase):
                 fetch_list=[loss],
             )
             print(out)
+
+
+class TestStripGradSuffix(unittest.TestCase):
+    def test_strip_grad_suffix(self):
+        cases = (
+            ('x@GRAD', 'x'),
+            ('x@GRAD@GRAD', 'x'),
+            ('x@GRAD@RENAME@1', 'x'),
+            ('x@GRAD_slice_0@GRAD', 'x@GRAD_slice_0'),
+            ('grad/grad/x@GRAD@RENAME@block0@1@GRAD', 'x'),
+        )
+        for input_, desired in cases:
+            self.assertEqual(backward._strip_grad_suffix_(input_), desired)
 
 
 if __name__ == '__main__':

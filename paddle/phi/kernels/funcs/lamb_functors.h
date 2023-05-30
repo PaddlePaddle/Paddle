@@ -18,8 +18,8 @@ limitations under the License. */
 #include <Eigen/Dense>
 #include <vector>
 
-#include "paddle/fluid/memory/buffer.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
@@ -398,12 +398,12 @@ struct LambBetaPowUpdateFunctor {
 
 template <typename MT>
 struct LambBetaPowUpdateFunctor<MT, /*NeedUpdateBetaPow=*/false> {
-  void SetBetaPows(const MT* beta1pow,
-                   const MT* beta2pow,
-                   MT* beta1pow_out,
-                   MT* beta2pow_out,
-                   MT beta1,
-                   MT beta2) {}
+  void SetBetaPows(const MT* beta1pow UNUSED,
+                   const MT* beta2pow UNUSED,
+                   MT* beta1pow_out UNUSED,
+                   MT* beta2pow_out UNUSED,
+                   MT beta1 UNUSED,
+                   MT beta2 UNUSED) {}
   HOSTDEVICE void UpdateBetaPow(size_t) const {}
 };
 

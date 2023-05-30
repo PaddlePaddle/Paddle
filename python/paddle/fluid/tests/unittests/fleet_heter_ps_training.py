@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 fluid.disable_dygraph()
 
@@ -80,7 +80,7 @@ def net(batch_size=4, lr=0.01):
         dnn_out = dnn_pool
 
         # build lr model
-        lr_embbding = fluid.layers.embedding(
+        lr_embedding = fluid.layers.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
@@ -91,7 +91,7 @@ def net(batch_size=4, lr=0.01):
             is_sparse=True,
         )
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
+            input=lr_embedding, pool_type="sum"
         )
 
     with fluid.device_guard("gpu"):

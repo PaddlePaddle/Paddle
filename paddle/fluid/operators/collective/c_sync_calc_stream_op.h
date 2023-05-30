@@ -30,11 +30,12 @@ class CSyncCalcStreamOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CSyncCalcStreamKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -46,27 +47,6 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
     platform::GpuStreamSync(dev_ctx->stream());
 
-#elif defined(PADDLE_WITH_ASCEND_CL) && !defined(_WIN32)
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on npu place only for now."));
-
-    auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::NPUStreamSync(dev_ctx->stream());
-
-#elif defined(PADDLE_WITH_CNCL)
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on mlu place only for now."));
-
-    auto dev_ctx = static_cast<platform::MLUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::MLUStreamSync(dev_ctx->stream());
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),

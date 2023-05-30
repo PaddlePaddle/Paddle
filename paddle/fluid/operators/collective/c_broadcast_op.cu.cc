@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -92,12 +92,16 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_broadcast,
-                        ops::CBroadcastOpCUDAKernel<float>,
-                        ops::CBroadcastOpCUDAKernel<double>,
-#if NCCL_VERSION_CODE >= 21000
-                        ops::CBroadcastOpCUDAKernel<plat::bfloat16>,
+PD_REGISTER_STRUCT_KERNEL(c_broadcast,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CBroadcastOpCUDAKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+                          plat::bfloat16,
 #endif
-                        ops::CBroadcastOpCUDAKernel<int>,
-                        ops::CBroadcastOpCUDAKernel<int64_t>,
-                        ops::CBroadcastOpCUDAKernel<plat::float16>);
+                          plat::float16) {
+}

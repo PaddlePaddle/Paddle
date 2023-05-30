@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 class TestFlattenOp(OpTest):
@@ -31,7 +32,8 @@ class TestFlattenOp(OpTest):
         self.stop_axis = -1
         self.skip_cinn()
         self.init_test_case()
-        self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
+        self.init_test_dtype()
+        self.init_input_data()
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
@@ -42,10 +44,20 @@ class TestFlattenOp(OpTest):
         self.enable_cinn = True
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_prim=True)
+        if str(self.dtype) in {"float16", "uint16"}:
+            self.check_output_with_place(
+                core.CUDAPlace(0), no_check_set=["XShape"], check_prim=True
+            )
+        else:
+            self.check_output(no_check_set=["XShape"], check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        if str(self.dtype) in {"float16", "uint16"}:
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ["X"], "Out", check_prim=True
+            )
+        else:
+            self.check_grad(["X"], "Out", check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -58,6 +70,42 @@ class TestFlattenOp(OpTest):
             "start_axis": self.start_axis,
             "stop_axis": self.stop_axis,
         }
+
+    def init_test_dtype(self):
+        self.dtype = "float64"
+
+    def init_input_data(self):
+        if str(self.dtype) != "uint16":
+            x = np.random.random(self.in_shape).astype(self.dtype)
+        else:
+            x = np.random.random(self.in_shape).astype("float32")
+            x = convert_float_to_uint16(x)
+
+        self.inputs = {"X": x}
+
+
+class TestFlattenFP32Op(TestFlattenOp):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op(TestFlattenOp):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16Op(TestFlattenOp):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
 
 
 class TestFlattenOp_1(TestFlattenOp):
@@ -74,6 +122,30 @@ class TestFlattenOp_1(TestFlattenOp):
         }
 
 
+class TestFlattenFP32Op_1(TestFlattenOp_1):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op_1(TestFlattenOp_1):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16Op_1(TestFlattenOp_1):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
+
+
 class TestFlattenOp_2(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -86,6 +158,30 @@ class TestFlattenOp_2(TestFlattenOp):
             "start_axis": self.start_axis,
             "stop_axis": self.stop_axis,
         }
+
+
+class TestFlattenFP32Op_2(TestFlattenOp_2):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op_2(TestFlattenOp_2):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16Op_2(TestFlattenOp_2):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
 
 
 class TestFlattenOp_3(TestFlattenOp):
@@ -102,6 +198,30 @@ class TestFlattenOp_3(TestFlattenOp):
         }
 
 
+class TestFlattenFP32Op_3(TestFlattenOp_3):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op_3(TestFlattenOp_3):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16Op_3(TestFlattenOp_3):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
+
+
 class TestFlattenOp_4(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -114,6 +234,30 @@ class TestFlattenOp_4(TestFlattenOp):
             "start_axis": self.start_axis,
             "stop_axis": self.stop_axis,
         }
+
+
+class TestFlattenFP32Op_4(TestFlattenOp_4):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op_4(TestFlattenOp_4):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16Op_4(TestFlattenOp_4):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
 
 
 class TestFlattenOp_5(TestFlattenOp):
@@ -130,7 +274,31 @@ class TestFlattenOp_5(TestFlattenOp):
         }
 
 
-class TestFlattenOp_6(TestFlattenOp):
+class TestFlattenFP32Op_5(TestFlattenOp_5):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op_5(TestFlattenOp_5):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16Op_5(TestFlattenOp_5):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
+
+
+class TestFlattenOp_ZeroDim(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = ()
         self.start_axis = 0
@@ -147,6 +315,20 @@ class TestFlattenOp_6(TestFlattenOp):
         }
 
 
+class TestFlattenFP32Op_ZeroDim(TestFlattenOp_ZeroDim):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16Op_ZeroDim(TestFlattenOp_ZeroDim):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
@@ -159,6 +341,30 @@ class TestFlattenOpSixDims(TestFlattenOp):
             "start_axis": self.start_axis,
             "stop_axis": self.stop_axis,
         }
+
+
+class TestFlattenFP32OpSixDims(TestFlattenOpSixDims):
+    def init_test_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
+class TestFlattenFP16OpSixDims(TestFlattenOpSixDims):
+    def init_test_dtype(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFlattenBF16OpSixDims(TestFlattenOpSixDims):
+    def init_test_dtype(self):
+        self.dtype = "uint16"
 
 
 class TestFlatten2OpError(unittest.TestCase):

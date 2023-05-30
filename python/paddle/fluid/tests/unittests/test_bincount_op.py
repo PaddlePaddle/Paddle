@@ -20,8 +20,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
 import paddle.inference as paddle_infer
+from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode
 
 paddle.enable_static()

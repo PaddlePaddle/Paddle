@@ -15,7 +15,7 @@
 import argparse
 import json
 
-import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
+from paddle.fluid.proto.profiler import profiler_pb2
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument(
@@ -194,14 +194,6 @@ class Timeline:
                             % (k, mevent.device_id),
                             pid,
                         )
-                elif mevent.place == profiler_pb2.MemEvent.NPUPlace:
-                    if (k, mevent.device_id, "NPU") not in self._mem_devices:
-                        pid = self._allocate_pid()
-                        self._mem_devices[(k, mevent.device_id, "NPU")] = pid
-                        self._chrome_trace.emit_pid(
-                            "memory usage on %s:npu:%d" % (k, mevent.device_id),
-                            pid,
-                        )
                 if (k, 0, "CPU") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "CPU")] = pid
@@ -219,12 +211,6 @@ class Timeline:
                     self._mem_devices[(k, 0, "CUDAPinnedPlace")] = pid
                     self._chrome_trace.emit_pid(
                         "memory usage on %s:cudapinnedplace:%d" % (k, 0), pid
-                    )
-                if (k, 0, "NPU") not in self._mem_devices:
-                    pid = self._allocate_pid()
-                    self._mem_devices[(k, 0, "NPU")] = pid
-                    self._chrome_trace.emit_pid(
-                        "memory usage on %s:npu:%d" % (k, 0), pid
                     )
 
     def _allocate_events(self):
@@ -259,7 +245,6 @@ class Timeline:
             profiler_pb2.MemEvent.CPUPlace: "CPU",
             profiler_pb2.MemEvent.CUDAPlace: "GPU",
             profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace",
-            profiler_pb2.MemEvent.NPUPlace: "NPU",
         }
         for k, profile_pb in self._profile_dict.items():
             mem_list = []

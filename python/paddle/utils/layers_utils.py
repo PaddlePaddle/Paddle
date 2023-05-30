@@ -21,13 +21,13 @@ from weakref import WeakKeyDictionary
 import paddle
 
 from ..fluid.data_feeder import check_dtype, convert_dtype
-from ..fluid.framework import Block, Variable, _non_static_mode
+from ..fluid.framework import Block, Variable, in_dygraph_mode
 
 
 def convert_to_list(value, n, name, dtype=int):
     """
     Converts a single numerical type or iterable of numerical
-    types into an numerical type list.
+    types into a numerical type list.
 
     Arguments:
       value: The value to validate and convert. Could an int, or any iterable
@@ -152,8 +152,7 @@ def _yield_value(iterable):
         for key in _sorted(iterable):
             yield iterable[key]
     else:
-        for value in iterable:
-            yield value
+        yield from iterable
 
 
 def _yield_flat_nest(nest):
@@ -291,7 +290,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: %s\n\nSecond structure: %s." % (nest1, nest2)
+            "First structure: {}\n\nSecond structure: {}.".format(nest1, nest2)
         )
     if not is_sequence_nest1:
         return  # finished checking
@@ -314,8 +313,8 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
                         keys1, keys2
                     )
                 )
-    nest1_as_sequence = [n for n in _yield_value(nest1)]
-    nest2_as_sequence = [n for n in _yield_value(nest2)]
+    nest1_as_sequence = list(_yield_value(nest1))
+    nest2_as_sequence = list(_yield_value(nest2))
     for n1, n2 in zip(nest1_as_sequence, nest2_as_sequence):
         _recursive_assert_same_structure(n1, n2, check_types)
 
@@ -455,14 +454,9 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = list(
-            map(
-                lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
-                shape,
-            )
-        )
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.numpy().astype(int).tolist()
+        shape = shape.astype(int).tolist()
     return shape
 
 
@@ -499,7 +493,7 @@ def try_set_static_shape_tensor(tensor, shape):
     # (-1, 2)
 
     """
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         # static graph mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
@@ -522,7 +516,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     # (-1, 2)
 
     """
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         try:
             if shape_tensor.op is not None:
                 generate_op = shape_tensor.op

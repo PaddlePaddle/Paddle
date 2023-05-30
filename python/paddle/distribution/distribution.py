@@ -26,8 +26,8 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import tensor
+from paddle.framework import in_dynamic_mode
 
 
 class Distribution:
@@ -134,7 +134,11 @@ class Distribution:
         Returns:
             Tensor: generated sample data shape
         """
-        return sample_shape + self._batch_shape + self._event_shape
+        return (
+            tuple(sample_shape)
+            + tuple(self._batch_shape)
+            + tuple(self._event_shape)
+        )
 
     def _validate_args(self, *args):
         """
@@ -173,11 +177,11 @@ class Distribution:
         tmp = 0.0
 
         for arg in args:
-            if isinstance(arg, float):
-                arg = [arg]
-            if not isinstance(arg, (list, tuple, np.ndarray, tensor.Variable)):
+            if not isinstance(
+                arg, (float, list, tuple, np.ndarray, tensor.Variable)
+            ):
                 raise TypeError(
-                    "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".format(
+                    "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
                         type(arg)
                     )
                 )
@@ -217,7 +221,7 @@ class Distribution:
         Returns:
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if value.dtype != param.dtype and convert_dtype(value.dtype) in [
                 'float32',
                 'float64',

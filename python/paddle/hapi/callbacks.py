@@ -71,7 +71,7 @@ def config_callbacks(
 class CallbackList:
     def __init__(self, callbacks=None):
         # copy
-        self.callbacks = [c for c in callbacks]
+        self.callbacks = list(callbacks)
         self.params = {}
         self.model = None
 
@@ -103,12 +103,12 @@ class CallbackList:
 
     def on_begin(self, mode, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_begin'.format(mode)
+        name = f'on_{mode}_begin'
         self._call(name, logs)
 
     def on_end(self, mode, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_end'.format(mode)
+        name = f'on_{mode}_end'
         self._call(name, logs)
 
     def on_epoch_begin(self, epoch=None, logs=None):
@@ -119,12 +119,12 @@ class CallbackList:
 
     def on_batch_begin(self, mode, step=None, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_batch_begin'.format(mode)
+        name = f'on_{mode}_batch_begin'
         self._call(name, step, logs)
 
     def on_batch_end(self, mode, step=None, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_batch_end'.format(mode)
+        name = f'on_{mode}_batch_end'
         self._call(name, step, logs)
 
 
@@ -605,14 +605,14 @@ class ModelCheckpoint(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         if self._is_save() and self.epoch % self.save_freq == 0:
-            path = '{}/{}'.format(self.save_dir, epoch)
-            print('save checkpoint at {}'.format(os.path.abspath(path)))
+            path = f'{self.save_dir}/{epoch}'
+            print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)
 
     def on_train_end(self, logs=None):
         if self._is_save():
-            path = '{}/final'.format(self.save_dir)
-            print('save checkpoint at {}'.format(os.path.abspath(path)))
+            path = f'{self.save_dir}/final'
+            print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)
 
 
@@ -1055,7 +1055,7 @@ class WandbCallback(Callback):
         dir=None,
         mode=None,
         job_type=None,
-        **kwargs
+        **kwargs,
     ):
         self.wandb = try_import(
             "wandb",

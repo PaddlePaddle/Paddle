@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
@@ -100,7 +100,7 @@ def shortcut(input, ch_out, stride):
 
 def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     # The number of first 1x1 convolutional channels for each bottleneck build block
-    # was halved to reduce the compution cost.
+    # was halved to reduce the computation cost.
     conv0 = conv_bn_layer(
         input=input, num_filters=num_filters, filter_size=1, act='relu'
     )
@@ -185,7 +185,7 @@ def optimizer(learning_rate=0.01):
             learning_rate=learning_rate, step_each_epoch=2, epochs=1
         ),
         momentum=0.9,
-        regularization=fluid.regularizer.L2Decay(1e-4),
+        regularization=paddle.regularizer.L2Decay(1e-4),
     )
     return optimizer
 

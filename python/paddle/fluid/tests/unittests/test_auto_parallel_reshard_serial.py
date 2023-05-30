@@ -19,12 +19,10 @@ if os.getenv("CUDA_VISIBLE_DEVICES", None) is None:
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
 from paddle.distributed.fleet import auto
@@ -82,6 +80,7 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(train_program, start_program):
+    print("mlp_forward outer", flush=True)
     with static.program_guard(
         train_program, start_program
     ), utils.unique_name.guard():
@@ -101,6 +100,7 @@ def mlp_forward(train_program, start_program):
         elif _global_parallel_strategy == "dp":
             auto.shard_tensor(input, _global_process_mesh, ["x", None])
         else:
+            print("mlp_forward inner", flush=True)
             auto.shard_tensor(input, _global_process_mesh, [None, None])
 
         mlp = MLPLayer(
@@ -130,9 +130,13 @@ def get_dist_prog_with_parallelizer(
     dist_strategy.semi_auto = True
     fleet.init(is_collective=True, strategy=dist_strategy)
 
+    print("mlp_forward before", flush=True)
+
     loss, train_program, startup_program = mlp_forward(
         train_program, startup_program
     )
+
+    print("mlp_forward after", flush=True)
 
     optimizer = paddle.fluid.optimizer.AdamOptimizer(
         learning_rate=0.00001,
@@ -182,8 +186,12 @@ def check_send_recv_result(dist_main_prog, rank_id):
     return send_result and recv_result
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMLPReshard(unittest.TestCase):
     def test_mlp_serial(self):
+        print("################-0")
         global _global_parallel_strategy
         _global_parallel_strategy = None
         global _global_process_mesh

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 from test_softmax_op import stable_softmax
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import Program, core, program_guard
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
@@ -153,7 +153,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
 
     def test_check_output(self):
         if self.python_api is not None:
-            self.check_output(check_eager=True)
+            self.check_output()
         self.check_output()
 
     def test_check_grad(self):
@@ -163,7 +163,6 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
                     ["Logits"],
                     "Loss",
                     max_relative_error=5e-1,
-                    check_eager=True,
                 )
             # HIP will have accuracy fail when using float32 in CPU place
             self.check_grad(["Logits"], "Loss", max_relative_error=5e-1)
@@ -173,7 +172,6 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
                     ["Logits"],
                     "Loss",
                     numeric_grad_delta=0.001,
-                    check_eager=True,
                 )
             self.check_grad(["Logits"], "Loss", numeric_grad_delta=0.001)
 
@@ -480,6 +478,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
     def setUp(self):
         self.initParams()
         self.op_type = "softmax_with_cross_entropy"
+        self.dtype = np.float16
 
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
         date_type = np.float32 if core.is_compiled_with_rocm() else np.float64
@@ -510,14 +509,12 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
     def test_check_output(self):
         if self.python_api is not None:
-            self.check_output(atol=1e-2, check_eager=True)
-        self.check_output(atol=1e-2)
+            self.check_output()
+        self.check_output()
 
     def test_check_grad(self):
         if self.python_api is not None:
-            self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.1, check_eager=True
-            )
+            self.check_grad(["Logits"], "Loss")
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
@@ -537,9 +534,7 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
 
     def test_check_grad(self):
         if self.python_api is not None:
-            self.check_grad(
-                ["Logits"], "Loss", max_relative_error=0.1, check_eager=True
-            )
+            self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
@@ -562,20 +557,18 @@ class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):
 
     def test_check_output(self):
         if self.python_api is not None:
-            self.check_output(check_eager=True)
+            self.check_output()
         self.check_output()
 
     def test_check_grad(self):
         if core.is_compiled_with_rocm():
             # HIP will have accuracy fail when using float32 in CPU place
             if self.python_api is not None:
-                self.check_grad(
-                    ["Logits"], "Loss", max_relative_error=0.1, check_eager=True
-                )
+                self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
             self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
         else:
             if self.python_api is not None:
-                self.check_grad(["Logits"], "Loss", check_eager=True)
+                self.check_grad(["Logits"], "Loss")
             self.check_grad(["Logits"], "Loss")
 
 
@@ -923,6 +916,35 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
         self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
         self.logits[:, :, 0, :] = -1000.0
         self.use_softmax = True
+
+
+class TestSoftmaxWithCrossEntropyOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_input_dims1():
+                with paddle_static_guard():
+                    # the input dims of cross_entropy can't be 0,
+                    x1 = paddle.static.data(name='x1', shape=[], dtype="int32")
+                    lab1 = paddle.static.data(
+                        name='lab1', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                    )
+                    paddle.nn.functional.softmax_with_cross_entropy(x1, lab1)
+
+            self.assertRaises(ValueError, test_input_dims1)
+
+            def test_input_dims2():
+                with paddle_static_guard():
+                    # "input_dims - 1 != label_dims and input_dims != label_dims" must be false.
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 3, 4, 5], dtype="int32"
+                    )
+                    lab2 = paddle.static.data(
+                        name='lab2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                    )
+                    paddle.nn.functional.softmax_with_cross_entropy(x2, lab2)
+
+            self.assertRaises(ValueError, test_input_dims2)
 
 
 if __name__ == "__main__":

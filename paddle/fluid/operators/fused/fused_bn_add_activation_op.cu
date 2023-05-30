@@ -23,10 +23,11 @@
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
@@ -36,10 +37,15 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-class FusedBatchNormAddActKernel<phi::GPUContext, T>
+class FusedBatchNormAddActKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if CUDNN_VERSION < 7401
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The fused_bn_add_activation operator is not supported on GPU "
+        "when CUDNN version < 7.4.1"));
+#endif
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
@@ -208,10 +214,15 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
 };
 
 template <typename T>
-class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
+class FusedBatchNormAddActGradKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if CUDNN_VERSION < 7401
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The fused_bn_add_activation operator is not supported on GPU "
+        "when CUDNN version < 7.4.1"));
+#endif
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
@@ -362,13 +373,15 @@ class FusedBatchNormAddActGradKernel<phi::GPUContext, T>
 }  // namespace operators
 }  // namespace paddle
 
-#if CUDNN_VERSION >= 7401
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    fused_bn_add_activation,
-    ops::FusedBatchNormAddActKernel<phi::GPUContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fused_bn_add_activation_grad,
-    ops::FusedBatchNormAddActGradKernel<phi::GPUContext, plat::float16>);
-#endif
+PD_REGISTER_STRUCT_KERNEL(fused_bn_add_activation,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedBatchNormAddActKernel,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_bn_add_activation_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedBatchNormAddActGradKernel,
+                          plat::float16) {}

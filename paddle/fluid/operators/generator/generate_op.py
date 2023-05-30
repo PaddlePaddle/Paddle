@@ -23,6 +23,7 @@ from filters import (
     cartesian_prod_mapping,
     delete_last_underline,
     find_optinal_inputs_name,
+    get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -40,6 +41,7 @@ from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
+    is_only_composite_op,
     is_scalar,
     is_vec,
     supports_inplace,
@@ -66,10 +68,12 @@ env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
+env.filters["get_infer_var_type_func"] = get_infer_var_type_func
 env.filters["assert_dense_or_sr"] = assert_dense_or_sr
 env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
+env.tests["only_composite_op"] = is_only_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -163,6 +167,16 @@ def add_composite_info(ops, backward_ops, backward_op_dict):
         else:
             op["backward_composite"] = None
 
+        # add whether only composite
+        if (
+            op["backward_composite"] is not None
+            and "invoke" not in backward_op_dict[op["backward"]]
+            and "kernel" not in backward_op_dict[op["backward"]]
+        ):
+            op["only_backward_composite"] = True
+        else:
+            op["only_backward_composite"] = False
+
 
 # add fluid name in ops and backward ops info
 def add_fluid_name(dict_list):
@@ -246,6 +260,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                 for param in op_item['invoke']['args'].split(',')
             ]
             return
+        elif 'composite' in op_item and 'kernel' not in op_item:
+            return
+
         op_item['infer_meta']['param'] = get_param_list_alias(
             op_item['infer_meta']['param'], args_name_map
         )
@@ -477,6 +494,15 @@ def parse_get_expected_kerneltype(
     for op_comp_map in op_fluid_list:
         if 'get_expected_kernel_type' in op_comp_map:
             fw_name = op_comp_map['op'].split('(')[0].strip()
+            # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
+            new_get_expected_kernel_type_func_map = {}
+            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+                new_get_expected_kernel_type_func_map[
+                    delete_last_underline(key)
+                ] = value
+            op_comp_map[
+                'get_expected_kernel_type'
+            ] = new_get_expected_kernel_type_func_map
             if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
@@ -505,10 +531,15 @@ def parse_keep_signature(
     for op_comp_map in op_fluid_list:
         if 'manual_signature' in op_comp_map:
             for op_name in op_comp_map['manual_signature']:
-                if op_name in fw_op_dict:
-                    fw_op_dict[op_name]["manual_signature"] = True
-                elif op_name in bw_op_dict:
-                    bw_op_dict[op_name]["manual_signature"] = True
+                op_name_without_last_underline = delete_last_underline(op_name)
+                if op_name_without_last_underline in fw_op_dict:
+                    fw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
+                elif op_name_without_last_underline in bw_op_dict:
+                    bw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
 
 
 def split_ops_list(ops, backward_op_dict, split_num):

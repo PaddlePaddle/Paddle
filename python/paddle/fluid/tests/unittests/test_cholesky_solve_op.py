@@ -23,7 +23,7 @@ sys.path.append("..")
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 paddle.enable_static()

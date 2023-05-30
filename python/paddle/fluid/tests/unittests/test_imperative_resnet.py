@@ -19,7 +19,7 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.layer_helper import LayerHelper
@@ -58,7 +58,7 @@ def optimizer_setting(params, parameter_list=None):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if fluid._non_static_mode():
+        if fluid.in_dygraph_mode():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.01, parameter_list=parameter_list
             )
@@ -70,7 +70,7 @@ def optimizer_setting(params, parameter_list=None):
         #  learning_rate=fluid.layers.piecewise_decay(
         #  boundaries=bd, values=lr),
         #  momentum=0.9,
-        #  regularization=fluid.regularizer.L2Decay(1e-4))
+        #  regularization=paddle.regularizer.L2Decay(1e-4))
 
     return optimizer
 

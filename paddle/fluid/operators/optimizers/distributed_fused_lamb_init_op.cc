@@ -118,6 +118,8 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
                              ops::DistributedFusedLambInitOp,
                              ops::DistributedFusedLambInitOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb_init,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DistributedFusedLambInitOpKernel,
+                          float) {}

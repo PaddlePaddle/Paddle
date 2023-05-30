@@ -1,12 +1,12 @@
 cc_test(
   test_math_function
   SRCS test_math_function.cc
-  DEPS math_function)
+  DEPS phi)
 if(WITH_GPU)
   nv_test(
     test_math_function_gpu
     SRCS test_math_function.cu
-    DEPS math_function)
+    DEPS phi)
   nv_test(
     test_broadcast_gpu
     SRCS test_ternary_broadcast.cu
@@ -16,13 +16,13 @@ if(WITH_ROCM)
   hip_test(
     test_math_function_gpu
     SRCS test_math_function.cu
-    DEPS math_function)
+    DEPS phi)
 endif()
 
 cc_test(
   test_cpu_vec
   SRCS test_cpu_vec.cc
-  DEPS blas phi_backends)
+  DEPS phi)
 
 # For String Kernels
 cc_test(
@@ -94,14 +94,19 @@ endif()
 cc_test(
   test_cache
   SRCS test_cache.cc
-  DEPS gtest cache)
+  DEPS gtest phi)
 
 cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
-  DEPS phi_backends memory)
+  DEPS phi memory)
 
 cc_test(
   sequence_padding_test
   SRCS sequence_padding_test.cc
-  DEPS sequence_padding)
+  DEPS phi)
+
+cc_test(
+  sequence_pooling_test
+  SRCS sequence_pooling_test.cc
+  DEPS phi)

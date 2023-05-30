@@ -32,9 +32,8 @@ import warnings
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
-from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_variable_and_dtype
@@ -70,10 +69,12 @@ class _InstanceNormBase(Layer):
             assert (
                 weight_attr == bias_attr
             ), "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+        self._momentum = momentum
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._num_features = num_features
+        self._data_format = data_format
 
         if weight_attr is not False and bias_attr is not False:
             self.scale = self.create_parameter(
@@ -99,7 +100,12 @@ class _InstanceNormBase(Layer):
         self._check_input_dim(input)
 
         return instance_norm(
-            input, weight=self.scale, bias=self.bias, eps=self._epsilon
+            input,
+            weight=self.scale,
+            bias=self.bias,
+            momentum=self._momentum,
+            eps=self._epsilon,
+            data_format=self._data_format,
         )
 
     def extra_repr(self):
@@ -281,7 +287,7 @@ class InstanceNorm2D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
-                'expected 4D input (got {}D input)'.format(len(input.shape))
+                f'expected 4D input (got {len(input.shape)}D input)'
             )
 
 
@@ -368,7 +374,7 @@ class InstanceNorm3D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
-                'expected 5D input (got {}D input)'.format(len(input.shape))
+                f'expected 5D input (got {len(input.shape)}D input)'
             )
 
 
@@ -469,7 +475,7 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.group_norm(
                 input,
                 self.weight,
@@ -790,9 +796,9 @@ class _BatchNormBase(Layer):
             self._num_features, self._momentum, self._epsilon
         )
         if self._data_format != 'NCHW':
-            main_str += ', data_format={}'.format(self._data_format)
+            main_str += f', data_format={self._data_format}'
         if self._name is not None:
-            main_str += ', name={}'.format(self._name)
+            main_str += f', name={self._name}'
         return main_str
 
 
@@ -975,6 +981,29 @@ class BatchNorm(Layer):
         )
         self._variance.stop_gradient = True
 
+        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+        if (
+            _global_flags()['FLAGS_npu_storage_format']
+            and 'npu' in get_all_custom_device_type()
+        ):
+            with no_grad():
+                weight_trans = _C_ops.npu_identity(
+                    self.weight, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                bias_trans = _C_ops.npu_identity(
+                    self.bias, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                mean_trans = _C_ops.npu_identity(
+                    self._mean, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                var_trans = _C_ops.npu_identity(
+                    self._variance, 3
+                )  # ACL_FORMAT_NC1HWC0 = 3
+                weight_trans._share_underline_tensor_to(self.weight)
+                bias_trans._share_underline_tensor_to(self.bias)
+                mean_trans._share_underline_tensor_to(self._mean)
+                var_trans._share_underline_tensor_to(self._variance)
+
         self._in_place = in_place
         self._data_layout = data_layout
         self._momentum = momentum
@@ -985,7 +1014,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
@@ -1264,7 +1293,7 @@ class BatchNorm2D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 4:
             raise ValueError(
-                'expected 4D input (got {}D input)'.format(len(input.shape))
+                f'expected 4D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1374,7 +1403,7 @@ class BatchNorm3D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 5:
             raise ValueError(
-                'expected 5D input (got {}D input)'.format(len(input.shape))
+                f'expected 5D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1513,7 +1542,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
                 self._mean,
@@ -1529,39 +1558,11 @@ class SyncBatchNorm(_BatchNormBase):
             )
             return sync_batch_norm_out
 
-        elif in_dynamic_mode():
-            attrs = (
-                "momentum",
-                self._momentum,
-                "epsilon",
-                self._epsilon,
-                "is_test",
-                not self.training,
-                "data_layout",
-                self._data_format,
-                "use_mkldnn",
-                False,
-                "fuse_with_relu",
-                False,
-                "use_global_stats",
-                False,
-                'trainable_statistics',
-                False,
-            )
-            sync_batch_norm_out, _, _, _, _, _ = _legacy_C_ops.sync_batch_norm(
-                x,
-                self.weight,
-                self.bias,
-                self._mean,
-                self._variance,
-                mean_out,
-                variance_out,
-                *attrs
-            )
-            return sync_batch_norm_out
-
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'SyncBatchNorm'
+            x,
+            'input',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'SyncBatchNorm',
         )
 
         attrs = {
@@ -1743,9 +1744,9 @@ class LocalResponseNorm(Layer):
             self.size, self.alpha, self.beta, self.k
         )
         if self.data_format != 'NCHW':
-            main_str += ', data_format={}'.format(self.data_format)
+            main_str += f', data_format={self.data_format}'
         if self.name is not None:
-            main_str += ', name={}'.format(self.name)
+            main_str += f', name={self.name}'
         return main_str
 
 
@@ -1852,7 +1853,7 @@ class SpectralNorm(Layer):
 
     def forward(self, x):
         weight = x
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.spectral_norm(
                 weight,
                 self.weight_u,

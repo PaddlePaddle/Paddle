@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <random>
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/dirichlet_kernel.h"
 
 // ROCM hcc doesn't work well with using std:: in kernel functions
@@ -47,7 +48,10 @@ template <typename ScalarT, typename SamplerT>
 struct BaseSampler {
   SamplerT sampler_;
   HOSTDEVICE BaseSampler(const SamplerT& sampler) : sampler_(sampler) {}
-  HOSTDEVICE ScalarT sample() { return sampler_(); }
+  HOSTDEVICE ScalarT sample() {
+    // Sometimes convert float to float16/bfloat16
+    return static_cast<ScalarT>(sampler_());
+  }
 };
 
 // `sample_gamma` is d from Numpy's distributions.c, and add support for
@@ -83,33 +87,40 @@ HOSTDEVICE ScalarT
 sample_gamma(ScalarT alpha,
              BaseSampler<AccscalarT, UniformSamplerT> standard_uniform,
              BaseSampler<AccscalarT, NormalSamplerT> standard_normal) {
-  AccscalarT scale = 1.0f;
+  using MPTypeScalar = typename phi::dtype::MPTypeTrait<ScalarT>::Type;
+  using MPTypeAccscalar = typename phi::dtype::MPTypeTrait<AccscalarT>::Type;
+
+  MPTypeAccscalar mp_scale = static_cast<MPTypeAccscalar>(1.0f);
+  MPTypeScalar mp_alpha = static_cast<MPTypeScalar>(alpha);
 
   // Boost alpha for higher acceptance probability.
-  if (alpha < 1.0f) {
-    if (alpha == 0.f) return 0.f;
-    scale *= COMPAT_POW(1 - standard_uniform.sample(), 1.0f / alpha);
-    alpha += 1.0f;
+  if (mp_alpha < 1.0f) {
+    if (mp_alpha == 0.f) return static_cast<ScalarT>(0.f);
+    MPTypeAccscalar mp_sample =
+        static_cast<MPTypeAccscalar>(standard_uniform.sample());
+    mp_scale *= COMPAT_POW(1 - mp_sample, 1.0f / mp_alpha);
+    mp_alpha += 1.0f;
   }
 
   // This implements the acceptance-rejection method of Marsaglia and Tsang
   // (2000)
   // doi:10.1145/358407.358414
-  const AccscalarT d = alpha - 1.0f / 3.0f;
-  const AccscalarT c = 1.0f / COMPAT_SQRT(9.0f * d);
+  const MPTypeAccscalar d = mp_alpha - 1.0f / 3.0f;
+  const MPTypeAccscalar c = 1.0f / COMPAT_SQRT(9.0f * d);
   for (;;) {
-    AccscalarT x, y;
+    MPTypeAccscalar x, y;
     do {
-      x = standard_normal.sample();
+      x = static_cast<MPTypeAccscalar>(standard_normal.sample());
       y = 1.0f + c * x;
     } while (y <= 0);
-    const AccscalarT v = y * y * y;
-    const AccscalarT u = 1 - standard_uniform.sample();
-    const AccscalarT xx = x * x;
+    const MPTypeAccscalar v = y * y * y;
+    const MPTypeAccscalar u =
+        1 - static_cast<MPTypeAccscalar>(standard_uniform.sample());
+    const MPTypeAccscalar xx = x * x;
     if (u < 1.0f - 0.0331f * xx * xx)
-      return static_cast<ScalarT>(scale * d * v);
+      return static_cast<ScalarT>(mp_scale * d * v);
     if (COMPAT_LOG(u) < 0.5f * xx + d * (1.0f - v + COMPAT_LOG(v)))
-      return static_cast<ScalarT>(scale * d * v);
+      return static_cast<ScalarT>(mp_scale * d * v);
   }
 }
 

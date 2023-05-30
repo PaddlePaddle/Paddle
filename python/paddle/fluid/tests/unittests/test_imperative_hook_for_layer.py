@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 from test_imperative_lod_tensor_to_selected_rows import SimpleNet
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.dygraph.base as base
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.dygraph import base
 
 call_forward_post_hook = False
 call_forward_pre_hook = False

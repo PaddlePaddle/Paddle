@@ -17,7 +17,8 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
-from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.framework import in_dynamic_mode
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
 from paddle.nn.initializer import Constant
@@ -34,7 +35,7 @@ def _set_var_distributed(var):
 
     var.is_distributed = True
 
-    if not _non_static_mode():
+    if not in_dynamic_mode():
         # NOTE: use current_block and find_var_recursive to support while_loop
         startup_block = paddle.static.default_startup_program().current_block()
         main_block = paddle.static.default_main_program().current_block()
@@ -178,7 +179,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'embed_dim={}, seq_len={}, dropout_rate={}, epsilon={}, dtype={}{}'.format(
             self.embed_dim,
             self.seq_len,
@@ -459,7 +460,7 @@ class FusedMultiHeadAttention(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}{}'.format(
             self.embed_dim,
             self.num_heads,
@@ -689,7 +690,7 @@ class FusedFeedForward(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}{}'.format(
             self._d_model,
             self._dim_feedforward,
@@ -1074,78 +1075,78 @@ class FusedMultiTransformer(Layer):
         ln_scale_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for Attention layer_norm. For Attention layer_norm weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ln_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
             for Attention layer_norm. For Attention layer_norm bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
         qkv_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for Attention qkv computation. For Attention qkv weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         qkv_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
             for Attention qkv computation. For Attention qkv bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
         linear_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for Attention linear. For Attention linear weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         linear_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
             for Attention linear computation. For Attention linear bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ffn_ln_scale_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for FFN layer_norm. For FFN layer_norm weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ffn_ln_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
             for FFN layer_norm. For FFN layer_norm bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ffn1_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for FFN first linear. For FFN first linear weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ffn1_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
             for FFN first linear. For FFN first linear bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ffn2_weight_attrs(ParamAttr|list|tuple, optional): To specify the weight parameter property
             for FFN second linear. For FFN second linear weight, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. Default: None, which means the default weight
             parameter property is used. See usage for details in :code:`ParamAttr`.
         ffn2_bias_attrs(ParamAttr|list|tuple|bool, optional): To specify the bias parameter property
             for FFN second linear. For FFN second linear bias, if it is a list/tuple, `attrs[0]`
             would be used as `attr` for transformer layer 0, and `attrs[1]` would be used as
-            `attr` for transformer layer 1，etc. Otherwise, all layers both use it as
+            `attr` for transformer layer 1, etc. Otherwise, all layers both use it as
             `attr` to create parameters. The `False` value means the corresponding layer would
             not have trainable bias parameter. Default: None, which means the default bias
             parameter property is used. See usage for details in :code:`ParamAttr`.

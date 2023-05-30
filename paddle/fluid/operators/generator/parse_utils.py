@@ -45,7 +45,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
     1. typename name
     2. typename name = default_value
     """
-    typename, rest = [item.strip() for item in s.split(" ", 1)]
+    typename, rest = (item.strip() for item in s.split(" ", 1))
     assert (
         len(typename) > 0
     ), f"The arg typename should not be empty. Please check the args of {op_name} in yaml."
@@ -54,7 +54,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
         rest.count("=") <= 1
     ), f"There is more than 1 = in an arg in {op_name}"
     if rest.count("=") == 1:
-        name, default_value = [item.strip() for item in rest.split("=", 1)]
+        name, default_value = (item.strip() for item in rest.split("=", 1))
         assert (
             len(name) > 0
         ), f"The arg name should not be empty. Please check the args of {op_name} in yaml."
@@ -167,8 +167,13 @@ def parse_candidates(s: str) -> Dict[str, Any]:
 
 
 def parse_plain_list(s: str, sep=",") -> List[str]:
-    items = [item.strip() for item in s.strip().split(sep)]
-    return items
+    if sep == ",":
+        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(patten, s.strip())
+        items = [x.strip() for x in items]
+        return items
+    else:
+        return [item.strip() for item in s.strip().split(sep)]
 
 
 def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -340,6 +345,7 @@ def check_op_config(op_entry, op_name):
         'no_need_buffer',
         'data_transform',
         'composite',
+        'support_dygraph_mode',
     )
     infer_meta_key_set = ('func', 'param')
     kernel_key_set = (
@@ -492,8 +498,12 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "data_transform": data_trans,
     }
 
-    # invokes another op ?
-    is_base_op = "invoke" not in op_entry
+    # op should be is_base_op or is_invoke_op or is_only_composite_op
+    is_base_op = True
+    if "invoke" in op_entry:
+        is_base_op = False
+    if "composite" in op_entry and "kernel" not in op_entry:
+        is_base_op = False
 
     if is_base_op:
         # kernel
@@ -518,10 +528,11 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
                 "inplace": inplace_pairs,
             }
         )
-    else:
-        # invoke
-        invoke = parse_invoke(op_name, op_entry["invoke"])
-        op["invoke"] = invoke
+
+    # has invoke ?
+    if "invoke" in op_entry:
+        invoke_dict = parse_invoke(op_name, op_entry["invoke"])
+        op.update({"invoke": invoke_dict})
 
     # has composite ?
     if "composite" in op_entry:

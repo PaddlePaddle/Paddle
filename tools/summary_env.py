@@ -61,7 +61,7 @@ def get_os_info():
     else:
         plat = 'N/A'
         ver = 'N/A'
-    envs['os_info'] = "{0} {1}".format(plat, ver)
+    envs['os_info'] = f"{plat} {ver}"
 
 
 def get_gcc_version():
@@ -164,7 +164,7 @@ def get_cudnn_info():
     )
 
     if major != 'N/A':
-        envs['cudnn_version'] = "{0}.{1}.{2}".format(major, minor, patch_level)
+        envs['cudnn_version'] = f"{major}.{minor}.{patch_level}"
     else:
         envs['cudnn_version'] = 'N/A'
 

@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -37,10 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #ifdef WITH_WIN_DUMP_DBG
 #include <stdio.h>
 #include <time.h>
@@ -56,11 +51,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
+PHI_DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
     multiple_of_cupti_buffer_size,
     1,
@@ -187,17 +184,6 @@ void InitDevices() {
       LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
     }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-    platform::AclInstance::Instance();  // NOLINT
-    try {
-      // use user specified XPUs in single-node multi-process mode.
-      devices = platform::GetSelectedNPUDevices();
-    } catch (const std::exception &exp) {
-      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
-                      "in runtime.";
-    }
-#endif
 #ifdef PADDLE_WITH_IPU
     try {
       // use user specified IPUs.
@@ -205,14 +191,6 @@ void InitDevices() {
     } catch (const std::exception &exp) {
       LOG(WARNING)
           << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
-    }
-#endif
-#ifdef PADDLE_WITH_MLU
-    try {
-      // use user specified MLUs in single-node multi-process mode.
-      devices = platform::GetMLUSelectedDevices();
-    } catch (const std::exception &exp) {
-      LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
     }
 #endif
     InitDevices(devices);
@@ -238,12 +216,6 @@ void InitDevices(const std::vector<int> devices) {
 #endif
 #ifdef PADDLE_WITH_IPU
     places.emplace_back(platform::IPUPlace(devices[i]));
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    places.emplace_back(platform::NPUPlace(devices[i]));
-#endif
-#ifdef PADDLE_WITH_MLU
-    places.emplace_back(platform::MLUPlace(devices[i]));
 #endif
   }
   places.emplace_back(platform::CPUPlace());
@@ -274,7 +246,7 @@ void InitDevices(const std::vector<int> devices) {
     }
   }
 #endif
-  platform::DeviceContextPool::Init(places, platform::EmplaceExternalContext);
+  platform::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -332,9 +304,9 @@ void SignalHandle(const char *data, int size) {
       signal_info.replace(start_pos, useless_substr.length(), "");
       *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
-      // NOTE3: Final singal error message print.
+      // NOTE3: Final signal error message print.
       // Here does not throw an exception,
-      // otherwise it will casue "terminate called recursively"
+      // otherwise it will cause "terminate called recursively"
       std::ostringstream sout;
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";
@@ -472,6 +444,8 @@ void InitMemoryMethod() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
+    memory_method->emplace_device_contexts =
+        paddle::platform::EmplaceDeviceContexts;
     memory_method->init_devices = InitDevices;
     memory_utils.Init(std::move(memory_method));
   });

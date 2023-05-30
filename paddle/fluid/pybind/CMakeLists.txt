@@ -28,7 +28,6 @@ set(PYBIND_DEPS
     gloo_wrapper
     infer_io_utils
     heter_wrapper
-    generator
     op_version_registry
     ps_gpu_wrapper
     custom_operator
@@ -37,16 +36,13 @@ set(PYBIND_DEPS
     fleet_executor
     global_utils
     phi_utils
-    tcp_store
-    comm_context_manager
+    phi
     new_profiler
-    auto_parallel
     jit_layer
     jit_property
     prim_utils
-    operants_manager
-    phi_tensor_operants
-    static_tensor_operants)
+    static_tensor_operants
+    type_info)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -65,7 +61,7 @@ if(WITH_RPC)
       zlib
       leveldb
       snappy
-      gflags
+      phi
       glog)
 endif()
 if(WITH_GPU OR WITH_ROCM)
@@ -91,15 +87,15 @@ if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
-if(WITH_ASCEND_CL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} hccl_context)
-  set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
-endif()
-
-if(WITH_CNCL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} xccl_context)
+  if(NOT
+     (WITH_NCCL
+      OR WITH_RCCL
+      OR WITH_XPU_BKCL))
+    set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+    set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+  endif()
 endif()
 
 if(NOT WIN32)
@@ -148,7 +144,6 @@ set(PYBIND_SRCS
     auto_parallel_py.cc)
 
 if(WITH_CUSTOM_DEVICE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
@@ -177,11 +172,6 @@ if(WITH_PYTHON)
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
 set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
-
-if(WITH_ASCEND)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif()
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
@@ -249,28 +239,16 @@ endif()
 
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
-  if(WITH_ASCEND_CL)
-    set(OP_FUNCTION_GENERETOR_DEPS
-        pybind
-        proto_desc
-        executor
-        layer
-        tracer
-        engine
-        imperative_profiler
-        imperative_flag
-        ascend_wrapper)
-  else()
-    set(OP_FUNCTION_GENERETOR_DEPS
-        pybind
-        proto_desc
-        executor
-        layer
-        tracer
-        engine
-        imperative_profiler
-        imperative_flag)
-  endif()
+
+  set(OP_FUNCTION_GENERETOR_DEPS
+      pybind
+      proto_desc
+      executor
+      layer
+      tracer
+      engine
+      imperative_profiler
+      imperative_flag)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
@@ -282,16 +260,13 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
   endif()
 
-  if(WITH_ASCEND_CL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
-  endif()
-
-  if(WITH_CNCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
-  endif()
-
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
+  endif()
+
+  if(WITH_CUSTOM_DEVICE)
+    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+                                   custom_device_common_op_registry)
   endif()
 
   add_executable(eager_legacy_op_function_generator
@@ -353,6 +328,14 @@ if(WITH_PYTHON)
       "    )\n"
       ")\n"
       "exit /b 0")
+
+    if(WITH_PHI_SHARED)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
+        DEPENDS phi)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
+    endif()
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
@@ -501,7 +484,6 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
-    list(APPEND PYBIND_DEPS tensor_api)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
   endif()
@@ -519,6 +501,11 @@ if(WITH_PYTHON)
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  # cc_test do not respect deps, whole archive to link symbols that may need by test
+  if(WITH_TESTING)
+    #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")
+  endif()
 
   # TODO(zhiqiu): some symbols not exported even setting the following
   # property. Need to find a better way.

@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -33,6 +35,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                         DenseTensor *y,
                         DenseTensor *saved_mean,
                         DenseTensor *saved_variance) {
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   double epsilon = static_cast<double>(epsilon_f);
   auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -113,10 +116,10 @@ void InstanceNormKernel(const Context &dev_ctx,
 
   DenseTensor scale_tmp;
   scale_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&scale_tmp);
+  dev_ctx.template Alloc<AccT>(&scale_tmp);
   DenseTensor bias_tmp;
   bias_tmp.Resize({NxC});
-  dev_ctx.template Alloc<T>(&bias_tmp);
+  dev_ctx.template Alloc<AccT>(&bias_tmp);
 
   const int n = x.numel();
   const int block = 512;
@@ -124,24 +127,25 @@ void InstanceNormKernel(const Context &dev_ctx,
   const int max_blocks = std::max(max_threads / block, 1);
   const int grid = std::min((NxC + block - 1) / block, max_blocks);
 
-  phi::funcs::SetConstant<GPUContext, T> set_constant;
+  phi::funcs::SetConstant<GPUContext, AccT> set_constant;
   if (scale_ptr) {
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        scale_ptr->data<T>(), scale_tmp.data<T>(), N, C);
+    repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
+        scale_ptr->data<AccT>(), scale_tmp.data<AccT>(), N, C);
   } else {
-    set_constant(dev_ctx, &scale_tmp, static_cast<T>(1));
+    set_constant(dev_ctx, &scale_tmp, static_cast<AccT>(1));
   }
   if (bias_ptr) {
-    repeat_param<T><<<grid, block, 0, dev_ctx.stream()>>>(
-        bias_ptr->data<T>(), bias_tmp.data<T>(), N, C);
+    repeat_param<AccT><<<grid, block, 0, dev_ctx.stream()>>>(
+        bias_ptr->data<AccT>(), bias_tmp.data<AccT>(), N, C);
   } else {
-    set_constant(dev_ctx, &bias_tmp, static_cast<T>(0));
+    set_constant(dev_ctx, &bias_tmp, static_cast<AccT>(0));
   }
 
   auto handle = dev_ctx.cudnn_handle();
 
   DenseTensor saved_mean_tmp, saved_variance_tmp;
   phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
+
   if (saved_mean) {
     dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
     functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
@@ -156,7 +160,6 @@ void InstanceNormKernel(const Context &dev_ctx,
     saved_variance_tmp = phi::Full<BatchNormParamType<T>>(
         dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
   }
-
   auto *saved_mean_data = saved_mean
                               ? saved_mean->data<BatchNormParamType<T>>()
                               : saved_mean_tmp.data<BatchNormParamType<T>>();
@@ -225,9 +228,27 @@ void InstanceNormKernel(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(
-    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}
+PD_REGISTER_KERNEL(instance_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   phi::dtype::float16) {}
+#elif CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(instance_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #else
-PD_REGISTER_KERNEL(
-    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {}
+PD_REGISTER_KERNEL(instance_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 #endif

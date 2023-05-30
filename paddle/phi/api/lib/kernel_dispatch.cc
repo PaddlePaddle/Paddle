@@ -58,6 +58,7 @@ bool HasAllocation(const phi::TensorBase& t) {
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // See Note [ Why `SetDevice` when parsing custom place? ]
     if (t.place().GetType() == AllocationType::CUSTOM) {
       phi::DeviceManager::SetDevice(t.place());
     }
@@ -77,7 +78,10 @@ std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
   return __builtin_clz(val);
 #elif defined(_MSC_VER)
-  return __lzcnt(val);
+  // windows don't have built-in clz/ctz function
+  DWORD Index;
+  _BitScanReverse(&Index, val);
+  return (uint32_t)Index ^ 31;
 #else
   if (val == 0) {
     return 32;
@@ -128,6 +132,20 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor) {
 }
 
 Backend ParseBackend(const Place& place) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  /**
+   * [ Why `SetDevice` when parsing custom place? ]
+   * Users are able to call C++ APIs under customOP + customDevice scenario. To
+   * make sure `GetDevice` function outputs the accurate place when executing
+   * `GetDeviceContextByBackend` function in C++ API, we need to call
+   * `SetDevice` first. However, in dygraph mode, `SetDevice` is called at
+   * CPython level and calling C++ API directly in customOP cannot reach
+   * CPython. Hence, we need to manually set the device here.
+   */
+  if (place.GetType() == AllocationType::CUSTOM) {
+    phi::DeviceManager::SetDevice(place);
+  }
+#endif
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {

@@ -14,9 +14,9 @@
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.communication.group import _get_global_group
+from paddle.fluid import data_feeder
 
 
 def _all_gather_into_tensor_in_dygraph(
@@ -108,7 +108,11 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
         },
     )
     tensor_list.clear()
-    tensor_list.extend(paddle.split(out, nranks, 0))
+    # 0-D use stack/unstack while others use concat/split
+    if len(tensor.shape) == 0:
+        tensor_list.extend(paddle.unstack(out, 0))
+    else:
+        tensor_list.extend(paddle.split(out, nranks, 0))
 
 
 def all_gather(
@@ -167,7 +171,7 @@ def all_gather(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         if paddle.is_tensor(tensor_or_tensor_list):
             return _all_gather_into_tensor_in_dygraph(
                 tensor_or_tensor_list, tensor, group, sync_op, use_calc_stream

@@ -16,6 +16,8 @@
 
 #include <memory>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
@@ -28,6 +30,9 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
+template <>
+const TypeInfo<DeviceContext> TypeInfoTraits<DeviceContext, XPUContext>::kType =
+    RegisterStaticType<DeviceContext>(XPUContext::name());
 struct XPUContext::Impl {
   void SetL3Cache(int l3_size = 14155776) {
     const int MAX_XPU_NUM = 16;
@@ -40,11 +45,13 @@ struct XPUContext::Impl {
     auto selected_xpus = backends::xpu::GetXPUSelectedDevices();
     for (unsigned int i = 0; i < selected_xpus.size(); i++) {
       if (place_.GetDeviceId() == selected_xpus[i]) {
-        if (l3ptrs[place_.GetDeviceId()] == nullptr) {
-          xpu_malloc(static_cast<void**>(&l3ptrs[place_.GetDeviceId()]),
-                     l3_size,
-                     XPU_MEM_L3);
+        if (l3ptrs[place_.GetDeviceId()] != nullptr) {
+          xpu_free(l3ptrs[place_.GetDeviceId()]);
+          l3ptrs[place_.GetDeviceId()] = nullptr;
         }
+        xpu_malloc(static_cast<void**>(&l3ptrs[place_.GetDeviceId()]),
+                   l3_size,
+                   XPU_MEM_L3);
         if (l3ptrs[place_.GetDeviceId()] != nullptr) {
           context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
           VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
@@ -62,7 +69,7 @@ struct XPUContext::Impl {
     std::string cur_thread_name = phi::GetCurrentThreadName();
     VLOG(3) << "XPU Dataloader: current thread at Get Context = "
             << phi::GetCurrentThreadName();
-    bool is_dataloader_thread = (cur_thread_name.substr(0, 10) == "Dataloader");
+    bool is_dataloader_thread = (cur_thread_name != "MainThread");
     return is_dataloader_thread;
   }
 
@@ -74,7 +81,7 @@ struct XPUContext::Impl {
     if (owned_ && context_ != nullptr) {
       backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
       xpu_wait(context_->xpu_stream);
-      if (context_->xpu_stream) {
+      if (context_->xpu_stream && stream_owned_) {
         // manually destroy XPUStream here until xpu::api integrates this work
         // into Context dtor
         xpu_stream_destroy(context_->xpu_stream);
@@ -107,6 +114,12 @@ struct XPUContext::Impl {
       return ctx_t->xpu_stream;
     }
     return context_->xpu_stream;
+  }
+
+  // Set external stream for context
+  void SetStream(void* stream) {
+    stream_owned_ = false;
+    context_->set_stream(static_cast<XPUStream>(stream));
   }
 
   xpu::Context* GetXContext() const {
@@ -146,6 +159,11 @@ struct XPUContext::Impl {
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
+    xpu::Context* ctx_t = GetXdlCtx();
+    if (ctx_t) {
+      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+      xpu_wait(ctx_t->xpu_stream);
+    }
   }
 
   void Init() {
@@ -172,6 +190,7 @@ struct XPUContext::Impl {
       return;
     }
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
+    stream_owned_ = true;
   }
 
   // Methods of XPU Dataloader threads contexts map,
@@ -214,8 +233,11 @@ struct XPUContext::Impl {
   }
 
   bool owned_{false};
+  bool stream_owned_{false};
   Place place_;
   backends::xpu::XPUVersion xpu_version_;
+  int runtime_version_;
+  int driver_version_;
   xpu::Context* context_{nullptr};
   std::unordered_map<uint32_t, xpu::Context*> xdl_context_map_;
 
@@ -238,6 +260,20 @@ XPUContext::~XPUContext() = default;
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
 
 XPUStream XPUContext::stream() const { return impl_->stream(); }
+
+void XPUContext::SetStream(void* stream) { impl_->SetStream(stream); }
+
+void XPUContext::SetXpuVersion(int version) {
+  impl_->xpu_version_ = static_cast<backends::xpu::XPUVersion>(version);
+}
+
+void XPUContext::SetRuntimeVersion(int version) {
+  impl_->runtime_version_ = version;
+}
+
+void XPUContext::SetDriverVersion(int version) {
+  impl_->driver_version_ = version;
+}
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
   return impl_->xpu_version_;

@@ -45,7 +45,7 @@ class DistributedInfer:
     def init_distributed_infer_env(
         self, exe, loss, role_maker=None, dirname=None
     ):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         if fleet.fleet._runtime_handle is None:
             fleet.init(role_maker=role_maker)
@@ -73,7 +73,7 @@ class DistributedInfer:
             global_main_program = self.origin_main_program
 
     def _get_sparse_table_map(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         if self.sparse_table_maps is None:
             self.sparse_table_maps = {}

@@ -15,18 +15,20 @@
 import unittest
 
 import paddle
-import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.static as static
-import paddle.utils as utils
+from paddle import nn, static, utils
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.cost import CostEstimator
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import Resharder
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.cost import CostEstimator
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.parallelizer import (
+    AutoParallelizer,
+)
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.reshard import Resharder
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()

@@ -117,7 +117,7 @@ def slice_variable(var_list, slice_count, min_block_size):
     blocks = []
     for var in var_list:
         split_count = slice_count
-        var_numel = reduce(lambda x, y: x * y, var.shape)
+        var_numel = reduce(lambda x, y: x * y, var.shape, 1)
         max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
         if max_pserver_count == 0:
             max_pserver_count = 1
@@ -127,7 +127,7 @@ def slice_variable(var_list, slice_count, min_block_size):
 
         if len(var.shape) >= 2:
             # align by dim1(width)
-            dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+            dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
             remains = block_size % dim1
             if remains != 0:
                 block_size += dim1 - remains
@@ -392,7 +392,7 @@ class DistributeTranspiler:
 
             for i in range(1, self.config.nccl_comm_num):
                 startup_program.global_block().create_var(
-                    name="NCCLID_{}".format(i),
+                    name=f"NCCLID_{i}",
                     persistable=True,
                     type=core.VarDesc.VarType.RAW,
                 )
@@ -400,12 +400,12 @@ class DistributeTranspiler:
             if self.config.use_hierarchical_allreduce:
                 for i in range(0, self.config.nccl_comm_num):
                     startup_program.global_block().create_var(
-                        name="Hierarchical_inter_NCCLID_{}".format(i),
+                        name=f"Hierarchical_inter_NCCLID_{i}",
                         persistable=True,
                         type=core.VarDesc.VarType.RAW,
                     )
                     startup_program.global_block().create_var(
-                        name="Hierarchical_exter_NCCLID_{}".format(i),
+                        name=f"Hierarchical_exter_NCCLID_{i}",
                         persistable=True,
                         type=core.VarDesc.VarType.RAW,
                     )
@@ -805,7 +805,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
                 if self.config.completely_not_async and self.trainer_num > 1:
                     send_varnames = [
-                        "{}.trainer_{}".format(var.name, self.trainer_id)
+                        f"{var.name}.trainer_{self.trainer_id}"
                         for var in splited_vars
                     ]
                 else:
@@ -2286,7 +2286,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             orig_shape = orig_var.shape
             orig_dim1_flatten = 1
             if len(orig_shape) >= 2:
-                orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
+                orig_dim1_flatten = reduce(
+                    lambda x, y: x * y, orig_shape[1:], 1
+                )
 
             for i, block in enumerate(split):
                 size = block[1]

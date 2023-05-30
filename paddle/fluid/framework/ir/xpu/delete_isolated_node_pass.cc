@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include <string>
+
+#include "glog/logging.h"
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
@@ -47,8 +50,8 @@ class DeleteIsolatedNodePass : public Pass {
       std::unordered_set<std::string>* delete_node_names) const;
 
   int UpdateControlFlowOp(
+      int current_graph_index,
       Graph* graph,
-      const std::map<int, Graph*>& block_id_graph_map,
       const std::unordered_set<std::string>& delete_node_names) const;
 
   const std::map<std::string, std::string> control_flow_op_input_map_{
@@ -60,10 +63,11 @@ class DeleteIsolatedNodePass : public Pass {
 void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  PADDLE_ENFORCE(graph->IsMainGraph(),
-                 platform::errors::PreconditionNotMet(
-                     "Pass(apply in main graph) will delete isolated nodes in "
-                     "all subgraphs. Do not apply pass in subgraph."));
+  if (!graph->IsMainGraph()) {
+    VLOG(3) << "Pass(apply in main graph) will delete isolated nodes in all "
+               "subgraphs.";
+    return;
+  }
 
   std::unordered_set<std::string> reserved_persistable_node_names;
   for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
@@ -82,20 +86,9 @@ void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
     LOG(INFO) << "---  delete " << delete_counts << " isolated nodes";
   }
 
-  std::map<int, Graph*> block_id_graph_map;
-  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
-    auto* sub_graph = graph->GetSubGraph(i);
-    for (auto* node : sub_graph->Nodes()) {
-      if (node->IsVar()) {
-        block_id_graph_map[node->GetVarNodeBlockId()] = sub_graph;
-        break;
-      }
-    }
-  }
   int update_counts = 0;
   for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
-    update_counts += UpdateControlFlowOp(
-        graph->GetSubGraph(i), block_id_graph_map, delete_node_names);
+    update_counts += UpdateControlFlowOp(i, graph, delete_node_names);
   }
   if (update_counts > 0) {
     LOG(INFO) << "---  update " << update_counts << " control flow ops";
@@ -106,6 +99,7 @@ void DeleteIsolatedNodePass::CollectReservedPersistableNodeNames(
     Graph* graph,
     std::unordered_set<std::string>* reserved_persistable_node_names) const {
   for (auto* node : graph->Nodes()) {
+    if (!node || node->Name() == "fetch" || node->Name() == "feed") continue;
     if (!node->IsVar() || !node->Var()->Persistable()) continue;
     for (auto* out_node : node->outputs) {
       auto op_type = out_node->Op()->Type();
@@ -125,6 +119,7 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       block = node->Op()->Block();
+      break;
     }
   }
   Scope& scope = graph->Get<framework::Scope>("__param_scope__");
@@ -137,6 +132,7 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
   std::unordered_set<const Node*> delete_nodes;
   const std::unordered_set<ir::Node*> nodes = graph->Nodes();
   for (auto* node : nodes) {
+    if (!node || node->Name() == "fetch" || node->Name() == "feed") continue;
     if (!node->IsVar() || !node->Var()->Persistable()) continue;
     auto name = node->Var()->Name();
     if (reserved_persistable_node_names.count(name) > 0) continue;
@@ -156,11 +152,12 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
 }
 
 int DeleteIsolatedNodePass::UpdateControlFlowOp(
+    int current_graph_index,
     Graph* graph,
-    const std::map<int, Graph*>& block_id_graph_map,
     const std::unordered_set<std::string>& delete_node_names) const {
+  auto* cur_graph = graph->GetSubGraph(current_graph_index);
   int update_counts = 0;
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : cur_graph->Nodes()) {
     if (!node->IsOp()) continue;
     auto op_type = node->Op()->Type();
     if (control_flow_op_input_map_.count(op_type) == 0) continue;
@@ -177,7 +174,7 @@ int DeleteIsolatedNodePass::UpdateControlFlowOp(
 
     auto* sub_block = PADDLE_GET_CONST(framework::BlockDesc*,
                                        node->Op()->GetAttr("sub_block"));
-    auto* sub_graph = block_id_graph_map.at(sub_block->ID());
+    auto* sub_graph = graph->GetSubGraph(sub_block->ID());
     std::unordered_set<std::string> sub_persistable_node_names;
     CollectReservedPersistableNodeNames(sub_graph, &sub_persistable_node_names);
     for (auto sub_name : sub_persistable_node_names) {

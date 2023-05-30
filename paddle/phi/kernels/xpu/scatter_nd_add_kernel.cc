@@ -38,13 +38,12 @@ void ScatterNdAddKernel(const Context &ctx,
         static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
 
     for (int i = 0; i < loop_time; i++) {
-      // xpu::add only support float or float16 template typename
-      // now, register this op only with float type
-      r = xpu::add<T>(ctx.x_context(),
-                      updates_ptr + out->numel() * i,
-                      out_ptr,
-                      out_ptr,
-                      out->numel());
+      r = xpu::broadcast_add<T>(ctx.x_context(),
+                                updates_ptr + out->numel() * i,
+                                out_ptr,
+                                out_ptr,
+                                {out->numel()},
+                                {out->numel()});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     }
     return;
@@ -70,14 +69,11 @@ void ScatterNdAddKernel(const Context &ctx,
   xpu::VectorParam<int64_t> x_vec = {
       x_shape.data(), static_cast<int>(x_shape.size()), nullptr};
 
-  DenseTensor index_cpu(index.type());
-  phi::Copy(ctx, index, phi::CPUPlace(), false, &index_cpu);
-
   int index_size = static_cast<int>(index.numel());
 
   if (index_type == phi::DataType::INT32) {
-    xpu::VectorParam<int> index_vec{index_cpu.data<int>(), index_size, nullptr};
-
+    auto index_data = const_cast<int *>(index.data<int>());
+    xpu::VectorParam<int> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<T, int>(ctx.x_context(),
                                 nullptr,
                                 updates_ptr,
@@ -87,9 +83,8 @@ void ScatterNdAddKernel(const Context &ctx,
                                 index_shape,
                                 false);
   } else {
-    xpu::VectorParam<int64_t> index_vec{
-        index_cpu.data<int64_t>(), index_size, nullptr};
-
+    auto index_data = const_cast<int64_t *>(index.data<int64_t>());
+    xpu::VectorParam<int64_t> index_vec{nullptr, index_size, index_data};
     r = xpu::scatter_nd<T, int64_t>(ctx.x_context(),
                                     nullptr,
                                     updates_ptr,
@@ -104,5 +99,10 @@ void ScatterNdAddKernel(const Context &ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    scatter_nd_add, XPU, ALL_LAYOUT, phi::ScatterNdAddKernel, float) {}
+PD_REGISTER_KERNEL(scatter_nd_add,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ScatterNdAddKernel,
+                   float,
+                   int64_t,
+                   int) {}

@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestKronOp(OpTest):
@@ -37,16 +38,16 @@ class TestKronOp(OpTest):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'), check_eager=True)
+        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestKronOp2(TestKronOp):
@@ -71,6 +72,50 @@ class TestKronOp3(TestKronOp):
         out_ref = np.kron(x, y)
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out_ref}
+
+
+class TestKronFP16Op(TestKronOp):
+    def _init_dtype(self):
+        return "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestKronBF16Op(TestKronOp):
+    def setUp(self):
+        self.op_type = "kron"
+        self.python_api = paddle.kron
+        self.dtype = np.uint16
+        self.np_dtype = "float32"
+        x = np.random.uniform(size=(10, 10)).astype(self.np_dtype)
+        y = np.random.uniform(size=(10, 10)).astype(self.np_dtype)
+        out_ref = np.kron(x, y)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+        # bfloat16 requires using place
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            self.place, ['Y'], 'Out', no_grad_set=set('X')
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set('Y')
+        )
 
 
 class TestKronLayer(unittest.TestCase):
@@ -168,7 +213,7 @@ class TestComplexKronOp(OpTest):
         return grad_y
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -176,7 +221,6 @@ class TestComplexKronOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x, self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -186,7 +230,6 @@ class TestComplexKronOp(OpTest):
             no_grad_set=set("X"),
             user_defined_grads=[self.grad_y],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -196,7 +239,6 @@ class TestComplexKronOp(OpTest):
             no_grad_set=set('Y'),
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 

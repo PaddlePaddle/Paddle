@@ -70,8 +70,9 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
 #undef REG_DL_DATA_TYPE
 }
 
-struct DLDeviceVisitor
-    : public std::unary_function<const platform::Place &, ::DLDevice> {
+struct DLDeviceVisitor {
+  using argument_type = const platform::Place &;
+  using result_type = ::DLDevice;
   inline ::DLDevice operator()(const platform::CPUPlace &place) const {
     ::DLDevice device;
     device.device_type = kDLCPU;
@@ -87,21 +88,6 @@ struct DLDeviceVisitor
   inline ::DLDevice operator()(const platform::XPUPlace &place) const {
     PADDLE_THROW(
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
-  }
-
-  inline ::DLDevice operator()(const platform::NPUPlace &place) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("platform::NPUPlace is not supported"));
-  }
-
-  inline ::DLDevice operator()(const platform::NPUPinnedPlace &place) const {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "platform::NPUPinnedPlace is not supported"));
-  }
-
-  inline ::DLDevice operator()(const platform::MLUPlace &place) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("platform::MLUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const platform::CustomPlace &place) const {

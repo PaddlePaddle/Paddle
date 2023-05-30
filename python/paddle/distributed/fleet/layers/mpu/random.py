@@ -21,8 +21,7 @@ from paddle import _legacy_C_ops
 from paddle.common_ops_import import Variable
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.framework import LayerHelper
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 __all__ = []
 
@@ -48,14 +47,14 @@ class RNGStatesTracker:
 
     def add(self, name, seed):
         if seed in self.seeds_:
-            raise ValueError('seed {} already exists'.format(seed))
+            raise ValueError(f'seed {seed} already exists')
         self.seeds_.add(seed)
         if name in self.states_:
-            raise ValueError('state {} already exists'.format(name))
-        orig_rng_state = paddle.get_cuda_rng_state()
+            raise ValueError(f'state {name} already exists')
+        orig_rng_state = paddle.get_rng_state()
         paddle.seed(seed)
-        self.states_[name] = paddle.get_cuda_rng_state()
-        paddle.set_cuda_rng_state(orig_rng_state)
+        self.states_[name] = paddle.get_rng_state()
+        paddle.set_rng_state(orig_rng_state)
 
     def get_states_tracker(self):
         states = {}
@@ -69,14 +68,14 @@ class RNGStatesTracker:
     @contextlib.contextmanager
     def rng_state(self, name=MODEL_PARALLEL_RNG):
         if name not in self.states_:
-            raise ValueError('state {} does not exist'.format(name))
-        orig_cuda_rng_state = paddle.get_cuda_rng_state()
-        paddle.set_cuda_rng_state(self.states_[name])
+            raise ValueError(f'state {name} does not exist')
+        orig_rng_state = paddle.get_rng_state()
+        paddle.set_rng_state(self.states_[name])
         try:
             yield
         finally:
-            self.states_[name] = paddle.get_cuda_rng_state()
-            paddle.set_cuda_rng_state(orig_cuda_rng_state)
+            self.states_[name] = paddle.get_rng_state()
+            paddle.set_rng_state(orig_rng_state)
 
 
 RNG_STATE_TRACKER = RNGStatesTracker()
@@ -87,17 +86,23 @@ def get_rng_state_tracker():
 
 
 def model_parallel_random_seed(seed=None):
-    import paddle.distributed.fleet as fleet
+    from paddle.distributed import fleet
 
     hcg = fleet.get_hybrid_communicate_group()
-    rank = hcg.get_model_parallel_rank()
+
+    mp_rank = hcg.get_model_parallel_rank()
+    mp_size = hcg.get_model_parallel_world_size()
+
+    pp_rank = hcg.get_stage_id()
+    pp_size = hcg.get_pipe_parallel_world_size()
 
     if seed:
         global_seed = seed
-        local_seed = seed * 1024 + rank * 100
+        # dp/sharding seed is same
+        local_seed = seed + 1 + mp_rank * pp_size + pp_rank
     else:
-        global_seed = np.random.randint(0, 655350)
-        local_seed = np.random.randint(rank * 10000, (rank + 1) * 10000 - 1)
+        global_seed = np.random.randint(0, 10000)
+        local_seed = global_seed + 1 + mp_rank * pp_size + pp_rank
 
     RNG_STATE_TRACKER.reset()
     RNG_STATE_TRACKER.add(MODEL_PARALLEL_RNG, local_seed)
@@ -212,7 +217,7 @@ def dropout(
     )  # semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, mask = _legacy_C_ops.dropout(
             x,
             'dropout_prob',

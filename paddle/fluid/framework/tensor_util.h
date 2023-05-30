@@ -25,13 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
-#endif
 #include "paddle/fluid/platform/device_context.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/device_context.h"
-#endif
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -145,42 +139,6 @@ void TensorFromArray(const T* src,
                  reinterpret_cast<const phi::GPUContext&>(ctx).stream());
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    //  1. vector -> npu pinned tensor
-    platform::NPUPinnedPlace npu_pinned_place;
-    phi::DenseTensor npu_pinned_tensor;
-    npu_pinned_tensor.Resize(dst->dims());
-    auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->dtype());
-    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
-
-    //  2. async copy npu pinned tensor -> npu tensor
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        npu_pinned_place,
-        npu_pinned_ptr,
-        size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
-
-    //  3. record event
-    auto npu_pinned_allocator =
-        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
-            paddle::memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(npu_pinned_place)
-                .get());
-    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
-    npu_pinned_allocator->RecordEvent(
-        allocation,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(dst_place)) {  // NOLINT
     memory::Copy(
@@ -225,47 +183,6 @@ void TensorFromVector(const std::vector<T>& src,
                  src_ptr,
                  size,
                  reinterpret_cast<const phi::GPUContext&>(ctx).stream());
-  }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(zhiqiu): Becareful that aclrtMemcpyAsync is different from
-  // cudaMemcpyAsync.
-  // cudaMemcpyAsync is actually "sync" between cpu <-> gpu.
-  // aclrtMemcpyAsync is really "async" between cpu <-> npu.
-  // Since vector is on cpu, I think this function should be a "sync" operation,
-  // so pass nullptr as stream to  memory::Copy().
-  else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    //  1. vector -> npu pinned tensor
-    phi::DenseTensor npu_pinned_tensor(dst->dtype());
-    platform::NPUPinnedPlace npu_pinned_place;
-    auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data<T>(dst->dims(), npu_pinned_place);
-    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
-
-    //  2. async copy npu pinned tensor -> npu tensor
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        npu_pinned_place,
-        npu_pinned_ptr,
-        size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
-
-    //  3. record event
-    auto npu_pinned_allocator =
-        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
-            paddle::memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(npu_pinned_place)
-                .get());
-    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
-    npu_pinned_allocator->RecordEvent(
-        allocation,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(dst_place)) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -322,37 +239,6 @@ inline void TensorFromVector(const std::vector<bool>& src,
                  src_ptr,
                  size,
                  reinterpret_cast<const phi::GPUContext&>(ctx).stream());
-  }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  else if (platform::is_npu_place(dst_place)) {  // NOLINT
-    //  1. vector -> npu pinned tensor
-    platform::NPUPinnedPlace npu_pinned_place;
-    phi::DenseTensor npu_pinned_tensor;
-    npu_pinned_tensor.Resize(dst->dims());
-    auto npu_pinned_ptr =
-        npu_pinned_tensor.mutable_data(npu_pinned_place, dst->dtype());
-    memory::Copy(npu_pinned_place, npu_pinned_ptr, src_place, src_ptr, size);
-
-    //  2. async copy npu pinned tensor -> npu tensor
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        npu_pinned_place,
-        npu_pinned_ptr,
-        size,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
-
-    //  3. record event
-    auto npu_pinned_allocator =
-        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
-            paddle::memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(npu_pinned_place)
-                .get());
-    phi::Allocation* allocation = npu_pinned_tensor.Holder().get();
-    npu_pinned_allocator->RecordEvent(
-        allocation,
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -433,22 +319,6 @@ void TensorToVector(const phi::DenseTensor& src,
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  else if (platform::is_npu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(src.place())) {  // NOLINT
-    memory::Copy(
-        dst_place,
-        dst_ptr,
-        src.place(),
-        src_ptr,
-        size,
-        reinterpret_cast<const platform::MLUDeviceContext&>(ctx).stream());
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   else if (platform::is_custom_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
@@ -489,16 +359,6 @@ inline void TensorToVector(const phi::DenseTensor& src,
 #if defined(PADDLE_WITH_XPU)
   else if (platform::is_xpu_place(src.place())) {  // NOLINT
     memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size);
-  }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  else if (platform::is_npu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  else if (platform::is_mlu_place(src.place())) {  // NOLINT
-    memory::Copy(dst_place, dst_ptr, src.place(), src_ptr, size, nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -566,11 +426,6 @@ inline T GetValue(const phi::DenseTensor* x) {
   if (!platform::is_cpu_place(x->place())) {
     phi::DenseTensor cpu_x;
     framework::TensorCopy(*x, platform::CPUPlace(), &cpu_x);
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    const platform::DeviceContext* dev_ctx = pool.Get(x->place());
-    dev_ctx->Wait();
-#endif
     value = cpu_x.data<T>()[0];
   } else {
     value = x->data<T>()[0];

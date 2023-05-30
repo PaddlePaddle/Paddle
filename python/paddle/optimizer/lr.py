@@ -17,8 +17,8 @@ import warnings
 
 import numpy
 
-import paddle.fluid.core as core
 from paddle import Tensor
+from paddle.fluid import core
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -791,11 +791,7 @@ class LinearWarmup(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
-        type_check = (
-            isinstance(learning_rate, float)
-            or isinstance(learning_rate, int)
-            or isinstance(learning_rate, LRScheduler)
-        )
+        type_check = isinstance(learning_rate, (float, int, LRScheduler))
         if not type_check:
             raise TypeError(
                 "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".format(
@@ -811,7 +807,7 @@ class LinearWarmup(LRScheduler):
         self.end_lr = end_lr
         assert (
             end_lr > start_lr
-        ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
+        ), f"end_lr {end_lr} must be greater than start_lr {start_lr}"
         super().__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self):
@@ -1142,7 +1138,7 @@ class StepDecay(LRScheduler):
 
 class LambdaDecay(LRScheduler):
     """
-    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is function which receives ``epoch`` .
 
     The algorithm can be described as the code below.
 

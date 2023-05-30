@@ -23,16 +23,17 @@
 #endif
 
 #include "gflags/gflags.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_base.h"
 
-DECLARE_bool(dump_jitcode);
+PHI_DECLARE_bool(dump_jitcode);
 
 namespace phi {
 namespace jit {
 
 class GenBase : public Kernel {
  public:
-  virtual ~GenBase() = default;
+  virtual ~GenBase() {}
   virtual std::string name() const = 0;
   virtual size_t getSize() const = 0;
   virtual const unsigned char* getCodeInternal() const = 0;

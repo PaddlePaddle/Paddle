@@ -23,7 +23,7 @@ parse training set and test set into paddle reader creators.
 import tarfile
 
 import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 __all__ = []
 

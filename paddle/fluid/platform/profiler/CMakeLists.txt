@@ -1,12 +1,11 @@
 cc_library(
   host_tracer
   SRCS host_tracer.cc
-  DEPS framework_proto enforce ddim var_type_traits)
+  DEPS framework_proto enforce phi var_type_traits)
 cc_library(
   cuda_tracer
   SRCS cuda_tracer.cc cupti_data_process.cc
   DEPS workqueue_utils enforce glog)
-add_subdirectory(mlu)
 add_subdirectory(custom_device)
 cc_library(
   event_node
@@ -29,16 +28,11 @@ cc_library(
 cc_library(
   cpu_utilization
   SRCS cpu_utilization.cc
-  DEPS phi_backends phi_os_info enforce glog)
+  DEPS phi enforce glog)
 cc_library(
   new_profiler
   SRCS profiler.cc
-  DEPS host_tracer
-       cuda_tracer
-       profiler_utils
-       cpu_utilization
-       event_bind
-       mlu_tracer
+  DEPS host_tracer cuda_tracer profiler_utils cpu_utilization event_bind
        custom_tracer)
 cc_test(
   test_event_node

@@ -17,7 +17,14 @@
 #if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
     defined(__i386__)
 #define __PADDLE_x86__
+// Note(risemeup1):undef __SSE2__ to avoid fp16 conflict between cuda and gcc12
+#ifdef __SSE2__
+#undef __SSE2__
 #include <immintrin.h>
+#define __SSE2__
+#else
+#include <immintrin.h>
+#endif
 #endif
 #include <stdint.h>
 
@@ -208,7 +215,7 @@ struct PADDLE_ALIGN(2) float16 {
     return *this;
   }
 
-// Conversion opertors
+// Conversion operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline half to_half() const {
 #if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000

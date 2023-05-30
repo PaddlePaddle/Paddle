@@ -17,9 +17,8 @@ import os
 
 import paddle
 from paddle.fluid import compiler
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.framework import _global_flags
+from paddle.framework import _global_flags, in_dynamic_mode
 from paddle.framework.ir import apply_build_strategy
 
 from .base import topology as tp
@@ -267,7 +266,7 @@ class Fleet:
                 )
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_role_maker(self._role_maker)
 
@@ -281,7 +280,7 @@ class Fleet:
                         "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
                     )
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if self.worker_num() == 1:
                 # if worker_num is 1, should construct default topology & hcg
                 self._topology = tp.CommunicateTopology()
@@ -412,9 +411,7 @@ class Fleet:
             "mp": ['model', self.mp_degree],
         }
 
-        order = self.hybrid_configs["order"]
-        if not order:
-            order = ['dp', 'pp', 'sharding', 'mp']
+        order = self._user_defined_strategy.hybrid_parallel_order
         if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
             raise AssertionError(
                 'The order of hybrid_config setting is incorrect.'
@@ -1272,7 +1269,7 @@ class Fleet:
             )
         else:
             if (
-                in_dygraph_mode()
+                in_dynamic_mode()
                 or self._role_maker._is_non_distributed()
                 or self._is_collective
             ):
@@ -1288,7 +1285,7 @@ class Fleet:
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
         )
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             # imitate target optimizer retrieval
             target_opt = self.user_defined_optimizer
             self._context = context
@@ -1338,7 +1335,7 @@ class Fleet:
                 self._user_defined_strategy.semi_auto
                 or self._user_defined_strategy.auto_search
             ):
-                from ..auto_parallel.parallelizer import AutoParallelizer
+                from ..auto_parallel.static.parallelizer import AutoParallelizer
 
                 auto_parallelizer = AutoParallelizer(self)
                 (
@@ -1536,7 +1533,7 @@ class Fleet:
                 # i.e. users can not modify current computation graph anymore
                 context["graph_optimize_ops"] = optimize_ops
                 context["graph_optimize_grads"] = params_grads
-            else:
+            elif loss.block.program._pass_applied is None:
                 apply_ir_passes(loss.block.program, startup_program, self)
 
             if not self._role_maker._is_heter_parameter_server_mode:
@@ -1557,7 +1554,7 @@ class Fleet:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             fleet.util._set_strategy(context["valid_strategy"])
 
@@ -1651,7 +1648,7 @@ class Fleet:
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_strategy(context["valid_strategy"])
 

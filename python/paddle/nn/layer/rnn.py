@@ -22,8 +22,8 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
 from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.fluid.framework import (
-    _non_static_mode,
     default_startup_program,
     in_dygraph_mode,
     program_guard,
@@ -47,7 +47,7 @@ def rnn(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
@@ -101,7 +101,7 @@ def rnn(
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -109,7 +109,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
     else:
         return _rnn_static_graph(
@@ -119,7 +119,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -155,7 +155,7 @@ def _rnn_dynamic_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     time_step_index = 0 if time_major else 1
     flat_inputs = paddle.utils.flatten(inputs)
@@ -223,7 +223,7 @@ def _rnn_static_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
@@ -270,7 +270,7 @@ def _rnn_static_graph(
         mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     with paddle.fluid.framework.device_guard("cpu"):
-        start_i = paddle.zeros([1], dtype="int64")
+        start_i = paddle.zeros([], dtype="int64")
         end = max_seq_len
 
         end = paddle.cast(end, "int64")
@@ -298,13 +298,11 @@ def _rnn_static_graph(
         pre_state = paddle.utils.map_structure(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
-        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
         outputs, new_states = cell(step_in, pre_state, **kwargs)
         assert isinstance(outputs, paddle.fluid.framework.Variable)
         paddle.utils.assert_same_structure(new_states, pre_state)
         if sequence_length:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
-            # paddle.fluid.layers.Print( step_mask, message="mask")
             # new_states = map_structure(
             #     partial(_maybe_copy, step_mask=step_mask),
             #     pre_state, new_states
@@ -359,7 +357,7 @@ def birnn(
     initial_states=None,
     sequence_length=None,
     time_major=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     birnn creates a bidirectional recurrent neural network specified by
@@ -432,7 +430,7 @@ def birnn(
         states_fw,
         sequence_length,
         time_major=time_major,
-        **kwargs
+        **kwargs,
     )
 
     outputs_bw, states_bw = rnn(
@@ -442,7 +440,7 @@ def birnn(
         sequence_length,
         time_major=time_major,
         is_reverse=True,
-        **kwargs
+        **kwargs,
     )
 
     outputs = paddle.utils.map_structure(
@@ -593,7 +591,7 @@ class RNNCellBase(Layer):
 
         def _is_shape_sequence(seq):
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if isinstance(seq, list) or isinstance(seq, tuple):
+            if isinstance(seq, (list, tuple)):
                 if reduce(
                     lambda flag, x: isinstance(x, int) and flag, seq, True
                 ):
@@ -1209,7 +1207,7 @@ class RNN(Layer):
             sequence_length=sequence_length,
             time_major=self.time_major,
             is_reverse=self.is_reverse,
-            **kwargs
+            **kwargs,
         )
         return final_outputs, final_states
 
@@ -1296,7 +1294,7 @@ class BiRNN(Layer):
             initial_states,
             sequence_length,
             self.time_major,
-            **kwargs
+            **kwargs,
         )
         return outputs, final_states
 
@@ -1428,7 +1426,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8
+                dtype=core.VarDesc.VarType.UINT8,
+                name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
@@ -1718,7 +1717,7 @@ class SimpleRNN(RNNBase):
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
-            raise ValueError("Unknown activation '{}'".format(activation))
+            raise ValueError(f"Unknown activation '{activation}'")
         self.activation = activation
         super().__init__(
             mode,

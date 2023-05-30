@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -57,13 +57,9 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "nranks: %s should equal to %s", nranks, comm->nranks()));
 
-    framework::DDim out_dims = in->dims();
-    out_dims[0] *= nranks;
-    out->mutable_data<T>(out_dims, place);
-
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
-    T* recv_buff = out->data<T>();
+    T* recv_buff = out->mutable_data<T>(place);
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -93,15 +89,19 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(c_allgather,
-                        ops::CAllGatherOpCUDAKernel<float>,
-                        ops::CAllGatherOpCUDAKernel<double>,
-#if NCCL_VERSION_CODE >= 21000
-                        ops::CAllGatherOpCUDAKernel<plat::bfloat16>,
+PD_REGISTER_STRUCT_KERNEL(c_allgather,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CAllGatherOpCUDAKernel,
+                          float,
+                          double,
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+                          plat::bfloat16,
 #endif
-                        ops::CAllGatherOpCUDAKernel<int>,
-                        ops::CAllGatherOpCUDAKernel<uint8_t>,
-                        ops::CAllGatherOpCUDAKernel<int8_t>,
-                        ops::CAllGatherOpCUDAKernel<int64_t>,
-                        ops::CAllGatherOpCUDAKernel<bool>,
-                        ops::CAllGatherOpCUDAKernel<plat::float16>);
+                          int,
+                          uint8_t,
+                          int8_t,
+                          int64_t,
+                          bool,
+                          plat::float16) {
+}

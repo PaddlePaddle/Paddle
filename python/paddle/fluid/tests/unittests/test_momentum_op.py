@@ -16,12 +16,12 @@ import unittest
 
 import numpy
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import core
 
 
 def calculate_momentum_by_numpy(
@@ -54,9 +54,38 @@ def calculate_momentum_by_numpy(
     return param_out, velocity_out
 
 
+def momentum_wrapper(
+    param,
+    grad,
+    velocity,
+    learning_rate=1.0,
+    master_param=None,
+    mu=0.0,
+    use_nesterov=False,
+    regularization_method="",
+    regularization_coeff=0.0,
+    multi_precision=False,
+    rescale_grad=1.0,
+):
+    return paddle._C_ops.momentum_(
+        param,
+        grad,
+        velocity,
+        learning_rate,
+        master_param,
+        mu,
+        use_nesterov,
+        regularization_method,
+        regularization_coeff,
+        multi_precision,
+        rescale_grad,
+    )
+
+
 class TestMomentumOp1(OpTest):
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper
         self.dtype = np.float32
         self.init_dtype()
 
@@ -107,6 +136,7 @@ class TestMomentumOp2(OpTest):
 
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper
 
         param = np.random.random((123, 321)).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
@@ -221,7 +251,7 @@ class TestLarsMomentumOpWithMP(OpTest):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_dygraph=False)
 
     def config(self):
         self.params_num = 1
@@ -561,6 +591,7 @@ class TestMomentumV2(unittest.TestCase):
 class TestMomentumOpWithDecay(OpTest):
     def setUp(self):
         self.op_type = "momentum"
+        self.python_api = momentum_wrapper
         self.dtype = np.float32
         self.use_nesterov = True
         self.regularization_method = 'l2_decay'
@@ -656,9 +687,7 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
     def test_momentum_dygraph_1(self):
         self._test_momentum_dygraph_common(
-            regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1
-            )
+            regularization=paddle.regularizer.L2Decay(coeff=0.1)
         )
 
     def test_momentum_static(self):
@@ -794,9 +823,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear_old.parameters(),
-            regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1
-            ),
+            regularization=paddle.regularizer.L2Decay(coeff=0.1),
         )
         self.__update_params(momentum=momentum_old, linear=linear_old)
 
@@ -810,9 +837,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear_new.parameters(),
-            regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1
-            ),
+            regularization=paddle.regularizer.L2Decay(coeff=0.1),
         )
         self.__update_params(momentum=momentum_new, linear=linear_new)
 
@@ -1028,7 +1053,9 @@ class TestMultiTensorMomentumStatic(unittest.TestCase):
             optimizer.minimize(loss)
         exe.run(startup_program)
         if use_amp:
-            optimizer.amp_init(place=place, scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = numpy.random.random(size=(2, 2)).astype('float16')
         else:
             x = numpy.random.random(size=(2, 2)).astype('float32')

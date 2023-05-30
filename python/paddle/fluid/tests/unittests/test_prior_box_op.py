@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -25,9 +25,9 @@ def python_prior_box(
     input,
     image,
     min_sizes,
+    max_sizes=None,
     aspect_ratios=[1.0],
     variances=[0.1, 0.1, 0.2, 0.2],
-    max_sizes=None,
     flip=False,
     clip=False,
     step_w=0,
@@ -76,7 +76,7 @@ class TestPriorBoxOp(OpTest):
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.op_type = "prior_box"

@@ -16,7 +16,7 @@ from collections import OrderedDict
 from typing import Dict
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 
 
 def _make_divisible(v, divisor=8, min_value=None):

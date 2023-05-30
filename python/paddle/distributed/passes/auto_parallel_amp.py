@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
@@ -42,7 +44,7 @@ from paddle.static.amp.fp16_utils import (
 from paddle.utils import unique_name
 
 from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_loss_grad_op,
@@ -762,9 +764,9 @@ class AMPPass(PassBase):
                 post_ops = find_true_post_op(main_block.ops, op, g.name)
                 if post_ops:
                     raise ValueError(
-                        "The cast op {0}'s output should not be"
+                        f"The cast op {op}'s output should not be"
                         "used by a non-optimize op, however, it"
-                        "is used by {1}".format(op, post_ops[0])
+                        f"is used by {post_ops[0]}"
                     )
 
                 if op == main_block.ops[-1]:
@@ -806,7 +808,7 @@ class AMPPass(PassBase):
 
                 op_idx = find_op_index(main_block.desc, op.desc)
                 if op_idx == -1:
-                    raise ValueError("The op {0} is not in program".format(op))
+                    raise ValueError(f"The op {op} is not in program")
                 main_block._remove_op(op_idx, sync=False)
 
         main_block._sync_with_cpp()
@@ -955,7 +957,7 @@ class AMPPass(PassBase):
 
             loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_op, ref_mesh, [-1], self.dist_context
+                cast_op, ref_mesh, [-1 for i in loss.shape], self.dist_context
             )
 
             # backward
@@ -970,12 +972,20 @@ class AMPPass(PassBase):
                 dtype=core.VarDesc.VarType.FP32,
                 persistable=loss.persistable,
             )
-            set_var_dist_attr(self.dist_context, cast_loss_grad, [-1], ref_mesh)
+            set_var_dist_attr(
+                self.dist_context,
+                cast_loss_grad,
+                [-1 for i in loss.shape],
+                ref_mesh,
+            )
 
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                first_backward_op, ref_mesh, [-1], self.dist_context
+                first_backward_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + 3,
@@ -989,7 +999,10 @@ class AMPPass(PassBase):
                 },
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_grad_op, ref_mesh, [-1], self.dist_context
+                cast_grad_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
             loss_op = cast_op
             loss = cast_loss
@@ -1021,7 +1034,12 @@ class AMPPass(PassBase):
                 dtype=loss.dtype,
                 persistable=loss.persistable,
             )
-            set_var_dist_attr(self.dist_context, scaled_loss, [-1], ref_mesh)
+            set_var_dist_attr(
+                self.dist_context,
+                scaled_loss,
+                [-1 for i in loss.shape],
+                ref_mesh,
+            )
 
             elementwise_mul_op = main_block._insert_op(
                 loss_op_idx + 1,
@@ -1034,7 +1052,10 @@ class AMPPass(PassBase):
             )
             loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_op, ref_mesh, [-1], self.dist_context
+                elementwise_mul_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
 
             # backward
@@ -1050,14 +1071,20 @@ class AMPPass(PassBase):
                 persistable=loss.persistable,
             )
             set_var_dist_attr(
-                self.dist_context, scaled_loss_grad, [-1], ref_mesh
+                self.dist_context,
+                scaled_loss_grad,
+                [-1 for i in loss.shape],
+                ref_mesh,
             )
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(
                 pre_grad_name, scaled_loss_grad.name
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                first_backward_op, ref_mesh, [-1], self.dist_context
+                first_backward_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
             scaled_loss_grad.op = first_backward_op
             # FIXME(JZ-LIANG) a trick to insert backward op
@@ -1085,7 +1112,10 @@ class AMPPass(PassBase):
             elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_grad_op, ref_mesh, [-1], self.dist_context
+                elementwise_mul_grad_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
         else:
             scaled_loss = loss
