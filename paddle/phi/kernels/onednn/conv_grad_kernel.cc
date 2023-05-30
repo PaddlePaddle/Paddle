@@ -243,8 +243,7 @@ KernelKey ConvGradGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
   const AttributeMap& attrs = ctx->GetAttrs();
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
-  if (((var_name == "Input") ||
-       (var_name == GetKernelTypeForVarContext::GradVarName("Output"))) &&
+  if (((var_name == "Input") || (var_name == "Output@GRAD")) &&
       (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");

@@ -45,8 +45,6 @@ class GetKernelTypeForVarContext {
 
   void SetDenseTensor(DenseTensor* tensor);
 
-  static std::string GradVarName(const std::string& var_name);
-
  private:
   const KernelKey* kernel_key_;  // not owned
   // Use AttributeMap in namespace 'phi' to avoid depending 'fluid'

@@ -56,17 +56,4 @@ void GetKernelTypeForVarContext::SetDenseTensor(DenseTensor* tensor) {
   this->tensor_ = tensor;
 }
 
-constexpr char kGradVarSuffix[] = "@GRAD";
-
-constexpr size_t kGradVarSuffixSize = 5U;
-
-std::string GetKernelTypeForVarContext::GradVarName(
-    const std::string& var_name) {
-  std::string result;
-  result.reserve(var_name.size() + kGradVarSuffixSize);
-  result += var_name;
-  result += kGradVarSuffix;
-  return result;
-}
-
 }  // namespace phi
