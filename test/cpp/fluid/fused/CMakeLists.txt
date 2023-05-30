@@ -43,13 +43,7 @@ if(WITH_GPU OR WITH_ROCM)
     cc_test(
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc
-      DEPS conv_op
-           depthwise_conv
-           tensor
-           op_registry
-           device_context
-           phi
-           memory)
+      DEPS depthwise_conv tensor op_registry device_context phi memory)
     cc_test(
       test_cudnn_bn_add_relu
       SRCS cudnn_bn_add_relu_test.cc
