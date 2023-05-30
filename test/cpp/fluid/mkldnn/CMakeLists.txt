@@ -16,7 +16,6 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_mul_op
     elementwise_add_op
     activation_op
-    conv_op
     phi
     scope
     device_context
