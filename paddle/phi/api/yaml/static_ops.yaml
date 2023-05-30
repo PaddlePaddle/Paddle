@@ -37,6 +37,17 @@
     param : [x, axis, keepdim, reduce_all]
   backward : amax_grad
 
+- op : amin
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+    param : [x, axis, keepdim]
+  kernel :
+    func : amin_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : amin_grad
+
 - op : arange
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
