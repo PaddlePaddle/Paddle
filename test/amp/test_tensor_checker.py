@@ -18,7 +18,7 @@ import paddle
 
 
 class TestTensorChecker(unittest.TestCase):
-    def get_num_inf(self, e):
+    def _parse_num_nan_inf(self, e):
         num_nan = 0
         num_inf = 0
         # Cannot catch the log in CUDA kernel.
@@ -34,14 +34,9 @@ class TestTensorChecker(unittest.TestCase):
                 num_nan = int(err_str.split("=")[1])
             elif "num_inf" in err_str:
                 num_inf = int(err_str.split("=")[1])
-        print(
-            "[CHECK_NAN_INF_AND_ABORT] num_nan={}, num_inf={}".format(
-                num_nan, num_inf
-            )
-        )
-        return num_nan
+        return num_nan, num_inf
 
-    def generate_num_inf(self, place):
+    def _generate_num_inf(self, place):
         num_inf = 0
         num_nan = 0
         paddle.set_device(place)
@@ -58,8 +53,8 @@ class TestTensorChecker(unittest.TestCase):
             paddle.autograd.backward([res])
             res = paddle.divide(y, x)
         except Exception as e:
-            num_inf = self.get_num_inf(e)
-        return num_inf
+            num_nan, num_inf = self._parse_num_nan_inf(e)
+        return num_nan, num_inf
 
     def test_tensor_checker(self):
         def _assert_flag(value):
@@ -86,22 +81,38 @@ class TestTensorChecker(unittest.TestCase):
 
         for place in places:
             paddle.amp.debugging.TensorCheckerConfig.current_step_id = 0
-            for index in range(5):
+            for iter_id in range(5):
                 paddle.amp.debugging.enable_tensor_checker(checker_config)
-                if index <= 2:
+                if iter_id <= 2:
                     _assert_flag(True)
                     self.assertEqual(
-                        index + 1,
+                        iter_id + 1,
                         paddle.amp.debugging.TensorCheckerConfig.current_step_id,
                     )
-                    self.assertEqual(1, self.generate_num_inf(place))
+                    num_nan, num_inf = self._generate_num_inf(place)
+                    print(
+                        f"-- [iter_id={iter_id}, place={place}] num_nan={num_nan}, num_inf={num_inf}"
+                    )
+                    self.assertEqual(
+                        1,
+                        num_nan,
+                        f"Expected num_nan to be 1, but recieved {num_nan}, place={place}.",
+                    )
                 else:
                     self.assertEqual(
                         3,
                         paddle.amp.debugging.TensorCheckerConfig.current_step_id,
                     )
                     _assert_flag(False)
-                    self.assertEqual(0, self.generate_num_inf(place))
+                    num_nan, num_inf = self._generate_num_inf(place)
+                    print(
+                        f"-- [iter_id={iter_id}, place={place}] num_nan={num_nan}, num_inf={num_inf}"
+                    )
+                    self.assertEqual(
+                        0,
+                        num_nan,
+                        f"Expected num_nan to be 1, but recieved {num_nan}, place={place}.",
+                    )
 
                 paddle.amp.debugging.disable_tensor_checker()
                 _assert_flag(False)
