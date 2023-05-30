@@ -320,6 +320,7 @@ from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
 from .tensor.search import kthvalue  # noqa: F401
 from .tensor.search import mode  # noqa: F401
+from .tensor.search import top_p_sampling  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
 
@@ -542,6 +543,7 @@ __all__ = [  # noqa
     'zeros_like',
     'maximum',
     'topk',
+    'top_p_sampling',
     'index_select',
     'CPUPlace',
     'matmul',
