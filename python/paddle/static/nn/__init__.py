@@ -55,7 +55,6 @@ from .sequence_lod import sequence_pad  # noqa: F401
 from .sequence_lod import sequence_unpad  # noqa: F401
 from .sequence_lod import sequence_reshape  # noqa: F401
 from .sequence_lod import sequence_scatter  # noqa: F401
-from .sequence_lod import sequence_enumerate  # noqa: F401
 from .sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
@@ -97,7 +96,6 @@ __all__ = [  # noqa
     'sequence_unpad',
     'sequence_reshape',
     'sequence_scatter',
-    'sequence_enumerate',
     'sequence_reverse',
     'StaticRNN',
     'prelu',

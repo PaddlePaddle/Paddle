@@ -19,7 +19,6 @@ import sys
 NEED_TO_FIX_OP_LIST = [
     'sequence_concat',
     'sequence_conv',
-    'sequence_enumerate',
     'sequence_erase',
     'sequence_expand_as',
     'sequence_expand',
