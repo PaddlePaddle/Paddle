@@ -56,10 +56,6 @@ KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("swish", {"X"}, {}, {"Out"});
 }
 
-KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("relu6", {"X"}, {}, {"Out"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
