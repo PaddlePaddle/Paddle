@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/conv_kernel.h"
 
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"

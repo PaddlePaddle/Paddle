@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
@@ -243,7 +244,7 @@ KernelKey ConvGradGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "Input") ||
-       (var_name == framework::GradVarName("Output"))) &&
+       (var_name == GetKernelTypeForVarContext::GradVarName("Output"))) &&
       (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");
