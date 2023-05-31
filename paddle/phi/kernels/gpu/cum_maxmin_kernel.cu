@@ -36,6 +36,21 @@ __host__ __device__ bool isnan_(T val) {
   return std::isnan(val);
 }
 
+template<typename T1, typename T2, typename BinaryOperation>
+__device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+  if (std::is_integral<T1>::value) {
+    if (!binary_op(rhs, lhs)) {
+      rhs = lhs;
+      rhs_idx = lhs_idx;
+    }
+  } else {
+    if (!std::isnan(rhs) && (std::isnan(lhs) || !binary_op(rhs, lhs))) {
+      rhs = lhs;
+      rhs_idx = lhs_idx;
+    }
+  }
+}
+
 template <typename T1,
           typename T2,
           int num_threads_x,
@@ -85,10 +100,7 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
         }
 
         if (threadIdx.x == 0) {
-          if (!isnan_(row_buf[0]) && (isnan_(block_total) || !binary_op(row_buf[0], block_total))) {
-            row_buf[0] = block_total;
-            row_idx_buf[0] = block_idx_final;
-          }
+          binary_op_update(block_total, row_buf[0], block_idx_final, row_idx_buf[0], binary_op);
         }
       }
       __syncthreads();
@@ -97,10 +109,7 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
       for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
         if (row < num_rows && threadIdx.x < s) {
           int offset = (2 * threadIdx.x + 1) * d - 1;
-          if (!isnan_(row_buf[offset + d]) && (isnan_(row_buf[offset]) || !binary_op(row_buf[offset + d], row_buf[offset]))) {
-            row_buf[offset + d] = row_buf[offset];
-            row_idx_buf[offset + d] = row_idx_buf[offset];
-          }
+          binary_op_update(row_buf[offset], row_buf[offset + d], row_idx_buf[offset], row_idx_buf[offset + d], binary_op);
         }
         __syncthreads();
       }
@@ -109,10 +118,7 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
       for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
         if (row < num_rows && threadIdx.x < s - 1) {
           int offset = 2 * (threadIdx.x + 1) * d - 1;
-          if (!isnan_(row_buf[offset + d]) && (isnan_(row_buf[offset]) || !binary_op(row_buf[offset + d], row_buf[offset]))) {
-            row_buf[offset + d] = row_buf[offset];
-            row_idx_buf[offset + d] = row_idx_buf[offset];
-          }
+          binary_op_update(row_buf[offset], row_buf[offset + d], row_idx_buf[offset], row_idx_buf[offset + d], binary_op);
         }
         __syncthreads();
       }
@@ -156,9 +162,16 @@ __global__ void KernelScanOuterWithIndices(const T1* x_data,
 
       for (auto col = decltype(row_size){0}; col < row_size; ++col) {
         const auto val = *reinterpret_cast<const T1*>(x);
-        if (isnan_(val) || (!isnan_(out) && binary_op(val, out))) {
-          out = val;
-          out_idx = col;
+        if (std::is_integral<T1>::value) {
+          if (binary_op(val, out)) {
+            out = val;
+            out_idx = col;
+          }
+        } else {
+          if (std::isnan(val) || (!std::isnan(out) && binary_op(val, out))) {
+            out = val;
+            out_idx = col;
+          }
         }
         *values = out;
         *indices = out_idx;

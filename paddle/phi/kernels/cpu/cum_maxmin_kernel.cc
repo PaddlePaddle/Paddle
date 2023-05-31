@@ -79,9 +79,16 @@ void ComputeImp(const DenseTensor& x,
         std::cout << "stop point 1" << std::endl;
       }
       T1 curr_elem = *reinterpret_cast<const T1*>(&x_data[i * x_stride]);
-      if (isnan_(curr_elem) || (!isnan_(max) && op(curr_elem, max))) {
-        max = curr_elem;
-        idx = i;
+      if (std::is_integral<T1>::value) {
+        if (op(curr_elem, max)) {
+          max = curr_elem;
+          idx = i;
+        }
+      } else {
+        if (isnan_(curr_elem) || (!isnan_(max) && op(curr_elem, max))) {
+          max = curr_elem;
+          idx = i;
+        }
       }
       values_data[i * values_stride] = max;
       indices_data[i * indices_stride] = idx;
