@@ -405,6 +405,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
       phi::distributed::NCCLDynamicCheck::CheckGatherShape(
           in_tensor, gather_tensors, opts.root_rank, rank_, size_, comm);
     }
+
     auto comm_context = this->GetCommContext();
     comm_context->GroupStart();
     // root receive from all devices

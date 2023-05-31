@@ -43,8 +43,6 @@ void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out);
-
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,18 @@ inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
   tensor_flattened.Resize({tensor.numel()});
   return tensor_flattened.Slice(offset, offset + numel);
 }
+
+#define NCCL_CHECK(cmd)                            \
+  do {                                             \
+    ncclResult_t r = cmd;                          \
+    if (r != ncclSuccess) {                        \
+      printf("Failed, NCCL error %s:%d '%s'\n",    \
+             __FILE__,                             \
+             __LINE__,                             \
+             phi::dynload::ncclGetErrorString(r)); \
+      exit(EXIT_FAILURE);                          \
+    }                                              \
+  } while (0)
 
 }  //  namespace distributed
 }  // namespace phi
