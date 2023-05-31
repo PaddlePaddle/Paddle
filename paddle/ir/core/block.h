@@ -14,18 +14,23 @@
 
 #pragma once
 
+#include <cstddef>
 #include <list>
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
+class Region;
+
 class Block {
  public:
   using iterator = std::list<Operation *>::iterator;
   using reverse_iterator = std::list<Operation *>::reverse_iterator;
+  using const_iterator = std::list<Operation *>::const_iterator;
 
   Block() = default;
   ~Block();
 
+  Region *parent() const { return parent_; }
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
@@ -34,21 +39,22 @@ class Block {
   reverse_iterator rbegin() { return ops_.rbegin(); }
   reverse_iterator rend() { return ops_.rend(); }
 
-  Operation *back() { return ops_.back(); }
-  Operation *front() { return ops_.front(); }
-  void push_back(Operation *op) { ops_.push_back(op); }
-  void push_front(Operation *op) { ops_.push_front(op); }
-  std::list<Operation *>::iterator insert(
-      std::list<Operation *>::const_iterator iterator, Operation *op) {
-    return ops_.insert(iterator, op);
-  }
+  Operation *back() const { return ops_.back(); }
+  Operation *front() const { return ops_.front(); }
+  void push_back(Operation *op);
+  void push_front(Operation *op);
+  iterator insert(const_iterator iterator, Operation *op);
   void clear();
 
  private:
   Block(Block &) = delete;
-  void operator=(Block &) = delete;
+  Block &operator=(const Block &) = delete;
+
+  friend class Region;
+  void set_parent(Region *parent) { parent_ = parent; }
 
  private:
+  Region *parent_;              // not owned
   std::list<Operation *> ops_;  // owned
 };
 }  // namespace ir

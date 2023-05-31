@@ -23,10 +23,10 @@ from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
 )
 from paddle.distributed.passes import PassContext, new_pass

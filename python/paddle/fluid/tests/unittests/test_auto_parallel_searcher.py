@@ -17,13 +17,15 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.planner import PlanSpace
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.planner import PlanSpace
+from paddle.distributed.auto_parallel.static.utils import (
     update_op_dims_mapping_by_default_dist_impl,
     update_op_dims_mapping_by_elementwise_like_dist_impl,
 )
@@ -177,8 +179,10 @@ class TestMLPSearcher(unittest.TestCase):
         set_default_dist_attr(train_program, dist_context, global_process_mesh)
         ops = train_program.global_block().ops
         vars = train_program.global_block().vars
-        from paddle.distributed.auto_parallel.dist_op import DistributedOperator
-        from paddle.distributed.auto_parallel.operators.common import (
+        from paddle.distributed.auto_parallel.static.dist_op import (
+            DistributedOperator,
+        )
+        from paddle.distributed.auto_parallel.static.operators.common import (
             get_distributed_operator_impl_container,
             is_elementwise_op,
         )
