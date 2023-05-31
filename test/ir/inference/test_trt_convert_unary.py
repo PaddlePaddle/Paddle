@@ -37,7 +37,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 0:
                 return np.random.random([]).astype(np.float32)
-            if dims == 2:
+            elif dims == 2:
                 return np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
                 return np.random.random([3, 32, 32]).astype(np.float32)
@@ -47,7 +47,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         def generate_int_input(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 0:
                 return np.random.random([]).astype(np.int32)
-            if dims == 2:
+            elif dims == 2:
                 return np.random.random([3, 32]).astype(np.int32)
             elif dims == 3:
                 return np.random.random([3, 32, 32]).astype(np.int32)
@@ -55,7 +55,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 return np.random.random([batch, 3, 32, 32]).astype(np.int32)
 
         for dims in [0, 2, 3, 4]:
+            # for dims in [2]:
             for batch in [1, 4]:
+                # for batch in [1]:
                 for op_type in [
                     "exp",
                     "log",
@@ -146,7 +148,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
@@ -192,6 +198,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 < 8600
                 and self.dims == 0
             ):
+                return 0, 3
+            if not dynamic_shape and (self == 1 or self.dims == 0):
                 return 0, 3
             return 1, 2
 
