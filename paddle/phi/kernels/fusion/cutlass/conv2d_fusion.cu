@@ -136,8 +136,8 @@ void Conv2dFusionKernel(const Context& ctx,
                           ow,
                           groups,
                           &ctx,
-                          0,                               // alpha
-                          cutlass_sm_version(sm_version),  // sm_version
+                          0,   // alpha
+                          80,  // sm_version
                           dtype2string(x.dtype())};
 
   // conv2d_depthwise
