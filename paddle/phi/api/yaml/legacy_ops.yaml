@@ -181,15 +181,6 @@
     func : conv2d
   backward : conv2d_grad
 
-- op : conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : Conv2dTransposeInferMeta
-  kernel :
-    func : conv2d_transpose
-  backward : conv2d_transpose_grad
-
 - op : conv3d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor
@@ -198,15 +189,6 @@
   kernel :
     func : conv3d
   backward : conv3d_grad
-
-- op : conv3d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : ConvTransposeInferMeta
-  kernel :
-    func : conv3d_transpose
-  backward : conv3d_transpose_grad
 
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
@@ -254,15 +236,6 @@
     func : depthwise_conv2d
     param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
   backward : depthwise_conv2d_grad
-
-- op : depthwise_conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : Conv2dTransposeInferMeta
-  kernel :
-    func : depthwise_conv2d_transpose
-  backward : depthwise_conv2d_transpose_grad
 
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)

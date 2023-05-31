@@ -477,7 +477,15 @@
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_transpose
-  backward : conv2d_transpose_grad
+  backward : conv2d_transpose_grad, conv2d_transpose_double_grad (conv2d_transpose_grad_grad)
+  inputs :
+    {x : Input, filter : Filter}
+  outputs :
+    out : Output
+  int_array :
+    output_size :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
@@ -494,6 +502,10 @@
 
 - op : conv3d_transpose
   backward : conv3d_transpose_grad
+  inputs :
+    {x : Input, filter : Filter}
+  outputs :
+    out : Output
   extra :
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
@@ -596,6 +608,14 @@
 
 - op : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
+  inputs :
+    {x : Input, filter : Filter}
+  outputs :
+    out : Output
+  int_array :
+    output_size :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
