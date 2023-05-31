@@ -296,7 +296,7 @@
 
 - op : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
+  output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
   infer_meta :
     func : EinsumRawInferMeta
     param : [x, equation]

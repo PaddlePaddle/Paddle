@@ -40,8 +40,8 @@ TEST(value_test, value_test) {
   std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op1 =
       ir::Operation::create(op1_inputs,
-                            op1_output_types,
                             CreateAttributeMap("op1_name", "op1_attr"),
+                            op1_output_types,
                             nullptr);
   VLOG(0) << op1->print();
   // 2. Construct OP2: b = OP2();
@@ -49,8 +49,8 @@ TEST(value_test, value_test) {
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op2 =
       ir::Operation::create(op2_inputs,
-                            op2_output_types,
                             CreateAttributeMap("op2_name", "op2_attr"),
+                            op2_output_types,
                             nullptr);
   VLOG(0) << op2->print() << std::endl;
   // 3. Construct OP3: c = OP3(a, b);
@@ -59,8 +59,8 @@ TEST(value_test, value_test) {
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op3 =
       ir::Operation::create(op3_inputs,
-                            op3_output_types,
                             CreateAttributeMap("op3_name", "op3_attr"),
+                            op3_output_types,
                             nullptr);
   VLOG(0) << op3->print() << std::endl;
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
@@ -72,8 +72,8 @@ TEST(value_test, value_test) {
   }
   ir::Operation *op4 =
       ir::Operation::create(op4_inputs,
-                            op4_output_types,
                             CreateAttributeMap("op4_name", "op4_attr"),
+                            op4_output_types,
                             nullptr);
   VLOG(0) << op4->print() << std::endl;
 
