@@ -80,7 +80,7 @@ void ProgramTranslator::ExtractParameterFromSingleBlock(
     ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
     ir::Operation* operation = ir::Operation::create(
         {}, op_attribute_map, {translated_var_type}, op_info);
-    program->InsertOp(operation);
+    program->block()->push_back(operation);
     param_map[var->Name()] =
         VariableDefiningInfo(operation->GetResultByIndex(0));
     VLOG(10) << "[op translated][get parameter]" << operation;
