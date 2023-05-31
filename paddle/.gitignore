@@ -19,6 +19,18 @@ log/
 hf/
 build
 issue.info
+*.swp
+*.swo
+*.swn
+*.so
+*.ll
+.idea*
+*.html
+*.rej
+*.orig
+*.patch
+gen_modules
+*.ipynb
 
 ar
 g++

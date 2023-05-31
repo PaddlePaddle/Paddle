@@ -1,0 +1,1 @@
+FROM registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda11.2-cudnn8-gcc82
