@@ -383,6 +383,28 @@ class OpConverter {
     return result;
   }
 
+  nvinfer1::ITensor* Unsqueeze(nvinfer1::ITensor* input,
+                               const std::vector<int32_t> axis) {
+    const auto dims = Shape(input);
+    const std::unordered_set<int32_t> axis_data(axis.begin(), axis.end());
+    std::vector<int32_t> subscripts(dims->getDimensions().nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    for (const auto& axis_value : axis_data) {
+      subscripts.insert(subscripts.begin() + axis_value,
+                        dims->getDimensions().nbDims);
+    }
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Gather,
+                             *Concat(std::vector<nvinfer1::ITensor*>{
+                                 dims, Add1DConstantLayer(1)}),
+                             *Add1DConstantLayer(subscripts),
+                             0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
+    return result;
+  }
+
   // paddle allows negative index
   // for axis length = 5, paddle allows [-5, 4]
   nvinfer1::ITensor* FixNegIndices(nvinfer1::ITensor* input_shape,
