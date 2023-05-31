@@ -14,7 +14,7 @@
 
 from .strategy import Strategy
 from .process_mesh import ProcessMesh
-from .engine import Engine
+from .static.engine import Engine
 from .interface import shard_tensor
 from .interface import shard_op
 from .interface import recompute

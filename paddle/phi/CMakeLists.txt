@@ -105,8 +105,10 @@ else()
 endif()
 
 if(WITH_GPU)
-  add_definitions(-DCUDA_REAL_ARCHS=${NVCC_FLAGS_EXTRA_real_archs}
-  )# for backends/gpu/gpu_resources.cc
+  set_source_files_properties(
+    backends/gpu/gpu_resources.cc
+    PROPERTIES COMPILE_FLAGS
+               "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
   nv_library(
     phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}

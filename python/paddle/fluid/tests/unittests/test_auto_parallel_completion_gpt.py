@@ -18,8 +18,10 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, tensor, utils
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
 from paddle.distributed.fleet import auto
 from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list

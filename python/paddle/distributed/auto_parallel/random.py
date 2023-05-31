@@ -17,7 +17,7 @@ import paddle
 
 from ..utils.log_utils import get_logger
 from .process_mesh import retrive_unique_id_for_process_mesh
-from .utils import _get_idx_in_axis
+from .static.utils import _get_idx_in_axis
 
 _logger = get_logger(logging.INFO)
 
