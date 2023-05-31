@@ -23,20 +23,22 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
 namespace sparse {
 
-__global__ void GetCooNonZeroNumberCudaKernel(const int64_t* x_indices_data,
+template <typename IntT>
+__global__ void GetCooNonZeroNumberCudaKernel(const IntT* x_indices_data,
                                               const int64_t* axes,
                                               const int64_t* starts,
                                               const int64_t* ends,
                                               const int64_t axes_size,
                                               const int64_t x_nnz,
                                               int* out_nnz,
-                                              int64_t* out_nnz_indices) {
+                                              IntT* out_nnz_indices) {
   CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
     bool hit = true;
     for (size_t ii = 0; ii < axes_size; ++ii) {
@@ -52,8 +54,8 @@ __global__ void GetCooNonZeroNumberCudaKernel(const int64_t* x_indices_data,
   }
 }
 
-template <typename T>
-__global__ void GetCooOutCudaKernel(const int64_t* x_indices_data,
+template <typename T, typename IntT>
+__global__ void GetCooOutCudaKernel(const IntT* x_indices_data,
                                     const T* x_values_data,
                                     const int64_t* axes,
                                     const int64_t* starts,
@@ -61,14 +63,14 @@ __global__ void GetCooOutCudaKernel(const int64_t* x_indices_data,
                                     const int64_t sparse_dim,
                                     const int64_t x_nnz,
                                     const int64_t out_nnz,
-                                    const int64_t* out_nnz_indices,
-                                    int64_t* out_indices_data,
+                                    const IntT* out_nnz_indices,
+                                    IntT* out_indices_data,
                                     T* out_values_data) {
   CUDA_KERNEL_LOOP_TYPE(index, out_nnz, int64_t) {
     // index is in the order of the non-zero elements in out
     // out_nnz_indices[index] is the valid index in x's non-zero elements, where
     // the `hit` is true.
-    int64_t j = out_nnz_indices[index];
+    IntT j = out_nnz_indices[index];
     // set value
     out_values_data[index] = x_values_data[j];
     // set coordinate
@@ -82,13 +84,13 @@ __global__ void GetCooOutCudaKernel(const int64_t* x_indices_data,
   }
 }
 
-template <typename T, typename Context>
-void SliceCooKernel(const Context& dev_ctx,
-                    const SparseCooTensor& x,
-                    const phi::IntArray& axes_arr,
-                    const phi::IntArray& starts_arr,
-                    const phi::IntArray& ends_arr,
-                    SparseCooTensor* out) {
+template <typename T, typename IntT, typename Context>
+void SliceCooGPUKernel(const Context& dev_ctx,
+                       const SparseCooTensor& x,
+                       const phi::IntArray& axes_arr,
+                       const phi::IntArray& starts_arr,
+                       const phi::IntArray& ends_arr,
+                       SparseCooTensor* out) {
   const phi::DDim& x_dims = x.dims();
 
   std::vector<int64_t> axes = axes_arr.GetData();
@@ -110,10 +112,10 @@ void SliceCooKernel(const Context& dev_ctx,
 
   // out_nnz_indices is the indices where the data is valid in out
   // the length of the out_nnz_indices must be less than x.nnz()
-  DenseTensor d_out_nnz_indices = phi::Empty<int64_t>(dev_ctx, {x.nnz()});
-  int64_t* d_out_nnz_indices_ptr = d_out_nnz_indices.data<int64_t>();
+  DenseTensor d_out_nnz_indices = phi::Empty<IntT>(dev_ctx, {x.nnz()});
+  auto* d_out_nnz_indices_ptr = d_out_nnz_indices.data<IntT>();
   phi::backends::gpu::GpuMemsetAsync(
-      d_out_nnz_indices_ptr, 0, sizeof(int64_t), dev_ctx.stream());
+      d_out_nnz_indices_ptr, 0, sizeof(IntT), dev_ctx.stream());
 
   // copy axes to device
   auto d_axes_tensor = memory_utils::Alloc(
@@ -154,21 +156,22 @@ void SliceCooKernel(const Context& dev_ctx,
                      sizeof(int64_t) * ends.size(),
                      dev_ctx.stream());
 
-  const auto* x_indices_data = x.indices().data<int64_t>();
+  const auto* x_indices_data = x.indices().data<IntT>();
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz() + 1, 1);
-  GetCooNonZeroNumberCudaKernel<<<config.block_per_grid.x,
-                                  config.thread_per_block.x,
-                                  0,
-                                  dev_ctx.stream()>>>(x_indices_data,
-                                                      d_axes,
-                                                      d_starts,
-                                                      d_ends,
-                                                      axes.size(),
-                                                      x.nnz(),
-                                                      d_out_nnz_ptr,
-                                                      d_out_nnz_indices_ptr);
+  GetCooNonZeroNumberCudaKernel<IntT>
+      <<<config.block_per_grid.x,
+         config.thread_per_block.x,
+         0,
+         dev_ctx.stream()>>>(x_indices_data,
+                             d_axes,
+                             d_starts,
+                             d_ends,
+                             axes.size(),
+                             x.nnz(),
+                             d_out_nnz_ptr,
+                             d_out_nnz_indices_ptr);
 
   // copy d_out_nnz from device to host (out_nnz)
   int32_t out_nnz = 0;
@@ -187,29 +190,44 @@ void SliceCooKernel(const Context& dev_ctx,
   // Step4: Get the values and indices of output
   auto sparse_dim = static_cast<int64_t>(x.sparse_dim());
   DenseTensor out_indices =
-      phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
+      phi::Empty<IntT, Context>(dev_ctx, {sparse_dim, out_nnz});
   DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
-  auto* out_indices_data = out_indices.data<int64_t>();
+  auto* out_indices_data = out_indices.data<IntT>();
   auto* out_values_data = out_values.data<T>();
   const auto* x_values_data = x.values().data<T>();
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz + 1, 1);
-  GetCooOutCudaKernel<T><<<config.block_per_grid.x,
-                           config.thread_per_block.x,
-                           0,
-                           dev_ctx.stream()>>>(x_indices_data,
-                                               x_values_data,
-                                               d_axes,
-                                               d_starts,
-                                               axes.size(),
-                                               sparse_dim,
-                                               x.nnz(),
-                                               static_cast<int64_t>(out_nnz),
-                                               d_out_nnz_indices_ptr,
-                                               out_indices_data,
-                                               out_values_data);
+  GetCooOutCudaKernel<T, IntT>
+      <<<config.block_per_grid.x,
+         config.thread_per_block.x,
+         0,
+         dev_ctx.stream()>>>(x_indices_data,
+                             x_values_data,
+                             d_axes,
+                             d_starts,
+                             axes.size(),
+                             sparse_dim,
+                             x.nnz(),
+                             static_cast<int64_t>(out_nnz),
+                             d_out_nnz_indices_ptr,
+                             out_indices_data,
+                             out_values_data);
+}
+
+template <typename T, typename Context>
+void SliceCooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    const phi::IntArray& axes_arr,
+                    const phi::IntArray& starts_arr,
+                    const phi::IntArray& ends_arr,
+                    SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "SliceCooGPUKernel", ([&] {
+        SliceCooGPUKernel<T, data_t, Context>(
+            dev_ctx, x, axes_arr, starts_arr, ends_arr, out);
+      }));
 }
 
 __global__ void GetCsr2DNonZeroNumberCudaKernel(const int64_t* x_crows_data,
