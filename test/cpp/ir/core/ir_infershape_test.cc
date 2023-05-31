@@ -38,7 +38,7 @@
 #include "paddle/phi/infermeta/nullary.h"
 
 // Define op
-class Operation : public ir::Op<Operation, InferShapeInterface> {
+class OperationTest : public ir::Op<OperationTest, InferShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "test.operation2"; }
@@ -53,8 +53,8 @@ class Operation : public ir::Op<Operation, InferShapeInterface> {
   }
 };
 
-const char *Operation::attributes_name[attributes_num] = {"op2_attr1",
-                                                          "op2_attr2"};
+const char *OperationTest::attributes_name[attributes_num] = {"op2_attr1",
+                                                              "op2_attr2"};
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {
@@ -66,7 +66,7 @@ class TestDialect : public ir::Dialect {
   static const char *name() { return "test"; }
 
  private:
-  void initialize() { RegisterOps<Operation>(); }
+  void initialize() { RegisterOps<OperationTest>(); }
 };
 
 TEST(infershape_test, infershape_test) {
@@ -76,7 +76,7 @@ TEST(infershape_test, infershape_test) {
 
   // (2) Get registered operations.
 
-  std::string op_name = Operation::name();
+  std::string op_name = OperationTest::name();
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
   std::vector<ir::OpResult> op_inputs = {};
