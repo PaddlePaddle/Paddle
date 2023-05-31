@@ -20,6 +20,22 @@
 
 namespace phi {
 
+#ifdef _MSC_VER
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return false;
+}
+template <typename T>
+typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return std::isnan(x);
+}
+#else
+template <typename T>
+bool isnan_(T x) {
+  return std::isnan(x);
+}
+#endif
+
 std::vector<int> build_range(int stop) {
   std::vector<int> result(stop);
   for (int i = 0; i < stop; i++) {
@@ -63,16 +79,9 @@ void ComputeImp(const DenseTensor& x,
         std::cout << "stop point 1" << std::endl;
       }
       T1 curr_elem = *reinterpret_cast<const T1*>(&x_data[i * x_stride]);
-      if (std::is_integral<T1>::value) {
-        if (op(curr_elem, max)) {
-          max = curr_elem;
-          idx = i;
-        }
-      } else {
-        if (std::isnan(curr_elem) || (!std::isnan(max) && op(curr_elem, max))) {
-          max = curr_elem;
-          idx = i;
-        }
+      if (isnan_(curr_elem) || (!isnan_(max) && op(curr_elem, max))) {
+        max = curr_elem;
+        idx = i;
       }
       values_data[i * values_stride] = max;
       indices_data[i * indices_stride] = idx;

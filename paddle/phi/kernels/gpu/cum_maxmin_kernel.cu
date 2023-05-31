@@ -23,18 +23,27 @@
 
 namespace phi {
 
+#ifdef _MSC_VER
+template <typename T>
+__device__ typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return false;
+}
+template <typename T>
+__device__ typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return std::isnan(x);
+}
+#else
+template <typename T>
+__device__ bool isnan_(T x) {
+  return std::isnan(x);
+}
+#endif
+
 template<typename T1, typename T2, typename BinaryOperation>
 __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
-  if (std::is_integral<T1>::value) {
-    if (!binary_op(rhs, lhs)) {
-      rhs = lhs;
-      rhs_idx = lhs_idx;
-    }
-  } else {
-    if (!std::isnan(rhs) && (std::isnan(lhs) || !binary_op(rhs, lhs))) {
-      rhs = lhs;
-      rhs_idx = lhs_idx;
-    }
+  if (!isnan_(rhs) && (isnan_(lhs) || !binary_op(rhs, lhs))) {
+    rhs = lhs;
+    rhs_idx = lhs_idx;
   }
 }
 
@@ -155,7 +164,7 @@ __global__ void KernelScanOuterWithIndices(const T1* x_data,
             out_idx = col;
           }
         } else {
-          if (std::isnan(val) || (!std::isnan(out) && binary_op(val, out))) {
+          if (isnan_(val) || (!isnan_(out) && binary_op(val, out))) {
             out = val;
             out_idx = col;
           }
