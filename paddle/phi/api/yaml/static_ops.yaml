@@ -58,6 +58,16 @@
     func : any_raw
     param : [x, axis, keepdim, reduce_all]
 
+- op : all_to_all
+  args : (Tensor x, int ring_id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllToAllInferMeta
+    param: [x]
+  kernel :
+    func : all_to_all
+    param: [x]
+
 - op : arange
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
