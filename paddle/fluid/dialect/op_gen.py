@@ -525,13 +525,13 @@ class OpInfoParser:
             return None
 
     def get_phi_dtype_name(self, name):
+        name = name.replace('Scalar', 'phi::Scalar')
+        name = name.replace('IntArray', 'phi::IntArray')
+        name = name.replace('DataLayout', 'phi::DataLayout')
+        name = name.replace('DataType', 'phi::DataType')
         if name.startswith(
             (
-                "Scalar",
-                "IntArray",
                 "Place",
-                "DataLayout",
-                "DataType",
                 "CPUPlace",
                 "GPUPlace",
                 "GPUPinnedPlace",
