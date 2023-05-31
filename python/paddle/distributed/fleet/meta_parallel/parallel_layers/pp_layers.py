@@ -706,9 +706,9 @@ class PipelineLayer(nn.Layer):
                     # Note: the PipelineLayerChunk won't add the partial function to the sub layer,
                     # will introduce error when calling chunk.parameters(). Have to manually add
                     # this layer to the chunk's sub layer.
-                    if isinstance(run_function, PipelineLayerChunk):
+                    if self._num_virtual_pipeline_stages > 1:
                         run_function.add_sublayer(
-                            str(len(run_function.get_run_function())),
+                            layer.layer_name,
                             self.shared_layers[layer.layer_name],
                         )
 
