@@ -50,8 +50,7 @@ bool is_only_transposed(const DDim& shape,
                         DDim& src_strides,         // NOLINT
                         std::vector<int>& axis) {  // NOLINT
   std::set<int> visited_idx;
-  std::vector<int> tmp_axis;
-  tmp_axis.reserve(strides.size());
+  axis.resize(strides.size());
   for (int i = 0; i < strides.size(); i++) {
     int64_t max_num = 0;
     int max_idx = -1;
@@ -76,15 +75,13 @@ bool is_only_transposed(const DDim& shape,
     visited_idx.insert(max_idx);
     src_strides[i] = max_num;
     src_shape[i] = shape[max_idx];
-    tmp_axis.push_back(max_idx);
+    axis[max_idx] = i;
   }
 
   if (DenseTensorMeta::calc_strides(src_shape) == src_strides) {
-    axis.resize(tmp_axis.size());
-    for (size_t i = 0; i < axis.size(); i++) {
-      axis[i] = tmp_axis[tmp_axis[i]];
-    }
     return true;
+  } else {
+    return false;
   }
 }
 
@@ -93,14 +90,13 @@ void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.strides = meta.calc_strides(meta.dims, meta.layout);
-  out->set_meta(meta);
-
   std::vector<int> axis;
   DDim src_strides = meta.strides;
   DDim src_shape = meta.dims;
   if (is_only_transposed(
           meta.dims, meta.strides, src_shape, src_strides, axis)) {
+    meta.strides = meta.calc_strides(meta.dims, meta.layout);
+    out->set_meta(meta);
     DenseTensor tmp_tensor = input;
     phi::DenseTensorMeta tmp_meta = meta;
     tmp_meta.strides = src_strides;
@@ -108,18 +104,10 @@ void ContiguousKernel(const Context& dev_ctx,
     tmp_tensor.set_meta(tmp_meta);
     TransposeKernel<T, Context>(dev_ctx, tmp_tensor, axis, out);
     return;
-
-    // std::cout << "true src_shape = " << src_shape << ", src_strides = " <<
-    // src_strides << ", axis = "; for (auto a : axis) {
-    //   std::cout << a << " ";
-    // }
-    // std::cout << std::endl;
   }
-  // std::cout << "false src_shape = " << src_shape << ", src_strides = " <<
-  // src_strides << ", axis = "; for (auto a : axis) {
-  //   std::cout << a << " ";
-  // }
-  // std::cout << std::endl;
+
+  meta.strides = meta.calc_strides(meta.dims, meta.layout);
+  out->set_meta(meta);
 
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
