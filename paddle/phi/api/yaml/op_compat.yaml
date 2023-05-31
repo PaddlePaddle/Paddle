@@ -1788,9 +1788,8 @@
       support_tensor : true
   get_expected_kernel_type :
     pool2d : GetPoolExpectedKernelType
-    pool2d_grad : GetPoolGradExpectedKernelType
-    pool2d_double_grad : GetPoolExpectedKernelType
-  manual_signature : [pool2d, pool2d_grad, pool2d_double_grad]
+    pool2d_grad : GetPoolExpectedKernelType
+    pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]
@@ -1805,8 +1804,7 @@
     {kernel_size : ksize}
   get_expected_kernel_type :
     pool3d : GetPoolExpectedKernelType
-    pool3d_grad : GetPoolGradExpectedKernelType
-  manual_signature : [pool3d, pool3d_grad]
+    pool3d_grad : GetPoolExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false]
 

@@ -36,7 +36,7 @@ phi::KernelKey GetPoolExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
-phi::KernelKey GetPoolGradExpectedKernelType(
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 

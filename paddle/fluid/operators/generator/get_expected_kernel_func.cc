@@ -143,17 +143,17 @@ phi::KernelKey GetPoolExpectedKernelType(
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
-phi::KernelKey GetPoolGradExpectedKernelType(
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
-  auto input_data_type =
-      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  auto data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "grad_x@GRAD");
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
   op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
-  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-  return phi::KernelKey(input_data_type, ctx.GetPlace());
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetSgdExpectedKernelType(
