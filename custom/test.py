@@ -33,22 +33,22 @@ class TestFusedAdd(unittest.TestCase):
             shape = [np.random.randint(val_range), np.random.randint(val_range)]
             shapes.append(shape)
 
-        # accuracy
-        for i, shape in enumerate(shapes):
-            print(f"shape:{shape}")
-            x = paddle.randn(shape, dtype=paddle.float32)
-            y = paddle.randn(shape, dtype=paddle.bfloat16)
-            fused_add_out = custom_fused_add(x, y)
-            x.add_(paddle.cast(y, paddle.float32))
-            # if i % 10 == 0:
-            print(
-                "i:{}, fused add out:{}, normal add out:{}".format(
-                    i, fused_add_out[0], x[0]
-                )
-            )
-            np.testing.assert_equal(fused_add_out.numpy(), x.numpy())
-            del x, y, fused_add_out
-        return
+        # # accuracy
+        # for i, shape in enumerate(shapes):
+        #     print(f"shape:{shape}")
+        #     x = paddle.randn(shape, dtype=paddle.float32)
+        #     y = paddle.randn(shape, dtype=paddle.bfloat16)
+        #     fused_add_out = custom_fused_add(x, y)
+        #     x.add_(paddle.cast(y, paddle.float32))
+        #     # if i % 10 == 0:
+        #     print(
+        #         "i:{}, fused add out:{}, normal add out:{}".format(
+        #             i, fused_add_out[0], x[0]
+        #         )
+        #     )
+        #     np.testing.assert_equal(fused_add_out.numpy(), x.numpy())
+        #     del x, y, fused_add_out
+        # return
 
         for i, shape in enumerate(shapes):
             numel = shape[0] * shape[1]

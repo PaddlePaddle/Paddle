@@ -67,7 +67,8 @@ __global__ void fused_add_cuda_backward(const float* out_grad,
 std::vector<paddle::Tensor> fused_add_forward(const paddle::Tensor& x,
                                               const paddle::Tensor& y) {
   int64_t numel = x.numel();
-  auto out = paddle::empty_like(x);
+  // auto out = paddle::empty_like(x);
+  paddle::Tensor* out = const_cast<paddle::Tensor*>(&x);
   auto place = phi::GPUPlace();
   // auto *context = static_cast<phi::GPUContext *>(
   //     phi::DeviceContextPool::Instance().Get(place));
@@ -85,9 +86,9 @@ std::vector<paddle::Tensor> fused_add_forward(const paddle::Tensor& x,
   // x.data<float>() << ", y:" << y.data<phi::bfloat16>() << ", out:" <<
   // out.data<float>() << std::endl;
   fused_add_cuda_forward<4><<<grid, block, 0, x.stream()>>>(
-      x.data<float>(), y.data<phi::bfloat16>(), out.data<float>(), numel);
+      x.data<float>(), y.data<phi::bfloat16>(), out->data<float>(), numel);
 
-  return {out};
+  return {*out};
 }
 
 std::vector<paddle::Tensor> fused_add_backward(const paddle::Tensor& x,
