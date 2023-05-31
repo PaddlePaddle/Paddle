@@ -348,7 +348,7 @@ cc_library(
        data_device_transform
        data_type_transform
        data_layout_transform
-       phi_data_transform
+       api_srcs
        phi)
 
 cc_library(
