@@ -52,7 +52,7 @@ TODO: Documentation of conv2d op.
   }
 
  protected:
-  void Apply() override {
+  void Apply() {
     AddInput("Bias",
              "(Tensor) Bias to be added to each output of filter application."
              "The format of output tensor is X (one-dimensional) of size equal"
@@ -132,10 +132,10 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(fused_conv2d,
                             FusedConv2DInferShapeFunctor,
-                            PD_INFER_META(phi::FusedConv2DInferMeta));
+                            PD_INFER_META(phi::FusedConvInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(fused_conv3d,
                             FusedConv3DInferShapeFunctor,
-                            PD_INFER_META(phi::FusedConv3DInferMeta));
+                            PD_INFER_META(phi::FusedConvInferMeta));
 
 // fused_conv2d is only used for onednn inference.
 REGISTER_OPERATOR(

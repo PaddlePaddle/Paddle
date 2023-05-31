@@ -88,7 +88,7 @@ TODO: Documentation of conv2d op.
   }
 
  protected:
-  void Apply() override {
+  void Apply() {
     AddInput("Bias",
              "(Tensor) Bias to be added to each output of filter application."
              "The format of output tensor is X (one-dimensional) of size equal"
