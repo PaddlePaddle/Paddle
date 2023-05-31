@@ -529,6 +529,12 @@ class OpConverter {
   nvinfer1::ITensor* GetEleTensorOfShape(nvinfer1::ITensor* shape_tensor,
                                          int index,
                                          bool is_scalar = false) {
+    PADDLE_ENFORCE_GE(
+        index,
+        0,
+        platform::errors::PreconditionNotMet(
+            "The index should be greater or equal than 0, but got %d", index));
+
     auto* tensor =
         TRT_ENGINE_ADD_LAYER(engine_,
                              Gather,

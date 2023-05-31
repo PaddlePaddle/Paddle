@@ -116,7 +116,7 @@ inline PsCoreClassMap &global_factory_map_cpp() { return global_factory_map(); }
    public:                                              \
     Any NewInstance() { return Any(new name()); }       \
   };                                                    \
-  void register_factory_##name() {                      \
+  static void register_factory_##name() {               \
     FactoryMap &map = global_factory_map_cpp()[#clazz]; \
     if (map.find(#name) == map.end()) {                 \
       map[#name] = new ObjectFactory##name();           \
