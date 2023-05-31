@@ -77,38 +77,71 @@ struct LiteNNAdapterConfig {
 };
 
 struct XpuConfig {
-  // l3 related
+  // Available l3 size
   size_t l3_size{0};
+  // If l3_ptr is not nullptr, it is used as l3 buffer.
+  // If l3_ptr is nullptr, new l3 buffer will be created.
   void* l3_ptr{nullptr};
+  // Available l3 size for autotune.
+  // If l3_autotune_size is 0, autotune is closed.
+  // Note: The remaining l3 size (l3_size - l3_autotune_size) is for
+  // kernels (both paddle/xdnn kernels)
   size_t l3_autotune_size{0};
 
-  // stream related
+  // Stream for execution.
+  // If stream is nullptr, default stream will be used.
   void* stream{nullptr};
 
-  // conv autotune related, only for Paddle-Lite now
-  int conv_autotune_level{0};  //
+  // Conv autotune level. Default 0 means no autotune.
+  // Note: Paddle-Lite only.
+  int conv_autotune_level{0};
+  // Base conv autotune info is read from conv_autotune_file.
+  // Note: Paddle-Lite only.
   std::string conv_autotune_file;
+  // Whether write new conv autotune info to conv_autotune_file.
+  // Note: Paddle-Lite only.
   bool conv_autotune_file_writeback{false};
 
-  // fc autotune related, only for Paddle-Lite now
-  int fc_autotune_level{0};  // 0-9
+  // Fc autotune level. The Optional values are 0-9. Default 0 means no
+  // autotune. Note: Paddle-Lite only.
+  int fc_autotune_level{0};
+  // Base fc autotune info is read from fc_autotune_file.
+  // Note: Paddle-Lite only.
   std::string fc_autotune_file;
+  // Whether write new fc autotune info to fc_autotune_file.
+  // Note: Paddle-Lite only.
   bool fc_autotune_file_writeback{false};
 
-  // only for Paddle-Lite now
-  // std::string gemm_precision_mode{"int16"}; // int16, int31
-  int gemm_compute_precision{-1};  // -1,0,1,2: default, int8,int16,int31
-  int transformer_softmax_optimize_level{0};  // 0,1,2
+  // Gemm compute precision. Optional values are -1,0,1,2.
+  // * If -1, int8 for int8 model, int16 for fp32/fp16 model, int31 for fp32
+  // model(should set quant_post_dynamic_weight_precison to 2).
+  // * If 0, use int8 gemm compute precision.
+  // * If 1, use int16 gemm compute precision.
+  // * If 2, use int31 gemm compute precision. Note: Paddle-Lite only.
+  int gemm_compute_precision{-1};
+  // Which method to optimize softmax in transformer structure. Optional values
+  // are 0,1,2. Note: Paddle-Lite only.
+  int transformer_softmax_optimize_level{0};
+  // Whather enable adaptive_seqlen optimize on transformer encoder.
+  // Note: Paddle-Lite only.
   bool transformer_encoder_adaptive_seqlen{true};
 
-  // only for Paddle-Lite now
+  // Gelu out max threshold is limited to quant_post_static_gelu_out_threshold
+  // if use static post-quantization.
+  // Note: Paddle-Lite only.
   float quant_post_static_gelu_out_threshold{10.f};
-  int quant_post_dynamic_activation_method{
-      0};  // ? 0,1,2,3 per_tensor(kl1/kl2), per_batch(kl1), per_head(kl1),
-           // every_16(kl2)
-  // only for PaddleInference now
-  int quant_post_dynamic_weight_precison{
-      1};  // 0,1,2: int8, int16, float(int31 compute)
+  // Activation method if use dynamic post-quantization.
+  // For kunlun1, optional values are 0(per_tensor),1(per_batch),2(per_head).
+  // For kunlun2, optional values are 0(per_tensor) or non-zero(every_16).
+  // Note: Paddle-Lite only.
+  int quant_post_dynamic_activation_method{0};
+  // Preprocess weight to quant_post_dynamic_weight_precison if use dynamic
+  // post-quantization. Optional values is 0,1,2.
+  // * If 0, preprocess weight to int8.
+  // * If 1, preprocess weight to int16.
+  // * If 2, preprocess weight to float.
+  // Note: PaddleInference only.
+  int quant_post_dynamic_weight_precison{1};
   std::vector<std::string> quant_post_dynamic_op_types;
 };
 
