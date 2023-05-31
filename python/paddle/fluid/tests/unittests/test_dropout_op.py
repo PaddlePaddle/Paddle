@@ -1435,8 +1435,9 @@ class PrimNet(paddle.nn.Layer):
         training=True,
         mode="upscale_in_train",
     ):
+        y = paddle.assign(x)
         out = paddle.nn.functional.dropout(
-            x=x, p=p, axis=axis, training=training, mode=mode
+            x=y, p=p, axis=axis, training=training, mode=mode
         )
         return out
 
@@ -1665,8 +1666,9 @@ class TestCompositeDropout(unittest.TestCase):
                         else "float32",
                     )
                     input_.stop_gradient = False
+                    y = paddle.assign(input_)
                     output = paddle.nn.functional.dropout(
-                        input_,
+                        y,
                         self.p,
                         training=(not self.is_test),
                         mode=self.mode,
