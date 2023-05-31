@@ -183,7 +183,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                     dev2_output_create
                     + f"""
 {code_indent}  dev2_kernel_out_vec = paddle::experimental::{set_out_func}(kernel_out, paddle::experimental::GetDebugDev2Type());
-{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_vec.get());"""
+{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_vec.get(), kernel_out);"""
                 )
 
             else:
@@ -262,7 +262,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                             dev2_output_create
                             + f"""
 {code_indent}  dev2_kernel_out_{i}_vec = paddle::experimental::CopyVector(kernel_out_{i}, paddle::experimental::GetDebugDev2Type());
-{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_{i}_vec.get());"""
+{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_{i}_vec.get(), kernel_out_{i});"""
                         )
         else:
             raise ValueError(

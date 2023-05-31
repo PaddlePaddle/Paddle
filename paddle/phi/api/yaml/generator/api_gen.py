@@ -74,7 +74,7 @@ class ForwardAPI(BaseAPI):
         def dev2_gene_vec_dense_input(input_name, ode_indent=''):
             return f"""
 {code_indent}  auto dev2_{PREFIX_TENSOR_NAME}{input_name}_vec = paddle::experimental::CopyVector({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());
-{code_indent}  std::vector<const phi::DenseTensor*> dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(*dev2_{PREFIX_TENSOR_NAME}{input_name}_vec);"""
+{code_indent}  std::vector<const phi::DenseTensor*> dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(*dev2_{PREFIX_TENSOR_NAME}{input_name}_vec, {PREFIX_TENSOR_NAME}{input_name});"""
 
         gene_dev2_input_func = {
             "const Tensor&": {
@@ -371,14 +371,14 @@ class ForwardAPI(BaseAPI):
                     dev2_output_create = (
                         dev2_output_create
                         + f"""
-{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr({inplace_assign}_vec.get());"""
+{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr({inplace_assign}_vec.get(), {inplace_assign});"""
                     )
                 else:
                     dev2_output_create = (
                         dev2_output_create
                         + f"""
 {code_indent}  dev2_kernel_out_vec = paddle::experimental::{set_out_func}({inplace_assign}, paddle::experimental::GetDebugDev2Type());
-{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_vec.get());"""
+{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_vec.get(), {inplace_assign});"""
                         # {code_indent}  std::vector<phi::DenseTensor> dev2_kernel_out_vec;
                         # {code_indent}  dev2_kernel_out = paddle::experimental::CopyVector({inplace_assign}, paddle::experimental::GetDebugDev2Type(), *dev2_kernel_out_vec);"""
                     )
@@ -503,17 +503,23 @@ class ForwardAPI(BaseAPI):
                             # set_out_func="CopyOptionalVector"
                             # dev2_get_out_code = f"std::get<{i}>(dev2_api_output_copy_src)"
                             dev2_get_ptr = ""
-                        dev2_output_create = (
-                            dev2_output_create
-                            + f"""
+                            dev2_output_create = (
+                                dev2_output_create
+                                + f"""
 {code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr({inplace_assign}_vec{dev2_get_ptr});"""
-                        )
+                            )
+                        else:
+                            dev2_output_create = (
+                                dev2_output_create
+                                + f"""
+{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr({inplace_assign}_vec{dev2_get_ptr}, {inplace_assign});"""
+                            )
                     else:
                         dev2_output_create = (
                             dev2_output_create
                             + f"""
 {code_indent}  dev2_kernel_out_{i}_vec = paddle::experimental::{set_out_func}({inplace_assign}, paddle::experimental::GetDebugDev2Type());
-{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_{i}_vec{dev2_get_ptr});"""
+{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_{i}_vec{dev2_get_ptr}, {inplace_assign});"""
                         )
                 else:
                     dev2_output_declaration += f"""

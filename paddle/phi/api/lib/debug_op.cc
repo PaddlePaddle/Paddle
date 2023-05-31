@@ -178,8 +178,15 @@ std::unique_ptr<std::vector<phi::DenseTensor>> CopyVector(
   auto outs = std::make_unique<std::vector<phi::DenseTensor>>();
   outs->reserve(ins.size());
   for (const auto& in : ins) {
-    auto out = CopyDenseTensor(*in, dst_place);
-    outs->emplace_back(std::move(*out));
+    if (in == nullptr) {
+      VLOG(10) << "in == nullptr ? : " << (in == nullptr);
+      auto out = std::make_shared<phi::DenseTensor>();
+      // out->set_empty();
+      outs->emplace_back(std::move(*out));
+    } else {
+      auto out = CopyDenseTensor(*in, dst_place);
+      outs->emplace_back(std::move(*out));
+    }
   }
   return outs;
 }
@@ -203,11 +210,14 @@ paddle::optional<std::vector<phi::DenseTensor>> CopyOptionalVector(
 }
 
 std::vector<const phi::DenseTensor*> DenseTensorToConstDenseTensorPtr(
-    const std::vector<phi::DenseTensor>& tensors) {
-  std::vector<const phi::DenseTensor*> pt_tensors(tensors.size());
+    const std::vector<phi::DenseTensor>& tensors,
+    const std::vector<const phi::DenseTensor*>& ins) {
+  std::vector<const phi::DenseTensor*> pt_tensors(tensors.size(), nullptr);
 
   for (size_t i = 0; i < tensors.size(); ++i) {
-    pt_tensors[i] = &tensors[i];
+    if (ins[i]) {
+      pt_tensors[i] = &tensors[i];
+    }
   }
 
   return pt_tensors;
@@ -252,8 +262,15 @@ std::unique_ptr<std::vector<phi::DenseTensor>> CopyVector(
   auto outs = std::make_unique<std::vector<phi::DenseTensor>>();
   outs->reserve(ins.size());
   for (const auto& in : ins) {
-    auto out = CopyDenseTensor(*in, dst_place);
-    outs->emplace_back(std::move(*out));
+    if (in == nullptr) {
+      VLOG(10) << "in == nullptr ? : " << (in == nullptr);
+      auto out = std::make_shared<phi::DenseTensor>();
+      // out->set_empty();
+      outs->emplace_back(std::move(*out));
+    } else {
+      auto out = CopyDenseTensor(*in, dst_place);
+      outs->emplace_back(std::move(*out));
+    }
   }
   return outs;
 }
@@ -268,11 +285,29 @@ std::unique_ptr<std::vector<phi::DenseTensor>> CopyVector(
 // }
 
 std::vector<phi::DenseTensor*> DenseTensorToDenseTensorPtr(
-    std::vector<phi::DenseTensor>* tensors) {
-  std::vector<phi::DenseTensor*> pt_tensors(tensors->size());
+    std::vector<phi::DenseTensor>* tensors,
+    const std::vector<phi::DenseTensor*>& ins) {
+  std::vector<phi::DenseTensor*> pt_tensors(tensors->size(), nullptr);
 
   for (size_t i = 0; i < tensors->size(); ++i) {
-    pt_tensors[i] = &tensors->at(i);
+    if (ins[i]) {
+      pt_tensors[i] = &tensors->at(i);
+    }
+    // pt_tensors[i] = static_cast<phi::DenseTensor*>(&tensors[i]);
+  }
+
+  return pt_tensors;
+}
+
+std::vector<phi::DenseTensor*> DenseTensorToDenseTensorPtr(
+    std::vector<phi::DenseTensor>* tensors,
+    const std::vector<const phi::DenseTensor*>& ins) {
+  std::vector<phi::DenseTensor*> pt_tensors(tensors->size(), nullptr);
+
+  for (size_t i = 0; i < tensors->size(); ++i) {
+    if (ins[i]) {
+      pt_tensors[i] = &tensors->at(i);
+    }
     // pt_tensors[i] = static_cast<phi::DenseTensor*>(&tensors[i]);
   }
 
@@ -709,6 +744,7 @@ std::string XPUDebugString(const std::string& op_name,
                            const std::string& tensor_name,
                            const std::vector<const phi::DenseTensor*>& a,
                            const std::vector<const phi::DenseTensor*>& b) {
+  VLOG(10) << "a.size() = " << a.size() << ", b.size() = " << b.size();
   PADDLE_ENFORCE_EQ(a.size(),
                     b.size(),
                     phi::errors::InvalidArgument(
@@ -829,8 +865,7 @@ std::string XPUDebugString(const std::string& op_name,
                            const std::string& tensor_name,
                            const std::vector<phi::DenseTensor*>& a,
                            const std::vector<phi::DenseTensor*>& b) {
-  std::cout << "a.size() = " << a.size() << std::endl;
-  std::cout << "b.size() = " << b.size() << std::endl;
+  VLOG(10) << "a.size() = " << a.size() << ", b.size() = " << b.size();
   PADDLE_ENFORCE_EQ(a.size(),
                     b.size(),
                     phi::errors::InvalidArgument(

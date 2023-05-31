@@ -955,7 +955,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 dev2_input_tensor_code
                 + f"""
 {code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name}_vec = paddle::experimental::CopyVector({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());
-{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(*dev2_{PREFIX_TENSOR_NAME}{input_name}_vec);"""
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(*dev2_{PREFIX_TENSOR_NAME}{input_name}_vec, {PREFIX_TENSOR_NAME}{input_name});"""
             )
             return dev2_input_tensor_code
 
@@ -1635,7 +1635,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    VLOG(10) << "Start check acc for output!";
 {code_indent}    debug_str += "out: ";{self.check_acc(dev2_outputs_args, kernel_name, code_indent)}
 {code_indent}    VLOG(10) << "End check acc for output!";
-{code_indent}    if (!debug_str.empty()) std::cout << debug_start_str << "in: " << debug_str << std::endl;
+{code_indent}    if (debug_str != "out: ") std::cout << debug_start_str << "in: " << debug_str << std::endl;
 {code_indent}  }}"""
 
         fallback_kernel_output_trans = ""
@@ -1670,9 +1670,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  }}
 {dev2_input_tensors}
 {dev2_output_create}
-{code_indent}  {'std::cout << "before kernel_out.size() = " << kernel_out.size() <<std::endl;' if kernel_name == "meshgrid" else ""}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
-{code_indent}  {'std::cout << "after kernel_out.size() = " << kernel_out.size() <<std::endl;' if kernel_name == "meshgrid" else ""}
 {dev2_run_kernel}
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;

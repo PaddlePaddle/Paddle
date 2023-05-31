@@ -53,7 +53,8 @@ paddle::optional<std::vector<phi::DenseTensor>> CopyOptionalVector(
     Place dst_place);
 
 std::vector<const phi::DenseTensor*> DenseTensorToConstDenseTensorPtr(
-    const std::vector<phi::DenseTensor>& tensors);
+    const std::vector<phi::DenseTensor>& tensors,
+    const std::vector<const phi::DenseTensor*>& ins);
 
 paddle::optional<std::vector<const phi::DenseTensor*>>
 DenseTensorToConstDenseTensorPtr(
@@ -70,7 +71,12 @@ std::unique_ptr<std::vector<phi::DenseTensor>> CopyVector(
     const std::vector<phi::DenseTensor*>& ins, Place dst_place);
 
 std::vector<phi::DenseTensor*> DenseTensorToDenseTensorPtr(
-    std::vector<phi::DenseTensor>* tensors);
+    std::vector<phi::DenseTensor>* tensors,
+    const std::vector<phi::DenseTensor*>& ins);
+
+std::vector<phi::DenseTensor*> DenseTensorToDenseTensorPtr(
+    std::vector<phi::DenseTensor>* tensors,
+    const std::vector<const phi::DenseTensor*>& ins);
 
 std::vector<phi::DenseTensor*> DenseTensorToDenseTensorPtr(
     const paddle::optional<std::vector<phi::DenseTensor>>& tensors);
