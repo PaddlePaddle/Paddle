@@ -1418,14 +1418,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-    argument_->SetXpuLocked(config_.xpu_locked_);
-    argument_->SetXpuAutotune(config_.xpu_autotune_);
-    argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-    argument_->SetXpuPrecision(config_.xpu_precision_);
-    argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-    argument_->SetXpuDeviceId(config_.xpu_device_id_);
-    argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_->SetXpuLocked(config_.xpu_lite_l3_locked_);
+    argument_->SetXpuEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
     argument_->SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
@@ -1506,21 +1500,34 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-#ifdef PADDLE_WITH_XPU
   argument_->SetUseXpu(config_.use_xpu_);
-  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-  argument_->SetXpuLocked(config_.xpu_locked_);
-  argument_->SetXpuAutotune(config_.xpu_autotune_);
-  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-  argument_->SetXpuPrecision(config_.xpu_precision_);
-  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-  argument_->SetXpuDeviceId(config_.xpu_device_id_);
-  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
-  argument_->SetXpuQuantPostDynamicWeightBits(
-      config_.xpu_quant_post_dynamic_weight_bits_);
+  argument_->SetXpuDeviceId(config_.xpu_config_.device_id);
+  argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
+  argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
+  argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuStream(config_.xpu_config_.stream);
+  argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
+  argument_->SetXpuConvAutotuneFile(config_.xpu_config_.conv_autotune_file);
+  argument_->SetXpuConvAutotuneFileWriteback(
+      config_.xpu_config_.conv_autotune_file_writeback);
+  argument_->SetXpuFcAutotuneLevel(config_.xpu_config_.fc_autotune_level);
+  argument_->SetXpuFcAutotuneFile(config_.xpu_config_.fc_autotune_file);
+  argument_->SetXpuFcAutotuneFileWriteback(
+      config_.xpu_config_.fc_autotune_file_writeback);
+  argument_->SetXpuGemmComputePrecision(
+      config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuTransformerSoftmaxOptimizeLevel(
+      config_.xpu_config_.transformer_softmax_optimize_level);
+  argument_->SetXpuTransformerEncoderAdaptiveSeqlen(
+      config_.xpu_config_.transformer_encoder_adaptive_seqlen);
+  argument_->SetXpuQuantPostStaticGeluOutThreshold(
+      config_.xpu_config_.quant_post_static_gelu_out_threshold);
+  argument_->SetXpuQuantPostDynamicActivationMethod(
+      config_.xpu_config_.quant_post_dynamic_activation_method);
+  argument_->SetXpuQuantPostDynamicWeightPrecision(
+      config_.xpu_config_.quant_post_dynamic_weight_precision);
   argument_->SetXpuQuantPostDynamicOpTypes(
-      config_.xpu_quant_post_dynamic_op_types_);
-#endif
+      config_.xpu_config_.quant_post_dynamic_op_types);
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
