@@ -634,7 +634,7 @@ def rsqrt_composite(x):
     from paddle.fluid.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
-    if dtype == "float16" or dtype == "uint16":
+    if dtype in ["float16", "uint16"]:
         is_amp = True
         x = cast(x, "float32")
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
