@@ -54,12 +54,14 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
         merge_dim = ShardingMergeForAxis(
             tensor_axis, mesh_dim, axis_to_dim_map[tensor_axis]);
       }
-      axis_to_dim_map.insert({tensor_axis, merge_dim});
-
-      if (dim_to_axis_map.count(merge_dim) == 0) {
-        dim_to_axis_map.insert({merge_dim, tensor_axis});
-      } else {
-        dim_to_axis_map[merge_dim] += tensor_axis;
+      axis_to_dim_map[tensor_axis] = merge_dim;
+      if (merge_dim != -1) {
+        if (dim_to_axis_map.count(merge_dim) == 0) {
+          dim_to_axis_map.insert({merge_dim, tensor_axis});
+        } else if (dim_to_axis_map[merge_dim].find(tensor_axis) ==
+                   std::string::npos) {
+          dim_to_axis_map[merge_dim] += tensor_axis;
+        }
       }
     }
   }
@@ -144,8 +146,16 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
           "size of alphabet [%d] is less than broadcast ndim [%d]",
           alphabet.size(),
           broadcast_ndim));
-  return alphabet.substr(0, broadcast_ndim)
-      .substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
+  PADDLE_ENFORCE_GE(broadcast_ndim,
+                    tenosr_ndim,
+                    phi::errors::InvalidArgument(
+                        "broadcast ndim [%d] is less than tenosr ndim [%d]",
+                        broadcast_ndim,
+                        tenosr_ndim));
+  if (tenosr_ndim <= 0) {
+    return std::string();
+  }
+  return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
 }
 
 }  // namespace auto_parallel

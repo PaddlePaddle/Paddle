@@ -29,7 +29,8 @@ TensorDistAttr GetInferedDistAttr(
     const TensorDistAttr& origin_dist_attr,
     const std::vector<int64_t>& shape,
     const std::string& tensor_axes,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map);
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool trans_axis);
 
 class MatmulSPMDRule : public SPMDRuleBase {
  public:

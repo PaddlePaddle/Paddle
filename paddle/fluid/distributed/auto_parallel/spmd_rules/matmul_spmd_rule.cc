@@ -56,6 +56,16 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
   bool trans_x = ExtractAttr<bool>("trans_x", attrs);
   bool trans_y = ExtractAttr<bool>("trans_y", attrs);
 
+  // Step2.3.2  handle input tensor partial (TODO)
+  VLOG(4) << "MatmulSPMDRule InferForward Inputs: "
+          << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
+          << str_join(x_dims_mapping) << "]; Y shape: [" << str_join(y_shape)
+          << "], y_dims_mapping: [" << str_join(y_dims_mapping)
+          << "]; trans_x: "
+          << "[" << (trans_x ? "true" : "false") << "]; "
+          << "trans_y: "
+          << "[" << (trans_y ? "true" : "false") << "]; ";
+
   // step1: build Einsum Notation
 
   // reserve the char k, m, n for matrix product notation: mk,kn -> mn
@@ -74,19 +84,23 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
     // vector * batched matrix
   } else if (x_ndim == 1 && y_ndim > 1) {
     x_axes = "k";
-    std::string y_broadcast_axes = GetBroadcastAxes(y_ndim, max_ndim, alphabet);
+    std::string y_broadcast_axes =
+        GetBroadcastAxes(y_ndim - 2, y_ndim - 2, alphabet);
     y_axes = y_broadcast_axes + "kn";
     out_axes = y_broadcast_axes + "n";
     // batched matrix * vector
   } else if (x_ndim > 1 && y_ndim == 1) {
     y_axes = "k";
-    std::string x_broadcast_axes = GetBroadcastAxes(x_ndim, max_ndim, alphabet);
+    std::string x_broadcast_axes =
+        GetBroadcastAxes(x_ndim - 2, x_ndim - 2, alphabet);
     x_axes = x_broadcast_axes + "mk";
     out_axes = x_broadcast_axes + "m";
     // batched matrix * batched matrix
   } else if (x_ndim > 1 && y_ndim > 1) {
-    std::string x_broadcast_axes = GetBroadcastAxes(x_ndim, max_ndim, alphabet);
-    std::string y_broadcast_axes = GetBroadcastAxes(y_ndim, max_ndim, alphabet);
+    std::string x_broadcast_axes =
+        GetBroadcastAxes(x_ndim - 2, max_ndim - 2, alphabet);
+    std::string y_broadcast_axes =
+        GetBroadcastAxes(y_ndim - 2, max_ndim - 2, alphabet);
     x_axes = x_broadcast_axes + "mk";
     y_axes = y_broadcast_axes + "kn";
 
@@ -107,7 +121,7 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
 
   // step2: Sharding Propogation
   if (trans_x) {
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         x_ndim,
         2,
         phi::errors::InvalidArgument("When trans_x is True, the size of X "
@@ -116,7 +130,7 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
     std::iter_swap(x_dims_mapping.end() - 2, x_dims_mapping.end() - 1);
   }
   if (trans_y) {
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         y_ndim,
         2,
         phi::errors::InvalidArgument("When trans_x is True, the size of X "
@@ -127,11 +141,11 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
   // step2.1: Sharding Merge
   std::pair<std::string, std::vector<int64_t>> x_pair(x_axes, x_dims_mapping);
   std::pair<std::string, std::vector<int64_t>> y_pair(y_axes, y_dims_mapping);
-  std::vector<std::pair<const std::string, const std::vector<int64_t>>>
-      input_pairs;
-  input_pairs.push_back(x_pair);
-  input_pairs.push_back(y_pair);
-  auto axis_to_dim_map = ShardingMergeForTensors(input_pairs);
+  // std::vector<std::pair<const std::string, const std::vector<int64_t>>>
+  //     input_pairs;
+  // input_pairs.push_back(x_pair);
+  // input_pairs.push_back(y_pair);
+  auto axis_to_dim_map = ShardingMergeForTensors({x_pair, y_pair});
 
   // step2.2: Infer Output's Dims Mapping.
   TensorDistAttr output_dist_attr_dst =
@@ -144,10 +158,10 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // step2.3: Merge and get Inputs' New Dims Mapping.
-  TensorDistAttr x_dist_attr_dst =
-      GetInferedDistAttr(x_dist_attr_src, x_shape, x_axes, axis_to_dim_map);
-  TensorDistAttr y_dist_attr_dst =
-      GetInferedDistAttr(y_dist_attr_src, y_shape, y_axes, axis_to_dim_map);
+  TensorDistAttr x_dist_attr_dst = GetInferedDistAttr(
+      x_dist_attr_src, x_shape, x_axes, axis_to_dim_map, trans_x);
+  TensorDistAttr y_dist_attr_dst = GetInferedDistAttr(
+      y_dist_attr_src, y_shape, y_axes, axis_to_dim_map, trans_y);
 
   // step2.3: Handle Partial
   // Step2.3.1 Output Partial
@@ -157,10 +171,12 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
   // Step2.3.2  handle input tensor partial (TODO)
   VLOG(4) << "MatmulSPMDRule InferForward: "
           << "X shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
-          << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(x_dist_attr_src.dims_mapping())
+          << "], dst_dims_mapping: ["
           << str_join(x_dist_attr_dst.dims_mapping()) << "]; Y shape: ["
           << str_join(y_shape) << "], src_dims_mapping: ["
-          << str_join(x_dims_mapping) << "], dst_dims_mapping: ["
+          << str_join(y_dist_attr_src.dims_mapping())
+          << "], dst_dims_mapping: ["
           << str_join(y_dist_attr_dst.dims_mapping())
           << "]; Output dims_mapping: [" << str_join(out_dims_mapping)
           << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
@@ -172,7 +188,8 @@ TensorDistAttr GetInferedDistAttr(
     const TensorDistAttr& origin_dist_attr,
     const std::vector<int64_t>& shape,
     const std::string& tensor_axis,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map) {
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool trans_axis) {
   TensorDistAttr dist_attr_ = CopyTensorDistAttrForOutput(origin_dist_attr);
   std::vector<int64_t> infered_dims_mapping;
   infered_dims_mapping.reserve(tensor_axis.size());
@@ -189,6 +206,11 @@ TensorDistAttr GetInferedDistAttr(
       }
       infered_dims_mapping.push_back(itr->second);
     }
+  }
+
+  if (trans_axis) {
+    std::iter_swap(infered_dims_mapping.end() - 2,
+                   infered_dims_mapping.end() - 1);
   }
 
   dist_attr_.set_dims_mapping(infered_dims_mapping);

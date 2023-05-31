@@ -80,6 +80,9 @@ void DistTensorSpec::set_process_mesh(const ProcessMesh& process_mesh) {
 
 const std::vector<int64_t>& DistTensorSpec::get_shape() const { return shape_; }
 
+void DistTensorSpec::set_shape(const std::vector<int64_t>& shape) {
+  shape_ = shape;
+}
 const TensorDistAttr& DistTensorSpec::get_dist_attr() const {
   return dist_attr_;
 }
