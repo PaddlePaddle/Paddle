@@ -2033,9 +2033,6 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             except:
                 return False
 
-        error_str = "expected Tensor" + f" but got {type(x)}"
-        raise TypeError(error_str)
-
     def matmul(x, B):
         if x is None:
             return B
@@ -2066,7 +2063,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
         R = paddle.randn((n, q), dtype=x.dtype)
 
-        A_H = conjugate(transpose(x))
+        A_t = transpose(x)
+        A_H = conjugate(A_t)
         if M is None:
             Q = qr(matmul(x, R))[0]
             for i in range(niter):
@@ -2074,10 +2072,13 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
                 Q = qr(matmul(x, Q))[0]
         else:
             M_H = transjugate(M)
-            Q = qr(matmul(x, R) - matmul(M, R))[0]
+            Q_t = matmul(x, R) - matmul(M, R)
+            Q = qr(Q_t)[0]
             for i in range(niter):
-                Q = qr(matmul(A_H, Q) - matmul(M_H, Q))[0]
-                Q = qr(matmul(x, Q) - matmul(M, Q))[0]
+                Q_t = matmul(A_H, Q) - matmul(M_H, Q)
+                Q = qr(Q_t)[0]
+                Q_t = matmul(x, Q) - matmul(M, Q)
+                Q = qr(Q_t)[0]
 
         return Q
 
@@ -2119,6 +2120,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             U = Q.matmul(U)
 
         return U, S, V
+    
+    if not paddle.is_tensor(x):
+        raise ValueError('Input must be tensor, but got {}'.format(type(x)))
 
     (m, n) = x.shape[-2:]
 

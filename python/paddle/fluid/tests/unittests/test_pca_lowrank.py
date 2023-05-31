@@ -162,6 +162,10 @@ class TestPcaLowrankAPI(unittest.TestCase):
                             batches,
                             pca_lowrank,
                         )
+        x = np.random.randn(5, 5).astype('float64')
+        x = paddle.to_tensor(x)
+        q = None
+        U, S, V = pca_lowrank(x, q, center=False)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
@@ -186,8 +190,13 @@ class TestPcaLowrankAPI(unittest.TestCase):
         x = np.random.randn(5, 5).astype('float64')
         x = paddle.to_tensor(x)
 
+        def test_x_not_tensor():
+            U, S, V = pca_lowrank(x.numpy())
+
+        self.assertRaises(ValueError, test_x_not_tensor)
+
         def test_q_range():
-            q = 10
+            q = -1
             U, S, V = pca_lowrank(x, q)
 
         self.assertRaises(ValueError, test_q_range)
