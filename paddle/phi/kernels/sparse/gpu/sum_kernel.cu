@@ -277,20 +277,23 @@ void SumCooKernel(const Context& dev_ctx,
                   DataType dtype,
                   bool keep_dim,
                   SparseCooTensor* out) {
+  SparseCooTensor* duplicate_out;
   const size_t n_dim = axis.size();
   if (n_dim == 0) {
-    PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooGPUKernel", ([&] {
-                                   SumCooGPU0Kernel<T, data_t, Context>(
-                                       dev_ctx, x, axis, dtype, keep_dim, out);
-                                 }));
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        x.indices().dtype(), "SumCooGPUKernel", ([&] {
+          SumCooGPU0Kernel<T, data_t, Context>(
+              dev_ctx, x, axis, dtype, keep_dim, duplicate_out);
+        }));
   } else {
-    PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SumCooGPUKernel", ([&] {
-                                   SumCooGPU1Kernel<T, data_t, Context>(
-                                       dev_ctx, x, axis, dtype, keep_dim, out);
-                                 }));
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        x.indices().dtype(), "SumCooGPUKernel", ([&] {
+          SumCooGPU1Kernel<T, data_t, Context>(
+              dev_ctx, x, axis, dtype, keep_dim, duplicate_out);
+        }));
   }
   DenseTensor* out_dense;
-  CooToDenseKernel<T, Context>(dev_ctx, *out, out_dense);
+  CooToDenseKernel<T, Context>(dev_ctx, *duplicate_out, out_dense);
   DenseToCooKernel<T, Context>(dev_ctx, *out_dense, x.sparse_dim(), out);
 }
 
