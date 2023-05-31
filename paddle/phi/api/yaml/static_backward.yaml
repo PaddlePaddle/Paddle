@@ -1,8 +1,8 @@
 # This file is to support those static ops different the dynamic.
 
 - backward_op : amax_grad
-  forward: amax (Tensor x, int[] axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int[] axis={}, bool keepdim=false, bool reduce_all=false)
+  forward: amax (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
