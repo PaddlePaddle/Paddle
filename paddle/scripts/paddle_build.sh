@@ -3792,6 +3792,7 @@ function main() {
     init
     case $CMD in
       build_only)
+        export WITH_LITE=OFF
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)
