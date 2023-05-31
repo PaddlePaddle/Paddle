@@ -75,7 +75,7 @@ cc_library(
        var_helper
        layout_autotune
        ops_extra_info
-       api_gen_utils)
+       api_srcs)
 cc_library(
   basic_engine
   SRCS basic_engine.cc
