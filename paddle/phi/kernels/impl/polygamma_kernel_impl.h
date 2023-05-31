@@ -28,6 +28,12 @@ namespace phi {
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 __host__ __device__ T zeta(T x, T q) {
+  /*
+   * REFERENCE:
+   * Gradshteyn, I. S., and I. M. Ryzhik, Tables of Integrals,
+   * Series, and Products, p. 1073; Academic Press, 1980.
+   * From https://netlib.org/cephes/doubldoc.html - zeta.c
+   */
   const T MACHEP = T{1.11022302462515654042E-16};
   constexpr T zero = T{0.0};
   constexpr T half = T{0.5};
@@ -134,6 +140,12 @@ struct CudaPolygammaGradFunctor {
 
 template <typename T>
 static inline T zeta(T x, T q) {
+  /*
+   * REFERENCE:
+   * Gradshteyn, I. S., and I. M. Ryzhik, Tables of Integrals,
+   * Series, and Products, p. 1073; Academic Press, 1980.
+   * From https://netlib.org/cephes/doubldoc.html - zeta.c
+   */
   const T MACHEP = T{1.11022302462515654042E-16};
   constexpr T zero = T{0.0};
   constexpr T half = T{0.5};

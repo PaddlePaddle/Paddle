@@ -28,18 +28,24 @@ paddle.seed(100)
 def ref_polygamma(x, n):
     if n == 0:
         return special.psi(x)
+    if x == 0:
+        # The case where x = 0 differs from the current mainstream implementation and requires specifying a special value point.
+        return float("nan")
     return special.polygamma(n, x)
 
 
 def ref_polygamma_grad(x, dout, n):
+    if x == 0:
+        # The case where x = 0 differs from the current mainstream implementation and requires specifying a special value point.
+        return float("nan") * dout
     gradx = special.polygamma(n + 1, x)
     return dout * gradx
 
 
 class TestPolygammaAPI(unittest.TestCase):
     DTYPE = "float64"
-    DATA = [1, 2, 3, 4, 5]
-    ORDER = 0
+    DATA = [0, 1, 2, 3, 4, 5]
+    ORDER = 1
 
     def setUp(self):
         self.x = np.array(self.DATA).astype(self.DTYPE)
@@ -88,6 +94,14 @@ class TestPolygammaAPI(unittest.TestCase):
             self.assertRaises(ValueError, paddle.polygamma, x, self.ORDER)
             paddle.enable_static()
 
+    def test_input_type_error(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            self.assertRaises(
+                TypeError, paddle.polygamma, self.x, float(self.ORDER)
+            )
+            paddle.enable_static()
+
 
 class TestPolygammaFloat32Order1(TestPolygammaAPI):
     DTYPE = "float32"
@@ -125,10 +139,31 @@ class TestPolygammaFloat64Order3(TestPolygammaAPI):
     ORDER = 3
 
 
-class TestPolygammaNegativeOrder1(TestPolygammaAPI):
+class TestPolygammaNegativeInputOrder1(TestPolygammaAPI):
     DTYPE = "float64"
     DATA = [-2, 3, 5, 2.25, 7, 7.25]
     ORDER = 1
+
+
+class TestPolygammaNegativeOrder1(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [-2, 3, 5, 2.25, 7, 7.25]
+    ORDER = -1
+
+
+class TestPolygammaMultiDimOrder1(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [[-2, 3, 5, 2.25, 7, 7.25], [0, 1, 2, 3, 4, 5]]
+    ORDER = 1
+
+
+class TestPolygammaMultiDimOrder2(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [
+        [[-2, 3, 5, 2.25, 7, 7.25], [0, 1, 2, 3, 4, 5]],
+        [[6, 7, 8, 9, 1, 2], [0, 1, 2, 3, 4, 5]],
+    ]
+    ORDER = 2
 
 
 class TestPolygammaOp(OpTest):
