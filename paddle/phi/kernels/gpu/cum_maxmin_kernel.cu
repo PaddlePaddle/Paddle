@@ -23,19 +23,6 @@
 
 namespace phi {
 
-template <typename T,
-          typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
-__host__ __device__ bool isnan_(T /*val*/) {
-  return false;
-}
-
-template <
-    typename T,
-    typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
-__host__ __device__ bool isnan_(T val) {
-  return std::isnan(val);
-}
-
 template<typename T1, typename T2, typename BinaryOperation>
 __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
   if (std::is_integral<T1>::value) {

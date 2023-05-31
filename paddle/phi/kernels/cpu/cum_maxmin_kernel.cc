@@ -20,22 +20,6 @@
 
 namespace phi {
 
-#ifdef _MSC_VER
-template <typename T>
-typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
-  return false;
-}
-template <typename T>
-typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
-  return std::isnan(x);
-}
-#else
-template <typename T>
-bool isnan_(T x) {
-  return std::isnan(x);
-}
-#endif
-
 std::vector<int> build_range(int stop) {
   std::vector<int> result(stop);
   for (int i = 0; i < stop; i++) {
@@ -85,7 +69,7 @@ void ComputeImp(const DenseTensor& x,
           idx = i;
         }
       } else {
-        if (isnan_(curr_elem) || (!isnan_(max) && op(curr_elem, max))) {
+        if (std::isnan(curr_elem) || (!std::isnan(max) && op(curr_elem, max))) {
           max = curr_elem;
           idx = i;
         }
