@@ -31,6 +31,7 @@ if(WITH_GPU
       elementwise_max_op
       elementwise_div_op
       generated_op
+      generated_static_op
       squared_l2_norm_op
       memcpy_h2d_op
       memcpy_d2h_op

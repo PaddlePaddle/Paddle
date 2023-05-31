@@ -17,7 +17,7 @@ import os
 import tempfile
 import unittest
 
-from paddle.distributed.auto_parallel.cluster import (
+from paddle.distributed.auto_parallel.static.cluster import (
     Cluster,
     DeviceType,
     LinkType,
