@@ -3308,6 +3308,7 @@ function check_coverage_build() {
 }
 function run_setup(){
     startTime_s=`date +%s`  
+    rm -rf build
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
@@ -3491,7 +3492,7 @@ EOF
     export WITH_XPU=${WITH_XPU:-OFF}
     export WITH_IPU=${WITH_IPU:-OFF}
     export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
-    export WITH_LITE=${WITH_LITE:-OFF}
+    export WITH_LITE=OFF
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
     export WITH_STRIP=${WITH_STRIP:-ON}
@@ -3792,7 +3793,6 @@ function main() {
     init
     case $CMD in
       build_only)
-        export WITH_LITE=OFF
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         ;;
       build_pr_dev)
