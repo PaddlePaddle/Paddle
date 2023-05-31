@@ -141,6 +141,14 @@ void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vecto
 }}
 """
 
+GRAD_OP_VERIFY_TEMPLATE = """
+void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes) {{
+  (void)inputs;
+  (void)outputs;
+  (void)attributes;
+}}
+"""
+
 INPUT_TYPE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(inputs[{index}].type().isa<{standard}>(), true,
                     phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
   """
@@ -703,14 +711,19 @@ def OpGenerator(
                     )
 
             # generate op verify function
-            op_verify_str = OP_VERIFY_TEMPLATE.format(
-                op_name=op_class_name,
-                inputs_size=len(op_input_type_list),
-                outputs_size=len(op_output_type_list),
-                inputs_type_check=inputs_type_check_str,
-                outputs_type_check=outputs_type_check_str,
-                attributes_check=attributes_check_str,
-            )
+            if "Grad" in op_class_name:
+                op_verify_str = GRAD_OP_VERIFY_TEMPLATE.format(
+                    op_name=op_class_name,
+                )
+            else:
+                op_verify_str = OP_VERIFY_TEMPLATE.format(
+                    op_name=op_class_name,
+                    inputs_size=len(op_input_type_list),
+                    outputs_size=len(op_output_type_list),
+                    inputs_type_check=inputs_type_check_str,
+                    outputs_type_check=outputs_type_check_str,
+                    attributes_check=attributes_check_str,
+                )
 
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)

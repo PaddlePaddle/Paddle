@@ -1931,6 +1931,7 @@
     x : X
   outputs:
     out : Out
+    xshape: XShape
   int_array:
     shape :
       data_type : int

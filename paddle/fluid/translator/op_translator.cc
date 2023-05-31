@@ -207,7 +207,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
-    // return empty type if this arg is optional and not shown in OpDesc
+    // return empty OpResult if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
     if (!op_desc.HasInput(legacy_input_name)) {
       PADDLE_ENFORCE(info.optional,
@@ -225,6 +225,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     if (!is_vector) {
       auto defining_info = (*param_map)[legacy_input_vars[0]];
       op_inputs.push_back(defining_info.value);
+
       // if src type is Vector<Tesnor> , need an additional `CombineOp` to
       // assemble them.
     } else {
@@ -238,48 +239,75 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
 }
 
 inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
-    ir::IrContext* ctx, const OpDesc& op_desc) {
+    ir::IrContext* ctx,
+    const OpDesc& op_desc,
+    const OpOutputInfoList& output_infos) {
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
 
   auto& type_translator = TypeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
 
   const BlockDesc* block = op_desc.Block();
-  for (const auto& n : op_desc.Outputs()) {
-    auto& name = n.first;
-    VLOG(10) << "[output translating]"
-             << "[" << op_desc.Type() << "]" << name;
-    auto& args = n.second;
 
+  for (const auto& info : output_infos) {
     size_t cur_output_idx = op_output_types.size();
+    std::string legacy_output_name =
+        op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
-    // if src type is Tensor or a Vector<Tensor> with size <= 1
-    if (args.size() <= 1) {
-      for (const auto& arg_name : args) {
-        VarDesc* var = block->FindVarRecursive(arg_name);
-        VLOG(10) << "[output translating]"
-                 << "[" << op_desc.Type() << "]" << name << " " << arg_name
-                 << " " << var->GetType();
+    // return empty type if this arg is optional and not shown in OpDesc
+    // TODO(lyk): HasOutput doesnot consider variadic attribute
+    if (!op_desc.HasOutput(legacy_output_name)) {
+      VLOG(10) << "[output translating]"
+               << "[" << op_desc.Type() << "] optional " << info.name << " :"
+               << info.type_name << " " << legacy_output_name;
+      PADDLE_ENFORCE(info.optional,
+                     "Op %s arg %s should be optional if it can be empty",
+                     op_desc.Type(),
+                     legacy_output_name);
+      op_output_types.push_back(ir::Type(nullptr));
+      continue;
+    }
 
-        ir::Type translated_var_type =
-            type_translator[var->GetType()](ctx, *var);
+    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
+    bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
-        arg_to_idx[arg_name] = cur_output_idx;
-        op_output_types.push_back(translated_var_type);
+    // if src type is Tensor
+    if (!is_vector) {
+      VLOG(10) << "[output translating]"
+               << "[" << op_desc.Type() << "]" << info.name << " :"
+               << info.type_name << " " << legacy_output_name;
+      if (legacy_output_vars.size() == 0) {
+        op_output_types.push_back(ir::Type(nullptr));
+        continue;
       }
+
+      auto& var_name = legacy_output_vars[0];
+      VarDesc* var = block->FindVarRecursive(var_name);
+      VLOG(10) << "[output translating]"
+               << "[" << op_desc.Type() << "]" << info.name << " " << var_name
+               << " " << var->GetType();
+
+      ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
+
+      arg_to_idx[var_name] = cur_output_idx;
+      op_output_types.push_back(translated_var_type);
 
       // if src type is Vector<Tesnor>
     } else {
+      VLOG(10) << "[output translating]"
+               << "[" << op_desc.Type() << "]" << info.name << " :"
+               << info.type_name << " " << legacy_output_name;
       std::vector<ir::Type> types;
-      for (const auto& arg_name : args) {
-        VarDesc* var = block->FindVarRecursive(arg_name);
+      for (const auto& var_name : legacy_output_vars) {
+        VarDesc* var = block->FindVarRecursive(var_name);
         VLOG(10) << "[output translating]"
-                 << "[" << op_desc.Type() << "]" << name << " " << arg_name
+                 << "[" << op_desc.Type() << "]" << info.name << " " << var_name
                  << " " << var->GetType();
         ir::Type translated_var_type =
             type_translator[var->GetType()](ctx, *var);
         types.push_back(translated_var_type);
-        arg_to_idx[arg_name] = cur_output_idx;
+        arg_to_idx[var_name] = cur_output_idx;
       }
       ir::Type vec_type = ir::VectorType::get(ctx, types);
       op_output_types.push_back(vec_type);
@@ -363,7 +391,8 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
-  std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
+  std::tie(op_output_types, arg_to_idx) =
+      GenerateOperationOutput(ctx, op_desc, output_infos);
 
   auto attribute_map =
       TranslateOpAttribute(op_info.name(), attr_infos, op_desc);
@@ -385,11 +414,21 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
                              ir::Program* program,
                              const OpDesc& op_desc) {
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
+
+  auto* op_info_concept =
+      op_info.GetInterfaceImpl<paddle::dialect::GetOpInfoInterface>();
+  OpInputInfoList input_infos;
+  OpAttributeInfoList attr_infos;
+  OpOutputInfoList output_infos;
+  std::tie(input_infos, attr_infos, output_infos) =
+      op_info_concept->get_op_info_();
+
   std::vector<ir::OpResult> op_inputs;
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
-  std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
+  std::tie(op_output_types, arg_to_idx) =
+      GenerateOperationOutput(ctx, op_desc, output_infos);
   ir::AttributeMap attribute_map = {
       {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
   };

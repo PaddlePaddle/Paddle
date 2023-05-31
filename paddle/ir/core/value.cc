@@ -42,7 +42,7 @@ bool OpOperand::operator!=(OpOperand other) const {
 
 bool OpOperand::operator!() const { return impl_ == nullptr; }
 
-OpOperand::operator bool() const { return impl_; }
+OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
 detail::OpOperandImpl *OpOperand::impl() const { return impl_; }
 
@@ -124,6 +124,7 @@ OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
 }
 
 void OpOperandImpl::remove_from_ud_chain() {
+  if (!source_) return;
   if (!prev_use_addr_) return;
   if (prev_use_addr_ == source_.impl()->first_use_addr()) {
     /// NOTE: In ValueImpl, first_use_offseted_by_index_ use lower three bits
