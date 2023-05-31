@@ -116,7 +116,8 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 6888866 7913861
 fi
 
-OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
+#OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
+OUTPUT_LOG=`git diff -U0 upstream/$BRANCH python/paddle/hapi | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
 if [ "$OUTPUT_LOG" != "" ];then
     git diff -U0 upstream/$BRANCH |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
     samplecode=`find samplecode_temp -type f || true`

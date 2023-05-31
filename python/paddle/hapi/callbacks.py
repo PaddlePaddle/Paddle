@@ -339,7 +339,6 @@ class ProgBarLogger(Callback):
 
             callback = paddle.callbacks.ProgBarLogger(log_freq=10)
             model.fit(train_dataset, batch_size=64, callbacks=callback)
-            print(1111)
     """
 
     def __init__(self, log_freq=1, verbose=2):
