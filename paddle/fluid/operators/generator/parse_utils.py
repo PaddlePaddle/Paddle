@@ -273,7 +273,7 @@ def parse_invoke(op_name: str, invoke_config: str) -> Dict[str, Any]:
     invoke_config = invoke_config.strip()
     func, rest = invoke_config.split("(", 1)
     func = func.strip()
-    args = rest.rstrip(")").strip()
+    args = rest[:-1].strip()
     invocation = {"func": func, "args": args}
     return invocation
 

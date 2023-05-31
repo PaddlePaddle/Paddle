@@ -435,19 +435,22 @@
     out : Out
 
 - op : concat
-  backward : concat_grad
+  backward : concat_grad, concat_double_grad
   inputs:
     x: X
   outputs:
     out: Out
   attrs:
     axis: axis
+  drop_empty_grad : [x_grad]
   scalar :
     axis :
       data_type : int
       tensor_name : AxisTensor
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+  get_expected_kernel_type:
+    concat : GetConcatExpectedKernelType
 
 - op : conditional_block
   backward : conditional_block_grad

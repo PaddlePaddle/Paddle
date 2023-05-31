@@ -16,6 +16,7 @@ import argparse
 import os
 import re
 
+import yaml
 from codegen_utils import (
     AssertMessage,
     FindForwardName,
@@ -2699,6 +2700,18 @@ def GenerateForwardHFile(filepath, forward_function_declaration_str):
         f.write(file_contents)
 
 
+def merge_yaml_files(file1, file2, output_file):
+    with open(file1, 'r') as f1:
+        data1 = yaml.safe_load(f1)
+
+    with open(file2, 'r') as f2:
+        data2 = yaml.safe_load(f2)
+    merged_data = data1 + data2
+
+    with open(output_file, 'w') as f:
+        yaml.dump(merged_data, f)
+
+
 if __name__ == "__main__":
     args = ParseArguments()
 
@@ -2711,6 +2724,43 @@ if __name__ == "__main__":
 
     forward_declaration_str = ""
     forward_definition_str = ""
+
+    # merge legacy_ops.yaml and ops.yaml
+    all_ops_yamml_path = []
+    all_bw_yaml_path = []
+    legacy_and_new_ops_path = (
+        api_yaml_paths[0][: api_yaml_paths[0].rfind('/') + 1]
+        + "legacy_and_new_ops.yaml"
+    )
+    legacy_and_new_bw_path = (
+        backward_yaml_paths[0][: backward_yaml_paths[0].rfind('/') + 1]
+        + "legacy_and_new_bw.yaml"
+    )
+
+    for api_yaml_path in api_yaml_paths:
+        if api_yaml_path.endswith("legacy_ops.yaml") or api_yaml_path.endswith(
+            "/ops.yaml"
+        ):
+            all_ops_yamml_path.append(api_yaml_path)
+    api_yaml_paths.remove(all_ops_yamml_path[0])
+    api_yaml_paths.remove(all_ops_yamml_path[1])
+
+    for bw_yaml_path in backward_yaml_paths:
+        if bw_yaml_path.endswith(
+            "legacy_backward.yaml"
+        ) or bw_yaml_path.endswith("/backward.yaml"):
+            all_bw_yaml_path.append(bw_yaml_path)
+    backward_yaml_paths.remove(all_bw_yaml_path[0])
+    backward_yaml_paths.remove(all_bw_yaml_path[1])
+
+    merge_yaml_files(
+        all_ops_yamml_path[0], all_ops_yamml_path[1], legacy_and_new_ops_path
+    )
+    merge_yaml_files(
+        all_bw_yaml_path[0], all_bw_yaml_path[1], legacy_and_new_bw_path
+    )
+    api_yaml_paths.insert(0, legacy_and_new_ops_path)
+    backward_yaml_paths.insert(0, legacy_and_new_bw_path)
 
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
@@ -2742,3 +2792,8 @@ if __name__ == "__main__":
     GenerateNodeHFile(nodes_h_path, node_declaration_str)
     GenerateForwardCCFile(forwards_cc_path, forward_definition_str)
     GenerateForwardHFile(forwards_h_path, forward_declaration_str)
+
+    if os.path.exists(legacy_and_new_ops_path):
+        os.remove(legacy_and_new_ops_path)
+    if os.path.exists(legacy_and_new_bw_path):
+        os.remove(legacy_and_new_bw_path)
