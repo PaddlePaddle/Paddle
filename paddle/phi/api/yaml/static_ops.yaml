@@ -325,13 +325,13 @@
     param: [x, nranks]
 
 - op : relu6
-  args : (Tensor x, float threshold = 6.0f)
+  args : (Tensor x)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : relu6_raw
+    func : relu6
   backward : relu6_grad
 
 - op : rnn
