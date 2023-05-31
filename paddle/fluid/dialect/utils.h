@@ -70,76 +70,76 @@ inline ir::Type TransToIrDataType(phi::DataType dtype,
   }
 }
 
-inline phi::DataLayout TransToPhiDataLayout(
-    DenseTensorTypeStorage::DataLayout data_layout) {
-  switch (data_layout) {
-    case DenseTensorTypeStorage::DataLayout::NHWC:
-      return phi::DataLayout::NHWC;
-    case DenseTensorTypeStorage::DataLayout::NCHW:
-      return phi::DataLayout::NCHW;
-    case DenseTensorTypeStorage::DataLayout::NCDHW:
-      return phi::DataLayout::NCDHW;
-    case DenseTensorTypeStorage::DataLayout::NDHWC:
-      return phi::DataLayout::NDHWC;
-    case DenseTensorTypeStorage::DataLayout::ONEDNN:
-      return phi::DataLayout::ONEDNN;
-    case DenseTensorTypeStorage::DataLayout::SPARSE_COO:
-      return phi::DataLayout::SPARSE_COO;
-    case DenseTensorTypeStorage::DataLayout::SPARSE_CSR:
-      return phi::DataLayout::SPARSE_CSR;
-    case DenseTensorTypeStorage::DataLayout::PSTRING_UNION:
-      return phi::DataLayout::PSTRING_UNION;
-    case DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS:
-      return phi::DataLayout::NUM_DATA_LAYOUTS;
-    case DenseTensorTypeStorage::DataLayout::ALL_LAYOUT:
-      return phi::DataLayout::ALL_LAYOUT;
-    default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported ir data layout `%s` when casting it into "
-          "phi data type.",
-          static_cast<int>(data_layout)));
-  }
-}
+// inline phi::DataLayout TransToPhiDataLayout(
+//     DenseTensorTypeStorage::DataLayout data_layout) {
+//   switch (data_layout) {
+//     case DenseTensorTypeStorage::DataLayout::NHWC:
+//       return phi::DataLayout::NHWC;
+//     case DenseTensorTypeStorage::DataLayout::NCHW:
+//       return phi::DataLayout::NCHW;
+//     case DenseTensorTypeStorage::DataLayout::NCDHW:
+//       return phi::DataLayout::NCDHW;
+//     case DenseTensorTypeStorage::DataLayout::NDHWC:
+//       return phi::DataLayout::NDHWC;
+//     case DenseTensorTypeStorage::DataLayout::ONEDNN:
+//       return phi::DataLayout::ONEDNN;
+//     case DenseTensorTypeStorage::DataLayout::SPARSE_COO:
+//       return phi::DataLayout::SPARSE_COO;
+//     case DenseTensorTypeStorage::DataLayout::SPARSE_CSR:
+//       return phi::DataLayout::SPARSE_CSR;
+//     case DenseTensorTypeStorage::DataLayout::PSTRING_UNION:
+//       return phi::DataLayout::PSTRING_UNION;
+//     case DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS:
+//       return phi::DataLayout::NUM_DATA_LAYOUTS;
+//     case DenseTensorTypeStorage::DataLayout::ALL_LAYOUT:
+//       return phi::DataLayout::ALL_LAYOUT;
+//     default:
+//       PADDLE_THROW(phi::errors::Unimplemented(
+//           "Unsupported ir data layout `%s` when casting it into "
+//           "phi data type.",
+//           static_cast<int>(data_layout)));
+//   }
+// }
 
-inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
-    phi::DataLayout data_layout) {
-  switch (data_layout) {
-    case phi::DataLayout::NHWC:
-      return DenseTensorTypeStorage::DataLayout::NHWC;
-    case phi::DataLayout::NCHW:
-      return DenseTensorTypeStorage::DataLayout::NCHW;
-    case phi::DataLayout::NCDHW:
-      return DenseTensorTypeStorage::DataLayout::NCDHW;
-    case phi::DataLayout::NDHWC:
-      return DenseTensorTypeStorage::DataLayout::NDHWC;
-    case phi::DataLayout::ONEDNN:
-      return DenseTensorTypeStorage::DataLayout::ONEDNN;
-    case phi::DataLayout::SPARSE_COO:
-      return DenseTensorTypeStorage::DataLayout::SPARSE_COO;
-    case phi::DataLayout::SPARSE_CSR:
-      return DenseTensorTypeStorage::DataLayout::SPARSE_CSR;
-    case phi::DataLayout::PSTRING_UNION:
-      return DenseTensorTypeStorage::DataLayout::PSTRING_UNION;
-    case phi::DataLayout::NUM_DATA_LAYOUTS:
-      return DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS;
-    case phi::DataLayout::ALL_LAYOUT:
-      return DenseTensorTypeStorage::DataLayout::ALL_LAYOUT;
-    default:
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported phi data layout `%s` when casting it into "
-          "ir data type.",
-          static_cast<int>(data_layout)));
-  }
-}
+// inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
+//     phi::DataLayout data_layout) {
+//   switch (data_layout) {
+//     case phi::DataLayout::NHWC:
+//       return DenseTensorTypeStorage::DataLayout::NHWC;
+//     case phi::DataLayout::NCHW:
+//       return DenseTensorTypeStorage::DataLayout::NCHW;
+//     case phi::DataLayout::NCDHW:
+//       return DenseTensorTypeStorage::DataLayout::NCDHW;
+//     case phi::DataLayout::NDHWC:
+//       return DenseTensorTypeStorage::DataLayout::NDHWC;
+//     case phi::DataLayout::ONEDNN:
+//       return DenseTensorTypeStorage::DataLayout::ONEDNN;
+//     case phi::DataLayout::SPARSE_COO:
+//       return DenseTensorTypeStorage::DataLayout::SPARSE_COO;
+//     case phi::DataLayout::SPARSE_CSR:
+//       return DenseTensorTypeStorage::DataLayout::SPARSE_CSR;
+//     case phi::DataLayout::PSTRING_UNION:
+//       return DenseTensorTypeStorage::DataLayout::PSTRING_UNION;
+//     case phi::DataLayout::NUM_DATA_LAYOUTS:
+//       return DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS;
+//     case phi::DataLayout::ALL_LAYOUT:
+//       return DenseTensorTypeStorage::DataLayout::ALL_LAYOUT;
+//     default:
+//       PADDLE_THROW(phi::errors::Unimplemented(
+//           "Unsupported phi data layout `%s` when casting it into "
+//           "ir data type.",
+//           static_cast<int>(data_layout)));
+//   }
+// }
 
-inline phi::DenseTensorMeta TransToDenseTensorMeta(
-    paddle::dialect::DenseTensorType type) {
-  return phi::DenseTensorMeta(TransToPhiDataType(type.dtype()),
-                              phi::make_ddim(type.dim()),
-                              TransToPhiDataLayout(type.data_layout()),
-                              type.lod(),
-                              type.offset());
-}
+// inline phi::DenseTensorMeta TransToDenseTensorMeta(
+//     paddle::dialect::DenseTensorType type) {
+//   return phi::DenseTensorMeta(TransToPhiDataType(type.dtype()),
+//                               type.dim(),
+//                               type.data_layout(),
+//                               type.lod(),
+//                               type.offset());
+// }
 
 struct OpInputInfo {
   std::string name;

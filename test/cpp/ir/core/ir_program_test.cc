@@ -109,8 +109,7 @@ TEST(program_test, program) {
   EXPECT_EQ(a_tensor.numel(), 4);
   EXPECT_EQ(a_tensor.dims(), phi::DDim(dims.data(), dims.size()));
   EXPECT_EQ(a_tensor.dtype(), paddle::dialect::TransToPhiDataType(fp32_dtype));
-  EXPECT_EQ(a_tensor.layout(),
-            paddle::dialect::TransToPhiDataLayout(data_layout));
+  EXPECT_EQ(a_tensor.layout(), data_layout);
   EXPECT_EQ(a_tensor.lod(), lod);
   EXPECT_EQ(a_tensor.offset(), offset);
   for (int64_t i = 0; i < a_tensor.numel(); i++) {
@@ -139,8 +138,7 @@ TEST(program_test, program) {
   EXPECT_EQ(b_tensor.numel(), 4);
   EXPECT_EQ(b_tensor.dims(), phi::DDim(dims.data(), dims.size()));
   EXPECT_EQ(b_tensor.dtype(), paddle::dialect::TransToPhiDataType(fp32_dtype));
-  EXPECT_EQ(b_tensor.layout(),
-            paddle::dialect::TransToPhiDataLayout(data_layout));
+  EXPECT_EQ(b_tensor.layout(), data_layout);
   EXPECT_EQ(b_tensor.lod(), lod);
   EXPECT_EQ(b_tensor.offset(), offset);
   for (int64_t i = 0; i < b_tensor.numel(); i++) {

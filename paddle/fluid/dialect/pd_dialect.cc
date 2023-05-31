@@ -112,8 +112,7 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
   DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
 
   os << "tensor<";
-  auto &dims = tensor_type.dim();
-  for (auto d : dims) {
+  for (auto d : phi::vectorize(tensor_type.dim())) {
     os << d;
     os << "x";
   }

@@ -18,6 +18,7 @@
 
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/utils.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace std {
 ///
@@ -48,7 +49,7 @@ namespace dialect {
 struct DenseTensorTypeStorage : public ir::TypeStorage {
   using DataLayout = phi::DataLayout;
   using Dim = phi::DDim;
-  using LoD = phi::Lod;
+  using LoD = std::vector<std::vector<size_t>>;
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///

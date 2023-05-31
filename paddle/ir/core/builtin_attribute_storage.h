@@ -25,7 +25,7 @@ namespace ir {
 
 #define DECLARE_BASE_TYPE_ATTRIBUTE_STORAGE(concrete_storage, base_type) \
   struct concrete_storage : public ir::AttributeStorage {                \
-    using ParamKey = bool;                                               \
+    using ParamKey = base_type;                                          \
                                                                          \
     explicit concrete_storage(const ParamKey &key) { data_ = key; }      \
                                                                          \
