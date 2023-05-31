@@ -181,5 +181,20 @@ struct OpAttributeInfo {
       : name(name), type_name(type_name), data_type(data_type) {}
 };
 
+struct OpRunTimeInfo {
+  std::string infer_meta_func;
+  std::vector<std::string> infer_meta_param;
+  std::vector<std::string> kernel_func;
+  std::vector<std::string> kernel_param;
+  OpRunTimeInfo(std::string infer_meta_func,
+                std::vector<std::string> infer_meta_param,
+                std::vector<std::string> kernel_func,
+                std::vector<std::string> kernel_param)
+      : infer_meta_func(infer_meta_func),
+        infer_meta_param(infer_meta_param),
+        kernel_func(kernel_func),
+        kernel_param(kernel_param) {}
+};
+
 }  // namespace dialect
 }  // namespace paddle

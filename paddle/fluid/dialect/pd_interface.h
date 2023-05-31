@@ -19,7 +19,8 @@
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
                                std::vector<paddle::dialect::OpAttributeInfo>,
-                               std::vector<paddle::dialect::OpOutputInfo>>;
+                               std::vector<paddle::dialect::OpOutputInfo>,
+                               paddle::dialect::OpRunTimeInfo>;
 
 namespace paddle {
 namespace dialect {
