@@ -37,6 +37,7 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 DECLARE_int64(embedding_deterministic);
 
@@ -76,30 +77,28 @@ __global__ void EmbeddingGrad(T* table,
   }
 }
 
-template <typename T, typename IdT>
-__global__ void ScatterFloat2Half(T* table,
-                                  float* table_used,
+template <typename IdT>
+__global__ void ScatterFloat2Half(phi::dtype::float16* table,
+                                  const float* table_used,
                                   const IdT* unique_ids,
                                   const int64_t D,
                                   const int64_t unique_num) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
-  while (idy < unique_num) {
-    auto id = unique_ids[idy];
-    const float* in = table_used + idy * D;
-    T* out = table + id * D;
-    for (int i = idx; i < D; i += blockDim.x) {
-      out[i] = static_cast<T>(in[i]);
-    }
-    idy += blockDim.y * gridDim.x;
+  if (idy >= unique_num) return;
+  auto id = unique_ids[idy];
+  const float* in = table_used + idy * D;
+  phi::dtype::float16* out = table + id * D;
+  for (int i = idx; i < D; i += blockDim.x) {
+    out[i] = static_cast<phi::dtype::float16>(in[i]);
   }
 }
 
-template <typename T, typename IdT>
-__global__ void EmbeddingGradHalf2Float(T* table,
+template <typename IdT>
+__global__ void EmbeddingGradHalf2Float(phi::dtype::float16* table,
                                         float* table_used,
-                                        const T* output,
+                                        const phi::dtype::float16* output,
                                         const IdT* ids,
                                         const IdT* unique_ids,
                                         IdT* ids_map,
@@ -110,72 +109,82 @@ __global__ void EmbeddingGradHalf2Float(T* table,
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
-  while (idy < K) {
-    for (int i = idx; i < unique_num; i += blockDim.x)
-      if (ids[idy] == unique_ids[i]) ids_map[idy] = i;
-    __syncthreads();
+  if (idy >= K) return;
 
-    auto id = static_cast<int64_t>(ids_map[idy]);
-    const T* out = output + idy * D;
-    float* tab_used = table_used + id * D;
+  for (int i = idx; i < unique_num; i += blockDim.x)
+    if (ids[idy] == unique_ids[i]) ids_map[idy] = i;
+  __syncthreads();
+
+  auto id = static_cast<int64_t>(ids_map[idy]);
+  const phi::dtype::float16* out = output + idy * D;
+  float* tab_used = table_used + id * D;
 #ifdef PADDLE_WITH_CUDA
-    for (int i = idx; i < D; i += blockDim.x) {
-      phi::CudaAtomicAdd(&tab_used[i], static_cast<float>(out[i]));
-    }
-#else
-    for (int i = idx; i < D; i += blockDim.x) {
-      phi::CudaAtomicAdd(&tab_used[i], out[i]);
-    }
-#endif
-    idy += blockDim.y * gridDim.x;
+  for (int i = idx; i < D; i += blockDim.x) {
+    phi::CudaAtomicAdd(&tab_used[i], static_cast<float>(out[i]));
   }
+#else
+  for (int i = idx; i < D; i += blockDim.x) {
+    phi::CudaAtomicAdd(&tab_used[i], static_cast<float>(out[i]));
+  }
+#endif
 }
 
-template <typename T, typename IdT>
+template <typename IdT>
 void LaunchEmbeddingGradHalf2Float(const GPUContext& ctx,
                                    const IdT* d_ids,
-                                   const T* d_output,
-                                   T* d_table,
+                                   const phi::dtype::float16* d_output,
+                                   phi::dtype::float16* d_table,
                                    int64_t N,
                                    int64_t D,
                                    int64_t K) {
   // Get `d_unique_ids' which contains the unique value of `d_ids'
   // and the length of `d_unique_ids' (unique_num).
   thrust::device_vector<IdT> d_unique_idsvec(K);
-  thrust::copy(d_ids, d_ids + K, d_unique_idsvec.begin());
-  thrust::sort(d_unique_idsvec.begin(), d_unique_idsvec.end());
-  d_unique_idsvec.erase(
-      thrust::unique(d_unique_idsvec.begin(), d_unique_idsvec.end()),
-      d_unique_idsvec.end());
+#ifdef PADDLE_WITH_HIP
+  thrust::copy(thrust::hip::par.on(ctx.stream()),
+               d_ids,
+               d_ids + K,
+               d_unique_idsvec.begin());
+  thrust::sort(thrust::hip::par.on(ctx.stream()),
+               d_unique_idsvec.begin(),
+               d_unique_idsvec.end());
+  d_unique_idsvec.erase(thrust::unique(thrust::hip::par.on(ctx.stream()),
+                                       d_unique_idsvec.begin(),
+                                       d_unique_idsvec.end()),
+                        d_unique_idsvec.end());
   const int unique_num = d_unique_idsvec.size();
   IdT* d_unique_ids = thrust::raw_pointer_cast(d_unique_idsvec.data());
+#else
+  thrust::copy(thrust::cuda::par.on(ctx.stream()),
+               d_ids,
+               d_ids + K,
+               d_unique_idsvec.begin());
+  thrust::sort(thrust::cuda::par.on(ctx.stream()),
+               d_unique_idsvec.begin(),
+               d_unique_idsvec.end());
+  d_unique_idsvec.erase(thrust::unique(thrust::cuda::par.on(ctx.stream()),
+                                       d_unique_idsvec.begin(),
+                                       d_unique_idsvec.end()),
+                        d_unique_idsvec.end());
+  const int unique_num = d_unique_idsvec.size();
+  IdT* d_unique_ids = thrust::raw_pointer_cast(d_unique_idsvec.data());
+#endif
 
   // Alloc a space of size (unique_num * D * sizeof(float)) for using
   // atomicAdd(float).
-  float* d_table_tmp;
-  IdT* d_ids_map;
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(reinterpret_cast<void**>(&d_table_tmp),
-                                       unique_num * D * sizeof(float)));
-  PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(
-      d_table_tmp, 0, unique_num * D * sizeof(float), ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipMalloc(reinterpret_cast<void**>(&d_ids_map), K * sizeof(IdT)));
-#else
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(reinterpret_cast<void**>(&d_table_tmp),
-                                        unique_num * D * sizeof(float)));
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
-      d_table_tmp, 0, unique_num * D * sizeof(float), ctx.stream()));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMalloc(reinterpret_cast<void**>(&d_ids_map), K * sizeof(IdT)));
-#endif
+  DenseTensor d_table_tmp_tentor = phi::Empty<float>(ctx, {unique_num * D});
+  phi::funcs::SetConstant<phi::GPUContext, float> set_zero;
+  set_zero(ctx, &d_table_tmp_tentor, static_cast<float>(0));
+  float* d_table_tmp = d_table_tmp_tentor.data<float>();
+  DenseTensor d_ids_tmp_tensor = phi::Empty<IdT>(ctx, {K});
+  IdT* d_ids_map = d_ids_tmp_tensor.data<IdT>();
 
   // Get mapping array (`d_ids_map'), which records the mapping relationship
   // from `d_ids' to `d_unique_ids' and calculate with atomicAdd(float).
-  const int gridx = 2 * ctx.GetSMCount();
+  int gridx = ceil(1.0 * K / 8);
   dim3 threads(128, 8);
   dim3 grids(gridx, 1);
-  EmbeddingGradHalf2Float<T, IdT>
+  EmbeddingGradHalf2Float<IdT>
       <<<grids, threads, 0, ctx.stream()>>>(d_table,
                                             d_table_tmp,
                                             d_output,
@@ -189,16 +198,9 @@ void LaunchEmbeddingGradHalf2Float(const GPUContext& ctx,
 
   // Scatter items form the temporary space in float (`d_table_tmp') to the
   // original space in half (`d_table').
-  ScatterFloat2Half<T, IdT><<<grids, threads, 0, ctx.stream()>>>(
+  gridx = ceil(1.0 * unique_num / 8);
+  ScatterFloat2Half<IdT><<<gridx, threads, 0, ctx.stream()>>>(
       d_table, d_table_tmp, d_unique_ids, D, unique_num);
-
-#ifdef PADDLE_WITH_HIP
-  hipFree(d_table_tmp);
-  hipFree(d_ids_map);
-#else
-  cudaFree(d_table_tmp);
-  cudaFree(d_ids_map);
-#endif
 }
 
 template <typename T, typename Context>
@@ -255,8 +257,14 @@ struct EmbeddingGradCUDAFunctor {
         if (std::is_same<T, phi::dtype::float16>::value) {
           const double para = 1.0 * K / N;
           if (para >= 0.5) {
-            LaunchEmbeddingGradHalf2Float<T, IdT>(
-                dev_ctx_, ids, d_output, d_table, N, D, K);
+            LaunchEmbeddingGradHalf2Float<IdT>(
+                dev_ctx_,
+                ids,
+                reinterpret_cast<phi::dtype::float16*>(d_output),
+                reinterpret_cast<phi::dtype::float16*>(d_table),
+                N,
+                D,
+                K);
           } else {
             EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
                 d_table, d_output, ids, N, K, D);
