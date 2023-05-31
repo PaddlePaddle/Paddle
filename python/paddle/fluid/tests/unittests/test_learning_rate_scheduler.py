@@ -129,7 +129,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 decay_rate=0.5,
                 staircase=True,
             )
-            Step_scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
+            Step_scheduler = paddle.optimizer.lr.StepDecay(0.5, step_size=3)
             Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
                 learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
             )
@@ -156,7 +156,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 adam3.minimize(loss)
                 linear.clear_gradients()
 
-                Step_scheduler.epoch()
+                Step_scheduler.get_lr()
                 Reducelr_scheduler.step(loss)
 
             paddle.save(linear.state_dict(), "save_path.pdparams")
@@ -167,7 +167,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 decay_rate=0.5,
                 staircase=True,
             )
-            Step_scheduler_test = fluid.dygraph.StepDecay(0.5, step_size=3)
+            Step_scheduler_test = paddle.optimizer.lr.StepDecay(
+                0.5, step_size=3
+            )
             Reducelr_scheduler_test = fluid.dygraph.ReduceLROnPlateau(
                 learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
             )
@@ -193,8 +195,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.epoch_num,
-                adam2._learning_rate.epoch_num,
+                adam_test._learning_rate.last_epoch,
+                adam2._learning_rate.last_epoch,
                 "epoch_num is different before and after set_dict",
             )
             self.assertEqual(
@@ -293,19 +295,20 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             decay_rate = 0.2
             linear = paddle.nn.Linear(10, 10)
 
-            scheduler = fluid.dygraph.MultiStepDecay(
+            scheduler = paddle.optimizer.lr.MultiStepDecay(
                 learning_rate, milestones, decay_rate
             )
 
-            adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=scheduler, parameter_list=linear.parameters()
+            adam = paddle.optimizer.Adam(
+                learning_rate=scheduler, parameters=linear.parameters()
             )
             for epoch in range(10):
                 right_result = multi_step_decay(
                     epoch, learning_rate, milestones, decay_rate
                 )
-                fluid_result = adam.current_step_lr()
-                scheduler.epoch()
+                fluid_result = adam.get_lr()
+                adam.step()
+                scheduler.step()
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
@@ -315,35 +318,36 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 )
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(
+                lr = paddle.optimizer.lr.MultiStepDecay(
                     learning_rate, [30, 50, 20], 0.1
                 )
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(
+                lr = paddle.optimizer.lr.MultiStepDecay(
                     learning_rate, [20, 30, 50], 1
                 )
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.MultiStepDecay("test", [20, 30, 50])
+                lr = paddle.optimizer.lr.MultiStepDecay("test", [20, 30, 50])
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.MultiStepDecay(-1, [20, 30, 50])
+                lr = paddle.optimizer.lr.MultiStepDecay(-1, [20, 30, 50])
 
     def test_StepDecay(self):
         with fluid.dygraph.guard():
             learning_rate = 0.5
             step_size = 3
             decay_rate = 0.2
-            scheduler = fluid.dygraph.StepDecay(
+            scheduler = paddle.optimizer.lr.StepDecay(
                 learning_rate, step_size, decay_rate
             )
             for epoch in range(10):
                 right_result = step_decay(
                     epoch, learning_rate, step_size, decay_rate
                 )
-                fluid_result = scheduler().numpy().item()
-                scheduler.epoch()
+                fluid_result = scheduler()
+                scheduler.get_lr()
+                scheduler.step()
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
@@ -353,16 +357,18 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 )
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.StepDecay(learning_rate, "test", 0.1)
+                lr = paddle.optimizer.lr.StepDecay(learning_rate, "test", 0.1)
 
             with self.assertRaises(ValueError):
-                lr = fluid.dygraph.StepDecay(learning_rate, 20, 2)
+                lr = paddle.optimizer.lr.StepDecay(learning_rate, 20, 2)
 
     def test_LambdaDecay(self):
         with fluid.dygraph.guard():
             learning_rate = 0.5
             lr_lambda = lambda x: 0.95**x
-            scheduler = fluid.dygraph.LambdaDecay(learning_rate, lr_lambda)
+            scheduler = paddle.optimizer.lr.LambdaDecay(
+                learning_rate, lr_lambda
+            )
 
             linear = paddle.nn.Linear(10, 10)
             adam = fluid.optimizer.Adam(
@@ -371,8 +377,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             for epoch in range(30):
                 right_result = lambda_decay(epoch, learning_rate, lr_lambda)
-                fluid_result = scheduler().numpy().item()
-                scheduler.epoch()
+                fluid_result = scheduler()
+                scheduler.get_lr()
+                scheduler.step()
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result,
@@ -382,7 +389,7 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 )
 
             with self.assertRaises(TypeError):
-                lr = fluid.dygraph.LambdaDecay(learning_rate, "test")
+                lr = paddle.optimizer.lr.LambdaDecay(learning_rate, "test")
 
 
 class TestLearningRateDecay(unittest.TestCase):
