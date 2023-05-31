@@ -996,7 +996,7 @@
   outputs :
     out : Out
   scalar :
-    axis : Axis
+    axis :
       data_type : int
       tensor_name : Axis
 
