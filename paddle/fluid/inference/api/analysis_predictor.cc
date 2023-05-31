@@ -72,7 +72,7 @@
 #endif
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -1121,7 +1121,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -1185,7 +1185,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -2100,7 +2100,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
