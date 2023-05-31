@@ -19,18 +19,21 @@ import numpy as np
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
-from ..auto_parallel.operators.common import (
+from ..auto_parallel.process_mesh import ProcessMesh
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from ..auto_parallel.static.operators.common import (
     SyncMode,
     is_data_parallel_reduce_op,
 )
-from ..auto_parallel.process_group import (
+from ..auto_parallel.static.process_group import (
     get_all_process_groups,
     get_world_process_group,
 )
-from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.reshard import Resharder
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.reshard import Resharder
+from ..auto_parallel.static.utils import (
     _get_comm_group,
     insert_dependencies_for_vars,
     is_gradient_clip_op,
@@ -221,7 +224,7 @@ class ClipHelper:
             in_var = self.block.vars[in_name]
             in_dist_attr = TensorDistAttr()
             in_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            in_dist_attr.dims_mapping = [-1]
+            in_dist_attr.dims_mapping = [-1 for i in in_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 in_var, in_dist_attr
             )
@@ -230,7 +233,7 @@ class ClipHelper:
             out_var = self.block.vars[out_name]
             out_dist_attr = TensorDistAttr()
             out_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            out_dist_attr.dims_mapping = [-1]
+            out_dist_attr.dims_mapping = [-1 for i in out_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 out_var, out_dist_attr
             )

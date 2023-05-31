@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv2dOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d",
                          {"Input", "Filter"},
                          {"strides",
@@ -28,7 +29,8 @@ KernelSignature Conv2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Output"});
 }
 
-KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv2dGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_grad",
                          {"Input", "Filter", "Output@GRAD"},
                          {"strides",
@@ -41,7 +43,7 @@ KernelSignature Conv2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature Conv2dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
@@ -53,7 +55,8 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
                          {"DInput", "DFilter", "DDOutput"});
 }
 
-KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv2dFusionArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_fusion_cutlass",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {"strides",

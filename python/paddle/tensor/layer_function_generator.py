@@ -27,7 +27,7 @@ from ..framework import (
     OpProtoHolder,
     convert_np_dtype_to_dtype_,
     core,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 
 __all__ = []
@@ -267,7 +267,7 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if hasattr(_C_ops, op_type):
                 op = getattr(_C_ops, op_type)
                 return op(x)
@@ -308,12 +308,28 @@ def generate_activation_fn(op_type):
             return output
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(
-        op_proto,
-        additional_args_lines=[
-            "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
-        ],
-    )
+    if op_type == 'abs':
+        func.__doc__ = r"""
+
+Abs Operator.
+Perform elementwise abs for input `X`.
+
+.. math::
+
+    out = |x|
+
+Args:
+    x (Tensor): The input tensor of abs op.
+    out (Tensor): The output tensor of abs op.
+    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+"""
+    else:
+        func.__doc__ = _generate_doc_string_(
+            op_proto,
+            additional_args_lines=[
+                "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
+            ],
+        )
     return func
 
 
@@ -330,7 +346,7 @@ def generate_inplace_fn(inplace_op_type):
 
     def func(x, name=None):
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if hasattr(_C_ops, inplace_op_type):
                 op = getattr(_C_ops, inplace_op_type)
                 return op(x)

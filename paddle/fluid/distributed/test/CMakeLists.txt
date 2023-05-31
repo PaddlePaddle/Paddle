@@ -73,7 +73,9 @@ cc_test_old(
   DEPS
   brpc_utils
   scope
-  math_function
+  phi
+  sendrecv_rpc
+  ps_service
   ${COMMON_DEPS}
   ${RPC_DEPS})
 
@@ -117,8 +119,16 @@ cc_test_old(
 
 set_source_files_properties(
   feature_value_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test_old(feature_value_test SRCS feature_value_test.cc DEPS ${COMMON_DEPS}
-            table)
+
+cc_test_old(
+  feature_value_test
+  SRCS
+  feature_value_test.cc
+  DEPS
+  table
+  common_table
+  sendrecv_rpc
+  ${COMMON_DEPS})
 
 set_source_files_properties(
   sparse_sgd_rule_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})

@@ -22,12 +22,11 @@ import unittest
 from contextlib import closing
 
 import numpy as np
-from paddle_bfloat import bfloat16
+from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.distributed as dist
 from paddle import fluid
-from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.fluid import core
 
 
@@ -42,6 +41,14 @@ def create_float_test_data(shape=None, dtype=None, seed=None):
     if seed:
         np.random.seed(seed)
     data = np.random.random(shape).astype(dtype)
+    return data
+
+
+def create_bfloat16_test_data(shape=None, seed=None):
+    if seed:
+        np.random.seed(seed)
+    data = np.random.uniform(-100.0, 100.0, shape).astype("float32")
+    data = convert_float_to_uint16(data)
     return data
 
 
@@ -76,8 +83,9 @@ def create_test_data(shape=None, dtype=None, seed=None):
     if dtype == "float32" or dtype == "float16" or dtype == "float64":
         return create_float_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "bfloat16":
+        return create_bfloat16_test_data(shape=shape, seed=seed)
         # since numpy does not support bfloat16 yet, use `paddle_bfloat` to replace
-        return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
+        # return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
     elif dtype == "bool":
         return create_bool_test_data(shape=shape, seed=seed)
     elif (
@@ -185,10 +193,7 @@ class TestDistBase(unittest.TestCase):
 
         # NOTE: this is a hack to get int format nccl version, like 2134
         # if current platform is not linux, version number will be 0
-        nccl_version_str = get_nccl_version_str()
-        self._nccl_version = (
-            int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
-        )
+        self._nccl_version = core.nccl_version()
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -344,8 +349,18 @@ class TestDistBase(unittest.TestCase):
         input2 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid1)
         # cast bfloat16 to float32 for numeric comparison
         if dtype == "bfloat16":
-            input1 = input1.astype("float32")
-            input2 = input2.astype("float32")
+
+            def convertbf16(origin):
+                if origin.dtype == np.uint16:
+                    return convert_uint16_to_float(origin)
+                else:
+                    return origin.astype("float32")
+
+            input1 = convertbf16(input1)
+            input2 = convertbf16(input2)
+            tr0_out = [convertbf16(e) for e in tr0_out]
+            tr1_out = [convertbf16(e) for e in tr1_out]
+
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))

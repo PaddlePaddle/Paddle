@@ -9,4 +9,3 @@ foreach(src ${TEST_OPS})
 endforeach()
 
 add_subdirectory(unittests)
-add_subdirectory(cpp_extension)

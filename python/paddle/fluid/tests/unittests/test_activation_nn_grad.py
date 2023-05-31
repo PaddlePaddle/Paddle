@@ -92,12 +92,16 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         y = paddle.tanh(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
+        from paddle.fluid import core
+
+        core._set_prim_backward_enabled(True)
         gradient_checker.triple_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.triple_grad_check_for_dygraph(
             self.tanh_wrapper, [x], y, x_init=x_arr, place=place
         )
+        core._set_prim_backward_enabled(False)
 
     def test_grad(self):
         paddle.enable_static()
@@ -122,12 +126,16 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         y = paddle.tanh(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
+        from paddle.fluid import core
+
+        core._set_prim_backward_enabled(True)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.tanh_wrapper, [x], y, x_init=x_arr, place=place
         )
+        core._set_prim_backward_enabled(False)
 
     def test_grad(self):
         paddle.enable_static()
@@ -401,7 +409,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 7, 9]
         eps = 0.005
         dtype = np.float64

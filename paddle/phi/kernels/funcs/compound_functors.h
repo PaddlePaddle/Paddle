@@ -47,7 +47,7 @@ struct UnaryCompoundFunctor {
 
   inline HOSTDEVICE T GetOut(T x, T y) { return func1_(func2_(x, y)); }
 
-  inline HOSTDEVICE T GetOutUseIntermediateOut(T x, T intermediat_out) {
+  inline HOSTDEVICE T GetOutUseIntermediateOut(T x UNUSED, T intermediat_out) {
     return func1_(intermediat_out);
   }
 
@@ -247,7 +247,7 @@ struct UnaryCompoundGradDIntermediateFunctor {
     }
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x,
+  inline HOSTDEVICE T UseIntermediateOut(T x UNUSED,
                                          T intermediate_out,
                                          T out,
                                          T dout) {

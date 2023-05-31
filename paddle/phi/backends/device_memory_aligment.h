@@ -41,7 +41,7 @@ inline size_t Alignment(size_t size,
       alignment = alignment;
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Fluid is not compiled with CUDA/XPU/NPU."));
+          "Fluid is not compiled with CUDA/XPU."));
 #endif
     }
   }

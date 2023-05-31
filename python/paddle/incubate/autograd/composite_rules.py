@@ -252,7 +252,7 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=x.shape if len(x.shape) == 0 else [1],
+        shape=[],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
@@ -433,9 +433,9 @@ def hard_swish_composite(x):
         maxmum(x + offset, 0), threshold
     ) * x / scale
     """
-    offset = 3.0
     threshold = 6.0
     scale = 6.0
+    offset = 3.0
     full_shape = x.shape if len(x.shape) == 0 else [1]
     res = (
         minimum(
@@ -631,12 +631,13 @@ def rsqrt_composite(x):
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
-    if convert_dtype(x.dtype) == "float16":
+    dtype = convert_dtype(x.dtype)
+    if dtype == "float16" or dtype == "uint16":
         is_amp = True
         x = cast(x, "float32")
     y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
     res = pow(x, y)
-    return res if not is_amp else cast(res, "float16")
+    return res if not is_amp else cast(res, dtype)
 
 
 @REGISTER_COMPOSITE('group_norm')

@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void FusedSoftplusKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          float beta,
-                         float threshold,
+                         float threshold UNUSED,
                          const std::string& fuse_activation,
                          const float fuse_alpha,
                          const float fuse_beta,

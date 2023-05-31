@@ -3,6 +3,15 @@ configure_file(config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 # phi auto cmake utils
 include(phi)
 
+set(common_srcs CACHE INTERNAL "" FORCE)
+set(api_srcs CACHE INTERNAL "" FORCE)
+set(capi_srcs CACHE INTERNAL "" FORCE)
+set(core_srcs CACHE INTERNAL "" FORCE)
+set(backends_srcs CACHE INTERNAL "" FORCE)
+set(kernels_srcs CACHE INTERNAL "" FORCE)
+set(infermeta_srcs CACHE INTERNAL "" FORCE)
+#set(excluded_srcs CACHE INTERNAL "" FORCE)
+
 # paddle experimental common components
 add_subdirectory(common)
 
@@ -24,27 +33,155 @@ if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
 endif()
 
-# make an unity target for compile deps
 set(PHI_DEPS
-    convert_utils
-    dense_tensor
-    phi_backends
-    kernel_factory
-    kernel_context
-    arg_map_context
-    infermeta
-    lod_utils
-    sparse_csr_tensor
-    sparse_coo_tensor
-    string_tensor
-    api_scalar
-    api_int_array
-    extended_tensor)
+    phi_profiler_proto
+    auto_parallel_proto
+    gflags
+    glog
+    warpctc
+    warprnnt
+    eigen3
+    xxhash
+    cblas
+    utf8proc)
 
-get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
-set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
+if(WITH_GPU)
+  list(APPEND PHI_DEPS external_error_proto)
+endif()
 
-cc_library(phi DEPS ${PHI_DEPS})
+if(WITH_ASCEND_CL)
+  list(APPEND PHI_DEPS npu_hccl)
+endif()
+
+if(WITH_FLASHATTN)
+  list(APPEND PHI_DEPS flashattn)
+endif()
+
+if(WITH_XBYAK)
+  list(APPEND PHI_DEPS xbyak)
+endif()
+
+if(WITH_MKLDNN)
+  list(APPEND PHI_DEPS mkldnn)
+endif()
+
+if(WITH_GLOO)
+  list(APPEND PHI_DEPS gloo)
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  list(APPEND PHI_DEPS cudnn-frontend)
+endif()
+
+if(WITH_POCKETFFT)
+  list(APPEND PHI_DEPS pocketfft)
+endif()
+
+if(WITH_MKLML)
+  list(APPEND PHI_DEPS pocketfft dynload_mklml)
+endif()
+
+if(WITH_XPU)
+  list(APPEND PHI_DEPS xpulib)
+endif()
+
+set(PHI_SRCS
+    ${common_srcs}
+    ${api_srcs}
+    ${core_srcs}
+    ${backends_srcs}
+    ${kernels_srcs}
+    ${infermeta_srcs}
+    ${capi_srcs})
+
+if(WITH_PHI_SHARED)
+  set(PHI_BUILD_TYPE
+      SHARED
+      CACHE INTERNAL "" FORCE)
+else()
+  set(PHI_BUILD_TYPE
+      STATIC
+      CACHE INTERNAL "" FORCE)
+endif()
+
+if(WITH_GPU)
+  set_source_files_properties(
+    backends/gpu/gpu_resources.cc
+    PROPERTIES COMPILE_FLAGS
+               "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
+  nv_library(
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+elseif(WITH_ROCM)
+  hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
+  target_link_libraries(phi ${PHI_DEPS})
+elseif(WITH_XPU_KP)
+  xpu_library(
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+else()
+  cc_library(
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+endif()
+
+if(WIN32)
+  target_link_libraries(phi shlwapi.lib)
+endif()
+
+if(WIN32)
+  if(WITH_PHI_SHARED)
+    set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    set(PHI_NAME
+        phi.dll
+        CACHE INTERNAL "" FORCE)
+  else()
+    set(PHI_NAME
+        phi.lib
+        CACHE INTERNAL "" FORCE)
+  endif()
+elseif(APPLE)
+  if(WITH_PHI_SHARED)
+    set(PHI_NAME
+        libphi.dylib
+        CACHE INTERNAL "" FORCE)
+  else()
+    set(PHI_NAME
+        libphi.a
+        CACHE INTERNAL "" FORCE)
+  endif()
+else()
+  if(WITH_PHI_SHARED)
+    set(PHI_NAME
+        libphi.so
+        CACHE INTERNAL "" FORCE)
+  else()
+    set(PHI_NAME
+        libphi.a
+        CACHE INTERNAL "" FORCE)
+  endif()
+endif()
+
+set(PHI_LIB
+    "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
+    CACHE FILEPATH "PHI Library" FORCE)
+
+if(MKL_FOUND AND WITH_ONEMKL)
+  target_include_directories(phi PRIVATE ${MKL_INCLUDE})
+endif()
+
+add_dependencies(phi extern_lapack)
+if(WITH_CUTLASS)
+  add_dependencies(phi cutlass_codegen)
+  add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
+  )# for memory_efficient_attention.h
+endif()
+if(WITH_FLASHATTN)
+  add_dependencies(phi flashattn)
+endif()
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h

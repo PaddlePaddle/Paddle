@@ -22,11 +22,11 @@
 namespace phi {
 
 template <typename Context>
-void ShareBufferKernel(const Context &dev_ctx,
+void ShareBufferKernel(const Context &dev_ctx UNUSED,
                        const std::vector<const DenseTensor *> &x,
-                       const std::vector<bool> &share_dims_and_dtype,
+                       const std::vector<bool> &share_dims_and_dtype UNUSED,
                        std::vector<DenseTensor *> out,
-                       std::vector<DenseTensor *> xout) {
+                       std::vector<DenseTensor *> xout UNUSED) {
   PADDLE_ENFORCE_EQ(
       x.size(),
       out.size(),
