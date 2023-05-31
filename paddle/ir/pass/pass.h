@@ -17,6 +17,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "paddle/ir/pass/analysis_manager.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
 namespace ir {
@@ -31,12 +33,15 @@ class PassAdaptor;
 namespace detail {
 
 struct PassExecutionState {
-  explicit PassExecutionState(ir::Operation* ir) : ir(ir), pass_failed(false) {}
+  explicit PassExecutionState(ir::Operation* ir, const AnalysisManager& am)
+      : ir(ir), pass_failed(false), am(am) {}
 
+  // The IR currently being processed by pass.
   ir::Operation* ir;
+
   bool pass_failed;
-  // TODO(liuyuanle): Add implementation of AnalysisManager and
-  // PreservedAnalyses.
+  AnalysisManager am;
+  PreservedAnalyses preserved_analyses;
 };
 
 struct PassInfo {
@@ -51,7 +56,7 @@ struct PassInfo {
   // opt_level=0: the basic pass which framework need.
   // opt_level=1: the fusion logical pass.
   // opt_level=2: constant fold, cse, memory optimize, etc.
-  // opt_level=3: layout.
+  // opt_level=3: layout, etc.
   uint8_t opt_level;
 
   // The list which pass depends on.
@@ -67,11 +72,11 @@ class Pass {
   explicit Pass(const char* name,
                 uint8_t opt_level,
                 const std::vector<const char*>& dependents = {})
-      : info_(name, opt_level, dependents) {}
+      : pass_info_(name, opt_level, dependents) {}
 
   virtual ~Pass() = default;
 
-  const detail::PassInfo& GetPassInfo() const { return info_; }
+  const detail::PassInfo& pass_info() const { return pass_info_; }
 
  protected:
   virtual void Run(ir::Operation* op) = 0;
@@ -81,9 +86,19 @@ class Pass {
 
   virtual bool Initialize(ir::IrContext* context) { return true; }
 
-  void SignalPassFailure() { pass_state_->pass_failed = true; }
+  AnalysisManager analysis_manager() { return pass_state().am; }
 
-  detail::PassInfo info_;
+  detail::PassExecutionState& pass_state() {
+    PADDLE_ENFORCE_EQ(pass_state_.is_initialized(),
+                      true,
+                      phi::errors::Fatal("pass state was never initialized"));
+    return *pass_state_;
+  }
+
+  void SignalPassFailure() { pass_state().pass_failed = true; }
+
+ private:
+  detail::PassInfo pass_info_;
 
   paddle::optional<detail::PassExecutionState> pass_state_;
 

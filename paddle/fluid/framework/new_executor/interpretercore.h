@@ -130,6 +130,9 @@ class InterpreterCore {
   // scope
   bool HasLocalScope() const;
 
+  // For log and debug
+  std::string GetDepsString() const;
+
  private:
   bool is_build_{false};
   bool static_build_{false};

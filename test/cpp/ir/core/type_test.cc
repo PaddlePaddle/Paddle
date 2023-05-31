@@ -21,6 +21,7 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/type_base.h"
+#include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/utils.h"
 
 TEST(type_test, type_id) {
@@ -211,4 +212,13 @@ TEST(type_test, custom_type_dialect) {
   ir::Dialect *dialect_integer1 = ctx->GetRegisteredDialect("integer");
   ir::Dialect *dialect_integer2 = ctx->GetRegisteredDialect<IntegerDialect>();
   EXPECT_EQ(dialect_integer1, dialect_integer2);
+}
+
+namespace TestNamespace {
+class TestClass {};
+}  // namespace TestNamespace
+
+TEST(type_test, get_type_name) {
+  auto name = ir::get_type_name<TestNamespace::TestClass>();
+  EXPECT_EQ(name, "TestNamespace::TestClass");
 }

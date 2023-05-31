@@ -62,6 +62,8 @@ class TensorRTInspectorTest(InferencePassTest):
                 stderr=subprocess.PIPE,
             )
             engine_info = build_engine.stderr.decode('ascii')
+            print("##################")
+            print("#######\n" + engine_info + "#######\n")
             trt_compile_version = paddle.inference.get_trt_compile_version()
             trt_runtime_version = paddle.inference.get_trt_runtime_version()
             valid_version = (8, 2, 0)
@@ -72,7 +74,7 @@ class TensorRTInspectorTest(InferencePassTest):
                 self.assertTrue('====== engine info ======' in engine_info)
                 self.assertTrue('====== engine info end ======' in engine_info)
                 self.assertTrue('matmul' in engine_info)
-                self.assertTrue('LayerType: Scale' in engine_info)
+                self.assertTrue('"LayerType": "Scale"' in engine_info)
                 self.assertTrue('batch_norm' in engine_info)
             else:
                 self.assertTrue(

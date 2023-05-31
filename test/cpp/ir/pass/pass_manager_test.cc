@@ -23,8 +23,8 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/pass/pass.h"
-#include "paddle/pass/pass_manager.h"
+#include "paddle/ir/pass/pass.h"
+#include "paddle/ir/pass/pass_manager.h"
 
 ir::AttributeMap CreateAttributeMap(ir::IrContext *ctx,
                                     std::string attribute_name,
@@ -72,7 +72,7 @@ class TestPass : public ir::Pass {
     auto test_op = op->dyn_cast<TestOp>();
     CHECK_EQ(test_op.operation(), op);
     CHECK_EQ(test_op.name(), test_op->op_info().name());
-    LOG(INFO) << "In " << info_.name << ": " << test_op->op_info().name();
+    LOG(INFO) << "In " << pass_info().name << ": " << test_op->op_info().name();
   }
 
   bool CanScheduleOn(ir::Operation *op) const override {
@@ -80,7 +80,7 @@ class TestPass : public ir::Pass {
   }
 };
 
-TEST(pass_manager_test, pass_manager_test) {
+TEST(pass_manager_test, pass_manager) {
   // (1) Register Dialect, Operation into IrContext.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
@@ -100,9 +100,13 @@ TEST(pass_manager_test, pass_manager_test) {
                             op_output_types,
                             op_info);
 
+  CHECK_EQ(op != nullptr, true);
+
   // (4) Test pass manager for op.
   ir::PassManager pm(ctx);
+
   pm.AddPass(std::make_unique<TestPass>());
+
   CHECK_EQ(pm.Run(op), true);
 
   op->destroy();
