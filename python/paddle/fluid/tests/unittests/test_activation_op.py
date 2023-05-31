@@ -209,13 +209,17 @@ class TestExpm1API(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
-        def run(place):
-            X = paddle.to_tensor(self.x)
-            out = paddle.expm1(X)
-            np.testing.assert_allclose(self.out_ref, out.numpy(), rtol=1e-05)
+        with dynamic_guad():
 
-        for place in self.place:
-            run(place)
+            def run(place):
+                X = paddle.to_tensor(self.x)
+                out = paddle.expm1(X)
+                np.testing.assert_allclose(
+                    self.out_ref, out.numpy(), rtol=1e-05
+                )
+
+            for place in self.place:
+                run(place)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -1606,10 +1610,11 @@ class TestTanAPI(unittest.TestCase):
         )
 
     def test_dygraph_api(self):
-        x = paddle.to_tensor(self.x_np)
-        out_test = paddle.tan(x)
-        out_ref = np.tan(self.x_np)
-        np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out_test = paddle.tan(x)
+            out_ref = np.tan(self.x_np)
+            np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
     def test_static_api(self):
         with paddle.fluid.framework._static_guard():
@@ -2485,9 +2490,10 @@ class TestHardswishAPI(unittest.TestCase):
             out_ref = ref_hardswish(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-        x = paddle.to_tensor(self.x_np)
-        out = paddle.nn.functional.hardswish(x)
-        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            out = paddle.nn.functional.hardswish(x)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
     def test_errors(self):
         with paddle.fluid.framework._static_guard():
@@ -2654,8 +2660,9 @@ class TestELUInplaceAPI(TestELUAPI):
         self.elu = F.elu_
 
     def test_alpha_error(self):
-        x = paddle.to_tensor(self.x_np)
-        self.assertRaises(Exception, F.elu_, x, -0.2)
+        with dynamic_guad():
+            x = paddle.to_tensor(self.x_np)
+            self.assertRaises(Exception, F.elu_, x, -0.2)
 
 
 def celu(x, alpha):
