@@ -130,6 +130,7 @@ if [ "$OUTPUT_LOG" != "" ];then
             code_in=`grep "$line" /tmp/samplecode.txt || true`
             if [ "$code_in" == "" ];then
                 sample_status=1
+                echo "Use print to: $line"
             fi
         done</tmp/print.txt
     fi
