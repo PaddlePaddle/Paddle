@@ -3370,7 +3370,7 @@ def cdist(
         compute_mode (str, optional): The mode for compute distance.
 
             - ``use_mm_for_euclid_dist_if_necessary`` , for p = 2.0 and (P > 25 or R > 25), it will use matrix multiplication to calculate euclid distance if possible.
-            - ``use_mm_for_euclid_dist', for p = 2.0`` , it will use matrix multiplication to calculate euclid distance.
+            - ``use_mm_for_euclid_dist`` , for p = 2.0, it will use matrix multiplication to calculate euclid distance.
             - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
 
             Default: ``use_mm_for_euclid_dist_if_necessary``.
