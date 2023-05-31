@@ -93,7 +93,7 @@ endif()
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils static_prim_api get_expected_kernel_func)
 
 register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op
-        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op conv_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(generated_op UNITY SRCS generated_op1.cc generated_op2.cc generated_op3.cc generated_op4.cc DEPS ${OP_HEADER_DEPS})
 op_library(run_program_op DEPS executor_cache ${OP_HEADER_DEPS})
@@ -101,8 +101,6 @@ target_link_libraries(run_program_op cuda_graph_with_memory_pool)
 op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array phi)
 op_library(load_combine_op DEPS string_array)
-
-cc_library(conv_op SRCS conv_op.cc DEPS common_infer_shape_functions operator phi)
 
 if (WITH_GPU OR WITH_ROCM)
     register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu DEPS ${OP_HEADER_DEPS})

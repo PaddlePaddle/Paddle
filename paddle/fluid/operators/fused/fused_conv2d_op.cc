@@ -15,12 +15,42 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/conv_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/generator/get_expected_kernel_func.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
 
-class FusedConvOpMaker : public Conv2DOpMaker {
+class FusedConvOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Input", "(Tensor), input 0 of conv2d op.");
+    AddInput("Filter", "(Tensor), input 1 of conv2d op.");
+    AddOutput("Output", "(Tensor), output 0 of conv2d op.");
+    AddAttr<std::vector<int>>("strides",
+                              "(std::vector<int>), attribute 0 for conv2d op.")
+        .SetDefault({1, 1});
+    AddAttr<std::vector<int>>("paddings",
+                              "(std::vector<int>), attribute 1 for conv2d op.")
+        .SetDefault({0, 0});
+    AddAttr<std::string>("padding_algorithm",
+                         "(std::string), attribute 2 for conv2d op.")
+        .SetDefault("EXPLICIT");
+    AddAttr<std::vector<int>>("dilations",
+                              "(std::vector<int>), attribute 3 for conv2d op.")
+        .SetDefault({1, 1});
+    AddAttr<int>("groups", "(int), attribute 4 for conv2d op.").SetDefault(1);
+    AddAttr<std::string>("data_format",
+                         "(std::string), attribute 5 for conv2d op.")
+        .SetDefault("NCHW");
+    AddComment(R"DOC(
+TODO: Documentation of conv2d op.
+)DOC");
+    Apply();
+  }
+
  protected:
   void Apply() override {
     AddInput("Bias",
@@ -84,25 +114,43 @@ $$
   }
 };
 
+class FusedConvOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetConvExpectedKernelType(ctx, this);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(fused_conv2d,
+                            FusedConv2DInferShapeFunctor,
+                            PD_INFER_META(phi::FusedConv2DInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(fused_conv3d,
+                            FusedConv3DInferShapeFunctor,
+                            PD_INFER_META(phi::FusedConv3DInferMeta));
+
 // fused_conv2d is only used for onednn inference.
 REGISTER_OPERATOR(
     fused_conv2d,
-    ops::ConvOp,
+    ops::FusedConvOp,
     ops::FusedConvOpMaker,
-    ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    FusedConv2DInferShapeFunctor);
 
 // fused_conv3d is only used for onednn inference.
 REGISTER_OPERATOR(
     fused_conv3d,
-    ops::ConvOp,
+    ops::FusedConvOp,
     ops::FusedConvOpMaker,
-    ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    FusedConv3DInferShapeFunctor);
