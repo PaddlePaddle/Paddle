@@ -32,6 +32,23 @@ class TestException(unittest.TestCase):
 
         self.assertIsNotNone(exception)
 
+    def test_gpu_success(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        try:
+            core._test_enforce_gpu_success()
+        except Exception as e:
+            self.assertTrue(isinstance(e, OSError))
+            self.assertIn(
+                "CUDA error(35), CUDA driver version is insufficient for CUDA runtime version.",
+                str(e),
+            )
+            self.assertIn(
+                "[Hint: 'cudaErrorInsufficientDriver'. This indicates that the installed NVIDIA CUDA driver is older than the CUDA runtime library. This is not a supported configuration.Users should install an updated NVIDIA display driver to allow the application to run.]",
+                str(e),
+            )
+
 
 class TestExceptionNoCStack(unittest.TestCase):
     def setUp(self):

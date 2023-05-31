@@ -30,6 +30,9 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
+template <>
+const TypeInfo<DeviceContext> TypeInfoTraits<DeviceContext, XPUContext>::kType =
+    RegisterStaticType<DeviceContext>(XPUContext::name());
 struct XPUContext::Impl {
   void SetL3Cache(int l3_size = 14155776) {
     const int MAX_XPU_NUM = 16;
@@ -42,11 +45,13 @@ struct XPUContext::Impl {
     auto selected_xpus = backends::xpu::GetXPUSelectedDevices();
     for (unsigned int i = 0; i < selected_xpus.size(); i++) {
       if (place_.GetDeviceId() == selected_xpus[i]) {
-        if (l3ptrs[place_.GetDeviceId()] == nullptr) {
-          xpu_malloc(static_cast<void**>(&l3ptrs[place_.GetDeviceId()]),
-                     l3_size,
-                     XPU_MEM_L3);
+        if (l3ptrs[place_.GetDeviceId()] != nullptr) {
+          xpu_free(l3ptrs[place_.GetDeviceId()]);
+          l3ptrs[place_.GetDeviceId()] = nullptr;
         }
+        xpu_malloc(static_cast<void**>(&l3ptrs[place_.GetDeviceId()]),
+                   l3_size,
+                   XPU_MEM_L3);
         if (l3ptrs[place_.GetDeviceId()] != nullptr) {
           context_->_l3_mgr.set(l3ptrs[place_.GetDeviceId()], l3_size);
           VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())

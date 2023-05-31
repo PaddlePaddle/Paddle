@@ -178,6 +178,47 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
       ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
 }
 
+phi::KernelKey GetStridedSliceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto* in_var = ctx.InputVar("Input");
+  auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
+  if (is_in_var_array) {
+    auto& tensor_array = in_var->Get<framework::LoDTensorArray>();
+    for (auto& tensor : tensor_array) {
+      if (!platform::is_cuda_pinned_place(tensor.place())) {
+        PADDLE_ENFORCE_EQ(
+            platform::is_same_place(tensor.place(),
+                                    ctx.device_context().GetPlace()),
+            true,
+            platform::errors::InvalidArgument(
+                "Place of context is %s. Place of input tensor is %s. They "
+                "are should be same, but reveived different place.",
+                string::to_string(ctx.device_context().GetPlace()),
+                string::to_string(tensor.place())));
+      }
+    }
+    return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Input"),
+                          ctx.GetPlace());
+  }
+  // NOTE: cuda pinned tensor need to copy its data to target place
+  auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
+  if (platform::is_cuda_pinned_place(in_tensor->place())) {
+    return phi::KernelKey(framework::TransToProtoVarType(in_tensor->dtype()),
+                          ctx.GetPlace());
+  }
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Input"),
+                        in_tensor->place());
+}
+
+phi::KernelKey GetStridedSliceGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(
+      op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out")),
+      ctx.GetPlace());
+}
+
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -193,6 +234,25 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
                         platform::CPUPlace());
+}
+
+phi::KernelKey GetPad3dExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+  // only constant mode and non-blocked layouts are supported for oneDNN
+  if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      ctx.Attr<std::string>("mode") == "constant" &&
+      ctx.Input<phi::DenseTensor>("X")
+              ->mem_desc()
+              .data.format_desc.blocking.inner_nblks == 0) {
+    return phi::KernelKey(phi::Backend::ONEDNN,
+                          phi::DataLayout::ONEDNN,
+                          phi::TransToPhiDataType(input_data_type));
+  }
+#endif
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetYoloLossExpectedKernelType(

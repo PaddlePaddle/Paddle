@@ -39,21 +39,21 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& moment2,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& master_param UNUSED,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
     bool lazy_mode,
     int64_t min_row_size_to_use_multithread,
-    bool multi_precision,
+    bool multi_precision UNUSED,
     bool use_global_beta_pow,
     DenseTensor* param_out,
     DenseTensor* moment1_out,
     DenseTensor* moment2_out,
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
-    DenseTensor* master_param_outs) {
+    DenseTensor* master_param_outs UNUSED) {
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
   bool skip_update_ = false;

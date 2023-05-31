@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import subprocess
 import sys
@@ -22,7 +23,7 @@ import numpy as np
 import paddle
 
 
-class TestNanInf(unittest.TestCase):
+class TestNanInfBase(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -30,9 +31,8 @@ class TestNanInf(unittest.TestCase):
 
         self.env = os.environ.copy()
 
-    def check_nan_inf(self):
-        cmd = self._python_interp
-
+    def run_command(self, cmd):
+        print(f"Run command: {cmd}")
         proc = subprocess.Popen(
             cmd.split(" "),
             stdout=subprocess.PIPE,
@@ -42,20 +42,100 @@ class TestNanInf(unittest.TestCase):
 
         out, err = proc.communicate()
         returncode = proc.returncode
-        # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find(b'There are NAN or INF') != -1
+        return returncode, out, err
 
-    def test_nan_inf_in_static_mode(self):
-        self._python_interp += (
-            " " + os.path.dirname(__file__) + "/check_nan_inf_base.py"
-        )
-        self.check_nan_inf()
 
-    def test_nan_inf_in_dynamic_mode(self):
-        self._python_interp += (
-            " " + os.path.dirname(__file__) + "/check_nan_inf_base_dygraph.py"
-        )
-        self.check_nan_inf()
+class TestNanInf(TestNanInfBase):
+    def setUp(self):
+        super().setUp()
+        self.check_static = True
+        self.check_dygraph = True
+        self.check_nan_inf_level = 0
+        self.dygraph_expected_op_count = {"divide": 1}
+
+    def check_op_count(self, log, expected_op_count=None):
+        if expected_op_count is None:
+            return
+
+        lines = copy.copy(log).decode().split("\n")
+        actual_op_count = {}
+        tensor_info_list = paddle.amp.accuracy_compare.parse_lines(lines)
+        for tensor_info in tensor_info_list:
+            print(tensor_info)
+            if actual_op_count.get(tensor_info.op_type, None) is None:
+                actual_op_count[tensor_info.op_type] = 1
+            else:
+                actual_op_count[tensor_info.op_type] += 1
+        print(actual_op_count)
+
+        for op_type, expected_value in expected_op_count.items():
+            actual_value = actual_op_count.get(op_type, 0)
+            self.assertEqual(
+                actual_value,
+                expected_value,
+                f"The number of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+            )
+        print("")
+
+    def run_check_nan_inf(self, cmd, expected_op_count=None):
+        returncode, out, err = self.run_command(cmd)
+        self.check_op_count(out, expected_op_count)
+        if self.check_nan_inf_level == 0:
+            # in python3, type(out+err) is 'bytes', need use encode
+            self.assertNotEqual(
+                (out + err).find(b'There are NAN or INF'),
+                -1,
+                f"Cannot find NAN / INF keyword in:\n{out + err}",
+            )
+
+    def test_nan_inf_static(self):
+        if not self.check_static:
+            return
+
+        filepath = os.path.dirname(__file__) + "/check_nan_inf_base.py"
+        cmd = f"{self._python_interp} {filepath}"
+        self.run_check_nan_inf(cmd, None)
+
+    def test_nan_inf_dynamic(self):
+        if not self.check_dygraph:
+            return
+
+        filepath = os.path.dirname(__file__) + "/check_nan_inf_base_dygraph.py"
+
+        # Test on CPU.
+        cmd = f"{self._python_interp} {filepath} --check_nan_inf_level {self.check_nan_inf_level}"
+        self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
+
+        # Test on GPU.
+        if paddle.fluid.core.is_compiled_with_cuda():
+            cmd = f"{self._python_interp} {filepath} --use_cuda --check_nan_inf_level {self.check_nan_inf_level}"
+            self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
+
+
+class TestCheckAll(TestNanInf):
+    def setUp(self):
+        super().setUp()
+        self.check_static = False
+        self.check_dygraph = True
+        self.check_nan_inf_level = 3
+        self.dygraph_expected_op_count = {
+            'assign_value_': 2,
+            'full_': 3,
+            'matmul': 2,
+            'add': 2,
+            'sigmoid': 1,
+            'cast': 1,
+            'divide': 1,
+            'softmax': 1,
+            'mean': 1,
+            'mean_grad': 1,
+            'softmax_grad': 1,
+            'divide_grad': 1,
+            'add_grad': 4,
+            'matmul_grad': 3,
+            'sigmoid_grad': 1,
+            'sgd_': 4,
+        }
 
 
 class TestNanInfEnv(TestNanInf):
@@ -67,24 +147,31 @@ class TestNanInfEnv(TestNanInf):
         self.env["PADDLE_INF_NAN_SKIP_ROLE"] = "loss"
         self.env["PADDLE_INF_NAN_SKIP_VAR"] = "elementwise_add:fc_0.tmp_1"
 
-
-class TestCheckSkipEnv(TestNanInf):
-    def setUp(self):
-        super().setUp()
-        # windows python have some bug with env, so need use str to pass ci
-        # otherwise, "TypeError: environment can only contain strings"
-        self.env["Paddle_check_nan_inf_op_list"] = "mean"
-        self.env["Paddle_skip_nan_inf_op_list"] = "elementwise_add"
+        self.check_static = True
+        self.check_dygraph = False
+        self.check_nan_inf_level = 0
+        self.dygraph_expected_op_count = None
 
 
-class TestNanInfCheckResult(unittest.TestCase):
-    def setUp(self):
-        self._python_interp = sys.executable
-        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            self._python_interp += " -m coverage run --branch -p"
+class TestNanInfStack(TestNanInfBase):
+    def check_stack(self, file_name):
+        cmd = self._python_interp + file_name
+        returncode, out, err = self.run_command(cmd)
 
-        self.env = os.environ.copy()
+        print(out)
+        print(err)
 
+        # in python3, type(out+err) is 'bytes', need use encode
+        assert (out + err).find(b' z = paddle.pow(x, y)') != -1
+
+    def test_check_stack(self):
+        self.check_stack(" check_nan_inf_backward_stack.py")
+
+    def test_statck_check_stack(self):
+        self.check_stack(" check_nan_inf_backward_static_stack.py")
+
+
+class TestNanInfCheckResult(TestNanInfBase):
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
         # [-10, 10)
@@ -148,26 +235,11 @@ class TestNanInfCheckResult(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
-    def test_check_stack(self):
-        self._python_interp += " check_nan_inf_backward_stack.py"
-        cmd = self._python_interp
-        proc = subprocess.Popen(
-            cmd.split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=self.env,
+    def run_check_nan_inf_level(self, use_cuda, dtype, level):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": level}
         )
 
-        out, err = proc.communicate()
-        returncode = proc.returncode
-
-        print(out)
-        print(err)
-
-        # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find(b' z = paddle.pow(x, y)') != -1
-
-    def check_nan_inf_level(self, use_cuda, dtype):
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, dtype)
 
@@ -180,33 +252,36 @@ class TestNanInfCheckResult(unittest.TestCase):
         out = paddle.log(x * 1e6) / y
 
     def test_check_nan_inf_level_float32(self):
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 2}
+        level = 2
+        self.run_check_nan_inf_level(
+            use_cuda=False, dtype="float32", level=level
         )
-        self.check_nan_inf_level(use_cuda=False, dtype="float32")
         if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_nan_inf_level(use_cuda=True, dtype="float32")
+            self.run_check_nan_inf_level(
+                use_cuda=True, dtype="float32", level=level
+            )
 
     def test_check_nan_inf_level_float16(self):
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        level = 3
+        self.run_check_nan_inf_level(
+            use_cuda=False, dtype="float32", level=level
         )
         if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+            self.run_check_nan_inf_level(
+                use_cuda=True, dtype="float16", level=level
+            )
 
     def test_check_numerics(self):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_nan_inf_level(use_cuda=True, dtype="float16")
 
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, "float16")
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
-        paddle.fluid.core.check_numerics("check_numerics", x)
-        paddle.fluid.core.check_numerics("check_numerics", y)
+        paddle.fluid.core.check_numerics("check_tensor", x)
+        paddle.fluid.core.check_numerics("check_tensor", y)
 
 
 if __name__ == '__main__':

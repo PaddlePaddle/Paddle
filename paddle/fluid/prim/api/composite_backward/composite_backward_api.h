@@ -1366,9 +1366,8 @@ void batch_norm_grad(const Tensor& x,
       auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
       auto nhwc_out_grad_sum = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
 
-      auto x_sub_mean = nhwc_x - mean_data;
-      auto sum_dout_mul_diff =
-          sum<T>(nhwc_out_grad * x_sub_mean, reduce_axis, dtype, false);
+      auto sum_dout_mul_diff = sum<T>(
+          nhwc_out_grad * (nhwc_x - mean_data), reduce_axis, dtype, false);
 
       if (x_grad) {
         if (use_global_stats) {
@@ -1382,7 +1381,8 @@ void batch_norm_grad(const Tensor& x,
           auto part1 = scale * rsqrt_var;
           auto mean_temp1 = nhwc_out_grad_sum / nhw;
           auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
-          auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 =
+              nhwc_out_grad - mean_temp1 - (nhwc_x - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
@@ -1403,11 +1403,10 @@ void batch_norm_grad(const Tensor& x,
     }
     case DataLayout::kNHWC: {
       if (x_grad) {
-        auto x_sub_mean = x_data - mean_data;
         auto out_grad_data_sum =
             sum<T>(out_grad_data, reduce_axis, dtype, false);
-        auto nhwc_sum_dout_mul_diff =
-            sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
+        auto nhwc_sum_dout_mul_diff = sum<T>(
+            out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1420,7 +1419,8 @@ void batch_norm_grad(const Tensor& x,
           auto mean_temp1 = out_grad_data_sum / nhw;
           auto mean_temp2 =
               nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
-          auto part2 = out_grad_data - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 =
+              out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1567,6 +1567,51 @@ void gelu_grad(const Tensor& x,
       auto cdf = scale<T>(scale<T>(erf<T>(kAlpha * x), 1., 1.), 0.5);
       auto pdf = kBeta * exp<T>(scale<T>(x * x, -0.5));
       set_output<T>(out_grad * (cdf + x * pdf), x_grad);
+    }
+  }
+}
+
+template <typename T>
+void minimum_grad(const Tensor& x,
+                  const Tensor& y,
+                  const Tensor& out_grad,
+                  Tensor* x_grad,
+                  Tensor* y_grad) {
+  if (x_grad) {
+    auto x_tmp = cast<T>(less_than<T>(x, y), out_grad.dtype());
+    auto dx_res = out_grad * x_tmp;
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dx_res, x_grad);
+      } else {
+        auto dx_reduce_res =
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, x_grad);
+      }
+    } else {
+      set_output<T>(dx_res, x_grad);
+    }
+  }
+
+  if (y_grad) {
+    auto y_tmp = cast<T>(greater_equal<T>(x, y), out_grad.dtype());
+    auto dy_res = out_grad * y_tmp;
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dy_res, y_grad);
+      } else {
+        auto dy_reduce_res =
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, y_grad);
+      }
+    } else {
+      set_output<T>(dy_res, y_grad);
     }
   }
 }

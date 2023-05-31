@@ -20,12 +20,20 @@ from test_auto_parallel_reshard import mlp_forward
 
 import paddle
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_attribute import TensorDistAttr
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    TensorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.dist_tensor import (
+    DistributedTensor,
+)
+from paddle.distributed.auto_parallel.static.parallelizer import (
+    AutoParallelizer,
+)
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 from paddle.distributed.fleet import auto
 
 

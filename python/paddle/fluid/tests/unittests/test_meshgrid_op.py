@@ -32,13 +32,13 @@ class TestMeshgridOp(OpTest):
         self.prim_op_type = "comp"
         self.python_api = meshgrid_wrapper
         self.public_python_api = meshgrid_wrapper
-        self.dtype = self.get_dtype()
+        self.init_data_type()
         self.init_inputs_and_outputs()
         self.python_out_sig = ['out0', 'out1']
         self.if_enable_cinn()
 
-    def get_dtype(self):
-        return "float64"
+    def init_data_type(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -80,8 +80,8 @@ class TestMeshgridOp2Fp16(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
 
-    def get_dtype(self):
-        return np.float16
+    def init_data_type(self):
+        self.dtype = np.float16
 
 
 @unittest.skipIf(

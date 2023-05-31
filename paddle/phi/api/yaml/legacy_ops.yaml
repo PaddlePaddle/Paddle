@@ -296,7 +296,7 @@
 
 - op : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
+  output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
   infer_meta :
     func : EinsumRawInferMeta
     param : [x, equation]
@@ -538,17 +538,6 @@
   kernel :
     func : greater_than
 
-- op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
-  output : Tensor(y), Tensor(mean), Tensor(variance)
-  infer_meta :
-    func : GroupNormInferMeta
-  kernel :
-    func : group_norm
-  optional : scale, bias
-  intermediate : mean, variance
-  backward : group_norm_grad
-
 - op : hardswish
   args : (Tensor x)
   output : Tensor(out)
@@ -781,15 +770,6 @@
   kernel :
     func : pad
   backward : pad_grad
-
-- op : pad3d
-  args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : Pad3dInferMeta
-  kernel :
-    func : pad3d
-  backward : pad3d_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
