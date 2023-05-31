@@ -41,7 +41,7 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "Input(Step) and Output(StepOut) must be the same."));
   PADDLE_ENFORCE_EQ(
-      step.IsInitialized(),
+      step.initialized(),
       true,
       phi::errors::InvalidArgument("Input(Step) must be initialized."));
 
@@ -70,4 +70,5 @@ PD_REGISTER_KERNEL(pow2_decay_with_linear_warmup,
                    phi::Pow2DecayWithLinearWarmupKernel,
                    float) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

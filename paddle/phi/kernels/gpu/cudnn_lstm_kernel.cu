@@ -188,7 +188,7 @@ void CudnnLSTMKernel(
   auto stream = ctx.stream();
   auto *running_w = w.get_ptr();
   if (is_test && running_w != nullptr) {
-    w_initialized = running_w->IsInitialized() ? true : false;
+    w_initialized = running_w->initialized() ? true : false;
     weight_numel = running_w->numel();
   }
   if (!w_initialized) {
