@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import re
 import unittest
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 import numpy as np
 
@@ -25,6 +31,7 @@ from paddle.fluid import core
 from paddle.nn.functional.flash_attention import (
     flash_attention,
     flash_attn_unpadded,
+    flash_blocksparse_attn_unpadded,
 )
 
 
@@ -71,7 +78,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.use_sdp_kernel = False
 
     def test_unpadded(self):
-        print(
+        logger.info(
             f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 
@@ -160,7 +167,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
     def test_all(self):
-        print(
+        logger.info(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
         # test dynamic
@@ -321,6 +328,85 @@ class TestMathAttentionAPITest(TestFlashAttentionAPI):
         self.enable_math = True
         self.enable_flash = False
         self.enable_mem_efficient = False
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
+class TestFlashAttentionBlockSparseAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 256, 8, 16)
+        self.dtype = 'float16'
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = False
+
+    def test_blocksparse(self):
+        logger.info(
+            f"Test blocksparse case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+        )
+
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        scale = 1.0 / np.sqrt(q.shape[-1])
+
+        bs = self.shape[0]
+        ms = self.shape[1]
+        nh = self.shape[2]
+        hd = self.shape[3]
+        cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
+
+        qq = paddle.reshape(q, [bs * ms, nh, hd])
+        out, _ = flash_attn_unpadded(
+            qq,
+            qq,
+            qq,
+            cu_q,
+            cu_q,
+            ms,
+            ms,
+            scale,
+            self.dropout,
+            self.causal,
+            self.return_softmax,
+        )
+
+        blockmask = paddle.full([256 // 16, 1], 1, dtype='int32')
+        qq_ = paddle.reshape(q_, [bs * ms, nh, hd])
+        out_, _ = flash_blocksparse_attn_unpadded(
+            qq_,
+            qq_,
+            qq_,
+            cu_q,
+            cu_q,
+            ms,
+            ms,
+            blockmask,
+            scale,
+            self.dropout,
+            self.causal,
+            self.return_softmax,
+        )
+
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+
+        out.backward()
+        out_.backward()
+
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
+        )
 
 
 if __name__ == '__main__':
