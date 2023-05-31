@@ -308,7 +308,10 @@ class OpInfoParser:
                 'std::vecot<bool>',
             ],
             'str': ['ir::StrAttribute', 'std::string'],
-            'str[]': ['ir::ArrayAttribute<ir::StrAttribute>', 'std::string'],
+            'str[]': [
+                'ir::ArrayAttribute<ir::StrAttribute>',
+                'std::vector<std::string>',
+            ],
             'Place': ['paddle::dialect::PlaceAttribute', 'Place'],
             'DataLayout': [
                 'paddle::dialect::DataLayoutAttribute',
@@ -561,8 +564,8 @@ def GenBuildInputArgsStr(
 
 
 def GenBuildInputs(op_input_name_list):
-    BUILD_INPUT_TEMPLATE = """  std::vector<ir::OpResult> inputs = {{{inputs_args}}};
-  argument.addOperands(inputs.begin(), inputs.end());
+    BUILD_INPUT_TEMPLATE = """  std::vector<ir::OpResult> argument_inputs = {{{inputs_args}}};
+  argument.addOperands(argument_inputs.begin(), argument_inputs.end());
 """
     build_input_str = ""
     if len(op_input_name_list) > 0:
@@ -574,11 +577,11 @@ def GenBuildInputs(op_input_name_list):
 
 
 def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
-    INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr_name}));
+    INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr}));
 """
-    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::Scalar({attr_name}));
+    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::Scalar({attr}));
 """
-    STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr_name});
+    STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr});
 """
     ARRAY_ATTRIBUTE_TEMPLATE = """  std::vector<ir::Attribute> vec_{attr_name};
   for (size_t i = 0; i < static_cast<size_t>({attr_size}); i++) {{
@@ -598,6 +601,7 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
                     create_attribute=INTARRAY_STR_TEMPLATE.format(
                         attr_name=op_attribute_name_list[idx],
                         op_attribute_type=inner_attribute_type,
+                        attr=op_attribute_name_list[idx] + "[i]",
                     ),
                 )
             elif inner_attribute_type == "paddle::dialect::ScalarAttribute":
@@ -607,6 +611,7 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
                     create_attribute=SCALAR_STR_TEMPLATE.format(
                         attr_name=op_attribute_name_list[idx],
                         op_attribute_type=inner_attribute_type,
+                        attr=op_attribute_name_list[idx] + "[i]",
                     ),
                 )
             else:
@@ -616,6 +621,7 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
                     create_attribute=STR_TEMPLATE.format(
                         attr_name=op_attribute_name_list[idx],
                         op_attribute_type=inner_attribute_type,
+                        attr=op_attribute_name_list[idx] + "[i]",
                     ),
                 )
         elif (
@@ -624,17 +630,20 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
             attr_str += INTARRAY_STR_TEMPLATE.format(
                 attr_name=op_attribute_name_list[idx],
                 op_attribute_type=op_attribute_type_list[idx],
+                attr=op_attribute_name_list[idx],
             )
 
         elif op_attribute_type_list[idx] == "paddle::dialect::ScalarAttribute":
             attr_str += SCALAR_STR_TEMPLATE.format(
                 attr_name=op_attribute_name_list[idx],
                 op_attribute_type=op_attribute_type_list[idx],
+                attr=op_attribute_name_list[idx],
             )
         else:
             attr_str += STR_TEMPLATE.format(
                 attr_name=op_attribute_name_list[idx],
                 op_attribute_type=op_attribute_type_list[idx],
+                attr=op_attribute_name_list[idx],
             )
         attr_str += """  argument.addAttribute("{attr_name}", attr_{attr_name});\n""".format(
             attr_name=op_attribute_name_list[idx]
@@ -655,7 +664,7 @@ def GenBuildOutputs(
     CREATE_INPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
   dense_{name}.set_meta(
     phi::DenseTensorMeta(TransToPhiDataType({name}.dtype()),
-                         {name}.dim(),
+                         {name}.dims(),
                          {name}.data_layout(),
                          {name}.lod(),
                          {name}.offset())
@@ -667,16 +676,16 @@ def GenBuildOutputs(
   for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
     vec_dense_{name}[i].set_meta(
         phi::DenseTensorMeta(TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
-                             {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dim(),
+                             {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
                              {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
                              {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
                              {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset())
         );
     vec_meta_{name}.push_back(phi::MetaTensor(&vec_dense_{name}[i]));
   }}
-  std::vector<const phi::MetaTensor*> vec_meta_{name}_ptr;
+  std::vector<const phi::MetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
-    vec_meta_{name}_ptr.push_back(&vec_meta_{name}[i]);
+    meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
  """
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
@@ -687,21 +696,21 @@ def GenBuildOutputs(
   for (size_t i=0; i < static_cast<size_t>({output_size}); i++) {{
     vec_meta_{name}.push_back(phi::MetaTensor(&vec_dense_{name}[i]));
   }}
-  std::vector<const phi::MetaTensor*> vec_meta_{name}_ptr;
+  std::vector<phi::MetaTensor*> meta_{name};
   for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
-    vec_meta_{name}_ptr.push_back(&vec_meta_{name}[i]);
+    meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
 """
     # Prepar input type
     for idx in range(len(op_input_name_list)):
         # is a vector<Tensor>
         if 'ir::VectorType' in op_input_type_list[idx]:
-            build_output_str += "  ir::VectorType {name} = {name}_.type().dyn_cast<ir::VectorType>();\n".format(
+            build_output_str += "  ir::VectorType {name} = {name}_.type().dyn_cast<ir::VectorType>(); (void){name};\n".format(
                 name=op_input_name_list[idx]
             )
         # is a Tensor
         else:
-            build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>();\n".format(
+            build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>(); (void){name};\n".format(
                 name=op_input_name_list[idx]
             )
 
@@ -710,29 +719,30 @@ def GenBuildOutputs(
     for idx in range(len(op_infer_meta_map['param'])):
         # is input
         if op_infer_meta_map['param'][idx] in op_input_name_list:
-            # is a vector<Tensor>
             if (
-                'ir::VectorType'
-                in op_input_type_list[
-                    op_input_name_list.index(op_infer_meta_map['param'][idx])
-                ]
-            ):
-                build_output_str += CREATE_INPUT_VEC_METATENSOR_TEMPLATE.format(
-                    name=op_infer_meta_map['param'][idx]
-                )
-                infer_meta_args.append(
-                    "vec_meta_{name}_ptr".format(
+                "meta_" + op_infer_meta_map['param'][idx]
+            ) not in infer_meta_args:
+                # is a vector<Tensor>
+                if (
+                    'ir::VectorType'
+                    in op_input_type_list[
+                        op_input_name_list.index(
+                            op_infer_meta_map['param'][idx]
+                        )
+                    ]
+                ):
+                    build_output_str += (
+                        CREATE_INPUT_VEC_METATENSOR_TEMPLATE.format(
+                            name=op_infer_meta_map['param'][idx]
+                        )
+                    )
+                # is a Tensor
+                else:
+                    build_output_str += CREATE_INPUT_METATENSOR_TEMPLATE.format(
                         name=op_infer_meta_map['param'][idx]
                     )
-                )
-            # is a Tensor
-            else:
-                build_output_str += CREATE_INPUT_METATENSOR_TEMPLATE.format(
-                    name=op_infer_meta_map['param'][idx]
-                )
-                infer_meta_args.append(
-                    "meta_{name}".format(name=op_infer_meta_map['param'][idx])
-                )
+
+            infer_meta_args.append("meta_" + op_infer_meta_map['param'][idx])
         # is attribute
         else:
             infer_meta_args.append(op_infer_meta_map['param'][idx])
@@ -745,7 +755,7 @@ def GenBuildOutputs(
                 name=op_output_name_list[idx],
                 output_size=op_output_size_list[idx],
             )
-            infer_meta_args.append(f"vec_meta_{op_output_name_list[idx]}_ptr")
+            infer_meta_args.append(f"meta_{op_output_name_list[idx]}")
         # is a Tensor
         else:
             build_output_str += CREATE_OUTPUT_METATENSOR_TEMPLATE.format(
@@ -762,11 +772,11 @@ def GenBuildOutputs(
     )
 
     # use dense_{name} or vec_dense_{name} to create Outputs type
-    build_output_str += "\n  std::vector<ir::Type> outputs;"
+    build_output_str += "\n  std::vector<ir::Type> argument_outputs;"
 
     CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE = """
   ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
-  outputs.push_back({name}_dense_tensor_type);
+  argument_outputs.push_back({name}_dense_tensor_type);
 """
     CREATE_OUTPUT_VEC_DENSE_TENSOR_TEMPLATE = """
   std::vector<ir::Type> {name}_types;
@@ -774,7 +784,7 @@ def GenBuildOutputs(
     {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
   }}
   ir::Type {name}_vector_type = ir::VectorType::get(ir::IrContext::Instance(), {name}_types);
-  outputs.push_back({name}_vector_type);
+  argument_outputs.push_back({name}_vector_type);
 """
     for idx in range(len(op_output_name_list)):
         # is a vector<Tensor>
@@ -789,7 +799,7 @@ def GenBuildOutputs(
                 name=op_output_name_list[idx]
             )
 
-    build_output_str += "  argument.addTypes(outputs.begin(), outputs.end());\n"
+    build_output_str += "  argument.addTypes(argument_outputs.begin(), argument_outputs.end());\n"
 
     return build_output_str
 

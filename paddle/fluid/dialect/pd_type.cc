@@ -18,7 +18,7 @@ namespace paddle {
 namespace dialect {
 const ir::Type& DenseTensorType::dtype() const { return storage()->dtype_; }
 
-const phi::DDim& DenseTensorType::dim() const { return storage()->dims_; }
+const phi::DDim& DenseTensorType::dims() const { return storage()->dims_; }
 
 const phi::DataLayout& DenseTensorType::data_layout() const {
   return storage()->layout_;

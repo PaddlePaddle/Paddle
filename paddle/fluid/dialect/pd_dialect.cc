@@ -35,7 +35,7 @@ ParameterConvertInterface::ParameterToVariable(ir::Parameter *parameter) {
         std::make_shared<paddle::framework::Variable>();
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     // Init DenseTensor
-    auto dim = parameter->type().dyn_cast<DenseTensorType>().dim();
+    auto dim = parameter->type().dyn_cast<DenseTensorType>().dims();
     phi::DenseTensorMeta meta(
         TransToPhiDataType(
             parameter->type().dyn_cast<DenseTensorType>().dtype()),
@@ -112,7 +112,7 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
   DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
 
   os << "tensor<";
-  for (auto d : phi::vectorize(tensor_type.dim())) {
+  for (auto d : phi::vectorize(tensor_type.dims())) {
     os << d;
     os << "x";
   }

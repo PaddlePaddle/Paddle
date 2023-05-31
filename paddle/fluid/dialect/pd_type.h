@@ -30,7 +30,7 @@ class DenseTensorType : public ir::Type {
 
   const ir::Type &dtype() const;
 
-  const phi::DDim &dim() const;
+  const phi::DDim &dims() const;
 
   const phi::DataLayout &data_layout() const;
 
