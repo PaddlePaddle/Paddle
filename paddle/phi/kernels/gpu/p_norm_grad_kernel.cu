@@ -206,33 +206,6 @@ void PNormGradKernel(const Context& dev_ctx,
       }
     }
   }
-  // TODO(zbt):
-  //     Solve the problem:"AssertionError: This test of p_norm op needs
-  //     check_grad." ;
-  // Solve the problem:"For Tensor contain only one element,
-  //     Please modify  'Tensor.numpy()[0]' to 'float(Tensor)' as soon as
-  //     possible"
-
-  // bool bool_sign = false;
-  // std::vector<int> shape;
-  // for (int i = 0; i < x_grad->dims().size(); i++) {
-  //   if (!bool_sign && x_grad->dims()[i] == 1) {
-  //   } else {
-  //     bool_sign = true;
-  //     shape.push_back(x_grad->dims()[i]);
-  //   }
-  // }
-  // DDim dims = phi::make_ddim(shape);
-  // x_grad->Resize(dims);
-
-  // if (x_grad->dims()[0] == 1) {
-  //   std::vector<int> shape;
-  //   for (int i = 1; i < x_grad->dims().size(); i++) {
-  //     shape.push_back(x_grad->dims()[i]);
-  //   }
-  //   DDim dims = phi::make_ddim(shape);
-  //   x_grad->Resize(dims);
-  // }
 }
 }  // namespace phi
 PD_REGISTER_KERNEL(p_norm_grad,
