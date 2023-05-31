@@ -25,13 +25,15 @@ from auto_parallel_gpt_model import (
 import paddle
 from paddle import static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
+from paddle.distributed.auto_parallel.static.tuner.parallel_tuner import (
+    ParallelTuner,
+)
 
 paddle.enable_static()
 

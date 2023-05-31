@@ -435,7 +435,7 @@ class PADDLE_API Tensor final {
    * data type template argument
    *
    * @tparam T
-   * @param target_place, the target place of which the tensor will copy to.
+   * @param target_place The target place of which the tensor will copy to.
    * @return Tensor
    */
   template <typename T>
@@ -444,8 +444,8 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the current Tensor to the specified device and return.
    *
-   * @param place, The target place of which the tensor will copy to.
-   * @param blocking, Should we copy this in sync way.
+   * @param place The target place of which the tensor will copy to.
+   * @param blocking Should we copy this in sync way.
    * @return Tensor
    */
   Tensor copy_to(const Place& place, bool blocking) const;
@@ -453,8 +453,8 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the source Tensor to current Tensor.
    *
-   * @param src, the source Tensor to be copied.
-   * @param blocking, Should we copy this in sync way.
+   * @param src The source Tensor to be copied.
+   * @param blocking Should we copy this in sync way.
    * @return void
    */
   void copy_(const Tensor& src, const Place& target_place, bool blocking);
@@ -589,7 +589,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Convert DenseTensor or SparseCsrTensor to SparseCooTensor
    *
-   * @param sparse_dim, The number of sparse dimensions
+   * @param sparse_dim The number of sparse dimensions
    * @return Tensor
    */
   Tensor to_sparse_coo(const int64_t sparse_dim) const;
