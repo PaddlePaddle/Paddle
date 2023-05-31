@@ -479,12 +479,7 @@ class OpInfoParser:
             if 'IntArray' in temp_type:
                 if 'data_type' in attribute_info:
                     temp_type = attribute_info['data_type']
-            temp_type = temp_type.replace('Scalar', 'phi::Scalar')
-            temp_type = temp_type.replace('IntArray', 'phi::IntArray')
-            temp_type = temp_type.replace('Place', 'phi::Place')
-            temp_type = temp_type.replace('DataLayout', 'phi::DataLayout')
-            temp_type = temp_type.replace('DataType', 'phi::DataType')
-            type_list.append(temp_type)
+            type_list.append(self.get_phi_dtype_name(temp_type))
         return type_list
 
     def parse_attribute_type_list(self):
@@ -509,7 +504,10 @@ class OpInfoParser:
         default_value_list = []
         for attribute_info in self.op_yaml_item['attrs']:
             if 'default_value' in attribute_info:
-                default_value_list.append(attribute_info['default_value'])
+                default_value = attribute_info['default_value']
+                default_value_list.append(
+                    self.get_phi_dtype_name(default_value)
+                )
             else:
                 default_value_list.append(None)
         return default_value_list
@@ -525,6 +523,25 @@ class OpInfoParser:
             return self.op_yaml_item['kernel']
         else:
             return None
+
+    def get_phi_dtype_name(self, name):
+        if name.startswith(
+            (
+                "Scalar",
+                "IntArray",
+                "Place",
+                "DataLayout",
+                "DataType",
+                "CPUPlace",
+                "GPUPlace",
+                "GPUPinnedPlace",
+                "XPUPlace",
+                "IPUPlace",
+                "CustomPlace",
+            )
+        ):
+            return "phi::" + name
+        return name
 
 
 def to_pascal_case(s):
