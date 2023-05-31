@@ -107,7 +107,7 @@ TEST(program_test, program) {
       a_interface->ParameterToVariable(program.GetParameter("a"));
   const phi::DenseTensor &a_tensor = a_var->Get<phi::DenseTensor>();
   EXPECT_EQ(a_tensor.numel(), 4);
-  EXPECT_EQ(a_tensor.dims(), phi::DDim(dims.data(), dims.size()));
+  EXPECT_EQ(a_tensor.dims(), dims);
   EXPECT_EQ(a_tensor.dtype(), paddle::dialect::TransToPhiDataType(fp32_dtype));
   EXPECT_EQ(a_tensor.layout(), data_layout);
   EXPECT_EQ(a_tensor.lod(), lod);
@@ -136,7 +136,7 @@ TEST(program_test, program) {
       b_interface->ParameterToVariable(program.GetParameter("b"));
   const phi::DenseTensor &b_tensor = b_var->Get<phi::DenseTensor>();
   EXPECT_EQ(b_tensor.numel(), 4);
-  EXPECT_EQ(b_tensor.dims(), phi::DDim(dims.data(), dims.size()));
+  EXPECT_EQ(b_tensor.dims(), dims);
   EXPECT_EQ(b_tensor.dtype(), paddle::dialect::TransToPhiDataType(fp32_dtype));
   EXPECT_EQ(b_tensor.layout(), data_layout);
   EXPECT_EQ(b_tensor.lod(), lod);
