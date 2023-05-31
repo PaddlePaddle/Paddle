@@ -29,4 +29,6 @@ class CompileSIRCache(Cache):
         return hash_key
 
     def value_fn(self, context, sir_name):
-        return paddle.jit.to_static(compile_sir(context, sir_name))
+        return paddle.jit.to_static(
+            compile_sir(context, sir_name), enable_fallback=False
+        )

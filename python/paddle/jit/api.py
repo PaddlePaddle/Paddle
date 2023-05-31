@@ -349,6 +349,18 @@ def to_static(
 
         from .symbolic_trace import symbolic_trace
 
+        if isinstance(function, Layer):
+            if isinstance(function.forward, StaticFunction):
+                class_name = function.__class__.__name__
+                logging_utils.warn(
+                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".format(
+                        class_name
+                    )
+                )
+                # reset it.
+                function.forward = function.forward.dygraph_function
+            function.forward = symbolic_trace(function.forward)
+            return function
         return symbolic_trace(function)
 
 
