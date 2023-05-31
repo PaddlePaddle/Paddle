@@ -345,7 +345,7 @@ inline ir::AttributeMap TranslateOpAttribute(
     }
   }
 
-  return std::move(attribute_map);
+  return attribute_map;
 }
 
 inline void RecordOpResultMapping(TranslationContext* param_map,
