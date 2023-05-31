@@ -995,8 +995,10 @@
     {x : X, index : Index}
   outputs :
     out : Out
-  attrs :
+  scalar :
     axis : Axis
+      data_type : int
+      tensor_name : Axis
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -1004,8 +1006,6 @@
     {x : X, index : Index}
   outputs :
     out : Out
-  attrs :
-    axis : axis
 
 - op : gather_tree
   inputs :

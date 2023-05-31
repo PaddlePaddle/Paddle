@@ -721,7 +721,7 @@
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
   output : Tensor(x_grad)
   infer_meta :
-    func : UnchangedInferMeta
+    func : GeneralUnaryGradInferMeta
     param: [x]
   kernel :
     data_type: x
