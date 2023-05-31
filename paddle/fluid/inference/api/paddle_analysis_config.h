@@ -96,15 +96,19 @@ struct XpuConfig {
   bool fc_autotune_file_writeback{false};
 
   // only for Paddle-Lite now
-  bool local_quant{false};       // precision related
-  int precision_stable_mode{0};  // 0,1,2
-  std::string gemm_precision_mode{"int16"};
-  int transformer_softmax_optimize_level{0};
-  float quant_gelu_out_threshold{10.f};
-  bool transformer_adaptive_seqlen{true};
+  // std::string gemm_precision_mode{"int16"}; // int16, int31
+  int gemm_compute_precision{-1};  // -1,0,1,2: default, int8,int16,int31
+  int transformer_softmax_optimize_level{0};  // 0,1,2
+  bool transformer_encoder_adaptive_seqlen{true};
 
+  // only for Paddle-Lite now
+  float quant_post_static_gelu_out_threshold{10.f};
+  int quant_post_dynamic_activation_method{
+      0};  // ? 0,1,2,3 per_tensor(kl1/kl2), per_batch(kl1), per_head(kl1),
+           // every_16(kl2)
   // only for PaddleInference now
-  int quant_post_dynamic_weight_bits{-1};
+  int quant_post_dynamic_weight_precison{
+      1};  // 0,1,2: int8, int16, float(int31 compute)
   std::vector<std::string> quant_post_dynamic_op_types;
 };
 
