@@ -33,7 +33,7 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-set(utils_modules pretty_log string_helper benchmark utf8proc)
+set(utils_modules pretty_log string_helper benchmark)
 
 add_subdirectory(api)
 
@@ -65,8 +65,14 @@ else()
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
   # message("${phi_modules}")
-  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${STATIC_INFERENCE_API} ${utils_modules})
+  create_static_lib(
+    paddle_inference
+    ${phi_modules}
+    ${fluid_modules}
+    ${STATIC_INFERENCE_API}
+    ${utils_modules}
+    utf8proc
+    gflags)
 endif()
 
 if(NOT APPLE)
