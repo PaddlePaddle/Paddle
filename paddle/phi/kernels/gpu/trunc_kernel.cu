@@ -28,7 +28,10 @@ template <typename T>
 class TruncFunctor {
  public:
   __device__ TruncFunctor(const T x) : x_(x) {}
-  __device__ T operator()() { return trunc(x_); }
+  __device__ T operator()() {
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    return static_cast<T>(trunc(static_cast<MPType>(x_)));
+  }
 
  public:
   const T x_;
@@ -79,5 +82,13 @@ void TruncKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    trunc, GPU, ALL_LAYOUT, phi::TruncKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(trunc,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TruncKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

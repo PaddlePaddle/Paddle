@@ -26,6 +26,7 @@ std::tuple<paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
            paddle::Tensor,
+           paddle::Tensor,
            paddle::Tensor>
 fused_gate_attention_dygraph_function(
     const paddle::Tensor& Query,
@@ -181,6 +182,9 @@ fused_gate_attention_dygraph_function(
        {"SoftmaxOut",
         {std::make_shared<egr::EagerVariable>(
             egr::Controller::Instance().GenerateUniqueName())}},
+       {"SoftmaxLse",
+        {std::make_shared<egr::EagerVariable>(
+            egr::Controller::Instance().GenerateUniqueName())}},
        {"FMHAOut",
         {std::make_shared<egr::EagerVariable>(
             egr::Controller::Instance().GenerateUniqueName())}},
@@ -256,6 +260,8 @@ fused_gate_attention_dygraph_function(
   egr::EagerUtils::GetOutput(outs["QKVTransposeOut"][0], &QKVTransposeOut);
   paddle::Tensor SoftmaxOut;
   egr::EagerUtils::GetOutput(outs["SoftmaxOut"][0], &SoftmaxOut);
+  paddle::Tensor SoftmaxLse;
+  egr::EagerUtils::GetOutput(outs["SoftmaxLse"][0], &SoftmaxLse);
   paddle::Tensor FMHAOut;
   egr::EagerUtils::GetOutput(outs["FMHAOut"][0], &FMHAOut);
   paddle::Tensor GateOut;
@@ -296,7 +302,7 @@ fused_gate_attention_dygraph_function(
                                         p_autograd_Out);
       // Create GradOpNode
       auto grad_node = std::shared_ptr<fused_gate_attentionGradNodeCompat>(
-          new fused_gate_attentionGradNodeCompat(8, 12));
+          new fused_gate_attentionGradNodeCompat(9, 12));
 
       bool merge_qkv = true;
       if (attrs.count("merge_qkv")) {
@@ -306,6 +312,11 @@ fused_gate_attention_dygraph_function(
       bool has_gating = true;
       if (attrs.count("has_gating")) {
         has_gating = PADDLE_GET_CONST(bool, attrs.at("has_gating"));
+      }
+
+      bool use_flash_attn = false;
+      if (attrs.count("use_flash_attn")) {
+        use_flash_attn = PADDLE_GET_CONST(bool, attrs.at("use_flash_attn"));
       }
 
       // Set Attributes
@@ -354,6 +365,12 @@ fused_gate_attention_dygraph_function(
         grad_node->SetGradOutMeta(NonbatchedBias, 6);
       }
 
+      if (use_flash_attn) {
+        grad_node->SetTensorWrapperSoftmaxLse(SoftmaxLse);
+        grad_node->SetTensorWrapperSrcMask(SrcMask);
+        grad_node->SetGradOutMeta(SrcMask, 7);
+      }
+
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QueryTransposeOut, 0);
       grad_node->SetGradInMeta(QueryTransposeOut, 0);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_KeyTransposeOut, 1);
@@ -379,6 +396,7 @@ fused_gate_attention_dygraph_function(
                          ValueTransposeOut,
                          QKVTransposeOut,
                          SoftmaxOut,
+                         SoftmaxLse,
                          FMHAOut,
                          GateOut,
                          Out);

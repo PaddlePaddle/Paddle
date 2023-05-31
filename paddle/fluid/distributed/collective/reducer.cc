@@ -829,9 +829,9 @@ void EagerReducer::MarkVarReady(const size_t var_index,
   const auto inside_group_index = var_locator.inside_group_index;
 
   auto &group = groups_[group_index];
-  auto &group_tensor = group.dense_tensors_[inside_group_index];
 
   if (!group.is_sparse_) {
+    auto &group_tensor = group.dense_tensors_[inside_group_index];
     const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();
@@ -1097,6 +1097,15 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't concat grad tensors since it's not compiled with NCCL,"
         "Please recompile or reinstall Paddle with NCCL support."));
+#endif
+  } else if (platform::is_xpu_place(inner_place_)) {
+#ifdef PADDLE_WITH_XPU_BKCL
+    dev_ctx = static_cast<platform::XPUDeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(inner_place_));
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't concat grad tensors since it's not compiled with XCCL,"
+        "Please recompile or reinstall Paddle with XCCL support."));
 #endif
   } else if (platform::is_custom_place(inner_place_)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

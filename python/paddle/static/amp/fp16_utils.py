@@ -426,7 +426,7 @@ def set_var_dst_dtype(
 
 def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
     keep_fp32_var_names = set()
-    if level == "O1":
+    if level == "O1" or level == "OD":
         return keep_fp32_var_names
     all_parameters = []
     for block in program.blocks:
@@ -478,9 +478,9 @@ def op_need_keep_fp32(op, amp_lists, use_fp16_guard, params_list):
         need_keep_fp32 = True
         for in_name in op.input_names:
             for params in params_list:
-                if op.input(in_name)[0] == params.name:
+                if params.name in op.input(in_name):
                     fp16_varname_list_in_fp32_op = (
-                        fp16_varname_list_in_fp32_op.union(op.input(in_name))
+                        fp16_varname_list_in_fp32_op.union([params.name])
                     )
 
     return need_keep_fp32, fp16_varname_list_in_fp32_op
@@ -617,6 +617,12 @@ def cast_model_to_fp16(
     # For amp o2 there is no blacklist by default.
     if level == 'O2':
         amp_lists.black_list = amp_lists.black_list - black_list
+
+    if level == 'OD':
+        if amp_lists is not None:
+            dtype = get_low_precision_dtypestr(dest_type)
+            amp_lists = AutoMixedPrecisionLists(dtype)
+        amp_lists.black_list = amp_lists.all_list - amp_lists.white_list
 
     global_block = program.global_block()
     keep_fp32_ops = set()

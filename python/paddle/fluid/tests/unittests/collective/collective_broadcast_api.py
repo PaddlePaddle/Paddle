@@ -35,6 +35,7 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         op_type,
     )

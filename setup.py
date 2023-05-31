@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -965,7 +966,14 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-    package_data['paddle.libs'] = [
+
+    if env_dict.get("WITH_PHI_SHARED") == "ON":
+        package_data['paddle.libs'] = [
+            ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+
+    package_data['paddle.libs'] += [
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
@@ -1203,6 +1211,13 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                if env_dict.get("WITH_PHI_SHARED") == "ON":
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
             else:
                 commands = [
                     "patchelf --set-rpath '$ORIGIN/../libs/' "
@@ -1211,6 +1226,13 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
+                if env_dict.get("WITH_PHI_SHARED") == "ON":
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
             # The sw_64 not suppot patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
                 for command in commands:
@@ -1408,9 +1430,11 @@ def get_setup_parameters():
         'paddle.distributed.fleet.meta_parallel.sharding',
         'paddle.distributed.fleet.meta_parallel.parallel_layers',
         'paddle.distributed.auto_parallel',
-        'paddle.distributed.auto_parallel.operators',
-        'paddle.distributed.auto_parallel.tuner',
-        'paddle.distributed.auto_parallel.cost',
+        'paddle.distributed.auto_parallel.dygraph',
+        'paddle.distributed.auto_parallel.static',
+        'paddle.distributed.auto_parallel.static.operators',
+        'paddle.distributed.auto_parallel.static.tuner',
+        'paddle.distributed.auto_parallel.static.cost',
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
@@ -1597,13 +1621,52 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     subprocess.check_call([CMAKE, "--build", lib_test_dir])
 
 
+def check_submodules():
+    def get_submodule_folder():
+        git_submodules_path = os.path.join(TOP_DIR, ".gitmodules")
+        with open(git_submodules_path) as f:
+            return [
+                os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
+                for line in f.readlines()
+                if line.strip().startswith("path")
+            ]
+
+    def submodules_not_exists_or_empty(folder):
+        return not os.path.exists(folder) or (
+            os.path.isdir(folder) and len(os.listdir(folder)) == 0
+        )
+
+    submodule_folders = get_submodule_folder()
+    # f none of the submodule folders exists, try to initialize them
+    if any(
+        submodules_not_exists_or_empty(folder) for folder in submodule_folders
+    ):
+        try:
+            print(' --- Trying to initialize submodules')
+            start = time.time()
+            subprocess.check_call(
+                ["git", "submodule", "update", "--init", "--recursive"],
+                cwd=TOP_DIR,
+            )
+            end = time.time()
+            print(
+                ' --- Submodule initialization took {:.2f} sec'.format(
+                    end - start
+                )
+            )
+        except Exception:
+            print(' --- Submodule initalization failed')
+            print('Please run:\n\tgit submodule update --init --recursive')
+            sys.exit(1)
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
     # check build dependency
     check_build_dependency()
-
+    check_submodules()
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
