@@ -85,6 +85,19 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_check_nan_inf_stack_limit
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Used to debug. Print python stack when FLAGS_check_nan_inf is set
+ */
+PHI_DEFINE_EXPORTED_int32(
+    check_nan_inf_stack_limit,
+    0,
+    "Setting the print python stack level when FLAGS_check_nan_inf is set.");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf_level
  * Since Version: 2.5.0
  * Value Range: int32, default=0

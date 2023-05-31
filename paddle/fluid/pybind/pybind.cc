@@ -2693,9 +2693,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
-  // Add the api for nan op debug
-  m.def("set_nan_inf_stack_limit",
-        &paddle::framework::details::SetNanInfStackLimit);
 
   // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",

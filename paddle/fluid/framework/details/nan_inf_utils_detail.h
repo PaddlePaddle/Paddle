@@ -33,10 +33,6 @@ void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
 
-void SetNanInfStackLimit(const int& stack_limit);
-
-int GetNanInfStackLimit();
-
 template <typename Context>
 struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& o,

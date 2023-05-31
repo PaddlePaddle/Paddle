@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/check_numerics_utils.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
+PHI_DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_stack_limit);
+
 namespace phi {
 
 static std::once_flag init_multi_gpu_op_var_map_flag;

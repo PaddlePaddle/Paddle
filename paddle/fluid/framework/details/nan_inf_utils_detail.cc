@@ -23,14 +23,17 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
+PHI_DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_stack_limit);
+
 namespace paddle {
 namespace framework {
 namespace details {
 struct DebugTools {
   DebugTools() {}
   std::string path = "";
-  int stack_limit = 1;
 };
+
 static DebugTools debug_nan_inf;
 
 void SetNanInfDebugPath(const std::string& nan_inf_path) {
@@ -44,13 +47,6 @@ std::string GetNanPath() {
   }
   return debug_nan_inf.path + "/";
 }
-
-void SetNanInfStackLimit(const int& stack_limit) {
-  debug_nan_inf.stack_limit = stack_limit;
-  VLOG(4) << "Set the stack limit of debug tools : " << stack_limit;
-}
-
-int GetNanInfStackLimit() { return debug_nan_inf.stack_limit; }
 
 static std::once_flag white_list_init_flag;
 

@@ -41,7 +41,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(check_nan_inf);
-
+PHI_DECLARE_int32(check_nan_inf_stack_limit);
 namespace paddle {
 namespace pybind {
 
@@ -218,7 +218,7 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 }
 
 void SetPythonStack() {
-  if (FLAGS_check_nan_inf) {
+  if (FLAGS_check_nan_inf && FLAGS_check_nan_inf_stack_limit) {
     VLOG(4) << "this is SetPythonStack";
     pybind11::gil_scoped_acquire gil;
     PyObject* mod = PyImport_ImportModule("traceback");
