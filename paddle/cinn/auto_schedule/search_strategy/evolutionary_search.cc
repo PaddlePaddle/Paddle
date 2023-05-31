@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_strategy/evolutionary_search.h"
+#include "paddle/cinn/auto_schedule/search_strategy/evolutionary_search.h"
 
 #include <glog/logging.h>
 
@@ -23,18 +23,18 @@
 #include <memory>
 #include <utility>
 
-#include "cinn/auto_schedule/database/database.h"
-#include "cinn/auto_schedule/post_schedule_rule/cooperative_process.h"
-#include "cinn/auto_schedule/search_space/search_space.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/auto_schedule/search_strategy/mutate_rule/mutate_tile_size.h"
-#include "cinn/auto_schedule/task/task_registry.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/utils/multi_threading.h"
-#include "cinn/utils/sized_multi_set.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/auto_schedule/database/database.h"
+#include "paddle/cinn/auto_schedule/post_schedule_rule/cooperative_process.h"
+#include "paddle/cinn/auto_schedule/search_space/search_space.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/auto_schedule/search_strategy/mutate_rule/mutate_tile_size.h"
+#include "paddle/cinn/auto_schedule/task/task_registry.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/utils/multi_threading.h"
+#include "paddle/cinn/utils/sized_multi_set.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
 

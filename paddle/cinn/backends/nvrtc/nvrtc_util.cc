@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <nvrtc.h>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/backends/nvrtc/header_generator.h"
-#include "cinn/common/common.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/nvrtc/header_generator.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_bool(nvrtc_compile_to_cubin);
 

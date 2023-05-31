@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/runtime/flags.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <unordered_set>
 
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/target.h"
 
 #ifdef CINN_WITH_CUDNN
 DEFINE_bool(cinn_cudnn_deterministic,

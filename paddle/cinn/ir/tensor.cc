@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/tensor.h"
+#include "paddle/cinn/ir/tensor.h"
 
 #include <cstring>
 
-#include "cinn/cinn.h"
-#include "cinn/common/arithmatic.h"
-#include "cinn/common/axis.h"
-#include "cinn/common/cas.h"
-#include "cinn/common/common.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/ir/operation.h"
-#include "cinn/lang/compute.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/operation.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace ir {

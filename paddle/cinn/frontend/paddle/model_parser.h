@@ -18,13 +18,13 @@
 #include <string>
 #include <vector>
 
-#include "cinn/frontend/paddle/cpp/program_desc.h"
-#include "cinn/frontend/paddle/framework.pb.h"
-#include "cinn/frontend/paddle/pb/block_desc.h"
-#include "cinn/frontend/paddle/pb/op_desc.h"
-#include "cinn/frontend/paddle/pb/program_desc.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
+#include "paddle/cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/frontend/paddle/pb/block_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/op_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/program_desc.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
 
 namespace cinn::frontend::paddle {
 namespace framework_proto = ::cinn::frontend::paddle::proto;

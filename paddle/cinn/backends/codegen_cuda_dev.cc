@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
 
 #include <cinn/utils/string.h>
 #include <glog/logging.h>
@@ -21,10 +21,10 @@
 #include <set>
 #include <unordered_set>
 
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_verify.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
 
 namespace cinn {
 namespace backends {

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
 
 #include <gtest/gtest.h>
 
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir_printer.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {

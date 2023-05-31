@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/common/type.h"
-#include "cinn/hlir/pass/fusion_helper_base.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/pass/fusion_helper_base.h"
 
 namespace cinn {
 namespace hlir {

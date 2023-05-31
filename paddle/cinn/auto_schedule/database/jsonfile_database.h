@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/auto_schedule/database/database.h"
+#include "paddle/cinn/auto_schedule/database/database.h"
 
 namespace cinn {
 namespace auto_schedule {

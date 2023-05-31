@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/union_find.h"
+#include "paddle/cinn/common/union_find.h"
 
 namespace cinn {
 namespace common {

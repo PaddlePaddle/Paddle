@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/cost_model/xgb_cost_model.h"
+#include "paddle/cinn/auto_schedule/cost_model/xgb_cost_model.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>

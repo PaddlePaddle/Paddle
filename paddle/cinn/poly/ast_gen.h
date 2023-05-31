@@ -23,12 +23,12 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/tensor.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/poly/poly_scheduler.h"
-#include "cinn/poly/schedule.h"
-#include "cinn/poly/stage.h"
-#include "cinn/utils/functional.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/poly_scheduler.h"
+#include "paddle/cinn/poly/schedule.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/functional.h"
 
 namespace cinn {
 namespace poly {

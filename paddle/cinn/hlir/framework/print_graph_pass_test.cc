@@ -17,13 +17,13 @@
 
 #include <string>
 
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/lang/packed_func.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/lang/packed_func.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace hlir {

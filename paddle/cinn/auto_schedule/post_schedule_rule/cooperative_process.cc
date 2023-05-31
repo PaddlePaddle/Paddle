@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/post_schedule_rule/cooperative_process.h"
+#include "paddle/cinn/auto_schedule/post_schedule_rule/cooperative_process.h"
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/schedule_desc.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/schedule_desc.h"
 
 namespace cinn {
 namespace auto_schedule {

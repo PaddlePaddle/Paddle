@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/type.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace runtime {

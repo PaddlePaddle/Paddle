@@ -14,8 +14,8 @@
 
 #include <queue>
 
-#include "cinn/common/type.h"
-#include "cinn/hlir/pass/op_fusion_pass_util.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/pass/op_fusion_pass_util.h"
 
 namespace cinn {
 namespace hlir {

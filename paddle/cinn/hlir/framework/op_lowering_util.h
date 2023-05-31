@@ -16,7 +16,7 @@
 
 #include <queue>
 
-#include "cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 
 namespace cinn {
 namespace hlir {

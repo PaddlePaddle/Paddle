@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_strategy/evolutionary_search.h"
+#include "paddle/cinn/auto_schedule/search_strategy/evolutionary_search.h"
 
 #include <gtest/gtest.h>
 
 #include <memory>
 #include <utility>
 
-#include "cinn/auto_schedule/cost_model/expr_cost_model.h"
-#include "cinn/auto_schedule/database/database.h"
-#include "cinn/auto_schedule/search_space/search_space.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/auto_schedule/task/task_creator.h"
-#include "cinn/auto_schedule/task/task_registry.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
+#include "paddle/cinn/auto_schedule/database/database.h"
+#include "paddle/cinn/auto_schedule/search_space/search_space.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/auto_schedule/task/task_creator.h"
+#include "paddle/cinn/auto_schedule/task/task_registry.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 #include "tests/program_builder.h"
 
 namespace cinn {

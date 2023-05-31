@@ -17,8 +17,8 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/utils/registry.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/utils/registry.h"
 
 #define CINN_REGISTER_PASS(name)                                        \
   CINN_REGISTRY_REGISTER(::cinn::hlir::framework::PassFunctionRegister, \

@@ -21,10 +21,10 @@
 #include <numeric>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/common/macros.h"
-#include "cinn/hlir/framework/buffer.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/hlir/framework/buffer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace hlir {

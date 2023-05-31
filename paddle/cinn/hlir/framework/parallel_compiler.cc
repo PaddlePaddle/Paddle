@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/parallel_compiler.h"
 
 #include <algorithm>
 #include <fstream>
 #include <thread>
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/compiler.h"
-#include "cinn/backends/llvm/codegen_x86.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/common/context.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/ir/module.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/compiler.h"
+#include "paddle/cinn/backends/llvm/codegen_x86.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/ir/module.h"
 
 DECLARE_int32(cinn_parallel_compile_size);
 DECLARE_int32(cinn_parallel_compile_thread);

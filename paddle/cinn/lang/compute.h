@@ -21,10 +21,10 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/poly/schedule.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/poly/schedule.h"
 
 namespace cinn {
 namespace lang {

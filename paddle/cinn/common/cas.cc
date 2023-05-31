@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/cas.h"
+#include "paddle/cinn/common/cas.h"
 
 #include <algorithm>
 #include <cmath>
 #include <string>
 #include <utility>
 
-#include "cinn/common/arithmatic.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/collect_ir_nodes.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/optim/cast_simplify.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/optim/cast_simplify.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace common {

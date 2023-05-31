@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/lower.h"
+#include "paddle/cinn/lang/lower.h"
 
 #include <gtest/gtest.h>
 
 #include <set>
 
-#include "cinn/cinn.h"
-#include "cinn/lang/buffer.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/lang/buffer.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace lang {

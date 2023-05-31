@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 
-#include "cinn/hlir/framework/op_lowering_util.h"
-#include "cinn/hlir/op/external_api_registry.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/hlir/framework/op_lowering_util.h"
+#include "paddle/cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
 
 DECLARE_bool(cinn_ir_schedule);
 DECLARE_bool(cinn_use_cuda_vectorize);

@@ -16,9 +16,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/intrinsic_types.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/intrinsic_types.h"
 
 /**
  * \file This file implements some runtime concepts used in analysis and

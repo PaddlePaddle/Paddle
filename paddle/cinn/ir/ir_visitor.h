@@ -16,12 +16,12 @@
 #include <functional>
 #include <set>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/collect_ir_nodes.h"
-#include "cinn/ir/intrinsic_ops.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/ir/tensor.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/tensor.h"
 
 namespace cinn {
 namespace ir {

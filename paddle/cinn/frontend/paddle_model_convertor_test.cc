@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle_model_convertor.h"
+#include "paddle/cinn/frontend/paddle_model_convertor.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/frontend/decomposer/test_helper.h"
-#include "cinn/runtime/use_extern_funcs.h"
+#include "paddle/cinn/frontend/decomposer/test_helper.h"
+#include "paddle/cinn/runtime/use_extern_funcs.h"
 
 DEFINE_string(model_dir, "", "");
 

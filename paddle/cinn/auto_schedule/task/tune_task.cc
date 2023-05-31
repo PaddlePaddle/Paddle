@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
 
 #include <glog/logging.h>
 
 #include <iostream>
 #include <vector>
 
-#include "cinn/auto_schedule/analysis/analyze_ir.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace auto_schedule {

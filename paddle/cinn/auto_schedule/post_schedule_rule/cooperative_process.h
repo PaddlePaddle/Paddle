@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/auto_schedule/post_schedule_rule/post_schedule_rule.h"
+#include "paddle/cinn/auto_schedule/post_schedule_rule/post_schedule_rule.h"
 
 namespace cinn {
 namespace auto_schedule {

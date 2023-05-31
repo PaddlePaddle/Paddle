@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/computation.h"
+#include "paddle/cinn/frontend/computation.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/decomposer/use_decomposer.h"
-#include "cinn/frontend/decomposer_registry.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/pass/use_program_pass.h"
-#include "cinn/frontend/program_pass.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
+#include "paddle/cinn/frontend/decomposer_registry.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/pass/use_program_pass.h"
+#include "paddle/cinn/frontend/program_pass.h"
 
 DEFINE_string(model_dir, "", "");
 

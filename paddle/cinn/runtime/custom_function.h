@@ -18,10 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace runtime {

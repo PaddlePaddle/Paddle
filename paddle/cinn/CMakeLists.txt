@@ -281,16 +281,14 @@ if(PUBLISH_LIBS)
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinncore_static.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinncore_static.a
     COMMAND
-      cmake -E copy
-      ${CMAKE_BINARY_DIR}/cinn/frontend/paddle/libframework_proto.a
+      cmake -E copy ${CMAKE_BINARY_DIR}/frontend/paddle/libframework_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libframework_proto.a
-    COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/cinn/hlir/pe/libparam_proto.a
+    COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/hlir/pe/libparam_proto.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libparam_proto.a
     COMMAND
-      cmake -E copy
-      ${CMAKE_BINARY_DIR}/cinn/auto_schedule/libauto_schedule_proto.a
+      cmake -E copy ${CMAKE_BINARY_DIR}/auto_schedule/libauto_schedule_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libauto_schedule_proto.a
-    COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/cinn/ir/libschedule_desc_proto.a
+    COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/ir/libschedule_desc_proto.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libschedule_desc_proto.a
     COMMENT "distribute libcinncore_static.a and related header files." DEPENDS
             cinncore_static)

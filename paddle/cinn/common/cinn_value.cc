@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/cinn_value.h"
+#include "paddle/cinn/common/cinn_value.h"
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/poly/stage.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 

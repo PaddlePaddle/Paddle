@@ -17,17 +17,17 @@
 
 #include <memory>
 
-#include "cinn/backends/codegen_c.h"
-#include "cinn/common/target.h"
-#include "cinn/ir/module.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/buffer.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/pybind/bind.h"
-#include "cinn/pybind/bind_utils.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/buffer.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/pybind/bind_utils.h"
 
 namespace py = pybind11;
 

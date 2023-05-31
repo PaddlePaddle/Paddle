@@ -25,9 +25,9 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/macros.h"
-#include "cinn/utils/registry.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/utils/registry.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 template <typename R, typename... Args>
 inline auto MakeOpFunction(R (*func)(Args...)) {

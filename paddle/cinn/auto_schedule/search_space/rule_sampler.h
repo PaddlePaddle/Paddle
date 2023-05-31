@@ -18,8 +18,8 @@
 #include <random>
 #include <vector>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/utils/random_engine.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {
 namespace auto_schedule {

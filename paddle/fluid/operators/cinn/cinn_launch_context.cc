@@ -19,13 +19,13 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"

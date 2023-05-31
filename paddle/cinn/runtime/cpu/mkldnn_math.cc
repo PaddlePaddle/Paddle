@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cpu/mkldnn_math.h"
+#include "paddle/cinn/runtime/cpu/mkldnn_math.h"
 
 #include <vector>
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/common/cas.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/common/cas.h"
 
 using mkldnn::algorithm;
 using mkldnn::memory;

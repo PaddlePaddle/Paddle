@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_compare.h"
+#include "paddle/cinn/ir/ir_compare.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/common/context.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {

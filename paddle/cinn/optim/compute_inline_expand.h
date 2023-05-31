@@ -16,7 +16,7 @@
 
 #include <set>
 
-#include "cinn/cinn.h"
+#include "paddle/cinn/cinn.h"
 
 namespace cinn {
 namespace optim {

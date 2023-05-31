@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/lower_intrin.h"
+#include "paddle/cinn/optim/lower_intrin.h"
 
 #include <string>
 
-#include "cinn/backends/llvm/llvm_intrin_rule.h"
-#include "cinn/cinn.h"
-#include "cinn/ir/intrinsic_ops.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/registry.h"
+#include "paddle/cinn/backends/llvm/llvm_intrin_rule.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/registry.h"
 
 namespace cinn {
 namespace optim {

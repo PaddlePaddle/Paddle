@@ -22,10 +22,10 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/intrinsic_ops.h"
-#include "cinn/ir/registry.h"
-#include "cinn/lang/packed_func.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/registry.h"
+#include "paddle/cinn/lang/packed_func.h"
 
 namespace cinn {
 namespace codegen {

@@ -18,11 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/cinn.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace tests {

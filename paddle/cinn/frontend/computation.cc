@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/computation.h"
+#include "paddle/cinn/frontend/computation.h"
 
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/scope.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/scope.h"
 
 namespace cinn {
 namespace frontend {

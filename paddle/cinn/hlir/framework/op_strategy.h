@@ -18,9 +18,9 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/schedule.h"
-#include "cinn/lang/packed_func.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/schedule.h"
+#include "paddle/cinn/lang/packed_func.h"
 
 namespace cinn {
 namespace hlir {

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/decomposer_registry.h"
+#include "paddle/cinn/frontend/decomposer_registry.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/frontend/decomposer/use_decomposer.h"
+#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
 
 namespace cinn::frontend {
 

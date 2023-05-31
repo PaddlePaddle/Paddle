@@ -22,9 +22,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/debug_manager.h"
-#include "cinn/common/info_registry.h"
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/debug_manager.h"
+#include "paddle/cinn/common/info_registry.h"
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 

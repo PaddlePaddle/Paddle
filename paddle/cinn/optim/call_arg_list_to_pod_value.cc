@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/call_arg_list_to_pod_value.h"
+#include "paddle/cinn/optim/call_arg_list_to_pod_value.h"
 
 #include <string>
 #include <tuple>
 #include <vector>
 
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace optim {

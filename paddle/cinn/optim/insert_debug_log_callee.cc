@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/insert_debug_log_callee.h"
+#include "paddle/cinn/optim/insert_debug_log_callee.h"
 
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {

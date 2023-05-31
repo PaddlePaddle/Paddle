@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/shared.h"
+#include "paddle/cinn/common/shared.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/common/object.h"
+#include "paddle/cinn/common/object.h"
 
 namespace cinn {
 namespace common {

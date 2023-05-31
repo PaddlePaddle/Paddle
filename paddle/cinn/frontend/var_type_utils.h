@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "cinn/common/macros.h"
-#include "cinn/common/type.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/paddle/cpp/desc_api.h"
-#include "cinn/frontend/paddle/cpp/var_desc.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
+#include "paddle/cinn/frontend/paddle/cpp/var_desc.h"
 
 namespace cinn {
 namespace frontend {

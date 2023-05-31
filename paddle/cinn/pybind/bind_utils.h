@@ -18,14 +18,14 @@
 
 #include <string>
 
-#include "cinn/common/cinn_value.h"
-#include "cinn/common/shared.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/pybind/bind.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/cinn_value.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace py = pybind11;
 

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/eliminate_broadcast_in_forloop.h"
+#include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 
 #include <tuple>
 #include <vector>
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {
 namespace optim {

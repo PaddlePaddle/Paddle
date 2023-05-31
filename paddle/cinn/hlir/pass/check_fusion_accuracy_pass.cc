@@ -20,13 +20,13 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/visualize_helper.h"
-#include "cinn/hlir/pass/fusion_helper_base.h"
-#include "cinn/runtime/custom_function.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/hlir/pass/fusion_helper_base.h"
+#include "paddle/cinn/runtime/custom_function.h"
 
 namespace cinn::hlir::pass {
 

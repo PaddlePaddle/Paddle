@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/placeholder.h"
+#include "paddle/cinn/lang/placeholder.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace lang {

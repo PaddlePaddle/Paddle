@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
 
 #include <algorithm>
 #include <string>
 
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/utils/functional.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/utils/functional.h"
 
 namespace cinn {
 namespace hlir {

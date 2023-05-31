@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/type.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/op/external_api_registry.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_string(cinn_custom_call_deny_ops);
 

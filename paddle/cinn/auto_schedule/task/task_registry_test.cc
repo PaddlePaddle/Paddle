@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task/task_registry.h"
+#include "paddle/cinn/auto_schedule/task/task_registry.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include <cstdlib>
 
-#include "cinn/auto_schedule/task/task_creator.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/utils/string.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/auto_schedule/task/task_creator.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/utils/string.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
 DECLARE_bool(cinn_ir_schedule);

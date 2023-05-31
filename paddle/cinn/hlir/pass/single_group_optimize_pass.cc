@@ -14,11 +14,11 @@
 
 #include <absl/container/flat_hash_map.h>
 
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 
 namespace cinn::hlir::pass {
 

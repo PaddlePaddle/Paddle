@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/sized_multi_set.h"
+#include "paddle/cinn/utils/sized_multi_set.h"
 
 #include <gtest/gtest.h>
 

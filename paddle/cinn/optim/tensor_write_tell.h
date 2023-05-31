@@ -16,8 +16,8 @@
 #include <set>
 #include <string>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn {
 namespace optim {

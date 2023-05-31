@@ -18,7 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace optim {

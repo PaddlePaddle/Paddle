@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/lower.h"
+#include "paddle/cinn/lang/lower.h"
 
 #include <iostream>
 #include <map>
@@ -21,11 +21,11 @@
 #include <unordered_set>
 #include <utility>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/lang/lower_impl.h"
-#include "cinn/optim/optimize.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/lang/lower_impl.h"
+#include "paddle/cinn/optim/optimize.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace lang {

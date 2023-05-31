@@ -17,14 +17,14 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/backends/codegen_c.h"
-#include "cinn/common/common.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/ir/module.h"
-#include "cinn/lang/packed_func.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/lang/packed_func.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn::ir {
 class Module;

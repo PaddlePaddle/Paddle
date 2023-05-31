@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/common/target.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 

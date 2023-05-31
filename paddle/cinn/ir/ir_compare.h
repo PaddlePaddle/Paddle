@@ -15,8 +15,8 @@
 #pragma once
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 
 namespace cinn {
 namespace ir {

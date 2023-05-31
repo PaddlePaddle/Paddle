@@ -15,9 +15,9 @@
 #pragma once
 #include <sstream>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/utils/registry.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/utils/registry.h"
 
 #define CINN_OP_REGISTER_EXTERNAL_API(Name, Target)          \
   static ::cinn::hlir::op::ExternalApiInfo& CINN_STR_CONCAT( \

@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle/compatible_pb.h"
+#include "paddle/cinn/frontend/paddle/compatible_pb.h"
 
 #include <string>
 #include <vector>
 
-#include "cinn/frontend/paddle/pb/block_desc.h"
-#include "cinn/frontend/paddle/pb/op_desc.h"
-#include "cinn/frontend/paddle/pb/program_desc.h"
-#include "cinn/frontend/paddle/pb/var_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/block_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/op_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/program_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/var_desc.h"
 
 namespace cinn::frontend::paddle {
 namespace framework_proto = ::cinn::frontend::paddle::proto;

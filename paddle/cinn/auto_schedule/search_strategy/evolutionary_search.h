@@ -17,15 +17,15 @@
 #include <memory>
 #include <vector>
 
-#include "cinn/auto_schedule/cost_model/expr_cost_model.h"
-#include "cinn/auto_schedule/database/database.h"
-#include "cinn/auto_schedule/post_schedule_rule/post_schedule_rule.h"
-#include "cinn/auto_schedule/search_space/search_space.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
+#include "paddle/cinn/auto_schedule/database/database.h"
+#include "paddle/cinn/auto_schedule/post_schedule_rule/post_schedule_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/search_space.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

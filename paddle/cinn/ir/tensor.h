@@ -25,11 +25,11 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/function_base.h"
-#include "cinn/lang/buffer.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/function_base.h"
+#include "paddle/cinn/lang/buffer.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 

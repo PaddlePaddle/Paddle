@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
 
 namespace cinn::backends {
 

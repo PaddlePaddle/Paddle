@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/layout.h"
+#include "paddle/cinn/ir/layout.h"
 
 namespace cinn {
 namespace ir {

@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "cinn/auto_schedule/measure/measure.h"
-#include "cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/auto_schedule/measure/measure.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
 
 namespace cinn {
 namespace auto_schedule {

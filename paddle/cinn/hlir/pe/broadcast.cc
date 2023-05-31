@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
 
 #include <algorithm>
 
-#include "cinn/common/ir_util.h"
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace hlir {

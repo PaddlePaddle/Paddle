@@ -23,15 +23,15 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/extern_func_emitter.h"
-#include "cinn/backends/extern_func_emitter_builtin.h"
-#include "cinn/backends/extern_func_protos.h"
-#include "cinn/backends/function_prototype.h"
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/ir_builder_mixin.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/common/macros.h"
+#include "paddle/cinn/backends/extern_func_emitter.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/backends/extern_func_protos.h"
+#include "paddle/cinn/backends/function_prototype.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/ir_builder_mixin.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/common/macros.h"
 
 /**
  * Helper to register an external function into CINN, including the prototype,

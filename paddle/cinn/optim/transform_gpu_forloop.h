@@ -17,10 +17,10 @@
 #include <unordered_set>
 #include <utility>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace optim {

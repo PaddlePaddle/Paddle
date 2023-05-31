@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <ginac/ginac.h>
@@ -21,16 +21,16 @@
 #include <map>
 #include <string>
 
-#include "cinn/common/arithmatic.h"
-#include "cinn/common/cas.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/optim/cast_simplify.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/optim/cast_simplify.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {

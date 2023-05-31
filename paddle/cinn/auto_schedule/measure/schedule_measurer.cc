@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/measure/schedule_measurer.h"
+#include "paddle/cinn/auto_schedule/measure/schedule_measurer.h"
 
 #include <exception>
 
-#include "cinn/utils/multi_threading.h"
+#include "paddle/cinn/utils/multi_threading.h"
 
 namespace cinn {
 namespace auto_schedule {

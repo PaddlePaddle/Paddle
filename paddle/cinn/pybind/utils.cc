@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/pybind/bind.h"
-#include "cinn/utils/profiler.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/utils/profiler.h"
 
 namespace py = pybind11;
 

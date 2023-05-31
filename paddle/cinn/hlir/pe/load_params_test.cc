@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
 
 namespace cinn {
 namespace hlir {

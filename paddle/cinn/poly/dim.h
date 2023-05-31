@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_base.h"
 
 /**
  * \file

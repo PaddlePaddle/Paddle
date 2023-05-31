@@ -19,7 +19,7 @@
 #pragma once
 
 // clang-format off
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 #include <ginac/ginac.h>
 // clang-format on

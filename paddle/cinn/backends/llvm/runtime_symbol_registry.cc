@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 
 #include <absl/strings/string_view.h>
 #include <glog/raw_logging.h>
 
 #include <iostream>
 
-#include "cinn/runtime/flags.h"
 #include "gflags/gflags_declare.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(verbose_function_register);
 

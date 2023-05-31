@@ -21,8 +21,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace poly {

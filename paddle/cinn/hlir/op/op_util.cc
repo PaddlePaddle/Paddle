@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/op/op_util.h"
+#include "paddle/cinn/hlir/op/op_util.h"
 
 #include <string>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/pe/ir_schedule_pe.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

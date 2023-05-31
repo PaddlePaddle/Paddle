@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
 
 #include <memory>
 #include <sstream>
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/utils/functional.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/utils/functional.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace auto_schedule {

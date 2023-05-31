@@ -19,10 +19,10 @@
 
 #include <memory>
 
-#include "cinn/common/macros.h"
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/memory.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/memory.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace hlir {

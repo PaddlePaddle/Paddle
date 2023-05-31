@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/measure/simple_builder.h"
+#include "paddle/cinn/auto_schedule/measure/simple_builder.h"
 
 namespace cinn {
 namespace auto_schedule {

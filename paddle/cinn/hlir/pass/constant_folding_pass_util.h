@@ -15,8 +15,8 @@
 
 #include <queue>
 
-#include "cinn/hlir/pass/fusion_helper_base.h"
-#include "cinn/utils/functional.h"
+#include "paddle/cinn/hlir/pass/fusion_helper_base.h"
+#include "paddle/cinn/utils/functional.h"
 
 namespace cinn {
 namespace hlir {

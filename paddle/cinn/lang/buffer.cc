@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/buffer.h"
+#include "paddle/cinn/lang/buffer.h"
 
-#include "cinn/ir/buffer.h"
+#include "paddle/cinn/ir/buffer.h"
 
 namespace cinn {
 namespace lang {

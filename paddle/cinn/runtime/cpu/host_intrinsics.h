@@ -17,7 +17,7 @@
  * \file This file implements some intrinsic functions for math operation in
  * host device.
  */
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 extern "C" {
 

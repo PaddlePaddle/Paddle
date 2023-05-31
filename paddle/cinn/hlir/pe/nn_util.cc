@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/nn_util.h"
+#include "paddle/cinn/hlir/pe/nn_util.h"
 
-#include "cinn/common/ir_util.h"
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 namespace hlir {

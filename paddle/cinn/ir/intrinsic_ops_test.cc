@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/intrinsic_ops.h"
 
 #include <gtest/gtest.h>
 

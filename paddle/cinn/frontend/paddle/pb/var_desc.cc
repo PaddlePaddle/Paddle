@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle/pb/var_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/var_desc.h"
 
 #include <google/protobuf/map.h>
 
-#include "cinn/frontend/paddle/cpp/desc_api.h"
-#include "cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
+#include "paddle/cinn/frontend/paddle/framework.pb.h"
 
 namespace cinn::frontend::paddle::pb {
 

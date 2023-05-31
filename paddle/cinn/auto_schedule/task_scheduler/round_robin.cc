@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task_scheduler/round_robin.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/round_robin.h"
 
 namespace cinn {
 namespace auto_schedule {

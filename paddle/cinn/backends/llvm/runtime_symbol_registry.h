@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/macros.h"
+#include "paddle/cinn/common/macros.h"
 
 namespace cinn {
 namespace backends {

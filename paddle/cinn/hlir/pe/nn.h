@@ -17,10 +17,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

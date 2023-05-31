@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/functional.h"
+#include "paddle/cinn/utils/functional.h"
 
 #include <absl/algorithm/container.h>
 #include <glog/logging.h>
@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/utils/string.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace utils {

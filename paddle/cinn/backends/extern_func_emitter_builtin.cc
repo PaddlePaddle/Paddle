@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
 
 #include <glog/logging.h>
 
-#include "cinn/backends/llvm/ir_builder_mixin.h"
-#include "cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/ir_builder_mixin.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
 
 namespace cinn {
 namespace backends {

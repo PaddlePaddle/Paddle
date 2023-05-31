@@ -25,19 +25,19 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/buffer_assign.h"
-#include "cinn/optim/compute_inline_expand.h"
-#include "cinn/optim/fold_cinn_call_arguments.h"
-#include "cinn/optim/optimize.h"
-#include "cinn/optim/remove_nested_block.h"
-#include "cinn/optim/replace_call_with_expr.h"
-#include "cinn/optim/tensor_write_tell.h"
-#include "cinn/optim/transform_gpu_forloop.h"
-#include "cinn/optim/transform_polyfor_to_for.h"
-#include "cinn/poly/ast_gen.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/buffer_assign.h"
+#include "paddle/cinn/optim/compute_inline_expand.h"
+#include "paddle/cinn/optim/fold_cinn_call_arguments.h"
+#include "paddle/cinn/optim/optimize.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/replace_call_with_expr.h"
+#include "paddle/cinn/optim/tensor_write_tell.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/poly/ast_gen.h"
 
 namespace cinn {
 

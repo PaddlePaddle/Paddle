@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
+#include "paddle/cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
 
 namespace cinn {
 namespace auto_schedule {

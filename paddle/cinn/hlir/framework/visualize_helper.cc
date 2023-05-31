@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 
 #include <errno.h>
 #include <sys/stat.h>
@@ -25,10 +25,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/dot_lang.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/dot_lang.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_string(cinn_pass_visualize_dir);
 DECLARE_string(cinn_check_fusion_accuracy_pass);

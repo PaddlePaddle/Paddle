@@ -19,8 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace ir {

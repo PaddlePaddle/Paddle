@@ -16,13 +16,13 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/operation.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/operation.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace lang {

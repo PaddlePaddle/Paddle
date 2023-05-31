@@ -20,15 +20,15 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/lowered_func.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/lowered_func.h"
 
 namespace cinn {
 namespace auto_schedule {

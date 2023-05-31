@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 
 #include <gtest/gtest.h>
 

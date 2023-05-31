@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
 
 #include <gtest/gtest.h>
 
 #include <typeinfo>
 
-#include "cinn/frontend/op_mappers/use_op_mappers.h"
-#include "cinn/utils/registry.h"
+#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/cinn/utils/registry.h"
 
 namespace cinn {
 namespace frontend {

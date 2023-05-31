@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/replace_const_param_to_integer.h"
+#include "paddle/cinn/optim/replace_const_param_to_integer.h"
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/poly/ast_gen.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/poly/ast_gen.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn::optim {
 

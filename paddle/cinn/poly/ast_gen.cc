@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/ast_gen.h"
+#include "paddle/cinn/poly/ast_gen.h"
 
 #include <llvm/Support/FormatVariadic.h>
 
 #include <utility>
 
-#include "cinn/common/common.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/poly/domain_add_unit_loop_mutator.h"
-#include "cinn/poly/isl_utils.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/poly/domain_add_unit_loop_mutator.h"
+#include "paddle/cinn/poly/isl_utils.h"
 
 namespace cinn {
 namespace poly {

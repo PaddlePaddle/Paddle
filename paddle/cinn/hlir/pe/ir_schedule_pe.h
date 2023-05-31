@@ -19,13 +19,13 @@
 #include <string>
 #include <vector>
 
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/pe/schedule_param.pb.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/ir_schedule_util.h"
-#include "cinn/lang/compute.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/pe/schedule_param.pb.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/ir_schedule_util.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

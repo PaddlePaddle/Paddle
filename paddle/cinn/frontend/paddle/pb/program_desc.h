@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/frontend/paddle/cpp/desc_api.h"
-#include "cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
+#include "paddle/cinn/frontend/paddle/framework.pb.h"
 
 namespace cinn::frontend::paddle::pb {
 namespace framework_proto = ::cinn::frontend::paddle::proto;

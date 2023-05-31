@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/tensor.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/tensor.h"
 
 namespace cinn {
 namespace hlir {

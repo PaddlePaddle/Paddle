@@ -20,9 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/scope.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/scope.h"
 
 namespace cinn {
 namespace frontend {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle/cpp/var_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/var_desc.h"
 
 namespace cinn::frontend::paddle::cpp {
 }  // namespace cinn::frontend::paddle::cpp

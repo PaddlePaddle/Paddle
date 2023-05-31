@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_verify.h"
+#include "paddle/cinn/ir/ir_verify.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_operators.h"
 
 namespace cinn::ir {
 

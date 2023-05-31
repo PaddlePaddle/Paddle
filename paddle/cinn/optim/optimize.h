@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "cinn/ir/ir.h"
-#include "cinn/ir/module.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/module.h"
 
 namespace cinn {
 namespace optim {

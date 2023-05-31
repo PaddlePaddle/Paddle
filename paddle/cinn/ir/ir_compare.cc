@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_compare.h"
+#include "paddle/cinn/ir/ir_compare.h"
 
 #include <regex>
 
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {

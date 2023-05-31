@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace ir {

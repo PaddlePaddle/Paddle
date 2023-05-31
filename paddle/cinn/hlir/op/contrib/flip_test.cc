@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/op/contrib/flip.h"
+#include "paddle/cinn/hlir/op/contrib/flip.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,13 +20,13 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/codegen_c.h"
-#include "cinn/backends/codegen_c_x86.h"
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/common/context.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/codegen_c_x86.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

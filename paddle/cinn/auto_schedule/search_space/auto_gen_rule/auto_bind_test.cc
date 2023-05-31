@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -21,8 +21,8 @@
 #include <functional>
 #include <numeric>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "tests/program_builder.h"
 
 namespace cinn {

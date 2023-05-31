@@ -16,18 +16,18 @@
 
 // #include <cmath>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/codegen_x86.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/cinn.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/common/target.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/pe/elementwise.h"
-#include "cinn/hlir/pe/reduction.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
-#include "cinn/runtime/cpu/use_extern_funcs.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/codegen_x86.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/reduction.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace hlir {

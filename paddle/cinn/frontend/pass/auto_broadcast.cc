@@ -18,12 +18,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/utils/string.h"
-#include "cinn/utils/type_defs.h"
 #include "glog/logging.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/utils/string.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace frontend {

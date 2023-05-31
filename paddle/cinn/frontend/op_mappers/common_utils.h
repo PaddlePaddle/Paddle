@@ -20,10 +20,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/frontend/paddle/cpp/op_desc.h"
-#include "cinn/frontend/var_type_utils.h"
-#include "cinn/utils/functional.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
+#include "paddle/cinn/frontend/var_type_utils.h"
+#include "paddle/cinn/utils/functional.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace frontend {

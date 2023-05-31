@@ -24,8 +24,8 @@
 #include <string>
 #include <utility>
 
-#include "cinn/backends/extern_func_protos.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/backends/extern_func_protos.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace backends {

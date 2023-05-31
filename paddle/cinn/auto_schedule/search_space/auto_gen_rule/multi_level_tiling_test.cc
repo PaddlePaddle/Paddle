@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/multi_level_tiling.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/multi_level_tiling.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -21,19 +21,19 @@
 #include <iostream>
 #include <vector>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
-#include "cinn/cinn.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/poly/stage.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/string.h"
 #include "tests/program_builder.h"
 
 namespace cinn {

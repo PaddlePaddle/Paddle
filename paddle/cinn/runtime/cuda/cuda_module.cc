@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -23,9 +23,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/runtime/cuda/cuda_util.h"
-#include "cinn/utils/profiler.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/utils/profiler.h"
 
 namespace cinn {
 namespace runtime {

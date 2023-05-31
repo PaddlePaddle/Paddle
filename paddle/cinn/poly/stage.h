@@ -27,11 +27,11 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/poly/domain.h"
-#include "cinn/poly/map.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/domain.h"
+#include "paddle/cinn/poly/map.h"
 
 namespace cinn {
 namespace poly {

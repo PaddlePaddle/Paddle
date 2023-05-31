@@ -17,9 +17,9 @@
 #include <functional>
 #include <numeric>
 
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/common_utils.h"
-#include "cinn/frontend/var_type_utils.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/common_utils.h"
+#include "paddle/cinn/frontend/var_type_utils.h"
 
 namespace cinn {
 namespace frontend {

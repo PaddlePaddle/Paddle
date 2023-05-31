@@ -18,17 +18,17 @@
 #include <bitset>
 #include <iostream>
 
-#include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/data_util.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/data_util.h"
 #include "tests/program_builder.h"
 
 /* This test is used as a tool to evaluate or compare performance of 3

@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 namespace runtime {

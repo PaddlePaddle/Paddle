@@ -17,15 +17,15 @@
  * more friendly.
  */
 #pragma once
-#include "cinn/backends/codegen_c.h"
-#include "cinn/backends/codegen_c_x86.h"
-#include "cinn/common/common.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/optim/optimize.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/codegen_c_x86.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/optimize.h"
 
 namespace cinn {
 

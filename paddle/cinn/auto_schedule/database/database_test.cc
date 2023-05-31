@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/database/database.h"
+#include "paddle/cinn/auto_schedule/database/database.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "cinn/auto_schedule/auto_schedule.pb.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/auto_schedule.pb.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

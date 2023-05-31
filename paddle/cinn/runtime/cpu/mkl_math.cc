@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cpu/mkl_math.h"
+#include "paddle/cinn/runtime/cpu/mkl_math.h"
 
 #include <glog/logging.h>
 #include <mkl.h>
@@ -20,9 +20,9 @@
 
 #include <cmath>
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/backends/function_prototype.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/function_prototype.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 #define CINN_MKL_VECTOR_MATH_FP(fn__, name__)                             \
   void cinn_mkl_##name__##_v_fp32(cinn_buffer_t *x, cinn_buffer_t *out) { \

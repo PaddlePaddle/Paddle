@@ -22,10 +22,10 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/cinn.h"
-#include "cinn/optim/optimize.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/optim/optimize.h"
 
 namespace cinn {
 namespace tests {

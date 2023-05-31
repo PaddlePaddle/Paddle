@@ -22,8 +22,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/macros.h"
-#include "cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
 
 namespace cinn {
 namespace hlir {

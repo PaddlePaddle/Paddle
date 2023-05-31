@@ -15,7 +15,7 @@
 #pragma once
 #include <string>
 
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace optim {

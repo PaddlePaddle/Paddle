@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/utils/string.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {

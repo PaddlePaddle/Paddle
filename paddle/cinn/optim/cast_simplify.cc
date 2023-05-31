@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/cast_simplify.h"
+#include "paddle/cinn/optim/cast_simplify.h"
 
-#include "cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn::optim {
 

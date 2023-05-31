@@ -21,9 +21,9 @@
 #include <cstring>
 #include <memory>
 
-#include "cinn/pybind/bind.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace py = pybind11;
 namespace cinn::pybind {

@@ -17,7 +17,7 @@
  * \file Transform the CINN Call node's args to cinn_pod_value_t array.
  */
 
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace optim {

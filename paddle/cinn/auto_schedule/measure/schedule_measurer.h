@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "cinn/auto_schedule/measure/measure.h"
+#include "paddle/cinn/auto_schedule/measure/measure.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/modular.h"
+#include "paddle/cinn/backends/modular.h"
 
-#include "cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 
 namespace cinn {
 namespace backends {

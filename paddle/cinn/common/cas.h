@@ -19,9 +19,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/ir_simplify.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace common {

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/schedule.h"
+#include "paddle/cinn/poly/schedule.h"
 
 #include <deque>
 #include <set>
 #include <sstream>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/poly/naive_scheduler.h"
-#include "cinn/poly/poly_scheduler.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/naive_scheduler.h"
+#include "paddle/cinn/poly/poly_scheduler.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

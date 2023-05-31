@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 #include <gtest/gtest.h>
 #include <stdlib.h>
@@ -20,16 +20,16 @@
 #include <tuple>
 #include <vector>
 
-#include "cinn/backends/codegen_c.h"
-#include "cinn/backends/codegen_c_x86.h"
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/cinn.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/lang/lower.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/remove_schedule_block.h"
-#include "cinn/optim/unroll_loops.h"
-#include "cinn/optim/vectorize_loops.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/codegen_c_x86.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/remove_schedule_block.h"
+#include "paddle/cinn/optim/unroll_loops.h"
+#include "paddle/cinn/optim/vectorize_loops.h"
 
 namespace cinn {
 namespace backends {

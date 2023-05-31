@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/decomposer_registry.h"
-#include "cinn/frontend/syntax.h"
+#include "paddle/cinn/frontend/decomposer_registry.h"
+#include "paddle/cinn/frontend/syntax.h"
 
 namespace cinn {
 namespace frontend {

@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/tensor.h"
+#include "paddle/cinn/ir/tensor.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/backends/codegen_c.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/cinn.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/packed_func.h"
-#include "cinn/lang/placeholder.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/packed_func.h"
+#include "paddle/cinn/lang/placeholder.h"
 
 namespace cinn {
 namespace ir {

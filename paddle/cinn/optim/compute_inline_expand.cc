@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/compute_inline_expand.h"
+#include "paddle/cinn/optim/compute_inline_expand.h"
 
 #include <map>
 #include <string>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
 namespace optim {

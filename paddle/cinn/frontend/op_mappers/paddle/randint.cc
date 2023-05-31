@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/common_utils.h"
-#include "cinn/frontend/var_type_utils.h"
 #include "glog/logging.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/common_utils.h"
+#include "paddle/cinn/frontend/var_type_utils.h"
 
 namespace cinn {
 namespace frontend {

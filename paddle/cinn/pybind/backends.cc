@@ -16,9 +16,9 @@
 
 #include <functional>
 
-#include "cinn/backends/compiler.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/pybind/bind.h"
+#include "paddle/cinn/backends/compiler.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/pybind/bind.h"
 
 namespace py = pybind11;
 

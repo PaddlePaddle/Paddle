@@ -14,7 +14,7 @@
 
 #pragma once
 //! \file This file defines some C APIs to trigger CBLAS methods.
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 #ifdef CINN_WITH_MKL_CBLAS
 #include <mkl_cblas.h>

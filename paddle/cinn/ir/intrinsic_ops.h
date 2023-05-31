@@ -21,8 +21,8 @@
 
 #include <string>
 
-#include "cinn/common/type.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir.h"
 
 //! This file defines some intrinsic IR nodes, this is similar to the MLIR
 //! operations, we try to expose some underlying opaque operations to IR system

@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/ir_util.h"
+#include "paddle/cinn/common/ir_util.h"
 
 #include <algorithm>
 #include <unordered_set>
 
-#include "cinn/common/cas.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/cast_simplify.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/cast_simplify.h"
 
 namespace cinn {
 namespace common {

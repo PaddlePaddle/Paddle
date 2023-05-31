@@ -22,8 +22,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 
 namespace cinn {
 namespace runtime {

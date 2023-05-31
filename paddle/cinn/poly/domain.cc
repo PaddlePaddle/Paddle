@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/domain.h"
+#include "paddle/cinn/poly/domain.h"
 
 #include <glog/logging.h>
 
@@ -22,9 +22,9 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "cinn/common/context.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

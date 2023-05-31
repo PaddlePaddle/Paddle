@@ -17,8 +17,8 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_base.h"
 
 namespace cinn {
 namespace ir {

@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/builtin.h"
+#include "paddle/cinn/lang/builtin.h"
 
 #include <cmath>
 #include <limits>
 #include <utility>
 
-#include "cinn/cinn.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir.h"
-#include "cinn/lang/buffer.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/lang/buffer.h"
 
 namespace cinn {
 namespace lang {

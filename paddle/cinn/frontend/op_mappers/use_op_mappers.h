@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/common/macros.h"
+#include "paddle/cinn/common/macros.h"
 
 CINN_USE_REGISTER(paddle_argsort)
 CINN_USE_REGISTER(paddle_fetch_feed)

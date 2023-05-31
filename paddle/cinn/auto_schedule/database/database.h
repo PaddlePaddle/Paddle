@@ -15,9 +15,9 @@
 #pragma once
 #include <unordered_map>
 
-#include "cinn/auto_schedule/auto_schedule.pb.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/ir/schedule_desc.pb.h"
+#include "paddle/cinn/auto_schedule/auto_schedule.pb.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/ir/schedule_desc.pb.h"
 
 namespace cinn {
 namespace auto_schedule {

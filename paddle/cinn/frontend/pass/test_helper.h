@@ -18,13 +18,13 @@
 
 #include <random>
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/pass/use_program_pass.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/pass/use_program_pass.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
 
 namespace cinn::frontend {
 

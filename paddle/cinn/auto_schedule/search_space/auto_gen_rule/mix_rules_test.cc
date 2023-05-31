@@ -17,11 +17,11 @@
 
 #include <vector>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/multi_level_tiling.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/multi_level_tiling.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 #include "tests/program_builder.h"
 
 namespace cinn {

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/pass/pass_test_helper.h"
-#include "cinn/runtime/flags.h"
 #include "gtest/gtest.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/pass/pass_test_helper.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn::frontend::pass {
 

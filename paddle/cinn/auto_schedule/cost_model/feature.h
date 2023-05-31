@@ -17,8 +17,8 @@
 #include <cmath>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

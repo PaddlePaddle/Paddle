@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,16 +20,16 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
 DECLARE_bool(cinn_ir_schedule);

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/placeholder.h"
+#include "paddle/cinn/lang/placeholder.h"
 
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace lang {

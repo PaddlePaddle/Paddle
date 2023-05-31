@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
 
 #include <llvm/AsmParser/Parser.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
@@ -32,13 +32,13 @@
 #include <string>
 #include <utility>
 
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/llvm/cinn_runtime_llvm_ir.h"
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace backends {

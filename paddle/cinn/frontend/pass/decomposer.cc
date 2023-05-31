@@ -14,8 +14,8 @@
 
 #include <unordered_set>
 
-#include "cinn/frontend/decomposer_registry.h"
-#include "cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/decomposer_registry.h"
+#include "paddle/cinn/frontend/program_pass.h"
 
 namespace cinn {
 namespace frontend {

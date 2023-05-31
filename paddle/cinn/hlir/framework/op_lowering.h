@@ -17,14 +17,14 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/ir_schedule_util.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/lang/packed_func.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/ir_schedule_util.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/lang/packed_func.h"
 
 // Fusion Op lowering, there are four kinds of lowering function:
 // Elementwise/Broadcast/Injective,Reduce,OutEWiseFusable,NonFusible.

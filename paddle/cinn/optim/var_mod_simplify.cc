@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/var_mod_simplify.h"
+#include "paddle/cinn/optim/var_mod_simplify.h"
 
 #include <absl/container/flat_hash_map.h>
 
-#include "cinn/common/cas.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn::optim {
 

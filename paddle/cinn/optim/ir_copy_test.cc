@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace optim {

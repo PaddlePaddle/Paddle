@@ -15,10 +15,10 @@
 #pragma once
 #include <string>
 
-#include "cinn/common/type.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace tests {

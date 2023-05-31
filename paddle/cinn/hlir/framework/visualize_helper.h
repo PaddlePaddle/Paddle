@@ -25,9 +25,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/utils/dot_lang.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/utils/dot_lang.h"
 
 namespace cinn {
 namespace hlir {

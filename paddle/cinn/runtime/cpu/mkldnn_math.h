@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 #ifdef CINN_WITH_MKLDNN
 #include "mkldnn.hpp"

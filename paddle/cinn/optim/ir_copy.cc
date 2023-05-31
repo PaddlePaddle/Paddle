@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/module.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/module.h"
 
 namespace cinn {
 namespace optim {

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/net_builder.h"
 
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/functional.h"
-#include "cinn/utils/profiler.h"
 #include "glog/logging.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/functional.h"
+#include "paddle/cinn/utils/profiler.h"
 
 namespace cinn {
 namespace frontend {

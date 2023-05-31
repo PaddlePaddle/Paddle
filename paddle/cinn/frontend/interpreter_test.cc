@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/interpreter.h"
+#include "paddle/cinn/frontend/interpreter.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/runtime/use_extern_funcs.h"
+#include "paddle/cinn/runtime/use_extern_funcs.h"
 
 DEFINE_string(model_dir, "", "");
 

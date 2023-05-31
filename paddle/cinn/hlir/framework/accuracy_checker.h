@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
 
 namespace cinn {
 namespace hlir {

@@ -22,11 +22,11 @@
 
 #include "absl/algorithm/container.h"
 #include "absl/strings/string_view.h"
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/pass/pass_test_helper.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/pass/pass_test_helper.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn::frontend {
 

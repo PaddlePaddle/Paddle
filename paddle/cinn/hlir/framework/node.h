@@ -21,10 +21,10 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/common/shared.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace hlir {

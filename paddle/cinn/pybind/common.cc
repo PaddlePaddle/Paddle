@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/ir_util.h"
-#include "cinn/common/object.h"
-#include "cinn/common/shared.h"
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/pybind/bind.h"
-#include "cinn/pybind/bind_utils.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/object.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/pybind/bind_utils.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace py = pybind11;
 

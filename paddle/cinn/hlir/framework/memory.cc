@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/memory.h"
+#include "paddle/cinn/hlir/framework/memory.h"
 
 #ifdef CINN_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include "cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
 #endif
 
 namespace cinn {

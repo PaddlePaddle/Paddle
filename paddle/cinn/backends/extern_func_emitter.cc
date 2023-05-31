@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/extern_func_emitter.h"
+#include "paddle/cinn/backends/extern_func_emitter.h"
 
 #include <absl/hash/hash.h>
 #include <glog/raw_logging.h>
@@ -21,11 +21,11 @@
 #include <iostream>
 #include <string>
 
-#include "cinn/backends/extern_func_emitter_builtin.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_bool(verbose_function_register);
 

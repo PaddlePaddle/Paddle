@@ -19,9 +19,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/auto_schedule/task/task_optimizer.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/auto_schedule/task/task_optimizer.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
 
 namespace cinn {
 namespace auto_schedule {

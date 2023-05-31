@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
 
 #include <glog/logging.h>
 #include <glog/stl_logging.h>
@@ -33,23 +33,23 @@
 #include <string>
 #include <type_traits>
 
-#include "cinn/backends/extern_func_emitter.h"
-#include "cinn/backends/extern_func_emitter_builtin.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/common/cas.h"
-#include "cinn/common/type.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_verify.h"
-#include "cinn/optim/var_mod_simplify.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/Alignment.h"
+#include "paddle/cinn/backends/extern_func_emitter.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/optim/var_mod_simplify.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace backends {

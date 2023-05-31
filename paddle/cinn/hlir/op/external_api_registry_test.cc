@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/hlir/op/external_api_registry.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
 
 namespace cinn {
 namespace hlir {

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/axis.h"
+#include "paddle/cinn/common/axis.h"
 
-#include "cinn/common/common.h"
-#include "cinn/lang/compute.h"
-#include "cinn/poly/dim.h"
-#include "cinn/poly/domain.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/poly/dim.h"
+#include "paddle/cinn/poly/domain.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace common {

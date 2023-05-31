@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/buffer.h"
+#include "paddle/cinn/hlir/framework/buffer.h"
 #ifdef CINN_WITH_CUDA
-#include "cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
 #endif
 #include <gtest/gtest.h>
 

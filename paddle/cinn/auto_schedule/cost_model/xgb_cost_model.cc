@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/cost_model/xgb_cost_model.h"
+#include "paddle/cinn/auto_schedule/cost_model/xgb_cost_model.h"
 
 #include <dirent.h>
 #include <glog/logging.h>
@@ -32,7 +32,7 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/python_interpreter_guard.h"
+#include "paddle/cinn/common/python_interpreter_guard.h"
 
 namespace cinn {
 namespace auto_schedule {

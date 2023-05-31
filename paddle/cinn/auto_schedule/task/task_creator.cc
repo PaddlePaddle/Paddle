@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task/task_creator.h"
+#include "paddle/cinn/auto_schedule/task/task_creator.h"
 
 #include <glog/logging.h>
 
@@ -20,9 +20,9 @@
 #include <tuple>
 #include <vector>
 
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/pass.h"
 
 namespace cinn {
 namespace auto_schedule {

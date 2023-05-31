@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/pass.h"
 
-#include "cinn/hlir/framework/visualize_helper.h"
-#include "cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
 
 namespace cinn {
 namespace hlir {

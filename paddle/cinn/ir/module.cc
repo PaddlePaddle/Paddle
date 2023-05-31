@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/module.h"
+#include "paddle/cinn/ir/module.h"
 
 #include <memory>
 
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/optimize.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/optimize.h"
 
 namespace cinn {
 namespace ir {

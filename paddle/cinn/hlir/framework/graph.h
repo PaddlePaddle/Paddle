@@ -21,9 +21,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/graph_utils.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/node.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn {
 namespace hlir {

@@ -1,4 +1,5 @@
-file(GLOB_RECURSE CINN_PY_FILES ${PROJECT_SOURCE_DIR}/cinn/python/cinn/*.py)
+file(GLOB_RECURSE CINN_PY_FILES
+     ${CMAKE_BINARY_DIR}/paddle/cinn/python/cinn/*.py)
 set(CINN_PYTHON_DIR ${PROJECT_SOURCE_DIR}/python/cinn)
 set(CINN_PYTHON_TEST_DIR ${PROJECT_SOURCE_DIR}/python/tests)
 set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/cinn/core_api.so)
@@ -26,7 +27,7 @@ add_custom_command(
   OUTPUT ${CINN_CORE_API} POST_BUILD
   COMMAND cp -rf --remove-destination ${CINN_PYTHON_DIR}
           ${CMAKE_BINARY_DIR}/python/cinn
-  COMMAND cp --remove-destination ${CMAKE_BINARY_DIR}/cinn/pybind/core_api.so
+  COMMAND cp --remove-destination ${CMAKE_BINARY_DIR}/pybind/core_api.so
           ${CINN_CORE_API}
   COMMAND cp -rf --remove-destination ${CINN_PYTHON_TEST_DIR}
           ${CMAKE_BINARY_DIR}/python/tests

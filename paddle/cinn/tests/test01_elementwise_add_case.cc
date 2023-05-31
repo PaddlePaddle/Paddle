@@ -15,8 +15,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/common/test_helper.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #include "tests/test01_elementwise_add.h"
 #include "tests/test01_elementwise_add_compute_at.h"
 #include "tests/test01_elementwise_add_compute_at_level1.h"

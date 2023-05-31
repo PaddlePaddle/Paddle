@@ -18,15 +18,15 @@ limitations under the License. */
 #include <set>
 #include <utility>
 
-#include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"

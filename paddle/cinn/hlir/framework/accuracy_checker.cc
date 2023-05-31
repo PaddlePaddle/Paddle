@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/accuracy_checker.h"
+#include "paddle/cinn/hlir/framework/accuracy_checker.h"
 
 #include <iomanip>
 #include <limits>

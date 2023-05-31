@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/codegen_x86.h"
+#include "paddle/cinn/backends/llvm/codegen_x86.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/cinn.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace backends {

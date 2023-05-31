@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/net_builder.h"
 
 #include <gtest/gtest.h>
 
@@ -21,14 +21,14 @@
 #include <random>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/utils/data_util.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/utils/data_util.h"
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime.h>
 #endif

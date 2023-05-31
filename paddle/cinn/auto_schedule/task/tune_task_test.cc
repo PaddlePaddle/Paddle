@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
 
 #include <gtest/gtest.h>
 
@@ -20,20 +20,20 @@
 #include <memory>
 #include <vector>
 
-#include "cinn/auto_schedule/task/task_creator.h"
-#include "cinn/common/context.h"
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/auto_schedule/task/task_creator.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

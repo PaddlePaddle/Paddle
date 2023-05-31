@@ -17,9 +17,9 @@
 #include <memory>
 #include <vector>
 
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -22,10 +22,10 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/poly/map.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/map.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

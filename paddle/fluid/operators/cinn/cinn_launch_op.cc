@@ -17,10 +17,10 @@
 #include <functional>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"

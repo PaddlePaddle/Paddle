@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/program_pass.h"
 
 #include <unordered_set>
 
-#include "cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
 
 namespace cinn {
 namespace frontend {

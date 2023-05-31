@@ -25,7 +25,7 @@
 #include <tuple>
 #include <vector>
 
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 #define CUDA_DRIVER_CALL(func)                                                 \
   {                                                                            \

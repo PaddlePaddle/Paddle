@@ -18,13 +18,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "cinn/common/cas.h"
-#include "cinn/common/context.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/rule_sampler.h"
+#include "paddle/cinn/auto_schedule/search_space/rule_sampler.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_unroll.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_unroll.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
 
 namespace cinn {
 namespace auto_schedule {

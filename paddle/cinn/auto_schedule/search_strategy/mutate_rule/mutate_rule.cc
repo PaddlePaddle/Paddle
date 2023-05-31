@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
+#include "paddle/cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
 
-#include "cinn/auto_schedule/search_strategy/mutate_rule/mutate_tile_size.h"
+#include "paddle/cinn/auto_schedule/search_strategy/mutate_rule/mutate_tile_size.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/poly/dim.h"
+#include "paddle/cinn/poly/dim.h"
 
 namespace cinn {
 namespace poly {

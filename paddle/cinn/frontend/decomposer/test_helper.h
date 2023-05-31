@@ -19,18 +19,18 @@
 #include <iomanip>
 #include <random>
 
-#include "cinn/frontend/decomposer/use_decomposer.h"
-#include "cinn/frontend/decomposer_registry.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/pass/use_program_pass.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
+#include "paddle/cinn/frontend/decomposer_registry.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/pass/use_program_pass.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
 
 namespace cinn::frontend {
 

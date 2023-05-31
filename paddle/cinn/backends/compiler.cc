@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/compiler.h"
+#include "paddle/cinn/backends/compiler.h"
 
 #include <fstream>
 
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/common/context.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/common/context.h"
 #ifdef CINN_WITH_CUDA
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/runtime/cuda/cuda_module.h"
-#include "cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
 
 DECLARE_string(cinn_source_code_save_path);

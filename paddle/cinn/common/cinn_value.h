@@ -18,11 +18,11 @@
 
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/common/macros.h"
-#include "cinn/common/object.h"
-#include "cinn/common/type.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/common/object.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 struct cinn_buffer_t;
 

@@ -18,8 +18,8 @@
 #include <random>
 #include <vector>
 
-#include "cinn/ir/ir_base.h"
-#include "cinn/utils/random_engine.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {
 namespace auto_schedule {

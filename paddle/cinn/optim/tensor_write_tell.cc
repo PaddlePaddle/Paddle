@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/tensor_write_tell.h"
+#include "paddle/cinn/optim/tensor_write_tell.h"
 
 namespace cinn {
 namespace optim {}  // namespace optim

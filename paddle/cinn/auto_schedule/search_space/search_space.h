@@ -18,13 +18,13 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/auto_schedule/cost_model/expr_cost_model.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/auto_schedule/search_space/rule_sampler.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/rule_sampler.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

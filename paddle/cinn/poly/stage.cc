@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/poly/stage.h"
 
 #include <math.h>
 
@@ -21,22 +21,22 @@
 #include <unordered_set>
 #include <utility>
 
-#include "cinn/common/axis.h"
-#include "cinn/ir/collect_ir_nodes.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/ir/operation.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/compute.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/ir_replace.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/replace_var_with_expr.h"
-#include "cinn/poly/compute_at_transform.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/utils/functional.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/operation.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/poly/compute_at_transform.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/utils/functional.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

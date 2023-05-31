@@ -23,10 +23,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/target.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"

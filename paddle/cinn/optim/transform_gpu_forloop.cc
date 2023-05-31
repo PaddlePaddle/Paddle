@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
 
 #include <algorithm>
 #include <map>
@@ -20,19 +20,19 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/common/cas.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/replace_var_with_expr.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/poly/stage.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {

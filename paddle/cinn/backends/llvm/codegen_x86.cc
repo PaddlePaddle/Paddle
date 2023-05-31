@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/codegen_x86.h"
+#include "paddle/cinn/backends/llvm/codegen_x86.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <llvm/IR/LLVMContext.h>
@@ -20,16 +20,16 @@
 #include <algorithm>
 #include <utility>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/common/target.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/optim/collect_undefined_vars.h"
-#include "cinn/runtime/intrinsic.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Support/Casting.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/optim/collect_undefined_vars.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn::backends {
 

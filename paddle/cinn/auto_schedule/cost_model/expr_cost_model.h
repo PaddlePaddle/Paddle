@@ -17,8 +17,8 @@
 #include <atomic>
 #include <vector>
 
-#include "cinn/auto_schedule/cost_model/xgb_cost_model.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/cost_model/xgb_cost_model.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/vectorize_loops.h"
+#include "paddle/cinn/optim/vectorize_loops.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/common/common.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/optimize.h"
-#include "cinn/optim/transform_polyfor_to_for.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/optimize.h"
+#include "paddle/cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {

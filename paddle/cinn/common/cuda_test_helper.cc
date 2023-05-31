@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/cuda_test_helper.h"
+#include "paddle/cinn/common/cuda_test_helper.h"
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/runtime/cuda/cuda_module.h"
-#include "cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 
 namespace cinn {
 namespace common {

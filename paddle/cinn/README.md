@@ -66,7 +66,7 @@ computation = Computation.build_and_compile(target, builder)
 The following is a naive matrix-multiplication implementation using the CINN DSL
 
 ```c++
-#include "cinn/cinn.h"
+#include "paddle/cinn/cinn.h"
 using namespace cinn;
 
 // Declare constants

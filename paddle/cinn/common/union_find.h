@@ -23,8 +23,8 @@
 #include <tuple>
 #include <vector>
 
-#include "cinn/common/object.h"
-#include "cinn/common/shared.h"
+#include "paddle/cinn/common/object.h"
+#include "paddle/cinn/common/shared.h"
 
 namespace cinn {
 namespace common {

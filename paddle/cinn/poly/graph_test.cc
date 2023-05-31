@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/graph.h"
+#include "paddle/cinn/poly/graph.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/ir_operators.h"
-#include "cinn/lang/buffer.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/lang/buffer.h"
 
 namespace cinn {
 namespace poly {}  // namespace poly
