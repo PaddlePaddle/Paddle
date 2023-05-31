@@ -14,8 +14,10 @@
 
 import os
 
-from paddle.distributed.auto_parallel.process_group import remove_process_group
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.process_group import (
+    remove_process_group,
+)
+from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_lr_sched_op,

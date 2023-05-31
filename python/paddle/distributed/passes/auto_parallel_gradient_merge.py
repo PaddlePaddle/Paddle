@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
     is_data_parallel_scale_op,
 )
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_optimize_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
