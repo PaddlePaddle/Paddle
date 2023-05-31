@@ -116,8 +116,9 @@ DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
                     ->assert_more([&](Node* node) {
                       auto* op_desc = node->Op();
                       return op_desc->GetAttrIfExists<int>("axis") == 0 &&
-                             op_desc->GetAttrIfExists<std::vector<int>>(
-                                 "sections") == std::vector<int>{2, 2};
+                             (op_desc->GetAttrIfExists<std::vector<int>>(
+                                  "sections") == std::vector<int>{2, 2} ||
+                              op_desc->GetAttrIfExists<int>("num") == 2);
                     });
   auto* split_out_0 = pattern->NewNode(split_out_0_repr())
                           ->assert_is_op_nth_output("split", "Out", 0);

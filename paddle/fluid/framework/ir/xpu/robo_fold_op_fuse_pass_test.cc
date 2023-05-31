@@ -29,15 +29,14 @@ TEST(DetectorFuse, basic) {
       layers.data("concat_y", {576, 576}, true, proto::VarType::INT64);
   auto* shape_out = layers.shape(shape_x);
   auto* cast1_out = layers.cast(shape_out, 2, 3);
-  auto* slice_out = layers.slice(shape_out, {0}, {0}, {2});
-  auto* concat_out = layers.concat({shape_out, concat_y}, 0);
-  auto split_outs = layers.split(concat_out, 2, 0);
-  auto* split_out_0 = split_outs[0];
+  auto* slice_out = layers.slice(cast1_out, {0}, {0}, {2});
+  auto* concat_out = layers.concat({slice_out, concat_y}, 0);
+  auto split_outs = layers.split(concat_out, 0, 0, {2, 2});
   auto* split_out_1 = split_outs[1];
   auto* cast2_out = layers.cast(split_out_1, 3, 2);
 
   OpDesc* bilinear_interp_v2_op = block->AppendOp();
-  bilinear_interp_v2_op->SetType("fusbilinear_interp_v2");
+  bilinear_interp_v2_op->SetType("bilinear_interp_v2");
   bilinear_interp_v2_op->SetInput("X", {shape_x->Name()});
   bilinear_interp_v2_op->SetInput("OutSize", {cast2_out->Name()});
 
