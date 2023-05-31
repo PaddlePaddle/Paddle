@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle.distributed as dist
+from paddle.distributed.fleet.layers.mpu import RNGStatesTracker
 
 
 class StrategyGroupBase:
@@ -39,6 +41,9 @@ class StrategyGroupBase:
     """
 
     def __init__(self, list_of_ranks):
+        """
+        Initialize the communication group.
+        """
         assert (
             dist.is_initialized()
         ), "The global communication group need to be initialized."
@@ -46,6 +51,19 @@ class StrategyGroupBase:
         self._rank = dist.get_rank()
         self._list_of_ranks = list_of_ranks
         self._group = self._create_group()
+        self.random_states_tracker = RNGStatesTracker()
+
+    def add_random_seed(self, name, seed):
+        """
+        Add random seed for current rank.
+        """
+        self.random_states_tracker.add(name, seed)
+
+    def get_random_states_tracker(self):
+        """
+        Get the random states tracker.
+        """
+        return self.random_states_tracker
 
     @property
     def world_size(self):
@@ -74,17 +92,28 @@ class StrategyGroupBase:
         return self._group
 
     def _create_group(self):
-        list_of_group = []
+        self.list_of_group = []
         for ranks in self._list_of_ranks:
             group = dist.new_group(ranks=ranks)
             if self._rank in ranks:
-                list_of_group.append(group)
-        assert (
-            len(list_of_group) > 0
-        ), "Rank {} does not belong to the list_of_ranks {}.".format(
-            self._rank, self._list_of_ranks
-        )
-        return list_of_group if len(list_of_group) > 1 else list_of_group[0]
+                self.list_of_group.append(group)
+
+        if not self.list_of_group:
+            return None
+        else:
+            return (
+                self.list_of_group[0]
+                if len(self.list_of_group) == 1
+                else self.list_of_group
+            )
+
+    def __repr__(self):
+        debug_str = f"seed: {self._seed}; "
+        if not self.list_of_group:
+            return debug_str + "No group."
+        for i in range(len(self.list_of_group)):
+            debug_str += f"Group[{i}]: {str(self.list_of_group[i])}; "
+        return debug_str
 
 
 class DPGroup(StrategyGroupBase):

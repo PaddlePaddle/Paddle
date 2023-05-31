@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 import paddle.distributed as dist
 from paddle.distributed.fleet.base.orthogonal_strategy import OrthogonalStrategy
 from paddle.distributed.fleet.base.strategy_group import (
@@ -50,6 +51,41 @@ class TestOrthogonalStrategyAPI(unittest.TestCase):
         fused_group = self._strategy.fused_strategy_group("checkness")
         self.assertEqual(fused_group.world_size, 1)
         self.assertEqual(fused_group.group.nranks, 1)
+
+
+class TestOrthogonalStrategyCustomAPI(unittest.TestCase):
+    def setUp(self):
+        self._num_of_ranks = 2
+        dist.init_parallel_env()
+        self._global_rank = dist.get_rank()
+        self._strategy = OrthogonalStrategy(
+            [
+                ("dp", 1, DPGroup),
+                ("mp", 2, MPGroup),
+                ("sharding", 1, ShardingGroup),
+                ("pp", 1, PPGroup),
+            ],
+            fused_strategy_dict={"checkness": ["mp", "sharding", "pp"]},
+            strategy_rank_list=[1, 0],
+        )
+
+        self._strategy.strategy_group("mp").add_random_seed("local_seed", 123)
+        self._strategy.strategy_group("mp").add_random_seed("global_seed", 321)
+
+    def test_orthogonal_strategy(self):
+        mp_group = self._strategy.strategy_group("mp")
+        self.assertEqual(mp_group.world_size, self._num_of_ranks)
+        self.assertEqual(mp_group.group.nranks, self._num_of_ranks)
+        self.assertEqual(
+            self._strategy.rank_in_strategy("mp"), self._global_rank
+        )
+
+        fused_group = self._strategy.fused_strategy_group("checkness")
+        self.assertEqual(fused_group.world_size, 2)
+        self.assertEqual(fused_group.group.nranks, 2)
+
+        with mp_group.random_states_tracker.rng_state("local_seed"):
+            a = paddle.randint(0, 100, [10]).numpy()[0]
 
 
 if __name__ == '__main__':
