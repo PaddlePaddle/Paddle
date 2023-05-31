@@ -5766,13 +5766,17 @@ def ldexp(x, y, name=None):
             #        [4., 16., 48.])
 
     """
-    if isinstance(y, float) or (
-        isinstance(y, (paddle.Tensor, Variable))
-        and y.dtype in ['float32', 'float64']
-    ):
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise ValueError('x must be tensor type, but received: %s ' % (x.dtype))
+    if isinstance(y, int):
+        y = paddle.to_tensor(y, dtype="float64")
+    if isinstance(y, (paddle.Tensor, Variable)):
+        y = paddle.cast(y, dtype="float64")
+    else:
         raise ValueError(
             'y must be integer or integer tensor type, but received: %s '
             % (y.dtype)
         )
-    two = paddle.to_tensor(2, dtype=y.dtype)
-    return paddle.multiply(x, paddle.cast(paddle.pow(two, y), dtype=x.dtype))
+    x = paddle.cast(x, dtype="float64")
+    two = paddle.to_tensor(2, dtype="float64")
+    return paddle.multiply(x, paddle.pow(two, y))
