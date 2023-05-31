@@ -3364,16 +3364,16 @@ def cdist(
     When :math:`p = \infty`, the closest scipy function is `scipy.spatial.distance.cdist(xn, lambda x, y: np.abs(x - y).max())`.
 
     Args:
-        x (Tensor): Tensor, shape is :math:`B \times P \times M`.
-        y (Tensor): Tensor, shape is :math:`B \times R \times M`.
+        x (Tensor): A tensor with shape :math:`B \times P \times M`.
+        y (Tensor): A tensor with shape :math:`B \times R \times M`.
         p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
         compute_mode (str, optional): the mode for compute distance.
-            
+
             - ``use_mm_for_euclid_dist_if_necessary`` , for p = 2.0 and (P > 25 or R > 25), it will use
             matrix multiplication to calculate euclid distance if possible.
             - ``use_mm_for_euclid_dist', for p = 2.0`` , it will use matrix multiplication to calculate euclid distance.
             - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
-            
+
             Default: ``use_mm_for_euclid_dist_if_necessary``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
