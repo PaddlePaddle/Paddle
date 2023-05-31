@@ -18,14 +18,13 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-template <
-    typename T,
-    typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
+template <typename T,
+          typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
 __host__ __device__ bool isnan_(T /*val*/) {
   return false;
 }
@@ -219,7 +218,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     dim3 threads(16, 32);
     dim3 grid(std::min(
         dev_ctx.GetCUDAMaxGridDimSize()[0],
-        static_cast<int>(std::ceil(float(num_rows) / float(threads.y)))));
+        static_cast<int>(std::ceil(static_cast<float>(num_rows) / static_cast<float>(threads.y)))));
 
     KernelScanInnerWithIndices<T1, T2, 16, 32>
         <<<grid, threads, 0, dev_ctx.stream()>>>(
@@ -244,7 +243,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     dim3 grid(std::min(maxGridDim, num_orows),
               std::min(maxGridDim,
                        static_cast<int64_t>(
-                           std::ceil(double{num_irows} / double{threads.x}))));
+                           std::ceil(static_cast<double>(num_irows) / static_cast<double>(threads.x)))));
 
     KernelScanOuterWithIndices<T1, T2>
         <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,

@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace phi{
+namespace phi {
 
 template <typename T, typename Context>
 void CummaxGradKernel(const Context& dev_ctx,

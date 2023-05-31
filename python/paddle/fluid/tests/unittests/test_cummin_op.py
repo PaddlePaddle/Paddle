@@ -221,6 +221,7 @@ class TestCumminAPI(unittest.TestCase):
             def test_x_type():
                 data = [1, 2, 3]
                 y, indices = paddle.cummin(data, axis=0)
+
             self.assertRaises(TypeError, test_x_type)
 
         paddle.disable_static()

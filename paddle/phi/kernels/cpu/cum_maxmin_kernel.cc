@@ -21,16 +21,16 @@
 namespace phi {
 
 #ifdef _MSC_VER
-template<typename T>
+template <typename T>
 typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
   return false;
 }
-template<typename T>
+template <typename T>
 typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
   return std::isnan(x);
 }
 #else
-template<typename T>
+template <typename T>
 bool isnan_(T x) {
   return std::isnan(x);
 }
