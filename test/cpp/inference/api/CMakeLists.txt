@@ -127,7 +127,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       EXTRA_DEPS
       paddle_inference_shared
       python
-      pybind
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -142,7 +141,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       EXTRA_DEPS
       paddle_inference_shared
       python
-      pybind
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -465,7 +463,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${ERNIE_INSTALL_DIR}/model
     --infer_data=${ERNIE_INSTALL_DIR}/data.txt
@@ -512,7 +509,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -525,7 +521,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -581,7 +576,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${DENSEBOX_INSTALL_DIR}/model
     --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
@@ -1178,7 +1172,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
   inference_analysis_test(
@@ -1188,7 +1181,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1214,7 +1206,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
     python
-    pybind
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
   if(WIN32)
@@ -1248,7 +1239,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       EXTRA_DEPS
       ${INFERENCE_C_EXTRA_DEPS}
       python
-      pybind
       ARGS
       --infer_model=${MOBILENET_INSTALL_DIR}/model)
     if(WIN32)
@@ -1333,7 +1323,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
     python
-    pybind
     ARGS
     --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
   if(WIN32)
@@ -1543,7 +1532,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       analysis_predictor
       benchmark
       ${inference_deps}
-      pybind
       ARGS
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()
