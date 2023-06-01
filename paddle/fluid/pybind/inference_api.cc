@@ -1098,7 +1098,7 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("register_output_hook",
            py::overload_cast<const paddle_infer::OutputTensorHookFunc &>(
                &paddle_infer::Predictor::RegisterOutputHook))
-      .def("register_output_hook",
+      .def("register_output_hook_v2",
            py::overload_cast<const paddle_infer::OutputTensorHookFunc_V2 &>(
                &paddle_infer::Predictor::RegisterOutputHook));
 }
