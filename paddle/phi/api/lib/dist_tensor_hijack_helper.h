@@ -23,10 +23,6 @@ namespace paddle {
 namespace experimental {
 class DistTensorHijackHelper {
  public:
-  static bool IsAllDistTensor() { return false; }
-
-  static bool IsAnyDistTensor() { return false; }
-
   static Tensor UnWrap(const Tensor& tensor) {
     if (!tensor.is_dist_tensor()) {
       return tensor;

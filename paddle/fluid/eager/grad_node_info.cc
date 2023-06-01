@@ -115,6 +115,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     // Only Copy Meta
     dense_tensor = static_cast<phi::DenseTensor*>(fwd_out.impl().get());
   } else if (phi::DistTensor::classof(fwd_out.impl().get())) {
+    // TODO(liuzhenhai): support real dist tensor latter
     dense_tensor = static_cast<phi::DistTensor*>(fwd_out.impl().get())
                        ->local_tensor()
                        .get();

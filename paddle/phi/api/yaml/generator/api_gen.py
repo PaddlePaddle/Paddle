@@ -343,6 +343,7 @@ class ForwardAPI(BaseAPI):
         return remap_code
 
     def gen_dist_tensor_hijack_guard(self):
+        # TODO(liuzhnehai): find a more elegant and complete way
         var = self.inputs["names"][0]
         return f"""{var}.is_dist_tensor()"""
 
@@ -403,6 +404,7 @@ class ForwardAPI(BaseAPI):
            4、support view
            5、support invoke
            6、add sharding inference and re-sharding logic
+           7、support zero inputs num
         """
         if not self.inputs["names"]:
             return "  // dist tensor is not supported yet"
