@@ -148,6 +148,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+
+
+    // Dont.t allow fp64!
+    {
+      auto inputs = desc.Inputs();
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block && op_type != "feed") {
+            auto* var_desc = block->FindVar(var_name);
+            auto dtype = var_desc->GetDataType();
+            if (dtype == framework::proto::VarType::FP64) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+
+
+
     if (op_type == "dropout") {
       /*
        * Some OpDescs Attribute support both constant value and dynamic

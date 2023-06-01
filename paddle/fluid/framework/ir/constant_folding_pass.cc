@@ -86,12 +86,12 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     for (auto out_node : op_node->outputs) {
 
-      // for (auto next_op : out_node->outputs) {
-      //   if (next_op->Name() == "while")
-      //   {
-      //     input_persis = false;
-      //   }
-      // }
+      for (auto next_op : out_node->outputs) {
+        if (next_op->Name() == "while")
+        {
+          input_persis = false;
+        }
+      }
       // if (out_node->Name() == "full_like_44.tmp_0") {
       //   input_persis = false;
       // }
@@ -104,7 +104,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         if (node->IsVar() && node->Name() == iter.first) {
           map[node->Name()]++;
           if (map[node->Name()] > 1) {
-            input_persis = false;
+          //  input_persis = false;
           }
         }
       }
