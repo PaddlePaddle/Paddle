@@ -3447,33 +3447,42 @@ def cummax(x, axis=None, dtype='int64', name=None):
 def cummin(x, axis=None, dtype='int64', name=None):
     """
     The cumulative min of the elements along a given axis.
+
     Note:
         The first element of the result is the same as the first element of the input.
+
     Args:
         x (Tensor): The input tensor needed to be cummined.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummin over the flattened array.
         dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         out (tuple), Return the result of cummin operation and the corresponding index results. The dtype of cummin result is same with input x.
+
     Examples:
         .. code-block:: python
+
             import paddle
             data = paddle.to_tensor([-1, 5, 0, -2, -3, 2])
             data = paddle.reshape(data, (2, 3))
+
             y = paddle.cummin(data)
             # value: [-1, -1, -1, -2, -3, -3]
             # indcies: [0, 0, 0, 3, 4, 4]
+
             y = paddle.cummin(data, axis=0)
             # value: [[-1, 5, 0]
             #         [-2, -3, 0]]
             # indcies: [[0, 0, 0]
             #           [1, 1, 0]]
+
             y = paddle.cummin(data, axis=-1)
             # value: [[-1, -1, -1]
             #         [-2, -3, -3]]
             # indcies: [[0, 0, 0]
             #           [0, 1, 1]]
+
             y = paddle.cummin(data, dtype='int64')
             print(y[1].dtype)
             # indcies type: paddle.int64

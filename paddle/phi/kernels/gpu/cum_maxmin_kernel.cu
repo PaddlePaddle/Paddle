@@ -23,32 +23,62 @@
 
 namespace phi {
 
-template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
-__device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+template <
+    typename T1,
+    typename T2,
+    typename BinaryOperation,
+    typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
+__device__ void binary_op_update(const T1 lhs,
+                                 T1& rhs,
+                                 const T2 lhs_idx,
+                                 T2& rhs_idx,
+                                 BinaryOperation binary_op) {
   if (!isnan(rhs) && (isnan(lhs) || !binary_op(rhs, lhs))) {
     rhs = lhs;
     rhs_idx = lhs_idx;
   }
 }
 
-template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
-__device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+template <typename T1,
+          typename T2,
+          typename BinaryOperation,
+          typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
+__device__ void binary_op_update(const T1 lhs,
+                                 T1& rhs,
+                                 const T2 lhs_idx,
+                                 T2& rhs_idx,
+                                 BinaryOperation binary_op) {
   if (!binary_op(rhs, lhs)) {
     rhs = lhs;
     rhs_idx = lhs_idx;
   }
 }
 
-template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
-__device__ void binary_op_update_v(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+template <
+    typename T1,
+    typename T2,
+    typename BinaryOperation,
+    typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
+__device__ void binary_op_update_v(const T1 lhs,
+                                   T1& rhs,
+                                   const T2 lhs_idx,
+                                   T2& rhs_idx,
+                                   BinaryOperation binary_op) {
   if (isnan(lhs) || (!isnan(rhs) && binary_op(lhs, rhs))) {
     rhs = lhs;
     rhs_idx = lhs_idx;
   }
 }
 
-template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
-__device__ void binary_op_update_v(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+template <typename T1,
+          typename T2,
+          typename BinaryOperation,
+          typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
+__device__ void binary_op_update_v(const T1 lhs,
+                                   T1& rhs,
+                                   const T2 lhs_idx,
+                                   T2& rhs_idx,
+                                   BinaryOperation binary_op) {
   if (binary_op(lhs, rhs)) {
     rhs = lhs;
     rhs_idx = lhs_idx;
@@ -104,7 +134,11 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
         }
 
         if (threadIdx.x == 0) {
-          binary_op_update(block_total, row_buf[0], block_idx_final, row_idx_buf[0], binary_op);
+          binary_op_update(block_total,
+                           row_buf[0],
+                           block_idx_final,
+                           row_idx_buf[0],
+                           binary_op);
         }
       }
       __syncthreads();
@@ -113,7 +147,11 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
       for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
         if (row < num_rows && threadIdx.x < s) {
           int offset = (2 * threadIdx.x + 1) * d - 1;
-          binary_op_update(row_buf[offset], row_buf[offset + d], row_idx_buf[offset], row_idx_buf[offset + d], binary_op);
+          binary_op_update(row_buf[offset],
+                           row_buf[offset + d],
+                           row_idx_buf[offset],
+                           row_idx_buf[offset + d],
+                           binary_op);
         }
         __syncthreads();
       }
@@ -122,7 +160,11 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
       for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
         if (row < num_rows && threadIdx.x < s - 1) {
           int offset = 2 * (threadIdx.x + 1) * d - 1;
-          binary_op_update(row_buf[offset], row_buf[offset + d], row_idx_buf[offset], row_idx_buf[offset + d], binary_op);
+          binary_op_update(row_buf[offset],
+                           row_buf[offset + d],
+                           row_idx_buf[offset],
+                           row_idx_buf[offset + d],
+                           binary_op);
         }
         __syncthreads();
       }
@@ -223,9 +265,10 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);
-    dim3 grid(std::min(
-        dev_ctx.GetCUDAMaxGridDimSize()[0],
-        static_cast<int>(std::ceil(static_cast<float>(num_rows) / static_cast<float>(threads.y)))));
+    dim3 grid(
+        std::min(dev_ctx.GetCUDAMaxGridDimSize()[0],
+                 static_cast<int>(std::ceil(static_cast<float>(num_rows) /
+                                            static_cast<float>(threads.y)))));
 
     KernelScanInnerWithIndices<T1, T2, 16, 32>
         <<<grid, threads, 0, dev_ctx.stream()>>>(
@@ -250,7 +293,8 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     dim3 grid(std::min(maxGridDim, num_orows),
               std::min(maxGridDim,
                        static_cast<int64_t>(
-                           std::ceil(static_cast<double>(num_irows) / static_cast<double>(threads.x)))));
+                           std::ceil(static_cast<double>(num_irows) /
+                                     static_cast<double>(threads.x)))));
 
     KernelScanOuterWithIndices<T1, T2>
         <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
