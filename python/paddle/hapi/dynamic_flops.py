@@ -102,9 +102,9 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             #|   linear_2   |     [1, 84]     |     [1, 10]     |  850   |  840   |
             #+--------------+-----------------+-----------------+--------+--------+
             #Total Flops: 347560     Total Params: 61610
-            print(111)
     """
     if isinstance(net, nn.Layer):
+        print(1111)
         # If net is a dy2stat model, net.forward is StaticFunction instance,
         # we set net.forward to original forward function.
         _, net.forward = unwrap_decorators(net.forward)

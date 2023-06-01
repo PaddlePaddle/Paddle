@@ -128,7 +128,7 @@ if [ "$OUTPUT_LOG" != "" ];then
         while read line
         do
             code_in=`grep "$line" /tmp/samplecode.txt || true`
-            if [ "$code_in" != "" ];then
+            if [ "$code_in" == "" ];then
                 sample_status=1
                 echo "Use print to: $line"
             fi
