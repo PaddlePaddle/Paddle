@@ -16,13 +16,10 @@ import os
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
+from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import (
-    TestConv2DOp,
-    conv2d_forward_naive,
-)
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
