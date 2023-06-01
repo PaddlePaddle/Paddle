@@ -211,9 +211,10 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     // TODO(lyk): HasInput doesnot consider variadic attribute
     if (!op_desc.HasInput(legacy_input_name)) {
       PADDLE_ENFORCE(info.optional,
-                     "Op %s arg %s should be optional if it can be empty",
-                     op_desc.Type(),
-                     legacy_input_name);
+                     platform::errors::PreconditionNotMet(
+                         "Op %s arg %s should be optional if it can be empty",
+                         op_desc.Type(),
+                         legacy_input_name));
       op_inputs.push_back(ir::OpResult(nullptr));
       continue;
     }
@@ -262,9 +263,10 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
                << "[" << op_desc.Type() << "] optional " << info.name << " :"
                << info.type_name << " " << legacy_output_name;
       PADDLE_ENFORCE(info.optional,
-                     "Op %s arg %s should be optional if it can be empty",
-                     op_desc.Type(),
-                     legacy_output_name);
+                     platform::errors::PreconditionNotMet(
+                         "Op %s arg %s should be optional if it can be empty",
+                         op_desc.Type(),
+                         legacy_output_name));
       op_output_types.push_back(ir::Type(nullptr));
       continue;
     }
