@@ -1680,10 +1680,10 @@ class ProgramTranslator:
 
         # Transform AST
         dygraph_to_static = DygraphToStaticAst()
-        root_wrapper = dygraph_to_static.get_static_ast(root)
+        root = dygraph_to_static.get_static_ast(root)
 
         # Get source_code
-        source_code = ast_to_source_code(root_wrapper.node)
+        source_code = ast_to_source_code(root)
         return source_code
 
     def get_program_cache(self):
