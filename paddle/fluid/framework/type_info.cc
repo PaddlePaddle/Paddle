@@ -29,6 +29,11 @@ template <typename BaseT, typename DerivedT>
 const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
     RegisterStaticType<BaseT>(DerivedT::name());
 
+template <typename BaseT, typename DerivedT>
+bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
+  return obj->type_info() == kType;
+}
+
 template class TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::framework::Vocab>;
 template class TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>;

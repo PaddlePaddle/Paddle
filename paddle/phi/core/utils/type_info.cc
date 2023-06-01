@@ -34,6 +34,11 @@ TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
 }
 
 template <typename BaseT, typename DerivedT>
+bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
+  return obj->type_info() == kType;
+}
+
+template <typename BaseT, typename DerivedT>
 const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
     RegisterStaticType<BaseT>(DerivedT::name());
 
