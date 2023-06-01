@@ -94,8 +94,9 @@ class TestMasterGrad(unittest.TestCase):
         total_steps = 4
         accumulate_batchs_num = 1
         model = SimpleNet(2, 4)
+        L1Decay = paddle.regularizer.L1Decay(0.0001)
         opt = paddle.optimizer.Momentum(
-            parameters=model.parameters(), weight_decay=0.01
+            parameters=model.parameters(), weight_decay=L1Decay
         )
         fp32_grads, op_list = self.run_dygraph(
             total_steps, accumulate_batchs_num, model, opt
