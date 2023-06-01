@@ -5737,8 +5737,8 @@ def ldexp(x, y, name=None):
         out = x * 2^{y}
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
-        y (int|Tensor):  If it is an N-D Tensor, it should typically be an integer tensor.
+        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        y (int|float|Tensor):  If it is an N-D Tensor, it should typically be an integer tensor.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
@@ -5768,15 +5768,15 @@ def ldexp(x, y, name=None):
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
         raise ValueError('x must be tensor type, but received: %s ' % (x.dtype))
-    if isinstance(y, int):
-        y = paddle.to_tensor(y, dtype="float64")
+    if isinstance(y, (int, float)):
+        y = paddle.to_tensor(y, dtype="float32")
     if isinstance(y, (paddle.Tensor, Variable)):
-        y = paddle.cast(y, dtype="float64")
+        y = paddle.cast(y, dtype="float32")
     else:
         raise ValueError(
-            'y must be integer or integer tensor type, but received: %s '
+            'y must be scalar or integer tensor type, but received: %s '
             % (y.dtype)
         )
-    x = paddle.cast(x, dtype="float64")
-    two = paddle.to_tensor(2, dtype="float64")
+    x = paddle.cast(x, dtype="float32")
+    two = paddle.to_tensor(2, dtype=y.dtype)
     return paddle.multiply(x, paddle.pow(two, y))
