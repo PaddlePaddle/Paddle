@@ -124,9 +124,9 @@ set_field_default_config(QAT, "not_quant_pattern", ['skip_quant'])
 set_field_default_config(QAT, "algo", None)
 set_field_default_config(QAT, "onnx_format", True)
 
-# #########################################
+#########################################
 # auto tuning configuration
-# #########################################
+#########################################
 TUNING = "tuning"
 set_field_default_config(TUNING, "enable", False)
 set_field_default_config(TUNING, "profile_start_step", 1)
@@ -147,3 +147,12 @@ set_field_default_config(DATASET, "num_shards", 1)
 FUSED_PASSES = "fused_passes"
 set_field_default_config(FUSED_PASSES, "enable", False)
 set_field_default_config(FUSED_PASSES, "fused_passes_list", [])
+
+#########################################
+# data parallel configuration
+#########################################
+DP_OPTIMIZATION = "dp_optimization"
+set_field_default_config(DP_OPTIMIZATION, "enable", False)
+set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
+set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
+set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)

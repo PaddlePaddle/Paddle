@@ -1462,12 +1462,6 @@ class Executor:
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
-                    # Temporary manual enable standalone executor for fleet executor,
-                    # delete this code after the FLAGS is removed.
-                    if 'tasks' in program._pipeline_opt["fleet_opt"]:
-                        set_flags(
-                            {"FLAGS_fleet_executor_with_standalone": True}
-                        )
                     self._fleet_executor = _prepare_fleet_executor()
                 return self._run_using_fleet_executor(
                     program=program,
