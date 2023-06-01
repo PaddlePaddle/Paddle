@@ -164,10 +164,10 @@ class OpResult : public Value {
 
   friend Operation;
 
-  //  private:
-  static uint32_t GetValidInlineIndex(uint32_t index);
-
   detail::OpResultImpl *impl() const;
+
+ private:
+  static uint32_t GetValidInlineIndex(uint32_t index);
 };
 
 }  // namespace ir
