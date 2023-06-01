@@ -15,14 +15,12 @@
 #pragma once
 
 #include "paddle/fluid/dialect/pd_type_storage.h"
-#include "paddle/ir/type.h"
+#include "paddle/ir/core/type.h"
 
 namespace paddle {
 namespace dialect {
-#define GET_PADDLE_TYPE_LIST paddle::dialect::DenseTensorType
-
 ///
-/// \brief Define built-in parameteric types.
+/// \brief Define built-in parametric types.
 ///
 class DenseTensorType : public ir::Type {
  public:

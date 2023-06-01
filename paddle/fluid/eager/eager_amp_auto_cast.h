@@ -65,8 +65,8 @@ inline std::vector<paddle::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::Tensor>& inputs,
     const phi::DataType& dst_dtype,
-    std::string op_name,
-    bool trace_backward = true) {
+    std::string op_name UNUSED,
+    bool trace_backward UNUSED = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";

@@ -44,7 +44,7 @@ class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
     AddInput("Y", "The second tensor holding the elements to be compared.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Compare two tensors and returns a new tensor containing the "
            "element-wise maxima.";
   }
@@ -63,7 +63,7 @@ class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
     AddInput("Y", "The second tensor holding the elements to be compared.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Compare two tensors and returns a new tensor containing the "
            "element-wise maxima. If the element of one tensor is nan, "
            "return the element value of the other tensor, if both are nan, "
@@ -87,6 +87,13 @@ class ElementwiseMaxCompositeGradOpMaker
     auto* dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     VLOG(6) << "Runing maximum_grad composite func";
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite maximum_grad but we got: ",
+            axis));
     prim::maximum_grad<prim::DescTensor>(x, y, out_grad, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);

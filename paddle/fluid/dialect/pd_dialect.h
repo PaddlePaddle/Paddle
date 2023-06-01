@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/parameter.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/parameter.h"
 
 namespace paddle {
 namespace dialect {
@@ -38,6 +38,8 @@ class PaddleDialect : public ir::Dialect {
   explicit PaddleDialect(ir::IrContext* context);
 
   static const char* name() { return "pd"; }
+
+  void PrintType(ir::Type type, std::ostream& os);
 
  private:
   void initialize();

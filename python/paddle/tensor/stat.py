@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
@@ -79,7 +79,7 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -144,7 +144,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
         )
@@ -212,7 +212,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.       2.081666]
 
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
@@ -242,7 +242,7 @@ def numel(x, name=None):
 
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.numel(x)
     else:
         if not isinstance(x, Variable):
@@ -330,7 +330,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     if len(axis) != len(set(axis)):
         raise ValueError("Axis has duplicated elements.")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.nanmedian(x, axis, keepdim)
     else:
         check_variable_and_dtype(
@@ -549,7 +549,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))

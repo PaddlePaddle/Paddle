@@ -676,6 +676,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindEvalFrame(&m);
   BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -1209,7 +1210,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
-      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
+      .def_property("_can_reused", &Scope::CanReused, &Scope::SetCanReused);
 
   m.def(
       "Scope",
@@ -1362,12 +1363,12 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
-              VLOG(3) << "Prim Flag Close: Runing origin grad fun for "
+              VLOG(6) << "Prim Flag Close: Runing origin grad fun for "
                       << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
-              VLOG(3) << "Prim Flag Close: Runing composite grad fun for "
+              VLOG(6) << "Prim Flag Close: Runing composite grad fun for "
                       << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
@@ -1851,28 +1852,6 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(scope, feed_names, fetch_names);
              }
              return py::cast(std::move(ret));
-           })
-      .def("dry_run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<phi::DenseTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               phi::DenseTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             framework::interpreter::CostInfo cost_info;
-             {
-               pybind11::gil_scoped_release release;
-               cost_info = self.DryRun(scope, feed_names, feed_tensors);
-             }
-             return cost_info;
            });
 
   m.def("init_gflags", framework::InitGflags);
@@ -1923,6 +1902,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
+  m.def("_test_enforce_gpu_success", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaErrorInsufficientDriver);
+#endif
+  });
 
   m.def("get_float_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
@@ -1945,6 +1929,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("device_memory_stat_current_value",
         memory::DeviceMemoryStatCurrentValue);
   m.def("device_memory_stat_peak_value", memory::DeviceMemoryStatPeakValue);
+  m.def("host_memory_stat_current_value", memory::HostMemoryStatCurrentValue);
+  m.def("host_memory_stat_peak_value", memory::HostMemoryStatPeakValue);
   m.def(
       "run_cmd",
       [](const std::string &cmd,
@@ -2272,8 +2258,8 @@ All parameter, weight, gradient are variables in Paddle.
         pass_type, [pass_type, callable]() {
           py::gil_scoped_acquire guard;
           std::unique_ptr<framework::ir::Pass> pass(
-              new framework::ir::GeneratePass(
-                  py::cast<std::string>(callable())));
+              new framework::ir::GeneratePass(py::cast<std::string>(callable()),
+                                              pass_type));
           return pass;
         });
   });
