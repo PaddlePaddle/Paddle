@@ -1255,7 +1255,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   for (auto& tensor : tensor_list) {
     VLOG(6) << "set master_grad for tensor: " << tensor.name();
     PADDLE_ENFORCE_EQ(
-        egr::egr_utils_api::IsLeafTensor(tensor),
+        egr::EagerUtils::IsLeafTensor(tensor),
         true,
         paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);

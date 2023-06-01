@@ -53,7 +53,7 @@ TEST(TensorUtils, Test) {
                                            1.0 /*value*/,
                                            false /*is_leaf*/);
 
-  CHECK_EQ(egr_utils_api::IsLeafTensor(t), true);
+  CHECK_EQ(EagerUtils::IsLeafTensor(t), true);
 
   // Test Utils
   eager_test::CompareTensorWithValue<float>(t, 5.0);

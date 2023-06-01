@@ -38,7 +38,7 @@ int64_t RegisterGradientHookForTensor(
 
 void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
                                  const std::function<void()>& hook) {
-  if (IsLeafTensor(tensor)) {
+  if (EagerUtils::IsLeafTensor(tensor)) {
     VLOG(6) << "Register ReduceHook for leaf tensor";
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
     PADDLE_ENFORCE(
@@ -57,7 +57,7 @@ void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
 }
 
 void RetainGradForTensor(const paddle::Tensor& tensor) {
-  if (IsLeafTensor(tensor)) {
+  if (EagerUtils::IsLeafTensor(tensor)) {
     // Leaf tensor's grad will always be retained
     // Refer to implementation of AccumulationNode for more details
     return;

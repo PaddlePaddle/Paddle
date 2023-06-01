@@ -20,7 +20,7 @@ if(WIN32)
     analysis_config
     SRCS analysis_config.cc
     DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
-         utf8proc)
+         utf8proc helper_inference_api)
 else()
   cc_library(
     analysis_config
@@ -30,6 +30,7 @@ else()
          ${mkldnn_quantizer_cfg}
          lod_tensor
          paddle_pass_builder
+         helper_inference_api
          table_printer
          utf8proc)
 endif()
@@ -42,13 +43,20 @@ cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 set(paddle_inference_api_deps
     reset_tensor_array
-    analysis_config
     paddle_infer_contrib
     zero_copy_tensor
     trainer_desc_proto
     custom_operator
     lod_tensor
     scope)
+
+cc_library(
+  helper_inference_api
+  SRCS helper.cc
+  DEPS ${paddle_inference_api_deps})
+
+set(paddle_inference_api_deps ${paddle_inference_api_deps} analysis_config
+                              helper_inference_api)
 
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
@@ -59,12 +67,12 @@ endif()
 if(WIN32)
   cc_library(
     paddle_inference_api
-    SRCS api.cc api_impl.cc helper.cc
+    SRCS api.cc api_impl.cc
     DEPS executor ${paddle_inference_api_deps})
 else()
   cc_library(
     paddle_inference_api
-    SRCS api.cc api_impl.cc helper.cc
+    SRCS api.cc api_impl.cc
     DEPS executor paddle_inference_io ${paddle_inference_api_deps})
 endif()
 

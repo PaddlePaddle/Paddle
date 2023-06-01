@@ -27,16 +27,6 @@
 namespace egr {
 namespace egr_utils_api {
 
-bool IsLeafTensor(const paddle::Tensor& target) {
-  std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(target);
-  if (!grad_node ||
-      std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node)) {
-    return true;
-  }
-
-  return false;
-}
-
 paddle::Tensor CreateTensorWithValue(const phi::DDim& ddim,
                                      const paddle::platform::Place& place,
                                      const phi::DataType& dtype,

@@ -20,10 +20,6 @@
 namespace egr {
 namespace egr_utils_api {
 
-// If and only if the tensor holds an AccumulationNode
-// Then it's treated as a leaf tensor
-bool IsLeafTensor(const paddle::Tensor& target);
-
 paddle::Tensor CreateTensorWithValue(const phi::DDim& ddim,
                                      const paddle::platform::Place& place,
                                      const phi::DataType& dtype,
