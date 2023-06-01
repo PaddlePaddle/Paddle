@@ -119,7 +119,7 @@ fi
 #OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
 OUTPUT_LOG=`git diff -U0 upstream/$BRANCH python/paddle/hapi | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
 if [ "$OUTPUT_LOG" != "" ];then
-    git diff -U0 upstream/$BRANCH |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
+    git diff -U0 upstream/$BRANCH python/paddle/hapi |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
     samplecode=`find tools/samplecode_temp -type f || true`
     sample_status=0
     if [ "$samplecode" != "" ];then
@@ -128,7 +128,7 @@ if [ "$OUTPUT_LOG" != "" ];then
         while read line
         do
             code_in=`grep "$line" /tmp/samplecode.txt || true`
-            if [ "$code_in" == "" ];then
+            if [ "$code_in" != "" ];then
                 sample_status=1
                 echo "Use print to: $line"
             fi
