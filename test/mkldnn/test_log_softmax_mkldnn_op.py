@@ -15,15 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from test_log_softmax import ref_log_softmax
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
-from paddle.fluid.tests.unittests.test_log_softmax import ref_log_softmax
 
 
 class TestLogSoftmaxOneDNNOp(OpTest):

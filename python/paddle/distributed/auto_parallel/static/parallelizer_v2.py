@@ -105,13 +105,6 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            # Do reshard process
-            time0 = time.time()
-            micro_bsz = (
-                1
-                if not self._strategy.pipeline.enable
-                else self._strategy.pipeline.micro_batch_size
-            )
             set_grad_var_shape(dist_main_prog, self._dist_context)
             resharder = Resharder(
                 dist_main_prog,
@@ -119,7 +112,6 @@ class Parallelizer:
                 rank,
                 self._dist_context,
                 dist_params_grads,
-                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
@@ -169,13 +161,19 @@ class Parallelizer:
                 )
             )
             time0 = time.time()
+            # Do reshard process
+            micro_bsz = (
+                1
+                if not self._strategy.pipeline.enable
+                else self._strategy.pipeline.micro_batch_size
+            )
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
                 rank,
                 self._dist_context,
                 [],
-                1,
+                micro_bsz,
             )
             resharder.reshard()
             self._logger.debug(
@@ -305,12 +303,15 @@ class Parallelizer:
             return
 
         # data parallel optimization
-        config = {}
-        config["dist_context"] = self._dist_context
-        config["global_rank"] = rank
-        config["use_sharding"] = self._strategy.sharding.enable
-        dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
-        dp_pass.apply([main_program], [startup_program], self._pass_context)
+        if self._strategy.dp_optimization.enable:
+            config = copy.deepcopy(self._strategy.dp_optimization.to_dict())
+            config["dist_context"] = self._dist_context
+            config["global_rank"] = rank
+            config["use_sharding"] = self._strategy.sharding.enable
+            dp_pass = new_pass(
+                "auto_parallel_data_parallel_optimization", config
+            )
+            dp_pass.apply([main_program], [startup_program], self._pass_context)
 
         if self._strategy.sharding.enable:
             config = copy.deepcopy(self._strategy.sharding.to_dict())
