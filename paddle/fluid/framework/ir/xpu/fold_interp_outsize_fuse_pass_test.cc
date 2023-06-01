@@ -55,4 +55,4 @@ TEST(DetectorFuse, basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(robo_fold_op_fuse_pass);
+USE_PASS(fold_interp_outsize_fuse_pass);
