@@ -288,7 +288,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
                         int64_t(1),
                         [](int64_t& a, int64_t& b) { return a * b; });
 
-    dim3 threads(std::min(512, int(num_irows)));
+    dim3 threads(std::min(512, static_cast<int>(num_irows)));
     int64_t maxGridDim = dev_ctx.GetCUDAMaxGridDimSize()[1];
     dim3 grid(std::min(maxGridDim, num_orows),
               std::min(maxGridDim,
