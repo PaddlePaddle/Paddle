@@ -15,8 +15,8 @@
 #pragma once
 
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/parameter.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/parameter.h"
 
 namespace paddle {
 namespace dialect {
