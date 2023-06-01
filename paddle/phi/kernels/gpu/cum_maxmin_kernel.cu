@@ -29,13 +29,13 @@ template <
     typename BinaryOperation,
     typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
 __device__ void binary_op_update(const T1 lhs,
-                                 T1& rhs,
+                                 T1* rhs,
                                  const T2 lhs_idx,
-                                 T2& rhs_idx,
+                                 T2* rhs_idx,
                                  BinaryOperation binary_op) {
-  if (!isnan(rhs) && (isnan(lhs) || !binary_op(rhs, lhs))) {
-    rhs = lhs;
-    rhs_idx = lhs_idx;
+  if (!isnan(*rhs) && (isnan(lhs) || !binary_op(*rhs, lhs))) {
+    *rhs = lhs;
+    *rhs_idx = lhs_idx;
   }
 }
 
@@ -44,13 +44,14 @@ template <typename T1,
           typename BinaryOperation,
           typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
 __device__ void binary_op_update(const T1 lhs,
-                                 T1& rhs,
+                                 T1* rhs,
                                  const T2 lhs_idx,
-                                 T2& rhs_idx,
+                                 T2* rhs_idx,
                                  BinaryOperation binary_op) {
-  if (!binary_op(rhs, lhs)) {
-    rhs = lhs;
-    rhs_idx = lhs_idx;
+  if (!binary_op(*rhs, lhs)) {
+    printf("1\n");
+    *rhs = lhs;
+    *rhs_idx = lhs_idx;
   }
 }
 
@@ -60,13 +61,13 @@ template <
     typename BinaryOperation,
     typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
 __device__ void binary_op_update_v(const T1 lhs,
-                                   T1& rhs,
+                                   T1* rhs,
                                    const T2 lhs_idx,
-                                   T2& rhs_idx,
+                                   T2* rhs_idx,
                                    BinaryOperation binary_op) {
-  if (isnan(lhs) || (!isnan(rhs) && binary_op(lhs, rhs))) {
-    rhs = lhs;
-    rhs_idx = lhs_idx;
+  if (isnan(lhs) || (!isnan(*rhs) && binary_op(lhs, *rhs))) {
+    *rhs = lhs;
+    *rhs_idx = lhs_idx;
   }
 }
 
@@ -75,13 +76,13 @@ template <typename T1,
           typename BinaryOperation,
           typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
 __device__ void binary_op_update_v(const T1 lhs,
-                                   T1& rhs,
+                                   T1* rhs,
                                    const T2 lhs_idx,
-                                   T2& rhs_idx,
+                                   T2* rhs_idx,
                                    BinaryOperation binary_op) {
-  if (binary_op(lhs, rhs)) {
-    rhs = lhs;
-    rhs_idx = lhs_idx;
+  if (binary_op(lhs, *rhs)) {
+    *rhs = lhs;
+    *rhs_idx = lhs_idx;
   }
 }
 
@@ -135,9 +136,9 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
 
         if (threadIdx.x == 0) {
           binary_op_update(block_total,
-                           row_buf[0],
+                           &row_buf[0],
                            block_idx_final,
-                           row_idx_buf[0],
+                           &row_idx_buf[0],
                            binary_op);
         }
       }
@@ -148,9 +149,9 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
         if (row < num_rows && threadIdx.x < s) {
           int offset = (2 * threadIdx.x + 1) * d - 1;
           binary_op_update(row_buf[offset],
-                           row_buf[offset + d],
+                           &row_buf[offset + d],
                            row_idx_buf[offset],
-                           row_idx_buf[offset + d],
+                           &row_idx_buf[offset + d],
                            binary_op);
         }
         __syncthreads();
@@ -161,9 +162,9 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
         if (row < num_rows && threadIdx.x < s - 1) {
           int offset = 2 * (threadIdx.x + 1) * d - 1;
           binary_op_update(row_buf[offset],
-                           row_buf[offset + d],
+                           &row_buf[offset + d],
                            row_idx_buf[offset],
-                           row_idx_buf[offset + d],
+                           &row_idx_buf[offset + d],
                            binary_op);
         }
         __syncthreads();
@@ -208,7 +209,7 @@ __global__ void KernelScanOuterWithIndices(const T1* x_data,
 
       for (T2 col = 0; col < row_size; ++col) {
         const auto val = *reinterpret_cast<const T1*>(x);
-        binary_op_update_v(val, out, col, out_idx, binary_op);
+        binary_op_update_v(val, &out, col, &out_idx, binary_op);
         *values = out;
         *indices = out_idx;
         x += num_irows;
