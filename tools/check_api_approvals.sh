@@ -120,10 +120,10 @@ fi
 OUTPUT_LOG=`git diff -U0 upstream/$BRANCH python/paddle/hapi | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
 if [ "$OUTPUT_LOG" != "" ];then
     git diff -U0 upstream/$BRANCH |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
-    samplecode=`find samplecode_temp -type f || true`
+    samplecode=`find tools/samplecode_temp -type f || true`
     sample_status=0
     if [ "$samplecode" != "" ];then
-        cat `find samplecode_temp -type f` >/tmp/samplecode.txt
+        cat `find tools/samplecode_temp -type f` >/tmp/samplecode.txt
         sed -i s#\"#\'#g /tmp/samplecode.txt 
         while read line
         do
