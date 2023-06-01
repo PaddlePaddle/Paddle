@@ -150,18 +150,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : check_finite_and_unscale_
-  args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
-  output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
-  infer_meta :
-    func : CheckFiniteAndUnscaleInferMeta
-    param : [x, scale]
-  kernel :
-    func : check_finite_and_unscale
-    param : [x, scale]
-    data_type : x
-  inplace : (x -> out), (input_found_infinite -> output_found_infinite)
-
 - op : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor

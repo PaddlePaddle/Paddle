@@ -374,12 +374,20 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 53 support float16
+  // Only GPUs with Compute Capability >= 53 support float16
+#ifdef PADDLE_WITH_HIP
+    return true;
+#else
     return platform::GetGPUComputeCapability(place.device) >= 53;
+#endif
   });
   m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 80 support bfloat16
+  // Only GPUs with Compute Capability >= 80 support bfloat16
+#ifdef PADDLE_WITH_HIP
+    return false;
+#else
     return platform::GetGPUComputeCapability(place.device) >= 80;
+#endif
   });
 #endif
   py::class_<platform::XPUPlace> xpuplace(m, "XPUPlace", R"DOC(
