@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
@@ -37,9 +38,9 @@ inline paddle::Tensor CreateTensorWithValue(
   paddle::Tensor out = paddle::experimental::full(
       phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype, place);
 
-  auto meta = EagerUtils::autograd_meta(&out);
+  auto meta = egr::EagerUtils::autograd_meta(&out);
   if (is_leaf) {
-    auto accumulation_node = std::make_shared<GradNodeAccumulation>(meta);
+    auto accumulation_node = std::make_shared<egr::GradNodeAccumulation>(meta);
     meta->SetGradNode(accumulation_node);
     meta->SetStopGradient(false);
   }
