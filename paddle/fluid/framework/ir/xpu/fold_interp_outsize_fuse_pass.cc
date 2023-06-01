@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/robo_fold_op_fuse_pass.h"
+#include "paddle/fluid/framework/ir/xpu/fold_interp_outsize_fuse_pass.h"
 #include <string>
 
 #include "glog/logging.h"
@@ -144,7 +144,7 @@ DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-void RoboFoldOpFusePass::DetectorFuse(ir::Graph* graph) const {
+void FoldInterpOutsizeFusePass::DetectorFuse(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::DetectorFusePattern pattern(gpd.mutable_pattern(), name_scope_);
   int found_subgraph_count = 0;
@@ -171,22 +171,36 @@ void RoboFoldOpFusePass::DetectorFuse(ir::Graph* graph) const {
     GET_IR_NODE(split_out_1);
     GET_IR_NODE(cast2_out);
 
-    cast2->Op()->RenameInput(split_out_1->Name(), concat_y->Name());
-    // IR_NODE_UNLINK(x, shape);
-    // IR_NODE_UNLINK(split_out_1, cast2);
-    // IR_NODE_LINK_TO(concat_y, cast2);
+    auto* block = concat->Op()->Block();
+    auto* scope = param_scope();
+    PADDLE_ENFORCE_NOT_NULL(
+        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+
+    auto* concat_y_t =
+        scope->GetVar(concat_y->Name())->GetMutable<phi::DenseTensor>();
+    // concat_y int64 --> int32
+    auto tensor_type = concat_y_t->dtype();
+    if (tensor_type == phi::DataType::INT64) {
+      CastToInt32(concat_y_t, nullptr);
+    }
+    bilinear_interp->Op()->RenameInput(cast2_out->Name(), concat_y->Name());
+    IR_NODE_UNLINK(x, shape);
+    IR_NODE_UNLINK(cast2_out, bilinear_interp);
+    IR_NODE_LINK_TO(concat_y, bilinear_interp);
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {shape,
                                                     cast1,
                                                     slice,
                                                     concat,
                                                     split,
+                                                    cast2,
                                                     shape_out,
                                                     cast1_out,
                                                     slice_out,
                                                     concat_out,
                                                     split_out_0,
-                                                    split_out_1};
+                                                    split_out_1,
+                                                    cast2_out};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
@@ -195,7 +209,7 @@ void RoboFoldOpFusePass::DetectorFuse(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void RoboFoldOpFusePass::ApplyImpl(ir::Graph* graph) const {
+void FoldInterpOutsizeFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -207,10 +221,10 @@ void RoboFoldOpFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(robo_fold_op_fuse_pass,
-              paddle::framework::ir::RoboFoldOpFusePass);
+REGISTER_PASS(fold_interp_outsize_fuse_pass,
+              paddle::framework::ir::FoldInterpOutsizeFusePass);
 
-REGISTER_PASS_CAPABILITY(robo_fold_op_fuse_pass)
+REGISTER_PASS_CAPABILITY(fold_interp_outsize_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "shape", 0));

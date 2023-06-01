@@ -41,12 +41,12 @@ TEST(DetectorFuse, basic) {
   bilinear_interp_v2_op->SetInput("OutSize", {cast2_out->Name()});
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  auto pass = PassRegistry::Instance().Get("robo_fold_op_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("fold_interp_outsize_fuse_pass");
   pass->Apply(graph.get());
   auto ops_num = GetNumOpNodes(graph);
   PADDLE_ENFORCE_EQ(
       ops_num,
-      2,
+      1,
       platform::errors::PreconditionNotMet(
           "graph should only have 2 op nodes, but received %d.", ops_num));
 }

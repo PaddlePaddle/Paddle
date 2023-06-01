@@ -31,7 +31,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class RoboFoldOpFusePass : public FusePassBase {
+class FoldInterpOutsizeFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -66,7 +66,7 @@ class RoboFoldOpFusePass : public FusePassBase {
   */
   void DetectorFuse(ir::Graph* graph) const;
 
-  const std::string name_scope_{"robo_fold_op_fuse_pass"};
+  const std::string name_scope_{"fold_interp_outsize_fuse_pass"};
 };
 
 }  // namespace ir
