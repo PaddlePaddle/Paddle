@@ -14,14 +14,6 @@
   infer_meta:
     func: null
     param: null
-  kernel:
-    func: null
-    param: null
-    backend: null
-    layout: null
-    data_type: null
-    dispatch: null
-    force_backend: null
   inplace: null
   backward: null
 - name: fetch
@@ -40,13 +32,5 @@
   infer_meta:
     func: null
     param: null
-  kernel:
-    func: null
-    param: null
-    backend: null
-    layout: null
-    data_type: null
-    dispatch: null
-    force_backend: null
   inplace: null
   backward: null

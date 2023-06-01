@@ -19,12 +19,12 @@
 #include "paddle/fluid/dialect/pd_op.h"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/utils.h"
-#include "paddle/ir/builtin_attribute.h"
-#include "paddle/ir/builtin_dialect.h"
-#include "paddle/ir/builtin_op.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/program.h"
-#include "paddle/ir/utils.h"
+#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_dialect.h"
+#include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -120,7 +120,7 @@ TEST(program_test, program) {
   std::cerr << "ten " << ten.dyn_cast<ir::Int32_tAttribute>().data()
             << std::endl;
   ir::Operation* op1 =
-      ir::Operation::create({}, {dense_tensor_dtype}, op1_attribute, op1_info);
+      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
   program.InsertOp(op1);
 
@@ -130,7 +130,7 @@ TEST(program_test, program) {
   ir::Attribute ten2 = ir::Int32_tAttribute::get(ctx, 3);
   std::unordered_map<std::string, ir::Attribute> op2_attribute{{"shape", ten2}};
   ir::Operation* op2 =
-      ir::Operation::create({}, {dense_tensor_dtype}, op2_attribute, op2_info);
+      ir::Operation::create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
   program.InsertOp(op2);
 
   // (3) Def out = AddOp(a, b)
@@ -139,8 +139,8 @@ TEST(program_test, program) {
   ir::Type output_type = ir::Float32Type::get(ctx);
   ir::Operation* add_op = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      {output_type},
       {},
+      {output_type},
       add_op_info);
   program.InsertOp(add_op);
 
@@ -197,12 +197,20 @@ TEST(program_test, program) {
       auto input_info = std::get<0>(op_info_res);
 
       for (auto& t : input_info) {
-        std::cerr << t.name_ << "\t" << t.typename_ << std::endl;
+        std::cerr << t.name << "\t" << t.type_name << std::endl;
       }
 
       auto attr_info = std::get<1>(op_info_res);
       for (auto& t : attr_info) {
-        std::cerr << t.name_ << "\t" << t.typename_ << std::endl;
+        std::cerr << t.name << "\t" << t.type_name << std::endl;
+      }
+
+      auto runtime_info = std::get<3>(op_info_res);
+      std::cerr << "infer meta name " << runtime_info.infer_meta_func
+                << std::endl;
+
+      for (auto& t : runtime_info.infer_meta_param) {
+        std::cerr << t << std::endl;
       }
 
       auto phi_kernels =
@@ -260,7 +268,7 @@ TEST(program_test, program) {
       auto input_info = std::get<0>(op_info_res);
 
       for (auto& t : input_info) {
-        std::cerr << t.name_ << "\t" << t.typename_ << std::endl;
+        std::cerr << t.name << "\t" << t.type_name << std::endl;
       }
 
       auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap("add");

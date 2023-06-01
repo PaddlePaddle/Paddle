@@ -104,7 +104,8 @@ OpInfoTuple {op_name}::GetOpInfo() {{
     std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
     std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
     std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-    return std::make_tuple(inputs, attributes, outputs);
+    paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}});
+    return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
 
@@ -312,6 +313,9 @@ class OpInfoParser:
         else:
             self.infer_shape_func = None
 
+        self.infer_meta_map = self.parse_infer_meta_map()
+        self.kernel_map = self.parse_kernel_map()
+
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -468,6 +472,18 @@ class OpInfoParser:
             return self.op_yaml_item['inplace']
         return None
 
+    def parse_infer_meta_map(self):
+        if 'infer_meta' in self.op_yaml_item:
+            return self.op_yaml_item['infer_meta']
+        else:
+            return None
+
+    def parse_kernel_map(self):
+        if 'kernel' in self.op_yaml_item:
+            return self.op_yaml_item['kernel']
+        else:
+            return None
+
 
 def to_pascal_case(s):
     words = s.split("_")
@@ -526,6 +542,8 @@ def OpGenerator(
         op_attribute_name_list = op_info.attribute_name_list
         op_attribute_type_list = op_info.attribute_type_list
         op_attribute_data_type_list = op_info.attribute_data_type_list
+        op_infer_meta_map = op_info.infer_meta_map
+        op_kernel_map = op_info.kernel_map
         op_interfaces = ["GetOpInfoInterface"]
         op_traits = []
 
@@ -641,11 +659,32 @@ def OpGenerator(
                     )
                 attribute_info_str = ", ".join(attribute_info_list)
 
+            # generate runtiem info
+            infer_meta_func_str = ""
+            infer_meta_param_str = ""
+            if op_infer_meta_map is not None:
+                if op_infer_meta_map['func'] is not None:
+                    infer_meta_func_str = op_infer_meta_map['func']
+
+                if op_infer_meta_map['param'] is not None:
+                    infer_meta_param_str = '", "'.join(
+                        op_infer_meta_map['param']
+                    )
+            kernel_func_str = ""
+            kernel_param_str = ""
+            if op_kernel_map is not None:
+                kernel_func_str = '", "'.join(op_kernel_map['func'])
+                kernel_param_str = '", "'.join(op_kernel_map['param'])
+
             op_info_func_str = OP_INFO_TEMPLATE.format(
                 op_name=op_class_name,
                 inputs=inputs_info_str,
                 attributes=attribute_info_str,
                 outputs=outputs_info_str,
+                infer_meta_func=infer_meta_func_str,
+                infer_meta_param=infer_meta_param_str,
+                kernel_func=kernel_func_str,
+                kernel_param=kernel_param_str,
             )
 
             # generate op verify function: inputs_type_check_str
