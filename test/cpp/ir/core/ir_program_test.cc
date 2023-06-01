@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/dialect/pd_dialect.h"
+#include "paddle/fluid/dialect/pd_interface.h"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/ir/core/builtin_attribute.h"
@@ -91,7 +92,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, {dense_tensor_dtype}, op1_attribute, op1_info);
+      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
   program.InsertOp(op1);
 
@@ -106,10 +107,9 @@ TEST(program_test, program) {
       a_interface->ParameterToVariable(program.GetParameter("a"));
   const phi::DenseTensor &a_tensor = a_var->Get<phi::DenseTensor>();
   EXPECT_EQ(a_tensor.numel(), 4);
-  EXPECT_EQ(a_tensor.dims(), phi::DDim(dims.data(), dims.size()));
+  EXPECT_EQ(a_tensor.dims(), dims);
   EXPECT_EQ(a_tensor.dtype(), paddle::dialect::TransToPhiDataType(fp32_dtype));
-  EXPECT_EQ(a_tensor.layout(),
-            paddle::dialect::TransToPhiDataLayout(data_layout));
+  EXPECT_EQ(a_tensor.layout(), data_layout);
   EXPECT_EQ(a_tensor.lod(), lod);
   EXPECT_EQ(a_tensor.offset(), offset);
   for (int64_t i = 0; i < a_tensor.numel(); i++) {
@@ -123,7 +123,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
-      ir::Operation::create({}, {dense_tensor_dtype}, op2_attribute, op2_info);
+      ir::Operation::create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
   program.InsertOp(op2);
 
   EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
@@ -136,10 +136,9 @@ TEST(program_test, program) {
       b_interface->ParameterToVariable(program.GetParameter("b"));
   const phi::DenseTensor &b_tensor = b_var->Get<phi::DenseTensor>();
   EXPECT_EQ(b_tensor.numel(), 4);
-  EXPECT_EQ(b_tensor.dims(), phi::DDim(dims.data(), dims.size()));
+  EXPECT_EQ(b_tensor.dims(), dims);
   EXPECT_EQ(b_tensor.dtype(), paddle::dialect::TransToPhiDataType(fp32_dtype));
-  EXPECT_EQ(b_tensor.layout(),
-            paddle::dialect::TransToPhiDataLayout(data_layout));
+  EXPECT_EQ(b_tensor.layout(), data_layout);
   EXPECT_EQ(b_tensor.lod(), lod);
   EXPECT_EQ(b_tensor.offset(), offset);
   for (int64_t i = 0; i < b_tensor.numel(); i++) {
@@ -153,8 +152,8 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op3_attribute;
   ir::Operation *op3 = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      {dense_tensor_dtype},
       op3_attribute,
+      {dense_tensor_dtype},
       op3_info);
   program.InsertOp(op3);
 
@@ -177,14 +176,28 @@ TEST(program_test, program) {
     EXPECT_EQ(*(dst_tensor->data<float>() + i), data_a[i] + data_b[i]);
   }
 
-  // (7) Def SetParameterOp(c, "c")
+  // (7) Def AbsOp(b)
+  ir::OpInfo abs_info = ctx->GetRegisteredOpInfo("pd.abs");
+  std::vector<ir::OpResult> operands = {op1->GetResultByIndex(0)};
+  std::unordered_map<std::string, ir::Attribute> abs_op_attribute;
+  std::vector<ir::Type> output_types = {dense_tensor_dtype};
+  ir::OperationArgument abs_argument(abs_info);
+  abs_argument.addOperands(operands.begin(), operands.end());
+  abs_argument.addAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
+  abs_argument.addTypes(output_types.begin(), output_types.end());
+  ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
+  paddle::dialect::GetOpInfoInterface interface =
+      abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
+  EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name == "x", true);
+
+  // (8) Def SetParameterOp(c, "c")
   std::string op4_name =
       builtin_dialect->name() + "." + std::string(ir::SetParameterOp::name());
   ir::OpInfo op4_info = ctx->GetRegisteredOpInfo(op4_name);
   std::unordered_map<std::string, ir::Attribute> op4_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
   ir::Operation *op4 = ir::Operation::create(
-      {op3->GetResultByIndex(0)}, {}, op4_attribute, op4_info);
+      {op3->GetResultByIndex(0)}, op4_attribute, {}, op4_info);
   program.InsertOp(op4);
 
   EXPECT_EQ(op4->GetOperandByIndex(0).impl()->source().type().dialect().id(),
@@ -230,7 +243,7 @@ TEST(program_test, slice_combine_test) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, {fp32_dtype}, op1_attribute, op1_info);
+      ir::Operation::create({}, op1_attribute, {fp32_dtype}, op1_info);
   program.InsertOp(op1);
 
   // (5) Def b = GetParameterOp("b")
@@ -239,7 +252,7 @@ TEST(program_test, slice_combine_test) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
-      ir::Operation::create({}, {fp32_dtype}, op2_attribute, op2_info);
+      ir::Operation::create({}, op2_attribute, {fp32_dtype}, op2_info);
   program.InsertOp(op2);
 
   // (6) Def combine_op = CombineOp("a", "b")
@@ -249,8 +262,8 @@ TEST(program_test, slice_combine_test) {
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
   ir::Operation *combine_op = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      {output_type},
       {},
+      {output_type},
       combine_op_info);
   program.InsertOp(combine_op);
 
@@ -260,8 +273,8 @@ TEST(program_test, slice_combine_test) {
   ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
   ir::Operation *slice_op =
       ir::Operation::create({combine_op->GetResultByIndex(0)},
-                            {fp32_dtype},
                             {{"index", index_attr}},
+                            {fp32_dtype},
                             slice_op_info);
   program.InsertOp(slice_op);
 

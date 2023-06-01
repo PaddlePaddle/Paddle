@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/op_info.h"
+#include "paddle/ir/core/region.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/value_impl.h"
 
@@ -30,18 +31,25 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 // This represents an operation arguments in an combined form, suitable for use
 // with the builder APIs.
 struct OperationArgument {
-  OpInfo info_;
-  std::vector<OpResult> inputs_;
-  std::vector<Type> output_types_;
-  AttributeMap attribute_;
+  std::vector<OpResult> inputs;
+  AttributeMap attribute;
+  std::vector<Type> output_types;
+  OpInfo info;
+  std::vector<std::unique_ptr<Region>> regions;
 
  public:
-  OperationArgument(IrContext* ir_context, std::string name);
-  explicit OperationArgument(OpInfo info) : info_(info) {}
-  OperationArgument(OpInfo info,
-                    const std::vector<OpResult>& operands,
+  OperationArgument(IrContext* ir_context, const std::string& name);
+  explicit OperationArgument(OpInfo info) : info(info) {}
+  OperationArgument(const std::vector<OpResult>& operands,
+                    const AttributeMap& named_attr,
                     const std::vector<Type>& types,
-                    const AttributeMap& named_attr = {});
+                    OpInfo info,
+                    std::vector<std::unique_ptr<Region>>&& regions = {})
+      : inputs(operands),
+        attribute(named_attr),
+        output_types(types),
+        info(info),
+        regions(std::move(regions)) {}
 
   template <class InputIt>
   void addOperands(InputIt first, InputIt last);
@@ -51,31 +59,31 @@ struct OperationArgument {
 
   /// Add an attribute with the specified name.
   void addAttribute(const std::string& name, Attribute attr) {
-    attribute_[name] = attr;
+    this->attribute[name] = attr;
   }
   /// Add an array of named attributes.
   template <class InputIt>
   void addAttributes(InputIt first, InputIt last);
   /// Get the context held by this operation state.
-  IrContext* getContext() const { return info_.ir_context(); }
+  IrContext* getContext() const { return info.ir_context(); }
 };
 
 template <class InputIt>
 void OperationArgument::addOperands(InputIt first, InputIt last) {
   while (first != last) {
-    inputs_.emplace_back(*first++);
+    inputs.emplace_back(*first++);
   }
 }
 template <class InputIt>
 void OperationArgument::addTypes(InputIt first, InputIt last) {
   while (first != last) {
-    output_types_.emplace_back(*first++);
+    output_types.emplace_back(*first++);
   }
 }
 template <class InputIt>
 void OperationArgument::addAttributes(InputIt first, InputIt last) {
   while (first != last) {
-    attribute_[first->first] = first->second;
+    attribute[first->first] = first->second;
     ++first;
   }
 }

@@ -174,7 +174,9 @@ TEST(InterpreterCore, skip_gc_vars) {
   Scope scope;
 
   std::shared_ptr<InterpreterCore> startup_core =
-      CreateInterpreterCore(place, startup_prog, &scope);
+      std::make_shared<InterpreterCore>(
+          place, startup_prog.Block(0), &scope, interpreter::ExecutionConfig());
+
   startup_core->Run({}, {});
 
   std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0",
@@ -191,8 +193,9 @@ TEST(InterpreterCore, skip_gc_vars) {
   interpreter::ExecutionConfig execution_config;
   execution_config.skip_gc_vars = skip_gc_vars;
 
-  std::shared_ptr<InterpreterCore> main_core = CreateInterpreterCore(
-      place, main_prog, &scope, /*fetch_names=*/{}, execution_config);
+  std::shared_ptr<InterpreterCore> main_core =
+      std::make_shared<InterpreterCore>(
+          place, main_prog.Block(0), &scope, execution_config);
 
   auto check_gc_result =
       [](Scope& scope, std::set<std::string>& vars, bool is_skip_gc) {
@@ -225,10 +228,10 @@ void TestShareWorkQueue(const ProgramDesc& prog,
   const platform::CPUPlace place = platform::CPUPlace();
 
   Scope scope;
-  std::shared_ptr<InterpreterCore> core1 =
-      CreateInterpreterCore(place, prog, &scope, fetch_names);
-  std::shared_ptr<InterpreterCore> core2 =
-      CreateInterpreterCore(place, prog, &scope, fetch_names);
+  std::shared_ptr<InterpreterCore> core1 = std::make_shared<InterpreterCore>(
+      place, prog.Block(0), &scope, interpreter::ExecutionConfig());
+  std::shared_ptr<InterpreterCore> core2 = std::make_shared<InterpreterCore>(
+      place, prog.Block(0), &scope, interpreter::ExecutionConfig());
   core2->ShareWorkQueueFrom(core1);
 
   auto run_and_check = [&feed_names, &feed_tensors, &fetch_results](

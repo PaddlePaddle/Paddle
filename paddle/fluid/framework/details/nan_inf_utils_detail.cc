@@ -157,29 +157,6 @@ static void InitWhiteListFormEnv() {
   }
 }
 
-template <>
-template <typename T>
-void TensorCheckerVisitor<phi::CPUContext>::apply(
-    typename std::enable_if<
-        std::is_floating_point<T>::value ||
-        std::is_same<T, ::paddle::platform::complex<float>>::value ||
-        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
-    const {
-  std::string cpu_hint_str =
-      GetCpuHintString<T>(op_type, var_name, tensor.place());
-  CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
-}
-
-template <>
-void tensor_check<phi::CPUContext>(const std::string& op_type,
-                                   const std::string& var_name,
-                                   const phi::DenseTensor& tensor,
-                                   const platform::Place& place) {
-  TensorCheckerVisitor<phi::CPUContext> vistor(
-      op_type, var_name, tensor, place);
-  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
-}
-
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,

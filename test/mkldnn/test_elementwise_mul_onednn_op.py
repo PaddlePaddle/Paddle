@@ -15,12 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import skip_check_grad_ci
+from test_elementwise_mul_op import ElementwiseMulOp
 
 from paddle import enable_static
-from paddle.fluid.tests.unittests.eager_op_test import skip_check_grad_ci
-from paddle.fluid.tests.unittests.test_elementwise_mul_op import (
-    ElementwiseMulOp,
-)
 
 
 class TestOneDNNElementwiseMulOp(ElementwiseMulOp):
