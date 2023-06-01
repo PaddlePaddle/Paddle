@@ -343,7 +343,9 @@ class TestDistTraning(unittest.TestCase):
             integral_grad = paddle.concat(integral_grad, axis=-1)
 
             np.testing.assert_allclose(
-                integral_data.grad.numpy(), integral_grad.numpy(), rtol=1e-6
+                integral_data.grad.numpy(False),
+                integral_grad.numpy(False),
+                rtol=1e-6,
             )
 
 

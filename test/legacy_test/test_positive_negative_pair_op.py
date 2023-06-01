@@ -47,9 +47,9 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
                 neg += w
 
     return (
-        np.array(pos).astype('float32'),
-        np.array(neg).astype('float32'),
-        np.array(neu).astype('float32'),
+        np.array([pos]).astype('float32'),
+        np.array([neg]).astype('float32'),
+        np.array([neu]).astype('float32'),
     )
 
 
