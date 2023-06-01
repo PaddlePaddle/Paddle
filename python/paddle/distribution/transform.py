@@ -856,8 +856,8 @@ class ReshapeTransform(Transform):
             #        [[[1., 1., 1.],
             #          [1., 1., 1.]]])
             print(reshape_transform.forward_log_det_jacobian(x))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.)
     """
     _type = Type.BIJECTION
 
@@ -945,8 +945,7 @@ class ReshapeTransform(Transform):
         )
 
     def _forward_log_det_jacobian(self, x):
-        # TODO(zhouwei): should not set shape to [1], which is []
-        shape = x.shape[: x.dim() - len(self._in_event_shape)] or [1]
+        shape = x.shape[: x.dim() - len(self._in_event_shape)]
         return paddle.zeros(shape, dtype=x.dtype)
 
 

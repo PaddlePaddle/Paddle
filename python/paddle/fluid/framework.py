@@ -1681,7 +1681,7 @@ class Variable(metaclass=VariableMetaClass):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             get_default_distributed_context,
         )
 
@@ -3137,7 +3137,7 @@ class Operator:
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             get_default_distributed_context,
         )
 
