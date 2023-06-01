@@ -87,7 +87,11 @@ class TestWhereBF16OP(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_cinn=self.enable_cinn
+            place,
+            ['X', 'Y'],
+            'Out',
+            numeric_grad_delta=0.05,
+            check_cinn=self.enable_cinn,
         )
 
     def init_config(self):
