@@ -39,6 +39,8 @@ class BFloat16Type : public Type {
   using Type::Type;
 
   DECLARE_TYPE_UTILITY_FUNCTOR(BFloat16Type, TypeStorage);
+
+  static BFloat16Type get(IrContext *context);
 };
 
 class Float16Type : public Type {
