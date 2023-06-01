@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import io
+import pickle
+
+import numpy as np
+
 import paddle
 from paddle import framework
 from paddle.distributed.parallel import (
@@ -257,3 +263,142 @@ def broadcast_sharding_parameters(model, hcg):
     sync_params_buffers(
         model, sharding_parallel_group, src_rank, is_model_parallel=False
     )
+
+
+def _convert_object_to_tensor(state_dict):
+    _pickler = pickle.Pickler
+    f = io.BytesIO()
+    state_dict_np = {}
+
+    def recursive_convert_to_ndarray(tensor_dict, np_dict):
+        for k, v in tensor_dict.items():
+            if isinstance(v, paddle.Tensor):
+                np_dict[k] = v.numpy()
+            elif isinstance(v, dict):
+                np_dict[k] = {}
+                recursive_convert_to_ndarray(tensor_dict[k], np_dict[k])
+            else:
+                np_dict[k] = v
+
+    recursive_convert_to_ndarray(state_dict, state_dict_np)
+    _pickler(f).dump(state_dict_np)
+    data = np.frombuffer(f.getvalue(), dtype=np.uint8)
+    tensor = paddle.to_tensor(data)
+    return tensor, tensor.numel()
+
+
+def _convert_tensor_to_object(tensor):
+    _unpickler = pickle.Unpickler
+    tensor = _unpickler(io.BytesIO(tensor.numpy())).load()
+
+    def recursive_convert_to_tensor(dic, name, suffix=""):
+        if isinstance(dic[name], np.ndarray):
+            dic[name] = paddle.to_tensor(dic[name])
+            dic[name].name = name + suffix
+        elif isinstance(dic[name], dict):
+            for n in dic[name].keys():
+                if "master_weight" in name:
+                    new_suffix = "_fp32_master_0"
+                else:
+                    new_suffix = ""
+                recursive_convert_to_tensor(dic[name], n, new_suffix)
+        else:
+            pass
+
+    for name in tensor.keys():
+        if "master_weight" in name:
+            suffix = "_fp32_master_0"
+        else:
+            suffix = ""
+        recursive_convert_to_tensor(tensor, name, suffix)
+    return tensor
+
+
+def dp_broadcast(
+    dp_rank, dp_group, dp_src_rank, model, optimizer=None, load_recovery=None
+):
+    dumped_size = 0
+    if dp_group is None or dp_group.world_size == 1:
+        return
+    # load model state_dict
+    if dp_rank == 0:
+        model_state_dict = model.state_dict()
+        dumped_tensor, dumped_size = _convert_object_to_tensor(model_state_dict)
+        dumped_size_cuda = paddle.to_tensor(dumped_size)
+        paddle.distributed.broadcast(
+            dumped_size_cuda, src=dp_src_rank, group=dp_group
+        )
+        paddle.distributed.broadcast(
+            dumped_tensor, src=dp_src_rank, group=dp_group
+        )
+    else:
+        dumped_size_cuda = paddle.to_tensor(dumped_size)
+        paddle.distributed.broadcast(
+            dumped_size_cuda, src=dp_src_rank, group=dp_group
+        )
+        size = dumped_size_cuda.cpu()
+        dumped_tensor = paddle.empty([size], dtype=paddle.int8)
+        paddle.distributed.broadcast(
+            dumped_tensor, src=dp_src_rank, group=dp_group
+        )
+        model_state_dict = _convert_tensor_to_object(dumped_tensor)
+        model.set_state_dict(model_state_dict)
+    # load optimizer state_dict
+    if optimizer is not None:
+        if dp_rank == 0:
+            optimizer_state_dict = optimizer.state_dict()
+            for k, v in optimizer._accumulators_holder.items():
+                optimizer_state_dict[k] = v
+            dumped_tensor, dumped_size = _convert_object_to_tensor(
+                optimizer_state_dict
+            )
+            dumped_size_cuda = paddle.to_tensor(dumped_size)
+            paddle.distributed.broadcast(
+                dumped_size_cuda, src=dp_src_rank, group=dp_group
+            )
+            paddle.distributed.broadcast(
+                dumped_tensor, src=dp_src_rank, group=dp_group
+            )
+        else:
+            dumped_size_cuda = paddle.to_tensor(dumped_size)
+            paddle.distributed.broadcast(
+                dumped_size_cuda, src=dp_src_rank, group=dp_group
+            )
+            size = dumped_size_cuda.cpu()
+            dumped_tensor = paddle.empty([size], dtype=paddle.int8)
+            paddle.distributed.broadcast(
+                dumped_tensor, src=dp_src_rank, group=dp_group
+            )
+            optimizer_state_dict = _convert_tensor_to_object(dumped_tensor)
+            optimizer.set_state_dict(optimizer_state_dict)
+    # load meta state_dict
+    if load_recovery is not None:
+        if dp_rank == 0:
+            dumped_tensor, dumped_size = _convert_object_to_tensor(
+                load_recovery
+            )
+            dumped_size_cuda = paddle.to_tensor(dumped_size)
+            paddle.distributed.broadcast(
+                dumped_size_cuda, src=dp_src_rank, group=dp_group
+            )
+            paddle.distributed.broadcast(
+                dumped_tensor, src=dp_src_rank, group=dp_group
+            )
+        else:
+            dumped_size_cuda = paddle.to_tensor(dumped_size)
+            paddle.distributed.broadcast(
+                dumped_size_cuda, src=dp_src_rank, group=dp_group
+            )
+            size = dumped_size_cuda.cpu()
+            dumped_tensor = paddle.empty([size], dtype=paddle.int8)
+            paddle.distributed.broadcast(
+                dumped_tensor, src=dp_src_rank, group=dp_group
+            )
+            meta_state_dict = _convert_tensor_to_object(dumped_tensor)
+            load_recovery.update(
+                {
+                    'step': meta_state_dict['step'],
+                    'epoch': meta_state_dict['epoch'],
+                    'rng_state': meta_state_dict['rng_state'],
+                }
+            )
