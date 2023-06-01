@@ -113,7 +113,7 @@
           default : "false"
         - add_attr : mkldnn_data_type
           comment : Data type of mkldnn kernel.
-          default : "float32"
+          default : "\"float32\""
 
 - op : conv3d
   version :
