@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 class TestSplitSectionsOneDNNOp(OpTest):
