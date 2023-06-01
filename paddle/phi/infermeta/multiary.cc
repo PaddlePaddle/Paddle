@@ -2303,7 +2303,8 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
                         "The seq length of Key, Value should be equal."));
   std::vector<int64_t> out_dims(
       {query_batch_size, query_seq_length, query_num_head, value_head_size});
-  std::vector<int64_t> logsumexp_dims({query_num_head, query_batch_size});
+  std::vector<int64_t> logsumexp_dims(
+      {query_batch_size, query_num_head, query_seq_length});
   std::vector<int64_t> seed_and_offset_dims({2});
 
   output->set_dims(phi::make_ddim(out_dims));
