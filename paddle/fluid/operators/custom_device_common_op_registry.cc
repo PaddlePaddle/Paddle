@@ -644,6 +644,30 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto place = ctx.GetPlace();
+    int64_t numel = in->numel();
+    const void* sendbuff = in->data();
+    void* recvbuff = out->mutable_data<T>(place);
+    int rid = ctx.Attr<int>("ring_id");
+    auto comm = platform::XCCLCommContext::Instance(place.GetDeviceType())
+                    .Get(rid, place);
+    phi::DeviceManager::CCLAllReduce(place.GetDeviceType(),
+                                     const_cast<void*>(sendbuff),
+                                     recvbuff,
+                                     numel,
+                                     phi::ccl::ToCCLDataType(in->dtype()),
+                                     phi::ccl::CCLReduceOp::SUM,
+                                     comm->comm(),
+                                     *(comm->stream()));
+  }
+};
+
 template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
@@ -890,6 +914,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::CBroadcastOpCustomDeviceKernel<double>,
       paddle::operators::CBroadcastOpCustomDeviceKernel<
           paddle::platform::float16>) {}
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      barrier,
+      device_type,
+      paddle::operators::BarrierOpCustomDeviceKernel<int>) {}
 #endif
 }
 
