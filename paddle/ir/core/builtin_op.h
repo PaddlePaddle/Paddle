@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/op_base.h"
 
 namespace ir {
@@ -80,6 +81,27 @@ class SliceOp : public ir::Op<SliceOp> {
   static void verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
+};
+
+///
+/// \brief ConstantOp
+///
+class ConstantOp : public Op<ConstantOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.constant"; }
+
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+
+  static void build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Attribute value,
+                    Type output_type);
+
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const AttributeMap &attributes);
 };
 
 }  // namespace ir

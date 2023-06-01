@@ -1273,7 +1273,6 @@ def ParseArguments():
 # =====================================
 if __name__ == "__main__":
     # parse arguments
-    print("auto gen op")
     args = ParseArguments()
     op_yaml_files = args.op_yaml_files.split(",")
     op_compat_yaml_file = args.op_compat_yaml_file

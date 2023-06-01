@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/ir/core/builtin_op.h"
-
+#include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace ir {
@@ -158,6 +159,26 @@ void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
           input_type[index],
           index,
           outputs[0]));
+}
+
+const char *ConstantOp::attributes_name[attributes_num] = {"value"};
+
+void ConstantOp::build(Builder &builder,
+                       OperationArgument &argument,
+                       Attribute value,
+                       Type output_type) {
+  argument.addAttribute("value", value);
+  argument.output_types.push_back(output_type);
+}
+
+void ConstantOp::verify(const std::vector<ir::OpResult> &inputs,
+                        const std::vector<ir::Type> &outputs,
+                        const ir::AttributeMap &attributes) {
+  // outputs.size() == 1
+  IR_ENFORCE(outputs.size() == 1, "The size of outputs must be equal to 1.");
+  // attribute should has a ir::Attribute named value.
+  IR_ENFORCE(attributes.count("value") > 0,
+             "Type of attribute: value is not right.");
 }
 
 }  // namespace ir
