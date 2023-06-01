@@ -1840,7 +1840,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const platform::Place &, const ProgramDesc &>())
+      .def(
+          py::init<const platform::Place &, const std::vector<ProgramDesc> &>())
       .def("run",
            [](StandaloneExecutor &self,
               Scope *scope,

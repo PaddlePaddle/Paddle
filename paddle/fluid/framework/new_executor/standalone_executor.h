@@ -31,7 +31,8 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const platform::Place& place, const ProgramDesc& prog);
+  StandaloneExecutor(const platform::Place& place,
+                     const std::vector<ProgramDesc>& programs);
 
   ~StandaloneExecutor() {}
 
@@ -47,10 +48,13 @@ class StandaloneExecutor {
       Scope* scope,
       const ProgramDesc& prog,
       const std::vector<std::string>& feed_names,
-      const std::vector<std::string>& fetch_names);
+      const std::vector<std::string>& fetch_names,
+      size_t program_idx,
+      interpreter::ExecutionConfig execution_config);
 
-  platform::Place place_;
-  const ProgramDesc& prog_;
+  const platform::Place place_;
+  const std::vector<ProgramDesc> programs_;
+  std::vector<framework::Scope*> microbatch_scopes_;
 
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>
       interpretercores_;
