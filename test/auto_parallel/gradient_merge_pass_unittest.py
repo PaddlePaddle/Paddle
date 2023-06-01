@@ -34,6 +34,18 @@ def apply_pass(use_gradient_merge=False):
         gradient_merge.k_steps = 4
         gradient_merge.avg = True
 
+    amp = strategy.amp
+    amp.enable = True
+    amp.dtype = "float16"
+    amp.level = "o2"
+    amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
+    amp.custom_black_list = [
+        'c_softmax_with_cross_entropy',
+        'elementwise_div',
+        'reduce_sum',
+    ]
+    amp.init_loss_scaling = 32768
+
     return strategy
 
 
@@ -87,6 +99,7 @@ class TestGradientMergePass(unittest.TestCase):
         history = dp_engine.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
+        assert dp_engine._strategy.gradient_merge.enable is False
         dp_losses = np.array(history.history["loss"])
 
         # dp2 gradient merge training
@@ -94,6 +107,7 @@ class TestGradientMergePass(unittest.TestCase):
         history = gm_engine.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
+        assert gm_engine._strategy.gradient_merge.enable is True
         gm_losses = np.array(history.history["loss"])
 
         # avg_loss = 0
