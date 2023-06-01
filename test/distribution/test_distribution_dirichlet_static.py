@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import scipy.stats
-from config import ATOL, DEVICES, RTOL
+from distribution.config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place
 
 import paddle

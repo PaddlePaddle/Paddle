@@ -37,4 +37,4 @@ set(INTERPRETER_DEPS
 cc_library(
   interpreter
   SRCS ${INTERPRETER_SRCS}
-  DEPS ${INTERPRETER_DEPS})
+  DEPS standalone_executor ${INTERPRETER_DEPS})
