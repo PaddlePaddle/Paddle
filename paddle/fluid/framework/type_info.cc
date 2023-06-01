@@ -19,36 +19,21 @@ limitations under the License. */
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace phi {
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>::kType =
-        RegisterStaticType<phi::TensorBase>(
-            paddle::framework::RawTensor::name());
 
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::framework::Vocab>::kType =
-        RegisterStaticType<phi::TensorBase>(paddle::framework::Vocab::name());
+template <typename BaseT, typename DerivedT>
+TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
+  static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
+}
 
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>::kType =
-        RegisterStaticType<phi::TensorBase>(paddle::framework::Strings::name());
+template <typename BaseT, typename DerivedT>
+const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
+    RegisterStaticType<BaseT>(DerivedT::name());
 
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>::kType =
-        RegisterStaticType<phi::TensorBase>(
-            paddle::framework::FeedList::name());
-
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::kType =
-        RegisterStaticType<phi::TensorBase>(egr::VariableCompatTensor::name());
-
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>::kType =
-        RegisterStaticType<phi::TensorBase>(paddle::prim::DescTensor::name());
+template class TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::framework::Vocab>;
+template class TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>;
+template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
+template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 
 }  // namespace phi

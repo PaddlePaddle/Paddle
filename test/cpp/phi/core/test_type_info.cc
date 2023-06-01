@@ -22,6 +22,11 @@ template <typename BaseT, typename DerivedT>
 const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
     RegisterStaticType<BaseT>(DerivedT::name());
 
+template <typename BaseT, typename DerivedT>
+TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
+  static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
+}
+
 namespace tests {
 
 template <typename T>

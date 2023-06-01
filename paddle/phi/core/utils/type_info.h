@@ -43,9 +43,7 @@ template <typename BaseT, typename DerivedT>
 class TypeInfoTraits {
  public:
   static const TypeInfo<BaseT> kType;
-  TypeInfoTraits() {
-    static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
-  }
+  TypeInfoTraits();
   static bool classof(const BaseT* obj) { return obj->type_info() == kType; }
 };
 
