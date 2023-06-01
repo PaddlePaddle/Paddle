@@ -37,6 +37,10 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/dialect/pd_interface.h"
 
+#include "paddle/fluid/interface/infershape.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+
 {input}
 #endif
 """
@@ -55,6 +59,7 @@ class {op_name} : public ir::Op<{op_name}{interfaces}{traits}> {{
   static void build({build_args});
   static void verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes);
 {get_inputs_and_outputs}
+{exclusive_interface}
 }};
 """
 op_0_attribute_declare_str = (
@@ -87,6 +92,14 @@ CC_FILE_TEMPLATE = """#include "{h_file}"
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/infermeta/backward.h"
 
+
+#include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/infermeta/nullary.h"
+#include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/infermeta/ternary.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/core/infermeta_utils.h"
 
 {input}
 """
@@ -222,6 +235,12 @@ ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attrib
                       phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   }}
   """
+OP_INFER_SHAPE_TEMPLATE = """
+void {op_name}::InferShape( phi::InferMetaContext *infer_meta ) {{
+  auto fn = PD_INFER_META(phi::{infer_meta_func});
+  fn(infer_meta);
+}}
+"""
 
 
 def to_phi_and_fluid_op_name(op_item):
@@ -342,6 +361,10 @@ class OpInfoParser:
         # parse infermeta && kernel
         self.infer_meta_map = self.parse_infer_meta_map()
         self.kernel_map = self.parse_kernel_map()
+        if 'infer_meta' in self.op_yaml_item:
+            self.infer_shape_func = self.op_yaml_item['infer_meta']["func"]
+        else:
+            self.infer_shape_func = None
 
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
@@ -882,6 +905,13 @@ def OpGenerator(
         op_interfaces = ["GetOpInfoInterface"]
         op_traits = []
 
+        exclusive_interface_str = ""
+        if op_info.infer_shape_func:
+            op_interfaces += ["InferShapeInterface"]
+            exclusive_interface_str += (
+                "  static void InferShape( phi::InferMetaContext *infer_meta );"
+            )
+
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
             op_class_name = to_pascal_case(op_name) + "Op"
@@ -965,6 +995,7 @@ def OpGenerator(
                     attribute_num=0,
                     build_args=build_define_input_args_str,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
+                    exclusive_interface=exclusive_interface_str,
                 )
                 op_defined_str = ""
             else:
@@ -979,6 +1010,7 @@ def OpGenerator(
                     attribute_num=len(op_attribute_name_list),
                     build_args=build_define_input_args_str,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
+                    exclusive_interface=exclusive_interface_str,
                 )
                 attribute_names_str = (
                     '"' + '", "'.join(op_attribute_name_list) + '"'
@@ -1168,12 +1200,20 @@ def OpGenerator(
                     attributes_check=attributes_check_str,
                 )
 
+            op_infer_shape_str = ""
+            if op_info.infer_shape_func:
+                op_infer_shape_str = OP_INFER_SHAPE_TEMPLATE.format(
+                    op_name=op_class_name,
+                    infer_meta_func=op_info.infer_shape_func,
+                )
+
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)
             ops_defined_list.append(op_defined_str)
             ops_defined_list.append(op_info_func_str)
             ops_defined_list.append(build_func_declare_str)
             ops_defined_list.append(op_verify_str)
+            ops_defined_list.append(op_infer_shape_str)
 
     # (4) Generate head file str
     op_namespaces_prev = ""
