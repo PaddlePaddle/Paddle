@@ -14,12 +14,14 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_base.h"
+#include "paddle/ir/core/region.h"
 
 /// \brief Define built-in Trait, derived from OpTraitBase.
 class ReadOnlyTrait : public ir::OpTraitBase<ReadOnlyTrait> {
@@ -48,10 +50,7 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
       concret_op.InferShape();
     }
 
-    Model() : Concept(InferShape) {
-      static_assert(sizeof(Model) == sizeof(Concept),
-                    "sizeof(Model) != sizeof(Concept)");
-    }
+    Model() : Concept(InferShape) {}
   };
 
   InferShapeInterface(ir::Operation *op, Concept *impl)
@@ -175,9 +174,9 @@ TEST(op_test, op_test) {
   std::vector<ir::Type> op_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op2 =
       ir::Operation::create(op_inputs,
-                            op_output_types,
                             CreateAttributeMap({"op2_attr1", "op2_attr2"},
                                                {"op2_attr1", "op2_attr2"}),
+                            op_output_types,
                             op2_info);
 
   ReadOnlyTrait trait = op2->dyn_cast<ReadOnlyTrait>();
@@ -186,5 +185,46 @@ TEST(op_test, op_test) {
   interface.InferShape();
   Operation2 Op2 = op2->dyn_cast<Operation2>();
   EXPECT_EQ(Op2.operation(), op2);
+  op2->destroy();
+}
+
+TEST(op_test, region_test) {
+  // (1) Register Dialect, Operation1, Operation2 into IrContext.
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+  EXPECT_EQ(test_dialect != nullptr, true);
+
+  // (2) Get registered operations.
+  ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(Operation1::name());
+  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(Operation2::name());
+
+  ir::Operation *op1 =
+      ir::Operation::create({},
+                            CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                                               {"op1_attr1", "op1_attr2"}),
+                            {ir::Float32Type::get(ctx)},
+                            op1_info);
+  ir::Operation *op1_2 =
+      ir::Operation::create({},
+                            CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                                               {"op1_attr1", "op1_attr2"}),
+                            {ir::Float32Type::get(ctx)},
+                            op1_info);
+
+  ir::OperationArgument argument(op2_info);
+  argument.attribute = CreateAttributeMap({"op2_attr1", "op2_attr2"},
+                                          {"op2_attr1", "op2_attr2"});
+  argument.output_types = {ir::Float32Type::get(ctx)};
+  argument.regions.emplace_back(std::make_unique<ir::Region>());
+  ir::Region *region = argument.regions.back().get();
+  EXPECT_EQ(region->empty(), true);
+
+  region->push_back(new ir::Block());
+  region->push_front(new ir::Block());
+  region->insert(region->begin(), new ir::Block());
+  ir::Block *block = region->front();
+  block->push_front(op1);
+  block->insert(block->begin(), op1_2);
+  ir::Operation *op2 = ir::Operation::create(std::move(argument));
   op2->destroy();
 }

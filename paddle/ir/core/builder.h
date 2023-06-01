@@ -47,12 +47,12 @@ class Builder {
   Operation *insert(Operation *op);
 
   /// Creates an operation given the fields represented as an OperationState.
-  Operation *create(const OperationArgument &argument);
+  Operation *create(OperationArgument &&argument);
 
   /// Creates an operation with the given fields.
   Operation *create(const std::vector<ir::OpResult> &inputs,
-                    const std::vector<ir::Type> &output_types,
                     const AttributeMap &attribute,
+                    const std::vector<ir::Type> &output_types,
                     ir::OpInfo op_info);
 
   /// Create an operation of specific op type at the current insertion point.
@@ -60,7 +60,7 @@ class Builder {
   OpTy create(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
     OpTy::build(*this, argument, std::forward<Args>(args)...);
-    Operation *op = create(argument);
+    Operation *op = create(std::move(argument));
     return op->dyn_cast<OpTy>();
   }
 

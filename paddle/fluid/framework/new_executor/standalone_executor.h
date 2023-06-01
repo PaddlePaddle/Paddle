@@ -42,18 +42,12 @@ class StandaloneExecutor {
                                    const std::vector<std::string>& feed_names,
                                    const std::vector<std::string>& fetch_names);
 
-  framework::interpreter::CostInfo DryRun(
-      Scope* scope,
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors);
-
  private:
   std::shared_ptr<InterpreterCore> GetInterpreterCore(
       Scope* scope,
       const ProgramDesc& prog,
       const std::vector<std::string>& feed_names,
-      const std::vector<std::string>& fetch_names,
-      bool add_fetch_op);
+      const std::vector<std::string>& fetch_names);
 
   platform::Place place_;
   const ProgramDesc& prog_;

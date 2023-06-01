@@ -172,24 +172,6 @@
     func : concat
   backward : concat_grad
 
-- op : conv2d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
-  output : Tensor
-  infer_meta :
-    func : ConvInferMeta
-  kernel :
-    func : conv2d
-  backward : conv2d_grad
-
-- op : conv3d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor
-  infer_meta :
-    func : Conv3DInferMeta
-  kernel :
-    func : conv3d
-  backward : conv3d_grad
-
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
@@ -226,17 +208,6 @@
   optional : mask
   backward : deformable_conv_grad
 
-- op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : DepthwiseConvInferMeta
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-  kernel :
-    func : depthwise_conv2d
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-  backward : depthwise_conv2d_grad
-
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
   output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
@@ -269,7 +240,7 @@
 
 - op : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
+  output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
   infer_meta :
     func : EinsumRawInferMeta
     param : [x, equation]

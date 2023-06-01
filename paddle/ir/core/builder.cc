@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/region.h"
 
 namespace ir {
 Operation *Builder::insert(Operation *op) {
@@ -25,17 +26,16 @@ Operation *Builder::insert(Operation *op) {
 }
 
 /// Create an operation given the fields represented as an OperationState.
-Operation *Builder::create(const OperationArgument &argument) {
-  return insert(Operation::create(argument));
+Operation *Builder::create(OperationArgument &&argument) {
+  return insert(Operation::create(std::move(argument)));
 }
 
 /// Creates an operation with the given fields.
 Operation *Builder::create(const std::vector<ir::OpResult> &inputs,
-                           const std::vector<ir::Type> &output_types,
                            const AttributeMap &attribute,
+                           const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info) {
-  OperationArgument argument(op_info, inputs, output_types, attribute);
-  return create(argument);
+  return create(OperationArgument(inputs, attribute, output_types, op_info));
 }
 
 }  // namespace ir

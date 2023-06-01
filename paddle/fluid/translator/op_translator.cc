@@ -110,8 +110,8 @@ inline ir::Operation* InsertSliceOperationForTarget(
       defining_info.value.type().dyn_cast<ir::VectorType>();
   ir::Operation* operation =
       ir::Operation::create({defining_info.value},
-                            {src_vec_type[defining_info.idx_in_vector]},
                             op_attribute_map,
+                            {src_vec_type[defining_info.idx_in_vector]},
                             op_info);
   program->InsertOp(operation);
   ir::OpResult target_op_result = operation->GetResultByIndex(0);
@@ -136,7 +136,7 @@ inline ir::Operation* InsertCombineOperationForTarget(
   }
   ir::Type target_vec_type = ir::VectorType::get(ctx, types_in_vec);
   ir::Operation* operation =
-      ir::Operation::create(src_values, {target_vec_type}, {}, op_info);
+      ir::Operation::create(src_values, {}, {target_vec_type}, op_info);
   program->InsertOp(operation);
   return operation;
 }
@@ -281,7 +281,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+      ir::Operation::create(op_inputs, {}, op_output_types, op_info);
   program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
@@ -299,7 +299,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+      ir::Operation::create(op_inputs, {}, op_output_types, op_info);
   program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
@@ -315,7 +315,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   OpOutputTypeList op_output_types = {};
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+      ir::Operation::create(op_inputs, {}, op_output_types, op_info);
   program->InsertOp(operation);
 
   return operation;

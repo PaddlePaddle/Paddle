@@ -3,3 +3,4 @@ if(NOT WITH_NEWIR)
 endif()
 
 add_subdirectory(core)
+add_subdirectory(pass)
