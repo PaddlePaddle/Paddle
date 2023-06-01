@@ -659,7 +659,15 @@ void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    set_output<T>(out_grad * out, x_grad);
+    if (out.dtype() == phi::DataType::FLOAT16 ||
+        out.dtype() == phi::DataType::BFLOAT16) {
+      Tensor out_promote = cast<T>(out, phi::DataType::FLOAT32);
+      Tensor out_grad_promote = cast<T>(out_grad, phi::DataType::FLOAT32);
+      set_output<T>(cast<T>(out_promote * out_grad_promote, out.dtype()),
+                    x_grad);
+    } else {
+      set_output<T>(out_grad * out, x_grad);
+    }
   }
 }
 

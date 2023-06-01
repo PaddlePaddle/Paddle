@@ -222,9 +222,8 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(*check_args, **check_kwargs)
 
-    # elementwise_pow does't support bfloat16
     def if_check_prim(self):
-        self.check_prim = False
+        self.check_prim = True
 
     def if_enable_cinn(self):
         self.enable_cinn = False

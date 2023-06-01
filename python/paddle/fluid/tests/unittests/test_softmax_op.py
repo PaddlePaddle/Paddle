@@ -397,7 +397,9 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
 class TestSoftmaxBF16Op(OpTest):
     def setUp(self):
         self.op_type = "softmax"
+        self.prim_op_type = "comp"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = self.init_cudnn()
         self.use_mkldnn = False
         self.dtype = np.uint16
@@ -423,7 +425,9 @@ class TestSoftmaxBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_dygraph=(not self.use_mkldnn))
+        self.check_output_with_place(
+            place, check_dygraph=(not self.use_mkldnn), check_prim=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -433,6 +437,7 @@ class TestSoftmaxBF16Op(OpTest):
             "Out",
             numeric_grad_delta=0.05,
             check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
         )
 
 
