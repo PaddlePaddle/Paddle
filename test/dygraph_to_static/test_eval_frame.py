@@ -31,7 +31,7 @@ class TestEvalFrame(unittest.TestCase):
         if version_info.major != 3 or (
             version_info.minor <= 8 or version_info.minor >= 11
         ):
-            print("skip test_eval_frame, current only support 3.8 - 3.10")
+            # print("skip test_eval_frame, current only support 3.8 - 3.10")
             return
 
         CustomCode = collections.namedtuple(
