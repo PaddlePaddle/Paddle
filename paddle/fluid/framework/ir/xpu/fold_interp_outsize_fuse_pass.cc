@@ -171,7 +171,6 @@ void FoldInterpOutsizeFusePass::DetectorFuse(ir::Graph* graph) const {
     GET_IR_NODE(split_out_1);
     GET_IR_NODE(cast2_out);
 
-    auto* block = concat->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
