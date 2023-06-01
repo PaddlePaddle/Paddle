@@ -48,7 +48,7 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
     ):
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
-        scale = np.max(np.abs(input_data))
+        scale = np.max(np.abs(input_data)).flatten()
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
         inv_scale = 1.0 / (scale + 1e-6) if scale < 1e-30 else 1.0 / scale
         if round_type == 'TiesToEven':
@@ -195,8 +195,8 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
         }
         self.outputs = {
             'Out': output_data,
-            'OutScale': out_scale[0],
-            'OutScales': out_scale,
+            'OutScale': np.array([], dtype) if is_test else out_scale,
+            'OutScales': np.array([], dtype) if is_test else out_scale,
         }
         self.dtype = dtype
         self.attrs['is_test'] = is_test
@@ -231,10 +231,10 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         input_data = distribution(input_shape).astype(dtype)
         in_accum = np.ones(1).astype(dtype)
         in_state = np.ones(1).astype(dtype)
-        out_accum = self.attrs['moving_rate'] * in_accum[0] + np.max(
+        out_accum = self.attrs['moving_rate'] * in_accum + np.max(
             np.abs(input_data)
         )
-        out_state = self.attrs['moving_rate'] * in_state[0] + 1.0
+        out_state = self.attrs['moving_rate'] * in_state + 1.0
         out_scale = out_accum / out_state
         self.inputs = {
             'X': input_data,
@@ -276,13 +276,10 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
         in_accum = np.ones(1).astype(dtype)
         in_state = np.ones(1).astype(dtype)
         in_scale = np.array([0.001]).astype(dtype)
-        out_accum = np.zeros(1).astype(dtype)
-        out_state = np.zeros(1).astype(dtype)
-        out_scale = np.zeros(1).astype(dtype)
-        out_accum[0] = self.attrs['moving_rate'] * in_accum[0] + np.max(
+        out_accum = self.attrs['moving_rate'] * in_accum + np.max(
             np.abs(input_data)
         )
-        out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
+        out_state = self.attrs['moving_rate'] * in_state + 1.0
         out_scale = out_accum / out_state
         if round_type == 'TiesToEven':
             round_out = np.round(
@@ -354,7 +351,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self, dtype, input_shape, distribution, round_type='TiesAwayFromZero'
     ):
         input_data = distribution(input_shape).astype(dtype)
-        scale = np.max(np.abs(input_data)).astype(dtype)
+        scale = np.max(np.abs(input_data)).flatten().astype(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
         if round_type == 'TiesToEven':
             round_out = np.round(input_data / scale * bnt)
@@ -592,12 +589,8 @@ class TestquantizeOpTrain(TestquantizeOp):
         zero_point = np.zeros(scale.shape, dtype="int32")
         in_accum = np.ones(1).astype(self.data_type)
         in_state = np.ones(1).astype(self.data_type)
-        out_accum = np.zeros(1).astype(self.data_type)
-        out_state = np.zeros(1).astype(self.data_type)
-        out_accum[0] = self.attrs['moving_rate'] * in_accum[0] + np.max(
-            np.abs(x)
-        )
-        out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
+        out_accum = self.attrs['moving_rate'] * in_accum + np.max(np.abs(x))
+        out_state = self.attrs['moving_rate'] * in_state + 1.0
         out_scale = out_accum / out_state
 
         round_out = np.round(x / out_scale * self.max_range)

@@ -674,13 +674,13 @@ class TestScatterOpFp16(OpTest):
         )
         ref_grad_updates = self.compute_ref_grad_updates()
         np.testing.assert_allclose(
-            ref_grad_updates.numpy(),
-            updates_tensor.grad.numpy(),
+            ref_grad_updates.numpy(False),
+            updates_tensor.grad.numpy(False),
             rtol=1e-5,
             atol=1e-5,
         )
         np.testing.assert_allclose(
-            self.ref_dx, x_tensor.grad.numpy(), rtol=1e-5, atol=1e-5
+            self.ref_dx, x_tensor.grad.numpy(False), rtol=1e-5, atol=1e-5
         )
 
 

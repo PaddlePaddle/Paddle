@@ -42,15 +42,13 @@ class TestAllcloseOp(OpTest):
         self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
             'Out': np.array(
-                [
-                    np.allclose(
-                        self.inputs['Input'],
-                        self.inputs['Other'],
-                        rtol=self.rtol,
-                        atol=self.atol,
-                        equal_nan=self.equal_nan,
-                    )
-                ]
+                np.allclose(
+                    self.inputs['Input'],
+                    self.inputs['Other'],
+                    rtol=self.rtol,
+                    atol=self.atol,
+                    equal_nan=self.equal_nan,
+                )
             )
         }
 

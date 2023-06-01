@@ -73,7 +73,7 @@ class TestComplexSumOP(TestSumOp):
 
 class TestSumOp_ZeroDim(TestSumOp):
     def init_attrs(self):
-        self.attrs = {'dim': [], 'reduce_all': True}
+        self.attrs = {'dim': []}
 
     def init_input(self):
         self.x = np.random.random([]).astype(self.dtype)
@@ -736,10 +736,14 @@ class TestProd8DBFP16OP(TestProd8DOp):
         self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out')
 
 
+def reduce_all_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
+    return paddle.all(x, axis, keepdim, name)
+
+
 class TestAllOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_all"
-        self.python_api = paddle.all
+        self.python_api = reduce_all_wrapper
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].all()}
         self.attrs = {'reduce_all': True}
@@ -754,7 +758,7 @@ class TestAllOp_ZeroDim(OpTest):
         self.op_type = "reduce_all"
         self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].all()}
-        self.attrs = {'dim': [], 'reduce_all': True}
+        self.attrs = {'dim': []}
 
     def test_check_output(self):
         self.check_output()
@@ -769,7 +773,7 @@ class TestAll8DOp(OpTest):
                 "bool"
             )
         }
-        self.attrs = {'reduce_all': True, 'dim': (2, 3, 4)}
+        self.attrs = {'dim': (2, 3, 4)}
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
@@ -851,10 +855,14 @@ class TestAllOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.all, input2)
 
 
+def reduce_any_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
+    return paddle.any(x, axis, keepdim, name)
+
+
 class TestAnyOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
-        self.python_api = paddle.any
+        self.python_api = reduce_any_wrapper
         self.inputs = {'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
         self.attrs = {'reduce_all': True}
@@ -869,7 +877,7 @@ class TestAnyOp_ZeroDim(OpTest):
         self.op_type = "reduce_any"
         self.inputs = {'X': np.random.randint(0, 2, []).astype("bool")}
         self.outputs = {'Out': self.inputs['X'].any()}
-        self.attrs = {'dim': [], 'reduce_all': True}
+        self.attrs = {'dim': []}
 
     def test_check_output(self):
         self.check_output()
@@ -884,7 +892,7 @@ class TestAny8DOp(OpTest):
                 "bool"
             )
         }
-        self.attrs = {'reduce_all': True, 'dim': (3, 5, 4)}
+        self.attrs = {'dim': (3, 5, 4)}
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
@@ -1291,11 +1299,17 @@ class TestReduceSumWithNumelOne(OpTest):
         self.check_grad(['X'], 'Out', check_prim=False)
 
 
+def reduce_sum_wrapper(
+    x, axis=None, keepdim=False, reduce_all=True, out_dtype=None, name=None
+):
+    return paddle.sum(x, axis, out_dtype, keepdim, name)
+
+
 class TestReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
+        self.python_api = reduce_sum_wrapper
+        self.public_python_api = reduce_sum_wrapper
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
@@ -1312,8 +1326,8 @@ class TestReduceAll(OpTest):
 class TestReduceAllFp32(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
+        self.python_api = reduce_sum_wrapper
+        self.public_python_api = reduce_sum_wrapper
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float32")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
@@ -1345,15 +1359,17 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
-def reduce_sum_wrapper(x, axis=None, out_dtype=None, keepdim=False, name=None):
-    return paddle.sum(x, axis, "float64", keepdim, name)
+def reduce_sum_wrapper_fp64(
+    x, axis=None, keepdim=False, reduce_all=True, out_dtype=None, name=None
+):
+    return paddle.sum(x, axis, 'float64', keepdim, name)
 
 
 class TestReduceWithDtype(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = reduce_sum_wrapper
-        self.public_python_api = reduce_sum_wrapper
+        self.python_api = reduce_sum_wrapper_fp64
+        self.public_python_api = reduce_sum_wrapper_fp64
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
@@ -1375,8 +1391,8 @@ class TestReduceWithDtype(OpTest):
 class TestReduceWithDtype1(TestReduceWithDtype):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = reduce_sum_wrapper
-        self.public_python_api = reduce_sum_wrapper
+        self.python_api = paddle.sum
+        self.public_python_api = paddle.sum
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
@@ -1401,8 +1417,8 @@ class TestReduceWithDtype2(TestReduceWithDtype):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.prim_op_type = "prim"
-        self.python_api = reduce_sum_wrapper
-        self.public_python_api = reduce_sum_wrapper
+        self.python_api = paddle.sum
+        self.public_python_api = paddle.sum
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=1, keepdims=True)}
         self.attrs = {'dim': [1], 'keep_dim': True}
