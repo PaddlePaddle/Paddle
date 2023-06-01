@@ -27,6 +27,26 @@
 
 namespace eager_test {
 
+inline paddle::Tensor CreateTensorWithValue(
+    const phi::DDim& ddim,
+    const paddle::platform::Place& place,
+    const phi::DataType& dtype,
+    const phi::DataLayout& layout,
+    float value,
+    bool is_leaf = true) {
+  paddle::Tensor out = paddle::experimental::full(
+      phi::vectorize(ddim), paddle::experimental::Scalar(value), dtype, place);
+
+  auto meta = EagerUtils::autograd_meta(&out);
+  if (is_leaf) {
+    auto accumulation_node = std::make_shared<GradNodeAccumulation>(meta);
+    meta->SetGradNode(accumulation_node);
+    meta->SetStopGradient(false);
+  }
+
+  return out;
+}
+
 template <typename T>
 bool CompareGradTensorWithValue(const paddle::Tensor& target, T value) {
   egr::AutogradMeta* meta = egr::EagerUtils::unsafe_autograd_meta(target);
