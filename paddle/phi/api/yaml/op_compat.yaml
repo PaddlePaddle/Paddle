@@ -1672,6 +1672,12 @@
     out : Out
   drop_empty_grad : [x_grad]
 
+- op : multiclass_nms3
+  inputs :
+    {bboxes : BBoxes, scores : Scores, rois_num : RoisNum}
+  outputs :
+    {out : Out, index : Index, nms_rois_num : NmsRoisNum}
+
 - op : multinomial
   inputs :
     {x : X}
