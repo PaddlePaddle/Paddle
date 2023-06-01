@@ -461,11 +461,14 @@ void FakeInitializeOutputsForFunctionKernel(
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
+            phi::DataType in_dtype = GetInputDType(runtime_ctx, "X");
             int dtype_attr = op.Attr<int>("out_dtype");
             if (dtype_attr != -1) {
               dtype = phi::TransToPhiDataType(dtype_attr);
+              if (dtype == DataType::UNDEFINED) {
+                dtype = in_dtype;
+              }
             } else {
-              phi::DataType in_dtype = GetInputDType(runtime_ctx, "X");
               dtype =
                   (in_dtype == DataType::BOOL || in_dtype == DataType::INT32)
                       ? DataType::INT64
@@ -483,7 +486,6 @@ void FakeInitializeOutputsForFunctionKernel(
 
         // analyze layout
         phi::DataLayout layout = tensor_arg_def.layout;
-
         FakeInitializeTensorBase(dev_ctx, place, dtype, layout, out_tensor);
       }
     }
