@@ -58,6 +58,4 @@ PD_REGISTER_KERNEL(shape,
                    int8_t,
                    uint8_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
 }
