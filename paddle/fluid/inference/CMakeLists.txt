@@ -35,10 +35,6 @@ get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 set(utils_modules pretty_log string_helper benchmark)
 
-if(NOT WITH_PHI_SHARED)
-  set(third_party_modules utf8proc gflags)
-endif()
-
 add_subdirectory(api)
 
 # Create static inference library if needed
@@ -69,9 +65,8 @@ else()
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
   # message("${phi_modules}")
-  create_static_lib(
-    paddle_inference ${phi_modules} ${fluid_modules} ${STATIC_INFERENCE_API}
-    ${utils_modules} ${third_party_modules})
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
