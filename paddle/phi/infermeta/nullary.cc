@@ -94,6 +94,7 @@ void UniformRandomInferMeta(const IntArray& shape,
                             DataType dtype,
                             MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
+  std::cerr << "out dim" << out_dims << std::endl;
   out->set_dims(out_dims);
   out->set_dtype(dtype);
   out->set_layout(DataLayout::NCHW);

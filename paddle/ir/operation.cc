@@ -33,9 +33,9 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const AttributeMap &attribute,
                              ir::OpInfo op_info) {
   // 0. Verify
-  if (op_info) {
-    op_info.verify(inputs, output_types, attribute);
-  }
+  // if (op_info) {
+  //   op_info.verify(inputs, output_types, attribute);
+  // }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
