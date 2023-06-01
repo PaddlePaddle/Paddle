@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
 __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
-  if (!std::isnan(rhs) && (std::isnan(lhs) || !binary_op(rhs, lhs))) {
+  if (!isnan(rhs) && (isnan(lhs) || !binary_op(rhs, lhs))) {
     rhs = lhs;
     rhs_idx = lhs_idx;
   }
@@ -41,7 +41,7 @@ __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rh
 
 template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
 __device__ void binary_op_update_v(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
-  if (std::isnan(lhs) || (!std::isnan(rhs) && binary_op(lhs, rhs))) {
+  if (isnan(lhs) || (!isnan(rhs) && binary_op(lhs, rhs))) {
     rhs = lhs;
     rhs_idx = lhs_idx;
   }

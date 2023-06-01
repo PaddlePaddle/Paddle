@@ -238,7 +238,7 @@ class TestCumminAPI(unittest.TestCase):
             data = paddle.to_tensor(data_np)
             y, indices = paddle.cummin(data, axis=-2)
 
-        self.assertRaises(ValueError, test_axis_outrange)
+        self.assertRaises(IndexError, test_axis_outrange)
 
 
 if __name__ == '__main__':
