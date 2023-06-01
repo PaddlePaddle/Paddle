@@ -58,6 +58,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
         split_data=True,
         data_parallel_world_size=[],
         data_parallel_rank=[],
+        acc_steps=1,
     ):
         self.dataset = dataset
         self.feed_list = feed_list
@@ -77,6 +78,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
         assert len(data_parallel_rank) == len(feed_list)
         self.dp_world_sizes = data_parallel_world_size
         self.dp_ranks = data_parallel_rank
+        self.acc_steps = acc_steps
 
         if isinstance(dataset, IterableDataset):
             self.dataset_kind = _DatasetKind.ITER
@@ -141,9 +143,11 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             if isinstance(self.dataset, IterableDataset):
                 steps_per_epoch = None
             elif self.batch_size is None:
-                steps_per_epoch = len(self.dataset)
+                steps_per_epoch = len(self.dataset) // self.acc_steps
             else:
-                steps_per_epoch = len(self.dataset) // self.batch_size
+                steps_per_epoch = (
+                    len(self.dataset) // self.batch_size // self.acc_steps
+                )
         except:
             raise ValueError(
                 "Please set `steps_per_epoch` or implement `__len__` method in dataset class."
