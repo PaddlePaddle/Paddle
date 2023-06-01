@@ -820,6 +820,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
+      .def("enable_save_optim_model",
+           &AnalysisConfig::EnableSaveOptimModel,
+           py::arg("save_optimized_model") = false)
       .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops",
            &AnalysisConfig::SwitchUseFeedFetchOps,
@@ -830,6 +833,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchSpecifyInputNames,
            py::arg("x") = true)
       .def("specify_input_name", &AnalysisConfig::specify_input_name)
+      .def("enable_low_precision_io",
+           &AnalysisConfig::EnableLowPrecisionIO,
+           py::arg("x") = true)
       .def("enable_tensorrt_engine",
            &AnalysisConfig::EnableTensorRtEngine,
            py::arg("workspace_size") = 1 << 30,
@@ -879,10 +885,6 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRtInspector)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
-      .def("enable_tensorrt_sparse_weights",
-           &AnalysisConfig::EnableTensorRtSparseWeights)
-      .def("tensorrt_sparse_weights_enabled",
-           &AnalysisConfig::tensorrt_sparse_weights_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,

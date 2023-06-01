@@ -52,7 +52,7 @@ template <typename T, typename Context, typename Reducer>
 void ScanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
-                bool flatten,
+                bool flatten UNUSED,
                 bool exclusive,
                 bool reverse,
                 Reducer reducer,

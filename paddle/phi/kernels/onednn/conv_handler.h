@@ -18,7 +18,9 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+
 namespace phi {
 namespace onednn {
 
@@ -743,17 +745,9 @@ class ConvOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireDstMemoryWithResidual(
       phi::DenseTensor* output, const phi::DenseTensor* residual_param) {
     std::shared_ptr<dnnl::memory> dst_memory_p;
-    if (residual_param->mem_desc() != this->fwd_pd_->dst_desc()) {
-      auto residual_memory_p = this->AcquireResidualMemory(residual_param);
-      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-      this->AcquireReorder(residual_memory_p, dst_memory_p);
-    } else {
-      // Changing ShareDataWith to TensorCopy results in performance drop
-      // on ResNet architectures
-      // (https://github.com/PaddlePaddle/Paddle/issues/22964)
-      output->ShareDataWith(*residual_param);
-      dst_memory_p = this->template AcquireDstMemory<T_out>(output);
-    }
+    auto residual_memory_p = this->AcquireResidualMemory(residual_param);
+    dst_memory_p = this->template AcquireDstMemory<T_out>(output);
+    this->AcquireReorder(residual_memory_p, dst_memory_p);
     return dst_memory_p;
   }
 };

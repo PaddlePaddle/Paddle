@@ -81,6 +81,7 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         op_type,
     )
@@ -157,7 +158,7 @@ def reduce_scatter(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         if paddle.is_tensor(tensor_or_tensor_list):
             return _reduce_scatter_tensor_in_dygraph(
@@ -242,7 +243,7 @@ def _reduce_scatter_base(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         return _reduce_scatter_tensor_in_dygraph(
             out_tensor,

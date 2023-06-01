@@ -1,18 +1,3 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 if(APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif()
@@ -30,12 +15,25 @@ if(WITH_MKLDNN)
       ${mkldnn_quantizer_cfg}
       PARENT_SCOPE)
 endif()
+if(WIN32)
+  cc_library(
+    analysis_config
+    SRCS analysis_config.cc
+    DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
+         utf8proc)
+else()
+  cc_library(
+    analysis_config
+    SRCS analysis_config.cc
+    DEPS analysis_helper
+         processgroup_comm_utils
+         ${mkldnn_quantizer_cfg}
+         lod_tensor
+         paddle_pass_builder
+         table_printer
+         utf8proc)
+endif()
 
-cc_library(
-  analysis_config
-  SRCS analysis_config.cc
-  DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
-       utf8proc)
 cc_library(
   paddle_infer_contrib
   SRCS paddle_infer_contrib.cc
@@ -43,29 +41,35 @@ cc_library(
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 set(paddle_inference_api_deps
-    lod_tensor
-    scope
     reset_tensor_array
     analysis_config
     paddle_infer_contrib
     zero_copy_tensor
     trainer_desc_proto
-    custom_operator)
+    custom_operator
+    lod_tensor
+    scope)
 
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
 if(WITH_CUSTOM_DEVICE)
-  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi_capi)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
+endif()
+if(WIN32)
+  cc_library(
+    paddle_inference_api
+    SRCS api.cc api_impl.cc helper.cc
+    DEPS executor ${paddle_inference_api_deps})
+else()
+  cc_library(
+    paddle_inference_api
+    SRCS api.cc api_impl.cc helper.cc
+    DEPS executor paddle_inference_io ${paddle_inference_api_deps})
 endif()
 
-cc_library(
-  paddle_inference_api
-  SRCS api.cc api_impl.cc helper.cc
-  DEPS ${paddle_inference_api_deps})
-
 if(WIN32)
-  target_link_libraries(paddle_inference_api gflags)
+  target_link_libraries(paddle_inference_api phi)
 endif()
 
 set(inference_deps ${analysis_deps} paddle_inference_api analysis

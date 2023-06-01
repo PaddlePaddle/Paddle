@@ -45,7 +45,7 @@ class Cauchy(distribution.Distribution):
             # init Cauchy with float
             rv = Cauchy(loc=0.1, scale=1.2)
             print(rv.entropy())
-            # Tensor(shape=1, dtype=float32, place=Place(cpu), stop_gradient=True,
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        2.71334577)
 
             # init Cauchy with N-Dim tensor
@@ -228,8 +228,8 @@ class Cauchy(distribution.Distribution):
                 # init Cauchy with float
                 rv = Cauchy(loc=0.1, scale=1.2)
                 print(rv.prob(paddle.to_tensor(1.5)))
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.11234467])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.11234467)
 
                 # broadcast to value
                 rv = Cauchy(loc=0.1, scale=1.2)
@@ -277,8 +277,8 @@ class Cauchy(distribution.Distribution):
                 # init Cauchy with float
                 rv = Cauchy(loc=0.1, scale=1.2)
                 print(rv.log_prob(paddle.to_tensor(1.5)))
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [-2.18618369])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        -2.18618369)
 
                 # broadcast to value
                 rv = Cauchy(loc=0.1, scale=1.2)
@@ -344,8 +344,8 @@ class Cauchy(distribution.Distribution):
                 # init Cauchy with float
                 rv = Cauchy(loc=0.1, scale=1.2)
                 print(rv.cdf(paddle.to_tensor(1.5)))
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.77443725])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.77443725)
 
                 # broadcast to value
                 rv = Cauchy(loc=0.1, scale=1.2)

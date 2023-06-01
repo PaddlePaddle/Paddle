@@ -1044,16 +1044,28 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
                          false,
                          "Use CUDA Graph in new executor");
 
+/*
+ * Executor related FLAG
+ * Name: FLAGS_executor_log_deps_every_microseconds
+ * Since Version: 2.5
+ * Value Range: uint64, default=0
+ * Example: FLAGS_executor_log_deps_every_microseconds=n (n>0) would
+ * allow new executor log deps every n microseconds.
+ */
+PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
+                           0,
+                           "Enable new executor log deps every n microseconds");
+
 DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
 DEFINE_bool(enable_slotpool_wait_release,
             false,
-            "enable slotrecord obejct wait release, default false");
+            "enable slotrecord object wait release, default false");
 DEFINE_bool(enable_slotrecord_reset_shrink,
             false,
-            "enable slotrecord obejct reset shrink memory, default false");
+            "enable slotrecord object reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file,
             false,
             "enable parser ins file, default false");
@@ -1067,7 +1079,7 @@ PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_gpu_direct_access,
     false,
-    "enable direct access bwtween multi gpu cards, default false");
+    "enable direct access between multi gpu cards, default false");
 PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_segment_merge_grads,
     false,
@@ -1140,12 +1152,12 @@ PHI_DEFINE_EXPORTED_int32(search_cache_max_number,
                           "search_cache_max_number.");
 
 /**
- * Preformance related FLAG
+ * Performance related FLAG
  * Name: einsum_opt
  * Since Version: 2.3.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, EinsumOp will be optimimzed by innercache reuse, which
+ * Note: If True, EinsumOp will be optimized by innercache reuse, which
  * uses more gpu memory.
  */
 PHI_DEFINE_EXPORTED_bool(
@@ -1166,7 +1178,7 @@ PHI_DEFINE_EXPORTED_bool(
  */
 PHI_DEFINE_EXPORTED_string(jit_engine_type,
                            "Predictor",
-                           "Choose default funciton type in JitLayer.");
+                           "Choose default function type in JitLayer.");
 
 /**
  * Custom Device NPU related FLAG

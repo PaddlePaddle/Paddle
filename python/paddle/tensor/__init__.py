@@ -257,6 +257,10 @@ from .math import sigmoid  # noqa: F401
 from .math import sigmoid_  # noqa: F401
 from .math import vander  # noqa: F401
 from .math import nextafter  # noqa: F401
+from .math import i0  # noqa: F401
+from .math import i0e  # noqa: F401
+from .math import i1  # noqa: F401
+from .math import i1e  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -552,6 +556,10 @@ tensor_method_func = [  # noqa
     'vander',
     'nextafter',
     'unflatten',
+    'i0',
+    'i0e',
+    'i1',
+    'i1e',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

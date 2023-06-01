@@ -614,6 +614,13 @@ class MultiClassNMS3Op : public MultiClassNMS2Op {
                    const framework::VariableNameMap& outputs,
                    const framework::AttributeMap& attrs)
       : MultiClassNMS2Op(type, inputs, outputs, attrs) {}
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return phi::KernelKey(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"), ctx.GetPlace());
+  }
 };
 
 class MultiClassNMS3OpMaker : public MultiClassNMS2OpMaker {

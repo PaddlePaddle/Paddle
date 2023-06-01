@@ -134,7 +134,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 learning_rate=0.001,
                 momentum=0.9,
                 use_nesterov=use_nesterov,
-                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
                 multi_precision=use_pure_fp16,
             )
 
