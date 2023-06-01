@@ -21,6 +21,7 @@
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/core/distributed/utils.h"
 
 namespace phi {
 namespace distributed {
@@ -198,10 +199,10 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
 }
 
 void NCCLCommContext::GroupStart() {
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
+  NCCL_CHECK(phi::dynload::ncclGroupStart());
 }
 void NCCLCommContext::GroupEnd() {
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
+  NCCL_CHECK(phi::dynload::ncclGroupEnd()); 
 }
 
 }  // namespace distributed

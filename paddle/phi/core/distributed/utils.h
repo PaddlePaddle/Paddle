@@ -28,5 +28,17 @@ inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
   return tensor_flattened.Slice(offset, offset + numel);
 }
 
+#define NCCL_CHECK(cmd)                            \
+  do {                                             \
+    ncclResult_t r = cmd;                          \
+    if (r != ncclSuccess) {                        \
+      printf("Failed, NCCL error %s:%d '%s'\n",    \
+             __FILE__,                             \
+             __LINE__,                             \
+             phi::dynload::ncclGetErrorString(r)); \
+      exit(EXIT_FAILURE);                          \
+    }                                              \
+  } while (0)
+
 }  //  namespace distributed
 }  // namespace phi
