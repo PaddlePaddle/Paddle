@@ -58,10 +58,10 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(ops, ops, mul_matmul_matmul_v2);
     GET_IR_NODE_FROM_SUBGRAPH(ops_out, ops_out, mul_matmul_matmul_v2);
     auto op_desc = ops->Op();
+    op_desc->SetAttr("original_type", op_desc->Type());
     op_desc->SetType("matrix_multiply");
 
     // OpDesc original_desc(*(ops->Op()));
-    op_desc->SetAttr("original_type", ops->Op()->Type());
 
     if (op_desc->HasAttr("transpose_X") || op_desc->HasAttr("trans_x")) {
       if (op_desc->HasAttr("transpose_X")) {
