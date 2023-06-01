@@ -82,8 +82,8 @@ class OpTeller {
 
   std::unique_ptr<Teller>& GetCustomPluginTeller() { return tellers_.at(2); }
 
-  void SetOpConverterType(const framework::ir::Node* node, OpConverterType type) {
-    node->Op()->SetAttr("converter_type", (int)(type));
+  void SetOpConverterType(framework::OpDesc* op_desc, OpConverterType type) {
+    op_desc->SetAttr("converter_type", static_cast<int>(type));
   }
 
  private:

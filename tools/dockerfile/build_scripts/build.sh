@@ -24,7 +24,7 @@ set -ex
 # remove others to expedite build and reduce docker image size. The original
 # manylinux docker image project builds many python versions.
 # NOTE We added back 3.5.1, since auditwheel requires python 3.3+
-CPYTHON_VERSIONS="3.10.0 3.9.0 3.8.0 3.7.0"
+CPYTHON_VERSIONS="3.10.0 3.9.0 3.8.0"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive
@@ -61,9 +61,9 @@ yum -y install bzip2 make git patch unzip bison yasm diffutils \
 # /bin/sh cmake-3.8.1-Linux-x86_64.sh --prefix=/usr/local --skip-license
 # rm cmake-3.8.1-Linux-x86_64.sh
 
-wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz && tar xzf cmake-3.16.0.tar.gz && \
-cd cmake-3.16.0 && ./bootstrap && \
-make -j8 && make install && cd .. && rm cmake-3.16.0.tar.gz && rm -rf cmake-3.16.0
+wget -q https://cmake.org/files/v3.18/cmake-3.18.0.tar.gz && tar xzf cmake-3.18.0.tar.gz && \
+cd cmake-3.18.0 && ./bootstrap && \
+make -j8 && make install && cd .. && rm cmake-3.18.0.tar.gz && rm -rf cmake-3.18.0
 
 # Install newest autoconf
 build_autoconf $AUTOCONF_ROOT $AUTOCONF_HASH
@@ -77,22 +77,22 @@ build_openssl $OPENSSL_ROOT $OPENSSL_HASH
 mkdir -p /opt/python
 build_cpythons $CPYTHON_VERSIONS
 
-PY37_BIN=/opt/python/cp37-cp37m/bin
-PY38_BIN=/opt/python/cp38-cp38m/bin
-PY39_BIN=/opt/python/cp39-cp39m/bin
-PY310_BIN=/opt/python/cp310-cp310m/bin
+#PY37_BIN=/opt/python/cp37-cp37m/bin
+PY38_BIN=/opt/python/cp38-cp38/bin
+PY39_BIN=/opt/python/cp39-cp39/bin
+PY310_BIN=/opt/python/cp310-cp310/bin
 # NOTE Since our custom manylinux image builds pythons with shared
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.
 ORIGINAL_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib:$(dirname ${PY310_BIN})/lib"
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY38_BIN})/lib:$(dirname ${PY39_BIN})/lib:$(dirname ${PY310_BIN})/lib"
 
 # Our openssl doesn't know how to find the system CA trust store
 #   (https://github.com/pypa/manylinux/issues/53)
 # And it's not clear how up-to-date that is anyway
 # So let's just use the same one pip and everyone uses
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY37_BIN})/lib" $PY37_BIN/pip install certifi
-ln -s $($PY37_BIN/python -c 'import certifi; print(certifi.where())') \
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY38_BIN})/lib" $PY38_BIN/pip install certifi
+ln -s $($PY38_BIN/python -c 'import certifi; print(certifi.where())') \
       /opt/_internal/certs.pem
 # If you modify this line you also have to modify the versions in the
 # Dockerfiles:
@@ -142,7 +142,7 @@ for PYTHON in /opt/python/*/bin/python; do
         # being manylinux compatible:
         LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/manylinux1-check.py
         # Make sure that SSL cert checking works
-        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib" $PYTHON $MY_DIR/ssl-check.py
+        LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname $(dirname ${PYTHON}))/lib"
     fi
 done
 

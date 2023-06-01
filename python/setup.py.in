@@ -411,7 +411,6 @@ packages=['paddle',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
-          'paddle.distributed.fleet.meta_optimizers.ascend',
           'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
           'paddle.distributed.fleet.runtime',
           'paddle.distributed.rpc',
@@ -427,9 +426,11 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.sharding',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
-          'paddle.distributed.auto_parallel.operators',
-          'paddle.distributed.auto_parallel.tuner',
-          'paddle.distributed.auto_parallel.cost',
+          'paddle.distributed.auto_parallel.dygraph',
+          'paddle.distributed.auto_parallel.static',
+          'paddle.distributed.auto_parallel.static.operators',
+          'paddle.distributed.auto_parallel.static.tuner',
+          'paddle.distributed.auto_parallel.static.cost',
           'paddle.distributed.passes',
           'paddle.distributed.models',
           'paddle.distributed.models.moe',
@@ -446,10 +447,8 @@ packages=['paddle',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.layers',
-          'paddle.fluid.dataloader',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.extend_optimizer',
-          'paddle.fluid.contrib.layers',
           'paddle.fluid.incubate',
           'paddle.incubate.distributed.fleet',
           'paddle.fluid.incubate.checkpoint',
@@ -484,6 +483,7 @@ packages=['paddle',
           'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
           'paddle.incubate.distributed.fleet.parameter_server.pslib',
           'paddle.incubate.distributed.fleet.parameter_server.ir',
+          'paddle.incubate.layers',
           'paddle.quantization',
           'paddle.quantization.quanters',
           'paddle.quantization.observers',
@@ -493,6 +493,7 @@ packages=['paddle',
           'paddle.sparse.nn.functional',
           'paddle.incubate.xpu',
           'paddle.io',
+          'paddle.io.dataloader',
           'paddle.optimizer',
           'paddle.nn',
           'paddle.nn.functional',
@@ -562,7 +563,11 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[
+if('${WITH_PHI_SHARED}' == 'ON'):
+    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+    shutil.copy('${PHI_LIB}', libs_path)
+
+package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]
@@ -635,6 +640,11 @@ if '${WITH_CINN}' == 'ON':
     if os.path.exists(cinn_fp16_file):
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']
+
+    cinn_bf16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/bfloat16.h'
+    if os.path.exists(cinn_bf16_file):
+        shutil.copy(cinn_bf16_file, libs_path)
+        package_data['paddle.libs']+=['bfloat16.h']
 
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         command = "patchelf --set-rpath '$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
@@ -718,8 +728,14 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            if('${WITH_PHI_SHARED}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party libb
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            if('${WITH_PHI_SHARED}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party lib
+                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
@@ -783,6 +799,24 @@ if '${WITH_XPU}' == 'ON':
 
 headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
 
+def get_header_install_dir(header):
+    if 'pb.h' in header:
+        install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
+    elif 'third_party' not in header:
+        # paddle headers
+        install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+        print('install_dir: ', install_dir)
+        if 'fluid/jit' in install_dir:
+            install_dir = re.sub('fluid/jit', 'jit', install_dir)
+            print('fluid/jit install_dir: ', install_dir)
+    else:
+        # third_party
+        install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
+        patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include', 'third_party/xpu/src/extern_xpu/xpu/include/']
+        for pattern in patterns:
+            install_dir = re.sub(pattern, '', install_dir)
+    return install_dir
+
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
@@ -814,21 +848,7 @@ class InstallHeaders(Command):
                                    ('force', 'force'))
 
     def mkdir_and_copy_file(self, header):
-        if 'pb.h' in header:
-            install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
-        elif 'third_party' not in header:
-            # paddle headers
-            install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            print('install_dir: ', install_dir)
-            if 'fluid/jit' in install_dir:
-                install_dir = re.sub('fluid/jit', 'jit', install_dir)
-                print('fluid/jit install_dir: ', install_dir)
-        else:
-            # third_party
-            install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include', 'third_party/xpu/src/extern_xpu/xpu/include/']
-            for pattern in patterns:
-                install_dir = re.sub(pattern, '', install_dir)
+        install_dir = get_header_install_dir(header)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
@@ -885,6 +905,54 @@ if '${WITH_STRIP}' == 'ON':
     command = 'find ${PADDLE_BINARY_DIR}/python/paddle -name "*.so" | xargs -i strip {}'
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
+
+def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
+    """install cpp distribution and build test target
+
+    TODO(huangjiyi): 
+    1. This function will be moved when seperating C++ distribution
+    installation from python package installation.
+    2. Reduce the header and library files to be installed.
+    """
+    if '${CMAKE_BUILD_TYPE}' != 'Release':
+        return
+    os.makedirs(paddle_install_dir, exist_ok=True)
+    # install C++ header files
+    for header in headers: 
+        install_dir = get_header_install_dir(header)
+        install_dir = os.path.join(
+            paddle_install_dir, 'include', os.path.dirname(install_dir)
+        )
+        os.makedirs(install_dir, exist_ok=True)
+        shutil.copy(header, install_dir)
+
+    # install C++ shared libraries
+    lib_install_dir = os.path.join(paddle_install_dir, 'lib')
+    os.makedirs(lib_install_dir, exist_ok=True)
+    # install libpaddle.ext
+    paddle_libs = glob.glob('${PADDLE_BINARY_DIR}/paddle/fluid/pybind/${FLUID_CORE_NAME}.*')
+    for lib in paddle_libs:
+        shutil.copy(lib, lib_install_dir)
+    # install dependent libraries
+    libs_path = package_dir['paddle.libs']
+    for lib in package_data['paddle.libs']:
+        lib_path = os.path.join(libs_path, lib)
+        shutil.copy(lib_path, lib_install_dir)
+    
+    # build test target
+    cmake_args = ["cmake", paddle_lib_test_dir, "-B", paddle_lib_test_dir]
+    if os.getenv("GENERATOR") == "Ninja":
+        cmake_args.append("-GNinja")
+    subprocess.check_call(cmake_args)
+    subprocess.check_call(["cmake", "--build", paddle_lib_test_dir])
+
+
+# install cpp distribution
+if '${WITH_CPP_DIST}' == 'ON':
+    paddle_install_dir = '${PADDLE_INSTALL_DIR}'
+    paddle_lib_test_dir = '${PADDLE_LIB_TEST_DIR}'
+    install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
+    
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',

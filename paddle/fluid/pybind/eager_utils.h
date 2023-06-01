@@ -78,6 +78,7 @@ std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
                                                   ssize_t arg_pos);
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
                                                      ssize_t arg_pos);
+void SetPythonStack();
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);

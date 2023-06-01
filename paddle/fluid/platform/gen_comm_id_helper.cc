@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
@@ -29,16 +29,15 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
-
+#include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
-
-#if defined(PADDLE_WITH_CNCL)
-#include <cncl.h>
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
-DECLARE_int32(get_host_by_name_time);
+PHI_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace platform {
@@ -315,7 +314,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     CHECK_SYS_CALL(SocketSend(sock, phead, sizeof(head)), "send");
     ret_val = SocketRecv(sock, buffer, sizeof(head));
     if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
-      // recv same message from recver, indicating that the link is correct
+      // recv same message from receiver, indicating that the link is correct
       break;  // accept client
     } else {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;
@@ -351,6 +350,58 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
   CHECK_SYS_CALL(SocketSend(conn, buffer, sizeof(CommUniqueId)),
                  "send comm unique id");
 }
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+template <>
+void RecvCommID<phi::ccl::CCLRootId>(int conn, phi::ccl::CCLRootId* nccl_id) {
+  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  CHECK_SYS_CALL(SocketRecv(conn, buffer, sizeof(size_t)),
+                 "recv comm unique id size");
+  size_t unique_id_size = *reinterpret_cast<size_t*>(buffer);
+  VLOG(6) << "RecvCommID size: " << unique_id_size;
+  nccl_id->resize(unique_id_size);
+
+  size_t n_repeat = unique_id_size / MAX_COMMUNIQUEID_LEN;
+  size_t n_remain = unique_id_size % MAX_COMMUNIQUEID_LEN;
+  for (size_t i = 0; i < n_repeat; ++i) {
+    CHECK_SYS_CALL(SocketRecv(conn, buffer, MAX_COMMUNIQUEID_LEN),
+                   "recv comm unique id");
+    memcpy(nccl_id->data() + i * MAX_COMMUNIQUEID_LEN,
+           buffer,
+           MAX_COMMUNIQUEID_LEN);
+  }
+  if (n_remain) {
+    CHECK_SYS_CALL(SocketRecv(conn, buffer, n_remain), "recv comm unique id");
+    memcpy(nccl_id->data() + n_repeat * MAX_COMMUNIQUEID_LEN, buffer, n_remain);
+  }
+  VLOG(6) << "RecvCommID done";
+}
+
+template <>
+void SendCommID<phi::ccl::CCLRootId>(int conn, phi::ccl::CCLRootId* nccl_id) {
+  char buffer[MAX_COMMUNIQUEID_LEN] = {0};
+  size_t unique_id_size = nccl_id->size();
+  VLOG(6) << "SendCommID size: " << unique_id_size;
+  memcpy(buffer, &unique_id_size, sizeof(size_t));
+  CHECK_SYS_CALL(SocketSend(conn, buffer, sizeof(size_t)),
+                 "send comm unique id size");
+
+  size_t n_repeat = unique_id_size / MAX_COMMUNIQUEID_LEN;
+  size_t n_remain = unique_id_size % MAX_COMMUNIQUEID_LEN;
+  for (size_t i = 0; i < n_repeat; ++i) {
+    memcpy(buffer,
+           nccl_id->data() + i * MAX_COMMUNIQUEID_LEN,
+           MAX_COMMUNIQUEID_LEN);
+    CHECK_SYS_CALL(SocketSend(conn, buffer, MAX_COMMUNIQUEID_LEN),
+                   "send comm unique id");
+  }
+  if (n_remain) {
+    memcpy(buffer, nccl_id->data() + n_repeat * MAX_COMMUNIQUEID_LEN, n_remain);
+    CHECK_SYS_CALL(SocketSend(conn, buffer, n_remain), "send comm unique id");
+  }
+  VLOG(6) << "SendCommID done";
+}
+#endif
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
@@ -448,9 +499,8 @@ INSTANT_TEMPLATE(ncclUniqueId)
 #ifdef PADDLE_WITH_XPU_BKCL
 INSTANT_TEMPLATE(BKCLUniqueId)
 #endif
-
-#ifdef PADDLE_WITH_CNCL
-INSTANT_TEMPLATE(cnclCliqueId)
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+INSTANT_TEMPLATE(phi::ccl::CCLRootId)
 #endif
 }  // namespace platform
 }  // namespace paddle

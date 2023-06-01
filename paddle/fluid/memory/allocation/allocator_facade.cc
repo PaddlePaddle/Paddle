@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -62,6 +61,7 @@
 #include "paddle/fluid/memory/allocation/custom_allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time,
@@ -92,8 +92,8 @@ PADDLE_DEFINE_EXPORTED_bool(use_cuda_managed_memory,
                             "managed memory, only available for auto_growth "
                             "strategy");
 
-DECLARE_string(allocator_strategy);
-DECLARE_uint64(auto_growth_chunk_size_in_mb);
+PHI_DECLARE_string(allocator_strategy);
+PHI_DECLARE_uint64(auto_growth_chunk_size_in_mb);
 
 namespace paddle {
 namespace memory {
@@ -124,7 +124,7 @@ class CUDAGraphAllocator
       : underlying_allocator_(allocator) {}
 
  public:
-  ~CUDAGraphAllocator() { VLOG(10) << "CUDAGraphAllocator destructed"; }
+  ~CUDAGraphAllocator() {}
 
   static std::shared_ptr<Allocator> Create(
       const std::shared_ptr<Allocator>& allocator) {
@@ -1039,8 +1039,8 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 #elif defined(PADDLE_WITH_XPU)
   return GetAllocator(place)->Allocate(size);
 #else
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "Not compiled with GPU or XPU or NPU."));
+  PADDLE_THROW(
+      platform::errors::PreconditionNotMet("Not compiled with GPU or XPU."));
 #endif
 }
 
@@ -1137,7 +1137,6 @@ void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
   if (ref_cnt == 0) {
     cuda_graph_map_.erase(id);
     cuda_graph_ref_cnt_.erase(ref_cnt_iter);
-    VLOG(10) << "Remove memory pool of CUDA Graph with memory ID " << id;
   } else {
     VLOG(10) << "Decrease memory pool ID " << id << " reference count to be "
              << ref_cnt;

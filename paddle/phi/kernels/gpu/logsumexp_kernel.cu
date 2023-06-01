@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -21,8 +22,6 @@
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
-
-using float16 = phi::dtype::float16;
 
 namespace phi {
 
@@ -36,6 +35,14 @@ struct LogCUDAFunctor<float16> {
   HOSTDEVICE inline float16 operator()(const float16 x) const {
     auto x_ = static_cast<float>(x);
     return static_cast<float16>(std::log(x_));
+  }
+};
+
+template <>
+struct LogCUDAFunctor<bfloat16> {
+  HOSTDEVICE inline bfloat16 operator()(const bfloat16 x) const {
+    auto x_ = static_cast<float>(x);
+    return static_cast<bfloat16>(std::log(x_));
   }
 };
 
@@ -112,5 +119,11 @@ void LogsumexpKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    logsumexp, GPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double, float16) {}
+PD_REGISTER_KERNEL(logsumexp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogsumexpKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

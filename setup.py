@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -965,7 +966,14 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-    package_data['paddle.libs'] = [
+
+    if env_dict.get("WITH_PHI_SHARED") == "ON":
+        package_data['paddle.libs'] = [
+            ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+
+    package_data['paddle.libs'] += [
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
@@ -1070,6 +1078,12 @@ def get_package_data_and_package_dir():
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
+        cinn_bf16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/bfloat16.h'
+        )
+        if os.path.exists(cinn_bf16_file):
+            shutil.copy(cinn_bf16_file, libs_path)
+            package_data['paddle.libs'] += ['bfloat16.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
@@ -1197,6 +1211,13 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                if env_dict.get("WITH_PHI_SHARED") == "ON":
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
             else:
                 commands = [
                     "patchelf --set-rpath '$ORIGIN/../libs/' "
@@ -1205,6 +1226,13 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
+                if env_dict.get("WITH_PHI_SHARED") == "ON":
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
             # The sw_64 not suppot patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
                 for command in commands:
@@ -1387,7 +1415,6 @@ def get_setup_parameters():
         'paddle.distributed.fleet.elastic',
         'paddle.distributed.fleet.meta_optimizers',
         'paddle.distributed.fleet.meta_optimizers.sharding',
-        'paddle.distributed.fleet.meta_optimizers.ascend',
         'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
         'paddle.distributed.fleet.runtime',
         'paddle.distributed.rpc',
@@ -1403,9 +1430,11 @@ def get_setup_parameters():
         'paddle.distributed.fleet.meta_parallel.sharding',
         'paddle.distributed.fleet.meta_parallel.parallel_layers',
         'paddle.distributed.auto_parallel',
-        'paddle.distributed.auto_parallel.operators',
-        'paddle.distributed.auto_parallel.tuner',
-        'paddle.distributed.auto_parallel.cost',
+        'paddle.distributed.auto_parallel.dygraph',
+        'paddle.distributed.auto_parallel.static',
+        'paddle.distributed.auto_parallel.static.operators',
+        'paddle.distributed.auto_parallel.static.tuner',
+        'paddle.distributed.auto_parallel.static.cost',
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
@@ -1422,10 +1451,8 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
-        'paddle.fluid.contrib.layers',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
@@ -1460,6 +1487,7 @@ def get_setup_parameters():
         'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
         'paddle.incubate.distributed.fleet.parameter_server.ir',
         'paddle.incubate.distributed.fleet.parameter_server.pslib',
+        'paddle.incubate.layers',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.quantization.observers',
@@ -1469,6 +1497,7 @@ def get_setup_parameters():
         'paddle.sparse.nn.functional',
         'paddle.incubate.xpu',
         'paddle.io',
+        'paddle.io.dataloader',
         'paddle.optimizer',
         'paddle.nn',
         'paddle.nn.functional',
@@ -1546,13 +1575,98 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
+def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
+    """install cpp distribution and build test target
+
+    TODO(huangjiyi):
+    1. This function will be moved when seperating C++ distribution
+    installation from python package installation.
+    2. Reduce the header and library files to be installed.
+    """
+    if env_dict.get("CMAKE_BUILD_TYPE") != 'Release':
+        return
+    os.makedirs(install_dir, exist_ok=True)
+    # install C++ header files
+    for header in headers:
+        header_install_dir = get_header_install_dir(header)
+        header_install_dir = os.path.join(
+            install_dir, 'include', os.path.dirname(header_install_dir)
+        )
+        os.makedirs(header_install_dir, exist_ok=True)
+        shutil.copy(header, header_install_dir)
+
+    # install C++ shared libraries
+    lib_install_dir = os.path.join(install_dir, 'lib')
+    os.makedirs(lib_install_dir, exist_ok=True)
+    # install libpaddle.ext
+    paddle_libs = glob.glob(
+        paddle_binary_dir
+        + '/paddle/fluid/pybind/'
+        + env_dict.get("FLUID_CORE_NAME")
+        + '.*'
+    )
+    for lib in paddle_libs:
+        shutil.copy(lib, lib_install_dir)
+    # install dependent libraries
+    libs_path = paddle_binary_dir + '/python/paddle/libs'
+    for lib in libs:
+        lib_path = os.path.join(libs_path, lib)
+        shutil.copy(lib_path, lib_install_dir)
+
+    # build test target
+    cmake_args = [CMAKE, lib_test_dir, "-B", lib_test_dir]
+    if os.getenv("GENERATOR") == "Ninja":
+        cmake_args.append("-GNinja")
+    subprocess.check_call(cmake_args)
+    subprocess.check_call([CMAKE, "--build", lib_test_dir])
+
+
+def check_submodules():
+    def get_submodule_folder():
+        git_submodules_path = os.path.join(TOP_DIR, ".gitmodules")
+        with open(git_submodules_path) as f:
+            return [
+                os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
+                for line in f.readlines()
+                if line.strip().startswith("path")
+            ]
+
+    def submodules_not_exists_or_empty(folder):
+        return not os.path.exists(folder) or (
+            os.path.isdir(folder) and len(os.listdir(folder)) == 0
+        )
+
+    submodule_folders = get_submodule_folder()
+    # f none of the submodule folders exists, try to initialize them
+    if any(
+        submodules_not_exists_or_empty(folder) for folder in submodule_folders
+    ):
+        try:
+            print(' --- Trying to initialize submodules')
+            start = time.time()
+            subprocess.check_call(
+                ["git", "submodule", "update", "--init", "--recursive"],
+                cwd=TOP_DIR,
+            )
+            end = time.time()
+            print(
+                ' --- Submodule initialization took {:.2f} sec'.format(
+                    end - start
+                )
+            )
+        except Exception:
+            print(' --- Submodule initalization failed')
+            print('Please run:\n\tgit submodule update --init --recursive')
+            sys.exit(1)
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
     # check build dependency
     check_build_dependency()
-
+    check_submodules()
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()
@@ -1617,6 +1731,17 @@ def main():
         )
         if os.system(command) != 0:
             raise Exception("strip *.so failed, command: %s" % command)
+
+    # install cpp distribution
+    if env_dict.get("WITH_CPP_DIST") == 'ON':
+        paddle_install_dir = env_dict.get("PADDLE_INSTALL_DIR")
+        paddle_lib_test_dir = env_dict.get("PADDLE_LIB_TEST_DIR")
+        install_cpp_dist_and_build_test(
+            paddle_install_dir,
+            paddle_lib_test_dir,
+            headers,
+            package_data['paddle.libs'],
+        )
 
     setup(
         name=package_name,

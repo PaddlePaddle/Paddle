@@ -176,7 +176,7 @@ def train(args, place, to_static):
                 state, reward, done, _ = env.step(action)
 
                 # log loss_probs
-                loss_data.append(loss.numpy()[0])
+                loss_data.append(float(loss))
 
                 policy.rewards.append(reward)
                 ep_reward += reward
@@ -191,7 +191,7 @@ def train(args, place, to_static):
             if i_episode % args.log_interval == 0:
                 print(
                     'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
-                        i_episode, ep_reward, running_reward, loss.numpy()[0]
+                        i_episode, ep_reward, running_reward, float(loss)
                     )
                 )
 

@@ -2260,7 +2260,8 @@ PDNode *patterns::OpRequant::operator()() {
   auto any_op = pattern->NewNode(any_op_repr())
                     ->assert_is_op()
                     ->assert_more([&](Node *node) {
-                      return node->Op()->HasAttr("Scale_out") ? true : false;
+                      return (node->Op()->HasAttr("Scale_out") ||
+                              node->Op()->HasAttr("scale_out"));
                     });
   auto requant_in = pattern->NewNode(requant_in_repr())
                         ->assert_is_op_input("requantize", "Input");
@@ -2288,7 +2289,10 @@ PDNode *patterns::RequantOp::operator()() {
                     ->assert_more([&](Node *node) {
                       return (node->Op()->HasAttr("Scale_in") ||
                               node->Op()->HasAttr("Scale_x") ||
-                              node->Op()->HasAttr("Scale_y"));
+                              node->Op()->HasAttr("Scale_y") ||
+                              node->Op()->HasAttr("scale_in") ||
+                              node->Op()->HasAttr("scale_x") ||
+                              node->Op()->HasAttr("scale_y"));
                     });
 
   requant_op->LinksFrom({requant_in}).LinksTo({requant_out});
@@ -2465,7 +2469,7 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(
 
 PDNode *patterns::VitAttention::operator()(PDNode *in) {
   in->AsInput();
-  std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
+  std::unordered_set<std::string> matmul_ops{"matrix_multiply"};
 
   auto matmul0_op =
       pattern->NewNode(matmul0_op_repr())->assert_is_ops(matmul_ops);
@@ -2504,13 +2508,13 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
   auto slice1_op = pattern->NewNode(slice1_op_repr())->assert_is_op("slice");
   auto slice1_out = pattern->NewNode(slice1_out_repr())
                         ->assert_is_op_output("slice", "Out")
-                        ->assert_is_op_input("matmul_v2", "Y")
+                        ->assert_is_op_input("matrix_multiply", "Y")
                         ->AsIntermediate();
 
   auto slice2_op = pattern->NewNode(slice2_op_repr())->assert_is_op("slice");
   auto slice2_out = pattern->NewNode(slice2_out_repr())
                         ->assert_is_op_output("slice", "Out")
-                        ->assert_is_op_input("matmul_v2", "X")
+                        ->assert_is_op_input("matrix_multiply", "X")
                         ->AsIntermediate();
 
   auto slice3_op = pattern->NewNode(slice3_op_repr())->assert_is_op("slice");
@@ -2523,13 +2527,13 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
       pattern->NewNode(transpose2_op_repr())->assert_is_op("transpose2");
   auto transpose2_out = pattern->NewNode(transpose2_out_repr())
                             ->assert_is_op_output("transpose2", "Out")
-                            ->assert_is_op_input("matmul_v2", "Y")
+                            ->assert_is_op_input("matrix_multiply", "Y")
                             ->AsIntermediate();
 
   auto matmul1_op =
-      pattern->NewNode(matmul1_op_repr())->assert_is_op("matmul_v2");
+      pattern->NewNode(matmul1_op_repr())->assert_is_op("matrix_multiply");
   auto matmul1_out = pattern->NewNode(matmul1_out_repr())
-                         ->assert_is_op_output("matmul_v2", "Out")
+                         ->assert_is_op_output("matrix_multiply", "Out")
                          ->assert_is_op_input("scale", "X")
                          ->AsIntermediate();
 
@@ -2543,13 +2547,13 @@ PDNode *patterns::VitAttention::operator()(PDNode *in) {
       pattern->NewNode(softmax1_op_repr())->assert_is_op("softmax");
   auto softmax1_out = pattern->NewNode(softmax1_out_repr())
                           ->assert_is_op_output("softmax", "Out")
-                          ->assert_is_op_input("matmul_v2", "X")
+                          ->assert_is_op_input("matrix_multiply", "X")
                           ->AsIntermediate();
 
   auto matmul2_op =
-      pattern->NewNode(matmul2_op_repr())->assert_is_op("matmul_v2");
+      pattern->NewNode(matmul2_op_repr())->assert_is_op("matrix_multiply");
   auto matmul2_out = pattern->NewNode(matmul2_out_repr())
-                         ->assert_is_op_output("matmul_v2", "Out")
+                         ->assert_is_op_output("matrix_multiply", "Out")
                          ->assert_is_op_input("transpose2", "X")
                          ->AsIntermediate();
 
@@ -4450,6 +4454,16 @@ PDNode *patterns::FusedFeedForwardBwd::operator()(
   }
 
   return out_grad;
+}
+
+void patterns::MulMatmulMatmulV2::operator()(
+    const std::unordered_set<std::string> &ops_type) {
+  auto ops = pattern->NewNode(ops_repr())->assert_is_ops(ops_type);
+  auto ops_out = pattern->NewNode(ops_out_repr())
+                     ->AsOutput()
+                     ->assert_is_ops_output(ops_type, "Out");
+
+  ops->LinksTo({ops_out});
 }
 
 }  // namespace ir

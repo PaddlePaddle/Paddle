@@ -117,10 +117,10 @@ void SGDDenseKernel(const Context& dev_ctx,
                     const DenseTensor& param,
                     const DenseTensor& learning_rate,
                     const DenseTensor& grad,
-                    const paddle::optional<DenseTensor>& master_param,
-                    bool multi_precision,
+                    const paddle::optional<DenseTensor>& master_param UNUSED,
+                    bool multi_precision UNUSED,
                     DenseTensor* param_out,
-                    DenseTensor* master_param_out) {
+                    DenseTensor* master_param_out UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
   sgd_dense_param_dense_grad_impl<T>(param, learning_rate, grad, param_out);
 }
@@ -131,24 +131,24 @@ void SGDDenseParamSparseGradKernel(
     const DenseTensor& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    const paddle::optional<DenseTensor>& master_param,
-    bool multi_precision,
+    const paddle::optional<DenseTensor>& master_param UNUSED,
+    bool multi_precision UNUSED,
     DenseTensor* param_out,
-    DenseTensor* master_param_out) {
+    DenseTensor* master_param_out UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
   sgd_dense_param_sparse_grad_impl<T>(param, learning_rate, grad, param_out);
 }
 
 template <typename T, typename Context>
 void SGDSparseParamSparseGradKernel(
-    const Context& dev_ctx,
+    const Context& dev_ctx UNUSED,
     const SelectedRows& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
-    const paddle::optional<SelectedRows>& master_param,
-    bool multi_precision,
+    const paddle::optional<SelectedRows>& master_param UNUSED,
+    bool multi_precision UNUSED,
     SelectedRows* param_out,
-    SelectedRows* master_param_out) {
+    SelectedRows* master_param_out UNUSED) {
   // for distributed training, a sparse var may be empty,
   // just skip updating.
   if (grad.rows().size() == 0) {

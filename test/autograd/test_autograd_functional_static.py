@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import typing
 import unittest
+
+sys.path.insert(0, '.')
 
 import config
 import numpy as np
@@ -41,14 +44,14 @@ paddle.enable_static()
             'v_not_none',
             utils.reduce,
             np.random.rand(2, 3),
-            np.random.rand(1),
+            np.array(np.random.rand()),
             False,
         ),
         (
             'xs_stop_gradient',
             utils.reduce,
             np.random.rand(2, 3),
-            np.random.rand(1),
+            np.array(np.random.rand()),
             True,
         ),
         (
@@ -466,7 +469,7 @@ class TestHessianFloat32(unittest.TestCase):
     def test_square(self):
         def pd_f(x):
             """Input is a square matrix."""
-            return paddle.matmul(x, x.T).flatten().sum()
+            return paddle.matmul(x, x.T).sum()
 
         def np_hess(x):
             dim = x.shape[0]

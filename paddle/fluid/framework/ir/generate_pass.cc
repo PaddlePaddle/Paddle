@@ -26,7 +26,7 @@ class element_visitor {
   explicit element_visitor(int index) : index_(index) {}
 
   template <typename T>
-  Attribute operator()(const T& attr) const {
+  Attribute operator()(const T& attr UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
   }
 
@@ -53,7 +53,8 @@ class operation_visitor {
       : type_(type) {}
 
   template <typename T1, typename T2>
-  Attribute operator()(const T1& attr, const T2& operation) const {
+  Attribute operator()(const T1& attr UNUSED,
+                       const T2& operation UNUSED) const {
     PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
   }
 
@@ -419,13 +420,17 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
   return handler;
 }
 
-GeneratePass::GeneratePass(const std::string& binary_str) {
+GeneratePass::GeneratePass(const std::string& binary_str,
+                           const std::string& pass_type) {
+  RegisterType(pass_type);
   multi_pass_desc_.ParseFromString(binary_str);
   VerifyDesc();
 }
 
-GeneratePass::GeneratePass(const proto::MultiPassDesc& multi_pass_desc)
+GeneratePass::GeneratePass(const proto::MultiPassDesc& multi_pass_desc,
+                           const std::string& pass_type)
     : multi_pass_desc_(multi_pass_desc) {
+  RegisterType(pass_type);
   VerifyDesc();
 }
 

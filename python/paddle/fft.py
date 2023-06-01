@@ -20,8 +20,8 @@ import paddle
 
 from . import _C_ops
 from .fluid.data_feeder import check_variable_and_dtype
-from .fluid.framework import in_dygraph_mode
 from .fluid.layer_helper import LayerHelper
+from .framework import in_dynamic_mode
 from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
 
@@ -1371,7 +1371,7 @@ def fftshift(x, axes=None, name=None):
     elif isinstance(axes, int):
         shifts = shape[axes] // 2
     else:
-        shifts = paddle.concat([shape[ax] // 2 for ax in axes])
+        shifts = paddle.concat([shape[ax : ax + 1] // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 
@@ -1416,7 +1416,7 @@ def ifftshift(x, axes=None, name=None):
     elif isinstance(axes, int):
         shifts = -shape[axes] // 2
     else:
-        shifts = paddle.concat([-shape[ax] // 2 for ax in axes])
+        shifts = paddle.concat([-shape[ax : ax + 1] // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 
@@ -1437,7 +1437,7 @@ def fft_c2c(x, n, axis, norm, forward, name):
         s = [n]
         x = _resize_fft_input(x, s, axes)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
@@ -1468,7 +1468,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
         op_type = 'fft_r2c'
@@ -1511,7 +1511,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
         s = [n // 2 + 1]
         x = _resize_fft_input(x, s, axes)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if n is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, n)
         else:
@@ -1570,7 +1570,7 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
         op_type = 'fft_c2c'
@@ -1620,7 +1620,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
         op_type = 'fft_r2c'
@@ -1684,7 +1684,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         fft_input_shape[-1] = fft_input_shape[-1] // 2 + 1
         x = _resize_fft_input(x, fft_input_shape, axes)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if s is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, s[-1])
         else:

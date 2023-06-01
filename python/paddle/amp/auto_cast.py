@@ -20,45 +20,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-AMP_LEVEL = core.AmpLevel
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-FP16_WHITE_LIST = {
-    'conv2d',
-    'matmul',
-    'matmul_v2',
-    'max_pool2d_with_index',
-    'mul',
-    'fake_quantize_dequantize_abs_max',
-    'fake_quantize_dequantize_moving_average_abs_max',
-}
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# dangerous and whose effects may also be observed in downstream ops.
-FP16_BLACK_LIST = {
-    'exp',
-    'square',
-    'log',
-    'mean',
-    'sum',
-    'cos_sim',
-    'softmax',
-    'softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
-    'c_softmax_with_cross_entropy',
-    'cross_entropy',
-    'cross_entropy2',
-    # default fp32 can avoid return inf when the sum value large than 65504
-    'reduce_sum',
-    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
-
+from .amp_lists import black_list, white_list
 
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
@@ -72,27 +34,7 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_WHITE_LIST = copy.copy(FP16_WHITE_LIST)
-
-PURE_FP16_BLACK_LIST = {
-    'lookup_table',
-    'lookup_table_v2',
-    'scatter',
-    'scatter_grad',
-    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
-
-BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
-BF16_BLACK_LIST = set()
-
-PURE_BF16_WHITE_LIST = copy.copy(BF16_WHITE_LIST)
-PURE_BF16_BLACK_LIST = set()
-
+AMP_LEVEL = core.AmpLevel
 _g_amp_state_ = None
 
 
@@ -106,6 +48,7 @@ class AMPGlobalState:
         self.model_parameters = []
         self.use_master_grad = False
         self.already_register_final_backward_hook = False
+        self.amp_dtype = 'float32'
 
     def __setattr__(self, name, val):
         self.__dict__[name] = val
@@ -126,20 +69,12 @@ def _update_list(
     """
     Update black and white list according to users' custom list.
     """
-    if dtype == 'float16':
-        if level == 'O1':
-            _white_list = copy.copy(FP16_WHITE_LIST)
-            _black_list = copy.copy(FP16_BLACK_LIST)
-        else:
-            _white_list = copy.copy(PURE_FP16_WHITE_LIST)
-            _black_list = copy.copy(PURE_FP16_BLACK_LIST)
-    else:
-        if level == 'O1':
-            _white_list = copy.copy(BF16_WHITE_LIST)
-            _black_list = copy.copy(BF16_BLACK_LIST)
-        else:
-            _white_list = copy.copy(PURE_BF16_WHITE_LIST)
-            _black_list = copy.copy(PURE_BF16_BLACK_LIST)
+    if level == 'O0':
+        _white_list = set()
+        _black_list = set()
+        return _white_list, _black_list
+    _white_list = copy.copy(white_list()[dtype][level])
+    _black_list = copy.copy(black_list()[dtype][level])
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
@@ -199,47 +134,95 @@ def _is_gpu_bfloat16_supported():
     return prop[0] >= 8 and cuda_version_check
 
 
-@dygraph_only
-def pure_fp16_initialize(models):
+def need_keep_fp32(layer, dtype):
+    need_keep_fp32 = False
+    # Highest prority. Because all the layers except BN will use bfloat16 params in bfoat16 training,
+    # here we provide a option to keep fp32 param.
+    if not layer._cast_to_low_precison:
+        need_keep_fp32 = True
+    # The BN layers will keep fp32
+    elif isinstance(
+        layer,
+        (
+            paddle.nn.BatchNorm,
+            paddle.nn.BatchNorm1D,
+            paddle.nn.BatchNorm2D,
+            paddle.nn.BatchNorm3D,
+            paddle.nn.SyncBatchNorm,
+        ),
+    ):
+        need_keep_fp32 = True
+    # layer._dtype is used to set params dtype. BF16 will use bf16 params.
+    elif (layer._dtype == 'float16') or (
+        (dtype == 'float16')
+        and isinstance(
+            layer,
+            (
+                paddle.nn.LayerNorm,
+                paddle.nn.InstanceNorm1D,
+                paddle.nn.InstanceNorm2D,
+                paddle.nn.InstanceNorm3D,
+            ),
+        )
+    ):
+        need_keep_fp32 = True
+
+    return need_keep_fp32
+
+
+def set_excluded_layers(models, excluded_layers):
+    excluded_layers_instances = []
+    excluded_layers_types = []
+    error_message = "excluded_layers must be either a nn.Layer instance/type or a list of nn.Layer instances/types."
+    if excluded_layers is None:
+        excluded_layers = []
+    elif isinstance(excluded_layers, paddle.nn.Layer):
+        excluded_layers_instances = [excluded_layers]
+    elif isinstance(excluded_layers, type) and issubclass(
+        excluded_layers, paddle.nn.Layer
+    ):
+        excluded_layers_types = [excluded_layers]
+    elif isinstance(excluded_layers, list):
+        for item in excluded_layers:
+            if isinstance(item, paddle.nn.Layer):
+                excluded_layers_instances.append(item)
+            elif issubclass(item, paddle.nn.Layer):
+                excluded_layers_types.append(item)
+            else:
+                raise TypeError(error_message)
+    else:
+        raise TypeError(error_message)
+
+    for idx in range(len(excluded_layers_instances)):
+        for layer in excluded_layers_instances[idx].sublayers(
+            include_self=True
+        ):
+            layer._cast_to_low_precison = False
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
-            layer._casted_by_pure_fp16 = True
-            if (layer._dtype == 'float16') or isinstance(
-                layer,
-                (
-                    paddle.nn.BatchNorm,
-                    paddle.nn.BatchNorm1D,
-                    paddle.nn.BatchNorm2D,
-                    paddle.nn.BatchNorm3D,
-                    paddle.nn.LayerNorm,
-                    paddle.nn.SyncBatchNorm,
-                    paddle.nn.InstanceNorm1D,
-                    paddle.nn.InstanceNorm2D,
-                    paddle.nn.InstanceNorm3D,
-                ),
-            ):
+            if type(layer) in excluded_layers_types:
+                layer._cast_to_low_precison = False
+
+
+@dygraph_only
+def amp_initialize(models, dtype, excluded_layers):
+    set_excluded_layers(models, excluded_layers)
+    for idx in range(len(models)):
+        for layer in models[idx].sublayers(include_self=True):
+            if need_keep_fp32(layer, dtype):
                 continue
-            if isinstance(
+            if dtype == "float16" and isinstance(
                 layer,
                 (
                     paddle.incubate.nn.FusedFeedForward,
                     paddle.incubate.nn.FusedMultiHeadAttention,
                 ),
             ):
-                layer._amp_decorate(dtype='float16')
+                layer._amp_decorate(dtype=dtype)
                 continue
-            layer._to_impl(
-                dtype='float16', include_sublayers=False, floating_only=True
-            )
-    return models
 
-
-@dygraph_only
-def pure_bf16_initialize(models):
-    for idx in range(len(models)):
-        for layer in models[idx].sublayers(include_self=True):
             layer._to_impl(
-                dtype='bfloat16', include_sublayers=False, floating_only=True
+                dtype=dtype, include_sublayers=False, floating_only=True
             )
     return models
 
@@ -291,6 +274,7 @@ def amp_guard(
     custom_black_list=None,
     level='O1',
     dtype='float16',
+    use_promote=True,
 ):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
@@ -338,10 +322,8 @@ def amp_guard(
 
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'O1', 'O2']):
-        raise ValueError(
-            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
-        )
+    if not (level in ['O0', 'OD', 'O1', 'O2']):
+        raise ValueError("level should be O0, OD, O1 or O2.")
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
@@ -367,7 +349,7 @@ def amp_guard(
         or tracer._expected_place.is_custom_place()
     ):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place
         )
         enable = False
@@ -402,37 +384,20 @@ def amp_guard(
             )
 
     amp_dtype = dtype
+    amp_global_state().amp_dtype = amp_dtype
 
-    if level == 'O1':
+    if level == 'OD':
+        amp_level = AMP_LEVEL.OD
+    elif level == 'O1':
         amp_level = AMP_LEVEL.O1
-        if dtype == 'float16':
-            _white_list = FP16_WHITE_LIST
-            _black_list = FP16_BLACK_LIST
-        elif dtype == 'bfloat16':
-            _white_list = BF16_WHITE_LIST
-            _black_list = BF16_BLACK_LIST
-
     elif level == 'O2':
         amp_level = AMP_LEVEL.O2
-        if dtype == 'float16':
-            _white_list = PURE_FP16_WHITE_LIST
-            _black_list = PURE_FP16_BLACK_LIST
-        elif dtype == 'bfloat16':
-            _white_list = BF16_WHITE_LIST
-            _black_list = BF16_BLACK_LIST
     elif level == 'O0':
         amp_level = AMP_LEVEL.O0
-        if dtype == 'float16':
-            _white_list = FP16_WHITE_LIST
-            _black_list = FP16_BLACK_LIST
-        elif dtype == 'bfloat16':
-            _white_list = BF16_WHITE_LIST
-            _black_list = BF16_BLACK_LIST
 
-    if custom_white_list or custom_black_list:
-        _white_list, _black_list = _update_list(
-            custom_white_list, custom_black_list, level, dtype
-        )
+    _white_list, _black_list = _update_list(
+        custom_white_list, custom_black_list, level, dtype
+    )
 
     if not enable:
         amp_level = AMP_LEVEL.O0
@@ -474,6 +439,11 @@ def amp_guard(
         original_amp_dtype = tracer._amp_dtype
         tracer._amp_dtype = amp_dtype
 
+        # switch promote
+        if amp_level == AMP_LEVEL.O2:
+            original_use_promote = tracer._use_promote
+            tracer._use_promote = use_promote
+
     # restore status
     try:
         yield
@@ -484,6 +454,8 @@ def amp_guard(
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
             tracer._amp_dtype = original_amp_dtype
+            if amp_level == AMP_LEVEL.O2:
+                tracer._use_promote = original_use_promote
 
 
 class StateDictHook:
@@ -522,6 +494,7 @@ def amp_decorate(
     master_weight=None,
     save_dtype=None,
     master_grad=False,
+    excluded_layers=None,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -590,6 +563,8 @@ def amp_decorate(
         raise ValueError(
             "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
         )
+    if not (dtype in ['float16', 'bfloat16']):
+        raise ValueError("dtype only support float16 or bfloat16.")
 
     if level == 'O1':
         if optimizers is None:
@@ -609,12 +584,9 @@ def amp_decorate(
         raise TypeError(
             "models must be either a single model or a list of models."
         )
-    if dtype == 'float16':
-        models = pure_fp16_initialize(models=models)
-    elif dtype == 'bfloat16':
-        models = pure_bf16_initialize(models=models)
-    else:
-        raise TypeError("dtype only support float16 or bfloat16.")
+
+    # initialize parameters of the model.
+    amp_initialize(models=models, dtype=dtype, excluded_layers=excluded_layers)
 
     if optimizers is not None:
         # check optimizers
@@ -677,26 +649,30 @@ def auto_cast(
     custom_black_list=None,
     level='O1',
     dtype='float16',
+    use_promote=True,
 ):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
-    If enabled, the input data type (float32 or float16) of each operator is decided
+    If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
     by autocast algorithm for better performance.
 
-    Commonly, it is used together with `GradScaler` to achieve Auto-Mixed-Precision in
-    imperative mode. It is used together with `decorator` to achieve Pure fp16 in imperative mode.
+    Commonly, it is used together with `GradScaler` and `decorator` to achieve Auto-Mixed-Precision in
+    imperative mode.
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
-        custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
-             fp16 calculation and are considered numerically-safe and performance-critical. These ops
-             will be converted to fp16.
-        custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
-             calculation and are considered numerically-dangerous and whose effects may also be
-             observed in downstream ops. These ops will not be converted to fp16.
-        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list;
-             O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
+        custom_white_list(set|list|tuple, optional): A default white list is already set. Usually there is no need to set custom white list.
+             The set of ops should be considered numerically-safe and performance-critical. These ops will be converted to float16/bfloat16.
+        custom_black_list(set|list|tuple, optional): A default black list is already set. You can set a custom black list according to the model.
+             The set of ops are considered numerically-dangerous and whose effects may also be observed in downstream ops. These ops will not be
+             converted to float16/bfloat16.
+        level(str, optional): Auto mixed precision level. Accepted values are "O1", "O2" and "OD": At the O1 level, operators in the white list
+             will use float16/bfloat16 inputs for calculations, and operators in the black list will use float32 inputs for calculations. At the O2
+             level, model's parameters will be casted to float16/bfloat16 by using `decorator`, and operators that have all float16/bfloat16 inputs
+             will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
+             default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+        use_promote(bool, optional): Whether to promotes to fp32 when op has any float32 inputs. It is only supported when amp level is O2. Default is True.
 
     Examples:
 
@@ -730,7 +706,9 @@ def auto_cast(
             print(d.dtype) # paddle.float16
 
     """
-    return amp_guard(enable, custom_white_list, custom_black_list, level, dtype)
+    return amp_guard(
+        enable, custom_white_list, custom_black_list, level, dtype, use_promote
+    )
 
 
 def decorate(
@@ -741,6 +719,7 @@ def decorate(
     master_weight=None,
     save_dtype=None,
     master_grad=False,
+    excluded_layers=None,
 ):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing.
@@ -757,8 +736,10 @@ def decorate(
         master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, bfloat16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
-        master_grad(bool, optional): For level='O2', whether to use FP32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If it is enabled, the weight
-             gradients will be FP32 dtype after the backpropagation. Default is False.
+        master_grad(bool, optional): For level='O2', whether to use float32 weight gradients for calculations such as gradient clipping, weight decay, and weight updates. If master_grad is enabled, the weight
+             gradients will be float32 dtype after the backpropagation. Default is False, there is only float16 weight gradients.
+        excluded_layers(Layer|list of Layer, optional): Specify the layers not to be decorated. The weights of these layers will always keep float32 when level is O2. `excluded_layers` can be specified as
+             an Layer instance/type or a list of Layer instances/types. Default is None, the weights of the whole model will be casted to float16 or bfloat16.
 
     Examples:
 
@@ -808,5 +789,12 @@ def decorate(
             print(output.dtype) # FP16
     """
     return amp_decorate(
-        models, optimizers, level, dtype, master_weight, save_dtype, master_grad
+        models,
+        optimizers,
+        level,
+        dtype,
+        master_weight,
+        save_dtype,
+        master_grad,
+        excluded_layers,
     )

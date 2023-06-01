@@ -51,7 +51,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <utility>
-
+#include "paddle/phi/core/macros.h"
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
 #include <execinfo.h>
 #endif
@@ -222,7 +222,7 @@ struct BinaryCompareMessageConverter {
 template <>
 struct BinaryCompareMessageConverter<false> {
   template <typename T>
-  static const char* Convert(const char* expression, const T& value) {
+  static const char* Convert(const char* expression, const T& value UNUSED) {
     return expression;
   }
 };
@@ -282,10 +282,16 @@ inline bool is_error(bool stat) { return !stat; }
     END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
-#define __THROW_WARN_INTERNAL__(__MSG__)    \
-  do {                                      \
-    LOG(WARNING) << "WARNING :" << __MSG__; \
-  } while (0)
+/**
+ * [Why declare function ThrowWarnInternal instead of defining macro
+ * __THROW_WARN_INTERNAL__?]
+ * ThrowWarnInternal uses `LOG` macro to display warning message, which depends
+ * on third-party header file "logging.h". However, "logging.h" has not been
+ * exposed to site-package yet, so that error will occur when we include
+ * "enforce.h" header file. Hence, we declare function in enforce.h and define
+ * it in enforce.cc file.
+ */
+void ThrowWarnInternal(const std::string& message);
 
 /** ENFORCE EXCEPTION AND MACROS **/
 
@@ -345,7 +351,7 @@ struct EnforceNotMet : public std::exception {
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
-  // Simple errror message used when no C++ stack and python compile stack
+  // Simple error message used when no C++ stack and python compile stack
   // e.g. (InvalidArgument) ***
   std::string simple_err_str_;
 };
@@ -428,7 +434,7 @@ struct EnforceNotMet : public std::exception {
       auto __message__ = ::paddle::string::Sprintf(       \
           "%s\n  [Hint: " #__VAL " should not be null.]", \
           __summary__.error_message());                   \
-      __THROW_WARN_INTERNAL__(__message__);               \
+      ::phi::enforce::ThrowWarnInternal(__message__);     \
     }                                                     \
   } while (0)
 
@@ -770,7 +776,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
         ::phi::enforce::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                 \
     if (UNLIKELY(__cond__ != __success_type__)) {            \
-      __THROW_WARN_INTERNAL__(                               \
+      ::phi::enforce::ThrowWarnInternal(                     \
           ::phi::enforce::build_nvidia_error_msg(__cond__)); \
     }                                                        \
   } while (0)
@@ -981,16 +987,17 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
     }                                                      \
   } while (0)
 
-#define PADDLE_WARN_GPU_SUCCESS(COND)                                          \
-  do {                                                                         \
-    auto __cond__ = (COND);                                                    \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                           \
-    constexpr auto __success_type__ =                                          \
-        ::phi::enforce::details::ExternalApiType<                              \
-            __CUDA_STATUS_TYPE__>::kSuccess;                                   \
-    if (UNLIKELY(__cond__ != __success_type__)) {                              \
-      __THROW_WARN_INTERNAL__(::phi::enforce::build_rocm_error_msg(__cond__)); \
-    }                                                                          \
+#define PADDLE_WARN_GPU_SUCCESS(COND)                      \
+  do {                                                     \
+    auto __cond__ = (COND);                                \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);       \
+    constexpr auto __success_type__ =                      \
+        ::phi::enforce::details::ExternalApiType<          \
+            __CUDA_STATUS_TYPE__>::kSuccess;               \
+    if (UNLIKELY(__cond__ != __success_type__)) {          \
+      ::phi::enforce::ThrowWarnInternal(                   \
+          ::phi::enforce::build_rocm_error_msg(__cond__)); \
+    }                                                      \
   } while (0)
 
 inline void retry_sleep(unsigned millisecond) {

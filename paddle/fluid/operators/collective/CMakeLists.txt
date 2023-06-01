@@ -18,7 +18,7 @@ foreach(src ${OPS})
 endforeach()
 
 if(WITH_GLOO)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper comm_context_manager)
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} gloo_wrapper phi)
 endif()
 
 register_operators(
@@ -27,13 +27,11 @@ register_operators(
   gen_bkcl_id_op
   c_gen_nccl_id_op
   gen_nccl_id_op
-  c_gen_cncl_id_op
   DEPS
   ${COLLECTIVE_DEPS})
 
 if(WITH_NCCL OR WITH_RCCL)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper
-                      comm_context_manager nccl_comm_context)
+  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} nccl_common collective_helper phi)
   op_library(c_gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
   op_library(gen_nccl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
@@ -42,11 +40,6 @@ if(WITH_XPU_BKCL)
   set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
   op_library(c_gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
   op_library(gen_bkcl_id_op DEPS ${COLLECTIVE_DEPS})
-endif()
-
-if(WITH_CNCL)
-  set(COLLECTIVE_DEPS ${COLLECTIVE_DEPS} collective_helper)
-  op_library(c_gen_cncl_id_op DEPS ${COLLECTIVE_DEPS})
 endif()
 
 set(OPERATOR_DEPS

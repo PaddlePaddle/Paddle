@@ -26,10 +26,7 @@ from paddle.incubate.autograd.utils import as_tensors
 # Finite Difference Utils
 ##########################################################
 def _product(t):
-    if isinstance(t, int):
-        return t
-    else:
-        return np.product(t)
+    return int(np.product(t))
 
 
 def _get_item(t, idx):
@@ -401,6 +398,7 @@ def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
         return src
     if not isinstance(src[0], typing.Sequence):
         src = [src]
+
     return concat_row(tuple(concat_col(xs) for xs in src))
 
 

@@ -687,10 +687,10 @@ EOF
         is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
             mactest_error=1
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
             if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
                 while ( [ $exec_times -lt $retry_time ] )
                     do
@@ -702,7 +702,7 @@ EOF
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -757,9 +757,9 @@ function run_linux_cpu_test() {
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/eager_op_test.py ${PADDLE_ROOT}/build/python
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
-    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/eager_op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
+    cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -835,10 +835,10 @@ set +x
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -848,7 +848,7 @@ set +x
                             is_retry_execuate=1
                         fi
                     elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
                         need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
@@ -866,7 +866,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -1133,12 +1133,12 @@ function check_approvals_of_unittest() {
 EOF
         if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 7845005 26377421`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (Shixiaowei02 (Recommend) or Superjomn) approval for this PR\n"
+                echo "Then you must have one RD (jiweibo (Recommend), qingqing01 or Shixiaowei02) approval for this PR\n"
                 echo "=========================================================================================="
                 exit 6
             fi
@@ -1470,18 +1470,18 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                     # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
                     # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
-                    read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                    read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
-                    read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                    is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE") || true
+                    is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST") || true
+                    is_nightly=$(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY") || true
                     continue
                 fi
-                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+                testcase=$(echo "$line"|grep -oEi "\w+$")
 
                 if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                     echo $testcase" will only run at night."
@@ -1503,7 +1503,7 @@ set +x
 
                 if [[ "$is_multicard" == "" ]]; then
                   # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                  read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                  is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
                 fi
                 if [[ "$is_exclusive" != "" ]]; then
                     if [[ $(echo $high_parallel_job | grep -o "\^$testcase\\$") != "" ]]; then
@@ -1589,10 +1589,10 @@ set +x
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -1602,7 +1602,7 @@ set +x
                             is_retry_execuate=1
                         fi
                     elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
                         need_retry_ut_count=${#need_retry_ut_arr[@]}
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
@@ -1620,7 +1620,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -1630,9 +1630,9 @@ set +x
                         echo "${retry_unittests}"
                         for line in ${retry_unittests[@]} ;
                             do
-                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
-                                read tmp_mul_tmp <<< "$( echo $multiple_card_tests | grep -oEi $line )"
-                                read exclusive_tmp <<< "$( echo $exclusive_tests | grep -oEi $line )"
+                                tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
+                                tmp_mul_tmp="$( echo $multiple_card_tests | grep -oEi $line )"
+                                exclusive_tmp="$( echo $exclusive_tests | grep -oEi $line )"
 
                                 if [[ "$tmp_one_tmp" != ""  ]]; then
                                     if [[ "$one_card_retry" == "" ]]; then
@@ -1707,18 +1707,18 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')" || true
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                 # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
                 # RUN_TYPE=NIGHTLY or RUN_TYPE=DIST:NIGHTLY or RUN_TYPE=EXCLUSIVE:NIGHTLY means the case will ONLY run at night
-                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
-                read is_nightly <<< $(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
+                is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                is_nightly=$(echo "$line"|grep -oEi "RUN_TYPE=NIGHTLY|RUN_TYPE=DIST:NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY")
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
 
             if [[ "$is_nightly" != "" ]] && [ ${NIGHTLY_MODE:-OFF} == "OFF" ]; then
                 echo $testcase" will only run at night."
@@ -1729,7 +1729,7 @@ set +x
 
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
             fi
             if [[ "$is_exclusive" != "" ]]; then
                 exclusive_card_tests="$exclusive_card_tests|^$testcase$"
@@ -1973,16 +1973,16 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')" || true
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                 # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
-                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
 
             if [[ "$testcase" == "simple_precision_test" ]]; then
                 continue
@@ -1990,7 +1990,7 @@ set +x
 
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
             fi
 
             if [[ "$is_exclusive" != "" ]]; then
@@ -2081,20 +2081,20 @@ set +x
         if [[ "$line" == "" ]]; then
             continue
         fi
-            read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+            matchstr="$(echo $line|grep -oEi 'Test[ \t]+#')" || true
             if [[ "$matchstr" == "" ]]; then
                 # Any test case with LABELS property would be parse here
                 # RUN_TYPE=EXCLUSIVE mean the case would run exclusively
                 # RUN_TYPE=DIST mean the case would take two graph GPUs during runtime
-                read is_exclusive <<< $(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
-                read is_multicard <<< $(echo "$line"|grep -oEi "RUN_TYPE=DIST")
+                is_exclusive=$(echo "$line"|grep -oEi "RUN_TYPE=EXCLUSIVE")
+                is_multicard=$(echo "$line"|grep -oEi "RUN_TYPE=DIST")
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
 
             if [[ "$is_multicard" == "" ]]; then
                 # trick: treat all test case with prefix "test_dist" as dist case, and would run on 2 GPUs
-                read is_multicard <<< $(echo "$testcase"|grep -oEi "test_dist_")
+                is_multicard=$(echo "$testcase"|grep -oEi "test_dist_")
             fi
 
             if [[ "$is_exclusive" != "" ]]; then
@@ -2223,7 +2223,11 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
+            if [[ "$matchstr" == "" ]]; then
+                continue
+            fi
+            testcase=$(echo "$line"|grep -oEi "\w+$")
             if [[ "$single_card_tests" == "" ]]; then
                 single_card_tests="^$testcase$"
             else
@@ -2231,14 +2235,70 @@ set +x
             fi
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
+        failed_test_lists=''
         collect_failed_tests
+        xputest_error=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_times=0
+        exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=10
+        is_retry_execuate=0
+        if [ -n "$failed_test_lists" ];then
+            xputest_error=1
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] )
+                    do
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        echo "========================================="
+
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        rm -f $tmp_dir/*
+                        failed_test_lists=''
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        collect_failed_tests
+                        exec_times=$[$exec_times+1]
+                    done
+            else
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
+            fi
+
+        fi
 set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         python ${PADDLE_ROOT}/build/test/xpu/get_test_cover_info.py
         unset XPU_OP_LIST_DIR
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
+        if [ "$xputest_error" != 0 ];then
+            show_ut_retry_result
         fi
     fi
 }
@@ -2259,14 +2319,14 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-                read matchstr <<< $(echo "$line"|grep -oEi 'Test[ \t]+#')
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
                 if [[ "$matchstr" == "" ]]; then
                     # Any test case with LABELS property would be parse here
                     # RUN_TYPE=CINN mean the case would run in CINN CI.
-                    read is_cinn <<< $(echo "$line"|grep -oEi "RUN_TYPE=CINN")
+                    is_cinn=$(echo "$line"|grep -oEi "RUN_TYPE=CINN") || true
                     continue
                 fi
-                read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+                testcase=$(echo "$line"|grep -oEi "\w+$")
                 if [[ "$is_cinn" != "" ]]; then
                     if [[ "$single_card_tests" == "" ]]; then
                         single_card_tests="^$testcase$"
@@ -2523,7 +2583,7 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
-            read testcase <<< $(echo "$line"|grep -oEi "\w+$")
+            testcase=$(echo "$line"|grep -oEi "\w+$")
             if [[ "$single_card_tests" == "" ]]; then
                 single_card_tests="^$testcase$"
             else
@@ -2640,8 +2700,8 @@ function parallel_test() {
     if ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
-    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
+    cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
@@ -3004,7 +3064,7 @@ EOF
     echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     infer_ut_startTime_s=`date +%s`
-    cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     TEST_EXIT_CODE=$?
@@ -3188,7 +3248,7 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
 
-    git checkout develop
+    git checkout $BRANCH
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
@@ -3197,7 +3257,7 @@ function build_pr_and_develop() {
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
         if [[ ${cmake_change} ]];then
-            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
 
@@ -3508,6 +3568,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
@@ -3521,6 +3582,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
@@ -3534,6 +3596,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
@@ -3547,6 +3610,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3

@@ -62,7 +62,7 @@ inline std::vector<std::reference_wrapper<T>> GetDataVectorSafely(
 }
 }  // namespace detail
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -107,7 +107,7 @@ class SeqConcatKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SeqConcatGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

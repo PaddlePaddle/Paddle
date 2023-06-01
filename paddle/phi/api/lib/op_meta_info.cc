@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "glog/logging.h"
@@ -23,6 +24,38 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
+
+// remove leading and tailing spaces
+std::string trim_spaces(const std::string& str) {
+  const char* p = str.c_str();
+  while (*p != 0 && isspace(*p)) {
+    p++;
+  }
+  size_t len = strlen(p);
+  while (len > 0 && isspace(p[len - 1])) {
+    len--;
+  }
+  return std::string(p, len);
+}
+
+std::vector<std::string> ParseAttrStr(const std::string& attr) {
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos,
+                    std::string::npos,
+                    phi::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
+
+  std::vector<std::string> rlt;
+  // 1. name
+  rlt.emplace_back(trim_spaces(attr.substr(0, split_pos)));
+  // 2. type
+  rlt.emplace_back(trim_spaces(attr.substr(split_pos + 1)));
+
+  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+
+  return rlt;
+}
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
@@ -86,6 +119,11 @@ void CustomOpKernelContext::EmplaceBackAttr(paddle::any attr) {
           << " has value of type: " << attrs_[attrs_.size() - 1].type().name();
 }
 
+void CustomOpKernelContext::EmplaceBackAttrs(
+    const std::vector<paddle::any>& attrs) {
+  attrs_ = std::move(attrs);
+}
+
 const Tensor& CustomOpKernelContext::InputAt(size_t idx) const {
   return inputs_.at(idx);
 }
@@ -97,6 +135,10 @@ std::vector<Tensor> CustomOpKernelContext::InputsBetween(size_t start,
     rlt.emplace_back(inputs_.at(i));
   }
   return rlt;
+}
+
+const std::vector<paddle::any>& CustomOpKernelContext::Attrs() const {
+  return attrs_;
 }
 
 Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
@@ -129,8 +171,8 @@ CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
   return &(outputs_.at(idx));
 }
-std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetweeen(size_t start,
-                                                                  size_t end) {
+std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetween(size_t start,
+                                                                 size_t end) {
   std::vector<Tensor*> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(&(outputs_.at(i)));
@@ -138,8 +180,8 @@ std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetweeen(size_t start,
   return rlt;
 }
 
-std::vector<Tensor> CustomOpKernelContext::OutputsBetweeen(size_t start,
-                                                           size_t end) {
+std::vector<Tensor> CustomOpKernelContext::OutputsBetween(size_t start,
+                                                          size_t end) {
   std::vector<Tensor> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(outputs_.at(i));
@@ -160,6 +202,16 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
   return output_range_.at(idx);
 }
 
+const std::vector<std::pair<size_t, size_t>>&
+CustomOpKernelContext::InputRange() {
+  return input_range_;
+}
+
+const std::vector<std::pair<size_t, size_t>>&
+CustomOpKernelContext::OutputRange() {
+  return output_range_;
+}
+
 void CustomOpKernelContext::ConstructInplaceIndex(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
@@ -175,8 +227,9 @@ void CustomOpKernelContext::ConstructInplaceIndex(
       continue;
     }
     auto out_iter = find(outputs.begin(), outputs.end(), inplace_map.at(input));
-    PADDLE_ENFORCE(
-        out_iter != outputs.end(),
+    PADDLE_ENFORCE_NE(
+        out_iter,
+        outputs.end(),
         phi::errors::NotFound("Can't find the mapped value of %s, please check "
                               "the input of `Inplace` again and make "
                               "sure you registered your op accurately. ",
@@ -220,8 +273,9 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     size_t out_start_idx = output_range_[pair.second].first;
     size_t out_end_idx = output_range_[pair.second].second;
     size_t assign_tensor_size = in_end_idx - in_start_idx;
-    PADDLE_ENFORCE(
-        assign_tensor_size == out_end_idx - out_start_idx,
+    PADDLE_ENFORCE_EQ(
+        assign_tensor_size,
+        out_end_idx - out_start_idx,
         phi::errors::OutOfRange("When assigning inplaced tensor, Input vector "
                                 "size %d mismatch output vector size %d",
                                 in_end_idx - in_start_idx,
@@ -281,6 +335,43 @@ OpMetaInfo& OpMetaInfo::SetInferShapeFn(InferShapeFunc&& func) {
 OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   infer_dtype_fn_ = std::forward<InferDtypeFunc>(func);
   return *this;
+}
+
+//////////////// Op Meta Info Helper /////////////////
+const std::string& OpMetaInfoHelper::GetOpName(const paddle::OpMetaInfo& info) {
+  return info.name_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetInputs(
+    const paddle::OpMetaInfo& info) {
+  return info.inputs_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetOutputs(
+    const paddle::OpMetaInfo& info) {
+  return info.outputs_;
+}
+const std::vector<std::string>& OpMetaInfoHelper::GetAttrs(
+    const paddle::OpMetaInfo& info) {
+  return info.attrs_;
+}
+const std::unordered_map<std::string, std::string>&
+OpMetaInfoHelper::GetInplaceMap(const paddle::OpMetaInfo& info) {
+  return info.inplace_map_;
+}
+const std::unordered_map<std::string, std::string>&
+OpMetaInfoHelper::GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
+  return info.inplace_reverse_map_;
+}
+const KernelFunc& OpMetaInfoHelper::GetKernelFn(
+    const paddle::OpMetaInfo& info) {
+  return info.kernel_fn_;
+}
+const InferShapeFunc& OpMetaInfoHelper::GetInferShapeFn(
+    const paddle::OpMetaInfo& info) {
+  return info.infer_shape_fn_;
+}
+const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
+    const paddle::OpMetaInfo& info) {
+  return info.infer_dtype_fn_;
 }
 
 //////////////// Op Meta Info Map /////////////////
@@ -346,6 +437,30 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
+  const std::unordered_set<std::string> custom_attrs_type(
+      {"bool",
+       "int",
+       "float",
+       "int64_t",
+       "std::string",
+       "std::vector<int>",
+       "std::vector<float>",
+       "std::vector<int64_t>",
+       "std::vector<std::string>"});
+  for (const auto& attr : attrs) {
+    auto attr_type_str = ParseAttrStr(attr)[1];
+    if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, "
+          "Please check whether the attribute data type and "
+          "data type string are matched.",
+          attr_type_str));
+    }
+  }
   info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
   return *this;
 }
@@ -357,21 +472,23 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
   const std::vector<std::string>& outputs =
       OpMetaInfoHelper::GetOutputs(*info_ptr_);
   for (const auto& pair : inplace_map) {
-    PADDLE_ENFORCE(
-        std::find(inputs.begin(), inputs.end(), pair.first) != inputs.cend(),
+    PADDLE_ENFORCE_NE(
+        std::find(inputs.begin(), inputs.end(), pair.first),
+        inputs.cend(),
         phi::errors::PreconditionNotMet(
             "The register of operator %s's `SetInplaceMap` failed. "
             "Please make sure: 1. Call `Inputs` and `Outputs` before "
             "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
             name_));
-    PADDLE_ENFORCE(std::find(outputs.begin(), outputs.end(), pair.second) !=
-                       outputs.cend(),
-                   phi::errors::PreconditionNotMet(
-                       "The register of operator %s's `SetInplaceMap` failed. "
-                       "Please make sure: 1. Call `Inputs` and `Outputs` "
-                       "before `SetInplaceMap`; 2. The values of inplace_map "
-                       "are inside `Outputs`",
-                       name_));
+    PADDLE_ENFORCE_NE(
+        std::find(outputs.begin(), outputs.end(), pair.second),
+        outputs.cend(),
+        phi::errors::PreconditionNotMet(
+            "The register of operator %s's `SetInplaceMap` failed. "
+            "Please make sure: 1. Call `Inputs` and `Outputs` "
+            "before `SetInplaceMap`; 2. The values of inplace_map "
+            "are inside `Outputs`",
+            name_));
   }
   info_ptr_->SetInplaceMap(
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map));

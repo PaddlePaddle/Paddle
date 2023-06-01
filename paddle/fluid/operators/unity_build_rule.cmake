@@ -49,7 +49,6 @@ register_unity_group(
   cos_sim_op.cc
   crf_decoding_op.cc
   crop_op.cc
-  ascend_trigger_op.cc
   conj_op.cc
   imag_op.cc
   kldiv_loss_op.cc
@@ -136,7 +135,7 @@ register_unity_group(
   kron_op.cc
   l1_norm_op.cc
   label_smooth_op.cc
-  layer_norm_op.cc
+  generated_op
   mkldnn/layer_norm_mkldnn_op.cc
   mkldnn/layer_norm_mkldnn_op.cc
   linspace_op.cc
@@ -260,8 +259,7 @@ register_unity_group(
   sign_op.cc
   similarity_focus_op.cc
   size_op.cc
-  slice_op.cc
-  softmax_op.cc)
+  slice_op.cc)
 register_unity_group(
   cc
   space_to_depth_op.cc
@@ -290,7 +288,6 @@ register_unity_group(
   transpose_op.cc
   mkldnn/transpose_mkldnn_op.cc
   tree_conv_op.cc
-  tril_triu_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(
@@ -328,7 +325,6 @@ register_unity_group(
   pool_op.cu.cc
   pool_cudnn_op.cu.cc
   pool_with_index_op.cu.cc
-  run_program_op.cu.cc
   softmax_op.cu.cc
   softmax_cudnn_op.cu.cc
   spp_op.cu.cc
@@ -354,7 +350,6 @@ register_unity_group(
   rnn_op.cu.cc
   split_op.cu.cc
   assign_value_op.cu.cc
-  run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
   cu
@@ -492,6 +487,7 @@ register_unity_group(
   pixel_shuffle_op.cu
   prelu_op.cu
   prroi_pool_op.cu
+  run_program_op.cu
   pull_box_extended_sparse_op.cu
   pull_box_sparse_op.cu)
 register_unity_group(

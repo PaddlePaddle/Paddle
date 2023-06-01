@@ -427,15 +427,6 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
-    elif backend == 'cncl':
-        proc_env = {
-            "FLAGS_selected_mlus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-        }
     elif backend == 'gloo':
         # NOTE (xiongkun) default fall back into cpu only
         proc_env = {

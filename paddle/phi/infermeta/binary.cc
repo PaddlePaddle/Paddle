@@ -18,12 +18,13 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -72,7 +73,7 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return phi::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
@@ -990,7 +991,7 @@ void DistInferMeta(const MetaTensor& x,
                         "The Input(Y) has not been initialized properly. The "
                         "shape of Input(Y) = [%s].",
                         y_dims));
-  out->set_dims({1});
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 
@@ -1152,8 +1153,9 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
                         "with input tensor Y: %s",
                         x_dims.to_str(),
                         y_dims.to_str()));
-
-  x_dims[x_dims.size() - 1] = 1;
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 1);
+  x_dims = phi::make_ddim(x_dims_vec_cut);
   out->set_dims(x_dims);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
@@ -1282,11 +1284,6 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
 
 void FusedDropoutAddInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
-                              const Scalar& p,
-                              bool is_test,
-                              const std::string& mode,
-                              int seed,
-                              bool fix_seed,
                               MetaTensor* out,
                               MetaTensor* seed_offset) {
   out->share_meta(x);
@@ -2060,9 +2057,6 @@ void MatmulInferMeta(const MetaTensor& x,
   if (!y_broadcasted) {
     new_dims.push_back(N);
   }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
-  }
 
   auto ddim_out = phi::make_ddim(new_dims);
 
@@ -2204,6 +2198,18 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
   }
 }
 
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out) {
+  if (atol_tensor) {
+    MatrixRankTolInferMeta(x, atol_tensor, use_default_tol, hermitian, out);
+  } else {
+    MatrixRankInferMeta(x, use_default_tol, hermitian, out);
+  }
+}
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -2332,7 +2338,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 1. But recevied X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(
@@ -2399,9 +2405,9 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,
@@ -2574,6 +2580,24 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y) {
+  auto dim = phi::vectorize<int>(x.dims());
+
+  if (max_len_tensor) {
+    dim.push_back(-1);
+  } else {
+    dim.push_back(maxlen > 0 ? maxlen : -1);
+  }
+
+  y->set_dims(phi::make_ddim(dim));
+  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
+  y->set_dtype(out_phi_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,

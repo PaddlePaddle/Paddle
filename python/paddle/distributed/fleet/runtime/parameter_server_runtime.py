@@ -718,6 +718,7 @@ class ParameterServerRuntime(RuntimeBase):
         target_vars,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for inference,
@@ -743,6 +744,7 @@ class ParameterServerRuntime(RuntimeBase):
                 None,
                 None,
                 export_for_deployment,
+                legacy_format=legacy_format,
             )
         else:
             paddle.fluid.io.save_inference_model(
@@ -755,6 +757,7 @@ class ParameterServerRuntime(RuntimeBase):
                 None,
                 export_for_deployment,
                 True,
+                legacy_format=legacy_format,
             )
 
             model_basename = "__model__"

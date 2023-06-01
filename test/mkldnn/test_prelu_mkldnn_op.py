@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 def ref_prelu(x, weight, mode):
@@ -90,6 +86,22 @@ class TestPReluModeElementOneDNNOp(TestPReluModeChannelOneDNNOp):
     def init_attrs(self):
         self.mode = "element"
         self.alpha = np.random.random((1, 4, 5, 5)).astype("float32")
+
+
+class TestPReluModeElement0DOneDNNOp(TestPReluModeChannelOneDNNOp):
+    def init_attrs(self):
+        self.mode = "all"
+        self.alpha = np.random.random(()).astype("float32")
+
+    def setUp(self):
+        self.op_type = "prelu"
+        self.x = np.random.random(()).astype("float32")
+        self.init_attrs()
+        self.set_inputs()
+        self.attrs = {'mode': self.mode, 'use_mkldnn': True}
+        self.set_dtype_attr()
+
+        self.outputs = {'Out': self.x if self.x > 0 else self.x * self.alpha}
 
 
 class TestPReluModeChannel3DOneDNNOp(TestPReluModeChannelOneDNNOp):

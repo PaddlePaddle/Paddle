@@ -76,6 +76,7 @@ void NaiveExecutor::Run() {
                                 platform::NvtxRangeColor::Green);
 #endif
 
+
     // According to reuse table, we share the out tensor's holder.
     if (reuse_cache_.count(op.get())) {
       for (auto &it : reuse_cache_[op.get()]) {
@@ -90,6 +91,7 @@ void NaiveExecutor::Run() {
     // auto *dev_ctx = reinterpret_cast<phi::GPUContext *>(pool.Get(place_));
     // auto success = cudaStreamSynchronize(dev_ctx->stream());
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
+
 
     op->Run(*scope_, place_);
     // std::cout << op->OutputVars(true).front() << std::endl;
@@ -129,6 +131,22 @@ void NaiveExecutor::Run() {
         if (it.first->memory_size() >
             cluster_buffer_[it.second]->memory_size()) {
           cluster_buffer_[it.second] = it.first;
+          int updated_cluster_id = it.second;
+
+          // cluster_buffer_[it.second] has been updated to be a new
+          // phi::DenseTensor*, we need change all phi::DenseTensor's
+          // shared_holder in this cluster. The following two loops code looks
+          // ugly, it does work. The following two loops seem time-consuming,
+          // but once the memory reaches its peak, the cluster will not update,
+          // so it's ok.
+          for (auto &op_map : reuse_cache_) {
+            // op_map.second is std::unordered_map<phi::DenseTensor*, int>.
+            for (auto &it2 : op_map.second) {
+              if (it2.second == updated_cluster_id) {
+                it2.first->ShareBufferWith(*cluster_buffer_[it2.second], true);
+              }
+            }
+          }
         }
       }
     }

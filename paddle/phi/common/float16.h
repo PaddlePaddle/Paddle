@@ -215,7 +215,7 @@ struct PADDLE_ALIGN(2) float16 {
     return *this;
   }
 
-// Conversion opertors
+// Conversion operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline half to_half() const {
 #if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000

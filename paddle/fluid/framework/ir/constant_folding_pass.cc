@@ -62,9 +62,9 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
-          "scope must not be null when applying constant floding."));
+          "scope must not be null when applying constant folding."));
 
-  std::vector<std::string> blacklist{"feed", "ms_deform_attn"};
+  std::vector<std::string> blacklist{"feed", "ms_deform_attn", "matrix_multiply", "save"};
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
@@ -75,7 +75,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       continue;
 
     bool input_persis = true;
-    // map is used to record how many time a name string occures in the whole
+    // map is used to record how many time a name string occurs in the whole
     // graph's nodes
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {

@@ -16,13 +16,15 @@ import logging
 from functools import reduce
 
 import paddle
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     ParallelMode,
     is_data_parallel_reduce_op,
     is_parameter_related,
 )
-from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.process_group import (
+    new_process_group,
+)
+from paddle.distributed.auto_parallel.static.utils import (
     _get_comm_group,
     get_logger,
     get_var_numel,
@@ -1661,7 +1663,7 @@ def partition_by_greedy_even(params, group_size):
     for param in params:
         rank = sizes.index(min(sizes))
         mapping[rank].append(param)
-        numel = reduce(lambda x, y: x * y, param.shape)
+        numel = reduce(lambda x, y: x * y, param.shape, 1)
         assert (
             numel > 0
         ), "param [{}] should larger than 0, but it is [{}]".format(

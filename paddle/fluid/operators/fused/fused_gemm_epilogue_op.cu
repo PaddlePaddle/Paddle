@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 
 namespace paddle {
@@ -53,8 +52,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fued linear epilogue type should be one of {none, relu, gelu}."
-          "But received activation is %s, please check",
+          "fused_gemm_epilogue's activate should be one of {none, relu, gelu},"
+          " but received %s, please check",
           activation));
     }
   }
@@ -101,26 +100,19 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
             << ", activation=" << activation << ", fused_type=" << fused_type
             << ", reserve_space=" << reserve_space;
 
-    auto fused_impl =
-        phi::funcs::MatmulPlanner(vectorize(x->dims()),
-                                  vectorize(y->dims()),
-                                  trans_x,
-                                  trans_y,
-                                  phi::CppTypeToDataType<T>::Type(),
-                                  fused_type,
-                                  static_cast<const void*>(bias->data<T>()),
-                                  reserve_data);
-
-    phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx,
-                                           x->data<T>(),
-                                           y->data<T>(),
-                                           out->data<T>(),
-                                           M,
-                                           N,
-                                           K,
-                                           trans_x,
-                                           trans_y,
-                                           &fused_impl);
+    phi::funcs::LinearWithCublasLt<T>::Run(
+        dev_ctx,
+        x,
+        y,
+        out,
+        static_cast<const void*>(bias->data<T>()),
+        reserve_data,
+        M,
+        N,
+        K,
+        trans_x,
+        trans_y,
+        fused_type);
   }
 };
 

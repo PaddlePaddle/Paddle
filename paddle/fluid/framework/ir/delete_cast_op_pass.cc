@@ -19,6 +19,8 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/assign_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 class DenseTensor;
@@ -624,6 +626,93 @@ int DeleteCastOpPass::ApplyCastScatterPass(ir::Graph* graph) const {
 }
 
 namespace patterns {
+struct CastLookupTablePattern : public PatternBase {
+  CastLookupTablePattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(lookup_table);
+  PATTERN_DECL_NODE(cast);
+  // declare variable node's name
+  PATTERN_DECL_NODE(lookup_table_w);
+  PATTERN_DECL_NODE(lookup_table_out);
+  PATTERN_DECL_NODE(cast_out);
+};
+
+CastLookupTablePattern::CastLookupTablePattern(PDPattern* pattern,
+                                               const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* lookup_table_w = pattern->NewNode(lookup_table_w_repr())
+                             ->assert_is_op_input("lookup_table_v2", "W")
+                             ->assert_is_persistable_var();
+  auto* lookup_table =
+      pattern->NewNode(lookup_table_repr())->assert_is_op("lookup_table_v2");
+  auto* lookup_table_out = pattern->NewNode(lookup_table_out_repr())
+                               ->assert_is_op_output("lookup_table_v2", "Out")
+                               ->assert_is_op_input("cast", "X")
+                               ->assert_has_n_outputs(1);
+  auto* cast =
+      pattern->NewNode(cast_repr())
+          ->assert_is_op("cast")
+          ->assert_more([](Node* node) {
+            auto* op_desc = node->Op();
+            auto in_dtype = op_desc->GetAttrIfExists<int>("in_dtype");
+            auto out_dtype = op_desc->GetAttrIfExists<int>("out_dtype");
+            return in_dtype == static_cast<int>(proto::VarType::FP32) &&
+                   out_dtype == static_cast<int>(proto::VarType::FP16);
+          });
+  auto* cast_out =
+      pattern->NewNode(cast_out_repr())->assert_is_op_output("cast", "Out");
+
+  lookup_table->LinksFrom({lookup_table_w}).LinksTo({lookup_table_out});
+  cast->LinksFrom({lookup_table_out}).LinksTo({cast_out});
+}
+}  // namespace patterns
+
+int DeleteCastOpPass::ApplyCastLookupTablePass(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::CastLookupTablePattern pattern(gpd.mutable_pattern(), name_scope_);
+
+  int found_subgraph_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle ApplyCastLookupTablePass fuse";
+    GET_IR_NODE_FROM_SUBGRAPH(lookup_table, lookup_table, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast, cast, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(lookup_table_w, lookup_table_w, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(lookup_table_out, lookup_table_out, pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(cast_out, cast_out, pattern);
+    auto* scope = param_scope();
+
+    auto* w_tensor =
+        scope->Var(lookup_table_w->Name())->GetMutable<phi::DenseTensor>();
+    lookup_table_w->Var()->SetDataType(proto::VarType::FP16);
+    if (w_tensor->dtype() != phi::DataType::FLOAT16) {
+      auto* cpu_ctx = static_cast<phi::CPUContext*>(
+          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      phi::DenseTensor w_fp32_tensor;
+      w_fp32_tensor.Resize(w_tensor->dims());
+      w_fp32_tensor.set_type(w_tensor->dtype());
+      phi::AssignKernel(*cpu_ctx, *w_tensor, &w_fp32_tensor);
+      w_tensor->set_type(phi::DataType::FLOAT16);
+      phi::CastKernel<float>(
+          *cpu_ctx, w_fp32_tensor, phi::DataType::FLOAT16, w_tensor);
+    }
+
+    for (auto* next_op : cast_out->outputs) {
+      next_op->Op()->RenameInput(cast_out->Name(), lookup_table_out->Name());
+      IR_NODE_LINK_TO(lookup_table_out, next_op);
+    }
+
+    std::unordered_set<const Node*> delete_nodes{cast, cast_out};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  return found_subgraph_count;
+}
+
+namespace patterns {
 struct CastPattern : public PatternBase {
   CastPattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -716,6 +805,15 @@ void DeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   if (found_subgraph_count > 0) {
     LOG(INFO) << "--- delete " << found_subgraph_count
               << " cast_scatter_cast subgraph";
+  }
+
+  found_subgraph_count = 0;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    found_subgraph_count += ApplyCastLookupTablePass(graph->GetSubGraph(i));
+  }
+  if (found_subgraph_count > 0) {
+    LOG(INFO) << "--- delete " << found_subgraph_count
+              << " lookup_table_cast subgraph";
   }
 
   found_subgraph_count = 0;

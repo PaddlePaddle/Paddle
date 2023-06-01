@@ -97,7 +97,7 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void FeedStringsKernel(const Context& dev_ctx,
+void FeedStringsKernel(const Context& dev_ctx UNUSED,
                        const phi::ExtendedTensor& x,
                        int col,
                        phi::ExtendedTensor* out) {

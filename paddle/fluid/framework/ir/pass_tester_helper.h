@@ -787,16 +787,33 @@ struct Layers {
     return out;
   }
 
-  VarDesc* write_to_array(std::vector<VarDesc*> x, VarDesc* i) {
+  VarDesc* write_to_array(VarDesc* x, VarDesc* i) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("write_to_array");
-    std::vector<std::string> x_names;
-    for (auto k : x) {
-      x_names.push_back(k->Name());
-    }
-    op->SetInput("X", x_names);
+    op->SetInput("X", {x->Name()});
     op->SetInput("I", {i->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* read_from_array(VarDesc* x, VarDesc* i) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("read_from_array");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("I", {i->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* gather(VarDesc* x, VarDesc* index, int axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("gather");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Index", {index->Name()});
+    op->SetAttr("axis", axis);
     op->SetOutput("Out", {out->Name()});
     return out;
   }
@@ -805,6 +822,17 @@ struct Layers {
 
   VarDesc* logical_not(VarDesc* input) {
     return unary_op("logical_not", input);
+  }
+
+  VarDesc* not_equal(VarDesc* x, VarDesc* y, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("not_equal");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
   }
 
   VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
@@ -818,6 +846,16 @@ struct Layers {
     op->SetInput("X", input_names);
     op->SetAttr("axis", axis);
     op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
+  VarDesc* tile(VarDesc* x, const std::vector<int>& repeat_times = {2}) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("tile");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("repeat_times", repeat_times);
+    op->SetOutput("Out", {out->Name()});
     return out;
   }
 

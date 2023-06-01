@@ -24,7 +24,6 @@ from ...fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
@@ -102,12 +101,8 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     if not isinstance(input, Variable):
         input = assign(input)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.diag_embed(input, offset, dim1, dim2)
-    elif in_dynamic_mode():
-        return _legacy_C_ops.diag_embed(
-            input, "offset", offset, "dim1", dim1, "dim2", dim2
-        )
 
     inputs = {'Input': [input]}
     attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
@@ -218,7 +213,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is not None:
@@ -318,7 +313,7 @@ def gather_tree(ids, parents):
     if ids.ndim != parents.ndim:
         raise ValueError("The ids's shape must be the same as parents' shape. ")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
@@ -404,12 +399,15 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
             "Received Attr(data_format): {}.".format(data_format)
         )
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
     else:
         helper = LayerHelper("temporal_shift", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'temporal_shift'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'temporal_shift',
         )
         check_type(seg_num, 'seg_num', int, 'temporal_shift')
         check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')

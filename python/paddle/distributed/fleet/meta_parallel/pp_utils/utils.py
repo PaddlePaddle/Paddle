@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
+import numpy as np
+
 import paddle
 from paddle import _legacy_C_ops
+from paddle.distributed.parallel import _split_tensors
+from paddle.fluid import core
 
 __all__ = []
 
@@ -105,3 +111,110 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
         'nranks',
         nranks,
     )
+
+
+class FusedAllReduceBuffer:
+    def __init__(self, id, params, comm_group, acc_steps=1):
+        self._id = id
+        self._params = params
+        self._acc_steps = acc_steps
+        self._comm_group = comm_group
+
+        self._tasks = []
+        self._grads = []
+        self._params_step_dict = {}
+        self._params_checked_in = 0
+        self._coalesced_grads_and_grad_vars = []
+
+        self._init_step_dict()
+
+    def _init_step_dict(self):
+        for p in self._params:
+            self._params_step_dict[p.name] = 0
+
+    def _reset_params_checked_in(self):
+        self._tasks.clear()
+        self._grads.clear()
+        self._init_step_dict()
+        self._params_checked_in = 0
+        self._coalesced_grads_and_grad_vars.clear()
+
+    @property
+    def _all_params_checked_in(self):
+        return (
+            len(self._params) == self._params_checked_in
+            and len(self._params_step_dict) == 0
+        )
+
+    def add_grad(self, param):
+        assert param.name in self._params_step_dict
+
+        if self._params_step_dict[param.name] == 0:
+            if getattr(param, "main_grad", None) is not None:
+                assert param.grad is None
+                self._grads.append(param.main_grad)
+            else:
+                self._grads.append(param.grad)
+
+        self._params_step_dict[param.name] += 1
+
+        if self._params_step_dict[param.name] == self._acc_steps:
+            self._params_checked_in += 1
+            self._params_step_dict.pop(param.name)
+
+        if self._all_params_checked_in:
+            self._fused_allreduce_grads()
+
+    def _fused_allreduce_grads(self):
+        assert self._all_params_checked_in
+        flattened_vars = []
+        g_var_shapes = []
+
+        for g_var in self._grads:
+            g_var_shapes.append(g_var.shape)
+            flattened_vars.append(
+                paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
+            )
+
+        coalesced_grad = paddle.concat(flattened_vars)
+        self._coalesced_grads_and_grad_vars.append(
+            [coalesced_grad, self._grads, g_var_shapes]
+        )
+
+        for coalesced_grad, _, _ in self._coalesced_grads_and_grad_vars:
+            self._tasks.append(
+                paddle.distributed.all_reduce(
+                    coalesced_grad, group=self._comm_group, sync_op=False
+                )
+            )
+
+    def scale_and_split_grads(self):
+        for task in self._tasks:
+            task.wait()
+
+        scale_factor = 1.0 / self._comm_group.nranks
+        for coalesced_grad, _, _ in self._coalesced_grads_and_grad_vars:
+            coalesced_grad.scale_(scale_factor)
+
+        _split_tensors(self._coalesced_grads_and_grad_vars)
+        self._reset_params_checked_in()
+
+
+def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
+
+    group_idx = 0
+    memory_counter = 0
+    var_groups = OrderedDict()
+    dtype = parameters[0].dtype
+
+    for var in parameters:
+        bytes = np.prod(var.shape) * core.size_of_dtype(var.dtype)
+        if memory_counter < group_size and dtype == var.dtype:
+            memory_counter += bytes
+        else:
+            memory_counter = bytes
+            dtype = var.dtype
+            group_idx += 1
+        var_groups.setdefault(group_idx, []).append(var)
+
+    return var_groups

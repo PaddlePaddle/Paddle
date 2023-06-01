@@ -11,25 +11,20 @@
 # limitations under the License.
 
 import random
-import sys
 import unittest
 
-sys.path.append('../../python/paddle/fluid/tests/unittests')
-
 import numpy as np
-from op_test_xpu import XPUOpTest
-
-import paddle
-from paddle.fluid import core
-
-sys.path.append('../../python/paddle/fluid/tests/unittests/rnn')
 from convert import get_params_for_net
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test_xpu import XPUOpTest
 from rnn_numpy import LSTM
+
+import paddle
+from paddle.fluid import core
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
