@@ -218,6 +218,14 @@ class TestSegmentMean(TestSegmentOps):
         }
         self.convert_bf16()
 
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0))
+        # due to CPU kernel not implement calculate 'SummedIds'
+        # so cannot check 'SummedIds'
+        del self.outputs['SummedIds']
+        self.check_output_with_place(core.CPUPlace())
+
 
 class TestSegmentMean2(TestSegmentMean):
     def prepare(self):

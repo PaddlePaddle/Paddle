@@ -25,7 +25,7 @@ class TestEmpty(OpTest):
         self.op_type = "is_empty"
         self.python_api = paddle.is_empty
         self.inputs = {'X': np.array([1, 2, 3])}
-        self.outputs = {'Out': np.array([False])}
+        self.outputs = {'Out': np.array(False)}
 
     def test_check_output(self):
         self.check_output()
@@ -36,7 +36,7 @@ class TestNotEmpty(TestEmpty):
         self.op_type = "is_empty"
         self.python_api = paddle.is_empty
         self.inputs = {'X': np.array([])}
-        self.outputs = {'Out': np.array([True])}
+        self.outputs = {'Out': np.array(True)}
 
 
 class TestIsEmptyOpError(unittest.TestCase):

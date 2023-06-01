@@ -252,8 +252,8 @@ class TestDataNormOp(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.zeros(x_shape).astype(tp)
-        scale = np.ones(x_shape).astype(tp)
+        mean = np.zeros(x_shape[1]).astype(tp)
+        scale = np.ones(x_shape[1]).astype(tp)
 
         self.inputs = {
             "X": x_val,
@@ -309,8 +309,8 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.zeros(x_shape).astype(tp)
-        scale = np.ones(x_shape).astype(tp)
+        mean = np.zeros(x_shape[1]).astype(tp)
+        scale = np.ones(x_shape[1]).astype(tp)
 
         self.inputs = {
             "X": x_val,
@@ -373,8 +373,8 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.zeros(x_shape).astype(tp)
-        scale = np.ones(x_shape).astype(tp)
+        mean = np.zeros(x_shape[1]).astype(tp)
+        scale = np.ones(x_shape[1]).astype(tp)
 
         self.inputs = {
             "X": x_val,
@@ -432,8 +432,8 @@ class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.zeros(x_shape).astype(tp)
-        scale = np.ones(x_shape).astype(tp)
+        mean = np.zeros(x_shape[1]).astype(tp)
+        scale = np.ones(x_shape[1]).astype(tp)
 
         self.inputs = {
             "X": x_val,
@@ -493,8 +493,8 @@ class TestDataNormOpWithSlotDim(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.zeros(x_shape).astype(tp)
-        scale = np.ones(x_shape).astype(tp)
+        mean = np.zeros(x_shape[1]).astype(tp)
+        scale = np.ones(x_shape[1]).astype(tp)
 
         self.inputs = {
             "X": x_val,

@@ -889,7 +889,7 @@ class TestSubtractApi(unittest.TestCase):
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
-            np_z = z.numpy()
+            np_z = z.numpy(False)
             z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((np_z == z_expected).all(), True)
 
