@@ -169,18 +169,18 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     }
   }
 
-  PyObject* array = api.PyArray_NewFromDescr_(
-      api.PyArray_Type_,
-      api.PyArray_DescrFromType_(numpy_dtype),
-      py_rank,
-      py_dims,
-      py_strides,
-      nullptr,
-      pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
-          pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
-      nullptr);
-
   if (!self->tensor.impl()->initialized()) {
+    PyObject* array = api.PyArray_NewFromDescr_(
+        api.PyArray_Type_,
+        api.PyArray_DescrFromType_(numpy_dtype),
+        py_rank,
+        py_dims,
+        py_strides,
+        nullptr,
+        pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+            pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
+        nullptr);
+
     if (tensor_dims.size() == 0) {
       py_dims[0] = 0;
       py_strides[0] = 0;
@@ -199,6 +199,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     return array;
   }
 
+  void* array_buffer = nullptr;
+
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
     platform::CPUPlace place;
@@ -208,25 +210,24 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-
+      array_buffer = malloc(dense_tensor->memory_size());
       // deep copy
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          place,
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      paddle::memory::Copy(place,
+                           array_buffer,
+                           place,
+                           dense_tensor->data(),
+                           dense_tensor->memory_size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      array_buffer = malloc(dense_tensor->memory_size());
       // deep copy
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          place,
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      paddle::memory::Copy(place,
+                           array_buffer,
+                           place,
+                           dense_tensor->data(),
+                           dense_tensor->memory_size());
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -243,20 +244,20 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      paddle::platform::GpuMemcpySync(
-          pybind11::detail::array_proxy(array)->data,
-          dense_tensor->data(),
-          phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
-          kind);
+      array_buffer = malloc(dense_tensor->memory_size());
+      paddle::platform::GpuMemcpySync(array_buffer,
+                                      dense_tensor->data(),
+                                      dense_tensor->memory_size(),
+                                      kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      paddle::platform::GpuMemcpySync(
-          pybind11::detail::array_proxy(array)->data,
-          dense_tensor->data(),
-          phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
-          kind);
+      array_buffer = malloc(dense_tensor->memory_size());
+      paddle::platform::GpuMemcpySync(array_buffer,
+                                      dense_tensor->data(),
+                                      dense_tensor->memory_size(),
+                                      kind);
     }
 #endif
 #if defined(PADDLE_WITH_XPU)
@@ -268,22 +269,22 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          dense_tensor->place(),
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      array_buffer = malloc(dense_tensor->memory_size());
+      paddle::memory::Copy(place,
+                           array_buffer,
+                           dense_tensor->place(),
+                           dense_tensor->data(),
+                           dense_tensor->memory_size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      paddle::memory::Copy(
-          place,
-          reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
-          dense_tensor->place(),
-          dense_tensor->data(),
-          sizeof_dtype * numel);
+      array_buffer = malloc(dense_tensor->memory_size());
+      paddle::memory::Copy(place,
+                           array_buffer,
+                           dense_tensor->place(),
+                           dense_tensor->data(),
+                           dense_tensor->memory_size());
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -295,11 +296,10 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+      array_buffer = malloc(dense_tensor->memory_size());
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
           ->MemoryCopyD2H(
-              pybind11::detail::array_proxy(array)->data,
-              dense_tensor->data(),
-              phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+              array_buffer, dense_tensor->data(), dense_tensor->memory_size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -312,11 +312,10 @@ static PyObject* tensor_method_numpy(TensorObject* self,
         dense_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(temp_tensor.impl());
       }
+      array_buffer = malloc(dense_tensor->memory_size());
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
           ->MemoryCopyD2H(
-              pybind11::detail::array_proxy(array)->data,
-              dense_tensor->data(),
-              phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+              array_buffer, dense_tensor->data(), dense_tensor->memory_size());
     }
 #endif
   } else {
@@ -324,6 +323,18 @@ static PyObject* tensor_method_numpy(TensorObject* self,
         "Tensor.numpy() only support cpu tensor."));
     RETURN_PY_NONE
   }
+
+  PyObject* array = api.PyArray_NewFromDescr_(
+      api.PyArray_Type_,
+      api.PyArray_DescrFromType_(numpy_dtype),
+      py_rank,
+      py_dims,
+      py_strides,
+      array_buffer,
+      pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
+          pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_ |
+          pybind11::detail::npy_api::NPY_ARRAY_OWNDATA_,
+      nullptr);
 
   return array;
   EAGER_CATCH_AND_THROW_RETURN_NULL
