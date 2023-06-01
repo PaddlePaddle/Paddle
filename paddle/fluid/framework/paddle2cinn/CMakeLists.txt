@@ -39,7 +39,9 @@ cc_library(
        cinn_cache_key
        cinn_graph_symbolization
        cinn
-       cinn_launch_context)
+       cinn_launch_context
+       python
+       pybind)
 
 if(WITH_TESTING)
   # cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinn)
@@ -60,7 +62,8 @@ if(WITH_TESTING)
     mul_op
     activation_op
     elementwise_add_op
-    generated_op)
+    generated_op
+    generated_static_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 

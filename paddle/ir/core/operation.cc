@@ -15,23 +15,31 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/core/region.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
-Operation *Operation::create(const OperationArgument &argument) {
-  return create(argument.inputs_,
-                argument.output_types_,
-                argument.attribute_,
-                argument.info_);
+Operation *Operation::create(OperationArgument &&argument) {
+  Operation *op = create(argument.inputs,
+                         argument.attribute,
+                         argument.output_types,
+                         argument.info,
+                         argument.regions.size());
+
+  for (size_t index = 0; index < argument.regions.size(); ++index) {
+    op->GetRegion(index).TakeBody(std::move(*argument.regions[index]));
+  }
+  return op;
 }
 
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, Operand.
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
-                             const std::vector<ir::Type> &output_types,
                              const AttributeMap &attribute,
-                             ir::OpInfo op_info) {
+                             const std::vector<ir::Type> &output_types,
+                             ir::OpInfo op_info,
+                             size_t num_regions) {
   // 0. Verify
   if (op_info) {
     op_info.verify(inputs, output_types, attribute);
@@ -50,7 +58,9 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
           : sizeof(detail::OpInlineResultImpl) * num_results;
   size_t operand_mem_size = sizeof(detail::OpOperandImpl) * num_operands;
   size_t op_mem_size = sizeof(Operation);
-  size_t base_size = result_mem_size + op_mem_size + operand_mem_size;
+  size_t region_mem_size = num_regions * sizeof(Region);
+  size_t base_size =
+      result_mem_size + op_mem_size + operand_mem_size + region_mem_size;
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
   // 3.1. Construct OpResults.
@@ -65,8 +75,8 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     }
   }
   // 3.2. Construct Operation.
-  Operation *op =
-      new (base_ptr) Operation(num_results, num_operands, attribute, op_info);
+  Operation *op = new (base_ptr)
+      Operation(attribute, op_info, num_results, num_operands, num_regions);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
@@ -76,13 +86,27 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-
+  // 3.4. Construct Regions
+  if (num_regions > 0) {
+    op->regions_ = reinterpret_cast<Region *>(base_ptr);
+    for (size_t idx = 0; idx < num_regions; idx++) {
+      new (base_ptr) Region(op);
+      base_ptr += sizeof(Region);
+    }
+  }
   return op;
 }
 
 // Call destructors for OpResults, Operation, and OpOperands in sequence, and
 // finally free memory.
 void Operation::destroy() {
+  // Deconstruct Regions.
+  if (num_regions_ > 0) {
+    for (size_t idx = 0; idx < num_regions_; idx++) {
+      regions_[idx].~Region();
+    }
+  }
+
   // 1. Get aligned_ptr by result_num.
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
@@ -136,15 +160,16 @@ void Operation::destroy() {
 
 IrContext *Operation::ir_context() const { return op_info_.ir_context(); }
 
-Operation::Operation(uint32_t num_results,
+Operation::Operation(const AttributeMap &attribute,
+                     ir::OpInfo op_info,
+                     uint32_t num_results,
                      uint32_t num_operands,
-                     const AttributeMap &attribute,
-                     ir::OpInfo op_info) {
-  num_results_ = num_results;
-  num_operands_ = num_operands;
-  attribute_ = attribute;
-  op_info_ = op_info;
-}
+                     uint32_t num_regions)
+    : attribute_(attribute),
+      op_info_(op_info),
+      num_results_(num_results),
+      num_operands_(num_operands),
+      num_regions_(num_regions) {}
 
 ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
   if (index >= num_results_) {
@@ -197,5 +222,10 @@ std::string Operation::print() {
 }
 
 std::string Operation::op_name() const { return op_info_.name(); }
+
+Region &Operation::GetRegion(unsigned index) {
+  assert(index < num_regions_ && "invalid region index");
+  return regions_[index];
+}
 
 }  // namespace ir
