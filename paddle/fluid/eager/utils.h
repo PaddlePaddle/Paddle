@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -151,28 +150,11 @@ class EagerUtils {
 
   // If and only if the tensor holds an AccumulationNode
   // Then it's treated as a leaf tensor
-  static bool IsLeafTensor(const paddle::Tensor& target) {
-    std::shared_ptr<GradNodeBase> grad_node_ptr = grad_node(target);
-    if (!grad_node_ptr ||
-        std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node_ptr)) {
-      return true;
-    }
-
-    return false;
-  }
+  static bool IsLeafTensor(const paddle::Tensor& target);
 
   static void CheckInplace(const paddle::Tensor& target,
                            const AutogradMeta* autograd_meta,
-                           bool require_any_grad) {
-    if (require_any_grad && autograd_meta) {
-      PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() && IsLeafTensor(target),
-                        false,
-                        paddle::platform::errors::InvalidArgument(
-                            "Leaf Var (%s) that doesn't stop gradient "
-                            "can't use inplace strategy.",
-                            target.name()));
-    }
-  }
+                           bool require_any_grad);
 
   // View Strategy
   static void HandleViewBetweenInputAndOutput(
