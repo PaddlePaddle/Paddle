@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from config import ATOL, DEVICES, RTOL
+from distribution.config import ATOL, DEVICES, RTOL
 from parameterize import (
     TEST_CASE_NAME,
     parameterize_cls,
