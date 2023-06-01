@@ -13,19 +13,11 @@
 // limitations under the License.
 
 #include "paddle/ir/core/operation_utils.h"
+#include "paddle/ir/core/region.h"
 
 namespace ir {
-OperationArgument::OperationArgument(IrContext* ir_context, std::string name) {
-  info_ = ir_context->GetRegisteredOpInfo(name);
+OperationArgument::OperationArgument(IrContext* ir_context,
+                                     const std::string& name) {
+  info = ir_context->GetRegisteredOpInfo(name);
 }
-
-OperationArgument::OperationArgument(OpInfo info,
-                                     const std::vector<OpResult>& operands,
-                                     const std::vector<Type>& types,
-                                     const AttributeMap& named_attr)
-    : info_(info),
-      inputs_(operands),
-      output_types_(types),
-      attribute_(named_attr) {}
-
 }  // namespace ir
