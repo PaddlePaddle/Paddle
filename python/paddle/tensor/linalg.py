@@ -2025,18 +2025,10 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             return dtype
         return paddle.float32
 
-    def is_sparse(x):
-        if isinstance(x, paddle.Tensor):
-            try:
-                tmp = x.indices()
-                return True
-            except:
-                return False
-
     def matmul(x, B):
         if x is None:
             return B
-        if is_sparse(x):
+        if x.is_sparse():
             return paddle.sparse.matmul(x, B)
         return paddle.matmul(x, B)
 
@@ -2049,7 +2041,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         shape = x.shape
         perm = list(range(0, len(shape)))
         perm = perm[:-2] + [perm[-1]] + [perm[-2]]
-        if is_sparse(x):
+        if x.is_sparse():
             return paddle.sparse.transpose(x, perm)
         return paddle.transpose(x, perm)
 
@@ -2063,8 +2055,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
         R = paddle.randn((n, q), dtype=x.dtype)
 
-        A_t = transpose(x)
-        A_H = conjugate(A_t)
+        A_H = conjugate(transpose(x))
         if M is None:
             Q = qr(matmul(x, R))[0]
             for i in range(niter):
@@ -2072,13 +2063,10 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
                 Q = qr(matmul(x, Q))[0]
         else:
             M_H = transjugate(M)
-            Q_t = matmul(x, R) - matmul(M, R)
-            Q = qr(Q_t)[0]
+            Q = qr(matmul(x, R) - matmul(M, R))[0]
             for i in range(niter):
-                Q_t = matmul(A_H, Q) - matmul(M_H, Q)
-                Q = qr(Q_t)[0]
-                Q_t = matmul(x, Q) - matmul(M, Q)
-                Q = qr(Q_t)[0]
+                Q = qr(matmul(A_H, Q) - matmul(M_H, Q))[0]
+                Q = qr(matmul(x, Q) - matmul(M, Q))[0]
 
         return Q
 
@@ -2120,9 +2108,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             U = Q.matmul(U)
 
         return U, S, V
-    
+
     if not paddle.is_tensor(x):
-        raise ValueError('Input must be tensor, but got {}'.format(type(x)))
+        raise ValueError(f'Input must be tensor, but got {type(x)}')
 
     (m, n) = x.shape[-2:]
 
@@ -2134,16 +2122,14 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             ' and not greater than min(m, n)={}'.format(q, min(m, n))
         )
     if not (niter >= 0):
-        raise ValueError(
-            f'niter(={niter}) must be non-negative integer'
-        )
+        raise ValueError(f'niter(={niter}) must be non-negative integer')
 
     dtype = get_floating_dtype(x)
 
     if not center:
         return svd_lowrank(x, q, niter=niter, M=None)
 
-    if is_sparse(x):
+    if x.is_sparse():
         if len(x.shape) != 2:
             raise ValueError(
                 'pca_lowrank input is expected to be 2-dimensional tensor'
