@@ -183,7 +183,11 @@ void SliceCooGPUKernel(const Context& dev_ctx,
   dev_ctx.Wait();
   // sort `d_out_nnz_indices_ptr`
   d_out_nnz_indices.Resize({out_nnz});
+#ifdef PADDLE_WITH_HIP
+  thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                d_out_nnz_indices_ptr,
                d_out_nnz_indices_ptr + out_nnz);
 
@@ -306,7 +310,11 @@ void SliceCsrTensor2D(const Context& dev_ctx,
                                                         starts[1],
                                                         ends[1],
                                                         out_crows_data);
+#ifdef PADDLE_WITH_HIP
+  thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                          out_crows_data,
                          out_crows_data + out_n_rows + 1,
                          out_crows_data);
@@ -450,7 +458,12 @@ void SliceCsrTensor3D(const Context& dev_ctx,
                               0,
                               dev_ctx.stream()>>>(
       x_crows_data, x_n_rows, x_dim0, x_cols_offsets_data);
+
+#ifdef PADDLE_WITH_HIP
+  thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                          x_cols_offsets_data,
                          x_cols_offsets_data + x_dim0 + 1,
                          x_cols_offsets_data);
@@ -511,17 +524,29 @@ void SliceCsrTensor3D(const Context& dev_ctx,
       dev_ctx.stream());
   dev_ctx.Wait();
   int64_t out_nnz =
+#ifdef PADDLE_WITH_HIP
+      thrust::reduce(thrust::hip::par.on(dev_ctx.stream()),
+#else
       thrust::reduce(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                      out_crows_data,
                      out_crows_data + out_dim0 * (out_n_rows + 1));
   for (int64_t i = 0; i < out_dim0; ++i) {
     int64_t st = i * (out_n_rows + 1);
+#ifdef PADDLE_WITH_HIP
+    thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
     thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                            out_crows_data + st,
                            out_crows_data + st + out_n_rows + 1,
                            out_crows_data + st);
   }
+#ifdef PADDLE_WITH_HIP
+  thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                          out_cols_offsets_data,
                          out_cols_offsets_data + out_dim0 * (out_n_rows + 1),
                          out_cols_offsets_data);
