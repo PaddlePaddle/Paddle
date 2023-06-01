@@ -539,7 +539,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_layers',
     'test_sequence_concat',
     'test_sequence_conv',
-    'test_sequence_enumerate_op',
     'test_sequence_erase_op',
     'test_sequence_expand',
     'test_sequence_expand_as',

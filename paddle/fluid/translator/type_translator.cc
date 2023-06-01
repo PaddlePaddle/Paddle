@@ -17,11 +17,15 @@
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/ir/builtin_type.h"
+#include "paddle/ir/core/builtin_type.h"
 
 namespace paddle {
 namespace translator {
 
+using OpDesc = paddle::framework::OpDesc;
+using BlockDesc = paddle::framework::BlockDesc;
+using VarDesc = paddle::framework::VarDesc;
+using VarType = paddle::framework::proto::VarType;
 using DenseTensorType = paddle::dialect::DenseTensorType;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 

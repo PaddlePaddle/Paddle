@@ -15,6 +15,8 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
 #include <array>
 #include <functional>
 #include <mutex>
@@ -305,3 +307,5 @@ class GPUPinnedContext
 };
 #endif
 }  // namespace phi
+
+#endif
