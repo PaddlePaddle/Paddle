@@ -133,6 +133,29 @@ void FusedConv3DKernel(const Context& dev_ctx,
                 out);
 }
 
+KernelKey ConvGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "Input") &&
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto it = attrs.find("data_format");
+    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = phi::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for conv
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace fusion
 }  // namespace phi
 
@@ -143,7 +166,11 @@ PD_REGISTER_KERNEL(fused_conv2d,
                    float,
                    phi::dtype::bfloat16,
                    uint8_t,
-                   int8_t) {}
+                   int8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::fusion::ConvGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(
-    fused_conv3d, OneDNN, ONEDNN, phi::fusion::FusedConv3DKernel, float) {}
+    fused_conv3d, OneDNN, ONEDNN, phi::fusion::FusedConv3DKernel, float) {
+  kernel->get_kerneltype_forvar_fn_ = phi::fusion::ConvGetKernelTypeForVar;
+}
