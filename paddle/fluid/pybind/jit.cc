@@ -17,7 +17,11 @@ limitations under the License. */
 #include <Python.h>
 #include <code.h>
 #include <frameobject.h>
+
+#if PY_VERSION_HEX >= 0x030b0000
 #include <internal/pycore_frame.h>
+#endif
+
 #include <object.h>
 #include <pystate.h>
 
