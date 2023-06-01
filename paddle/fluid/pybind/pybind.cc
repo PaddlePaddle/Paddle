@@ -1852,28 +1852,6 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(scope, feed_names, fetch_names);
              }
              return py::cast(std::move(ret));
-           })
-      .def("dry_run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<phi::DenseTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               phi::DenseTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             framework::interpreter::CostInfo cost_info;
-             {
-               pybind11::gil_scoped_release release;
-               cost_info = self.DryRun(scope, feed_names, feed_tensors);
-             }
-             return cost_info;
            });
 
   m.def("init_gflags", framework::InitGflags);

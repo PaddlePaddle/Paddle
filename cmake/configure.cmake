@@ -239,7 +239,9 @@ endif()
 set(WITH_PHI_SHARED
     ON
     CACHE BOOL "" FORCE)
-if(WIN32 OR WITH_ROCM)
+if(WIN32
+   OR WITH_ROCM
+   OR WITH_XPU_KP)
   set(WITH_PHI_SHARED
       OFF
       CACHE BOOL "" FORCE)
