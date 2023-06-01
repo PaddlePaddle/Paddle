@@ -71,7 +71,7 @@ class TestElementwiseOp(OpTest):
         self.check_prim = True
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestElementwiseFP16OP(TestElementwiseOp):
@@ -87,6 +87,7 @@ class TestElementwiseFP16OP(TestElementwiseOp):
 class TestElementwiseBF16OP(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
@@ -103,6 +104,9 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         self.if_check_prim()
         self.if_enable_cinn()
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
@@ -118,7 +122,12 @@ class TestElementwiseBF16OP(TestElementwiseOp):
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.1
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            max_relative_error=0.1,
+            check_prim=True,
         )
 
 
@@ -135,6 +144,10 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
@@ -181,6 +194,10 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
@@ -227,6 +244,10 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
@@ -580,6 +601,7 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 @unittest.skipIf(
@@ -653,6 +675,7 @@ class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
@@ -698,6 +721,7 @@ class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
@@ -717,6 +741,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
@@ -750,6 +775,7 @@ class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestComplexElementwiseSubOp(OpTest):
