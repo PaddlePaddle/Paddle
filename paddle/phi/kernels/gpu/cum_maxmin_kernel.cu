@@ -164,7 +164,7 @@ __global__ void KernelScanOuterWithIndices(const T1* x_data,
       T1 out = init;
       T2 out_idx = 0;
 
-      for (auto col = decltype(row_size){0}; col < row_size; ++col) {
+      for (T2 col = 0; col < row_size; ++col) {
         const auto val = *reinterpret_cast<const T1*>(x);
         binary_op_update_v(val, out, col, out_idx, binary_op);
         *values = out;
