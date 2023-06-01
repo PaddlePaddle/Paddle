@@ -54,10 +54,6 @@ class InterpreterCore {
 
   ~InterpreterCore();
 
-  interpreter::CostInfo DryRun(
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors);
-
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors);
@@ -189,14 +185,6 @@ class InterpreterCore {
 
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 };
-
-std::shared_ptr<InterpreterCore> CreateInterpreterCore(
-    const platform::Place& place,
-    const ProgramDesc& prog,
-    Scope* scope,
-    const std::vector<std::string>& fetch_names = {},
-    const interpreter::ExecutionConfig& execution_config =
-        interpreter::ExecutionConfig());
 
 }  // namespace framework
 }  // namespace paddle
