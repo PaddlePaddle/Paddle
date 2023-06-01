@@ -23,7 +23,7 @@
 
 namespace phi {
 
-template<typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
+template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
 __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
   if (!std::isnan(rhs) && (std::isnan(lhs) || !binary_op(rhs, lhs))) {
     rhs = lhs;
@@ -31,9 +31,25 @@ __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rh
   }
 }
 
-template<typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
+template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
 __device__ void binary_op_update(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
   if (!binary_op(rhs, lhs)) {
+    rhs = lhs;
+    rhs_idx = lhs_idx;
+  }
+}
+
+template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_floating_point<T1>::value, int>::type = 0>
+__device__ void binary_op_update_v(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+  if (std::isnan(lhs) || (!std::isnan(rhs) && binary_op(lhs, rhs))) {
+    rhs = lhs;
+    rhs_idx = lhs_idx;
+  }
+}
+
+template <typename T1, typename T2, typename BinaryOperation, typename std::enable_if<std::is_integral<T1>::value, int>::type = 0>
+__device__ void binary_op_update_v(const T1 lhs, T1& rhs, const T2 lhs_idx, T2& rhs_idx, BinaryOperation binary_op) {
+  if (binary_op(lhs, rhs)) {
     rhs = lhs;
     rhs_idx = lhs_idx;
   }
@@ -150,17 +166,7 @@ __global__ void KernelScanOuterWithIndices(const T1* x_data,
 
       for (auto col = decltype(row_size){0}; col < row_size; ++col) {
         const auto val = *reinterpret_cast<const T1*>(x);
-        if (std::is_integral<T1>::value) {
-          if (binary_op(val, out)) {
-            out = val;
-            out_idx = col;
-          }
-        } else {
-          if (isnan_(val) || (!isnan_(out) && binary_op(val, out))) {
-            out = val;
-            out_idx = col;
-          }
-        }
+        binary_op_update_v(val, out, col, out_idx, binary_op);
         *values = out;
         *indices = out_idx;
         x += num_irows;
