@@ -20,7 +20,7 @@ import paddle
 
 
 class TestStrides(unittest.TestCase):
-    def call_strides(self):
+    def call_transpose(self):
         x_np = np.random.random(size=[2, 3, 4]).astype('float32')
         x = paddle.to_tensor(x_np)
         self.assertTrue(np.allclose(x.numpy(), x_np))
@@ -46,6 +46,55 @@ class TestStrides(unittest.TestCase):
         self.assertTrue(np.allclose(y.numpy(), y_np))
         self.assertTrue(y.is_contiguous())
         self.assertFalse(x._is_shared_buffer_with(y))
+
+    def call_diagonal(self):
+        x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.diagonal(x)
+        out2 = paddle.diagonal(x, offset=0, axis1=2, axis2=1)
+        out3 = paddle.diagonal(x, offset=1, axis1=0, axis2=1)
+        out4 = paddle.diagonal(x, offset=0, axis1=1, axis2=2)
+
+        np_out = np.diagonal(x_np)
+        np_out2 = np.diagonal(x_np, offset=0, axis1=2, axis2=1)
+        np_out3 = np.diagonal(x_np, offset=1, axis1=0, axis2=1)
+        np_out4 = np.diagonal(x_np, offset=0, axis1=1, axis2=2)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+        self.assertTrue(np.allclose(out3.numpy(), np_out3))
+        self.assertTrue(np.allclose(out4.numpy(), np_out4))
+
+        self.assertFalse(out.is_contiguous("NCHW"))
+        self.assertFalse(out2.is_contiguous("NCHW"))
+        self.assertFalse(out3.is_contiguous("NCHW"))
+        self.assertFalse(out4.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+        self.assertTrue(x._is_shared_buffer_with(out3))
+        self.assertTrue(x._is_shared_buffer_with(out4))
+
+        out_c = out.contiguous()
+        out2_c = out2.contiguous()
+        out3_c = out3.contiguous()
+        out4_c = out4.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+        self.assertTrue(np.allclose(out3_c.numpy(), np_out3))
+        self.assertTrue(np.allclose(out4_c.numpy(), np_out4))
+
+        self.assertFalse(out_c._is_shared_buffer_with(out))
+        self.assertFalse(out2_c._is_shared_buffer_with(out2))
+        self.assertFalse(out3_c._is_shared_buffer_with(out3))
+        self.assertFalse(out4_c._is_shared_buffer_with(out4))
+
+    def call_strides(self):
+        self.call_transpose()
+        self.call_diagonal()
 
 
 class TestStridesCPU(TestStrides):

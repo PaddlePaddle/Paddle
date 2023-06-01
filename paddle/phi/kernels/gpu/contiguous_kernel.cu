@@ -107,6 +107,7 @@ void ContiguousKernel(const Context& dev_ctx,
   }
 
   meta.strides = meta.calc_strides(meta.dims, meta.layout);
+  meta.offset = 0;
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
