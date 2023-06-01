@@ -150,18 +150,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : check_finite_and_unscale_
-  args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
-  output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
-  infer_meta :
-    func : CheckFiniteAndUnscaleInferMeta
-    param : [x, scale]
-  kernel :
-    func : check_finite_and_unscale
-    param : [x, scale]
-    data_type : x
-  inplace : (x -> out), (input_found_infinite -> output_found_infinite)
-
 - op : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
@@ -172,15 +160,6 @@
     func : concat
   backward : concat_grad
 
-- op : conv2d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
-  output : Tensor
-  infer_meta :
-    func : ConvInferMeta
-  kernel :
-    func : conv2d
-  backward : conv2d_grad
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
@@ -189,15 +168,6 @@
   kernel :
     func : conv2d_transpose
   backward : conv2d_transpose_grad
-
-- op : conv3d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor
-  infer_meta :
-    func : Conv3DInferMeta
-  kernel :
-    func : conv3d
-  backward : conv3d_grad
 
 - op : conv3d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -243,17 +213,6 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
-
-- op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : DepthwiseConvInferMeta
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-  kernel :
-    func : depthwise_conv2d
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-  backward : depthwise_conv2d_grad
 
 - op : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)

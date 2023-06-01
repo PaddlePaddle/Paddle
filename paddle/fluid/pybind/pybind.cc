@@ -53,6 +53,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
+#include "paddle/fluid/framework/new_executor/interpreter/job.h"
+#include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -1852,29 +1854,22 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(scope, feed_names, fetch_names);
              }
              return py::cast(std::move(ret));
-           })
-      .def("dry_run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<phi::DenseTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               phi::DenseTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             framework::interpreter::CostInfo cost_info;
-             {
-               pybind11::gil_scoped_release release;
-               cost_info = self.DryRun(scope, feed_names, feed_tensors);
-             }
-             return cost_info;
            });
+
+  py::class_<framework::Job>(m, "job")
+      .def(py::init<const std::string &>(), py::arg("type"))
+      .def("type", &framework::Job::GetJobType)
+      .def("micro_batch_id", &framework::Job::GetMicroBatchId)
+      .def("set_micro_batch_id", &framework::Job::SetMicroBatchId);
+
+  py::class_<framework::Plan>(m, "plan")
+      .def(py::init<const std::vector<Job *> &,
+                    const std::unordered_map<std::string,
+                                             framework::ProgramDesc *> &>(),
+           py::arg("job_list"),
+           py::arg("type_to_program"))
+      .def("job_list", &framework::Plan::GetJobList)
+      .def("type_to_program", &framework::Plan::GetTypeToProgram);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -1923,6 +1918,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
+  m.def("_test_enforce_gpu_success", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaErrorInsufficientDriver);
+#endif
   });
 
   m.def("get_float_stats", []() {
