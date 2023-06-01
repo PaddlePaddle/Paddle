@@ -140,10 +140,10 @@ class TestPcaLowrankAPI(unittest.TestCase):
     def test_forward(self):
         pca_lowrank = paddle.linalg.pca_lowrank
         all_batches = [(), (1,), (3,), (2, 3)]
-        for actual_rank, size, all_batches in [
-            (2, (17, 4), all_batches),
-            (2, (100, 4), all_batches),
-            (6, (100, 40), all_batches),
+        for actual_rank, size in [
+            (2, (17, 4)),
+            (2, (100, 4)),
+            (6, (100, 40)),
         ]:
             for batches in all_batches:
                 for guess_rank in [
