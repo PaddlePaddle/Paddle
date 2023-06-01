@@ -153,6 +153,24 @@
       data_type : std::string
       tensor_name : Atol
 
+- op : amax (reduce_amax)
+  backward : amax_grad (reduce_amax_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    amax_grad : GetReduceGradExpectedKernelType
+  manual_signature : [amax]
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -1100,9 +1118,10 @@
     x : X
   outputs :
     out : Out
-  backward : hard_swish_grad
+  backward : hardswish_grad (hard_swish_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+  manual_signature : [hardswish]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
@@ -1872,11 +1891,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : reduce_amax
-  backward : reduce_amax_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_amin
   backward : reduce_amin_grad
   extra :
@@ -1902,6 +1916,10 @@
 
 - op : relu6
   backward : relu6_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2262,6 +2280,30 @@
     x : X
   outputs :
     out : Out
+
+- op : strided_slice
+  backward : strided_slice_grad
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
+    strides :
+      data_type : int
+      tensor_name : StridesTensor
+      tensors_name : StridesTensorList
+  manual_signature : [strided_slice, strided_slice_grad]
+  get_expected_kernel_type :
+    strided_slice : GetStridedSliceExpectedKernelType
+    strided_slice_grad : GetStridedSliceGradExpectedKernelType
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)

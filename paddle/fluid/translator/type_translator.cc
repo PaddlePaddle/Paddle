@@ -17,7 +17,7 @@
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/ir/builtin_type.h"
+#include "paddle/ir/core/builtin_type.h"
 
 namespace paddle {
 namespace translator {

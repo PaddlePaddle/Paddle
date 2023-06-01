@@ -31,7 +31,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 
 #include <vector>
 
-#include "paddle/ir/op_base.h"
+#include "paddle/ir/core/op_base.h"
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/dialect/pd_interface.h"
 
@@ -77,9 +77,9 @@ OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()
 CC_FILE_TEMPLATE = """#include "{h_file}"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/pd_attribute.h"
-#include "paddle/ir/builtin_attribute.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/ir_context.h"
+#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/phi/core/enforce.h"
 
 #include "paddle/phi/infermeta/unary.h"
@@ -217,16 +217,26 @@ OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """if (outputs[{index}]) {{
   }}
   """
 
-ATTRIBUTE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<{standard}>(), true,
+ATTRIBUTE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attribute_name}")>0, true,
+                    phi::errors::PreconditionNotMet("The AttributeMap miss mandatory attributes of: {attribute_name}."));
+  PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<{standard}>(), true,
                     phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   """
-ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<ir::ArrayAttribute>(), true,
+ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attribute_name}")>0, true,
+                    phi::errors::PreconditionNotMet("The AttributeMap miss mandatory attributes of: {attribute_name}."));
+  PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<ir::ArrayAttribute>(), true,
                     phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().size(); i++) {{
     PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>()[i].isa<{standard}>(), true,
                       phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   }}
   """
+OP_INFER_SHAPE_TEMPLATE = """
+void {op_name}::InferShape( phi::InferMetaContext *infer_meta ) {{
+  auto fn = PD_INFER_META(phi::{infer_meta_func});
+  fn(infer_meta);
+}}
+"""
 
 OP_INFER_SHAPE_TEMPLATE = """
 void {op_name}::InferShape( phi::InferMetaContext *infer_meta ) {{
@@ -751,6 +761,7 @@ def OpGenerator(
                     op_name=op_class_name,
                     infer_meta_func=op_info.infer_shape_func,
                 )
+
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)
             ops_defined_list.append(op_defined_str)

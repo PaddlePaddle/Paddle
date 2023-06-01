@@ -298,6 +298,7 @@ try:
     from .libpaddle import _set_paddle_lib_path
     from .libpaddle import _create_loaded_parameter
     from .libpaddle import _cuda_synchronize
+    from .libpaddle import _test_enforce_gpu_success
     from .libpaddle import _is_compiled_with_heterps
     from .libpaddle import _promote_types_if_complex_exists
     from .libpaddle import _set_cached_executor_build_strategy

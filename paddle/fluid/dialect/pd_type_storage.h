@@ -16,8 +16,8 @@
 
 #include <type_traits>
 
-#include "paddle/ir/type.h"
-#include "paddle/ir/utils.h"
+#include "paddle/ir/core/type.h"
+#include "paddle/ir/core/utils.h"
 
 namespace std {
 ///

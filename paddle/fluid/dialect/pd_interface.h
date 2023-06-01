@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/dialect/utils.h"
-#include "paddle/ir/op_base.h"
+#include "paddle/ir/core/op_base.h"
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
                                std::vector<paddle::dialect::OpAttributeInfo>,
@@ -34,15 +34,12 @@ class GetOpInfoInterface : public ir::OpInterfaceBase<GetOpInfoInterface> {
   template <class ConcreteOp>
   struct Model : public Concept {
     static OpInfoTuple GetOpInfo(ir::Operation *op) {
-      ConcreteOp concret_op = ConcreteOp(op);
+      ConcreteOp concret_op = op->dyn_cast<ConcreteOp>();
       if (concret_op == nullptr) throw("concret_op is nullptr");
       return concret_op.GetOpInfo();
     }
 
-    Model() : Concept(GetOpInfo) {
-      static_assert(sizeof(Model) == sizeof(Concept),
-                    "sizeof(Model) != sizeof(Concept)");
-    }
+    Model() : Concept(GetOpInfo) {}
   };
 
   GetOpInfoInterface(ir::Operation *op, Concept *impl)
