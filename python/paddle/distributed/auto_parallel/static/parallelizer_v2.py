@@ -361,6 +361,7 @@ class Parallelizer:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
+            config["master_grad"] = self._strategy.amp.master_grad
             auto_parallel_gradient_merge_pass = new_pass(
                 "auto_parallel_gradient_merge_pass", config
             )

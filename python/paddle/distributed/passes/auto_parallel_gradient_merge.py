@@ -455,8 +455,6 @@ class GradientMergePass(PassBase):
         master_grad = self.get_attr("master_grad", False)
         dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
-        # TODO(zyl): make master_grad configurable
-        master_grad = True
         with paddle.static.program_guard(main_program, startup_program):
             parse_program(
                 main_program,

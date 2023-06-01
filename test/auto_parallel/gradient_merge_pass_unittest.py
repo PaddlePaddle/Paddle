@@ -38,6 +38,7 @@ def apply_pass(use_gradient_merge=False):
     amp.enable = True
     amp.dtype = "float16"
     amp.level = "o2"
+    amp.master_grad = True
     amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
     amp.custom_black_list = [
         'c_softmax_with_cross_entropy',
