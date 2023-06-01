@@ -80,7 +80,6 @@ class VectorType : public Type {
   __macro(Float16);                   \
   __macro(Float32);                   \
   __macro(Float64);                   \
-  __macro(Float64);                   \
   __macro(Int16);                     \
   __macro(Int32);                     \
   __macro(Int64);                     \
