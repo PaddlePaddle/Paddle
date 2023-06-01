@@ -34,7 +34,7 @@ def OpNameNormalizerInitialization(
     op_compat_yaml_file: str = "", output_source_file: str = ""
 ) -> None:
     def to_phi_and_fluid_op_name(op_item):
-        # Templat: - op : phi_name (fluid_name)
+        # Template: - op : phi_name (fluid_name)
         names = op_item.split('(')
         if len(names) == 1:
             phi_fluid_name = names[0].strip()
@@ -65,26 +65,28 @@ def OpNameNormalizerInitialization(
             op_arg_name_mappings[op_name].update(arg_mapping)
 
         _, legacy_name = insert_new_mappings(op_compat_item["op"])
-        legacy_backward_op_name = None
+        legacy_backward_op_names = []
         if "backward" in op_compat_item:
-            _, legacy_backward_op_name = insert_new_mappings(
-                op_compat_item["backward"]
+            backward_op_name_mapping_paris = op_compat_item["backward"].split(
+                ","
             )
+            for pair in backward_op_name_mapping_paris:
+                _, legacy_backward_op_name = insert_new_mappings(pair)
+                legacy_backward_op_names.append(legacy_backward_op_name)
+
         if "inputs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["inputs"])
-            insert_new_arg_mappings(
-                legacy_backward_op_name, op_compat_item["inputs"]
-            )
+            for backward_op in legacy_backward_op_names:
+                insert_new_arg_mappings(backward_op, op_compat_item["inputs"])
+
         if "attrs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["attrs"])
-            insert_new_arg_mappings(
-                legacy_backward_op_name, op_compat_item["attrs"]
-            )
+            for backward_op in legacy_backward_op_names:
+                insert_new_arg_mappings(backward_op, op_compat_item["attrs"])
         if "outputs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["outputs"])
-            insert_new_arg_mappings(
-                legacy_backward_op_name, op_compat_item["outputs"]
-            )
+            for backward_op in legacy_backward_op_names:
+                insert_new_arg_mappings(backward_op, op_compat_item["outputs"])
 
     # special op mappings
     op_name_mappings["fetch_v2"] = "fetch"
