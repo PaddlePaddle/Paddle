@@ -171,6 +171,24 @@
     amax_grad : GetReduceGradExpectedKernelType
   manual_signature : [amax]
 
+- op : amin (reduce_amin)
+  backward : amin_grad (reduce_amin_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    amin_grad : GetReduceGradExpectedKernelType
+  manual_signature : [amin]
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -1908,11 +1926,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_amin
-  backward : reduce_amin_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : reduce_any
   extra :
