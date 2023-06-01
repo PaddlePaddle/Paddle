@@ -24,6 +24,12 @@ from paddle.framework import base as imperative_base
 
 __all__ = []
 
+
+class HOOK_ACTION:
+    ALL_REDUCE: 0
+    REDUCE: 1
+
+
 FLOAT_TYPE_DICT = {
     paddle.float16: "float16",
     paddle.float32: "float32",
@@ -114,8 +120,16 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
     )
 
 
-class FusedAllReduceBuffer:
-    def __init__(self, id, params, comm_group, acc_steps=1):
+class FusedCommBuffer:
+    def __init__(
+        self,
+        id,
+        params,
+        comm_group,
+        acc_steps=1,
+        act=HOOK_ACTION.ALL_REDUCER,
+        dst=-1,
+    ):
         self._id = id
         self._params = params
         self._acc_steps = acc_steps
@@ -126,6 +140,14 @@ class FusedAllReduceBuffer:
         self._params_step_dict = {}
         self._params_checked_in = 0
         self._coalesced_grads_and_grad_vars = []
+
+        assert isinstance(act, HOOK_ACTION)
+        self._act = act
+        if self._act == HOOK_ACTION.ALL_REDUCE:
+            assert dst == -1
+        elif self._act == HOOK_ACTION.REDUCE:
+            assert dst != -1
+        self._dst = dst
 
         self._init_step_dict()
 
@@ -184,11 +206,18 @@ class FusedAllReduceBuffer:
         )
 
         for coalesced_grad, _, _ in self._coalesced_grads_and_grad_vars:
-            self._tasks.append(
-                paddle.distributed.all_reduce(
+            if self._act == HOOK_ACTION.ALL_REDUCE:
+                task = paddle.distributed.all_reduce(
                     coalesced_grad, group=self._comm_group, sync_op=False
                 )
-            )
+            elif self._act == HOOK_ACTION.REDUCE:
+                task = paddle.distributed.reduce(
+                    coalesced_grad,
+                    dst=self._dst,
+                    group=self._comm_group,
+                    sync_op=False,
+                )
+            self._tasks.append(task)
 
     @imperative_base.no_grad
     def scale_and_split_grads(self):
