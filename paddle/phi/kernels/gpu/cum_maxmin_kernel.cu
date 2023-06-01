@@ -49,7 +49,6 @@ __device__ void binary_op_update(const T1 lhs,
                                  T2* rhs_idx,
                                  BinaryOperation binary_op) {
   if (!binary_op(*rhs, lhs)) {
-    printf("1\n");
     *rhs = lhs;
     *rhs_idx = lhs_idx;
   }
