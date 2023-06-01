@@ -34,6 +34,7 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
+    plan
     global_utils
     phi_utils
     phi
