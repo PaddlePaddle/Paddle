@@ -2494,6 +2494,8 @@
   extra :
     outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
+  get_expected_kernel_type:
+    transpose: GetTranspose2ExpectedKernelType
 
 - op : triangular_solve
   backward : triangular_solve_grad
