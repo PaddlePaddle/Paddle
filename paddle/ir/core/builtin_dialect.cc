@@ -40,6 +40,7 @@ void BuiltinDialect::initialize() {
                      BoolAttribute,
                      FloatAttribute,
                      DoubleAttribute,
+                     PointerAttribute,
                      Int32_tAttribute,
                      Int64_tAttribute,
                      ArrayAttribute>();

@@ -50,7 +50,7 @@ TypeTranslator::TypeTranslator() {
 
          ir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
-         DenseTensorTypeStorage::Dim dim = var_desc.GetShape();
+         DenseTensorTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
          DenseTensorTypeStorage::DataLayout layout =
              DenseTensorTypeStorage::DataLayout::UNDEFINED;
          DenseTensorTypeStorage::LoD lod = {};

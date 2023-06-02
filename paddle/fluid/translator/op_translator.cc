@@ -130,7 +130,7 @@ inline ir::Operation* InsertSliceOperationForTarget(
                             op_attribute_map,
                             {src_vec_type[defining_info.idx_in_vector]},
                             op_info);
-  program->InsertOp(operation);
+  program->block()->push_back(operation);
   ir::OpResult target_op_result = operation->GetResultByIndex(0);
   (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
   return operation;
@@ -154,7 +154,7 @@ inline ir::Operation* InsertCombineOperationForTarget(
   ir::Type target_vec_type = ir::VectorType::get(ctx, types_in_vec);
   ir::Operation* operation =
       ir::Operation::create(src_values, {}, {target_vec_type}, op_info);
-  program->InsertOp(operation);
+  program->block()->push_back(operation);
   return operation;
 }
 
@@ -403,7 +403,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   ir::Operation* operation =
       ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation creation end.";
-  program->InsertOp(operation);
+  program->block()->push_back(operation);
 
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation insertion end.";
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
@@ -437,7 +437,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
 
   ir::Operation* operation =
       ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
-  program->InsertOp(operation);
+  program->block()->push_back(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
   return operation;
@@ -467,7 +467,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
 
   ir::Operation* operation =
       ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
-  program->InsertOp(operation);
+  program->block()->push_back(operation);
 
   return operation;
 }

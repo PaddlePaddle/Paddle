@@ -639,8 +639,8 @@ class TestAdamOpWithSkipUpdate(OpTest):
             'Moment1Out': moment1,
             'Moment2Out': moment2,
             'ParamOut': param,
-            'Beta1PowOut': self.inputs['Beta1Pow'],
-            'Beta2PowOut': self.inputs['Beta2Pow'],
+            'Beta1PowOut': np.array([]),
+            'Beta2PowOut': np.array([]),
         }
 
     def test_check_output(self):

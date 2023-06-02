@@ -47,7 +47,7 @@ def compute_mean_iou(
     mean_iou = (out_correct / denominator).sum() / valid_count
 
     for _, in_mean_iou in in_mean_ious:
-        mean_iou += in_mean_iou
+        mean_iou += float(in_mean_iou)
     return mean_iou, out_wrong, out_correct
 
 
@@ -84,21 +84,12 @@ class TestMeanIOUOp(OpTest):
                 )
             )
 
-        in_mean_ious = []
-        for i in range(self.in_mean_iou_num):
-            in_mean_ious.append(
-                (
-                    "in_mean_iou_%d" % i,
-                    np.random.uniform(0, 1, [1]).astype("float32"),
-                )
-            )
-
         self.inputs = {
             'Predictions': predictions,
             'Labels': labels,
             'InWrongs': in_wrongs,
             'InCorrects': in_corrects,
-            'InMeanIou': in_mean_ious,
+            'InMeanIou': self.in_mean_ious,
         }
         self.attrs = {'num_classes': int(self.num_classes)}
         mean_iou, out_wrong, out_correct = compute_mean_iou(
@@ -107,7 +98,7 @@ class TestMeanIOUOp(OpTest):
             self.num_classes,
             in_wrongs,
             in_corrects,
-            in_mean_ious,
+            self.in_mean_ious,
         )
         self.outputs = {
             'OutMeanIou': mean_iou,
@@ -120,7 +111,7 @@ class TestMeanIOUOp(OpTest):
         self.image_size = [128, 128]
         self.in_wrong_num = 0
         self.in_correct_num = 0
-        self.in_mean_iou_num = 0
+        self.in_mean_ious = []
 
     def test_check_output(self):
         self.check_output()
@@ -132,12 +123,35 @@ class TestCase1(TestMeanIOUOp):
         self.image_size = [100, 128]
         self.in_wrong_num = 2
         self.in_correct_num = 2
-        self.in_mean_iou_num = 2
+        self.in_mean_ious = []
+        for i in range(2):
+            self.in_mean_ious.append(
+                (
+                    "in_mean_iou_%d" % i,
+                    np.random.uniform(0, 1, []).astype("float32"),
+                )
+            )
 
     # NOTE(dev): Skip check_dygraph becuase Python API doesn't expose
     # in_wrong_num/in_correct_num/in_mean_iou_num argument
     def test_check_output(self):
         self.check_output(check_dygraph=False)
+
+
+class TestCase2(TestCase1):
+    def config(self):
+        self.num_classes = 5
+        self.image_size = [100, 128]
+        self.in_wrong_num = 2
+        self.in_correct_num = 2
+        self.in_mean_ious = []
+        for i in range(2):
+            self.in_mean_ious.append(
+                (
+                    "in_mean_iou_%d" % i,
+                    np.random.uniform(0, 1, [1]).astype("float32"),
+                )
+            )
 
 
 if __name__ == '__main__':

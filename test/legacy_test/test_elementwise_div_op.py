@@ -503,7 +503,7 @@ class TestDivideOp(unittest.TestCase):
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
             z = paddle.divide(x, y)
-            np_z = z.numpy()
+            np_z = z.numpy(False)
             z_expected = np.array([2.0, 0.6, 2.0])
             self.assertEqual((np_z == z_expected).all(), True)
 

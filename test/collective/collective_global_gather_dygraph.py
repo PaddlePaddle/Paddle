@@ -60,7 +60,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
             c = output * output
             c.stop_gradient = False
             c.backward()
-            return [output.numpy(), local_input_buf.grad.numpy()]
+            return [output.numpy(False), local_input_buf.grad.numpy(False)]
 
 
 if __name__ == "__main__":

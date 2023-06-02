@@ -6,17 +6,6 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  infer_meta:
-    func: null
-    param: null
-  kernel:
-    func: null
-    param: null
-    backend: null
-    layout: null
-    data_type: null
-    dispatch: null
-    force_backend: null
   inplace: null
   backward: null
 - name: fetch
@@ -31,16 +20,5 @@
   outputs: []
   no_need_buffer: null
   data_transform: null
-  infer_meta:
-    func: null
-    param: null
-  kernel:
-    func: null
-    param: null
-    backend: null
-    layout: null
-    data_type: null
-    dispatch: null
-    force_backend: null
   inplace: null
   backward: null
