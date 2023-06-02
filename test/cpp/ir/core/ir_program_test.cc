@@ -308,21 +308,21 @@ TEST(program_test, builder) {
 
   ir::Type full_op_output = full_op->GetResultByIndex(0).type();
 
-  EXPECT_EQ(program.block()->size(), 1);
+  EXPECT_EQ(program.block()->size() == 1, true);
 
   EXPECT_EQ(program.block()->back(), full_op.operation());
 
-  EXPECT_EQ(full_op->num_operands(), 0);
+  EXPECT_EQ(full_op->num_operands() == 0, true);
 
-  EXPECT_EQ(full_op->num_results(), 1);
+  EXPECT_EQ(full_op->num_results() == 1, true);
 
-  EXPECT_EQ(full_op->attributes().size(), 4);
+  EXPECT_EQ(full_op->attributes().size() == 4, true);
 
   EXPECT_EQ(
 
-      full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset(),
+      full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
 
-      0);
+      true);
 
   for (auto dim : phi::vectorize(
 
