@@ -116,10 +116,9 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 6888866 7913861
 fi
 
-#OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
-OUTPUT_LOG=`git diff -U0 upstream/$BRANCH python/paddle/hapi | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
+OUTPUT_LOG=`git diff -U0 upstream/$BRANCH | grep "^+" | grep -Ew "print|printf|fprintf|std::cout" || true`
 if [ "$OUTPUT_LOG" != "" ];then
-    git diff -U0 upstream/$BRANCH python/paddle/hapi |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
+    git diff -U0 upstream/$BRANCH |grep "^+" | grep -Ew "print|printf|fprintf|std::cout"|sed 's#[ ][ ]##g'|sed 's#+##g' >/tmp/print.txt
     samplecode=`find tools/samplecode_temp -type f || true`
     sample_status=0
     if [ "$samplecode" != "" ];then
@@ -133,7 +132,6 @@ if [ "$OUTPUT_LOG" != "" ];then
             fi
         done</tmp/print.txt
     fi
-    echo "Use print to: $OUTPUT_LOG"
     if [ "$sample_status" == 1 ] || [ "$samplecode" == "" ] ;then
         echo_line="print or std::cout is not recommended for direct use, please use logging or VLOG. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 review and approve.\n"
         check_approval 1 tianshuo78520a zhangbo9674
