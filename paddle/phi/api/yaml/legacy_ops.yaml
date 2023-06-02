@@ -1060,6 +1060,15 @@
     func : transpose
   backward : trans_layout_grad
 
+- op : transpose
+  args : (Tensor x, int[] perm)
+  output : Tensor
+  infer_meta :
+    func : TransposeInferMeta
+  kernel :
+    func : transpose
+  backward : transpose_grad
+
 - op : tril
   args : (Tensor x, int diagonal)
   output : Tensor(out)
