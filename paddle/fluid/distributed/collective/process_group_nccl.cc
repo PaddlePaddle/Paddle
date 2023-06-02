@@ -961,7 +961,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           comm_context->Recv(output_data, i, stream);
           offset += input.numel() / size_;
         }
-        GroupEnd();
+        comm_context->GroupEnd();
       },
       CommType::ALLTOALL);
 }

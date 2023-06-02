@@ -32,10 +32,6 @@ inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
   do {                                             \
     ncclResult_t r = cmd;                          \
     if (r != ncclSuccess) {                        \
-      printf("Failed, NCCL error %s:%d '%s'\n",    \
-             __FILE__,                             \
-             __LINE__,                             \
-             phi::dynload::ncclGetErrorString(r)); \
       exit(EXIT_FAILURE);                          \
     }                                              \
   } while (0)
