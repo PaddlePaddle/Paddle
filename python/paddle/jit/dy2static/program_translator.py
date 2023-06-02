@@ -132,17 +132,17 @@ class FunctionCache:
         #  but actually they are methods in different classes.
         #  Maybe use (__class__, source_code) as key
         if source_code in self._code_to_ast_caches:
-            root_wrapper = self._code_to_ast_caches[source_code]
+            root = self._code_to_ast_caches[source_code]
         else:
             root = gast.parse(source_code)
             root = attach_origin_info(root, func)
-            root_wrapper = self._dygraph_to_static.get_static_ast(root)
-            self._code_to_ast_caches[source_code] = root_wrapper
+            root = self._dygraph_to_static.get_static_ast(root)
+            self._code_to_ast_caches[source_code] = root
 
         # Get static function from AST
-        static_func, file_name = ast_to_func(root_wrapper.node, func)
+        static_func, file_name = ast_to_func(root, func)
 
-        create_and_update_origin_info_map(root_wrapper.node, static_func)
+        create_and_update_origin_info_map(root, static_func)
         return static_func
 
     def exist(self, func):
@@ -1680,10 +1680,10 @@ class ProgramTranslator:
 
         # Transform AST
         dygraph_to_static = DygraphToStaticAst()
-        root_wrapper = dygraph_to_static.get_static_ast(root)
+        root = dygraph_to_static.get_static_ast(root)
 
         # Get source_code
-        source_code = ast_to_source_code(root_wrapper.node)
+        source_code = ast_to_source_code(root)
         return source_code
 
     def get_program_cache(self):
