@@ -1190,7 +1190,8 @@ set(TEST_CINN_OPS
     test_elementwise_min_op
     test_atan2_op
     test_top_k_op
-    test_where_op)
+    test_where_op
+    test_take_along_axis_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

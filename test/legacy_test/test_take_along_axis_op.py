@@ -28,6 +28,7 @@ class TestTakeAlongAxisOp(OpTest):
         self.init_data()
         self.op_type = "take_along_axis"
         self.python_api = paddle.tensor.take_along_axis
+        self.enable_cinn = True
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
         broadcast_shape_list = list(self.x_shape)
@@ -42,10 +43,10 @@ class TestTakeAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Result')
+        self.check_grad(['Input'], 'Result', check_cinn=self.enable_cinn)
 
     def init_data(self):
         self.x_type = "float64"
@@ -81,6 +82,7 @@ class TestTakeAlongAxisBF16Op(OpTest):
         self.init_data()
         self.op_type = "take_along_axis"
         self.python_api = paddle.tensor.take_along_axis
+        self.enable_cinn = True
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
         broadcast_shape_list = list(self.x_shape)
@@ -99,10 +101,12 @@ class TestTakeAlongAxisBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_cinn=self.enable_cinn)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['Input'], 'Result')
+        self.check_grad_with_place(
+            self.place, ['Input'], 'Result', check_cinn=self.enable_cinn
+        )
 
     def init_data(self):
         self.dtype = np.uint16
