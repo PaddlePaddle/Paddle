@@ -62,6 +62,9 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 PHI_DECLARE_bool(set_to_1d);
 
@@ -796,6 +799,15 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     VLOG(6) << "tensor: " << tensor->IsInitialized();
     return ToPyObject(tensor);
+  } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    auto* tensor = static_cast<phi::distributed::auto_parallel::DistTensor*>(
+        self->tensor.impl().get());
+    VLOG(6) << "dist tensor: " << tensor->IsInitialized();
+    return ToPyObject(tensor);
+#else
+    RETURN_PY_NONE
+#endif
   } else {
     RETURN_PY_NONE
   }
@@ -1688,6 +1700,17 @@ static PyObject* tensor_method_is_dense(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_is_dist(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
+  return ToPyObject(self->tensor.is_dist_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -2040,6 +2063,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"is_dense",
      (PyCFunction)(void (*)(void))tensor_method_is_dense,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"is_dist",
+     (PyCFunction)(void (*)(void))tensor_method_is_dist,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_zero_grads",
