@@ -14,6 +14,7 @@
 
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/region.h"
+#include "paddle/ir/core/value.h"
 
 namespace ir {
 Operation *Builder::insert(Operation *op) {
@@ -31,10 +32,10 @@ Operation *Builder::create(OperationArgument &&argument) {
 }
 
 /// Creates an operation with the given fields.
-Operation *Builder::create(const std::vector<ir::OpResult> &inputs,
+Operation *Builder::create(const std::vector<OpResult> &inputs,
                            const AttributeMap &attribute,
-                           const std::vector<ir::Type> &output_types,
-                           ir::OpInfo op_info) {
+                           const std::vector<Type> &output_types,
+                           OpInfo op_info) {
   return create(OperationArgument(inputs, attribute, output_types, op_info));
 }
 

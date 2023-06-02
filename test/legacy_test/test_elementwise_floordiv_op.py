@@ -14,6 +14,7 @@
 
 import random
 import unittest
+from contextlib import contextmanager
 
 import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
@@ -95,6 +96,13 @@ class TestElementwiseModOpInverse(TestElementwiseModOp):
         self.out = np.floor_divide(self.x, self.y)
 
 
+@contextmanager
+def device_guard(device=None):
+    old = paddle.get_device()
+    yield paddle.set_device(device)
+    paddle.set_device(old)
+
+
 class TestFloorDivideOp(unittest.TestCase):
     def test_name(self):
         with paddle_static_guard():
@@ -106,17 +114,92 @@ class TestFloorDivideOp(unittest.TestCase):
                 self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([2, 3, 8, 7]).astype('int64')
-            np_y = np.array([1, 5, 3, 3]).astype('int64')
-            x = paddle.to_tensor(np_x)
-            y = paddle.to_tensor(np_y)
+        paddle.disable_static()
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            for dtype in (
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+            ):
+                np_x = np.array([2, 3, 8, 7]).astype(dtype)
+                np_y = np.array([1, 5, 3, 3]).astype(dtype)
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.floor_divide(x, y)
+                np_z = z.numpy()
+                z_expected = np.floor_divide(np_x, np_y)
+                self.assertEqual((np_z == z_expected).all(), True)
+
+            np_x = np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.to_tensor(np_y, dtype="bfloat16")
             z = paddle.floor_divide(x, y)
             np_z = z.numpy()
-            z_expected = np.array([2, 0, 2, 2])
+            z_expected = np.array([16384, 0, 16384, 16384], dtype='uint16')
             self.assertEqual((np_z == z_expected).all(), True)
 
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+            for dtype in (
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+            ):
+                np_x = -np.array([2, 3, 8, 7]).astype(dtype)
+                np_y = np.array([1, 5, 3, 3]).astype(dtype)
+                x = paddle.to_tensor(np_x)
+                y = paddle.to_tensor(np_y)
+                z = paddle.floor_divide(x, y)
+                np_z = z.numpy()
+                z_expected = np.floor_divide(np_x, np_y)
+                self.assertEqual((np_z == z_expected).all(), True)
+
+            np_x = -np.array([2, 3, 8, 7])
+            np_y = np.array([1, 5, 3, 3])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.to_tensor(np_y, dtype="bfloat16")
+            z = paddle.floor_divide(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([49152, 49024, 49216, 49216], dtype='uint16')
+            self.assertEqual((np_z == z_expected).all(), True)
+
+            for dtype in ('float32', 'float64', 'float16'):
+                try:
+                    # divide by zero
+                    np_x = np.array([2])
+                    np_y = np.array([0, 0, 0])
+                    x = paddle.to_tensor(np_x, dtype=dtype)
+                    y = paddle.to_tensor(np_y, dtype=dtype)
+                    z = paddle.floor_divide(x, y)
+                    np_z = z.numpy()
+                    # [np.inf, np.inf, np.inf]
+                    z_expected = np.floor_divide(np_x, np_y)
+                    self.assertEqual((np_z == z_expected).all(), True)
+                except Exception as e:
+                    pass
+
+            # divide by zero
+            np_x = np.array([2])
+            np_y = np.array([0, 0, 0])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.to_tensor(np_y, dtype="bfloat16")
+            z = paddle.floor_divide(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([32640, 32640, 32640], dtype='uint16')
+            self.assertEqual((np_z == z_expected).all(), True)
+
+        with device_guard('cpu'):
             # divide by zero
             np_x = np.array([2, 3, 4])
             np_y = np.array([0])
@@ -125,17 +208,20 @@ class TestFloorDivideOp(unittest.TestCase):
             try:
                 z = x // y
             except Exception as e:
-                print("Error: Divide by zero encounter in floor_divide\n")
+                pass
 
             # divide by zero
-            np_x = np.array([2])
-            np_y = np.array([0, 0, 0])
-            x = paddle.to_tensor(np_x, dtype="int32")
-            y = paddle.to_tensor(np_y, dtype="int32")
-            try:
-                z = x // y
-            except Exception as e:
-                print("Error: Divide by zero encounter in floor_divide\n")
+            for dtype in ("uint8", 'int8', 'int16', 'int32', 'int64'):
+                np_x = np.array([2])
+                np_y = np.array([0, 0, 0])
+                x = paddle.to_tensor(np_x, dtype=dtype)
+                y = paddle.to_tensor(np_y, dtype=dtype)
+                try:
+                    z = x // y
+                except Exception as e:
+                    pass
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
