@@ -46,6 +46,7 @@ from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
 from .linalg import corrcoef  # noqa: F401
 from .linalg import norm  # noqa: F401
+from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
 from .linalg import lstsq  # noqa: F401
@@ -329,6 +330,7 @@ tensor_method_func = [  # noqa
     'mv',
     'matrix_power',
     'qr',
+    'pca_lowrank',
     'eigvals',
     'eigvalsh',
     'abs',

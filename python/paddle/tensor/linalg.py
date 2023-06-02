@@ -1963,6 +1963,199 @@ def svd(x, full_matrices=False, name=None):
         return u, s, vh
 
 
+def pca_lowrank(x, q=None, center=True, niter=2, name=None):
+    r"""
+    Performs linear Principal Component Analysis (PCA) on a low-rank matrix, batches of such matrices, or sparse matrix.
+
+    Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
+
+    .. math::
+        X = U * diag(S) * V^(T)
+
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
+            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            positive number. The data type of x should be float32 or float64.
+        q (int, optional): a slightly overestimated rank of :math:`X`.
+            Default value is :math:`q=min(6,N,M)`.
+        center (bool, optional): if True, center the input tensor, otherwise,
+            assume that the input is centered.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        - Tensor U, is N x q matrix.
+        - Tensor S, is a vector with length q.
+        - Tensor V, is M x q matrix.
+
+        tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of a centered matrix :math:`X`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+
+            x = paddle.randn((5, 5), dtype='float64')
+            U, S, V = paddle.linalg.pca_lowrank(x)
+            print(U)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[ 0.41057070,  0.40364287,  0.59099574, -0.34529432,  0.44721360],
+            #         [-0.30243321,  0.55670611, -0.15025419,  0.61321785,  0.44721360],
+            #         [ 0.57427340, -0.15936327, -0.66414981, -0.06097905,  0.44721360],
+            #         [-0.63897516, -0.09968973, -0.17298615, -0.59316819,  0.44721360],
+            #         [-0.04343573, -0.70129598,  0.39639442,  0.38622370,  0.44721360]])
+
+            print(S)
+            # Tensor(shape=[5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [3.33724265, 2.57573259, 1.69479048, 0.68069312, 0.00000000])
+
+            print(V)
+            # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [[ 0.09800724, -0.32627008, -0.23593953,  0.81840445,  0.39810690],
+            #         [-0.60100303,  0.63741176, -0.01953663,  0.09023999,  0.47326173],
+            #         [ 0.25073864, -0.21305240, -0.32662950, -0.54786156,  0.69634740],
+            #         [ 0.33057205,  0.48282641, -0.75998527,  0.06744040, -0.27472705],
+            #         [ 0.67604895,  0.45688227,  0.50959437,  0.13179682,  0.23908071]])
+    """
+
+    def get_floating_dtype(x):
+        dtype = x.dtype
+        if dtype in (paddle.float16, paddle.float32, paddle.float64):
+            return dtype
+        return paddle.float32
+
+    def matmul(x, B):
+        if x is None:
+            return B
+        if x.is_sparse():
+            return paddle.sparse.matmul(x, B)
+        return paddle.matmul(x, B)
+
+    def conjugate(x):
+        if x.is_complex():
+            return x.conj()
+        return x
+
+    def transpose(x):
+        shape = x.shape
+        perm = list(range(0, len(shape)))
+        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+        if x.is_sparse():
+            return paddle.sparse.transpose(x, perm)
+        return paddle.transpose(x, perm)
+
+    def transjugate(x):
+        return conjugate(transpose(x))
+
+    def get_approximate_basis(x, q, niter=2, M=None):
+        niter = 2 if niter is None else niter
+        m, n = x.shape[-2:]
+        qr = paddle.linalg.qr
+
+        R = paddle.randn((n, q), dtype=x.dtype)
+
+        A_H = conjugate(transpose(x))
+        if M is None:
+            Q = qr(matmul(x, R))[0]
+            for i in range(niter):
+                Q = qr(matmul(A_H, Q))[0]
+                Q = qr(matmul(x, Q))[0]
+        else:
+            M_H = transjugate(M)
+            Q = qr(matmul(x, R) - matmul(M, R))[0]
+            for i in range(niter):
+                Q = qr(matmul(A_H, Q) - matmul(M_H, Q))[0]
+                Q = qr(matmul(x, Q) - matmul(M, Q))[0]
+
+        return Q
+
+    def svd_lowrank(x, q=6, niter=2, M=None):
+        q = 6 if q is None else q
+        m, n = x.shape[-2:]
+        if M is None:
+            M_t = None
+        else:
+            M_t = transpose(M)
+        A_t = transpose(x)
+
+        if m < n or n > q:
+            Q = get_approximate_basis(A_t, q, niter=niter, M=M_t)
+            Q_c = conjugate(Q)
+            if M is None:
+                B_t = matmul(x, Q_c)
+            else:
+                B_t = matmul(x, Q_c) - matmul(M, Q_c)
+            assert B_t.shape[-2] == m, (B_t.shape, m)
+            assert B_t.shape[-1] == q, (B_t.shape, q)
+            assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
+            U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
+            V = transjugate(Vh)
+            V = Q.matmul(V)
+        else:
+            Q = get_approximate_basis(x, q, niter=niter, M=M)
+            Q_c = conjugate(Q)
+            if M is None:
+                B = matmul(A_t, Q_c)
+            else:
+                B = matmul(A_t, Q_c) - matmul(M_t, Q_c)
+            B_t = transpose(B)
+            assert B_t.shape[-2] == q, (B_t.shape, q)
+            assert B_t.shape[-1] == n, (B_t.shape, n)
+            assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
+            U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
+            V = transjugate(Vh)
+            U = Q.matmul(U)
+
+        return U, S, V
+
+    if not paddle.is_tensor(x):
+        raise ValueError(f'Input must be tensor, but got {type(x)}')
+
+    (m, n) = x.shape[-2:]
+
+    if q is None:
+        q = min(6, m, n)
+    elif not (q >= 0 and q <= min(m, n)):
+        raise ValueError(
+            'q(={}) must be non-negative integer'
+            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+        )
+    if not (niter >= 0):
+        raise ValueError(f'niter(={niter}) must be non-negative integer')
+
+    dtype = get_floating_dtype(x)
+
+    if not center:
+        return svd_lowrank(x, q, niter=niter, M=None)
+
+    if x.is_sparse():
+        if len(x.shape) != 2:
+            raise ValueError(
+                'pca_lowrank input is expected to be 2-dimensional tensor'
+            )
+        s_sum = paddle.sparse.sum(x, axis=-2)
+        s_val = s_sum.values() / m
+        c = paddle.sparse.sparse_coo_tensor(
+            s_sum.indices(), s_val, dtype=s_sum.dtype, place=s_sum.place
+        )
+        column_indices = c.indices()[0]
+        indices = paddle.zeros(
+            (2, len(column_indices)), dtype=column_indices.dtype
+        )
+        indices[0] = column_indices
+        C_t = paddle.sparse.sparse_coo_tensor(
+            indices, c.values(), (n, 1), dtype=dtype, place=x.place
+        )
+
+        ones_m1_t = paddle.ones(x.shape[:-2] + [1, m], dtype=dtype)
+        M = transpose(paddle.matmul(C_t.to_dense(), ones_m1_t))
+        return svd_lowrank(x, q, niter=niter, M=M)
+    else:
+        C = x.mean(axis=-2, keepdim=True)
+        return svd_lowrank(x - C, q, niter=niter, M=None)
+
+
 def matrix_power(x, n, name=None):
     r"""
 
