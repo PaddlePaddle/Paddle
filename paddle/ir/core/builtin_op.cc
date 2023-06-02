@@ -41,7 +41,7 @@ ModuleOp ModuleOp::create(IrContext *context, Program *pointer) {
   ir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
   argument.AddRegion()->emplace_back();
-  argument.addAttribute("program", PointerAttribute::get(context, pointer));
+  argument.AddAttribute("program", PointerAttribute::get(context, pointer));
   return ModuleOp(Operation::create(std::move(argument)));
 }
 

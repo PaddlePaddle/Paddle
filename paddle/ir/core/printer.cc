@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
@@ -165,7 +166,7 @@ class ProgramPrinter : public Printer {
     std::vector<ir::Value> op_operands;
     op_operands.reserve(num_op_operands);
     for (size_t idx = 0; idx < num_op_operands; idx++) {
-      op_operands.push_back(op->GetOperandByIndex(idx).impl()->source());
+      op_operands.push_back(op->GetOperandByIndex(idx).source());
     }
     PrintInterleave(
         op_operands.begin(),
@@ -182,7 +183,7 @@ class ProgramPrinter : public Printer {
     for (size_t idx = 0; idx < num_op_operands; idx++) {
       auto op_operand = op->GetOperandByIndex(idx);
       if (op_operand) {
-        op_operand_types.push_back(op_operand.impl()->source().type());
+        op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
       } else {
         op_operand_types.push_back(ir::Type(nullptr));
       }

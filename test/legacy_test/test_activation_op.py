@@ -113,6 +113,7 @@ class TestExpFp32_Prim(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.if_enable_cinn()
+        self.convert_input_output()
 
     def test_check_output(self):
         self.check_output()
@@ -127,6 +128,9 @@ class TestExpFp32_Prim(OpTest):
         self.shape = [12, 17]
 
     def if_enable_cinn(self):
+        pass
+
+    def convert_input_output(self):
         pass
 
 
@@ -4003,6 +4007,7 @@ def create_test_act_fp16_class(
 
 
 create_test_act_fp16_class(TestActivation)
+create_test_act_fp16_class(TestExpFp32_Prim, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(TestSilu, check_prim=True, enable_cinn=True)
@@ -4133,6 +4138,7 @@ def create_test_act_bf16_class(
 
 
 create_test_act_bf16_class(TestActivation)
+create_test_act_bf16_class(TestExpFp32_Prim, check_prim=True)
 create_test_act_bf16_class(TestExpm1)
 create_test_act_bf16_class(TestSigmoid, check_prim=True)
 create_test_act_bf16_class(TestSilu, check_prim=True)

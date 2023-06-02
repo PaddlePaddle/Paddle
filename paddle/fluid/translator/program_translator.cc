@@ -22,6 +22,7 @@
 #include "paddle/fluid/translator/op_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/operation.h"

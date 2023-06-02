@@ -85,16 +85,13 @@ TEST(value_test, value_test) {
 
   // Test 2: op1_first_output -> op4_first_input
   ir::OpResult op1_first_output = op1->GetResultByIndex(0);
-  ir::detail::OpOperandImpl *op4_first_input =
-      reinterpret_cast<ir::detail::OpOperandImpl *>(
-          reinterpret_cast<uintptr_t>(op4) + sizeof(ir::Operation));
-  EXPECT_EQ(static_cast<ir::Value>(op1_first_output).impl()->first_use(),
-            op4_first_input);
-  ir::detail::OpOperandImpl *op3_first_input =
-      reinterpret_cast<ir::detail::OpOperandImpl *>(
-          reinterpret_cast<uintptr_t>(op3) + sizeof(ir::Operation));
-  EXPECT_EQ(op4_first_input->next_use(), op3_first_input);
-  EXPECT_EQ(op3_first_input->next_use(), nullptr);
+  ir::OpOperand op4_first_input = op4->GetOperandByIndex(0);
+
+  EXPECT_EQ(op1_first_output.first_use(), op4_first_input);
+  ir::OpOperand op3_first_input = op3->GetOperandByIndex(0);
+
+  EXPECT_EQ(op4_first_input.next_use(), op3_first_input);
+  EXPECT_EQ(op3_first_input.next_use(), nullptr);
 
   // Test 3: Value iterator
   ir::Value::use_iterator iter = op1->GetResultByIndex(0).begin();

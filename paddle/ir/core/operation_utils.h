@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/type.h"
-#include "paddle/ir/core/value_impl.h"
+#include "paddle/ir/core/value.h"
 
 namespace ir {
 
@@ -52,18 +52,18 @@ struct OperationArgument {
         regions(std::move(regions)) {}
 
   template <class InputIt>
-  void addOperands(InputIt first, InputIt last);
+  void AddOperands(InputIt first, InputIt last);
 
   template <class InputIt>
-  void addTypes(InputIt first, InputIt last);
+  void AddTypes(InputIt first, InputIt last);
 
   /// Add an attribute with the specified name.
-  void addAttribute(const std::string& name, Attribute attr) {
+  void AddAttribute(const std::string& name, Attribute attr) {
     attributes[name] = attr;
   }
   /// Add an array of named attributes.
   template <class InputIt>
-  void addAttributes(InputIt first, InputIt last);
+  void AddAttributes(InputIt first, InputIt last);
   /// Get the context held by this operation state.
   IrContext* getContext() const { return info.ir_context(); }
 
@@ -74,19 +74,19 @@ struct OperationArgument {
 };
 
 template <class InputIt>
-void OperationArgument::addOperands(InputIt first, InputIt last) {
+void OperationArgument::AddOperands(InputIt first, InputIt last) {
   while (first != last) {
     inputs.emplace_back(*first++);
   }
 }
 template <class InputIt>
-void OperationArgument::addTypes(InputIt first, InputIt last) {
+void OperationArgument::AddTypes(InputIt first, InputIt last) {
   while (first != last) {
     output_types.emplace_back(*first++);
   }
 }
 template <class InputIt>
-void OperationArgument::addAttributes(InputIt first, InputIt last) {
+void OperationArgument::AddAttributes(InputIt first, InputIt last) {
   while (first != last) {
     attributes[first->first] = first->second;
     ++first;
