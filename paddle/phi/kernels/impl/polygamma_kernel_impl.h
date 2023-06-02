@@ -137,7 +137,6 @@ struct CudaPolygammaGradFunctor {
   }
 };
 #else
-
 template <typename T>
 static inline T zeta(T x, T q) {
   /*
@@ -226,10 +225,14 @@ struct PolygammaFunctor {
       : input_(input), n_(n), output_(output), size_(size) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    const auto one = T{1};
-    output_[idx] = ((n_ % 2) ? one : -one) *
-                   std::exp(std::lgamma(static_cast<T>(n_) + one)) *
-                   zeta<T>(static_cast<T>(n_ + 1), input_[idx]);
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(input_[idx]);
+
+    const auto one = MT{1};
+    output_[idx] =
+        static_cast<T>(((n_ % 2) ? one : -one) *
+                       std::exp(std::lgamma(static_cast<MT>(n_) + one)) *
+                       zeta<MT>(static_cast<MT>(n_ + 1), mp_x));
   }
 
  private:
@@ -254,7 +257,7 @@ struct PolygammaGradFunctor {
     const MT mp_x = static_cast<MT>(input_[idx]);
     const MT mp_out_grad = static_cast<MT>(out_grad_[idx]);
 
-    const auto one = T{1};
+    const auto one = MT{1};
     auto partial_x = ((n_ % 2) ? one : -one) *
                      std::exp(std::lgamma(static_cast<MT>(n_) + one)) *
                      zeta<MT>(static_cast<MT>(n_ + 1), mp_x);

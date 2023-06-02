@@ -26,19 +26,30 @@ paddle.seed(100)
 
 
 def ref_polygamma(x, n):
+    """
+    The case where x = 0 differs from
+    the current mainstream implementation,
+    and requires specifying a special value point.
+    """
+    mask = x == 0
     if n == 0:
-        return special.psi(x)
-    if x == 0:
-        # The case where x = 0 differs from the current mainstream implementation and requires specifying a special value point.
-        return float("nan")
-    return special.polygamma(n, x)
+        out = special.psi(x)
+        out[mask] = np.nan
+    else:
+        out = special.polygamma(n, x)
+    return out
 
 
 def ref_polygamma_grad(x, dout, n):
-    if x == 0:
-        # The case where x = 0 differs from the current mainstream implementation and requires specifying a special value point.
-        return float("nan") * dout
+    """
+    The case where x = 0 differs from
+    the current mainstream implementation,
+    and requires specifying a special value point.
+    """
+    mask = x == 0
     gradx = special.polygamma(n + 1, x)
+    if n == 0:
+        gradx[mask] = np.nan
     return dout * gradx
 
 
@@ -102,6 +113,12 @@ class TestPolygammaAPI(unittest.TestCase):
             )
             paddle.enable_static()
 
+    def test_negative_order_error(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            self.assertRaises(ValueError, paddle.polygamma, self.x, -self.ORDER)
+            paddle.enable_static()
+
 
 class TestPolygammaFloat32Order1(TestPolygammaAPI):
     DTYPE = "float32"
@@ -143,12 +160,6 @@ class TestPolygammaNegativeInputOrder1(TestPolygammaAPI):
     DTYPE = "float64"
     DATA = [-2, 3, 5, 2.25, 7, 7.25]
     ORDER = 1
-
-
-class TestPolygammaNegativeOrder1(TestPolygammaAPI):
-    DTYPE = "float64"
-    DATA = [-2, 3, 5, 2.25, 7, 7.25]
-    ORDER = -1
 
 
 class TestPolygammaMultiDimOrder1(TestPolygammaAPI):
