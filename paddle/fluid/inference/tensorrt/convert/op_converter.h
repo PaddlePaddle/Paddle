@@ -56,6 +56,7 @@ class OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
+
     auto converter_type = static_cast<OpConverterType>(
         PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
     switch (converter_type) {
