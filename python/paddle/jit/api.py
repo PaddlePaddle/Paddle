@@ -46,6 +46,8 @@ from .dy2static.convert_call_func import (
 from .dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
+    ASTStaticFunction,
+    SymbolicStaticFunction,
     unwrap_decorators,
 )
 from paddle.jit.translated_layer import (
@@ -230,64 +232,6 @@ def _check_and_set_backend(backend, build_strategy):
         build_strategy.build_cinn_pass = True
 
 
-def _ast_to_static(
-    function=None,
-    input_spec=None,
-    build_strategy=None,
-    backend=None,
-    **kwargs,
-):
-    property = kwargs.get("property", False)
-
-    def decorated(python_func):
-        """
-        Decorates a python function into a StaticFunction object.
-        """
-        # Step 1. unwrap the function if it is already decorated.
-        _, python_func = unwrap_decorators(python_func)
-
-        # Step 2. copy some attributes from original python function.
-        static_layer = copy_decorator_attrs(
-            original_func=python_func,
-            decorated_obj=StaticFunction(
-                function=python_func,
-                input_spec=input_spec,
-                build_strategy=build_strategy,
-                property=property,
-                backend=backend,
-            ),
-        )
-
-        return static_layer
-
-    build_strategy = build_strategy or BuildStrategy()
-    if not isinstance(build_strategy, BuildStrategy):
-        raise TypeError(
-            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".format(
-                type(build_strategy).__name__
-            )
-        )
-    _check_and_set_backend(backend, build_strategy)
-
-    # for usage: `to_static(foo, ...)`
-    if function is not None:
-        if isinstance(function, Layer):
-            if isinstance(function.forward, StaticFunction):
-                class_name = function.__class__.__name__
-                logging_utils.warn(
-                    "`{}.forward` has already been decorated somewhere. It will be redecorated to replace previous one.".format(
-                        class_name
-                    )
-                )
-            function.forward = decorated(function.forward)
-            return function
-        else:
-            return decorated(function)
-
-    # for usage: `@to_static`
-    return decorated
-
-
 def to_static(
     function=None,
     input_spec=None,
@@ -338,17 +282,45 @@ def to_static(
             print(x_v) # [[2. 2.]]
 
     """
-    if not enable_fallback:
-        return _ast_to_static(
-            function, input_spec, build_strategy, backend, **kwargs
+    property = kwargs.get("property", False)
+
+    def decorated(python_func):
+        """
+        Decorates a python function into a ASTStaticFunction object.
+        """
+        StaticClass = StaticFunctionClass = {
+            True: SymbolicStaticFunction,
+            False: ASTStaticFunction,
+        }[enable_fallback]
+
+        # Step 1. unwrap the function if it is already decorated.
+        _, python_func = unwrap_decorators(python_func)
+
+        # Step 2. copy some attributes from original python function.
+        static_layer = copy_decorator_attrs(
+            original_func=python_func,
+            decorated_obj=StaticClass(
+                function=python_func,
+                input_spec=input_spec,
+                build_strategy=build_strategy,
+                property=property,
+                backend=backend,
+            ),
         )
-    else:
-        # TODO: pass auguments to CompileSIRCache, like backend and build_strategy.
-        # We need to properly align which parameters are worth passing.
-        # such as, input_spec is useless here.
 
-        from .symbolic_trace import symbolic_trace
+        return static_layer
 
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            "Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {}".format(
+                type(build_strategy).__name__
+            )
+        )
+    _check_and_set_backend(backend, build_strategy)
+
+    # for usage: `to_static(foo, ...)`
+    if function is not None:
         if isinstance(function, Layer):
             if isinstance(function.forward, StaticFunction):
                 class_name = function.__class__.__name__
@@ -357,11 +329,13 @@ def to_static(
                         class_name
                     )
                 )
-                # reset it.
-                function.forward = function.forward.dygraph_function
-            function.forward = symbolic_trace(function.forward)
+            function.forward = decorated(function.forward)
             return function
-        return symbolic_trace(function)
+        else:
+            return decorated(function)
+
+    # for usage: `@to_static`
+    return decorated
 
 
 def not_to_static(func=None):
