@@ -26,8 +26,8 @@ __all__ = []
 
 
 class HOOK_ACTION:
-    ALL_REDUCE: 0
-    REDUCE: 1
+    ALL_REDUCE = 0
+    REDUCE = 1
 
 
 FLOAT_TYPE_DICT = {
@@ -127,7 +127,7 @@ class FusedCommBuffer:
         params,
         comm_group,
         acc_steps=1,
-        act=HOOK_ACTION.ALL_REDUCER,
+        act=None,
         dst=-1,
     ):
         self._id = id
@@ -141,12 +141,13 @@ class FusedCommBuffer:
         self._params_checked_in = 0
         self._coalesced_grads_and_grad_vars = []
 
-        assert isinstance(act, HOOK_ACTION)
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
             assert dst == -1
         elif self._act == HOOK_ACTION.REDUCE:
             assert dst != -1
+        else:
+            raise ValueError("act value not in HOOK_ACTION")
         self._dst = dst
 
         self._init_step_dict()

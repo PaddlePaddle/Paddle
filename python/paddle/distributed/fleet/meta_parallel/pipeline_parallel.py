@@ -197,13 +197,18 @@ class PipelineParallel(MetaParallelBase):
             else:
                 # Sort parameters for sharding, since they have different dst rank
                 for p in parameter_list:
-                    assert p in _param2rank
-                    dst_rank = _param2rank[p]
-                    fused_parameter_group[dst_rank] = fused_parameter_group.get(
-                        dst_rank, []
-                    ).append(p)
+                    assert p.name in _param2rank
+                    dst_rank = _param2rank[p.name]
+                    if dst_rank in fused_parameter_group:
+                        fused_parameter_group[dst_rank].append(p)
+                    else:
+                        fused_parameter_group[dst_rank] = [p]
 
-            for dst, parameter_list in fused_parameter_group:
+            for dst in fused_parameter_group:
+                parameter_list = fused_parameter_group[dst]
+                if not dp:
+                    # parse the relative dst rank to absolute dst rank for sharding
+                    dst = comm_group.ranks[dst]
                 var_groups = assign_group_by_size(parameter_list)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
