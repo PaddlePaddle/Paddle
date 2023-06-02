@@ -51,6 +51,11 @@ class BasicIRPrinter {
   explicit BasicIRPrinter(std::ostream& os) : os(os) {}
 
   void PrintType(ir::Type type) {
+    if (!type) {
+      os << "<<NULL TYPE>>";
+      return;
+    }
+
     if (type.isa<ir::Float16Type>()) {
       os << "f16";
     } else if (type.isa<ir::Float32Type>()) {
@@ -135,6 +140,10 @@ class IRPrinter : public BasicIRPrinter {
 
  private:
   void PrintValue(ir::Value v) {
+    if (!v) {
+      os << "<<NULL VALUE>>";
+      return;
+    }
     const void* key = static_cast<const void*>(v.impl());
     auto ret = aliases_.find(key);
     if (ret != aliases_.end()) {
@@ -185,7 +194,12 @@ class IRPrinter : public BasicIRPrinter {
     std::vector<ir::Type> op_operand_types;
     op_operand_types.reserve(num_op_operands);
     for (size_t idx = 0; idx < num_op_operands; idx++) {
-      op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
+      auto op_operand = op->GetOperandByIndex(idx);
+      if (op_operand) {
+        op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
+      } else {
+        op_operand_types.push_back(ir::Type(nullptr));
+      }
     }
     os << " (";
     PrintInterleave(
@@ -201,7 +215,12 @@ class IRPrinter : public BasicIRPrinter {
     std::vector<ir::Type> op_result_types;
     op_result_types.reserve(num_op_result);
     for (size_t idx = 0; idx < num_op_result; idx++) {
-      op_result_types.push_back(op->GetResultByIndex(idx).type());
+      auto op_result = op->GetResultByIndex(idx);
+      if (op_result) {
+        op_result_types.push_back(op_result.type());
+      } else {
+        op_result_types.push_back(ir::Type(nullptr));
+      }
     }
     PrintInterleave(
         op_result_types.begin(),
@@ -226,10 +245,6 @@ void Operation::Print(std::ostream& os) {
 }
 
 void Type::print(std::ostream& os) const {
-  if (!*this) {
-    os << "<!TypeNull>";
-    return;
-  }
   BasicIRPrinter printer(os);
   printer.PrintType(*this);
 }

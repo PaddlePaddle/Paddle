@@ -256,13 +256,10 @@ TEST(program_test, slice_combine_test) {
       ir::Operation::create({}, op1_attribute, {fp32_dtype}, op1_info);
   program.block()->push_back(op1);
 
-  // (5) Def b = GetParameterOp("b")
-  std::string op2_name = std::string(ir::GetParameterOp::name());
+  // (5) Def b = Constant("b")
+  std::string op2_name = std::string(ir::ConstantOp::name());
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  std::unordered_map<std::string, ir::Attribute> op2_attribute{
-      {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
-  ir::Operation *op2 =
-      ir::Operation::create({}, op2_attribute, {fp32_dtype}, op2_info);
+  ir::Operation *op2 = ir::Operation::create({}, {}, {fp32_dtype}, op2_info);
   program.block()->push_back(op2);
 
   // (6) Def combine_op = CombineOp("a", "b")

@@ -31,14 +31,13 @@ OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
   impl_ = const_cast<detail::OpOperandImpl *>(impl);
   return *this;
 }
+OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
 OpOperand OpOperand::next_use() const { return impl_->next_use(); }
 
 Value OpOperand::source() const { return impl_->source(); }
 
 Operation *OpOperand::owner() const { return impl_->owner(); }
-
-// detail::OpOperandImpl *OpOperand::impl() const { return impl_; }
 
 // Value
 Value::Value(const detail::ValueImpl *impl)
@@ -108,6 +107,9 @@ void OpOperandImpl::release_source() { source_ = nullptr; }
 
 OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
     : source_(source), owner_(owner) {
+  if (!source) {
+    return;
+  }
   prev_use_addr_ = source.impl()->first_use_addr();
   next_use_ = source.impl()->first_use();
   if (next_use_) {
@@ -117,6 +119,7 @@ OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
 }
 
 void OpOperandImpl::remove_from_ud_chain() {
+  if (!source_) return;
   if (!prev_use_addr_) return;
   if (prev_use_addr_ == source_.impl()->first_use_addr()) {
     /// NOTE: In ValueImpl, first_use_offseted_by_index_ use lower three bits
