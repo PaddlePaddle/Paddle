@@ -83,10 +83,16 @@ class SliceOp : public ir::Op<SliceOp> {
                      const ir::AttributeMap &attributes);
 };
 
+class ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
+ public:
+  explicit ConstantLikeTrait(Operation *op)
+      : OpTraitBase<ConstantLikeTrait>(op) {}
+};
+
 ///
 /// \brief ConstantOp
 ///
-class ConstantOp : public Op<ConstantOp> {
+class ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.constant"; }
@@ -102,6 +108,8 @@ class ConstantOp : public Op<ConstantOp> {
   static void verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const AttributeMap &attributes);
+
+  Attribute value();
 };
 
 }  // namespace ir

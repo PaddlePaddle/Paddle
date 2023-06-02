@@ -174,11 +174,12 @@ void ConstantOp::build(Builder &builder,
 void ConstantOp::verify(const std::vector<ir::OpResult> &inputs,
                         const std::vector<ir::Type> &outputs,
                         const ir::AttributeMap &attributes) {
-  // outputs.size() == 1
+  IR_ENFORCE(inputs.size() == 0, "The size of inputs must be equal to 0.");
   IR_ENFORCE(outputs.size() == 1, "The size of outputs must be equal to 1.");
-  // attribute should has a ir::Attribute named value.
   IR_ENFORCE(attributes.count("value") > 0,
              "Type of attribute: value is not right.");
 }
+
+Attribute ConstantOp::value() { return operation()->attribute().at("value"); }
 
 }  // namespace ir
