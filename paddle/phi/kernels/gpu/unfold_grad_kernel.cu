@@ -18,5 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/unfold_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    unfold_grad, GPU, ALL_LAYOUT, phi::UnfoldGradKernel, float, double) {}
+PD_REGISTER_KERNEL(unfold_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UnfoldGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

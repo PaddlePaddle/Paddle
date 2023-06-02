@@ -51,6 +51,7 @@ Origin subgraph:
        |           |        |         |
        |  v_transpose q_transpose k_transpose
        |          |         |         |
+       |          |         |       (scale)
        |          |         \         /
        |          |          qk_matmul
        |          |              |

@@ -28,25 +28,22 @@ set(PYBIND_DEPS
     gloo_wrapper
     infer_io_utils
     heter_wrapper
-    generator
     op_version_registry
     ps_gpu_wrapper
     custom_operator
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
+    plan
     global_utils
     phi_utils
-    tcp_store
-    comm_context_manager
+    phi
     new_profiler
-    auto_parallel
     jit_layer
     jit_property
     prim_utils
-    operants_manager
-    phi_tensor_operants
-    static_tensor_operants)
+    static_tensor_operants
+    type_info)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -65,7 +62,7 @@ if(WITH_RPC)
       zlib
       leveldb
       snappy
-      gflags
+      phi
       glog)
 endif()
 if(WITH_GPU OR WITH_ROCM)
@@ -89,6 +86,17 @@ if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
   set(PYBIND_DEPS ${PYBIND_DEPS} bkcl_context)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+endif()
+
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} xccl_context)
+  if(NOT
+     (WITH_NCCL
+      OR WITH_RCCL
+      OR WITH_XPU_BKCL))
+    set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+    set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+  endif()
 endif()
 
 if(NOT WIN32)
@@ -137,7 +145,6 @@ set(PYBIND_SRCS
     auto_parallel_py.cc)
 
 if(WITH_CUSTOM_DEVICE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
@@ -258,6 +265,11 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
+  if(WITH_CUSTOM_DEVICE)
+    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+                                   custom_device_common_op_registry)
+  endif()
+
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
   target_link_libraries(eager_legacy_op_function_generator
@@ -317,6 +329,14 @@ if(WITH_PYTHON)
       "    )\n"
       ")\n"
       "exit /b 0")
+
+    if(WITH_PHI_SHARED)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
+        DEPENDS phi)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
+    endif()
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(
@@ -465,10 +485,8 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
-    list(APPEND PYBIND_DEPS tensor_api)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
-    list(APPEND PYBIND_DEPS flags)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
@@ -484,6 +502,11 @@ if(WITH_PYTHON)
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  # cc_test do not respect deps, whole archive to link symbols that may need by test
+  if(WITH_TESTING)
+    #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")
+  endif()
 
   # TODO(zhiqiu): some symbols not exported even setting the following
   # property. Need to find a better way.

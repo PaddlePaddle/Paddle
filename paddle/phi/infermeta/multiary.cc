@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -479,7 +481,7 @@ void AucInferMeta(const MetaTensor& input,
       0,
       phi::errors::InvalidArgument("slide_steps must be natural number"));
 
-  auc->set_dims({1});
+  auc->set_dims(phi::make_ddim({}));
   auc->set_dtype(DataType::INT64);
 
   if (slide_steps) {
@@ -1313,6 +1315,71 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
   }
 }
 
+void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
+                          const std::vector<int>& outs_dtype,
+                          const std::vector<int>& inputs_dtype,
+                          const std::string& func_name,
+                          int type,
+                          std::vector<MetaTensor*> outs) {
+  const size_t num_ins = ins.size();
+  const size_t num_outs = outs.size();
+
+  PADDLE_ENFORCE_GE(
+      num_ins,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Expected the number of inputs >= 1. Received %d.", num_ins));
+  PADDLE_ENFORCE_GE(
+      num_outs,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Expected the number of outputs >= 1. Recived %d.", num_outs));
+
+  PADDLE_ENFORCE_EQ(type,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "Only support fusion of elementwise operations."));
+
+  std::vector<phi::DDim> x_dims;
+  for (size_t i = 0; i < num_ins; ++i) {
+    x_dims.push_back(ins[i]->dims());
+  }
+
+  if (type == 0) {
+    for (size_t i = 1; i < num_ins; ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[0],
+                        x_dims[i],
+                        phi::errors::InvalidArgument(
+                            "All the inputs' dims is expected to be the same. "
+                            "But received [%s] (name: %s) vs [%s] (name: %s).",
+                            x_dims[0],
+                            ins[0],
+                            x_dims[i],
+                            ins[i]));
+    }
+    for (size_t j = 0; j < num_outs; ++j) {
+      outs[j]->set_dims(x_dims[0]);
+    }
+  }
+
+  // Only lod of Inputs[0] would be shared with Outs.
+  for (size_t j = 0; j < num_outs; ++j) {
+    outs[j]->share_lod(*ins[0]);
+  }
+
+  for (size_t j = 0; j < num_outs; ++j) {
+    if (outs_dtype[j] == phi::TransToProtoVarType(phi::DataType::FLOAT16)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT16);
+    } else if (outs_dtype[j] ==
+               phi::TransToProtoVarType(phi::DataType::FLOAT32)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT32);
+    } else if (outs_dtype[j] ==
+               phi::TransToProtoVarType(phi::DataType::FLOAT64)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT64);
+    }
+  }
+}
+
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,
@@ -1602,9 +1669,10 @@ static void Interpolate2DInferShapeCheck(
     MetaConfig config) {
   auto dim_x = x.dims();
 
-  PADDLE_ENFORCE(
-      "bilinear" == interp_method || "nearest" == interp_method ||
-          "bicubic" == interp_method,
+  PADDLE_ENFORCE_EQ(
+      ("bilinear" == interp_method || "nearest" == interp_method ||
+       "bicubic" == interp_method),
+      true,
       phi::errors::InvalidArgument(
           "Interpolation method can only be \"bilinear\" or \"nearest\" when "
           "Input(X) dimension is 4, but got method = %s.",
@@ -1752,12 +1820,14 @@ static void Interpolate3DInferShapeCheck(
     MetaConfig config) {
   auto dim_x = x.dims();
 
-  PADDLE_ENFORCE("nearest" == interp_method || "trilinear" == interp_method,
-                 phi::errors::InvalidArgument(
-                     "Interpolation method can only be \"trilinear\" or "
-                     "\"nearest\" when Input(X) "
-                     "dimension is 5, but got method = %s .",
-                     interp_method));
+  PADDLE_ENFORCE_EQ(
+      ("nearest" == interp_method || "trilinear" == interp_method),
+      true,
+      phi::errors::InvalidArgument(
+          "Interpolation method can only be \"trilinear\" or "
+          "\"nearest\" when Input(X) "
+          "dimension is 5, but got method = %s .",
+          interp_method));
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   for (int i = 0; i < dim_x.size(); ++i) {
@@ -1906,8 +1976,9 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config) {
   auto dim_x = x.dims();  // NCHW format
-  PADDLE_ENFORCE(
-      dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
+  PADDLE_ENFORCE_EQ(
+      (dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5),
+      true,
       phi::errors::Unimplemented(
           "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
           dim_x.size()));
@@ -1960,6 +2031,21 @@ void InterpolateInferMeta(
                                  output,
                                  config);
   }
+}
+
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          in_dims.size()));
+  out->share_meta(x);
 }
 
 void LambInferMeta(const MetaTensor& param,
@@ -3235,6 +3321,34 @@ void FusedAdamInferMeta(
   }
 }
 
+void FusedConvInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const MetaTensor& bias,
+                        const MetaTensor& residual_param,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations,
+                        int groups,
+                        const std::string& data_format,
+                        const std::string& mkldnn_data_type,
+                        const std::string& fuse_activation,
+                        bool fuse_residual_conn,
+                        bool force_fp32_output,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
@@ -3249,5 +3363,51 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids) {
+  // GSN: GraphSampleNeighbors
+  auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GSNShapeCheck(row.dims(), "row");
+  GSNShapeCheck(col_ptr.dims(), "colptr");
+  GSNShapeCheck(edge_weight.dims(), "edge_weight");
+  GSNShapeCheck(x.dims(), "input_nodes");
+  if (return_eids) {
+    GSNShapeCheck(eids.dims(), "eids");
+    out_eids->set_dims({-1});
+    out_eids->set_dtype(row.dtype());
+  }
+
+  out->set_dims({-1});
+  out->set_dtype(row.dtype());
+  out_count->set_dims({-1});
+  out_count->set_dtype(DataType::INT32);
+}
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

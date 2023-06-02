@@ -180,6 +180,9 @@ def custom_write_stub(resource, pyfile):
 
         def __bootstrap__():
             assert os.path.exists(so_path)
+            # load custom op shared library with abs path
+            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+
             if os.name == 'nt' or sys.platform.startswith('darwin'):
                 # Cpp Extension only support Linux now
                 mod = types.ModuleType(__name__)
@@ -193,10 +196,8 @@ def custom_write_stub(resource, pyfile):
                 except ImportError:
                     mod = types.ModuleType(__name__)
 
-            # load custom op shared library with abs path
-            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            for custom_ops in custom_ops:
-                setattr(mod, custom_ops, eval(custom_ops))
+            for custom_op in custom_ops:
+                setattr(mod, custom_op, eval(custom_op))
 
         __bootstrap__()
 
@@ -561,8 +562,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
                 extra_compile_args[compiler] = []
 
     if IS_WINDOWS:
-        # TODO(zhouwei): may append compile flags in future
-        pass
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
@@ -1143,13 +1142,13 @@ def _custom_api_content(op_name):
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.framework import in_dygraph_mode
+        from paddle.framework import in_dynamic_mode
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 outs = core.eager._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:

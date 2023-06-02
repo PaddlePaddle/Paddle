@@ -58,6 +58,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_generation_pipeline MODULES
+                  test_pass_generation_pipeline)
+  set_tests_properties(test_pass_generation_pipeline
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -76,7 +80,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   set_tests_properties(test_pass_quantization PROPERTIES TIMEOUT 60)
   py_test_modules(test_tuning_recompute MODULES test_tuning_recompute)
-  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_tuning_recompute PROPERTIES TIMEOUT 300)
   py_test_modules(test_fused_linear_pass MODULES test_fused_linear_pass)
   set_tests_properties(test_fused_linear_pass PROPERTIES TIMEOUT 20)
   py_test_modules(test_align_tool MODULES test_align_tool)

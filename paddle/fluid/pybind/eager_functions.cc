@@ -62,11 +62,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -747,7 +747,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       for (size_t i = 0; i < slot_outs_num; i++) {
         const auto& size_pair = ctx.OutputRangeAt(i);
         const std::vector<paddle::Tensor>& out_tensors =
-            ctx.OutputsBetweeen(size_pair.first, size_pair.second);
+            ctx.OutputsBetween(size_pair.first, size_pair.second);
         for (size_t j = size_pair.first; j < size_pair.second; j++) {
           // SetOutRankWithSlot: slot_id = i, rank = j - size_pair.first
           outs_auto_grad_metas[j]->SetSingleOutRankWithSlot(
@@ -763,8 +763,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to grad_inputs: " << it->second;
         grad_node->fwd_outs[it->second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
-                ctx.OutputsBetweeen(ctx.OutputRangeAt(it->first).first,
-                                    ctx.OutputRangeAt(it->first).second));
+                ctx.OutputsBetween(ctx.OutputRangeAt(it->first).first,
+                                   ctx.OutputRangeAt(it->first).second));
       }
 
       // Prepare Grad inputs with fwd inputs

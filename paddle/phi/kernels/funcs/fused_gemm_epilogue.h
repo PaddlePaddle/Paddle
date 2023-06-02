@@ -535,8 +535,11 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           bool use_addto_dx,
                                           bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  static_assert(std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value);
-  static_assert(std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
+  constexpr bool kIsValidDataType =
+      (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
+      (std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
+  static_assert(kIsValidDataType, "Invalid data type");
+
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
   if (dx) {
@@ -942,75 +945,37 @@ void ComputeFusedGemmEpilogueBackward(const phi::GPUContext& dev_ctx,
            << ", trans_y=" << trans_y
            << ", activation_grad=" << activation_grad;
 
+#define CALL_FUSED_GRAD_IMPL(TransX, TransY)                         \
+  ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, TransX, TransY>( \
+      dev_ctx,                                                       \
+      dout,                                                          \
+      x,                                                             \
+      y,                                                             \
+      reserve_space,                                                 \
+      M,                                                             \
+      N,                                                             \
+      K,                                                             \
+      activation_grad,                                               \
+      dx,                                                            \
+      dy,                                                            \
+      dbias,                                                         \
+      use_addto_dx,                                                  \
+      use_addto_dy)
+
   if (trans_x) {
     if (trans_y) {
-      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, true, true>(
-          dev_ctx,
-          dout,
-          x,
-          y,
-          reserve_space,
-          M,
-          N,
-          K,
-          activation_grad,
-          dx,
-          dy,
-          dbias,
-          use_addto_dx,
-          use_addto_dy);
+      CALL_FUSED_GRAD_IMPL(true, true);
     } else {
-      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, true, false>(
-          dev_ctx,
-          dout,
-          x,
-          y,
-          reserve_space,
-          M,
-          N,
-          K,
-          activation_grad,
-          dx,
-          dy,
-          dbias,
-          use_addto_dx,
-          use_addto_dy);
+      CALL_FUSED_GRAD_IMPL(true, false);
     }
   } else {
     if (trans_y) {
-      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, false, true>(
-          dev_ctx,
-          dout,
-          x,
-          y,
-          reserve_space,
-          M,
-          N,
-          K,
-          activation_grad,
-          dx,
-          dy,
-          dbias,
-          use_addto_dx,
-          use_addto_dy);
+      CALL_FUSED_GRAD_IMPL(false, true);
     } else {
-      ComputeFusedGemmEpilogueBackwardImpl<T, DXT, DYT, false, false>(
-          dev_ctx,
-          dout,
-          x,
-          y,
-          reserve_space,
-          M,
-          N,
-          K,
-          activation_grad,
-          dx,
-          dy,
-          dbias,
-          use_addto_dx,
-          use_addto_dy);
+      CALL_FUSED_GRAD_IMPL(false, false);
     }
   }
+#undef CALL_FUSED_GRAD_IMPL
 }
 
 }  // namespace funcs

@@ -39,16 +39,16 @@ void send_shape_info(const phi::DenseTensor& x,
                           "NCCLComm and Stream should be provided if use NCCL "
                           "to send the shape info."));
   }
-  phi::DataType shape_dytpe = phi::DataType::INT32;
+  phi::DataType shape_dtype = phi::DataType::INT32;
   ncclDataType_t nccl_dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
+      platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dtype));
   auto dims = x.dims();
   int shape_size = dims.size();
 
   // step1: send the shape size
-  phi::DenseTensor cpu_shape_size_tensor(shape_dytpe);
+  phi::DenseTensor cpu_shape_size_tensor(shape_dtype);
   cpu_shape_size_tensor.Resize({1});
-  cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
+  cpu_shape_size_tensor.mutable_data(platform::CPUPlace(), shape_dtype);
   auto* cpu_data = cpu_shape_size_tensor.data<int>();
   cpu_data[0] = shape_size;
 
@@ -58,9 +58,9 @@ void send_shape_info(const phi::DenseTensor& x,
     auto shape_size_task = group->Send(shape_size_tensor, peer);
   } else {
     // copy the shape size tensor to gpu and send
-    phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
+    phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
     gpu_shape_size_tensor->Resize({1});
-    gpu_shape_size_tensor->mutable_data(place, shape_dytpe);
+    gpu_shape_size_tensor->mutable_data(place, shape_dtype);
     framework::TensorCopySync(
         cpu_shape_size_tensor, place, gpu_shape_size_tensor);
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -74,9 +74,9 @@ void send_shape_info(const phi::DenseTensor& x,
   VLOG(3) << "send the shape size: " << shape_size << " to peer";
 
   // step2: send the shape
-  phi::DenseTensor cpu_shape_tensor(shape_dytpe);
+  phi::DenseTensor cpu_shape_tensor(shape_dtype);
   cpu_shape_tensor.Resize({shape_size});
-  cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dytpe);
+  cpu_shape_tensor.mutable_data(platform::CPUPlace(), shape_dtype);
   auto* cpu_shape_data = cpu_shape_tensor.data<int>();
   for (int i = 0; i < shape_size; ++i) {
     cpu_shape_data[i] = dims[i];
@@ -88,9 +88,9 @@ void send_shape_info(const phi::DenseTensor& x,
     auto shape_task = group->Send(shape_tensor, peer);
   } else {
     // copy the shape tensor to gpu and send
-    phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
+    phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dtype);
     gpu_shape_tensor->Resize({shape_size});
-    gpu_shape_tensor->mutable_data(place, shape_dytpe);
+    gpu_shape_tensor->mutable_data(place, shape_dtype);
     framework::TensorCopySync(cpu_shape_tensor, place, gpu_shape_tensor);
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::ncclSend(gpu_shape_tensor->data<int>(),
@@ -223,7 +223,7 @@ PD_REGISTER_STRUCT_KERNEL(send_v2,
                           ops::SendOpV2CUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           int,

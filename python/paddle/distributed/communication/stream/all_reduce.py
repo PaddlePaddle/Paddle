@@ -116,15 +116,15 @@ def all_reduce(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         return _all_reduce_in_dygraph(
             tensor, op, group, sync_op, use_calc_stream
         )
     else:
-        # assert (
-        #     group is None
-        # ), "Group can not be used in static graph mode for now."
+        assert (
+            group is None
+        ), "Group can not be used in static graph mode for now."
         return _all_reduce_in_static_mode(
             tensor, op, group, sync_op, use_calc_stream
         )

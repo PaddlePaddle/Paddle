@@ -14,12 +14,12 @@
 
 import unittest
 
-import config
 import mock_data as mock
 import numpy as np
 import parameterize as param
 import scipy.special
 import scipy.stats
+from distribution import config
 
 import paddle
 from paddle.distribution import kl
@@ -139,8 +139,8 @@ class TestDispatch(unittest.TestCase):
         ),
         (
             'test-same-dist',
-            mock.Exponential(paddle.to_tensor(1.0)),
-            mock.Exponential(paddle.to_tensor(1.0)),
+            mock.Exponential(paddle.to_tensor([1.0])),
+            mock.Exponential(paddle.to_tensor([1.0])),
         ),
     ],
 )
