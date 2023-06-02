@@ -868,24 +868,6 @@
   kernel :
     func : trans_layout_grad
 
-- backward_op : transpose_double_grad
-  forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, int[] perm)
-  output : Tensor(grad_out_grad)
-  invoke : transpose(grad_x_grad, perm)
-
-- backward_op : transpose_grad
-  forward : transpose (Tensor x, int[] perm) -> Tensor(out)
-  args : (Tensor out_grad, int[] perm)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : TransposeGradInferMeta
-    param : [out_grad, perm]
-  kernel :
-    func : transpose_grad
-  backward : transpose_double_grad
-  composite: transpose_grad(out_grad, perm, x_grad)
-
 - backward_op : tril_grad
   forward : tril(Tensor x,  int diagonal) -> Tensor(out)
   args : (Tensor out_grad,  int diagonal)

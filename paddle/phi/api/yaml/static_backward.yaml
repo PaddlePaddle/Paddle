@@ -143,6 +143,24 @@
     func : swish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : transpose_double_grad
+  forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, int[] perm)
+  output : Tensor(grad_out_grad)
+  invoke : transpose(grad_x_grad, perm)
+
+- backward_op : transpose_grad
+  forward : transpose (Tensor x, int[] perm) -> Tensor(out)
+  args : (Tensor out_grad, int[] perm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : TransposeGradInferMeta
+    param : [out_grad, perm]
+  kernel :
+    func : transpose_grad
+  backward : transpose_double_grad
+  composite: transpose_grad(out_grad, perm, x_grad)
+
 - backward_op : tril_triu_grad
   forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
   args : (Tensor out_grad, int diagonal, bool lower)
