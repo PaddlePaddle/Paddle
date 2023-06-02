@@ -297,7 +297,7 @@ TEST(program_test, builder) {
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  ir::Program program;
+  ir::Program program(ctx);
 
   ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
 
