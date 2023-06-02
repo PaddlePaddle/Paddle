@@ -198,6 +198,23 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : any (reduce_any)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    any : GetReduceOpUseInputPlaceExpectedKernelType
+  manual_signature : [any]
+
 - op : arange(range)
   inputs :
     {start : Start, end : End, step : Step}
@@ -1562,11 +1579,16 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
   int_array:
     axis :
       data_type : int
-  extra :
-    attrs : [bool use_mkldnn = false]
+      support_tensor : true
+  get_expected_kernel_type :
+    max : GetReduceExpectedKernelType
+    max_grad : GetReduceGradExpectedKernelType
+  manual_signature : [max]
 
 - op : max_pool2d_with_index
   inputs :
@@ -1937,10 +1959,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : reduce_any
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_min
   backward : reduce_min_grad
   extra :
@@ -2136,6 +2154,12 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
+
+- op : shape
+  inputs :
+    input : Input
+  outputs :
+    out : Out
 
 - op : shape
   extra :
@@ -2379,6 +2403,10 @@
 
 - op : swish
   backward : swish_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

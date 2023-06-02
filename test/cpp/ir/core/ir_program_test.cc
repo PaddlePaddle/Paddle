@@ -18,6 +18,7 @@
 #include "paddle/fluid/dialect/pd_interface.h"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/utils.h"
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -56,9 +57,7 @@ TEST(program_test, program) {
       ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   // (2) Create an empty program object
-  ir::Program program;
-  //   ir::Program *program = new ir::Program();
-  EXPECT_EQ(program.block()->size() == 0, true);
+  ir::Program program(ctx);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
@@ -94,7 +93,14 @@ TEST(program_test, program) {
   ir::Operation *op1 =
       ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
-  program.InsertOp(op1);
+  ir::Block *block = program.block();
+  block->push_back(op1);
+
+  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParentRegion());
+
+  EXPECT_EQ(program.module_op(), block->GetParentOp());
+
+  EXPECT_EQ(&program, op1->GetParentProgram());
 
   EXPECT_EQ(op1->GetResultByIndex(0).type().dialect().id(),
             paddle_dialect->id());
@@ -124,7 +130,7 @@ TEST(program_test, program) {
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
       ir::Operation::create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
-  program.InsertOp(op2);
+  block->push_back(op2);
 
   EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
             paddle_dialect->id());
@@ -155,7 +161,7 @@ TEST(program_test, program) {
       op3_attribute,
       {dense_tensor_dtype},
       op3_info);
-  program.InsertOp(op3);
+  block->push_back(op3);
 
   phi::CPUContext *dev_ctx = static_cast<phi::CPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(
@@ -182,9 +188,9 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> abs_op_attribute;
   std::vector<ir::Type> output_types = {dense_tensor_dtype};
   ir::OperationArgument abs_argument(abs_info);
-  abs_argument.addOperands(operands.begin(), operands.end());
-  abs_argument.addAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
-  abs_argument.addTypes(output_types.begin(), output_types.end());
+  abs_argument.AddOperands(operands.begin(), operands.end());
+  abs_argument.AddAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
+  abs_argument.AddTypes(output_types.begin(), output_types.end());
   ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
   paddle::dialect::GetOpInfoInterface interface =
       abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
@@ -196,15 +202,17 @@ TEST(program_test, program) {
   ir::OpInfo op4_info = ctx->GetRegisteredOpInfo(op4_name);
   std::unordered_map<std::string, ir::Attribute> op4_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
-  ir::Operation *op4 = ir::Operation::create(
-      {op3->GetResultByIndex(0)}, op4_attribute, {}, op4_info);
-  program.InsertOp(op4);
 
-  EXPECT_EQ(op4->GetOperandByIndex(0).impl()->source().type().dialect().id(),
+  ir::OperationArgument op4_argument(
+      {op3->GetResultByIndex(0)}, {}, {}, op4_info);
+  op4_argument.AddAttributes(op4_attribute.begin(), op4_attribute.end());
+  ir::Operation *op4 = ir::Operation::create(std::move(op4_argument));
+  block->push_back(op4);
+
+  EXPECT_EQ(op4->GetOperandByIndex(0).source().type().dialect().id(),
             paddle_dialect->id());
   Interface *c_interface = op4->GetOperandByIndex(0)
-                               .impl()
-                               ->source()
+                               .source()
                                .type()
                                .dialect()
                                .GetRegisteredInterface<Interface>();
@@ -230,7 +238,7 @@ TEST(program_test, slice_combine_test) {
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
 
   // (2) Create an empty program object
-  ir::Program program;
+  ir::Program program(ctx);
   //   ir::Program *program = new ir::Program();
   EXPECT_EQ(program.block()->size() == 0, true);
 
@@ -244,7 +252,7 @@ TEST(program_test, slice_combine_test) {
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
       ir::Operation::create({}, op1_attribute, {fp32_dtype}, op1_info);
-  program.InsertOp(op1);
+  program.block()->push_back(op1);
 
   // (5) Def b = GetParameterOp("b")
   std::string op2_name = std::string(ir::GetParameterOp::name());
@@ -253,7 +261,7 @@ TEST(program_test, slice_combine_test) {
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
       ir::Operation::create({}, op2_attribute, {fp32_dtype}, op2_info);
-  program.InsertOp(op2);
+  program.block()->push_back(op2);
 
   // (6) Def combine_op = CombineOp("a", "b")
   std::string combine_op_name = std::string(ir::CombineOp::name());
@@ -265,7 +273,7 @@ TEST(program_test, slice_combine_test) {
       {},
       {output_type},
       combine_op_info);
-  program.InsertOp(combine_op);
+  program.block()->push_back(combine_op);
 
   // (7) Def slice_op = SliceOp(combine_op, 0)
   std::string slice_op_name = std::string(ir::SliceOp::name());
@@ -276,7 +284,7 @@ TEST(program_test, slice_combine_test) {
                             {{"index", index_attr}},
                             {fp32_dtype},
                             slice_op_info);
-  program.InsertOp(slice_op);
+  program.block()->push_back(slice_op);
 
   // (8) Traverse Program
   EXPECT_EQ(program.block()->size() == 4, true);

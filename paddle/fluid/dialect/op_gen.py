@@ -675,7 +675,7 @@ def GenBuildInputArgsStr(
 
 def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
     BUILD_INPUT_TEMPLATE = """  std::vector<ir::OpResult> argument_inputs = {{{inputs_args}}};
-  argument.addOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
 """
     build_input_str = '  VLOG(4) << "Builder construction inputs";\n'
     input_name_list = op_input_name_list + op_mutable_attribute_name_list
@@ -951,7 +951,7 @@ def GenBuildOutputs(
                 name=op_output_name_list[idx]
             )
 
-    build_output_str += "  argument.addTypes(argument_outputs.begin(), argument_outputs.end());\n"
+    build_output_str += "  argument.AddTypes(argument_outputs.begin(), argument_outputs.end());\n"
 
     return build_output_str
 

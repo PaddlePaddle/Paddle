@@ -1959,6 +1959,17 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
 
+- op : shape
+  args : (Tensor input)
+  output : Tensor(out)
+  infer_meta :
+    func : ShapeInferMeta
+  kernel :
+    func : shape {dense -> dense},
+           shape_sr {selected_rows -> selected_rows}
+  data_transform:
+    skip_transform : input
+
 - op : shard_index
   args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
   output : Tensor(out)
