@@ -112,7 +112,7 @@ void build_context(ir::Operation* op,
     input_set.insert(t.name);
   }
 
-  auto attr_map = op->attribute();
+  auto attr_map = op->attributes();
 
   std::map<std::string, std::string> attr_type_map;
   auto attr_info = std::get<1>(op_info_res);
@@ -184,7 +184,7 @@ class PhiKernelAdaptor {
     for (auto it = block->begin(); it != block->end(); ++it) {
       VLOG(6) << "begin to run op " << (*it)->op_name();
 
-      auto attr_map = (*it)->attribute();
+      auto attr_map = (*it)->attributes();
 
       InferShapeInterface interface = (*it)->dyn_cast<InferShapeInterface>();
       phi::InferMetaContext ctx;

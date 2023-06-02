@@ -50,6 +50,7 @@ TEST(program_test, program) {
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   ir::Program program;
+  ir::Block* block = program.block();
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
 
   paddle::dialect::DenseTensorTypeStorage::Dim dims = {2, 2};
@@ -86,7 +87,7 @@ TEST(program_test, program) {
   ir::Operation* op1 =
       ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
-  program.InsertOp(op1);
+  block->push_back(op1);
 
   // (2) Def b = GetParameterOp("b")
   std::string op2_name = std::string(paddle::dialect::UniformOp::name());
@@ -95,7 +96,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{{"shape", ten2}};
   ir::Operation* op2 =
       ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op2_info);
-  program.InsertOp(op2);
+  block->push_back(op2);
 
   // (3) Def out = AddOp(a, b)
   std::string add_op_name = std::string(paddle::dialect::AddOp::name());
@@ -105,7 +106,7 @@ TEST(program_test, program) {
       {},
       {dense_tensor_dtype},
       add_op_info);
-  program.InsertOp(add_op);
+  block->push_back(add_op);
 
   paddle::framework::Scope scope;
 
