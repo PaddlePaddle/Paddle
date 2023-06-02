@@ -19,6 +19,7 @@
 
 namespace ir {
 class Operation;
+class Value;
 
 namespace detail {
 class OpOperandImpl;
@@ -42,15 +43,21 @@ class OpOperand {
 
   OpOperand &operator=(const detail::OpOperandImpl *impl);
 
-  bool operator==(OpOperand other) const;
+  bool operator==(const OpOperand &other) const { return impl_ == other.impl_; }
 
-  bool operator!=(OpOperand other) const;
+  bool operator!=(const OpOperand &other) const { return !operator==(other); }
 
-  bool operator!() const;
+  bool operator!() const { return impl_ == nullptr; }
 
-  explicit operator bool() const;
+  operator bool() const { return impl_; }
 
-  detail::OpOperandImpl *impl() const;
+  OpOperand next_use() const;
+
+  Value source() const;
+
+  Operation *owner() const;
+
+  //  detail::OpOperandImpl *impl() const { return impl_;}
 
  private:
   detail::OpOperandImpl *impl_{nullptr};
@@ -71,14 +78,14 @@ class ValueUseIterator {
     return !(*this == rhs);
   }
 
-  ir::Operation *owner() const { return current_.impl()->owner(); }
+  ir::Operation *owner() const { return current_.owner(); }
 
   OperandType get() const { return current_; }
 
   OperandType operator*() const { return get(); }
 
   ValueUseIterator<OperandType> &operator++() {
-    current_ = current_.impl()->next_use();
+    current_ = current_.next_use();
     return *this;
   }
 
@@ -140,6 +147,8 @@ class Value {
   use_iterator begin() const;
 
   use_iterator end() const;
+
+  OpOperand first_use() const;
 
   friend struct std::hash<Value>;
 

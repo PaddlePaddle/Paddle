@@ -614,7 +614,7 @@ def GenBuildInputArgsStr(
 
 def GenBuildInputs(op_input_name_list):
     BUILD_INPUT_TEMPLATE = """  std::vector<ir::OpResult> argument_inputs = {{{inputs_args}}};
-  argument.addOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
 """
     build_input_str = ""
     if len(op_input_name_list) > 0:
@@ -694,7 +694,7 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
                 op_attribute_type=op_attribute_type_list[idx],
                 attr=op_attribute_name_list[idx],
             )
-        attr_str += """  argument.addAttribute("{attr_name}", attr_{attr_name});\n""".format(
+        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n""".format(
             attr_name=op_attribute_name_list[idx]
         )
 
@@ -848,7 +848,7 @@ def GenBuildOutputs(
                 name=op_output_name_list[idx]
             )
 
-    build_output_str += "  argument.addTypes(argument_outputs.begin(), argument_outputs.end());\n"
+    build_output_str += "  argument.AddTypes(argument_outputs.begin(), argument_outputs.end());\n"
 
     return build_output_str
 

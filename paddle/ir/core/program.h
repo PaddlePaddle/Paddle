@@ -17,6 +17,7 @@
 #include <list>
 #include <unordered_map>
 
+#include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -39,7 +40,6 @@ class Program {
   using ParameterMap =
       std::unordered_map<std::string, std::unique_ptr<Parameter>>;
   explicit Program(IrContext* context);
-  Program();
   Program(Program&&) = delete;
   Program(const Program& program) = delete;
   Program& operator=(const Program&) = delete;
