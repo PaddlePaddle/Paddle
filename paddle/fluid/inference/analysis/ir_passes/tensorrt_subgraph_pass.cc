@@ -235,6 +235,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
       LOG(WARNING) << "matrix_multiply can't enter into paddle-trt,"
                    << "we will revert to " << origin_type;
       op_node->Op()->SetType(origin_type);
+      op_node->RenameOp(origin_type);
     }
   }
 }
