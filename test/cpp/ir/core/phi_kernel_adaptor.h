@@ -46,7 +46,7 @@
 
 void build_scope(ir::Block* block,
                  paddle::framework::Scope* scope,
-                 std::unordered_map<void*, std::string>* name_map) {
+                 std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
   int count = 0;
@@ -54,10 +54,7 @@ void build_scope(ir::Block* block,
     int input = (*it)->num_operands();
     if (input > 0) {
       for (int i = 0; i < input; ++i) {
-        VLOG(6) << "input "
-                << (*it)->GetOperandByIndex(i).impl()->source().impl();
-
-        void* ptr = (*it)->GetOperandByIndex(i).impl()->source().impl();
+        auto ptr = (*it)->GetOperandByIndex(i).source();
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -77,7 +74,7 @@ void build_scope(ir::Block* block,
       for (int i = 0; i < out_num; ++i) {
         VLOG(6) << "output " << (*it)->GetResultByIndex(i).impl();
 
-        void* ptr = (*it)->GetResultByIndex(i).impl();
+        ir::Value ptr = (*it)->GetResultByIndex(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -95,7 +92,7 @@ void build_scope(ir::Block* block,
 
 template <typename T>
 void build_context(ir::Operation* op,
-                   const std::unordered_map<void*, std::string>& name_map,
+                   const std::unordered_map<ir::Value, std::string>& name_map,
                    paddle::framework::Scope* scope,
                    T* ctx,
                    bool is_infer_meta = true) {
@@ -133,7 +130,7 @@ void build_context(ir::Operation* op,
   for (auto& t : vec_param_list) {
     if (input_set.count(t)) {
       // get information from input
-      void* ptr = op->GetOperandByIndex(input_index++).impl()->source().impl();
+      ir::Value ptr = op->GetOperandByIndex(input_index++).source();
       auto in_var_name = name_map.at(ptr);
 
       ctx->EmplaceBackInput(
@@ -164,7 +161,7 @@ void build_context(ir::Operation* op,
     }
   }
 
-  void* out_ptr = op->GetResultByIndex(0).impl();
+  ir::Value out_ptr = op->GetResultByIndex(0);
   auto name = name_map.at(out_ptr);
 
   ctx->EmplaceBackOutput(scope->Var(name)->GetMutable<phi::DenseTensor>());
@@ -176,7 +173,7 @@ class PhiKernelAdaptor {
 
   void run(ir::Program* program) {
     auto block = program->block();
-    std::unordered_map<void*, std::string> name_map;
+    std::unordered_map<ir::Value, std::string> name_map;
     build_scope(block, scope_, &name_map);
 
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
@@ -215,8 +212,8 @@ class PhiKernelAdaptor {
             (*it), name_map, scope_, &kernel_ctx, false);
         found_it->second(&kernel_ctx);
 
-        void* ptr = (*it)->GetResultByIndex(0).impl();
-        out_name = name_map[ptr];
+        auto out_value = (*it)->GetResultByIndex(0);
+        out_name = name_map[out_value];
       }
     }
   }

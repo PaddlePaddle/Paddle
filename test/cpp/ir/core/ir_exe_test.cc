@@ -49,7 +49,7 @@ TEST(program_test, program) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  ir::Program program;
+  ir::Program program(ctx);
   ir::Block* block = program.block();
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
 
