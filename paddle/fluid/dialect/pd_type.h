@@ -30,12 +30,11 @@ class DenseTensorType : public ir::Type {
 
   const ir::Type &dtype() const;
 
-  const paddle::dialect::DenseTensorTypeStorage::Dim &dim() const;
+  const phi::DDim &dims() const;
 
-  const paddle::dialect::DenseTensorTypeStorage::DataLayout &data_layout()
-      const;
+  const phi::DataLayout &data_layout() const;
 
-  const paddle::dialect::DenseTensorTypeStorage::LoD &lod() const;
+  const phi::LoD &lod() const;
 
   const size_t &offset() const;
 };

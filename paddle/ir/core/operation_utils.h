@@ -32,7 +32,7 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 // with the builder APIs.
 struct OperationArgument {
   std::vector<OpResult> inputs;
-  AttributeMap attribute;
+  AttributeMap attributes;
   std::vector<Type> output_types;
   OpInfo info;
   std::vector<std::unique_ptr<Region>> regions;
@@ -41,12 +41,12 @@ struct OperationArgument {
   OperationArgument(IrContext* ir_context, const std::string& name);
   explicit OperationArgument(OpInfo info) : info(info) {}
   OperationArgument(const std::vector<OpResult>& operands,
-                    const AttributeMap& named_attr,
+                    const AttributeMap& attributes,
                     const std::vector<Type>& types,
                     OpInfo info,
                     std::vector<std::unique_ptr<Region>>&& regions = {})
       : inputs(operands),
-        attribute(named_attr),
+        attributes(attributes),
         output_types(types),
         info(info),
         regions(std::move(regions)) {}
@@ -59,13 +59,18 @@ struct OperationArgument {
 
   /// Add an attribute with the specified name.
   void addAttribute(const std::string& name, Attribute attr) {
-    this->attribute[name] = attr;
+    attributes[name] = attr;
   }
   /// Add an array of named attributes.
   template <class InputIt>
   void addAttributes(InputIt first, InputIt last);
   /// Get the context held by this operation state.
   IrContext* getContext() const { return info.ir_context(); }
+
+  Region* AddRegion() {
+    regions.emplace_back(new Region);
+    return regions.back().get();
+  }
 };
 
 template <class InputIt>
@@ -83,7 +88,7 @@ void OperationArgument::addTypes(InputIt first, InputIt last) {
 template <class InputIt>
 void OperationArgument::addAttributes(InputIt first, InputIt last) {
   while (first != last) {
-    attribute[first->first] = first->second;
+    attributes[first->first] = first->second;
     ++first;
   }
 }
