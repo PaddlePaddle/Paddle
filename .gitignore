@@ -83,6 +83,7 @@ paddle/fluid/operators/generated_sparse_op.cc
 paddle/fluid/operators/generated_static_op.cc
 paddle/fluid/operators/generated_fused_op.cc
 paddle/phi/ops/compat/generated_*.cc
+paddle/phi/api/yaml/legacy_and_new_*.yaml
 paddle/phi/api/yaml/parsed_apis/
 paddle/fluid/operators/generator/parsed_ops/
 paddle/fluid/pybind/tmp_eager_op_function_impl.h

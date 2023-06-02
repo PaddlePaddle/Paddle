@@ -22,6 +22,9 @@ void Region::push_back(Block *block) {
   block->set_parent(this);
   blocks_.push_back(block);
 }
+
+void Region::emplace_back() { push_back(new Block); }
+
 void Region::push_front(Block *block) {
   block->set_parent(this);
   blocks_.push_front(block);

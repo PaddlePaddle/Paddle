@@ -53,6 +53,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
+#include "paddle/fluid/framework/new_executor/interpreter/job.h"
+#include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -1840,7 +1842,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const platform::Place &, const ProgramDesc &>())
+      .def(
+          py::init<const platform::Place &, const std::vector<ProgramDesc> &>())
       .def("run",
            [](StandaloneExecutor &self,
               Scope *scope,
@@ -1853,6 +1856,21 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return py::cast(std::move(ret));
            });
+
+  py::class_<framework::Job>(m, "job")
+      .def(py::init<const std::string &>(), py::arg("type"))
+      .def("type", &framework::Job::GetJobType)
+      .def("micro_batch_id", &framework::Job::GetMicroBatchId)
+      .def("set_micro_batch_id", &framework::Job::SetMicroBatchId);
+
+  py::class_<framework::Plan>(m, "plan")
+      .def(py::init<const std::vector<Job *> &,
+                    const std::unordered_map<std::string,
+                                             framework::ProgramDesc *> &>(),
+           py::arg("job_list"),
+           py::arg("type_to_program"))
+      .def("job_list", &framework::Plan::GetJobList)
+      .def("type_to_program", &framework::Plan::GetTypeToProgram);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);

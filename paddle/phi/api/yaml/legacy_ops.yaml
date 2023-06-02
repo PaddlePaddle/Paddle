@@ -150,18 +150,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : check_finite_and_unscale_
-  args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
-  output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
-  infer_meta :
-    func : CheckFiniteAndUnscaleInferMeta
-    param : [x, scale]
-  kernel :
-    func : check_finite_and_unscale
-    param : [x, scale]
-    data_type : x
-  inplace : (x -> out), (input_found_infinite -> output_found_infinite)
-
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)
@@ -635,7 +623,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : OriginReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : mean
   backward : mean_grad
@@ -904,17 +892,6 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
-
-- op : shape
-  args : (Tensor input)
-  output : Tensor(out)
-  infer_meta :
-    func : ShapeInferMeta
-  kernel :
-    func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
-  data_transform:
-    skip_transform : input
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)

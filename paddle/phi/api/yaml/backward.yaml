@@ -221,7 +221,7 @@
 - backward_op : broadcast_tensors_grad
   forward : broadcast_tensors (Tensor[] input) -> Tensor[](out)
   args : (Tensor[] input, Tensor[] out_grad)
-  output : Tensor[](input_grad)
+  output : Tensor[](input_grad){input.size()}
   infer_meta :
     func : UnchangedMultiInferMeta
     param : [input]
