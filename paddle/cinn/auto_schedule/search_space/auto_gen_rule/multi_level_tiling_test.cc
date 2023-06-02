@@ -33,8 +33,8 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/tests/program_builder.h"
 #include "paddle/cinn/utils/string.h"
-#include "tests/program_builder.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -43,13 +43,13 @@ def get_patch():
     return str(_get_version_detail(2))
 
 def get_cuda_version():
-    if '${WITH_CUDA}' == 'ON':
+    if '${WITH_GPU}' == 'ON':
         return '${CUDA_VERSION}'
     else:
         return 'False'
 
 def get_cudnn_version():
-    if '${WITH_CUDA}' == 'ON':
+    if '${WITH_GPU}' == 'ON':
         temp_cudnn_version = ''
         if '${CUDNN_MAJOR_VERSION}':
             temp_cudnn_version += '${CUDNN_MAJOR_VERSION}'
@@ -107,7 +107,7 @@ with_mkl        = '%(with_mkl)s'
             'cudnn': get_cudnn_version(),
             'commit': commit,
             'istaged': is_taged(),
-            'with_mkl': '${WITH_MKL_CBLAS}'})
+            'with_mkl': '${WITH_MKL}'})
 
 write_version_py(filename='${CINN_BINARY_DIR}/python/cinn/version/info.py')
 
@@ -131,14 +131,14 @@ libs_path = '${CMAKE_BINARY_DIR}/python/cinn/libs'
 cinnlibs = []
 package_data = {'cinn': ['core_api.so'], 'cinn.libs': []}
 
-if '${WITH_MKL_CBLAS}' == 'ON':
+if '${WITH_MKL}' == 'ON':
     cinnlibs.append('${MKLML_LIB}')
     cinnlibs.append('${MKLML_IOMP_LIB}')
 
-if '${WITH_CUDA}' == 'ON':
-    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
-    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/cinn/runtime/cuda/float16.h')
-    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/cinn/runtime/cuda/bfloat16.h')
+if '${WITH_GPU}' == 'ON':
+    cinnlibs.append('${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/cinn/runtime/cuda/float16.h')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/cinn/runtime/cuda/bfloat16.h')
 
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)

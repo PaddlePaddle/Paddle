@@ -14,8 +14,8 @@
 
 include(ExternalProject)
 
-set(GLOG_SOURCES_DIR ${THIRD_PARTY_PATH}/glog)
-set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
+set(GLOG_SOURCES_DIR ${CINN_THIRD_PARTY_PATH}/glog)
+set(GLOG_INSTALL_DIR ${CINN_THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
     "${GLOG_INSTALL_DIR}/include"
     CACHE PATH "glog include directory." FORCE)

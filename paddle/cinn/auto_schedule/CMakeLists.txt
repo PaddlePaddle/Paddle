@@ -9,14 +9,14 @@ add_subdirectory(task)
 add_subdirectory(task_scheduler)
 add_subdirectory(tests)
 
-proto_library(auto_schedule_proto SRCS auto_schedule.proto DEPS
-              schedule_desc_proto)
+cinn_proto_library(auto_schedule_proto SRCS auto_schedule.proto DEPS
+                   schedule_desc_proto)
 
 core_gather_headers()
 
 gather_srcs(cinnapi_src SRCS auto_tuner.cc)
 
-#cc_test(test_auto_tuner SRCS auto_tuner_test.cc DEPS cinncore)
+#cinn_cc_test(test_auto_tuner SRCS auto_tuner_test.cc DEPS cinncore)
 
 foreach(header ${auto_schedule_proto_HDRS})
   set(core_proto_includes

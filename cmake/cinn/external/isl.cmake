@@ -16,16 +16,17 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   URL ${ISL_DOWNLOAD_URL}
   URL_MD5 ${ISL_MD5}
-  PREFIX ${THIRD_PARTY_PATH}/isl
-  SOURCE_DIR ${THIRD_PARTY_PATH}/install/isl
+  PREFIX ${CINN_THIRD_PARTY_PATH}/isl
+  SOURCE_DIR ${CINN_THIRD_PARTY_PATH}/install/isl
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
-  BUILD_BYPRODUCTS ${THIRD_PARTY_PATH}/install/isl/lib/libisl.a)
+  BUILD_BYPRODUCTS ${CINN_THIRD_PARTY_PATH}/install/isl/lib/libisl.a)
 
 add_library(isl STATIC IMPORTED GLOBAL)
-set_property(TARGET isl PROPERTY IMPORTED_LOCATION
-                                 ${THIRD_PARTY_PATH}/install/isl/lib/libisl.a)
+set_property(
+  TARGET isl PROPERTY IMPORTED_LOCATION
+                      ${CINN_THIRD_PARTY_PATH}/install/isl/lib/libisl.a)
 add_dependencies(isl external_isl)
-include_directories(${THIRD_PARTY_PATH}/install/isl/include)
+include_directories(${CINN_THIRD_PARTY_PATH}/install/isl/include)

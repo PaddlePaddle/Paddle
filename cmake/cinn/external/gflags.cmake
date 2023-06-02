@@ -14,9 +14,9 @@
 
 include(ExternalProject)
 
-message(STATUS "third: ${THIRD_PARTY_PATH}")
-set(GFLAGS_SOURCES_DIR ${THIRD_PARTY_PATH}/gflags)
-set(GFLAGS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gflags)
+message(STATUS "third: ${CINN_THIRD_PARTY_PATH}")
+set(GFLAGS_SOURCES_DIR ${CINN_THIRD_PARTY_PATH}/gflags)
+set(GFLAGS_INSTALL_DIR ${CINN_THIRD_PARTY_PATH}/install/gflags)
 set(GFLAGS_INCLUDE_DIR
     "${GFLAGS_INSTALL_DIR}/include"
     CACHE PATH "gflags include directory." FORCE)
@@ -64,7 +64,7 @@ ExternalProject_Add(
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DBUILD_TESTING=OFF
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-             -DNAMESPACE=cinn_gflags
+             -DNAMESPACE=gflags
              ${OPTIONAL_ARGS}
              ${EXTERNAL_OPTIONAL_ARGS}
   CMAKE_CACHE_ARGS

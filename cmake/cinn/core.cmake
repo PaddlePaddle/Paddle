@@ -5,53 +5,54 @@ set(PADDLE_RESOURCE_URL
     "http://paddle-inference-dist.bj.bcebos.com"
     CACHE STRING "inference download url")
 
-function(cc_library TARGET_NAME)
+function(cinn_cc_library TARGET_NAME)
   set(options STATIC static SHARED shared)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}"
+  cmake_parse_arguments(cinn_cc_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
-  if(cc_library_SRCS)
-    if(cc_library_SHARED OR cc_library_shared) # build *.so
-      add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+  if(cinn_cc_library_SRCS)
+    if(cinn_cc_library_SHARED OR cinn_cc_library_shared) # build *.so
+      add_library(${TARGET_NAME} SHARED ${cinn_cc_library_SRCS})
     else()
-      add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+      add_library(${TARGET_NAME} STATIC ${cinn_cc_library_SRCS})
     endif()
 
-    if(cc_library_DEPS)
+    if(cinn_cc_library_DEPS)
       # Don't need link libwarpctc.so
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+      target_link_libraries(${TARGET_NAME} ${cinn_cc_library_DEPS})
+      add_dependencies(${TARGET_NAME} ${cinn_cc_library_DEPS})
     endif()
 
     # cpplint code style
-    foreach(source_file ${cc_library_SRCS})
+    foreach(source_file ${cinn_cc_library_SRCS})
       string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
-        list(APPEND cc_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        list(APPEND cinn_cc_library_HEADERS
+             ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
       endif()
     endforeach()
-  else(cc_library_SRCS)
-    if(cc_library_DEPS)
-      merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
+  else(cinn_cc_library_SRCS)
+    if(cinn_cc_library_DEPS)
+      cinn_merge_static_libs(${TARGET_NAME} ${cinn_cc_library_DEPS})
     else()
       message(
         FATAL_ERROR
-          "Please specify source files or libraries in cc_library(${TARGET_NAME} ...)."
+          "Please specify source files or libraries in cinn_cc_library(${TARGET_NAME} ...)."
       )
     endif()
-  endif(cc_library_SRCS)
+  endif(cinn_cc_library_SRCS)
 
   if((NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
      AND (NOT ("${TARGET_NAME}" STREQUAL "utils"))
-     AND (NOT ("${TARGET_NAME}" STREQUAL "cinn_lib")))
+     AND (NOT ("${TARGET_NAME}" STREQUAL "lib")))
     target_link_libraries(${TARGET_NAME} Threads::Threads)
 
   endif(
     (NOT ("${TARGET_NAME}" STREQUAL "cinn_gtest_main"))
     AND (NOT ("${TARGET_NAME}" STREQUAL "utils"))
-    AND (NOT ("${TARGET_NAME}" STREQUAL "cinn_lib")))
-endfunction(cc_library)
+    AND (NOT ("${TARGET_NAME}" STREQUAL "lib")))
+endfunction(cinn_cc_library)
 
 list(APPEND CMAKE_CTEST_ARGUMENTS)
 
@@ -63,25 +64,25 @@ function(remove_gflags TARGET_NAME)
                                               ${TARGET_LIBRARIES})
 endfunction()
 
-function(cc_test TARGET_NAME)
+function(cinn_cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
-    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
+    cmake_parse_arguments(cinn_cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    add_executable(${TARGET_NAME} ${cc_test_SRCS})
+    add_executable(${TARGET_NAME} ${cinn_cc_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
-                          ${os_dependency_modules} cinn_gtest_main gtest)
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} cinn_gtest_main gtest
-                     extern_gtest)
+    target_link_libraries(${TARGET_NAME} ${os_dependency_modules}
+                          cinn_gtest_main gtest glog ${cinn_cc_test_DEPS})
+    add_dependencies(${TARGET_NAME} cinn_gtest_main gtest glog
+                     ${cinn_cc_test_DEPS})
 
     add_test(
       NAME ${TARGET_NAME}
-      COMMAND ${TARGET_NAME} "${cc_test_ARGS}"
+      COMMAND ${TARGET_NAME} "${cinn_cc_test_ARGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(${cc_test_SERIAL})
+    if(${cinn_cc_test_SERIAL})
       set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
     # No unit test should exceed 10 minutes.
@@ -90,84 +91,85 @@ function(cc_test TARGET_NAME)
   endif()
 endfunction()
 
-function(nv_library TARGET_NAME)
-  if(WITH_CUDA)
+function(cinn_nv_library TARGET_NAME)
+  if(WITH_GPU)
     set(options STATIC static SHARED shared)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
-    cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}"
+    cmake_parse_arguments(cinn_nv_library "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    if(nv_library_SRCS)
-      if(nv_library_SHARED OR nv_library_shared) # build *.so
-        cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+    if(cinn_nv_library_SRCS)
+      if(cinn_nv_library_SHARED OR cinn_nv_library_shared) # build *.so
+        cuda_add_library(${TARGET_NAME} SHARED ${cinn_nv_library_SRCS})
       else()
-        cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+        cuda_add_library(${TARGET_NAME} STATIC ${cinn_nv_library_SRCS})
       endif()
-      if(nv_library_DEPS)
-        add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
-        target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
+      if(cinn_nv_library_DEPS)
+        add_dependencies(${TARGET_NAME} ${cinn_nv_library_DEPS})
+        target_link_libraries(${TARGET_NAME} ${cinn_nv_library_DEPS})
       endif()
       # cpplint code style
-      foreach(source_file ${nv_library_SRCS})
+      foreach(source_file ${cinn_nv_library_SRCS})
         string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
         if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
-          list(APPEND nv_library_HEADERS
+          list(APPEND cinn_nv_library_HEADERS
                ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
         endif()
       endforeach()
-    else(nv_library_SRCS)
-      if(nv_library_DEPS)
-        merge_static_libs(${TARGET_NAME} ${nv_library_DEPS})
+    else(cinn_nv_library_SRCS)
+      if(cinn_nv_library_DEPS)
+        cinn_merge_static_libs(${TARGET_NAME} ${cinn_nv_library_DEPS})
       else()
-        message(FATAL "Please specify source file or library in nv_library.")
+        message(FATAL
+                "Please specify source file or library in cinn_nv_library.")
       endif()
-    endif(nv_library_SRCS)
+    endif(cinn_nv_library_SRCS)
     target_link_libraries(${TARGET_NAME} Threads::Threads)
   endif()
-endfunction(nv_library)
+endfunction(cinn_nv_library)
 
-function(nv_binary TARGET_NAME)
-  if(WITH_CUDA)
+function(cinn_nv_binary TARGET_NAME)
+  if(WITH_GPU)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
-    cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}"
+    cmake_parse_arguments(cinn_nv_binary "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
-    if(nv_binary_DEPS)
-      target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
-      add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
+    cuda_add_executable(${TARGET_NAME} ${cinn_nv_binary_SRCS})
+    if(cinn_nv_binary_DEPS)
+      target_link_libraries(${TARGET_NAME} ${cinn_nv_binary_DEPS})
+      add_dependencies(${TARGET_NAME} ${cinn_nv_binary_DEPS})
       common_link(${TARGET_NAME})
     endif()
   endif()
-endfunction(nv_binary)
+endfunction(cinn_nv_binary)
 
-function(nv_test TARGET_NAME)
-  if(WITH_CUDA AND WITH_TESTING)
+function(cinn_nv_test TARGET_NAME)
+  if(WITH_GPU AND WITH_TESTING)
     set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
-    cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}"
+    cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
-      ${nv_test_DEPS}
+      ${cinn_nv_test_DEPS}
       cinn_gtest_main
       gtest
       ${os_dependency_modules}
       ${CUDNN_LIBRARY}
       ${CUBLAS_LIBRARIES}
       ${CUDA_LIBRARIES})
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} cinn_gtest_main gtest)
+    add_dependencies(${TARGET_NAME} ${cinn_nv_test_DEPS} cinn_gtest_main gtest)
     common_link(${TARGET_NAME})
     # add_test(${TARGET_NAME} ${TARGET_NAME})
     add_test(
       NAME ${TARGET_NAME}
-      COMMAND ${TARGET_NAME} "${nv_test_ARGS}"
+      COMMAND ${TARGET_NAME} "${cinn_nv_test_ARGS}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(nv_test_SERIAL)
+    if(cinn_nv_test_SERIAL)
       set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
     target_link_libraries(
@@ -179,7 +181,7 @@ function(nv_test TARGET_NAME)
     endif()
     remove_gflags(${TARGET_NAME})
   endif()
-endfunction(nv_test)
+endfunction(cinn_nv_test)
 
 # Add dependency that TARGET will depend on test result of DEP, this function executes the DEP during make.
 function(add_run_test_dependency TARGET_NAME DEP_NAME)
@@ -187,8 +189,9 @@ function(add_run_test_dependency TARGET_NAME DEP_NAME)
     set(custom_target_name ${TARGET_NAME}_TEST_OUTPUT_DEPENDENCY_ON_${DEP_NAME})
     add_custom_target(
       ${custom_target_name}
-      COMMAND cd ${CMAKE_CURRENT_BINARY_DIR} && ./${DEP_NAME}
-              --cinn_x86_builtin_code_root=${CMAKE_SOURCE_DIR}/backends
+      COMMAND
+        cd ${CMAKE_CURRENT_BINARY_DIR} && ./${DEP_NAME}
+        --cinn_x86_builtin_code_root=${CMAKE_SOURCE_DIR}/paddle/cinn/backends
       COMMAND cd ${CMAKE_BINARY_DIR}
       DEPENDS ${DEP_NAME})
     add_dependencies(${TARGET_NAME} ${DEP_NAME} ${custom_target_name})
@@ -210,7 +213,7 @@ function(find_fluid_thirdparties TARGET_NAME)
   endif()
 endfunction(find_fluid_thirdparties)
 
-function(merge_static_libs TARGET_NAME)
+function(cinn_merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
 
@@ -334,7 +337,7 @@ function(merge_static_libs TARGET_NAME)
         /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib
         ${libfiles})
   endif(WIN32)
-endfunction(merge_static_libs)
+endfunction(cinn_merge_static_libs)
 
 # Modification of standard 'protobuf_generate_cpp()' with protobuf-lite support
 # Usage:
@@ -379,18 +382,16 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
       PARENT_SCOPE)
 endfunction()
 
-function(proto_library TARGET_NAME)
+function(cinn_proto_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(proto_library "${options}" "${oneValueArgs}"
+  cmake_parse_arguments(cinn_proto_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
   set(proto_srcs)
   set(proto_hdrs)
-  paddle_protobuf_generate_cpp(proto_srcs proto_hdrs ${proto_library_SRCS})
-  cc_library(
-    ${TARGET_NAME}
-    SRCS ${proto_srcs}
-    DEPS ${proto_library_DEPS} protobuf)
+  paddle_protobuf_generate_cpp(proto_srcs proto_hdrs ${cinn_proto_library_SRCS})
+  cinn_cc_library(${TARGET_NAME} SRCS ${proto_srcs} DEPS
+                  ${cinn_proto_library_DEPS} protobuf)
   set("${TARGET_NAME}_HDRS"
       ${proto_hdrs}
       PARENT_SCOPE)

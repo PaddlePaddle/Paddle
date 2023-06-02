@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/optim/optimize.h"
-#include "tests/test02_helper.h"
+#include "paddle/cinn/tests/test02_helper.h"
 
 namespace cinn {
 using poly::Iterator;

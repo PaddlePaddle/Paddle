@@ -108,7 +108,7 @@ void TensorFromStream(std::istream &is,
                          tensor->shape().numel() * sizeof(float),
                          cudaMemcpyHostToDevice));
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    LOG(FATAL) << "To use CUDA backends, you need to set WITH_GPU ON!";
 #endif
   } else {
     CINN_NOT_IMPLEMENTED

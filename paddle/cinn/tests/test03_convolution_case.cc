@@ -16,12 +16,12 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/tests/test03_convolution.h"
 #include "paddle/cinn/utils/timer.h"
-#include "tests/test03_convolution.h"
 
 TEST(test03, basic) {}
 
 // include the generated C source code:
 // @{
-#include "tests/test03_convolution.cc"
+#include "paddle/cinn/tests/test03_convolution.cc"
 // @}

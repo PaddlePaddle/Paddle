@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT ${WITH_MKL_CBLAS})
+if(NOT ${WITH_MKL})
   return()
 endif()
 
@@ -24,7 +24,7 @@ endif()
 
 include(ExternalProject)
 set(MKLML_DST_DIR "mklml")
-set(MKLML_INSTALL_ROOT "${THIRD_PARTY_PATH}/install")
+set(MKLML_INSTALL_ROOT "${CINN_THIRD_PARTY_PATH}/install")
 set(MKLML_INSTALL_DIR ${MKLML_INSTALL_ROOT}/${MKLML_DST_DIR})
 set(MKLML_ROOT ${MKLML_INSTALL_DIR})
 set(MKLML_INC_DIR ${MKLML_ROOT}/include)
@@ -60,7 +60,7 @@ endif()
 
 set(MKLML_PROJECT "extern_mklml")
 message(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
-set(MKLML_SOURCE_DIR "${THIRD_PARTY_PATH}/mklml")
+set(MKLML_SOURCE_DIR "${CINN_THIRD_PARTY_PATH}/mklml")
 set(MKLML_DOWNLOAD_DIR "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
 
 ExternalProject_Add(

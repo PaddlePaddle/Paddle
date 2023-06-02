@@ -21,7 +21,7 @@
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
-#include "tests/benchmark/test_utils.h"
+#include "paddle/cinn/tests/benchmark/test_utils.h"
 
 namespace cinn {
 namespace tests {

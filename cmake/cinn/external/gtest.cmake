@@ -17,8 +17,8 @@ if(WITH_TESTING)
 
   include(ExternalProject)
 
-  set(GTEST_SOURCES_DIR ${THIRD_PARTY_PATH}/gtest)
-  set(GTEST_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gtest)
+  set(GTEST_SOURCES_DIR ${CINN_THIRD_PARTY_PATH}/gtest)
+  set(GTEST_INSTALL_DIR ${CINN_THIRD_PARTY_PATH}/install/gtest)
   set(GTEST_INCLUDE_DIR
       "${GTEST_INSTALL_DIR}/include"
       CACHE PATH "gtest include directory." FORCE)

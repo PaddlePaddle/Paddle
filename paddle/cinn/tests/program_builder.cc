@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tests/program_builder.h"
+#include "paddle/cinn/tests/program_builder.h"
 
 namespace cinn {
 namespace tests {

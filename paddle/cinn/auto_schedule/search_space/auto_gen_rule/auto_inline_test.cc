@@ -37,8 +37,8 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/tests/concrete_program_builder.h"
 #include "paddle/cinn/utils/string.h"
-#include "tests/concrete_program_builder.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

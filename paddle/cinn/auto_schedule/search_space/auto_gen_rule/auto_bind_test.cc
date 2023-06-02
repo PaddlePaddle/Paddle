@@ -23,7 +23,7 @@
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
 #include "paddle/cinn/ir/ir_printer.h"
-#include "tests/program_builder.h"
+#include "paddle/cinn/tests/program_builder.h"
 
 namespace cinn {
 namespace auto_schedule {

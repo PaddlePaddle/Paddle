@@ -28,8 +28,8 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/tests/program_builder.h"
 #include "paddle/cinn/utils/data_util.h"
-#include "tests/program_builder.h"
 
 /* This test is used as a tool to evaluate or compare performance of 3
  * schedules(no schedule, manual schedule, auto-schedule). One can specify which

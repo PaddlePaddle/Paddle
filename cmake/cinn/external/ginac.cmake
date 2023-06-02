@@ -15,22 +15,22 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   URL ${GINAC_DOWNLOAD_URL}
   URL_MD5 ${GINAC_MD5}
-  PREFIX ${THIRD_PARTY_PATH}/ginac
-  SOURCE_DIR ${THIRD_PARTY_PATH}/install/ginac
+  PREFIX ${CINN_THIRD_PARTY_PATH}/ginac
+  SOURCE_DIR ${CINN_THIRD_PARTY_PATH}/install/ginac
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
-  BUILD_BYPRODUCTS ${THIRD_PARTY_PATH}/install/ginac/lib/libginac.a
-  BUILD_BYPRODUCTS ${THIRD_PARTY_PATH}/install/ginac/lib/libcln.a
-  BUILD_BYPRODUCTS ${THIRD_PARTY_PATH}/install/ginac/lib/libgmp.a)
+  BUILD_BYPRODUCTS ${CINN_THIRD_PARTY_PATH}/install/ginac/lib/libginac.a
+  BUILD_BYPRODUCTS ${CINN_THIRD_PARTY_PATH}/install/ginac/lib/libcln.a
+  BUILD_BYPRODUCTS ${CINN_THIRD_PARTY_PATH}/install/ginac/lib/libgmp.a)
 
 add_library(ginac STATIC IMPORTED GLOBAL)
 add_dependencies(ginac external_ginac)
 set_property(
   TARGET ginac PROPERTY IMPORTED_LOCATION
-                        ${THIRD_PARTY_PATH}/install/ginac/lib/libginac.a)
+                        ${CINN_THIRD_PARTY_PATH}/install/ginac/lib/libginac.a)
 target_link_libraries(
-  ginac INTERFACE ${THIRD_PARTY_PATH}/install/ginac/lib/libcln.a
-                  ${THIRD_PARTY_PATH}/install/ginac/lib/libgmp.a)
-include_directories(${THIRD_PARTY_PATH}/install/ginac/include)
+  ginac INTERFACE ${CINN_THIRD_PARTY_PATH}/install/ginac/lib/libcln.a
+                  ${CINN_THIRD_PARTY_PATH}/install/ginac/lib/libgmp.a)
+include_directories(${CINN_THIRD_PARTY_PATH}/install/ginac/include)

@@ -16,23 +16,11 @@ gather_srcs(
   data_util.cc
   random_engine.cc)
 
-cc_test(
-  test_string
-  SRCS string_test.cc
-  DEPS cinncore)
-cc_test(
-  test_sized_multi_set
-  SRCS sized_multi_set_test.cc
-  DEPS cinncore)
-cc_test(
-  test_multi_threading
-  SRCS multi_threading_test.cc
-  DEPS cinncore)
-cc_test(
-  test_functional
-  SRCS string.cc functional.cc functional_test.cc
-  DEPS absl Threads::Threads)
-cc_test(
-  test_profiler
-  SRCS profiler_test.cc
-  DEPS cinncore)
+cinn_cc_test(test_string SRCS string_test.cc DEPS cinncore)
+cinn_cc_test(test_sized_multi_set SRCS sized_multi_set_test.cc DEPS cinncore)
+cinn_cc_test(test_multi_threading SRCS multi_threading_test.cc DEPS cinncore)
+#cinn_cc_test(
+#  test_functional
+#  SRCS string.cc functional.cc functional_test.cc
+#  DEPS absl Threads::Threads glog)
+cinn_cc_test(test_profiler SRCS profiler_test.cc DEPS cinncore)

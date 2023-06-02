@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tests/benchmark/test_matmul.h"
+#include "paddle/cinn/tests/benchmark/test_matmul.h"
 
 #include <gtest/gtest.h>
 

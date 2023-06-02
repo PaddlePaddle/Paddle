@@ -1,18 +1,18 @@
-if(NOT WITH_CUDA)
+if(NOT WITH_GPU)
   set(JITIFY_FOUND OFF)
   return()
 endif()
 
 include(ExternalProject)
 
-set(JITIFY_SOURCE_PATH ${THIRD_PARTY_PATH}/install/jitify)
+set(JITIFY_SOURCE_PATH ${CINN_THIRD_PARTY_PATH}/install/jitify)
 
 ExternalProject_Add(
   external_jitify
   ${EXTERNAL_PROJECT_LOG_ARGS}
   GIT_REPOSITORY "https://github.com/NVIDIA/jitify.git"
   GIT_TAG master
-  PREFIX ${THIRD_PARTY_PATH}/jitify
+  PREFIX ${CINN_THIRD_PARTY_PATH}/jitify
   SOURCE_DIR ${JITIFY_SOURCE_PATH}
   CONFIGURE_COMMAND ""
   PATCH_COMMAND ""

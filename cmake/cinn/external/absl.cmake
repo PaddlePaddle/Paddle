@@ -1,7 +1,7 @@
 include(ExternalProject)
 
-set(ABSL_SOURCES_DIR ${THIRD_PARTY_PATH}/absl)
-set(ABSL_INSTALL_DIR ${THIRD_PARTY_PATH}/install/absl)
+set(ABSL_SOURCES_DIR ${CINN_THIRD_PARTY_PATH}/absl)
+set(ABSL_INSTALL_DIR ${CINN_THIRD_PARTY_PATH}/install/absl)
 
 set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 

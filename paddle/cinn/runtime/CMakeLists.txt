@@ -9,20 +9,15 @@ gather_srcs(
   intrinsic_types.cc
   custom_function.cc)
 
-cc_library(cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc
+cinn_cc_library(
+  cinn_runtime SRCS cinn_runtime.cc buffer.cc #cinn_x86_device_impl.cc
 )
 
-cc_test(
-  test_cinn_runtime
-  SRCS cinn_runtime_test.cc
-  DEPS cinn_runtime)
-cc_test(
-  test_custom_function
-  SRCS custom_function_test.cc
-  DEPS cinncore)
+cinn_cc_test(test_cinn_runtime SRCS cinn_runtime_test.cc DEPS cinn_runtime)
+cinn_cc_test(test_custom_function SRCS custom_function_test.cc DEPS cinncore)
 
 if(WITH_OPENMP)
-  cc_library(tiny_runtime STATIC SRCS tiny_runtime.cc)
+  cinn_cc_library(tiny_runtime STATIC SRCS tiny_runtime.cc)
 endif()
 
 add_subdirectory(cuda)

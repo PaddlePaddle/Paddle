@@ -1,42 +1,10 @@
-file(GLOB_RECURSE CINN_PY_FILES
-     ${CMAKE_BINARY_DIR}/paddle/cinn/python/cinn/*.py)
-set(CINN_PYTHON_DIR ${PROJECT_SOURCE_DIR}/python/cinn)
-set(CINN_PYTHON_TEST_DIR ${PROJECT_SOURCE_DIR}/python/tests)
-set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/cinn/core_api.so)
+set(CINN_PYTHON_TEST_DIR ${PROJECT_SOURCE_DIR}/test/cinn)
 
-if(WITH_CUDA)
-  set(PACKAGE_NAME "cinn-gpu")
-else()
-  set(PACKAGE_NAME "cinn")
-endif()
-set(SETUP_LOG_FILE "setup.py.log")
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-
-if(NOT PYTHON_EXECUTABLE)
-  find_package(PythonInterp ${PY_VERSION} REQUIRED)
-  find_package(PythonLibs ${PY_VERSION} REQUIRED)
-endif()
-
-message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
-
-# There may be a link file called core_api.so under the dir ${CINN_PYTHON_DIR} due to the `mac_doc`
-# function defined in build.sh. So, we need to copy the directory ${CINN_PYTHON_DIR} first and
-# then core_api.so.
 add_custom_command(
   OUTPUT ${CINN_CORE_API} POST_BUILD
-  COMMAND cp -rf --remove-destination ${CINN_PYTHON_DIR}
-          ${CMAKE_BINARY_DIR}/python/cinn
-  COMMAND cp --remove-destination ${CMAKE_BINARY_DIR}/pybind/core_api.so
-          ${CINN_CORE_API}
-  COMMAND cp -rf --remove-destination ${CINN_PYTHON_TEST_DIR}
-          ${CMAKE_BINARY_DIR}/python/tests
-  COMMAND cd ${CMAKE_CURRENT_BINARY_DIR} && ${PYTHON_EXECUTABLE} setup.py
-          bdist_wheel
+  COMMAND cp --remove-destination
+          ${CMAKE_BINARY_DIR}/paddle/cinn/pybind/core_api.so ${CINN_CORE_API}
   DEPENDS core_api ${CINN_PY_FILES})
-
-add_custom_target(COPY_CINN_CORE_API ALL DEPENDS ${CINN_CORE_API}
-                                                 ${CINN_PY_FILES})
 
 set(BASIC_TEST_NAMES
     test_matmul
@@ -59,28 +27,28 @@ foreach(basic_test_name ${BASIC_TEST_NAMES})
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endforeach()
 
-if(NOT ${WITH_CUDA})
+if(NOT ${WITH_GPU})
   #    ADD_TEST(NAME test_op_nn
   #        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
   #        python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_op_nn.py WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   #    )
 endif()
 
-if(WITH_CUDNN)
+if(WITH_GPU)
   # TODO(thisjiang): revert test_cinn_frontend after fix inference mul problem
   # ADD_TEST(NAME test_cinn_frontend
   #     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
   #     python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_frontend.py
   #     ${CMAKE_BINARY_DIR}/thirds/naive_mul_model
   #     ${CMAKE_BINARY_DIR}/thirds/multi_fc_model
-  #     "${WITH_CUDA}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  #     "${WITH_GPU}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   # )
   add_test(
     NAME test_netbuilder
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
-      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_netbuilder.py "${WITH_CUDA}"
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_netbuilder.py "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
@@ -88,12 +56,12 @@ endif()
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_computation.py
 #    ${CMAKE_BINARY_DIR}/thirds/naive_mul_model
-#    "${WITH_CUDA}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#    "${WITH_GPU}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #)
 
 #ADD_TEST(NAME test_cinn_ops_check
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-#    python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ops.py "${WITH_CUDA}"
+#    python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ops.py "${WITH_GPU}"
 #    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #)
 
@@ -102,17 +70,17 @@ add_test(
   COMMAND
     ${CMAKE_COMMAND} -E env
     PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_op_benchmark.py "${WITH_CUDA}"
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_op_benchmark.py "${WITH_GPU}"
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-if(WITH_CUDNN)
+if(WITH_GPU)
   add_test(
     NAME test_cinn_fake_resnet
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_resnet.py
-      "${CMAKE_BINARY_DIR}/thirds/resnet_model" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/resnet_model" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -121,7 +89,7 @@ if(WITH_CUDNN)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_resnet18.py
-      "${CMAKE_BINARY_DIR}/thirds/ResNet18" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/ResNet18" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -130,7 +98,7 @@ if(WITH_CUDNN)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mobilenetv2.py
-      "${CMAKE_BINARY_DIR}/thirds/MobileNetV2" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/MobileNetV2" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -139,7 +107,7 @@ if(WITH_CUDNN)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_efficientnet.py
-      "${CMAKE_BINARY_DIR}/thirds/EfficientNet" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/EfficientNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -148,7 +116,7 @@ if(WITH_CUDNN)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_mobilenetv1.py
-      "${CMAKE_BINARY_DIR}/thirds/MobilenetV1" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/MobilenetV1" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -157,7 +125,7 @@ if(WITH_CUDNN)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_resnet50.py
-      "${CMAKE_BINARY_DIR}/thirds/ResNet50" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/ResNet50" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -166,7 +134,7 @@ if(WITH_CUDNN)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_squeezenet.py
-      "${CMAKE_BINARY_DIR}/thirds/SqueezeNet" "${WITH_CUDA}"
+      "${CMAKE_BINARY_DIR}/thirds/SqueezeNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -181,16 +149,16 @@ endif()
 
 #ADD_TEST(NAME test_cinn_real_facedet
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-#    python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_facedet.py "${CMAKE_BINARY_DIR}/thirds/FaceDet" "${WITH_CUDA}"
+#    python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_facedet.py "${CMAKE_BINARY_DIR}/thirds/FaceDet" "${WITH_GPU}"
 #    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-if(WITH_CUDA)
+if(WITH_GPU)
   file(
     GLOB CINN_OP_TEST
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "tests/ops/test_*.py")
   set(EXCLUDE_OP test_conv2d_op)
 
-  if(WITH_CUDNN)
+  if(WITH_GPU)
     add_test(
       NAME test_conv2d_op
       COMMAND
@@ -222,7 +190,7 @@ if(WITH_CUDA)
     "tests/op_mappers/test_*.py")
   set(EXCLUDE_OP_MAPPER test_mul_op test_conv2d_op)
 
-  if(WITH_CUDNN)
+  if(WITH_GPU)
     add_test(
       NAME test_mul_op_mapper
       COMMAND

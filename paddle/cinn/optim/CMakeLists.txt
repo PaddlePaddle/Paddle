@@ -32,55 +32,37 @@ gather_srcs(
   var_mod_simplify.cc
   remove_schedule_block.cc)
 
-if(WITH_CUDA)
+if(WITH_GPU)
   gather_srcs(cinnapi_src SRCS transform_gpu_forloop.cc)
 endif()
 
-cc_test(
-  test_remove_nested_block
-  SRCS remove_nested_block_test.cc
-  DEPS cinncore)
-cc_test(
-  test_ir_copy
-  SRCS ir_copy_test.cc
-  DEPS cinncore)
-cc_test(
-  test_ir_simplify
-  SRCS ir_simplify_test.cc
-  DEPS cinncore)
-cc_test(
-  test_replace_call_with_expr
-  SRCS replace_call_with_expr_test.cc
-  DEPS cinncore)
-cc_test(
+cinn_cc_test(test_remove_nested_block SRCS remove_nested_block_test.cc DEPS
+             cinncore)
+cinn_cc_test(test_ir_copy SRCS ir_copy_test.cc DEPS cinncore)
+cinn_cc_test(test_ir_simplify SRCS ir_simplify_test.cc DEPS cinncore)
+cinn_cc_test(test_replace_call_with_expr SRCS replace_call_with_expr_test.cc
+             DEPS cinncore)
+cinn_cc_test(
   test_vectorize_loops
-  SRCS vectorize_loops_test.cc
-  DEPS cinncore ARGS ${global_test_args})
-cc_test(
+  SRCS
+  vectorize_loops_test.cc
+  DEPS
+  cinncore
+  ARGS
+  ${global_test_args})
+cinn_cc_test(
   test_transform_polyfor_to_for
-  SRCS transform_polyfor_to_for_test.cc
-  DEPS cinncore ARGS ${global_test_args})
-cc_test(
-  test_optimize
-  SRCS optimize_test.cc
-  DEPS cinncore)
-cc_test(
-  test_cache_read_write_replace
-  SRCS cache_read_write_replace_test.cc
-  DEPS cinncore)
-cc_test(
-  test_cast_simplify
-  SRCS cast_simplify_test.cc
-  DEPS cinncore)
-cc_test(
-  test_if_simplify
-  SRCS if_simplify_test.cc
-  DEPS cinncore)
-cc_test(
-  test_remove_schedule_block
-  SRCS remove_schedule_block_test.cc
-  DEPS cinncore)
-cc_test(
-  test_unroll_loops
-  SRCS unroll_loops_test.cc
-  DEPS cinncore)
+  SRCS
+  transform_polyfor_to_for_test.cc
+  DEPS
+  cinncore
+  ARGS
+  ${global_test_args})
+cinn_cc_test(test_optimize SRCS optimize_test.cc DEPS cinncore)
+cinn_cc_test(test_cache_read_write_replace SRCS
+             cache_read_write_replace_test.cc DEPS cinncore)
+cinn_cc_test(test_cast_simplify SRCS cast_simplify_test.cc DEPS cinncore)
+cinn_cc_test(test_if_simplify SRCS if_simplify_test.cc DEPS cinncore)
+cinn_cc_test(test_remove_schedule_block SRCS remove_schedule_block_test.cc DEPS
+             cinncore)
+cinn_cc_test(test_unroll_loops SRCS unroll_loops_test.cc DEPS cinncore)

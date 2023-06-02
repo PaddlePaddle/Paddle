@@ -19,8 +19,8 @@ endif(NOT ${WITH_MKLDNN})
 include(ExternalProject)
 
 set(MKLDNN_PROJECT "extern_mkldnn")
-set(MKLDNN_SOURCES_DIR ${THIRD_PARTY_PATH}/mkldnn)
-set(MKLDNN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mkldnn)
+set(MKLDNN_SOURCES_DIR ${CINN_THIRD_PARTY_PATH}/mkldnn)
+set(MKLDNN_INSTALL_DIR ${CINN_THIRD_PARTY_PATH}/install/mkldnn)
 set(MKLDNN_INC_DIR
     "${MKLDNN_INSTALL_DIR}/include"
     CACHE PATH "mkldnn include directory." FORCE)
@@ -50,7 +50,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}"
 include_directories(${MKLDNN_INC_DIR}
 )# For MKLDNN code to include internal headers.
 
-if(${WITH_MKL_CBLAS} STREQUAL "ON")
+if(${WITH_MKL} STREQUAL "ON")
   set(MKLDNN_DEPENDS ${MKLML_PROJECT})
   message(STATUS "Build MKLDNN with MKLML ${MKLML_ROOT}")
 else()

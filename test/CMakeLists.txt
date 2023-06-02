@@ -1,3 +1,7 @@
+if(CINN_ONLY)
+  return()
+endif()
+
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
     CACHE INTERNAL "c++ tests directory")

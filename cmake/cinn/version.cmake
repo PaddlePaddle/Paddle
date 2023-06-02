@@ -7,7 +7,7 @@ while("${CINN_VERSION}" STREQUAL "")
   # Check current branch name
   execute_process(
     COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref ${tmp_version}
-    WORKING_DIRECTORY ${CINN_SOURCE_DIR}
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_BRANCH_NAME
     RESULT_VARIABLE GIT_BRANCH_RESULT
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -15,7 +15,7 @@ while("${CINN_VERSION}" STREQUAL "")
     execute_process(
       COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0 --always
               ${tmp_version}
-      WORKING_DIRECTORY ${CINN_SOURCE_DIR}
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
       OUTPUT_VARIABLE GIT_TAG_NAME
       RESULT_VARIABLE GIT_RESULT
       ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -34,7 +34,7 @@ while("${CINN_VERSION}" STREQUAL "")
       else()
         execute_process(
           COMMAND ${GIT_EXECUTABLE} describe --exact-match --tags ${tmp_version}
-          WORKING_DIRECTORY ${CINN_SOURCE_DIR}
+          WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
           OUTPUT_VARIABLE GIT_EXACT_TAG_NAME
           RESULT_VARIABLE GIT_EXACT_TAG_RESULT
           ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)

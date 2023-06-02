@@ -1,4 +1,4 @@
-if((NOT WITH_CUDA)
+if((NOT WITH_GPU)
    OR WIN32
    OR APPLE)
   set(NVTX_FOUND OFF)

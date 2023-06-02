@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/hlir/pe/reduction.h"
 
-#include <cinn/ir/ir_base.h>
+#include "paddle/cinn/ir/ir_base.h"
 
 #include <algorithm>
 

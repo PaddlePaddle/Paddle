@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tests/benchmark/test_utils.h"
+#include "paddle/cinn/tests/benchmark/test_utils.h"
 
 #include "paddle/cinn/backends/llvm/codegen_x86.h"
 #include "paddle/cinn/common/cas.h"

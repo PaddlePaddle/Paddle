@@ -661,7 +661,7 @@ void PaddleModelToProgram::TransposeVar(const std::string& name) {
           cudaMemcpyHostToDevice));
 #endif
 #else
-      LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+      LOG(FATAL) << "To use CUDA backends, you need to set WITH_GPU ON!";
 #endif
     } else {
       CINN_NOT_IMPLEMENTED
@@ -710,7 +710,7 @@ void PaddleModelToProgram::ReverseHWVar(const std::string& name) {
           tensor->shape().numel() * sizeof(float),
           cudaMemcpyHostToDevice));
 #else
-      LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+      LOG(FATAL) << "To use CUDA backends, you need to set WITH_GPU ON!";
 #endif
     } else {
       CINN_NOT_IMPLEMENTED

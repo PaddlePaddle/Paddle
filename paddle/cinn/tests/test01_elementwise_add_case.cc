@@ -17,10 +17,10 @@
 
 #include "paddle/cinn/common/test_helper.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-#include "tests/test01_elementwise_add.h"
-#include "tests/test01_elementwise_add_compute_at.h"
-#include "tests/test01_elementwise_add_compute_at_level1.h"
-#include "tests/test01_elementwise_add_vectorize.h"
+#include "paddle/cinn/tests/test01_elementwise_add.h"
+#include "paddle/cinn/tests/test01_elementwise_add_compute_at.h"
+#include "paddle/cinn/tests/test01_elementwise_add_compute_at_level1.h"
+#include "paddle/cinn/tests/test01_elementwise_add_vectorize.h"
 
 namespace cinn {
 
@@ -182,8 +182,8 @@ TEST(test01, compute_at_level1) {
 
 // include the generated C source code:
 // @{
-#include "tests/test01_elementwise_add.cc"
-#include "tests/test01_elementwise_add_compute_at.cc"
-#include "tests/test01_elementwise_add_compute_at_level1.cc"
-#include "tests/test01_elementwise_add_vectorize.cc"
+#include "paddle/cinn/tests/test01_elementwise_add.cc"
+#include "paddle/cinn/tests/test01_elementwise_add_compute_at.cc"
+#include "paddle/cinn/tests/test01_elementwise_add_compute_at_level1.cc"
+#include "paddle/cinn/tests/test01_elementwise_add_vectorize.cc"
 // @}

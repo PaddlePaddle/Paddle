@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/cinn/hlir/pe/transform.h"
-#include "tests/benchmark/test_utils.h"
+#include "paddle/cinn/tests/benchmark/test_utils.h"
 
 namespace cinn {
 namespace tests {

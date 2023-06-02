@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 
-#include <cinn/utils/string.h>
 #include <glog/logging.h>
+#include "paddle/cinn/utils/string.h"
 
 #include <fstream>
 #include <set>

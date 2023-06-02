@@ -15,77 +15,62 @@ gather_srcs(
   modular.cc
   compiler.cc)
 
-if(WITH_CUDA)
+if(WITH_GPU)
   add_subdirectory(nvrtc)
   list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc codegen_cuda_util.cc)
 endif()
 
 if(WITH_OPENMP)
-  cc_library(__x86_source_fake_lib SRCS _x86_builtin_source.cc)
+  cinn_cc_library(__x86_source_fake_lib SRCS _x86_builtin_source.cc)
 endif()
 add_subdirectory(llvm)
 
-if(WITH_CUDA)
-  nv_test(
-    test_raw_cuda_code
-    SRCS raw_cuda_code_test.cu
-    DEPS cinncore)
+if(WITH_GPU)
+  cinn_nv_test(test_raw_cuda_code SRCS raw_cuda_code_test.cu DEPS cinncore)
 endif()
 
-cc_test(
+cinn_cc_test(
   test_codegen_c
-  SRCS codegen_c_test.cc
-  DEPS cinncore ARGS ${global_test_args})
-cc_test(
+  SRCS
+  codegen_c_test.cc
+  DEPS
+  cinncore
+  ARGS
+  ${global_test_args})
+cinn_cc_test(
   test_codegen_c_x86
-  SRCS codegen_c_x86_test.cc
-  DEPS cinncore ARGS ${global_test_args})
-cc_test(
-  test_generated1
-  SRCS generated_module1.cc
-  DEPS cinn_runtime)
+  SRCS
+  codegen_c_x86_test.cc
+  DEPS
+  cinncore
+  ARGS
+  ${global_test_args})
+cinn_cc_test(test_generated1 SRCS generated_module1.cc DEPS cinn_runtime)
 add_run_test_dependency(test_generated1 test_codegen_c)
-cc_test(
-  test_ir_schedule
-  SRCS ir_schedule_test.cc
-  DEPS cinncore)
+cinn_cc_test(test_ir_schedule SRCS ir_schedule_test.cc DEPS cinncore)
 include_directories(${CMAKE_SOURCE_DIR}/cinn/runtime)
 if(TARGET test_generated1)
   add_dependencies(test_generated1 test_codegen_c)
 endif()
 
-if(WITH_CUDA)
-  nv_test(
-    test_codegen_cuda_generate
-    SRCS codegen_cuda_generate_test.cc
-    DEPS cinncore)
-  nv_test(
-    test_codegen_debug
-    SRCS codegen_debug_test.cc
-    DEPS cinncore)
+if(WITH_GPU)
+  cinn_nv_test(test_codegen_cuda_generate SRCS codegen_cuda_generate_test.cc
+               DEPS cinncore)
+  cinn_nv_test(test_codegen_debug SRCS codegen_debug_test.cc DEPS cinncore)
 
   if(WITH_TESTING)
-    nv_test(
-      generated1_cuda
-      SRCS generated1.cu
-      DEPS cinncore)
+    cinn_nv_test(generated1_cuda SRCS generated1.cu DEPS cinncore)
     add_run_test_dependency(generated1_cuda test_codegen_cuda_generate)
   endif()
 
-  nv_test(
-    test_compiler
-    SRCS compiler_test.cc
-    DEPS cinncore)
+  cinn_nv_test(test_compiler SRCS compiler_test.cc DEPS cinncore)
 else()
-  cc_test(
-    test_compiler
-    SRCS compiler_test.cc
-    DEPS cinncore)
+  cinn_cc_test(test_compiler SRCS compiler_test.cc DEPS cinncore)
 endif()
 
 foreach(cpp ${srcs})
   set(cinnapi_src
-      "${cinnapi_src};cinn/backends/${cpp}"
+      "${cinnapi_src};paddle/cinn/backends/${cpp}"
       CACHE INTERNAL "")
 endforeach()
 

@@ -15,7 +15,7 @@
 include(ExternalProject)
 
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
-set(PYBIND_SOURCE_DIR ${THIRD_PARTY_PATH}/pybind)
+set(PYBIND_SOURCE_DIR ${CINN_THIRD_PARTY_PATH}/pybind)
 
 find_package(Python ${PY_VERSION} EXACT COMPONENTS Development)
 include_directories(${PYTHON_INCLUDE_DIR})

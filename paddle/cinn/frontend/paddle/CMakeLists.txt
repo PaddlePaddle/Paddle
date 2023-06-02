@@ -1,18 +1,22 @@
-proto_library(framework_proto SRCS framework.proto)
+cinn_proto_library(framework_proto SRCS framework.proto)
 
 add_subdirectory(cpp)
 add_subdirectory(pb)
 
 set(srcs model_parser.cc compatible_pb.cc)
 
-cc_test(
+cinn_cc_test(
   test_model_parser
-  SRCS model_parser_test.cc
-  DEPS cinncore ARGS --model_dir=${THIRD_PARTY_PATH}/model/lite_naive_model)
+  SRCS
+  model_parser_test.cc
+  DEPS
+  cinncore
+  ARGS
+  --model_dir=${CINN_THIRD_PARTY_PATH}/model/lite_naive_model)
 
 foreach(cpp ${srcs})
   set(cinnapi_src
-      "${cinnapi_src};cinn/frontend/paddle/${cpp}"
+      "${cinnapi_src};paddle/cinn/frontend/paddle/${cpp}"
       CACHE INTERNAL "")
 endforeach()
 

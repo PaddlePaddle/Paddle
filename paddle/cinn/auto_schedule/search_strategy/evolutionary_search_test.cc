@@ -29,7 +29,7 @@
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_schedule.h"
-#include "tests/program_builder.h"
+#include "paddle/cinn/tests/program_builder.h"
 
 namespace cinn {
 namespace auto_schedule {
