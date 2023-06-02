@@ -243,13 +243,6 @@ void {op_name}::InferShape( phi::InferMetaContext *infer_meta ) {{
 }}
 """
 
-OP_INFER_SHAPE_TEMPLATE = """
-void {op_name}::InferShape( phi::InferMetaContext *infer_meta ) {{
-  auto fn = PD_INFER_META(phi::{infer_meta_func});
-  fn(infer_meta);
-}}
-"""
-
 
 def to_phi_and_fluid_op_name(op_item):
     # Templat: - op : phi_name (fluid_name)
@@ -373,9 +366,6 @@ class OpInfoParser:
             self.infer_shape_func = self.op_yaml_item['infer_meta']["func"]
         else:
             self.infer_shape_func = None
-
-        self.infer_meta_map = self.parse_infer_meta_map()
-        self.kernel_map = self.parse_kernel_map()
 
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
@@ -895,7 +885,6 @@ def OpGenerator(
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
-    ops_infer_shape_list = []  # all op class infer_shape define
     for op_info in op_info_items:
         # get op info
         op_input_name_list = op_info.input_name_list
