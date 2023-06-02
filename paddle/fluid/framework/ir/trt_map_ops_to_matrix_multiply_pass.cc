@@ -60,6 +60,7 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
     auto op_desc = ops->Op();
     op_desc->SetAttr("original_type", op_desc->Type());
     op_desc->SetType("matrix_multiply");
+    ops->RenameOp("matrix_multiply");
 
     // OpDesc original_desc(*(ops->Op()));
 
