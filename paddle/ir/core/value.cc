@@ -31,6 +31,7 @@ OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
   impl_ = const_cast<detail::OpOperandImpl *>(impl);
   return *this;
 }
+OpOperand::operator bool() const { return impl_ && impl_->source(); }
 
 OpOperand OpOperand::next_use() const { return impl_->next_use(); }
 

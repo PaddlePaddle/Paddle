@@ -49,7 +49,7 @@ class OpOperand {
 
   bool operator!() const { return impl_ == nullptr; }
 
-  operator bool() const { return impl_ && impl_->source(); }
+  operator bool() const;
 
   OpOperand next_use() const;
 
