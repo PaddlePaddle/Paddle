@@ -30,7 +30,7 @@ class ModuleOp : public ir::Op<ModuleOp> {
   static const char *name() { return "builtin.module"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
 
@@ -54,7 +54,7 @@ class GetParameterOp : public ir::Op<GetParameterOp> {
   static const char *name() { return "builtin.get_parameter"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
 };
@@ -69,7 +69,7 @@ class SetParameterOp : public ir::Op<SetParameterOp> {
   static const char *name() { return "builtin.set_parameter"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
 };
@@ -86,7 +86,7 @@ class CombineOp : public ir::Op<CombineOp> {
   static constexpr uint32_t attributes_num = 0;
 
   static constexpr const char **attributes_name = nullptr;
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
 };
@@ -103,7 +103,7 @@ class SliceOp : public ir::Op<SliceOp> {
   static constexpr uint32_t attributes_num = 1;
 
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
 };
@@ -125,12 +125,12 @@ class ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
 
-  static void build(Builder &builder,             // NOLINT
+  static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     Attribute value,
                     Type output_type);
 
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const AttributeMap &attributes);
 

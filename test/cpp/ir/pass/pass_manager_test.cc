@@ -42,7 +42,7 @@ class TestOp : public ir::Op<TestOp> {
   static const char *name() { return "TestDialect.TestOp"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
     if (attributes.count("op1_attr1") == 0 ||

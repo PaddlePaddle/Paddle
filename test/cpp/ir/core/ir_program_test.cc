@@ -38,7 +38,7 @@ class AddOp : public ir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
     if (inputs.size() != 2) {

@@ -56,8 +56,8 @@ class {op_name} : public ir::Op<{op_name}{interfaces}{traits}> {{
   {attribute_declare}
   static constexpr uint32_t attributes_num = {attribute_num};
   static OpInfoTuple GetOpInfo();
-  static void build({build_args});
-  static void verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes);
+  static void Build({build_args});
+  static void Verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes);
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -124,7 +124,7 @@ CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = (
 
 # build
 OP_BUILD_TEMPLATE = """
-void {op_name}::build({build_args}) {{
+void {op_name}::Build({build_args}) {{
 {build_inputs}
 {build_attributes}
 {build_outputs}
@@ -133,7 +133,7 @@ void {op_name}::build({build_args}) {{
 
 # verify
 OP_VERIFY_TEMPLATE = """
-void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes) {{
+void {op_name}::Verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes) {{
   VLOG(4) << "Verifying inputs, outputs and attributes for: {op_name}.";
 
   // Verify inputs type:
@@ -150,7 +150,7 @@ void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vecto
 """
 
 GRAD_OP_VERIFY_TEMPLATE = """
-void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes) {{
+void {op_name}::Verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes) {{
   (void)inputs;
   (void)outputs;
   (void)attributes;

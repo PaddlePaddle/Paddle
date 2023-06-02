@@ -92,7 +92,7 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
   // TODO(liuyuanle): Support verification of operation
   if (!pass_failed && verify) {
     // bool verify_recursively = !dynamic_cast<PassAdaptor*>(pass);
-    // pass_failed = ir::verify(op, verify_recursively);
+    // pass_failed = ir::Verify(op, verify_recursively);
   }
 
   return !pass_failed;
