@@ -34,6 +34,9 @@ namespace ir {
 ///   Type fp32 = Float32Type::get(ctx);
 /// \endcode
 ///
+
+// NOTE(dev): Currently BF16 and Int8 are not considered as a cached member
+// in IrContextImpl because they are not widely used.
 class BFloat16Type : public Type {
  public:
   using Type::Type;
@@ -41,74 +44,11 @@ class BFloat16Type : public Type {
   DECLARE_TYPE_UTILITY_FUNCTOR(BFloat16Type, TypeStorage);
 };
 
-class Float16Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float16Type, TypeStorage);
-
-  static Float16Type get(IrContext *context);
-};
-
-class Float32Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float32Type, TypeStorage);
-
-  static Float32Type get(IrContext *context);
-};
-
-class Float64Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float64Type, TypeStorage);
-
-  static Float64Type get(IrContext *context);
-};
-
 class Int8Type : public Type {
  public:
   using Type::Type;
 
   DECLARE_TYPE_UTILITY_FUNCTOR(Int8Type, TypeStorage);
-};
-
-class Int16Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int16Type, TypeStorage);
-
-  static Int16Type get(IrContext *context);
-};
-
-class Int32Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int32Type, TypeStorage);
-
-  static Int32Type get(IrContext *context);
-};
-
-class Int64Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int64Type, TypeStorage);
-
-  static Int64Type get(IrContext *context);
-};
-
-class BoolType : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(BoolType, TypeStorage);
-
-  static BoolType get(IrContext *context);
 };
 
 class VectorType : public Type {
@@ -125,5 +65,29 @@ class VectorType : public Type {
 
   Type operator[](size_t index) const { return data()[index]; }
 };
+
+#define DECLARE_BUILTIN_TYPE(__name)                         \
+  class __name##Type : public Type {                         \
+   public:                                                   \
+    using Type::Type;                                        \
+                                                             \
+    DECLARE_TYPE_UTILITY_FUNCTOR(__name##Type, TypeStorage); \
+                                                             \
+    static __name##Type get(IrContext *context);             \
+  };
+
+#define FOREACH_BUILTIN_TYPE(__macro) \
+  __macro(Float16);                   \
+  __macro(Float32);                   \
+  __macro(Float64);                   \
+  __macro(Int16);                     \
+  __macro(Int32);                     \
+  __macro(Int64);                     \
+  __macro(Bool);
+
+FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
+
+#undef FOREACH_BUILTIN_TYPE
+#undef DECLARE_BUILTIN_TYPE
 
 }  // namespace ir
