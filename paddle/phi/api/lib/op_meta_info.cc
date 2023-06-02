@@ -52,7 +52,7 @@ std::vector<std::string> ParseAttrStr(const std::string& attr) {
   // 2. type
   rlt.emplace_back(trim_spaces(attr.substr(split_pos + 1)));
 
-  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+ // VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
 
   return rlt;
 }

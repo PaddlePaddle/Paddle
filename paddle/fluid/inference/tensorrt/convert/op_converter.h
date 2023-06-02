@@ -56,13 +56,8 @@ class OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
-<<<<<<< HEAD
-    auto converter_type = (OpConverterType)(PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
-=======
-
     auto converter_type = static_cast<OpConverterType>(
         PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
->>>>>>> develop
     switch (converter_type) {
       case OpConverterType::Default:
         if (op_desc.Type().find("elementwise") != std::string::npos) {

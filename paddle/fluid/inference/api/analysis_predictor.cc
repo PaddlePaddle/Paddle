@@ -2150,7 +2150,6 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 }
 #endif
 
-<<<<<<< HEAD
 void AnalysisPredictor::HookCollectShapeRangeInfo() {
 
   auto hook = [&](const std::string &op_type,
@@ -2236,7 +2235,6 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 }
 
 // 这个函数专门用来收集模型的输入的shape和value
-=======
 bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
 #ifdef PADDLE_WITH_XPU
   PADDLE_ENFORCE(
@@ -2280,7 +2278,6 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
   return false;
 }
 
->>>>>>> develop
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   paddle::platform::DeviceContextPool &pool =

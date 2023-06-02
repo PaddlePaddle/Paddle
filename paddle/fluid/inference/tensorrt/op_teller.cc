@@ -2232,8 +2232,9 @@ if (dtype ==  framework::proto::VarType::BOOL)
   return false;
 }
 
-      auto dtype = x_var_desc->GetDataType();
+      
       if (op_type == "reduce_all" || op_type == "reduce_any") {
+        auto dtype = x_var_desc->GetDataType();
         if (dtype != framework::proto::VarType::BOOL) {
           VLOG(3)
               << "reduce_all and reduce_any op input data type must be bool";
