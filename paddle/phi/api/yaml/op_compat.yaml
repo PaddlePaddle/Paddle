@@ -198,6 +198,23 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : any (reduce_any)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    any : GetReduceOpUseInputPlaceExpectedKernelType
+  manual_signature : [any]
+
 - op : arange(range)
   inputs :
     {start : Start, end : End, step : Step}
@@ -1934,10 +1951,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_any
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : reduce_min
   backward : reduce_min_grad
