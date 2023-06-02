@@ -15,7 +15,6 @@
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/dense_tensor.h"

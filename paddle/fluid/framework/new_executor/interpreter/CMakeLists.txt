@@ -38,3 +38,8 @@ cc_library(
   interpreter
   SRCS ${INTERPRETER_SRCS}
   DEPS standalone_executor ${INTERPRETER_DEPS})
+
+cc_library(
+  plan
+  SRCS plan.cc
+  DEPS framework_proto)

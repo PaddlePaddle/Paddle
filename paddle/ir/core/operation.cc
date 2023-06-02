@@ -13,15 +13,17 @@
 // limitations under the License.
 
 #include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/utils.h"
+#include "paddle/ir/core/value_impl.h"
 
 namespace ir {
 Operation *Operation::create(OperationArgument &&argument) {
   Operation *op = create(argument.inputs,
-                         argument.attribute,
+                         argument.attributes,
                          argument.output_types,
                          argument.info,
                          argument.regions.size());
@@ -36,13 +38,13 @@ Operation *Operation::create(OperationArgument &&argument) {
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, Operand.
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
-                             const AttributeMap &attribute,
+                             const AttributeMap &attributes,
                              const std::vector<ir::Type> &output_types,
                              ir::OpInfo op_info,
                              size_t num_regions) {
   // 0. Verify
   if (op_info) {
-    op_info.verify(inputs, output_types, attribute);
+    op_info.verify(inputs, output_types, attributes);
   }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
@@ -76,7 +78,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   }
   // 3.2. Construct Operation.
   Operation *op = new (base_ptr)
-      Operation(attribute, op_info, num_results, num_operands, num_regions);
+      Operation(attributes, op_info, num_results, num_operands, num_regions);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
@@ -160,12 +162,12 @@ void Operation::destroy() {
 
 IrContext *Operation::ir_context() const { return op_info_.ir_context(); }
 
-Operation::Operation(const AttributeMap &attribute,
+Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
                      uint32_t num_results,
                      uint32_t num_operands,
                      uint32_t num_regions)
-    : attribute_(attribute),
+    : attributes_(attributes),
       op_info_(op_info),
       num_results_(num_results),
       num_operands_(num_operands),
@@ -222,6 +224,23 @@ std::string Operation::print() {
 }
 
 std::string Operation::op_name() const { return op_info_.name(); }
+
+Region *Operation::GetParentRegion() const {
+  return parent_ ? parent_->GetParentRegion() : nullptr;
+}
+
+Operation *Operation::GetParentOp() const {
+  return parent_ ? parent_->GetParentOp() : nullptr;
+}
+
+Program *Operation::GetParentProgram() {
+  Operation *op = this;
+  while (Operation *parent_op = op->GetParentOp()) {
+    op = parent_op;
+  }
+  ModuleOp module_op = op->dyn_cast<ModuleOp>();
+  return module_op ? module_op.program() : nullptr;
+}
 
 Region &Operation::GetRegion(unsigned index) {
   assert(index < num_regions_ && "invalid region index");

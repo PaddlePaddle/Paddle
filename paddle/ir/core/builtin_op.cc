@@ -19,6 +19,60 @@
 #include "paddle/phi/core/enforce.h"
 
 namespace ir {
+
+const char *ModuleOp::attributes_name[attributes_num] = {"program"};
+
+Program *ModuleOp::program() {
+  const AttributeMap &attr = operation()->attributes();
+  auto iter = attr.find("program");
+  if (iter == attr.end() || !iter->second) return nullptr;
+  return static_cast<Program *>(
+      iter->second.dyn_cast<PointerAttribute>().data());
+}
+
+Block *ModuleOp::block() {
+  assert(operation() != nullptr);
+  assert(operation()->num_regions() == 1);
+  assert(operation()->GetRegion(0).size() == 1);
+  return operation()->GetRegion(0).front();
+}
+
+ModuleOp ModuleOp::create(IrContext *context, Program *pointer) {
+  ir::OpInfo info = context->GetRegisteredOpInfo(name());
+  OperationArgument argument(info);
+  argument.AddRegion()->emplace_back();
+  argument.AddAttribute("program", PointerAttribute::get(context, pointer));
+  return ModuleOp(Operation::create(std::move(argument)));
+}
+
+void ModuleOp::destroy() {
+  if (operation()) {
+    operation()->destroy();
+    *this = ModuleOp(nullptr);
+  }
+}
+
+void ModuleOp::verify(const std::vector<ir::OpResult> &inputs,
+                      const std::vector<ir::Type> &outputs,
+                      const ir::AttributeMap &attributes) {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
+  // Verify inputs type:
+  if (inputs.size() != 0) {
+    throw("The size of inputs must be equal to 0.");
+  }
+
+  // Verify if attributes contain attribute name in attributes_name:
+  auto iter = attributes.find("program");
+  if (iter == attributes.end() || !iter->second.isa<PointerAttribute>()) {
+    throw("Type of attribute: program is not right.");
+  }
+
+  // Verify outputs type:
+  if (outputs.size() != 0) {
+    throw("The size of outputs must be equal to 0.");
+  }
+}
+
 const char *GetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 

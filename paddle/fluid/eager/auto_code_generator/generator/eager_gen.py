@@ -67,6 +67,7 @@ black_ops_list = [
 prim_white_list = [
     "matmul_double_grad",
     "subtract_double_grad",
+    "add_triple_grad",
     "silu_double_grad",
 ]
 
