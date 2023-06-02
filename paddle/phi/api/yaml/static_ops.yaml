@@ -262,6 +262,17 @@
            matrix_rank_tol {dense, dense -> dense}
     data_type : x
 
+- op : max
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+    param : [x, axis, keepdim, reduce_all]
+  kernel :
+    func : max_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : max_grad
+
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)

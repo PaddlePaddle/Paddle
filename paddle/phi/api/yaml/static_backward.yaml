@@ -75,6 +75,17 @@
     param : [x, out_grad]
   inplace : (out_grad -> x_grad)
 
+- backward_op : max_grad
+  forward: max (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : max_grad
+  composite: max_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
+
 - backward_op : relu6_grad
   forward : relu6 (Tensor x, float threshold = 6.0f) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)
