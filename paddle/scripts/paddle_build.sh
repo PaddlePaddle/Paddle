@@ -324,7 +324,6 @@ function abort(){
 }
 
 function check_style() {
-    set +x
     trap 'abort' 0
     set -e
 
@@ -581,7 +580,6 @@ function run_brpc_test() {
     Running brpc unit tests ...
     ========================================
 EOF
-        set +x
         declare -a other_tests=("test_listen_and_serv_op" "system_allocator_test" \
         "rpc_server_test" "varhandle_test" "collective_server_test" "brpc_serde_test")
         all_tests=`ctest -N`
@@ -621,7 +619,6 @@ function run_mac_test() {
 EOF
         #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac.
         #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
-        set +x
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
@@ -739,7 +736,6 @@ EOF
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         paddle version
         # Recovery proxy to avoid failure in later steps
-        set +x
         export http_proxy=$my_proxy
         export https_proxy=$my_proxy
         set -x
@@ -773,7 +769,6 @@ set -x
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
-                set +x
                 echo "========================================"
                 echo "The new unit test has the same name as the existing unit test"
                 cat "$PADDLE_ROOT/duplicate_ut"
@@ -793,7 +788,6 @@ set -x
                 exit 8;
             fi
         fi
-set +x
         EXIT_CODE=0;
 
         tmpfile_rand=`date +%s%N`
@@ -960,7 +954,6 @@ function check_whl_size() {
         return
     fi
 
-    set +x
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
@@ -1017,7 +1010,6 @@ function generate_upstream_develop_api_spec() {
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-    set +x
 }
 
 function generate_api_spec() {
@@ -1076,7 +1068,6 @@ function generate_api_spec() {
 }
 
 function check_approvals_of_unittest() {
-    set +x
     if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
         return 0
     fi
@@ -1401,7 +1392,6 @@ set -x
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
             if [[ -f "ut_list" ]]; then
-                set +x
                 echo "PREC length: "`wc -l ut_list`
                 precision_cases=`cat ut_list`
                 set -x
@@ -1410,7 +1400,6 @@ set -x
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
-                set +x
                 echo "========================================"
                 echo "The new unit test has the same name as the existing unit test"
                 cat "$PADDLE_ROOT/duplicate_ut"
@@ -1430,7 +1419,6 @@ set -x
                 exit 8;
             fi
         fi
-set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         # Note(zhouwei): Parallel runs are relative to 'CTEST_PARALLEL_LEVEL', e.g: '4 job each time' means 4*CTEST_PARALLEL_LEVEL
@@ -1702,7 +1690,6 @@ function classify_case_by_cardNum() {
     is_exclusive=''           # indicate whether the case is exclusive type
     is_multicard=''           # indicate whether the case is multiple GPUs type
     is_nightly=''             # indicate whether the case will only run at night
-set +x
     while read -r line; do
         if [[ "$line" == "" ]]; then
             continue
@@ -1830,7 +1817,6 @@ function insert_pile_to_h_cu_diff {
 
 function precise_card_test_single {
     set +e
-    set +x
     testcases=$1
     num=$2
     for case in $(echo $testcases | tr "$|^" "\n" | awk '!/^$/')
@@ -1880,7 +1866,6 @@ function precise_card_test_single {
 
 function parallel_card_test_single {
     set +e
-    set +x
     testcases=$1
     num=$2
     for case in $(echo $testcases | tr "$|^" "\n")
@@ -1967,7 +1952,6 @@ function get_precise_tests_map_file {
     is_multicard=''           # indicate whether the case is multiple GPUs type
 
     single_card_test_num=0
-set +x
 
     while read -r line; do
         if [[ "$line" == "" ]]; then
@@ -2075,7 +2059,6 @@ function get_parallel_tests_map_file {
     is_exclusive=''           # indicate whether the case is exclusive type
     is_multicard=''           # indicate whether the case is multiple GPUs type
     single_card_test_num=0
-set +x
 
     while read -r line; do
         if [[ "$line" == "" ]]; then
@@ -2214,7 +2197,6 @@ function parallel_test_base_xpu() {
     ========================================
 EOF
 
-set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
@@ -2311,7 +2293,6 @@ function parallel_test_base_cinn() {
     ========================================
 EOF
 
-set +x
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V)        # get all test cases
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
@@ -2373,7 +2354,6 @@ set -x
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
-                set +x
                 echo "========================================"
                 echo "The new unit test has the same name as the existing unit test"
                 cat "$PADDLE_ROOT/duplicate_ut"
@@ -2393,7 +2373,6 @@ set -x
                 exit 8;
             fi
         fi
-set +x
         EXIT_CODE=0;
         wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/CTestCostData.txt --no-check-certificate
         mkdir -p ${PADDLE_ROOT}/build/Testing/Temporary/
@@ -2576,7 +2555,6 @@ function parallel_test_base_ipu() {
     ========================================
 EOF
 
-set +x
         test_cases=$(ctest -N -V) # get all test cases
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
@@ -3156,7 +3134,6 @@ function collect_ccache_hits() {
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
     # Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
-    set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
         APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
@@ -3177,7 +3154,6 @@ function test_model_benchmark() {
 }
 
 function summary_check_problems() {
-    set +x
     local example_code=$1
     local example_info=$2
     if [ $example_code -ne 0 ];then
@@ -3291,7 +3267,6 @@ function check_coverage_build() {
     pr_coverage_build_size=`echo $buildSize|sed 's#G##g'`
 
     diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
-    set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 29832297 6836917 43953930`
@@ -4066,7 +4041,6 @@ function main() {
         exit 1
         ;;
       esac
-      set +x
       if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
         echo "=====================build summary======================"
         cat ${PADDLE_ROOT}/build/build_summary.txt
