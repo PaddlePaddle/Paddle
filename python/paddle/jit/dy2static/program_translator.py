@@ -655,6 +655,17 @@ class StaticFunction:
         raise NotImplementedError("Not implemented yet.")
 
 
+def raise_error_template(func_str):
+    def _raise_error(*args, **kwargs):
+        error_template = (
+            "Can't call {func} when enable_fallback=True."
+            "Use paddle.jit.to_static(enable_fallback=False) instead."
+        )
+        raise RuntimeError(error_template.format(func=func_str))
+
+    return _raise_error
+
+
 class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
@@ -671,80 +682,42 @@ class SymbolicStaticFunction(StaticFunction):
             args = (self._class_instance,) + args
         return traced_fun(*args, **kwargs)
 
-    def get_concrete_program(self, *args, **kwargs):
-        raise RuntimeError(
-            "Can't get concreate program when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
-
-    def get_concrete_program_with_cache_key(self, cached_key):
-        raise RuntimeError(
-            "Can't get concreate program when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
-
-    def get_traced_count(self):
-        raise RuntimeError(
-            "Can't get trace count when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
-
     @property
     def code(self):
-        raise RuntimeError(
-            "Can't get code when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("code")()
 
     @property
     def concrete_program(self):
-        raise RuntimeError(
-            "Can't get concrete_program when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("concrete_program")()
 
-    def concrete_program_specify_input_spec(
-        self, input_spec=None, with_hook=False, is_prim_infer=False
-    ):
-        raise RuntimeError(
-            "Can't call concrete_program_specify_input_spec() when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+    concrete_program_specify_input_spec = raise_error_template(
+        "concrete_program_specify_input_spec"
+    )
+    get_concrete_program = raise_error_template("get_concrete_program")
+    get_concrete_program_with_cache_key = raise_error_template(
+        "get_concrete_program_with_cache_key"
+    )
+    get_traced_count = raise_error_template("get_traced_count")
 
     @property
     def inputs(self):
-        raise RuntimeError(
-            "Can't get inputs when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("inputs")()
 
     @property
     def outputs(self):
-        raise RuntimeError(
-            "Can't get outputs when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("outputs")()
 
     @property
     def main_program(self):
-        raise RuntimeError(
-            "Can't get main_program when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("main_program")()
 
     @property
     def program_cache(self):
-        raise RuntimeError(
-            "Can't get program_cache when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("program_cache")()
 
     @property
     def function_spec(self):
-        raise RuntimeError(
-            "Can't get function_spec when enable_fallback=True, "
-            "use paddle.jit.to_static(enable_fallback=False) instead."
-        )
+        raise_error_template("function_spec ")()
 
 
 class ASTStaticFunction(StaticFunction):
