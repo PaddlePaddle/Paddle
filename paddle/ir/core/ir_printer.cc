@@ -98,7 +98,6 @@ class IRPrinter : public BasicIRPrinter {
   /// @example
   void PrintProgram(ir::Program* program) {
     PrintOperation(program->module_op());
-    os << newline;
   }
 
   /// @brief print operation
