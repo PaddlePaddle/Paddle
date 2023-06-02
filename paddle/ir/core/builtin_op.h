@@ -18,6 +18,31 @@
 
 namespace ir {
 
+class Program;
+class Block;
+///
+/// \brief ModuleOp
+///
+class ModuleOp : public ir::Op<ModuleOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "builtin.module"; }
+  static constexpr uint32_t attributes_num = 1;
+  static const char *attributes_name[attributes_num];
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes);
+
+  Program *program();
+  Block *block();
+
+  //
+  // As the top operation, ModuleOp only support create&destroye through
+  // below interface: "create"&"destroy".
+  static ModuleOp create(IrContext *context, Program *pointer);
+  void destroy();
+};
+
 ///
 /// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,
 /// StrAttribute})
