@@ -768,7 +768,7 @@ def GenBuildAttributes(
                 op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
-        attr_str += """  argument.addAttribute("{attr_name}", attr_{attr_name});\n""".format(
+        attr_str += """  argument.AddAttribute("{attr_name}", attr_{attr_name});\n""".format(
             attr_name=op_non_mutable_attribute_name_list[idx]
         )
 

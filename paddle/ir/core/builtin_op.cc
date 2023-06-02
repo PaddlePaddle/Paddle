@@ -221,7 +221,7 @@ void ConstantOp::build(Builder &builder,
                        OperationArgument &argument,
                        Attribute value,
                        Type output_type) {
-  argument.addAttribute("value", value);
+  argument.AddAttribute("value", value);
   argument.output_types.push_back(output_type);
 }
 
@@ -234,6 +234,6 @@ void ConstantOp::verify(const std::vector<ir::OpResult> &inputs,
              "Type of attribute: value is not right.");
 }
 
-Attribute ConstantOp::value() { return operation()->attribute().at("value"); }
+Attribute ConstantOp::value() { return operation()->attributes().at("value"); }
 
 }  // namespace ir
