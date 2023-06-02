@@ -1560,11 +1560,16 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
   int_array:
     axis :
       data_type : int
-  extra :
-    attrs : [bool use_mkldnn = false]
+      support_tensor : true
+  get_expected_kernel_type :
+    max : GetReduceExpectedKernelType
+    max_grad : GetReduceGradExpectedKernelType
+  manual_signature : [max]
 
 - op : max_pool2d_with_index
   inputs :
