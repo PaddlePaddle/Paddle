@@ -376,7 +376,7 @@ class HybridCommunicateGroup:
         return self._sharding_comm_group.ranks[0]
 
     # check parallel group
-    def get_check_parallel_group(self, sharding=False):
+    def get_check_parallel_group(self):
         return self._check_comm_group
 
     def get_rank_from_stage(self, stage_id, **kwargs):
