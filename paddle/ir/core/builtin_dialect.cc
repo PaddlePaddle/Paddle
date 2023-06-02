@@ -45,7 +45,12 @@ void BuiltinDialect::initialize() {
                      Int64_tAttribute,
                      ArrayAttribute>();
 
-  RegisterOps<GetParameterOp, SetParameterOp, CombineOp, SliceOp, ConstantOp>();
+  RegisterOps<ModuleOp,
+              GetParameterOp,
+              SetParameterOp,
+              CombineOp,
+              SliceOp,
+              ConstantOp>();
 }
 
 }  // namespace ir

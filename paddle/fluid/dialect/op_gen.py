@@ -1186,7 +1186,7 @@ def OpGenerator(
                     )
 
             # generate op verify function
-            if "Grad" in op_class_name:
+            if "GradOp" in op_class_name or "Grad_Op" in op_class_name:
                 op_verify_str = GRAD_OP_VERIFY_TEMPLATE.format(
                     op_name=op_class_name,
                 )

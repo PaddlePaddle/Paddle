@@ -36,10 +36,7 @@ class GetOpInfoInterface : public ir::OpInterfaceBase<GetOpInfoInterface> {
   struct Model : public Concept {
     static OpInfoTuple GetOpInfo() { return ConcreteOp::GetOpInfo(); }
 
-    Model() : Concept(GetOpInfo) {
-      static_assert(sizeof(Model) == sizeof(Concept),
-                    "sizeof(Model) != sizeof(Concept)");
-    }
+    Model() : Concept(GetOpInfo) {}
   };
 
   GetOpInfoInterface(ir::Operation *op, Concept *impl)
