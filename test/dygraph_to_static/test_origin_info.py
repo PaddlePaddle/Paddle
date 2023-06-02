@@ -96,7 +96,7 @@ class TestOriginInfo(unittest.TestCase):
         dygraph_ast = attach_origin_info(dygraph_ast, self.dygraph_func)
 
         # step2
-        transformed_ast = DygraphToStaticAst().get_static_ast(dygraph_ast).node
+        transformed_ast = DygraphToStaticAst().get_static_ast(dygraph_ast)
 
         # step3
         self.static_func, _ = ast_to_func(transformed_ast, self.dygraph_func)

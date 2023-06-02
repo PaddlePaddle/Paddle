@@ -25,6 +25,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <typename T>
 void BatchTranspose(T* output,
                     const T* input,
@@ -32,7 +33,7 @@ void BatchTranspose(T* output,
                     int64_t m,
                     int64_t n,
                     const phi::GPUContext* dev_ctx);
-
+#endif
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation

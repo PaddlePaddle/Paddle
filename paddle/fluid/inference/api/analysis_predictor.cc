@@ -72,7 +72,7 @@
 #endif
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -1121,7 +1121,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -1185,7 +1185,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -2100,7 +2100,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -2180,7 +2180,7 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
           "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
           l3_autotune_size,
           l3_size));
-  dev_ctx->SetL3Info(l3_size, l3_ptr, l3_autotune_size);
+  dev_ctx->SetL3Info(l3_size, l3_ptr, l3_autotune_size, place_);
 
   bool ret = ZeroCopyRun();
   dev_ctx->L3CacheAutotune();
@@ -2634,7 +2634,8 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void AnalysisPredictor::RegisterOutputHook(
+    const OutputTensorHookFunc &hookfunc) {
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
     executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
@@ -2653,6 +2654,29 @@ void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
     });
   });
   hookfuncs_.push_back(hookfunc);
+}
+
+void AnalysisPredictor::RegisterOutputHook(
+    const OutputTensorHookFunc_V2 &hookfunc) {
+  static std::once_flag register_hook_flag;
+  std::call_once(register_hook_flag, [this] {
+    executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
+      for (auto &output : op->Outputs()) {
+        for (auto &var_name : output.second) {
+          auto *var = this->sub_scope_->FindVar(var_name);
+          if (!var || !var->IsType<phi::DenseTensor>()) continue;
+          auto dense_tensor = var->Get<phi::DenseTensor>();
+          if (!dense_tensor.initialized()) continue;
+          auto tensor = paddle::Tensor(
+              std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+          for (auto &hookfunc : this->hookfuncs_v2_) {
+            hookfunc(op->Type(), var_name, tensor);
+          }
+        }
+      }
+    });
+  });
+  hookfuncs_v2_.push_back(hookfunc);
 }
 
 template <>
@@ -2936,7 +2960,11 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
+  predictor_->RegisterOutputHook(hookfunc);
+}
+
+void Predictor::RegisterOutputHook(const OutputTensorHookFunc_V2 &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
 

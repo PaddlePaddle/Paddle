@@ -15,14 +15,10 @@
 #pragma once
 
 #include "paddle/fluid/dialect/pd_attribute_storage.h"
-#include "paddle/ir/attribute.h"
+#include "paddle/ir/core/attribute.h"
 
 namespace paddle {
 namespace dialect {
-#define GET_PD_DIALECT_ATTRIBUTE_LIST                                    \
-  IntArrayAttribute, ScalarAttribute, DataTypeAttribute, PlaceAttribute, \
-      DataLayoutAttribute
-
 class IntArrayAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
@@ -47,7 +43,7 @@ class ScalarAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
-  phi::Scalar data() const;
+  paddle::experimental::Scalar data() const;
 };
 
 class DataTypeAttribute : public ir::Attribute {
