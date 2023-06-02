@@ -385,7 +385,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
-  std::tie(input_infos, attr_infos, output_infos) =
+  std::tie(input_infos, attr_infos, output_infos, std::ignore) =
       op_info_concept->get_op_info_();
 
   auto op_inputs = GenerateOperationInput(
@@ -422,7 +422,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
-  std::tie(input_infos, attr_infos, output_infos) =
+  std::tie(input_infos, attr_infos, output_infos, std::ignore) =
       op_info_concept->get_op_info_();
 
   std::vector<ir::OpResult> op_inputs;
@@ -454,7 +454,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
-  std::tie(input_infos, attr_infos, output_infos) =
+  std::tie(input_infos, attr_infos, output_infos, std::ignore) =
       op_info_concept->get_op_info_();
 
   auto op_inputs = GenerateOperationInput(
