@@ -445,16 +445,6 @@
     data_type : real
   backward : complex_grad
 
-- op : concat
-  args : (Tensor[] x, Scalar(int64_t) axis)
-  output : Tensor
-  infer_meta :
-    func : ConcatInferMeta
-    param : [x, axis]
-  kernel :
-    func : concat
-  backward : concat_grad
-
 - op : conj
   args : (Tensor x)
   output : Tensor (out)

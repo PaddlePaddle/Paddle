@@ -162,6 +162,16 @@
     data_type : x
   inplace : (x -> out), (input_found_infinite -> output_found_infinite)
 
+- op : concat
+  args : (Tensor[] x, Scalar(int64_t) axis)
+  output : Tensor
+  infer_meta :
+    func : ConcatInferMeta
+    param : [x, axis]
+  kernel :
+    func : concat
+  backward : concat_grad
+
 - op : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
   output : Tensor
