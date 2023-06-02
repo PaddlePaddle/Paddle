@@ -398,6 +398,18 @@
     param : [x, axes, starts, ends, strides]
   backward : strided_slice_grad
 
+- op : sum
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : SumRawInferMeta
+    param : [x, axis, keepdim, reduce_all, out_dtype]
+  kernel :
+    func : sum_raw
+    param : [x, axis, keepdim, reduce_all, out_dtype]
+    data_type : x
+  backward : sum_grad
+
 - op : swish
   args : (Tensor x, float beta = 1.0f)
   output : Tensor(out)
