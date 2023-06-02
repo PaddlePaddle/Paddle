@@ -2698,12 +2698,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
 
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
-
   BindFleetWrapper(&m);
   BindIO(&m);
   BindParallelExecutor(m);

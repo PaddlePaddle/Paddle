@@ -280,8 +280,8 @@ class TestNanInfCheckResult(TestNanInfBase):
         x_np, y_np = self.generate_inputs(shape, "float16")
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
-        paddle.fluid.core.check_numerics("check_tensor", x)
-        paddle.fluid.core.check_numerics("check_tensor", y)
+        paddle.tensor.debugging.check_numerics(x, "to_tensor", "x")
+        paddle.tensor.debugging.check_numerics(y, "to_tensor", "y")
 
 
 if __name__ == '__main__':

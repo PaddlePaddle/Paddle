@@ -470,8 +470,8 @@ static void WriteToOutputDir(const phi::GPUContext& ctx,
       GetHintString<T>(op_type, var_name, tensor.place(), dev_id);
   std::string log_name = "gpu." + std::to_string(dev_id);
   int check_nan_inf_level = FLAGS_check_nan_inf_level;
-  int64_t cpu_stats_ptr = cpu_stats.data<int64_t>();
-  float cpu_values_ptr = cpu_values.data<float>();
+  int64_t* cpu_stats_ptr = cpu_stats.data<int64_t>();
+  float* cpu_values_ptr = cpu_values.data<float>();
   phi::funcs::WriteToFileForDifferentLevel<T, MT>(debug_info.c_str(),
                                                   tensor.numel(),
                                                   cpu_stats_ptr[0],
@@ -581,7 +581,7 @@ void CheckNumericsKernel(const Context& ctx,
   if (output_dir.size() > 0) {
     // Write log to output_dir.
     WriteToOutputDir<T, MT>(
-        ctx, tensor, stats, values, op_type, var_name, output_dir);
+        ctx, tensor, *stats, *values, op_type, var_name, output_dir);
   }
 
   if (check_nan_inf_level == 0 && stack_height_limit > 0) {
