@@ -43,7 +43,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op1_name", "op1_attr"),
                             op1_output_types,
                             nullptr);
-  VLOG(0) << op1->print();
+  op1->print(std::cout);
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
@@ -52,7 +52,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op2_name", "op2_attr"),
                             op2_output_types,
                             nullptr);
-  VLOG(0) << op2->print() << std::endl;
+  op2->print(std::cout);
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
                                           op2->GetResultByIndex(0)};
@@ -62,7 +62,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
                             nullptr);
-  VLOG(0) << op3->print() << std::endl;
+  op3->print(std::cout);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
                                           op3->GetResultByIndex(0)};
@@ -75,7 +75,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op4_name", "op4_attr"),
                             op4_output_types,
                             nullptr);
-  VLOG(0) << op4->print() << std::endl;
+  op4->print(std::cout);
 
   // Test 1:
   EXPECT_EQ(op1->GetResultByIndex(0).GetDefiningOp(), op1);

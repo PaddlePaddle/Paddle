@@ -16,11 +16,19 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/core/region.h"
 #include "paddle/ir/pass/pass_adaptor.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
 
 namespace ir {
+
+//===----------------------------------------------------------------------===//
+// Pass
+//===----------------------------------------------------------------------===//
+Pass::~Pass() = default;
+
+bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
 
 //----------------------------------------------------------------------------------------------//
 // PassAdaptor
@@ -34,7 +42,20 @@ void detail::PassAdaptor::Run(ir::Operation* op,
 void detail::PassAdaptor::RunImpl(ir::Operation* op,
                                   uint8_t opt_level,
                                   bool verify) {
-  // TODO(liuyuanle): Support block, region, etc.
+  auto last_am = analysis_manager();
+
+  for (size_t i = 0; i < op->num_regions(); ++i) {
+    auto& region = op->GetRegion(i);
+    for (auto it = region.begin(); it != region.end(); ++it) {
+      auto block = *it;
+      for (auto it = block->begin(); it != block->end(); ++it) {
+        auto op = *it;
+        AnalysisManagerHolder am(op, last_am.GetPassInstrumentor());
+        if (!RunPipeline(*pm_, op, am, opt_level, verify))
+          return SignalPassFailure();
+      }
+    }
+  }
   return;
 }
 
@@ -49,7 +70,7 @@ bool detail::PassAdaptor::RunPipeline(const PassManager& pm,
   }
 
   for (auto& pass : pm.passes()) {
-    if (pass->CanScheduleOn(op)) {
+    if (pass->CanApplyOn(op)) {
       if (!RunPass(pass.get(), op, am, opt_level, verify)) {
         return false;
       }
@@ -106,21 +127,21 @@ PassManager::PassManager(ir::IrContext* context, uint8_t opt_level)
   pass_adaptor_ = std::make_unique<detail::PassAdaptor>(this);
 }
 
-// bool PassManager::Run(ir::Program* program) const {
-//   if (!Initialize(context_)) {
-//     return false;
-//   }
-//   return Run(program->operation());
-// }
+bool PassManager::Run(ir::Program* program) {
+  if (!Initialize(context_)) {
+    return false;
+  }
+  return Run(program->module_op().operation());
+}
 
-bool PassManager::Run(ir::Operation* op) const {
+bool PassManager::Run(ir::Operation* op) {
   // Construct a analysis manager for the pipeline.
   AnalysisManagerHolder am(op, instrumentor_.get());
 
   return detail::PassAdaptor::RunPipeline(*this, op, am, opt_level_, verify_);
 }
 
-bool PassManager::Initialize(ir::IrContext* context) const {
+bool PassManager::Initialize(ir::IrContext* context) {
   for (auto& pass : passes()) {
     if (!pass->Initialize(context)) return false;
   }

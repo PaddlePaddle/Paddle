@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -35,7 +36,7 @@ class PassAdaptor;
 
 class PassManager {
  public:
-  explicit PassManager(ir::IrContext *context, uint8_t opt_level = 2);
+  explicit PassManager(IrContext *context, uint8_t opt_level = 2);
 
   ~PassManager() = default;
 
@@ -43,22 +44,82 @@ class PassManager {
 
   bool empty() const { return passes_.empty(); }
 
-  ir::IrContext *context() const { return context_; }
+  IrContext *context() const { return context_; }
 
-  // bool Run(ir::Program *program) const;
-  bool Run(ir::Operation *op) const;
+  bool Run(Program *program);
+
+  bool Run(Operation *op);
 
   void AddPass(std::unique_ptr<Pass> pass) {
     passes_.emplace_back(std::move(pass));
   }
 
+  class IRPrinterOption {
+   public:
+    using PrintCallBack = std::function<void(std::ostream &)>;
+
+    explicit IRPrinterOption(
+        const std::function<bool(Pass *, Operation *)> &enable_print_before =
+            [](Pass *, Operation *) { return true; },
+        const std::function<bool(Pass *, Operation *)> &enable_print_after =
+            [](Pass *, Operation *) { return true; },
+        bool print_module = true,
+        bool print_on_change = true,
+        std::ostream &os = std::cout)
+        : enable_print_before_(enable_print_before),
+          enable_print_after_(enable_print_after),
+          print_module_(print_module),
+          print_on_change_(print_on_change),
+          os(os) {
+      assert((enable_print_before_ || enable_print_after_) &&
+             "expected at least one valid filter function");
+    }
+
+    ~IRPrinterOption() = default;
+
+    void PrintBeforeIfEnabled(Pass *pass,
+                              Operation *op,
+                              const PrintCallBack &print_callback) {
+      if (enable_print_before_ && enable_print_before_(pass, op)) {
+        print_callback(os);
+      }
+    }
+
+    void PrintAfterIfEnabled(Pass *pass,
+                             Operation *op,
+                             const PrintCallBack &print_callback) {
+      if (enable_print_after_ && enable_print_after_(pass, op)) {
+        print_callback(os);
+      }
+    }
+
+    bool EnablePrintModule() const { return print_module_; }
+
+    bool EnablePrintOnChange() const { return print_on_change_; }
+
+   private:
+    // The enable_print_before_ and enable_print_after_ can be used to specify
+    // the pass to be printed. The default is to print all passes.
+    std::function<bool(Pass *, Operation *)> enable_print_before_;
+    std::function<bool(Pass *, Operation *)> enable_print_after_;
+
+    bool print_module_;
+    bool print_on_change_;
+
+    std::ostream &os;
+
+    // TODO(liuyuanle): Add flags to control printing behavior.
+  };
+
+  void EnableIRPrinting(std::unique_ptr<IRPrinterOption> config);
+
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
  private:
-  bool Initialize(ir::IrContext *context) const;
+  bool Initialize(IrContext *context);
 
  private:
-  ir::IrContext *context_;
+  IrContext *context_;
 
   uint8_t opt_level_;
 
