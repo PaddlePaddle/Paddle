@@ -166,7 +166,7 @@ inline ir::Operation* InsertConstantOperationForOptionalArg(
   ir::Type null_type = ir::Type(nullptr);
   ir::Operation* operation =
       ir::Operation::create({}, {}, {null_type}, op_info);
-  program->InsertOp(operation);
+  program->block()->push_back(operation);
   return operation;
 }
 
