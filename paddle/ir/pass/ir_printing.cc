@@ -26,7 +26,7 @@ namespace {
 void PrintIR(Operation *op, bool print_module, std::ostream &os) {
   // Otherwise, check to see if we are not printing at module scope.
   if (print_module) {
-    op->print(os << "\n");
+    op->Print(os << "\n");
     return;
   }
 
@@ -38,7 +38,7 @@ void PrintIR(Operation *op, bool print_module, std::ostream &os) {
   while (auto *parent_op = top_op->GetParentOp()) {
     top_op = parent_op;
   }
-  top_op->print(os);
+  top_op->Print(os);
 }
 }  // namespace
 

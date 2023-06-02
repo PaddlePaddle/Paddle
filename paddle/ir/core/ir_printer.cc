@@ -103,10 +103,10 @@ class IRPrinter : public BasicIRPrinter {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->GetRegion(i);
       for (auto it = region.begin(); it != region.end(); ++it) {
-        auto block = *it;
+        auto* block = *it;
         os << "{\n";
         for (auto it = block->begin(); it != block->end(); ++it) {
-          auto op = *it;
+          auto* op = *it;
           // TODO(lyk): add API to get opresults directly
           PrintOpResult(op);
           os << " =";
@@ -220,10 +220,9 @@ void Program::print(std::ostream& os) {
   printer.PrintProgram(this);
 }
 
-void Operation::print(std::ostream& os) {
+void Operation::Print(std::ostream& os) {
   IRPrinter printer(os);
   printer.PrintOperation(this);
-  os << newline;
 }
 
 void Type::print(std::ostream& os) const {

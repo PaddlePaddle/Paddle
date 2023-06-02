@@ -48,8 +48,6 @@ class PassManager {
 
   bool Run(Program *program);
 
-  bool Run(Operation *op);
-
   void AddPass(std::unique_ptr<Pass> pass) {
     passes_.emplace_back(std::move(pass));
   }
@@ -118,6 +116,8 @@ class PassManager {
  private:
   bool Initialize(IrContext *context);
 
+  bool Run(Operation *op);
+
  private:
   IrContext *context_;
 
@@ -131,6 +131,7 @@ class PassManager {
 
   std::unique_ptr<PassInstrumentor> instrumentor_;
 
+  // For access member of pass_adaptor_.
   friend class detail::PassAdaptor;
 };
 

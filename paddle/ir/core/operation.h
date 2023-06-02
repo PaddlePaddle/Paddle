@@ -52,7 +52,7 @@ class alignas(8) Operation final {
 
   OpOperand GetOperandByIndex(uint32_t index) const;
 
-  void print(std::ostream &os);
+  void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
 

@@ -47,9 +47,9 @@ void detail::PassAdaptor::RunImpl(ir::Operation* op,
   for (size_t i = 0; i < op->num_regions(); ++i) {
     auto& region = op->GetRegion(i);
     for (auto it = region.begin(); it != region.end(); ++it) {
-      auto block = *it;
+      auto* block = *it;
       for (auto it = block->begin(); it != block->end(); ++it) {
-        auto op = *it;
+        auto* op = *it;
         AnalysisManagerHolder am(op, last_am.GetPassInstrumentor());
         if (!RunPipeline(*pm_, op, am, opt_level, verify))
           return SignalPassFailure();
@@ -131,7 +131,7 @@ bool PassManager::Run(ir::Program* program) {
   if (!Initialize(context_)) {
     return false;
   }
-  return Run(program->module_op().operation());
+  return Run(program->module_op());
 }
 
 bool PassManager::Run(ir::Operation* op) {
