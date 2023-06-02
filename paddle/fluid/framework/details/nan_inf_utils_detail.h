@@ -58,9 +58,17 @@ struct TensorCheckerVisitor {
     auto* dev_ctx = reinterpret_cast<Context*>(
         platform::DeviceContextPool::Instance().Get(tensor.place()));
 
+    phi::DenseTensor stats;
+    phi::DenseTensor values;
     auto file_path = GetNanPath();
-    phi::CheckNumericsKernel<T, Context>(
-        *dev_ctx, tensor, op_type, var_name, GetNanInfStackLimit(), file_path);
+    phi::CheckNumericsKernel<T, Context>(*dev_ctx,
+                                         tensor,
+                                         op_type,
+                                         var_name,
+                                         GetNanInfStackLimit(),
+                                         file_path,
+                                         &stats,
+                                         &values);
   }
 
   std::string op_type;

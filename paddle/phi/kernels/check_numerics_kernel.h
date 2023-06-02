@@ -24,6 +24,8 @@ void CheckNumericsKernel(const Context& ctx,
                          const std::string& op_type,
                          const std::string& var_name,
                          const int stack_height_limit,
-                         const std::string& output_dir);
+                         const std::string& output_dir,
+                         DenseTensor* stats,
+                         DensrTensor* values);
 
 }  // namespace phi
