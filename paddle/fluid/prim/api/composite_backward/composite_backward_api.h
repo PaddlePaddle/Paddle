@@ -235,30 +235,6 @@ void subtract_grad(const Tensor& x,
 }
 
 template <typename T>
-void subtract_double_grad(const Tensor& y,
-                          const Tensor& grad_out,
-                          const paddle::optional<Tensor>& grad_x_grad,
-                          const paddle::optional<Tensor>& grad_y_grad,
-                          int axis,
-                          Tensor* grad_out_grad) {
-  if (grad_out_grad) {
-    // ddout = ddx - ddy
-    if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
-    } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
-      if (grad_x_grad) {
-        ddout = ddout + grad_x_grad.get();
-      }
-      if (grad_y_grad) {
-        ddout = ddout - grad_y_grad.get();
-      }
-      set_output<T>(ddout, grad_out_grad);
-    }
-  }
-}
-
-template <typename T>
 void add_grad(const Tensor& x,
               const Tensor& y,
               const Tensor& out_grad,
@@ -296,30 +272,6 @@ void add_grad(const Tensor& x,
       }
     } else {
       by_pass<T>(out_grad, dx);
-    }
-  }
-}
-
-template <typename T>
-void add_double_grad(const Tensor& y,
-                     const Tensor& grad_out,
-                     const paddle::optional<Tensor>& grad_x_grad,
-                     const paddle::optional<Tensor>& grad_y_grad,
-                     int axis,
-                     Tensor* grad_out_grad) {
-  if (grad_out_grad) {
-    // ddout = ddx + ddy
-    if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
-    } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
-      if (grad_x_grad) {
-        ddout = ddout + grad_x_grad.get();
-      }
-      if (grad_y_grad) {
-        ddout = ddout + grad_y_grad.get();
-      }
-      set_output<T>(ddout, grad_out_grad);
     }
   }
 }
@@ -551,75 +503,6 @@ void multiply_grad(const Tensor& x,
       }
     } else {
       set_output<T>(y_grad_unreduce, y_grad);
-    }
-  }
-}
-
-template <typename T>
-void multiply_double_grad(const Tensor& x,
-                          const Tensor& y,
-                          const Tensor& grad_out,
-                          const paddle::optional<Tensor>& grad_x_grad,
-                          const paddle::optional<Tensor>& grad_y_grad,
-                          int axis,
-                          Tensor* x_grad,
-                          Tensor* y_grad,
-                          Tensor* grad_out_grad) {
-  if (x_grad) {
-    if (grad_y_grad) {
-      auto dx = grad_y_grad.get() * grad_out;
-      if (dx.dims() != x.dims()) {
-        auto axes = get_reduce_dims_from_out(dx.dims(), x.dims());
-        if (!axes.size()) {
-          set_output<T>(dx, x_grad);
-        } else {
-          auto dx_reduce = dx.sum(phi::vectorize(axes), dx.dtype(), false);
-          if (dx_reduce.dims().size() != x.dims().size()) {
-            dx_reduce = reshape<T>(dx_reduce, x.shape());
-          }
-          set_output<T>(dx_reduce, x_grad);
-        }
-      } else {
-        set_output<T>(dx, x_grad);
-      }
-
-    } else {
-      x_grad = nullptr;
-    }
-  }
-  if (y_grad) {
-    if (grad_x_grad) {
-      auto dy = grad_x_grad.get() * grad_out;
-      if (dy.dims() != y.dims()) {
-        auto axes = get_reduce_dims_from_out(dy.dims(), y.dims());
-        if (!axes.size()) {
-          set_output<T>(dy, y_grad);
-        } else {
-          auto dy_reduce = dy.sum(phi::vectorize(axes), dy.dtype(), false);
-          if (dy_reduce.dims().size() != y.dims().size()) {
-            dy_reduce = reshape<T>(dy_reduce, y.shape());
-          }
-          set_output<T>(dy_reduce, y_grad);
-        }
-      } else {
-        set_output<T>(dy, y_grad);
-      }
-    } else {
-      y_grad = nullptr;
-    }
-  }
-  if (grad_out_grad) {
-    if (grad_x_grad && grad_y_grad) {
-      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
-    } else if (grad_x_grad) {
-      auto ddout = grad_x_grad.get() * y;
-      set_output<T>(ddout, grad_out_grad);
-    } else if (grad_y_grad) {
-      auto ddout = grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
-    } else {
-      grad_out_grad = nullptr;
     }
   }
 }
