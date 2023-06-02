@@ -31,13 +31,13 @@ class PipeLineModelLoader:
         self._optimizer = optimizer
         if self._model:
             assert isinstance(
-                self._model, fleet.meta.parallel.PipelineParallel
+                self._model, fleet.meta_parallel.PipelineParallel
             ), "must be pipeline model"
             if not hcg:
                 hcg = fleet.get_hybrid_communicate_group()
         self._hcg = hcg
 
-    def _create_sub_path_name(self):
+    def _create_subpath_name(self):
         return "mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
             *self._get_ranks()
         )
@@ -59,7 +59,7 @@ class PipeLineModelLoader:
         # only dp rank 0 do the work
         if self._hcg.get_data_parallel_rank() == 0:
             self._create_dir(save_dir)
-            sub_dir = os.path.join(save_dir, self.create_sub_path_name())
+            sub_dir = os.path.join(save_dir, self._create_subpath_name())
             self._create_dir(sub_dir)
             paddle.save(
                 self._model.state_dict(),
@@ -76,7 +76,7 @@ class PipeLineModelLoader:
             }
             paddle.save(meta_dict, os.path.join(sub_dir, "meta_state.pdopt"))
 
-    def list_subdirs(self, model_dir):
+    def _list_subdirs(self, model_dir):
         names = [
             os.path.basename(x)
             for x in os.listdir(model_dir)
@@ -89,7 +89,7 @@ class PipeLineModelLoader:
         ]
         return names
 
-    def parse_grid_dim(self, subdirs):
+    def _parse_grid_dim(self, subdirs):
         regs = [
             re.match(r'^mp_([0-9]{2})_sharding_([0-9]{2})_pp_([0-9]{2})$', e)
             for e in subdirs
@@ -113,13 +113,13 @@ class PipeLineModelLoader:
         with_opt=True,
     ):
 
-        subdirs = loader.list_subdirs(model_dir)
+        subdirs = self._list_subdirs(model_dir)
         assert subdirs, "no subdir found"
         (
             model_mp_degree,
             model_sharding_degree,
             model_pp_degree,
-        ) = loader.parse_grid_dim(subdirs)
+        ) = self._parse_grid_dim(subdirs)
         assert (
             model_mp_degree == self._hcg.get_model_parallel_world_size()
         ), "mp_degree can not change when train from checkpoint"
@@ -154,10 +154,9 @@ class PipeLineModelLoader:
             )
         # recover model
         self._load(converted_model_path, with_opt)
-
         # remove tmp files
         if converted_model_path != model_dir:
-            shutil.rmtree(converted_model_path, ignore_errors=True)
+            self._remove_converted_model(converted_model_path)
 
     def _convert_model(
         self,
@@ -196,10 +195,10 @@ class PipeLineModelLoader:
             segment_method,
         )
 
-        dp_rank = self._hcg.get_data_parallel_rank()
         mp_rank = self._hcg.get_model_parallel_rank()
         sharding_rank = self._hcg.get_sharding_parallel_rank()
         pp_rank = self._hcg.get_stage_id()
+        dp_rank = self._hcg.get_data_parallel_rank()
 
         if dp_rank == 0:
             if pp_rank == 0:
@@ -207,9 +206,9 @@ class PipeLineModelLoader:
                     src_model_dir, dest_model_dir, mp_rank, sharding_rank
                 )
             # barrier cross pp group
-            self._hcg.get_pipe_parallel_group().barrier()
+            paddle.distributed.barrier(self._hcg.get_pipe_parallel_group())
         # barrier cross dp group
-        self._hcg.get_data_parallel_group().barrier()
+        paddle.distributed.barrier(self._hcg.get_data_parallel_group())
         print(f"end convert model {src_model_dir} to {dest_model_dir}")
 
     def _load(self, model_dir, with_opt):
@@ -247,9 +246,18 @@ class PipeLineModelLoader:
                 )
         print(f"load model from {full_path} successfully")
 
+    def _remove_converted_model(self, sub_model_dir):
+        paddle.distributed.barrier()
+
+        pp_rank = self._hcg.get_stage_id()
+        dp_rank = self._hcg.get_data_parallel_rank()
+        if dp_rank == 0:
+            if pp_rank == 0:
+                shutil.rmtree(sub_model_dir, ignore_errors=True)
+
 
 if __name__ == "__main__":
     loader = PipeLineModelLoader()
-    subdirs = loader.list_subdirs("./output/epoch_0_step_90")
+    subdirs = loader._list_subdirs("./output/epoch_0_step_90")
     print(subdirs)
-    print(loader.parse_grid_dim(subdirs))
+    print(loader._parse_grid_dim(subdirs))

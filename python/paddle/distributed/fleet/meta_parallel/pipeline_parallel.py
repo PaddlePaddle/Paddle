@@ -125,7 +125,7 @@ class PipelineParallel(MetaParallelBase):
             )
 
     def get_num_virtual_stages(self):
-        return self._layers.numof_virtual_stages()
+        return self._layers.get_num_virtual_stages()
 
     def is_pipeline_first_stage(self, ignore_virtual=False):
         if not ignore_virtual:
