@@ -92,52 +92,71 @@ class PipeLineModelAdaptor:
         self._transformer_layer_num = transformer_layer_num
         self._segment_method = segment_method
 
+    def apply_for_pp_group(
+        self,
+        src_model_path: str,
+        dst_model_path: str,
+        mp_rank: int,
+        sharding_rank: int,
+    ):
+        layers = []
+        # 1、extract layers in the same pp group
+        group = self._src_parallel_config.pipe_parallel_group(
+            mp_rank, sharding_rank
+        )
+        src_dirs = [
+            "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
+                src_model_path, *e
+            )
+            for e in group
+        ]
+        tmp_dir = "./tmp_{:0>2d}_sharding_{:0>2d}".format(
+            mp_rank, sharding_rank
+        )
+        # first rank extract shared layer
+        with_shared = True
+        for dir in src_dirs:
+            print("extract layer params in dir %s" % dir)
+            layers.extend(
+                self.extract_layers(dir, with_shared, tmp_dir=tmp_dir)
+            )
+            with_shared = False
+        # 2、sort and unique layers
+        layers = self.sort_layers(layers)
+
+        # 3、resplit layers among pp group according new pp config
+        layer_segments = self.segment_layers(
+            layers, self._dst_parallel_config, self._segment_method
+        )
+        dst_group = self._dst_parallel_config.pipe_parallel_group(
+            mp_rank, sharding_rank
+        )
+        dst_dirs = [
+            "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
+                dst_model_path, *e
+            )
+            for e in dst_group
+        ]
+
+        # 4、merge layers belonging to the same node
+        for (layer_segment, dir_) in zip(layer_segments, dst_dirs):
+            print(f"merge {len(layer_segment)} layers to {dir_}")
+            self.merge_layers(layer_segment, dir_)
+
+        # 5、copy meta_state.pdopt
+        for (src_dir, dst_dir) in zip(src_dirs, dst_dirs):
+            shutil.copyfile(
+                f"{src_dir}/meta_state.pdopt",
+                f"{dst_dir}/meta_state.pdopt",
+            )
+        # 6、remove tmp dir
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
     def apply(self, src_model_path: str, dst_model_path: str):
+        # TODO(liuzhenhai): use multiple processs
         for i in range(self._src_parallel_config.mp):
             for j in range(self._src_parallel_config.sharding):
-                # TODO(liuzhenhai): use multiple processs
-                layers = []
-
-                # 1、extract layers in the same pp group
-                group = self._src_parallel_config.pipe_parallel_group(i, j)
-                src_dirs = [
-                    "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
-                        src_model_path, *e
-                    )
-                    for e in group
-                ]
-                # first rank extract shared layer
-                with_shared = True
-                for dir in src_dirs:
-                    print("extract layer params in dir %s" % dir)
-                    layers.extend(self.extract_layers(dir, with_shared))
-                    with_shared = False
-                # 2、sort and unique layers
-                layers = self.sort_layers(layers)
-
-                # 3、resplit layers among pp group according new pp config
-                layer_segments = self.segment_layers(
-                    layers, self._dst_parallel_config, self._segment_method
-                )
-                dst_group = self._dst_parallel_config.pipe_parallel_group(i, j)
-                dst_dirs = [
-                    "{}/mp_{:0>2d}_sharding_{:0>2d}_pp_{:0>2d}".format(
-                        dst_model_path, *e
-                    )
-                    for e in dst_group
-                ]
-
-                # 4、merge layers belonging to the same node
-                for (layer_segment, dir_) in zip(layer_segments, dst_dirs):
-                    print(f"merge {len(layer_segment)} layers to {dir_}")
-                    self.merge_layers(layer_segment, dir_)
-
-                # 5、copy meta_state.pdopt
-                for (src_dir, dst_dir) in zip(src_dirs, dst_dirs):
-                    shutil.copyfile(
-                        f"{src_dir}/meta_state.pdopt",
-                        f"{dst_dir}/meta_state.pdopt",
-                    )
+                self.apply_for_pp_group(src_model_path, dst_model_path, i, j)
 
     def peek_model(self, model_dir: str):
         for i in range(self._src_parallel_config.mp):
@@ -158,7 +177,9 @@ class PipeLineModelAdaptor:
         for (k, v) in state_dict.items():
             print(f"\t{k} -> {v.name}")
 
-    def extract_layers(self, dir: str, with_shared: bool):
+    def extract_layers(
+        self, dir: str, with_shared: bool, tmp_dir="./tmp_layer_files"
+    ):
         opt = paddle.load(dir + "/model_state.pdopt")
         params = paddle.load(dir + "/model.pdparams")
         shared_layer_parsed = False
@@ -222,7 +243,7 @@ class PipeLineModelAdaptor:
             # special treatment for embedding layer
             if (not with_shared) and "shared_layers" in layer_name:
                 continue
-            file_name = f"./tmp_layer_files/{layer_name}.tmp"
+            file_name = f"{tmp_dir}/{layer_name}.tmp"
             paddle.save(layer, file_name)
             ans.append((layer_name, file_name))
             print(f"save layer {layer_name} to {file_name}")

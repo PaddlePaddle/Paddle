@@ -37,6 +37,8 @@ class TestPPAdaptor(TestMultipleGpus):
     def test_hybrid_parallel_transformer_unbalanced_data(self):
         print(f"pwd {os.getcwd()}")
         self.run_mnist_2gpu('hybrid_parallel_pp_transformer_save.py')
+
+        # model load is tested
         self.run_mnist_2gpu(
             'hybrid_parallel_pp_transformer_save_with_virtual_stage.py'
         )
