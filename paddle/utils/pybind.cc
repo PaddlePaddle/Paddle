@@ -33,10 +33,10 @@ bool PyCheckTensor(PyObject* obj) {
 }
 
 paddle::Tensor CastPyArg2Tensor(PyObject* obj, Py_ssize_t arg_pos) {
-  if ( PyObject_TypeCheck(obj, p_tensor_type) ||
-       PyObject_TypeCheck(obj, p_string_tensor_type)) {                   
+  if (PyObject_TypeCheck(obj, p_tensor_type) ||
+      PyObject_TypeCheck(obj, p_string_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
-  } else {   
+  } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "argument (position %d) must be "
         "Tensor, but got %s",

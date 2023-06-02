@@ -667,13 +667,12 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           AutoInitTensorByPyArray(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_TypeCheck(
-                       kw_value, p_tensor_type)) {
+        } else if (PyObject_TypeCheck(kw_value, p_tensor_type)) {
           VLOG(6) << "Calling case5's or case6's initializer";
           AutoInitTensorByTensor(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_TypeCheck(kw_value,g_framework_tensor_pytype)) {
+        } else if (PyObject_TypeCheck(kw_value, g_framework_tensor_pytype)) {
           VLOG(6) << "Calling case7's initializer.";
           AutoInitTensorByTensor(py_tensor_ptr,
                                  kws_map,
@@ -772,8 +771,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       AutoInitTensorByTensor(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_TypeCheck(
-                   arg0_ptr, g_framework_tensor_pytype)) {
+    } else if (PyObject_TypeCheck(arg0_ptr, g_framework_tensor_pytype)) {
       VLOG(6) << "Calling case7's initializer.";
       AutoInitTensorByTensor(py_tensor_ptr,
                              kws_map,

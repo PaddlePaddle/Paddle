@@ -70,10 +70,10 @@ bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
-      PyObject_TypeCheck(*obj, g_vartype_pytype) ||  // NOLINT
-      PyObject_TypeCheck(*obj, g_varbase_pytype) ||  // NOLINT
-      (PyObject_TypeCheck(*obj, p_tensor_type) &&    // NOLINT
-       (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
+      PyObject_TypeCheck(*obj, g_vartype_pytype) ||        // NOLINT
+      PyObject_TypeCheck(*obj, g_varbase_pytype) ||        // NOLINT
+      (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
+       (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
   }
 
@@ -92,9 +92,9 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
   if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
-      PyObject_TypeCheck(*obj, g_varbase_pytype) ||  // NOLINT
-      (PyObject_TypeCheck(*obj, p_tensor_type) &&    // NOLINT
-       (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
+      PyObject_TypeCheck(*obj, g_varbase_pytype) ||        // NOLINT
+      (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
+       (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
   }
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
@@ -1029,7 +1029,7 @@ std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
     ::pybind11::detail::instance* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyTuple_GetItem(list, i);  // NOLINT
-      if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {         // NOLINT
+      if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {    // NOLINT
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument '%s' (position %d) must be list of Tensors, but "
             "got list of "
