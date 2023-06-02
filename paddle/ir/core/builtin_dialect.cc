@@ -40,11 +40,13 @@ void BuiltinDialect::initialize() {
                      ir::BoolAttribute,
                      ir::FloatAttribute,
                      ir::DoubleAttribute,
+                     ir::PointerAttribute,
                      ir::Int32_tAttribute,
                      ir::Int64_tAttribute,
                      ir::ArrayAttribute>();
 
-  RegisterOps<ir::GetParameterOp,
+  RegisterOps<ir::ModuleOp,
+              ir::GetParameterOp,
               ir::SetParameterOp,
               ir::CombineOp,
               ir::SliceOp>();

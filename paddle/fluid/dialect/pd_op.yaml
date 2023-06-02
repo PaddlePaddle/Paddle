@@ -11,9 +11,6 @@
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  infer_meta:
-    func: null
-    param: null
   inplace: null
   backward: null
 - name: fetch
@@ -29,8 +26,5 @@
   - {typename: 'Tensor[]', name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
-  infer_meta:
-    func: null
-    param: null
   inplace: null
   backward: null

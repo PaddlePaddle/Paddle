@@ -58,7 +58,7 @@ class TestCrossEntropyOp(OpTest):
         )
 
     def get_cross_entropy(self):
-        self.cross_entropy = np.asmatrix(
+        self.cross_entropy = np.array(
             [
                 [-np.log(self.x[i][self.label[i][0]])]
                 for i in range(self.x.shape[0])
@@ -91,7 +91,7 @@ class TestCrossEntropyOpRemoveLastDim(TestCrossEntropyOp):
         )
 
     def get_cross_entropy(self):
-        self.cross_entropy = np.asmatrix(
+        self.cross_entropy = np.array(
             [-np.log(self.x[i][self.label[i]]) for i in range(self.x.shape[0])],
             dtype="float64",
         )
@@ -140,7 +140,7 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
         self.label[np.arange(self.batch_size), self.label_index] = 1
 
     def get_cross_entropy(self):
-        self.cross_entropy = np.asmatrix(
+        self.cross_entropy = np.array(
             [
                 [-np.log(self.x[i][self.label_index[i]])]
                 for i in range(self.x.shape[0])
@@ -181,7 +181,7 @@ class TestCrossEntropyOp4(TestCrossEntropyOp):
         self.label = self.label_2d.reshape(self.shape + [1])
 
     def get_cross_entropy(self):
-        cross_entropy_2d = np.asmatrix(
+        cross_entropy_2d = np.array(
             [
                 [-np.log(self.X_2d[i][self.label_2d[i][0]])]
                 for i in range(self.X_2d.shape[0])
@@ -211,7 +211,7 @@ class TestCrossEntropyOp4RemoveLastDim(TestCrossEntropyOp4):
         self.label = self.label_2d.reshape(self.shape)
 
     def get_cross_entropy(self):
-        cross_entropy_2d = np.asmatrix(
+        cross_entropy_2d = np.array(
             [
                 [-np.log(self.X_2d[i][self.label_2d[i][0]])]
                 for i in range(self.X_2d.shape[0])
@@ -285,7 +285,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         )
 
     def get_cross_entropy(self):
-        cross_entropy_2d = np.asmatrix(
+        cross_entropy_2d = np.array(
             [
                 [-np.log(self.X_2d[i][self.label_index_2d[i]])]
                 for i in range(self.X_2d.shape[0])
@@ -321,7 +321,7 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
         )
 
     def get_cross_entropy(self):
-        self.cross_entropy = np.asmatrix(
+        self.cross_entropy = np.array(
             [
                 [-np.log(self.x[i][self.label[i][0]])]
                 if self.label[i][0] != self.ignore_index
@@ -351,7 +351,7 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
         )
 
     def get_cross_entropy(self):
-        self.cross_entropy = np.asmatrix(
+        self.cross_entropy = np.array(
             [
                 [-np.log(self.x[i][self.label[i]])]
                 if self.label[i] != self.ignore_index
