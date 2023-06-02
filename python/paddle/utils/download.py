@@ -22,7 +22,7 @@ import tarfile
 import time
 import zipfile
 
-import requests
+import httpx
 
 try:
     from tqdm import tqdm
@@ -167,7 +167,7 @@ def _get_download(url, fullname):
     # using requests.get method
     fname = osp.basename(fullname)
     try:
-        req = requests.get(url, stream=True)
+        req = httpx.get(url, stream=True)
     except Exception as e:  # requests.exceptions.ConnectionError
         logger.info(
             "Downloading {} from {} failed with exception {}".format(

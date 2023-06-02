@@ -64,7 +64,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def download(self, url, dirname, md5sum, save_name=None):
         import shutil
 
-        import requests
+        import httpx
 
         filename = os.path.join(
             dirname, url.split('/')[-1] if save_name is None else save_name
@@ -91,7 +91,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
             sys.stderr.write("Begin to download\n")
             try:
-                r = requests.get(url, stream=True)
+                r = httpx.get(url, stream=True)
                 total_length = r.headers.get('content-length')
 
                 if total_length is None:

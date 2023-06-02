@@ -16,7 +16,7 @@ import os
 import re
 import sys
 
-import requests
+import httpx
 
 PR_checkTemplate = ['Paddle']
 
@@ -73,7 +73,7 @@ def checkComments(url):
     headers = {
         'Authorization': 'token ' + GITHUB_API_TOKEN,
     }
-    response = requests.get(url, headers=headers).json()
+    response = httpx.get(url, headers=headers).json()
     return response
 
 
@@ -138,7 +138,7 @@ def get_a_pull(pull_id):
         'Authorization': 'token ' + GITHUB_API_TOKEN,
         'Accept': 'application/vnd.github+json',
     }
-    response = requests.request("GET", url, headers=headers, data=payload)
+    response = httpx.request("GET", url, headers=headers, data=payload)
     return response.json()
 
 

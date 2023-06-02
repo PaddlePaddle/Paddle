@@ -22,7 +22,7 @@ import shutil
 import sys
 import tempfile
 
-import requests
+import httpx
 
 import paddle
 import paddle.dataset
@@ -100,7 +100,7 @@ def download(url, module_name, md5sum, save_name=None):
         )
         sys.stderr.write("Begin to download\n")
         try:
-            r = requests.get(url, stream=True)
+            r = httpx.get(url, stream=True)
             total_length = r.headers.get('content-length')
 
             if total_length is None:
