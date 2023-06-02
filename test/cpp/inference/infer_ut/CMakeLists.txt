@@ -235,7 +235,7 @@ else()
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      gflags
+      gflags_static
       libprotobuf
       xxhash
       cryptopp-static
