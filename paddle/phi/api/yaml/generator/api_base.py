@@ -698,11 +698,27 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_name_tensor_map[input_name].append(
             (f"{PREFIX_TENSOR_NAME}{input_name}", False)
         )
-        input_tensor_code = (
-            input_tensor_code
-            + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
-        )
+        print(f"self.api:{self.api}")
+        if self.api == "add":
+            input_tensor_code = (
+                input_tensor_code
+                + f"""
+                auto inp_{input_name} = kernel.InputAt({kernel_param.index(input_name)});"""
+                + f"""
+                VLOG(2) << "inp_{input_name}:" << inp_{input_name}.dtype;"""
+                + f"""
+                VLOG(2) << "{input_name}:" << {input_name}.dtype();"""
+                + f"""
+    {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
+                + f"""
+                VLOG(2) << "{PREFIX_TENSOR_NAME}{input_name} dtype:" << {PREFIX_TENSOR_NAME}{input_name}->dtype();"""
+            )
+        else:
+            input_tensor_code = (
+                input_tensor_code
+                + f"""
+    {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
+            )
         return input_tensor_code
 
     def gene_selected_rows_input(

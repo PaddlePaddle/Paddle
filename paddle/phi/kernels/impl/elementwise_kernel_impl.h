@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "glog/logging.h"
 
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -61,7 +62,12 @@ namespace phi {
     inputs.emplace_back(&x);                                         \
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
+    VLOG(2) << "before Alloc, x dtype:" << x.dtype()                 \
+            << ", y dtype:" << y.dtype();                            \
     dev_ctx.template Alloc<T>(out);                                  \
+    VLOG(2) << "invoke BroadcastKernel, x dtype:" << x.dtype()       \
+            << ", y dtype:" << y.dtype();                            \
+    PADDLE_ENFORCE_NE(x.dtype(), y.dtype());                         \
     funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          \
         dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
   }

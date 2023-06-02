@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_kernel.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 
@@ -89,7 +91,14 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  VLOG(2) << "AddKernel x:" << x.dtype() << ", y:" << y.dtype();
   AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  // if (x.dtype() == y.dtype()) {
+  //   AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  // } else {
+  //   VLOG(2) << "x dtype != y dtype";
+  // CustomAdd
+  // }
 }
 
 template <typename T, typename Context>
