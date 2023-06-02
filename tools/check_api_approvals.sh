@@ -132,6 +132,7 @@ if [ "$OUTPUT_LOG" != "" ];then
             fi
         done</tmp/print.txt
     fi
+
     if [ "$sample_status" == 1 ] || [ "$samplecode" == "" ] ;then
         echo_line="print or std::cout is not recommended for direct use, please use logging or VLOG. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 review and approve.\n"
         check_approval 1 tianshuo78520a zhangbo9674
