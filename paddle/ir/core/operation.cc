@@ -44,7 +44,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              size_t num_regions) {
   // 0. Verify
   if (op_info) {
-    op_info.verify(inputs, output_types, attributes);
+    op_info.Verify(inputs, output_types, attributes);
   }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
