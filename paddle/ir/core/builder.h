@@ -18,7 +18,6 @@
 
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/program.h"
 
 namespace ir {
 ///

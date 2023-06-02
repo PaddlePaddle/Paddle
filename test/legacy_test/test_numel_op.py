@@ -31,7 +31,7 @@ class TestNumelOp(OpTest):
         self.inputs = {
             'Input': x,
         }
-        self.outputs = {'Out': np.array([np.size(x)])}
+        self.outputs = {'Out': np.array(np.size(x))}
 
     def test_check_output(self):
         self.check_output()
@@ -84,7 +84,7 @@ class TestNumelOpBF16(OpTest):
         self.init()
         x = np.random.random(self.shape).astype(np.float32)
         self.inputs = {'Input': convert_float_to_uint16(x)}
-        self.outputs = {'Out': np.array([np.size(x)])}
+        self.outputs = {'Out': np.array(np.size(x))}
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)

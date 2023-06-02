@@ -19,25 +19,22 @@
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
                                std::vector<paddle::dialect::OpAttributeInfo>,
-                               std::vector<paddle::dialect::OpOutputInfo>>;
+                               std::vector<paddle::dialect::OpOutputInfo>,
+                               paddle::dialect::OpRunTimeInfo>;
 
 namespace paddle {
 namespace dialect {
 class GetOpInfoInterface : public ir::OpInterfaceBase<GetOpInfoInterface> {
  public:
   struct Concept {
-    explicit Concept(OpInfoTuple (*get_op_info)(ir::Operation *))
+    explicit Concept(OpInfoTuple (*get_op_info)())
         : get_op_info_(get_op_info) {}
-    OpInfoTuple (*get_op_info_)(ir::Operation *);
+    OpInfoTuple (*get_op_info_)();
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static OpInfoTuple GetOpInfo(ir::Operation *op) {
-      ConcreteOp concret_op = op->dyn_cast<ConcreteOp>();
-      if (concret_op == nullptr) throw("concret_op is nullptr");
-      return concret_op.GetOpInfo();
-    }
+    static OpInfoTuple GetOpInfo() { return ConcreteOp::GetOpInfo(); }
 
     Model() : Concept(GetOpInfo) {}
   };
@@ -45,7 +42,7 @@ class GetOpInfoInterface : public ir::OpInterfaceBase<GetOpInfoInterface> {
   GetOpInfoInterface(ir::Operation *op, Concept *impl)
       : ir::OpInterfaceBase<GetOpInfoInterface>(op), impl_(impl) {}
 
-  OpInfoTuple GetOpInfo() { return impl_->get_op_info_(operation()); }
+  OpInfoTuple GetOpInfo() { return impl_->get_op_info_(); }
 
  private:
   Concept *impl_;

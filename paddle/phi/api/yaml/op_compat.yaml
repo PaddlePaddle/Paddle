@@ -415,6 +415,14 @@
   outputs :
     out : Out
 
+- op : check_finite_and_unscale_
+  inputs :
+    {x : X, scale: Scale}
+  outputs :
+    {out : Out, found_infinite: FoundInfinite}
+  get_expected_kernel_type :
+    check_finite_and_unscale_ : GetCheckFiniteAndUnscaleExpectedKernelType
+
 - op : cholesky
   inputs :
     x : X
@@ -2126,6 +2134,12 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
+
+- op : shape
+  inputs :
+    input : Input
+  outputs :
+    out : Out
 
 - op : shape
   extra :

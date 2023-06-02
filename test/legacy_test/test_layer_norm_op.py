@@ -17,7 +17,11 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from eager_op_test import OpTest, _set_use_system_allocator
+from eager_op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -212,6 +216,96 @@ class TestLayerNormOpByOpTest(OpTest):
         }
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestLayerNormBF16OpByOpTest(OpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper
+        self.public_python_api = layer_norm_wrapper
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            place=core.CUDAPlace(0),
+            no_check_set=["Mean", "Variance"],
+            atol=self.ori_atol,
+            rtol=self.ori_rtol,
+            check_prim=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
+            self.check_grad_input_list,
+            ['Y'],
+            max_relative_error=self.max_relative_error,
+            check_prim=True,
+        )
+
+    def initConfig(self):
+        self.ori_atol = 1e-2
+        self.ori_rtol = 1e-2
+
+        self.max_relative_error = 1e-5
+
+        self.dtype = np.uint16
+        self.x_shape = [2, 6, 6, 3]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = True
+        self.has_bias = True
+
+    def initTestCase(self):
+        np.random.seed(123)
+
+        self.D = reduce(
+            mul, self.x_shape[self.begin_norm_axis : len(self.x_shape)], 1
+        )
+        self.scale_shape = [self.D]
+        x = np.random.random(self.x_shape).astype("float32")
+        scale = (
+            np.random.random(self.scale_shape).astype("float32")
+            if self.has_scale
+            else None
+        )
+        bias = (
+            np.random.random(self.scale_shape).astype("float32")
+            if self.has_bias
+            else None
+        )
+        self.inputs = {
+            "X": convert_float_to_uint16(x),
+        }
+        self.check_grad_input_list = ['X']
+
+        if self.has_scale:
+            self.inputs.update({"Scale": convert_float_to_uint16(scale)})
+            self.check_grad_input_list.append('Scale')
+        if self.has_bias:
+            self.inputs.update({"Bias": convert_float_to_uint16(bias)})
+            self.check_grad_input_list.append('Bias')
+
+        self.attrs = {
+            "epsilon": self.epsilon,
+            "begin_norm_axis": self.begin_norm_axis,
+        }
+        y, mean, variance = _reference_layer_norm_naive(
+            x, scale, bias, self.epsilon, self.begin_norm_axis
+        )
+        self.outputs = {
+            "Y": convert_float_to_uint16(y),
+            "Mean": convert_float_to_uint16(mean),
+            "Variance": convert_float_to_uint16(variance),
+        }
+
+
 class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
     def initConfig(self):
         self.rev_comp_atol = 1e-6
@@ -227,6 +321,21 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
+        self.x_shape = [2, 6, 6, 3]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = False
+        self.has_bias = False
+
+
+class TestLayerNormBF16OpByOpTest_case2(TestLayerNormBF16OpByOpTest):
+    def initConfig(self):
+        self.ori_atol = 1e-2
+        self.ori_rtol = 1e-2
+
+        self.max_relative_error = 1e-5
+
+        self.dtype = np.uint16
         self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
@@ -256,6 +365,21 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
         self.has_bias = False
 
 
+class TestLayerNormBF16OpByOpTest_case3(TestLayerNormBF16OpByOpTest):
+    def initConfig(self):
+        self.ori_atol = 1e-2
+        self.ori_rtol = 1e-2
+
+        self.max_relative_error = 1e-5
+
+        self.dtype = np.uint16
+        self.x_shape = [2, 6, 6, 3]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = True
+        self.has_bias = False
+
+
 class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
     def initConfig(self):
         self.rev_comp_atol = 1e-6
@@ -271,6 +395,21 @@ class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
+        self.x_shape = [2, 6, 6, 3]
+        self.epsilon = 0.00001
+        self.begin_norm_axis = 1
+        self.has_scale = False
+        self.has_bias = True
+
+
+class TestLayerNormBF16OpByOpTest_case4(TestLayerNormBF16OpByOpTest):
+    def initConfig(self):
+        self.ori_atol = 1e-2
+        self.ori_rtol = 1e-2
+
+        self.max_relative_error = 1e-5
+
+        self.dtype = np.uint16
         self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1

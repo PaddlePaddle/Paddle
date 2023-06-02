@@ -32,19 +32,13 @@ OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
   return *this;
 }
 
-bool OpOperand::operator==(OpOperand other) const {
-  return impl_ == other.impl_;
-}
+OpOperand OpOperand::next_use() const { return impl_->next_use(); }
 
-bool OpOperand::operator!=(OpOperand other) const {
-  return impl_ != other.impl_;
-}
+Value OpOperand::source() const { return impl_->source(); }
 
-bool OpOperand::operator!() const { return impl_ == nullptr; }
+Operation *OpOperand::owner() const { return impl_->owner(); }
 
-OpOperand::operator bool() const { return impl_; }
-
-detail::OpOperandImpl *OpOperand::impl() const { return impl_; }
+// detail::OpOperandImpl *OpOperand::impl() const { return impl_; }
 
 // Value
 Value::Value(const detail::ValueImpl *impl)
@@ -80,6 +74,8 @@ Value::use_iterator Value::begin() const {
 }
 
 Value::use_iterator Value::end() const { return Value::use_iterator(); }
+
+OpOperand Value::first_use() const { return impl()->first_use(); }
 
 // OpResult
 bool OpResult::classof(Value value) {

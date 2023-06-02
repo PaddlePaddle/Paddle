@@ -148,9 +148,9 @@ class TestSliceOp_decs_dim(OpTest):
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
-        self.decrease_axis = [0]
+        self.decrease_axis = []
         self.infer_flags = [1, 1, 1]
-        self.out = self.input[1, 0:3, 2:4, :]
+        self.out = self.input[1:2, 0:3, 2:4, :]
 
     def test_check_output(self):
         self.check_output()
@@ -531,9 +531,8 @@ class TestBF16(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # pad not support bfloat16, so we can't test prim.
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_prim=True)
 
 
 # Test python API
