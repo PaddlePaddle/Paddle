@@ -1213,11 +1213,6 @@ class TestSqrt_ZeroDim(TestSqrt):
         self.shape = []
 
 
-class TestSqrtPrim_ZeroDim(TestSqrt):
-    def init_shape(self):
-        self.shape = []
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",
@@ -1467,31 +1462,6 @@ class TestFloor(TestActivation):
     def test_check_grad(self):
         pass
 
-
-class TestFloor_ZeroDim(TestFloor):
-    def init_shape(self):
-        self.shape = []
-
-
-class TestFloor_Prim(TestActivation):
-    def setUp(self):
-        self.op_type = "floor"
-        self.prim_op_type = "prim"
-        self.python_api = paddle.floor
-        self.public_python_api = paddle.floor
-        self.init_dtype()
-        self.init_shape()
-
-        np.random.seed(1024)
-        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out = np.floor(x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-
-    def init_shape(self):
-        self.shape = [10, 12]
-
     def test_check_grad_for_prim(self):
         # the gradient on floor, ceil, round is undefined.
         # we return zero as gradient, but the numpy return nan.
@@ -1505,6 +1475,11 @@ class TestFloor_Prim(TestActivation):
                 check_prim=True,
                 only_check_prim=True,
             )
+
+
+class TestFloor_ZeroDim(TestFloor):
+    def init_shape(self):
+        self.shape = []
 
 
 class TestCos(TestActivation):
