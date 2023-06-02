@@ -653,7 +653,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     int64_t numel = in->numel();
     const void* sendbuff = in->data();
-    void* recvbuff = out->mutable_data<T>(place);
+    void* recvbuff = ctx.device_context().Alloc<T>(out);
     int rid = ctx.Attr<int>("ring_id");
     auto comm = platform::XCCLCommContext::Instance(place.GetDeviceType())
                     .Get(rid, place);
