@@ -5737,12 +5737,12 @@ def ldexp(x, y, name=None):
         out = x * 2^{y}
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        y (int|float|Tensor):  If it is an N-D Tensor, it should typically be an integer tensor.
+        x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+        y (Tensor):  A Tensor of exponents, typically integers.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
-        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
+        out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
 
     Examples:
 
@@ -5751,14 +5751,6 @@ def ldexp(x, y, name=None):
             import paddle
 
             x = paddle.to_tensor([1, 2, 3], dtype='float32')
-
-            # example 1: y is an int
-            res = paddle.ldexp(x, 2)
-            print(res)
-            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [4., 8., 12.])
-
-            # example 2: y is a Tensor
             y = paddle.to_tensor([2, 3, 4], dtype='int32')
             res = paddle.ldexp(x, y)
             print(res)
@@ -5767,16 +5759,14 @@ def ldexp(x, y, name=None):
 
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
-        raise ValueError('x must be tensor type, but received: %s ' % (x.dtype))
-    if isinstance(y, (int, float)):
-        y = paddle.to_tensor(y, dtype="float32")
-    if isinstance(y, (paddle.Tensor, Variable)):
-        y = paddle.cast(y, dtype="float32")
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
+        out_dtype = paddle.float64
     else:
-        raise ValueError(
-            'y must be scalar or integer tensor type, but received: %s '
-            % (y.dtype)
-        )
-    x = paddle.cast(x, dtype="float32")
-    two = paddle.to_tensor(2, dtype=y.dtype)
+        out_dtype = paddle.float32
+    x = paddle.cast(x, dtype=out_dtype)
+    y = paddle.cast(y, dtype=out_dtype)
+    two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply(x, paddle.pow(two, y))
