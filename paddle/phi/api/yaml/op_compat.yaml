@@ -2383,6 +2383,10 @@
 
 - op : swish
   backward : swish_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
