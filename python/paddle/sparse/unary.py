@@ -733,7 +733,6 @@ def expm1(x, name=None):
     return _C_ops.sparse_expm1(x)
 
 
-@dygraph_only
 def reshape(x, shape, name=None):
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -787,7 +786,80 @@ def reshape(x, shape, name=None):
             # the shape of sp_out is [1, 2, 2, 3, 3]
 
     """
-    return _C_ops.sparse_reshape(x, shape)
+    if in_dynamic_mode():
+        return _C_ops.sparse_reshape(x, shape)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'uint16',
+            ],
+            'reshape',
+        )
+        check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
+
+        def get_attr_shape(list_shape):
+            unk_dim_idx = -1
+            attrs_shape = []
+            for dim_idx, dim_size in enumerate(list_shape):
+                if isinstance(dim_size, Variable):
+                    attrs_shape.append(-1)
+                else:
+                    attrs_shape.append(dim_size)
+                    if dim_size == -1:
+                        assert unk_dim_idx == -1, (
+                            "Only one dimension value of 'shape' in reshape can "
+                            "be -1. But received shape[%d] is also -1.\n"
+                            "\n\t# N = x.shape()[2]\t\t# N is an int. "
+                            "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
+                            "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
+                            "\t# z.shape is [-1, -1, 4]\n\n"
+                            "    If your target shape in Reshape represents dynamic shape, "
+                            "please turn it into a Tensor under @to_static. See above example for details."
+                            % dim_idx
+                        )
+                        unk_dim_idx = dim_idx
+                    elif dim_size == 0:
+                        assert dim_idx < len(x.shape), (
+                            "The index of 0 in `shape` must be less than "
+                            "the input tensor X's dimensions. "
+                            "But received shape[%d] = 0, X's dimensions = %d."
+                            % (dim_idx, len(x.shape))
+                        )
+                    else:
+                        assert dim_size > 0, (
+                            "Each dimension value of 'shape' in reshape must not "
+                            "be negative except one unknown dimension. "
+                            "But received shape[%d] = %s."
+                            % (dim_idx, str(dim_size))
+                        )
+            return attrs_shape
+
+        inputs = {"x": x}
+        attrs = {}
+        if isinstance(shape, Variable):
+            shape.stop_gradient = True
+            inputs["shape"] = shape
+        elif isinstance(shape, (list, tuple)):
+            attrs["shape"] = get_attr_shape(shape)
+
+        helper = LayerHelper('sparse_reshape')
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='sparse_reshape',
+            inputs=inputs,
+            outputs={'out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 def isnan(x, name=None):
