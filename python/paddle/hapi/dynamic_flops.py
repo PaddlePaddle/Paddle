@@ -87,6 +87,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             FLOPs = paddle.flops(lenet, [1, 1, 28, 28], custom_ops= {nn.LeakyReLU: count_leaky_relu},
                                 print_detail=True)
             print(FLOPs)
+            print(1111)
 
             #+--------------+-----------------+-----------------+--------+--------+
             #|  Layer Name  |   Input Shape   |   Output Shape  | Params | Flops  |
@@ -104,7 +105,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             #Total Flops: 347560     Total Params: 61610
     """
     if isinstance(net, nn.Layer):
-        print(1111)
         # If net is a dy2stat model, net.forward is StaticFunction instance,
         # we set net.forward to original forward function.
         _, net.forward = unwrap_decorators(net.forward)
