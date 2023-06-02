@@ -216,26 +216,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           phi::distributed::NCCLDynamicCheck::CheckShape(
               *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm);
         }
-        auto comm_context = this->GetCommContext();
 
         int64_t in_row_size = in_tensor.numel() / in_dim[0],
                 out_row_size = out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
+        auto comm_context = this->GetCommContext();
         comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
           input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
-          comm_context->Send(input_partial, i, stream);
+          comm_context->Send(input_partial, in_numel, i, stream);
           in_offset += in_numel;
 
           out_numel = out_size_each_rank[i] * out_row_size;
           output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
-          comm_context->Recv(&output_partial, i, stream);
+          comm_context->Recv(&output_partial, out_numel, i, stream);
           out_offset += out_numel;
         }
+        VLOG(3) << "Warning: alltoall send/recv finished.";
         comm_context->GroupEnd();
+        VLOG(3) << "Warning: alltoall groupend finished.";
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -352,13 +354,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
           comm_context->GroupStart();
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
-            comm_context->Send(partial_tensor, i, stream);
+            comm_context->Send(partial_tensor, numel, i, stream);
             offset += numel;
           }
-          comm_context->Recv(out_tensor, opts.root_rank, stream);
+          comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
           comm_context->GroupEnd();
         } else {
-          comm_context->Recv(out_tensor, opts.root_rank, stream);
+          comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
         }
       },
       in_tensor,
@@ -412,11 +414,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     if (rank_ == opts.root_rank) {
       for (auto i = 0; i < size_; i++) {
         auto& gather_tensor = gather_tensors[i];
-        comm_context->Recv(&gather_tensor, i, stream);
+        comm_context->Recv(&gather_tensor, gather_tensor.numel(), i, stream);
       }
     }
     // send to root
-    comm_context->Send(in_tensor, opts.root_rank, stream);
+    comm_context->Send(in_tensor, in_tensor.numel(), opts.root_rank, stream);
     comm_context->GroupEnd();
   };
   return RunFnInNCCLEnv(
@@ -440,7 +442,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->Recv(tensor, src_rank, stream);
+        comm_context->Recv(tensor, tensor->numel(), src_rank, stream);
       },
       *tensor,
       CommType::RECV,
@@ -462,7 +464,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->Send(tensor_maybe_partial, dst_rank, stream);
+        comm_context->Send(tensor_maybe_partial,
+                           tensor_maybe_partial.numel(),
+                           dst_rank,
+                           stream);
       },
       tensor_maybe_partial,
       CommType::SEND,
@@ -847,7 +852,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
           const gpuStream_t& stream,
           int dst_rank) {
         auto comm_context = this->GetCommContext();
-        comm_context->Send(input, dst_rank, stream);
+        comm_context->Send(input, input.numel(), dst_rank, stream);
       },
       dst_rank,
       CommType::SEND);
@@ -865,7 +870,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
           const gpuStream_t& stream,
           int src_rank) {
         auto comm_context = this->GetCommContext();
-        comm_context->Recv(&output, src_rank, stream);
+        comm_context->Recv(&output, output.numel(), src_rank, stream);
       },
       src_rank,
       CommType::RECV);
@@ -949,19 +954,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           phi::DenseTensor& output,
           ncclComm_t comm,
           const gpuStream_t& stream) {
-        auto comm_context = this->GetCommContext();
         size_t offset = 0;
+        size_t count = input.numel() / size_;
+        auto comm_context = this->GetCommContext();
         comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
-          auto input_data = reinterpret_cast<phi::DenseTensor*>(
-              GetPointerByOffset(input.data(), offset, input.dtype()));
-          comm_context->Send(*input_data, i, stream);
-          auto output_data = reinterpret_cast<phi::DenseTensor*>(
-              GetPointerByOffset(output.data(), offset, input.dtype()));
-          comm_context->Recv(output_data, i, stream);
-          offset += input.numel() / size_;
+          // auto input_data =
+          // reinterpret_cast<phi::DenseTensor*>(GetPointerByOffset(input.data(),
+          // offset, input.dtype()));
+          auto input_data = GetPartialTensor(input, offset, count);
+          comm_context->Send(input_data, count, i, stream);
+          auto output_data = GetPartialTensor(output, offset, count);
+          comm_context->Recv(&output_data, count, i, stream);
+          offset += count;
         }
-        GroupEnd();
+        VLOG(3) << "Warning: alltoall send/recv finished.";
+        comm_context->GroupEnd();
+        VLOG(3) << "Warning: alltoall groupend finished.";
       },
       CommType::ALLTOALL);
 }
@@ -1012,18 +1021,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
           const gpuStream_t& stream) {
         auto comm_context = this->GetCommContext();
         size_t offset = 0;
+        size_t count = input.numel() / size_;
         if (rank_ == opts.root_rank) {
           comm_context->GroupStart();
           for (auto i = 0; i < size_; i++) {
             auto input_data = reinterpret_cast<phi::DenseTensor*>(
                 GetPointerByOffset(input.data(), offset, input.dtype()));
-            comm_context->Send(*input_data, i, stream);
-            offset += input.numel() / size_;
+            comm_context->Send(*input_data, count, i, stream);
+            offset += count;
           }
-          comm_context->Recv(&output, opts.root_rank, stream);
+          comm_context->Recv(&output, count, opts.root_rank, stream);
           comm_context->GroupEnd();
         } else {
-          comm_context->Recv(&output, opts.root_rank, stream);
+          comm_context->Recv(&output, count, opts.root_rank, stream);
         }
       },
       CommType::SCATTER);
