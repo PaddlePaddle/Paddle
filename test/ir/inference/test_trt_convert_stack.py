@@ -32,8 +32,10 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        # The input dimension should be less than the set axis.
+        # axis must be inside [-(rank+1), rank+1)
         if len(inputs['stack_input1'].shape) < attrs[0]['axis']:
+            return False
+        if -(len(inputs['stack_input1'].shape) + 1) > attrs[0]['axis']:
             return False
 
         return True
@@ -48,6 +50,8 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                 return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.random.random([24]).astype(np.float32)
+            elif self.dims == 0:
+                return np.random.random([]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
@@ -58,6 +62,8 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                 return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.random.random([24]).astype(np.float32)
+            elif self.dims == 0:
+                return np.random.random([]).astype(np.float32)
 
         def generate_input3(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
@@ -68,8 +74,10 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                 return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.random.random([24]).astype(np.float32)
+            elif self.dims == 0:
+                return np.random.random([]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
                 for axis in [-2, -1, 0, 1, 2, 3]:
                     self.dims = dims
@@ -175,6 +183,22 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                     "stack_input1": [24],
                     "stack_input2": [24],
                     "stack_input3": [24],
+                }
+            elif self.dims == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "stack_input1": [],
+                    "stack_input2": [],
+                    "stack_input3": [],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "stack_input1": [],
+                    "stack_input2": [],
+                    "stack_input3": [],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "stack_input1": [],
+                    "stack_input2": [],
+                    "stack_input3": [],
                 }
 
         def clear_dynamic_shape():

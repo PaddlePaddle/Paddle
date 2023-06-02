@@ -52,6 +52,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/xccl_context.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
@@ -287,7 +288,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (place == tensor.place()) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -311,7 +312,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (platform::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -480,7 +481,7 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The destion Tensor(%s) can not copy when it is not empty.",
+        "The destination Tensor(%s) can not copy when it is not empty.",
         dst.Name()));
   }
 }
@@ -537,7 +538,7 @@ void BindImperative(py::module *m_ptr) {
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
-          // 2. construcct LoDTensor
+          // 2. construct LoDTensor
           phi::DenseTensor t;
           SetTensorFromPyArray<platform::CPUPlace>(
               &t, array, platform::CPUPlace(), true);
@@ -577,7 +578,7 @@ void BindImperative(py::module *m_ptr) {
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"
                 "_generator' to locate the data causes this issue."));
-        // 2. construcct LoDTensor
+        // 2. construct LoDTensor
         phi::DenseTensor t;
         SetTensorFromPyArray<platform::CPUPlace>(
             &t, array, platform::CPUPlace(), true);
@@ -786,7 +787,7 @@ void BindImperative(py::module *m_ptr) {
             // inplace operator for the VarBase self.
             self->BumpInplaceVersion();
 
-            // 1. Check argumnets
+            // 1. Check arguments
             bool parse_index = true;
 
             // Check whether _index can be parsed.
@@ -1060,7 +1061,7 @@ void BindImperative(py::module *m_ptr) {
                // not correct.
                if (static_cast<int>(decrease_axis.size()) ==
                    tensor->dims().size()) {
-                 VLOG(0) << "Warning: In Tensor '__getitem__', if the number "
+                 VLOG(1) << "Warning: In Tensor '__getitem__', if the number "
                             "of scalar "
                             "elements "
                             "in the index is equal to the rank of the Tensor, "
@@ -1511,7 +1512,7 @@ void BindImperative(py::module *m_ptr) {
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
                      "Imperative SelectedRows allreduce is not supported when "
-                     "paddle is compiled with NCCL verison lower than v2.2.12. "
+                     "paddle is compiled with NCCL version lower than v2.2.12. "
                      "You can set is_sparse=False for the Layer containing "
                      "this argument, such as Embedding(is_sparse=False)."));
                }
@@ -1585,7 +1586,7 @@ void BindImperative(py::module *m_ptr) {
              This hook will be called every time the gradient of current Tensor has been fully calculated.
 
              There are two differences with `_register_grad_hook`:
-             1. This backward hook will be executed after the gradient accumulation completed across batchs,
+             1. This backward hook will be executed after the gradient accumulation completed across batches,
                 but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
                 completed in current batch.
              2. This backward hook function should have the following signature:
@@ -2155,6 +2156,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_use_promote",
+                    &imperative::Tracer::GetUsePromote,
+                    &imperative::Tracer::SetUsePromote)
       .def_property("_amp_level",
                     &imperative::Tracer::GetAmpLevel,
                     &imperative::Tracer::SetAmpLevel)
@@ -2476,8 +2480,9 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2517,6 +2522,19 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  py::class_<imperative::XCCLParallelContext,
+             imperative::ParallelContext,
+             std::shared_ptr<imperative::XCCLParallelContext>>(
+      m, "XCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CustomPlace &>())
+      .def("init", [](imperative::XCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::XCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
 #if defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::BKCLParallelContext,
              imperative::ParallelContext,
@@ -2545,7 +2563,7 @@ void BindImperative(py::module *m_ptr) {
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<imperative::HeterParallelContext,
              imperative::ParallelContext,
              std::shared_ptr<imperative::HeterParallelContext>>(

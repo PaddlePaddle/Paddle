@@ -757,9 +757,9 @@ function run_linux_cpu_test() {
     if [ -d "${PADDLE_ROOT}/dist/" ]; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/eager_op_test.py ${PADDLE_ROOT}/build/python
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
-    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/eager_op_test.py ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
+    cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -2235,14 +2235,70 @@ set +x
             fi
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
+        failed_test_lists=''
         collect_failed_tests
+        xputest_error=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_times=0
+        exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=10
+        is_retry_execuate=0
+        if [ -n "$failed_test_lists" ];then
+            xputest_error=1
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] )
+                    do
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        echo "========================================="
+
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        rm -f $tmp_dir/*
+                        failed_test_lists=''
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        collect_failed_tests
+                        exec_times=$[$exec_times+1]
+                    done
+            else
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
+            fi
+
+        fi
 set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         python ${PADDLE_ROOT}/build/test/xpu/get_test_cover_info.py
         unset XPU_OP_LIST_DIR
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
+        if [ "$xputest_error" != 0 ];then
+            show_ut_retry_result
         fi
     fi
 }
@@ -2644,8 +2700,8 @@ function parallel_test() {
     if ls ${PADDLE_ROOT}/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/dist/*whl
     fi
-    cp ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/testsuite.py ${PADDLE_ROOT}/build/python
-    cp -r ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/white_list ${PADDLE_ROOT}/build/python
+    cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
+    cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
     ut_total_startTime_s=`date +%s`
     if [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
@@ -3512,6 +3568,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
@@ -3525,6 +3582,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
@@ -3538,6 +3596,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
@@ -3551,6 +3610,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3

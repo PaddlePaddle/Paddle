@@ -21,12 +21,12 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     _copy_dist_attr_from_cpp,
     _copy_dist_attr_from_cpp_for_graph,
     _copy_dist_attr_to_cpp,
@@ -130,7 +130,7 @@ def get_program():
         )
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(
+        dataloader = paddle.fluid.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(

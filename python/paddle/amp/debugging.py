@@ -315,7 +315,7 @@ def enable_operator_stats_collection():
     """
     Enable to collect the number of operators for different data types.
     The statistical data are categorized according to four data types, namely
-    float32, float16, bfloat16 and others. This funciton is used in pair with
+    float32, float16, bfloat16 and others. This function is used in pair with
     the corresponding disable function.
 
     Examples:
@@ -351,7 +351,7 @@ def enable_operator_stats_collection():
 def disable_operator_stats_collection():
     """
     Disable the collection the number of operators for different data types.
-    This funciton is used in pair with the corresponding enable function.
+    This function is used in pair with the corresponding enable function.
     The statistical data are categorized according to four data types, namely
     float32, float16, bfloat16 and others, and will be printed after the
     function call.
@@ -436,10 +436,10 @@ def compare_accuracy(
     This is a precision comparison tool that can be used to compare log data of float16 and float32.
 
     Args:
-        dump_path(str): The path of the running log, such as the log for execution using the fp32 type.
-        another_dump_path(str): the path of another running log ,such as the log for execution using the fp16 type.
+        dump_path(str): The path of the running log, such as the log for execution using the float32 data type.
+        another_dump_path(str): the path of another running log ,such as the log for execution using the float16 data type.
         output_filename(str): the excel file nmae of compare output.
-        loss_scale(float): the loss_scale during the training phase.
+        loss_scale(float, optional): the loss_scale during the training phase. Default is 1.
         dump_all_tensors(bool, optional): dump all tensor, It is currently not support. Default is False.
 
     Examples:

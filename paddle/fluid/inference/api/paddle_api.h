@@ -38,7 +38,8 @@ namespace paddle {
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
 using PaddleDataLayout = paddle_infer::DataLayout;
-using paddle_infer::Exp_OutputHookFunc;
+using paddle_infer::OutputTensorHookFunc;
+using paddle_infer::OutputTensorHookFunc_V2;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -317,11 +318,21 @@ class PD_INFER_DECL PaddlePredictor {
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
-  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// std::string&, const paddle_infer::Tensor&>). Here, the first parameter is
+  /// op's type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  virtual void RegisterOutputHook(const OutputTensorHookFunc& hookfunc) {}
+
+  ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
+  virtual void RegisterOutputHook(const OutputTensorHookFunc_V2& hookfunc) {}
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
@@ -360,7 +371,6 @@ struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   /// GPU related fields.
   bool use_xpu{false};
   bool use_gpu{false};
-  bool use_npu{false};
   int device{0};
   float fraction_of_gpu_memory{
       -1.f};  ///< Change to a float in (0,1] if needed.
@@ -472,6 +482,13 @@ class Predictor;
 class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
+struct XpuRuntimeConfig {
+  void* stream{nullptr};
+  size_t l3_size{16773120};
+  void* l3_ptr{nullptr};
+  size_t l3_autotune_size{0};
+};
+
 // Unstable interface, may be modified or deleted in the future.
 class PD_INFER_DECL InternalUtils {
  public:
@@ -480,8 +497,8 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
-  static bool RunWithExternalStream(paddle_infer::Predictor* pred,
-                                    void* stream);
+  static bool RunWithRuntimeConfig(paddle_infer::Predictor* pred, void* config);
+
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
 

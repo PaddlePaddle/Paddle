@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature ExponentialOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("exponential", {"X"}, {"lambda"}, {"Out"});
 }
 
