@@ -123,6 +123,19 @@ class FuseAdamWPass(CPPPassWrapper):
         return PassType.FUSION_OPT
 
 
+@register_pass("fuse_dot_product_attention")
+class FuseDotProductAttentionPass(CPPPassWrapper):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def cpp_name(self):
+        return "fuse_dot_product_attention_pass"
+
+    def _type(self):
+        return PassType.FUSION_OPT
+
+
 @register_pass("fuse_optimizer")
 class FuseOptimizerPass(CPPPassWrapper):
     def __init__(self):

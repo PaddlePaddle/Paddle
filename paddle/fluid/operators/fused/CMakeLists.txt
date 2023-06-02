@@ -28,7 +28,8 @@ register_operators(
   resnet_unit_op
   fused_gemm_epilogue_op
   fused_gate_attention_op
-  resnet_basic_block_op)
+  resnet_basic_block_op
+  fused_dot_product_attention_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -97,5 +98,9 @@ if(WITH_GPU OR WITH_ROCM)
 
   if(CUDA_VERSION GREATER_EQUAL 11.6)
     op_library(fused_gemm_epilogue_op)
+  endif()
+
+  if(WITH_CUDNN_FRONTEND)
+    op_library(fused_dot_product_attention_op)
   endif()
 endif()

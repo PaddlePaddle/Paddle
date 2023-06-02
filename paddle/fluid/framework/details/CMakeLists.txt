@@ -379,6 +379,11 @@ set(IR_PASS_DEPS
     fused_feedforward_pass
     delete_dropout_op_pass)
 
+if(WITH_CUDNN_FRONTEND)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_resunit_pass
+                   fuse_dot_product_attention_pass)
+endif()
+
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} cinn_zero_tensor_trick_pass)

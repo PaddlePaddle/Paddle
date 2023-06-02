@@ -1000,6 +1000,117 @@ struct LinearAct : public PatternBase {
   PATTERN_DECL_NODE(act_out);
 };
 
+struct DotProductAttention : public PatternBase {
+  DotProductAttention(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dot_product_attention_fwd") {}
+
+  PDNode* operator()(const std::string& attn_type, bool with_dropout);
+  // declare operator node's name for Attention Computing
+  PATTERN_DECL_NODE(attn_q_slice);
+  PATTERN_DECL_NODE(attn_k_slice);
+  PATTERN_DECL_NODE(attn_v_slice);
+  PATTERN_DECL_NODE(attn_q_transpose);
+  PATTERN_DECL_NODE(attn_k_transpose);
+  PATTERN_DECL_NODE(attn_v_transpose);
+  PATTERN_DECL_NODE(attn_q_scale);
+  PATTERN_DECL_NODE(attn_qk_matmul);
+  PATTERN_DECL_NODE(attn_mask_cast1);
+  PATTERN_DECL_NODE(attn_mask_scale1);
+  PATTERN_DECL_NODE(attn_mask_scale2);
+  PATTERN_DECL_NODE(attn_mask_cast2);
+  PATTERN_DECL_NODE(attn_mask_eleadd);
+  PATTERN_DECL_NODE(attn_softmax);
+  PATTERN_DECL_NODE(attn_dropout);
+  PATTERN_DECL_NODE(attn_context_matmul);
+  PATTERN_DECL_NODE(attn_transpose);
+  // declare variable node's name for Attention Computing
+
+  PATTERN_DECL_NODE(attn_qkv);  // used in self attention
+  PATTERN_DECL_NODE(attn_q);    // used in cross attention
+  PATTERN_DECL_NODE(attn_kv);   // used in cross attention
+  PATTERN_DECL_NODE(attn_q_slice_out);
+  PATTERN_DECL_NODE(attn_k_slice_out);
+  PATTERN_DECL_NODE(attn_v_slice_out);
+  PATTERN_DECL_NODE(attn_q_transpose_out);
+  PATTERN_DECL_NODE(attn_q_transpose_xshape);
+  PATTERN_DECL_NODE(attn_k_transpose_out);
+  PATTERN_DECL_NODE(attn_k_transpose_xshape);
+  PATTERN_DECL_NODE(attn_v_transpose_out);
+  PATTERN_DECL_NODE(attn_v_transpose_xshape);
+  PATTERN_DECL_NODE(attn_q_scale_out);
+  PATTERN_DECL_NODE(attn_qk_matmul_out);
+  PATTERN_DECL_NODE(attn_mask);
+  PATTERN_DECL_NODE(attn_mask_cast1_out);
+  PATTERN_DECL_NODE(attn_mask_scale1_out);
+  PATTERN_DECL_NODE(attn_mask_scale2_out);
+  PATTERN_DECL_NODE(attn_mask_cast2_out);
+  PATTERN_DECL_NODE(attn_mask_eleadd_out);
+  PATTERN_DECL_NODE(attn_softmax_out);
+  PATTERN_DECL_NODE(attn_dropout_out);
+  PATTERN_DECL_NODE(attn_dropout_mask);
+  PATTERN_DECL_NODE(attn_context_matmul_out);
+  PATTERN_DECL_NODE(attn_transpose_out);
+  PATTERN_DECL_NODE(attn_transpose_xshape);
+};
+
+struct DotProductAttentionGrad : public PatternBase {
+  DotProductAttentionGrad(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dot_product_attention_bwd") {}
+
+  PDNode* operator()(const std::string& attn_type,
+                     bool with_dropout,
+                     bool share_attn_mask);
+
+  // declare operator node's name for grad of Attention Computing
+  PATTERN_DECL_NODE(attn_transpose_grad);
+  PATTERN_DECL_NODE(attn_context_matmul_grad);
+  PATTERN_DECL_NODE(attn_dropout_grad);
+  PATTERN_DECL_NODE(attn_softmax_grad);
+  PATTERN_DECL_NODE(attn_mask_eleadd_grad);
+  PATTERN_DECL_NODE(attn_mask_sum);
+  PATTERN_DECL_NODE(attn_mask_cast_grad);
+  PATTERN_DECL_NODE(attn_mask_scale_grad);
+  PATTERN_DECL_NODE(attn_qk_matmul_grad);
+  PATTERN_DECL_NODE(attn_scale_grad);
+  PATTERN_DECL_NODE(attn_q_transpose_grad);
+  PATTERN_DECL_NODE(attn_k_transpose_grad);
+  PATTERN_DECL_NODE(attn_v_transpose_grad);
+  PATTERN_DECL_NODE(attn_q_slice_grad);
+  PATTERN_DECL_NODE(attn_k_slice_grad);
+  PATTERN_DECL_NODE(attn_v_slice_grad);
+  PATTERN_DECL_NODE(attn_slice_grad_sum);
+  // declare variable node's name for grad of Attention Computing
+  PATTERN_DECL_NODE(attn_dout);
+  PATTERN_DECL_NODE(attn_transpose_grad_out);
+  PATTERN_DECL_NODE(attn_context_matmul_grad_x);
+  PATTERN_DECL_NODE(attn_context_matmul_grad_y);
+  PATTERN_DECL_NODE(attn_context_matmul_grad_dx);
+  PATTERN_DECL_NODE(attn_context_matmul_grad_dy);
+  PATTERN_DECL_NODE(attn_dropout_grad_out);
+  PATTERN_DECL_NODE(attn_softmax_out);
+  PATTERN_DECL_NODE(attn_softmax_grad_out);
+  PATTERN_DECL_NODE(attn_mask_eleadd_grad_mask);
+  PATTERN_DECL_NODE(attn_mask_eleadd_grad_dx);
+  PATTERN_DECL_NODE(attn_mask_eleadd_grad_dy);
+  PATTERN_DECL_NODE(attn_mask_sum_out);
+  PATTERN_DECL_NODE(attn_mask_cast_grad_out);
+  PATTERN_DECL_NODE(attn_mask_scale_grad_out);
+  PATTERN_DECL_NODE(attn_qk_matmul_grad_x);
+  PATTERN_DECL_NODE(attn_qk_matmul_grad_y);
+  PATTERN_DECL_NODE(attn_qk_matmul_grad_dx);
+  PATTERN_DECL_NODE(attn_qk_matmul_grad_dy);
+  PATTERN_DECL_NODE(attn_scale_grad_out);
+  PATTERN_DECL_NODE(attn_q_transpose_grad_out);
+  PATTERN_DECL_NODE(attn_k_transpose_grad_out);
+  PATTERN_DECL_NODE(attn_v_transpose_grad_out);
+  PATTERN_DECL_NODE(attn_q_slice_grad_out);
+  PATTERN_DECL_NODE(attn_k_slice_grad_out);
+  PATTERN_DECL_NODE(attn_v_slice_grad_out);
+  PATTERN_DECL_NODE(attn_dqkv);  // used in self attention
+  PATTERN_DECL_NODE(attn_dq);    // used in cross attention
+  PATTERN_DECL_NODE(attn_dkv);   // used in cross attention
+};
+
 // The following patterns are used to fuse linear_grad and act_grad (ReLu or
 // GeLU)
 // formula: the backward of F.linear( act(x) )

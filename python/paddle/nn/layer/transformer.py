@@ -16,6 +16,7 @@
 
 import collections
 import copy
+import warnings
 
 import numpy as np
 
@@ -137,7 +138,19 @@ class MultiHeadAttention(Layer):
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
-
+        mode (str, optional): The mode of attention. It can be "self" or "cross" and
+            only works with `fuse_qkv=True`. Default: None, which means we don't require
+            query, key and value to be the same. When mode is "self", the input query,
+            key and value must be the same. When mode is "cross", the key and value
+            must be the same.
+        fuse_qkv (bool, optional): It works with mode = "self_attn" or "cross_attn".
+            If True and mode is "self_attn", the projection of query, key and value will
+            use the same weight tensor with shape [embed_dim, 3 * embed_dim]. If True
+            and mode is "cross_attn", the projection of key and value will use the same
+            weight tensor with shape [embed_dim, 2 * embed_dim]. If False or mode is None,
+            fuse_qkv will be ignored. Default: False. This fusion design can take full
+            advantage of the cudnn(version >= 8.9.1) fused kernel to accelerate the
+            computation by using `build_strategy.fuse_dot_product_attention = True`.
     Examples:
 
         .. code-block:: python
@@ -165,6 +178,8 @@ class MultiHeadAttention(Layer):
         need_weights=False,
         weight_attr=None,
         bias_attr=None,
+        mode=None,
+        fuse_qkv=False,
     ):
         super().__init__()
 
@@ -189,18 +204,56 @@ class MultiHeadAttention(Layer):
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
 
-        self.q_proj = Linear(
-            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
-        )
-        self.k_proj = Linear(
-            self.kdim, embed_dim, weight_attr, bias_attr=bias_attr
-        )
-        self.v_proj = Linear(
-            self.vdim, embed_dim, weight_attr, bias_attr=bias_attr
-        )
-        self.out_proj = Linear(
-            embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
-        )
+        self.bias_attr = bias_attr
+
+        self.mode = mode
+        self.fuse_qkv = fuse_qkv
+
+        if self.mode is None and self.fuse_qkv is True:
+            self.fuse_qkv = False
+            warnings.warn(
+                "fuse_qkv is only used when mode is 'self' or 'cross', "
+                "and mode is None, so fuse_qkv will be ignored."
+            )
+        if self.mode is not None:
+            assert self.mode in ['self_attn', 'cross_attn'], (
+                "Expected mode to be 'self_attn' or 'cross_attn', "
+                "but received {}".format(self.mode)
+            )
+
+        if self.fuse_qkv and self.mode == 'self_attn':
+            self.qkv_proj = Linear(
+                embed_dim, 3 * embed_dim, weight_attr, bias_attr=bias_attr
+            )
+
+            self.out_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
+
+        elif self.fuse_qkv and self.mode == 'cross_attn':
+            self.q_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
+            self.kv_proj = Linear(
+                embed_dim, 2 * embed_dim, weight_attr, bias_attr=bias_attr
+            )
+            self.out_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
+
+        else:
+            self.q_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
+            self.k_proj = Linear(
+                self.kdim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
+            self.v_proj = Linear(
+                self.vdim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
+            self.out_proj = Linear(
+                embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
+            )
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
@@ -239,23 +292,92 @@ class MultiHeadAttention(Layer):
                 and `[batch_size, n_head, sequence_length, d_value]` separately, \
                 and their data types are same as inputs.
         """
-        q = self.q_proj(query)
-        q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-        q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+        if self.fuse_qkv is False:
+            q = self.q_proj(query)
+            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+            q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
 
-        if isinstance(cache, self.StaticCache):
-            # for encoder-decoder attention in inference and has cached
-            k, v = cache.k, cache.v
+            if isinstance(cache, self.StaticCache):
+                # for encoder-decoder attention in inference and has cached
+                k, v = cache.k, cache.v
+            else:
+                k, v = self.compute_kv(key, value)
+
+            if isinstance(cache, self.Cache):
+                # for decoder self-attention in inference
+                k = tensor.concat([cache.k, k], axis=2)
+                v = tensor.concat([cache.v, v], axis=2)
+                cache = self.Cache(k, v)
+
+            return (q, k, v) if cache is None else (q, k, v, cache)
+
         else:
-            k, v = self.compute_kv(key, value)
+            return self._prepare_fused_qkv(query, key, value)
 
-        if isinstance(cache, self.Cache):
-            # for decoder self-attention in inference
-            k = tensor.concat([cache.k, k], axis=2)
-            v = tensor.concat([cache.v, v], axis=2)
-            cache = self.Cache(k, v)
+    def _prepare_fused_qkv(self, query, key, value):
+        r"""
+        Prapares linear projected queries, keys and values for usage of subsequnt
+        multiple parallel attention. If `cache` is not None, using cached results
+        to reduce redundant calculations.
 
-        return (q, k, v) if cache is None else (q, k, v, cache)
+        Parameters:
+            query (Tensor): The queries for multi-head attention. It is a
+                tensor with shape `[batch_size, query_length, embed_dim]`. The
+                data type should be float32 or float64.
+            key (Tensor): The keys for multi-head attention. It is
+                a tensor with shape `[batch_size, key_length, kdim]`. The
+                data type should be float32 or float64. If None, use `query` as
+                `key`.
+            value (Tensor): The values for multi-head attention. It
+                is a tensor with shape `[batch_size, value_length, vdim]`.
+                The data type should be float32 or float64. If None, use `query` as
+                `value`.
+
+        Returns:
+            tuple: A tuple including linear projected keys and values. These two \
+                tensors have shapes `[batch_size, n_head, sequence_length, d_key]` \
+                and `[batch_size, n_head, sequence_length, d_value]` separately, \
+                and their data types are same as inputs.
+        """
+
+        # We split the fused qkv projection into three parts:
+        # q_proj, k_proj, v_proj. If cudnn (version >= 8.9.1) is available,
+        # and build_strategy.fuse_dot_product_attention is set to True,
+        # These spliting processes will be detected and fused into one cudnn
+        # dot product attention kernel.
+        if self.fuse_qkv and self.mode == 'self_attn':
+            assert query is key and key is value, (
+                "When fuse_qkv is True, "
+                "query, key and value should be the same tensor."
+            )
+            qkv = self.qkv_proj(query)
+            qkv = tensor.reshape(
+                x=qkv, shape=[0, 0, 3, self.num_heads, self.head_dim]
+            )
+            q = qkv[:, :, 0]
+            k = qkv[:, :, 1]
+            v = qkv[:, :, 2]
+        elif self.fuse_qkv and self.mode == 'cross_attn':
+            assert key is value, (
+                "When fuse_qkv is True, "
+                "key and value should be the same tensor."
+            )
+            q = self.q_proj(query)
+            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+            kv = self.kv_proj(key)
+            kv = tensor.reshape(
+                x=kv, shape=[0, 0, 2, self.num_heads, self.head_dim]
+            )
+            k = kv[:, :, 0]
+            v = kv[:, :, 1]
+        else:
+            raise ValueError(
+                "fuse_qkv is only supported when mode is 'self_attn' or 'cross_attn'."
+            )
+        q = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+        k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+        v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+        return (q, k, v)
 
     def compute_kv(self, key, value):
         r"""
@@ -413,6 +535,7 @@ class MultiHeadAttention(Layer):
         """
         key = query if key is None else key
         value = query if value is None else value
+
         # compute q ,k ,v
         if cache is None:
             q, k, v = self._prepare_qkv(query, key, value, cache)
@@ -437,9 +560,9 @@ class MultiHeadAttention(Layer):
             )
 
         out = tensor.matmul(weights, v)
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
 
         # combine heads
-        out = tensor.transpose(out, perm=[0, 2, 1, 3])
         out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
 
         # project to output
@@ -493,6 +616,10 @@ class TransformerEncoderLayer(Layer):
             The `False` value means the corresponding layer would not have trainable
             bias parameter. See usage for details in :code:`ParamAttr` . Default: None,
             which means the default bias parameter property is used.
+        fuse_qkv (bool, optional): Whether to fuse the linear projection of Q, K, V
+            in multi-head attention. Default False. See more details in
+            `MultiHeadAttention`.
+
 
 
     Examples:
@@ -522,6 +649,7 @@ class TransformerEncoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        fuse_qkv=False,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -547,6 +675,7 @@ class TransformerEncoderLayer(Layer):
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
+        self.fuse_qkv = fuse_qkv
 
         weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
@@ -557,6 +686,8 @@ class TransformerEncoderLayer(Layer):
             dropout=attn_dropout,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0],
+            mode="self_attn",
+            fuse_qkv=self.fuse_qkv,
         )
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[1], bias_attr=bias_attrs[1]
@@ -603,6 +734,7 @@ class TransformerEncoderLayer(Layer):
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
         """
+
         src_mask = _convert_attention_mask(src_mask, src.dtype)
 
         residual = src
@@ -813,6 +945,9 @@ class TransformerDecoderLayer(Layer):
             corresponding layer would not have trainable bias parameter. See
             usage for details in :code:`ParamAttr` . Default: None,which means
             the default bias parameter property is used.
+        fuse_qkv (bool, optional): Whether to fuse the linear projection of Q, K, V
+            in multi-head attention. Default False. See more details in
+            `MultiHeadAttention`.
 
     Examples:
 
@@ -848,6 +983,7 @@ class TransformerDecoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        fuse_qkv=False,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -873,6 +1009,7 @@ class TransformerDecoderLayer(Layer):
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
+        self.fuse_qkv = fuse_qkv
 
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
@@ -883,6 +1020,8 @@ class TransformerDecoderLayer(Layer):
             dropout=attn_dropout,
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0],
+            mode="self_attn",
+            fuse_qkv=self.fuse_qkv,
         )
         self.cross_attn = MultiHeadAttention(
             d_model,
@@ -890,6 +1029,8 @@ class TransformerDecoderLayer(Layer):
             dropout=attn_dropout,
             weight_attr=weight_attrs[1],
             bias_attr=bias_attrs[1],
+            mode='cross_attn',
+            fuse_qkv=self.fuse_qkv,
         )
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[2], bias_attr=bias_attrs[2]

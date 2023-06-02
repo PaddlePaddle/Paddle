@@ -31,7 +31,7 @@ set(CUDNN_FRONTEND_PREFIX_DIR ${THIRD_PARTY_PATH}/cudnn-frontend)
 set(CUDNN_FRONTEND_SOURCE_DIR
     ${THIRD_PARTY_PATH}/cudnn-frontend/src/extern_cudnn_frontend/include)
 set(CUDNN_FRONTEND_REPOSITORY https://github.com/NVIDIA/cudnn-frontend.git)
-set(CUDNN_FRONTEND_TAG v0.7.1)
+set(CUDNN_FRONTEND_TAG v0.9)
 
 set(CUDNN_FRONTEND_INCLUDE_DIR ${CUDNN_FRONTEND_SOURCE_DIR})
 include_directories(${CUDNN_FRONTEND_INCLUDE_DIR})
@@ -48,9 +48,7 @@ ExternalProject_Add(
   GIT_TAG ${CUDNN_FRONTEND_TAG}
   PREFIX ${CUDNN_FRONTEND_PREFIX_DIR}
   UPDATE_COMMAND ""
-  PATCH_COMMAND
-    patch -d ${CUDNN_FRONTEND_SOURCE_DIR} -p2 <
-    ${PADDLE_SOURCE_DIR}/patches/cudnn-frontend/0001-patch-for-paddle.patch
+  PATCH_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

@@ -89,6 +89,9 @@ list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
+list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op)
+list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
+
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
@@ -593,6 +596,11 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
+endif()
+
+if((WITH_GPU) AND (WITH_CUDNN_FRONTEND))
+  py_test_modules(test_fuse_dot_product_attention_pass MODULES
+                  test_fuse_dot_product_attention_pass)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
