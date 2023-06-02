@@ -252,6 +252,8 @@ if(WITH_XPU)
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -536,4 +538,8 @@ if(WITH_XPU)
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
+  cc_test(
+    test_fold_interp_outsize_fuse_pass
+    SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
+    DEPS fold_interp_outsize_fuse_pass)
 endif()
