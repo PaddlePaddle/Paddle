@@ -117,7 +117,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
-            self.attrs = {"axis": self.axis, "flatten": True, "keepdims": True}
+            self.attrs = {"axis": self.axis, "flatten": True, "keepdims": False}
             self.numpy_op = eval("np.%s" % (numpy_op_type))
             self.outputs = {
                 'Out': np.array(self.numpy_op(self.x.flatten(), axis=self.axis))

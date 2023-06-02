@@ -222,9 +222,8 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
                 check_args.insert(0, self.place)
                 self.check_grad_with_place(*check_args, **check_kwargs)
 
-    # elementwise_pow does't support bfloat16
     def if_check_prim(self):
-        self.check_prim = False
+        self.check_prim = True
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -503,7 +502,7 @@ class TestDivideOp(unittest.TestCase):
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
             z = paddle.divide(x, y)
-            np_z = z.numpy()
+            np_z = z.numpy(False)
             z_expected = np.array([2.0, 0.6, 2.0])
             self.assertEqual((np_z == z_expected).all(), True)
 
