@@ -235,8 +235,7 @@ void SetPythonStack() {
 
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
                                                      ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj,
-                          reinterpret_cast<PyObject*>(g_jit_function_pytype))) {
+  if (PyObject_TypeCheck(obj, g_jit_function_pytype)) {
     return ::pybind11::handle(obj).cast<std::shared_ptr<jit::Function>>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -255,8 +254,7 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
       } else if (item == Py_None) {
         // emplace empty Tensor for None
@@ -275,8 +273,7 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
       } else if (item == Py_None) {
         // emplace empty Tensor for None
@@ -292,8 +289,7 @@ std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
     }
   } else if (obj == Py_None) {
     return {};
-  } else if (PyObject_IsInstance(obj,
-                                 reinterpret_cast<PyObject*>(p_tensor_type))) {
+  } else if (PyObject_TypeCheck(obj, p_tensor_type)) {
     return {reinterpret_cast<TensorObject*>(obj)->tensor};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -519,22 +515,22 @@ std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
 
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   platform::Place place;
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(g_place_pytype))) {
+  if (PyObject_TypeCheck(obj, g_place_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::Place>();
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_cudaplace_pytype))) {
+  } else if (PyObject_TypeCheck(
+                 obj, g_cudaplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPlace>();
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_cpuplace_pytype))) {
+  } else if (PyObject_TypeCheck(
+                 obj, g_cpuplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::CPUPlace>();
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_xpuplace_pytype))) {
+  } else if (PyObject_TypeCheck(
+                 obj, g_xpuplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::XPUPlace>();
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_cudapinnedplace_pytype))) {
+  } else if (PyObject_TypeCheck(
+                 obj, g_cudapinnedplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_customplace_pytype))) {
+  } else if (PyObject_TypeCheck(
+                 obj, g_customplace_pytype)) {
     place = ::pybind11::handle(obj).cast<platform::CustomPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -550,8 +546,8 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
 }
 
 phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(
-          obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+  if (PyObject_TypeCheck(
+          obj, g_framework_tensor_pytype)) {
     return ::pybind11::handle(obj).cast<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -570,8 +566,8 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_IsInstance(
-              item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+      if (PyObject_TypeCheck(
+              item, g_framework_tensor_pytype)) {
         result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -587,8 +583,8 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_IsInstance(
-              item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+      if (PyObject_TypeCheck(
+              item, g_framework_tensor_pytype)) {
         result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -599,17 +595,14 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
             i));
       }
     }
-  } else if (PyObject_IsInstance(obj,
-                                 reinterpret_cast<PyObject*>(
-                                     g_framework_lodtensorarray_pytype))) {
+  } else if (PyObject_TypeCheck(obj, g_framework_lodtensorarray_pytype)) {
     for (auto& tensor :
          (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
       result.emplace_back(tensor);
     }
   } else if (obj == Py_None) {
     return {};
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+  } else if (PyObject_TypeCheck(obj, g_framework_tensor_pytype)) {
     return {::pybind11::handle(obj).cast<phi::DenseTensor>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -624,7 +617,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
 paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                             ssize_t arg_pos) {
   paddle::framework::proto::VarType::Type dtype;
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+  if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
     dtype =
         ::pybind11::handle(obj).cast<paddle::framework::proto::VarType::Type>();
   } else {
@@ -973,7 +966,7 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     return paddle::none;
   }
 
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     return paddle::make_optional<paddle::Tensor>(
         reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
@@ -1007,10 +1000,10 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
     return emptytensor;
   }
 
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
-  } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+  } else if (PyObject_TypeCheck(
+                 obj, p_string_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1187,7 +1180,7 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
     return &emptytensor;
   }
 
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     return &(reinterpret_cast<TensorObject*>(obj)->tensor);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1305,8 +1298,7 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
       } else if (allow_none && (item == Py_None)) {
         VLOG(4) << "Got None in Tensor list: " << i;
@@ -1324,8 +1316,7 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+      if (PyObject_TypeCheck(item, p_tensor_type)) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
       } else if (allow_none && (item == Py_None)) {
         VLOG(4) << "Got None in Tensor list: " << i;
@@ -1548,8 +1539,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
 }
 
 paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
-  if (PyObject_IsInstance(
-          obj, reinterpret_cast<PyObject*>(g_framework_scope_pytype))) {
+  if (PyObject_TypeCheck(obj, g_framework_scope_pytype)) {
     return ::pybind11::handle(obj).cast<paddle::framework::Scope*>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

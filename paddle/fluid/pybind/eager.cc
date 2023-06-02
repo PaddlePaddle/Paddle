@@ -667,15 +667,13 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           AutoInitTensorByPyArray(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(
-                       kw_value, reinterpret_cast<PyObject*>(p_tensor_type))) {
+        } else if (PyObject_TypeCheck(
+                       kw_value, p_tensor_type)) {
           VLOG(6) << "Calling case5's or case6's initializer";
           AutoInitTensorByTensor(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(kw_value,
-                                       reinterpret_cast<PyObject*>(
-                                           g_framework_tensor_pytype))) {
+        } else if (PyObject_TypeCheck(kw_value,g_framework_tensor_pytype)) {
           VLOG(6) << "Calling case7's initializer.";
           AutoInitTensorByTensor(py_tensor_ptr,
                                  kws_map,
@@ -693,8 +691,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "right way."));
         }
       } else if (kw_dtype != NULL &&
-                 PyObject_IsInstance(
-                     kw_dtype, reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+                 PyObject_TypeCheck(kw_dtype, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer";
 
         PADDLE_ENFORCE_NOT_NULL(
@@ -770,15 +767,13 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       AutoInitTensorByPyArray(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_IsInstance(
-                   arg0_ptr, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    } else if (PyObject_TypeCheck(arg0_ptr, p_tensor_type)) {
       VLOG(6) << "Calling case5's or case6's initializer.";
       AutoInitTensorByTensor(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_IsInstance(
-                   arg0_ptr,
-                   reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    } else if (PyObject_TypeCheck(
+                   arg0_ptr, g_framework_tensor_pytype)) {
       VLOG(6) << "Calling case7's initializer.";
       AutoInitTensorByTensor(py_tensor_ptr,
                              kws_map,
@@ -816,8 +811,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   } else if (args_num == (Py_ssize_t)5) {
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (PyObject_IsInstance(arg0_ptr,
-                              reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+      if (PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer.";
         paddle::framework::proto::VarType::Type dtype =
             CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
@@ -1007,9 +1001,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           AutoInitStringTensorByPyArray(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(
-                       kw_value,
-                       reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+        } else if (PyObject_TypeCheck(kw_value, p_string_tensor_type)) {
           VLOG(6) << "Calling case5's or case6's string initializer";
           AutoInitStringTensorByStringTensor(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
@@ -1057,9 +1049,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       AutoInitStringTensorByPyArray(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_IsInstance(
-                   arg0_ptr,
-                   reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+    } else if (PyObject_TypeCheck(arg0_ptr, p_string_tensor_type)) {
       VLOG(6) << "Calling case5's or case6's string initializer.";
       AutoInitStringTensorByStringTensor(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
@@ -1076,8 +1066,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     // 2 position args
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (PyObject_IsInstance(
-              arg0_ptr, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+      if (PyObject_TypeCheck(arg0_ptr, p_string_tensor_type)) {
         VLOG(6) << "Calling case6's string initializer.";
         AutoInitStringTensorByStringTensor(
             py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
