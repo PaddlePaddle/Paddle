@@ -187,10 +187,10 @@ class FusedCommBuffer:
             self._params_step_dict.pop(param.name)
 
         if self._all_params_checked_in:
-            self._fused_allreduce_grads()
+            self._fused_comm_grads()
 
     @imperative_base.no_grad
-    def _fused_allreduce_grads(self):
+    def _fused_comm_grads(self):
         assert self._all_params_checked_in
         flattened_vars = []
         g_var_shapes = []
