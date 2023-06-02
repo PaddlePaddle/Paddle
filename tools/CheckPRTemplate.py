@@ -73,7 +73,7 @@ def checkComments(url):
     headers = {
         'Authorization': 'token ' + GITHUB_API_TOKEN,
     }
-    response = httpx.get(url, headers=headers).json()
+    response = httpx.get(url, headers=headers, timeout=10.0).json()
     return response
 
 

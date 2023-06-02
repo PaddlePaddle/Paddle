@@ -100,7 +100,7 @@ def download(url, module_name, md5sum, save_name=None):
         )
         sys.stderr.write("Begin to download\n")
         try:
-            r = httpx.get(url, timeout=3)
+            r = httpx.get(url, timeout=10.0)
             total_length = r.headers.get('content-length')
 
             if total_length is None:

@@ -39,7 +39,7 @@ class KVClient:
         key = key if key.startswith('/') else f"/{key}"
         u = f"{self.endpoint}{key}"
         try:
-            r = httpx.get(u, timeout=3)
+            r = httpx.get(u, timeout=10.0)
             if r.status_code == 200:
                 ret = r.json()
                 return ret.get(key, '')
@@ -52,7 +52,7 @@ class KVClient:
         key = key if key.startswith('/') else f"/{key}"
         u = f"{self.endpoint}{key}"
         try:
-            r = httpx.get(u, timeout=3)
+            r = httpx.get(u, timeout=10.0)
             if r.status_code == 200:
                 return r.json()
         except:
