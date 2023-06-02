@@ -18,6 +18,7 @@
 
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/utils.h"
+#include "paddle/phi/core/tensor_meta.h"
 
 namespace std {
 ///
@@ -46,46 +47,20 @@ namespace dialect {
 /// (3)define HashValue method, (4)overload operator==.
 ///
 struct DenseTensorTypeStorage : public ir::TypeStorage {
-  ///
-  /// \brief It is consistent with the DataLayout defined by Phi operator
-  /// library. See the file for details: paddle/phi/common/layout.h.
-  ///
-  enum class DataLayout : unsigned int {
-    UNDEFINED = 0,
-    NHWC,
-    NCHW,
-    NCDHW,
-    NDHWC,
-    ONEDNN,
-    SPARSE_COO,
-    SPARSE_CSR,
-    PSTRING_UNION,
-
-    NUM_DATA_LAYOUTS,
-
-    // See Note [ Why we need ALL in basic kernel key member? ]
-    ALL_LAYOUT = UNDEFINED,
-
-    // Note: Unify phi DataLayout and fluid::framework::DataLayout,
-    // for compatible with fluid DataLayout, here need prefix `k`
-    kNHWC = NHWC,
-    kNCHW = NCHW,
-    kMKLDNN = ONEDNN,  // all layouts supported by ONEDNN internally
-    kNDHWC = NDHWC,
-    kNCDHW = NCDHW,
-  };
-
-  using Dim = std::vector<int64_t>;
-
+  using DataLayout = phi::DataLayout;
+  using Dim = phi::DDim;
   using LoD = std::vector<std::vector<size_t>>;
-
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey = std::tuple<ir::Type, Dim, DataLayout, LoD, size_t>;
+  using ParamKey =
+      std::tuple<ir::Type, phi::DDim, phi::DataLayout, phi::LoD, size_t>;
 
-  DenseTensorTypeStorage(
-      ir::Type dtype, Dim dims, DataLayout layout, LoD lod, size_t offset)
+  DenseTensorTypeStorage(ir::Type dtype,
+                         phi::DDim dims,
+                         phi::DataLayout layout,
+                         phi::LoD lod,
+                         size_t offset)
       : dtype_(dtype),
         dims_(dims),
         layout_(layout),
@@ -114,16 +89,16 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
         ir::hash_combine(hash_value, std::hash<ir::Type>()(std::get<0>(key)));
     // hash dims
     hash_value =
-        ir::hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
+        ir::hash_combine(hash_value, std::hash<phi::DDim>()(std::get<1>(key)));
     // hash layout
     hash_value = ir::hash_combine(
         hash_value,
-        std::hash<std::underlying_type<DataLayout>::type>()(
-            static_cast<std::underlying_type<DataLayout>::type>(
+        std::hash<std::underlying_type<phi::DataLayout>::type>()(
+            static_cast<std::underlying_type<phi::DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
     hash_value =
-        ir::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
+        ir::hash_combine(hash_value, std::hash<phi::LoD>()(std::get<3>(key)));
     // hash offset
     hash_value =
         ir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
@@ -146,9 +121,9 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   /// layout, lod, offset.
   ///
   ir::Type dtype_;
-  Dim dims_;
-  DataLayout layout_;
-  LoD lod_;
+  phi::DDim dims_;
+  phi::DataLayout layout_;
+  phi::LoD lod_;
   size_t offset_;
 };
 

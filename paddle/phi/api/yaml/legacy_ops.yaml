@@ -633,7 +633,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : OriginReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : mean
   backward : mean_grad
@@ -902,17 +902,6 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
-
-- op : shape
-  args : (Tensor input)
-  output : Tensor(out)
-  infer_meta :
-    func : ShapeInferMeta
-  kernel :
-    func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
-  data_transform:
-    skip_transform : input
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)

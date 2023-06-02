@@ -31,7 +31,7 @@ class TestInf(OpTest):
         x[-1] = np.inf
 
         self.inputs = {'X': x}
-        self.outputs = {'Out': np.array(True).astype(self.dtype)}
+        self.outputs = {'Out': np.array([True]).astype(self.dtype)}
 
     def init_dtype(self):
         pass
@@ -62,7 +62,7 @@ class TestInfBF16(OpTest):
         x[0] = np.inf
         x[-1] = np.inf
 
-        out = np.array(True)
+        out = np.array([True])
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
 
@@ -81,7 +81,7 @@ class TestNAN(OpTest):
         x[-1] = np.nan
 
         self.inputs = {'X': x}
-        self.outputs = {'Out': np.array(True).astype(self.dtype)}
+        self.outputs = {'Out': np.array([True]).astype(self.dtype)}
 
     def init_dtype(self):
         pass
@@ -112,7 +112,7 @@ class TestNANBF16(OpTest):
         x[0] = np.nan
         x[-1] = np.nan
 
-        out = np.array(True)
+        out = np.array([True])
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
 
@@ -132,7 +132,7 @@ class TestIsfinite(OpTest):
         out = np.isinf(x) | np.isnan(x)
 
         self.inputs = {'X': x}
-        self.outputs = {'Out': np.array(False).astype(self.dtype)}
+        self.outputs = {'Out': np.array([False]).astype(self.dtype)}
 
     def init_dtype(self):
         pass
@@ -163,7 +163,7 @@ class TestIsfiniteBF16(OpTest):
         x[0] = np.inf
         x[-1] = np.nan
 
-        out = np.array(False)
+        out = np.array([False])
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
 

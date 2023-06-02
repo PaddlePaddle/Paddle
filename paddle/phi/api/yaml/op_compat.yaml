@@ -2159,6 +2159,12 @@
     attrs : [bool use_mkldnn=false]
 
 - op : shape
+  inputs :
+    input : Input
+  outputs :
+    out : Out
+
+- op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 

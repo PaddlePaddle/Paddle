@@ -16,11 +16,17 @@
 #include "paddle/ir/core/ir_context.h"
 
 namespace ir {
-Program::~Program() = default;
 
-void Program::InsertOp(Operation* op) {
-  block_.push_back(op);
-  op->set_parent_program(this);
+Program::Program(IrContext* context) {
+  module_ = ModuleOp::create(context, this);
+}
+
+Program::Program() : Program(IrContext::Instance()) {}
+
+Program::~Program() {
+  if (module_) {
+    module_.destroy();
+  }
 }
 
 Parameter* Program::GetParameter(std::string name) const {
