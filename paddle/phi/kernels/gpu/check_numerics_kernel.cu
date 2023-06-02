@@ -493,7 +493,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const int stack_height_limit,
                          const std::string& output_dir,
                          DenseTensor* stats,
-                         DensrTensor* values) {
+                         DenseTensor* values) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
   int dev_id = tensor.place().device;

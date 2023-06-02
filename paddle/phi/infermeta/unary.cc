@@ -4959,6 +4959,19 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
   out->set_dims(output_dims);
 }
 
+void CheckNumericsInferMeta(const MetaTensor& tensor,
+                            const std::string& op_type,
+                            const std::string& var_name,
+                            const int stack_height_limit,
+                            const std::string& output_dir,
+                            MetaTensor* stats,
+                            MetaTensor* values) {
+  stats->set_dtype(DataType::INT64);
+  stats->set_dims(phi::make_ddim({3}));
+  values->set_dtype(DataType::FLOAT32);
+  values->set_dims(phi::make_ddim({3}));
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

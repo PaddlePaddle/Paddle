@@ -31,7 +31,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const int stack_height_limit,
                          const std::string& output_dir,
                          DenseTensor* stats,
-                         DensrTensor* values) {
+                         DenseTensor* values) {
   // stats stores the checking result of num_nan, num_inf and num_zero.
   stats->Resize({static_cast<int64_t>(3)});
   int64_t* stats_ptr = ctx.template Alloc<int64_t>(stats);
