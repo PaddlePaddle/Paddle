@@ -38,8 +38,6 @@ Value OpOperand::source() const { return impl_->source(); }
 
 Operation *OpOperand::owner() const { return impl_->owner(); }
 
-OpOperand::operator bool() const { return impl_ && impl_->source(); }
-
 // Value
 Value::Value(const detail::ValueImpl *impl)
     : impl_(const_cast<detail::ValueImpl *>(impl)) {}
