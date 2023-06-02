@@ -228,17 +228,17 @@ SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
 template <typename T, typename Context>
 void SliceCooKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
-                    const phi::IntArray& axes_arr,
-                    const phi::IntArray& starts_arr,
-                    const phi::IntArray& ends_arr,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
                     SparseCooTensor* out);
 
 template <typename T, typename Context>
 void SliceCsrKernel(const Context& dev_ctx,
                     const SparseCsrTensor& x,
-                    const phi::IntArray& axes_arr,
-                    const phi::IntArray& starts_arr,
-                    const phi::IntArray& ends_arr,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
                     SparseCsrTensor* out);
 
 }  // namespace sparse

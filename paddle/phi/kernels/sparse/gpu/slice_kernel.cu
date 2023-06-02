@@ -85,26 +85,19 @@ __global__ void GetCooOutCudaKernel(const IntT* x_indices_data,
 }
 
 template <typename T, typename IntT, typename Context>
-void SliceCooGPUKernel(const Context& dev_ctx,
-                       const SparseCooTensor& x,
-                       const phi::IntArray& axes_arr,
-                       const phi::IntArray& starts_arr,
-                       const phi::IntArray& ends_arr,
-                       SparseCooTensor* out) {
+void SliceCooGPUCompute(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const std::vector<int64_t>& axes,
+                        const std::vector<int64_t>& starts,
+                        const std::vector<int64_t>& ends,
+                        SparseCooTensor* out) {
   const phi::DDim& x_dims = x.dims();
 
-  std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> starts = starts_arr.GetData();
-  std::vector<int64_t> ends = ends_arr.GetData();
-
-  // Step1: Check and update attr
-  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
-
-  // Step2: Infer output dims
+  // Step1: Infer output dims
   auto out_dims = funcs::GetSliceDims<int64_t>(
       x_dims, axes, starts, ends, nullptr, nullptr);
 
-  // Step3: Get the number of non zero elements
+  // Step2: Get the number of non zero elements
   DenseTensor d_out_nnz = phi::Empty<int32_t>(dev_ctx, {1});
   int* d_out_nnz_ptr = d_out_nnz.data<int32_t>();
   phi::backends::gpu::GpuMemsetAsync(
@@ -191,7 +184,7 @@ void SliceCooGPUKernel(const Context& dev_ctx,
                d_out_nnz_indices_ptr,
                d_out_nnz_indices_ptr + out_nnz);
 
-  // Step4: Get the values and indices of output
+  // Step3: Get the values and indices of output
   auto sparse_dim = static_cast<int64_t>(x.sparse_dim());
   DenseTensor out_indices =
       phi::Empty<IntT, Context>(dev_ctx, {sparse_dim, out_nnz});
@@ -220,18 +213,35 @@ void SliceCooGPUKernel(const Context& dev_ctx,
                              out_values_data);
 }
 
+template <typename T, typename IntT, typename Context>
+void SliceCooGPUKernel(const Context& dev_ctx,
+                       const SparseCooTensor& x,
+                       const phi::IntArray& axes,
+                       const phi::IntArray& starts,
+                       const phi::IntArray& ends,
+                       SparseCooTensor* out) {
+  const phi::DDim& x_dims = x.dims();
+  std::vector<int64_t> axes_vec = axes.GetData();
+  std::vector<int64_t> starts_vec = starts.GetData();
+  std::vector<int64_t> ends_vec = ends.GetData();
+  // Check and update attr
+  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(
+      x_dims, &axes_vec, &starts_vec, &ends_vec);
+  SliceCooGPUCompute<T, IntT, Context>(
+      dev_ctx, x, axes_vec, starts_vec, ends_vec, out);
+}
+
 template <typename T, typename Context>
 void SliceCooKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
-                    const phi::IntArray& axes_arr,
-                    const phi::IntArray& starts_arr,
-                    const phi::IntArray& ends_arr,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
                     SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "SliceCooGPUKernel", ([&] {
-        SliceCooGPUKernel<T, data_t, Context>(
-            dev_ctx, x, axes_arr, starts_arr, ends_arr, out);
-      }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "SliceCooGPUKernel", ([&] {
+                                 SliceCooGPUKernel<T, data_t, Context>(
+                                     dev_ctx, x, axes, starts, ends, out);
+                               }));
 }
 
 __global__ void GetCsr2DNonZeroNumberCudaKernel(const int64_t* x_crows_data,
@@ -577,31 +587,24 @@ void SliceCsrTensor3D(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SliceCsrKernel(const Context& dev_ctx,
-                    const SparseCsrTensor& x,
-                    const phi::IntArray& axes_arr,
-                    const phi::IntArray& starts_arr,
-                    const phi::IntArray& ends_arr,
-                    SparseCsrTensor* out) {
+void SliceCsrCompute(const Context& dev_ctx,
+                     const SparseCsrTensor& x,
+                     const std::vector<int64_t>& axes,
+                     const std::vector<int64_t>& starts,
+                     const std::vector<int64_t>& ends,
+                     SparseCsrTensor* out) {
   const phi::DDim& x_dims = x.dims();
 
-  std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> starts = starts_arr.GetData();
-  std::vector<int64_t> ends = ends_arr.GetData();
-
-  // Step1: Check and update attr
-  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
-
-  // Step2: Infer output dims
+  // Step1: Infer output dims
   auto out_dims = funcs::GetSliceDims<int64_t>(
       x_dims, axes, starts, ends, nullptr, nullptr);
 
-  // Step3: Construct new axes, starts and ends.
+  // Step2: Construct new axes, starts and ends.
   std::vector<int64_t> new_axes(3), new_starts(3), new_ends(3);
   funcs::ConstructNewSliceAttrs(
       x_dims, axes, starts, ends, &new_axes, &new_starts, &new_ends);
 
-  // Setp4: Slice csr tensor according to its dimension
+  // Setp3: Slice csr tensor according to its dimension
   if (x_dims.size() == 2) {
     SliceCsrTensor2D<T, Context>(
         dev_ctx, x, new_axes, new_starts, new_ends, out_dims, out);
@@ -615,6 +618,26 @@ void SliceCsrKernel(const Context& dev_ctx,
         x_dims.size());
   }
 }
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCsrTensor* out) {
+  const phi::DDim& x_dims = x.dims();
+
+  std::vector<int64_t> axes_vec = axes.GetData();
+  std::vector<int64_t> starts_vec = starts.GetData();
+  std::vector<int64_t> ends_vec = ends.GetData();
+  // Check and update attr
+  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(
+      x_dims, &axes_vec, &starts_vec, &ends_vec);
+
+  SliceCsrCompute<T, Context>(dev_ctx, x, axes_vec, starts_vec, ends_vec, out);
+}
+
 }  // namespace sparse
 }  // namespace phi
 

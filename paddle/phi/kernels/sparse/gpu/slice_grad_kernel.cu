@@ -51,21 +51,14 @@ __global__ void GetCooInputGradCudaKernel(const int64_t* out_grad_indices_data,
   }
 }
 template <typename T, typename Context>
-void SliceCooGradKernel(const Context& dev_ctx,
-                        const SparseCooTensor& x,
-                        const SparseCooTensor& out_grad,
-                        const phi::IntArray& axes_arr,
-                        const phi::IntArray& starts_arr,
-                        const phi::IntArray& ends_arr,
-                        SparseCooTensor* x_grad) {
+void SliceCooGradCompute(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const SparseCooTensor& out_grad,
+                         const std::vector<int64_t>& axes,
+                         const std::vector<int64_t>& starts,
+                         const std::vector<int64_t>& ends,
+                         SparseCooTensor* x_grad) {
   const phi::DDim& x_dims = x.dims();
-
-  std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> starts = starts_arr.GetData();
-  std::vector<int64_t> ends = ends_arr.GetData();
-
-  // Step1: Check and update sparse slice attrs
-  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
 
   // copy axes to device
   auto d_axes_tensor = memory_utils::Alloc(
@@ -121,6 +114,26 @@ void SliceCooGradKernel(const Context& dev_ctx,
                                                      out_grad_nnz,
                                                      dx_indices_data,
                                                      dx_values_data);
+}
+
+template <typename T, typename Context>
+void SliceCooGradKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& out_grad,
+                        const phi::IntArray& axes,
+                        const phi::IntArray& starts,
+                        const phi::IntArray& ends,
+                        SparseCooTensor* x_grad) {
+  const phi::DDim& x_dims = x.dims();
+  std::vector<int64_t> axes_vec = axes.GetData();
+  std::vector<int64_t> starts_vec = starts.GetData();
+  std::vector<int64_t> ends_vec = ends.GetData();
+  // Check and update sparse slice attrs
+  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(
+      x_dims, &axes_vec, &starts_vec, &ends_vec);
+
+  SliceCooGradCompute<T, Context>(
+      dev_ctx, x, out_grad, axes_vec, starts_vec, ends_vec, x_grad);
 }
 
 template <typename T>
@@ -283,21 +296,14 @@ void SliceCsrGrad3D(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SliceCsrGradKernel(const Context& dev_ctx,
-                        const SparseCsrTensor& x,
-                        const SparseCsrTensor& out_grad,
-                        const phi::IntArray& axes_arr,
-                        const phi::IntArray& starts_arr,
-                        const phi::IntArray& ends_arr,
-                        SparseCsrTensor* x_grad) {
+void SliceCsrGradCompute(const Context& dev_ctx,
+                         const SparseCsrTensor& x,
+                         const SparseCsrTensor& out_grad,
+                         const std::vector<int64_t>& axes,
+                         const std::vector<int64_t>& starts,
+                         const std::vector<int64_t>& ends,
+                         SparseCsrTensor* x_grad) {
   const phi::DDim& x_dims = x.dims();
-
-  std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> starts = starts_arr.GetData();
-  std::vector<int64_t> ends = ends_arr.GetData();
-
-  // update starts and ends
-  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
 
   // construct new axes, starts, and ends
   std::vector<int64_t> new_axes(3), new_starts(3), new_ends(3);
@@ -319,6 +325,27 @@ void SliceCsrGradKernel(const Context& dev_ctx,
         x_dims.size());
   }
 }
+
+template <typename T, typename Context>
+void SliceCsrGradKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& out_grad,
+                        const phi::IntArray& axes,
+                        const phi::IntArray& starts,
+                        const phi::IntArray& ends,
+                        SparseCsrTensor* x_grad) {
+  const phi::DDim& x_dims = x.dims();
+  std::vector<int64_t> axes_vec = axes.GetData();
+  std::vector<int64_t> starts_vec = starts.GetData();
+  std::vector<int64_t> ends_vec = ends.GetData();
+  // update starts and ends
+  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(
+      x_dims, &axes_vec, &starts_vec, &ends_vec);
+
+  SliceCsrGradCompute<T, Context>(
+      dev_ctx, x, out_grad, axes_vec, starts_vec, ends_vec, x_grad);
+}
+
 }  // namespace sparse
 }  // namespace phi
 PD_REGISTER_KERNEL(slice_coo_grad,
