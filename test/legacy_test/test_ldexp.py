@@ -161,11 +161,11 @@ class TestLdexpError(unittest.TestCase):
         y = (np.random.randint(-10, 10, dims)).astype(np.int32)
         self.assertRaises(TypeError, paddle.ldexp, x, paddle.to_tensor(y))
 
-        # test 1-d float tensor and int string
+        # test 1-d float tensor and int
         dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
-        y = int(np.random.rand() * 10)
-        self.assertRaises(TypeError, paddle.ldexp, paddle.to_tensor(x), str(y))
+        y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+        self.assertRaises(TypeError, paddle.ldexp, paddle.to_tensor(x), y)
 
 
 if __name__ == '__main__':
