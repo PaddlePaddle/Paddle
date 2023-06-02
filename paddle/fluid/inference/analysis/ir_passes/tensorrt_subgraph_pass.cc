@@ -165,7 +165,10 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);
     if (!is_ok)
-      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    {
+      std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
+      std::cout << node->outputs[0]->Name() << " name is not in TensorRT" << std::endl;
+    }
     return is_ok;
   };
 
