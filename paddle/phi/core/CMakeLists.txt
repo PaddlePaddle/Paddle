@@ -37,4 +37,4 @@ collect_srcs(
   generator.cc
   kernel_factory.cc
   tensor_utils.cc
-  storage_properties.cc)
+  utils/type_info.cc)
