@@ -1617,7 +1617,7 @@
     out : Out
 
 - op : mean (reduce_mean)
-  backward : reduce_mean_grad
+  backward : mean_grad (reduce_mean_grad)
   inputs :
     x : X
   outputs :
@@ -1860,6 +1860,8 @@
 
 - op : pool2d
   backward : pool2d_grad
+  attrs:
+    kernel_size: ksize
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]
@@ -2000,6 +2002,7 @@
     x : X
   outputs:
     out : Out
+    xshape: XShape
   int_array:
     shape :
       data_type : int
