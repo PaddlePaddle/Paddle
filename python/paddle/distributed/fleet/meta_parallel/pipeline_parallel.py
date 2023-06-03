@@ -519,9 +519,7 @@ class PipelineParallel(MetaParallelBase):
         if self.lr_scheduler:
             self.lr_scheduler.step()
 
-    def _release_output(self, output, need_release=True):
-        if not need_release:
-            return
+    def _release_output(self, output):
         if isinstance(output, (tuple, list)):
             for t in output:
                 if t is not None and isinstance(t, paddle.Tensor):
