@@ -217,7 +217,7 @@ class PRChecker:
 
     def get_pr_diff_lines(self):
         file_to_diff_lines = {}
-        r = httpx.get(self.pr.diff_url, timeout=10.0)
+        r = httpx.get(self.pr.diff_url, timeout=None)
         data = r.text
         data = data.split('\n')
         ix = 0
