@@ -72,6 +72,51 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : coalesce_tensor
+  version :
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [use_align]."
+      action :
+        - add_attr : use_align
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is true to be compatible
+            with before.
+          default : "true"
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [align_size]."
+      action :
+        - add_attr : align_size
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is -1 and use the default
+            align_size
+            of each place to be compatible with before.
+          default : -1
+
+- op : conv2d
+  version :
+    - checkpoint : Upgrade conv2d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : conv3d
+  version :
+    - checkpoint : Upgrade conv3d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : depthwise_conv2d
+  version :
+    - checkpoint : Upgrade depthwise_conv2d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
@@ -149,6 +194,17 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : instance_norm
+  version :
+    - checkpoint : Change dispensable of attribute from False to True in instance_norm.
+      action :
+        - modify_attr : Bias
+          comment : "The arg 'dispensable' of Input 'Bias' is changed: from 'False' to 'True'."
+          default : "true"
+        - modify_attr : Scale
+          comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
+          default : "true"
+
 - op : lamb
   version :
     - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].
@@ -181,6 +237,13 @@
         - add_attr : dtype
           comment : In order to change output data type
           default : 5
+
+- op : lstsq
+  version :
+    - checkpoint : Upgrade lstsq, add 1 outputs [Residuals].
+      action :
+        - add_output : Residuals
+          comment : Output tensor of lstsq operator, meaning the squared residuals of the calculated solutions.
 
 - op : matrix_nms
   version :

@@ -225,6 +225,12 @@ class AnalysisPredictor : public PaddlePredictor {
   bool ExpRunWithExternalStream(const gpuStream_t stream);
 #endif
 
+  // Note: Can only be used under thread_local semantics.
+  bool ExpRunWithExternalStream(void *stream);
+
+  // Note: Can only be used under thread_local semantics.
+  bool ExpRunWithRuntimeConfig(void *config);
+
   ///
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.
@@ -316,11 +322,21 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
-  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// std::string&, const paddle_infer::Tensor&>). Here, the first parameter is
+  /// op's type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const OutputTensorHookFunc &hookfunc) override;
+
+  ///
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
+  void RegisterOutputHook(const OutputTensorHookFunc_V2 &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -591,7 +607,8 @@ class AnalysisPredictor : public PaddlePredictor {
   int root_predictor_id_{-1};
 
  private:
-  std::vector<Exp_OutputHookFunc> hookfuncs_;
+  std::vector<OutputTensorHookFunc> hookfuncs_;
+  std::vector<OutputTensorHookFunc_V2> hookfuncs_v2_;
 
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};

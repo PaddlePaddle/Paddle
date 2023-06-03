@@ -18,6 +18,8 @@
 
 #include "math.h"  // NOLINT
 
+#include "paddle/phi/core/cuda_stream.h"
+
 namespace paddle {
 namespace operators {
 

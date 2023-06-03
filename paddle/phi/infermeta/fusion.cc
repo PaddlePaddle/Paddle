@@ -19,8 +19,78 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace phi {
+
+static phi::DDim BroadCastInferShape(const DDim x_dims,
+                                     const DDim y_dims,
+                                     int axis) {
+  std::vector<int> out_dims_array(x_dims.size(), -1);
+  if (x_dims != y_dims) {
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+    if (x_dims.size() == y_dims.size()) {
+      PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "axis should be -1 or 0 while the dimension of "
+                            "tensor X (%s) is equal to the dimension of "
+                            "tensor Y (%s), but received axis: %s",
+                            x_dims.size(),
+                            y_dims.size(),
+                            axis));
+    }
+    PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The axis range must be [%s, %s), but axis is %s. "
+                          "Please set the axis again.",
+                          -1 * max_dim,
+                          max_dim,
+                          axis));
+    axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
+                     : axis);
+    std::vector<int> x_dims_array(max_dim);
+    std::vector<int> y_dims_array(max_dim);
+    out_dims_array.resize(max_dim);
+    funcs::GetBroadcastDimsArrays(x_dims,
+                                  y_dims,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
+
+    return phi::make_ddim(out_dims_array);
+  }
+  return x_dims;
+}
+
+void AddActXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& y,
+                        const MetaTensor& y_max,
+                        int act_type,
+                        MetaTensor* out,
+                        MetaTensor* out_max) {
+  int axis = -1;
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims != y_dims) {
+    auto out_dims = BroadCastInferShape(x_dims, y_dims, axis);
+    out->set_dims(out_dims);
+  } else {
+    out->set_dims(x_dims);
+  }
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dtype(x.dtype());
+  out_max->set_layout(x.layout());
+}
 
 inline int ConvOutSize(int input_size,
                        int filter_size,
@@ -41,6 +111,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& filter_max,
                         const MetaTensor& bias,
                         const MetaTensor& branch,
+                        const MetaTensor& branch_max,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -158,13 +229,16 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   }
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out_max->set_dims(phi::make_ddim({4}));
+  out_max->set_dims(phi::make_ddim({6}));
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
-    MetaTensor* out) {
+    const MetaTensor& mask,
+    MetaTensor* out,
+    MetaTensor* seq_lod,
+    MetaTensor* max_seq_len) {
   PADDLE_ENFORCE_GT(ids.size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -204,7 +278,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-  out_max->set_dims(w_max.dims());
+  out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
 }
@@ -225,6 +299,8 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const MetaTensor& mask,
+    const MetaTensor& seq_lod,
+    const MetaTensor& max_seq_len,
     int layer_num,
     bool norm_before,
     int hidden_dim,
@@ -278,6 +354,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& time_step,
     const std::vector<const MetaTensor*>& seq_lengths,
     const std::vector<const MetaTensor*>& src_mask,
+    const std::vector<const MetaTensor*>& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -287,6 +364,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out) {
   auto x_dim = x.dims();
@@ -326,13 +404,6 @@ void FusedMultiTransformerXpuInferMeta(
                           "The first dim of CacheKV must be 2, but got %d",
                           c_dim[0]));  // 2
     PADDLE_ENFORCE_EQ(
-        c_dim[2],
-        x_dim[0],
-        phi::errors::InvalidArgument("The third dim of CacheKV must be equal "
-                                     "with batch size %d, but got %d",
-                                     x_dim[0],
-                                     c_dim[2]));  // batch_size
-    PADDLE_ENFORCE_EQ(
         c_dim[3],
         trans_qkvw ? y_dim[1] : y_dim[2],
         phi::errors::InvalidArgument("The fourth dim of CacheKV must be equal "
@@ -351,6 +422,100 @@ void FusedMultiTransformerXpuInferMeta(
   out->set_dims(x_dim);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void YoloBoxXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& x_max,
+                         const MetaTensor& grid,
+                         const MetaTensor& stride,
+                         const MetaTensor& anchor_grid,
+                         float offset,
+                         MetaTensor* out,
+                         MetaTensor* out_max) {
+  auto x_dims = x.dims();
+  auto x_dims_size = x_dims.size();
+  PADDLE_ENFORCE_GT(
+      x_dims[x_dims_size - 1],
+      4,
+      phi::errors::InvalidArgument(
+          "The last dim of x should be larget than 4, but received "
+          " is %d.",
+          x_dims[x_dims_size - 1]));
+  // compute left out_dims
+  // y[..., 0:2] = (x[..., 0:2] * 2 + self.grid[i]) * self.stride[i]  # xy
+  std::vector<int> axes_ = {x_dims_size - 1};
+  std::vector<int> infer_flags_ = {1};
+  std::vector<int> decrease_axis_ = {-1};
+  std::vector<int64_t> strides_ = {1};
+  std::vector<int64_t> starts_l = {0};
+  std::vector<int64_t> ends_l = {2};
+  std::vector<int64_t> left_slice_out_dims_vector(x_dims_size, -1);
+  phi::funcs::StridedSliceOutDims(starts_l,
+                                  ends_l,
+                                  strides_,
+                                  axes_,
+                                  infer_flags_,
+                                  x_dims,
+                                  decrease_axis_,
+                                  left_slice_out_dims_vector.data(),
+                                  1,
+                                  true);
+  auto left_slice_out_dims = phi::make_ddim(left_slice_out_dims_vector);
+  auto grid_dims = grid.dims();
+  auto left_add_out_dims =
+      BroadCastInferShape(left_slice_out_dims, grid_dims, -1);
+  auto stride_dims = stride.dims();
+  auto left_mul_out_dims =
+      BroadCastInferShape(left_add_out_dims, stride_dims, -1);
+  // compute mid out_dims
+  // wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]             # wh
+  std::vector<int64_t> starts_m = {2};
+  std::vector<int64_t> ends_m = {4};
+  std::vector<int64_t> mid_slice_out_dims_vector(x_dims_size, -1);
+  phi::funcs::StridedSliceOutDims(starts_m,
+                                  ends_m,
+                                  strides_,
+                                  axes_,
+                                  infer_flags_,
+                                  x_dims,
+                                  decrease_axis_,
+                                  mid_slice_out_dims_vector.data(),
+                                  1,
+                                  true);
+  auto mid_slice_out_dims = phi::make_ddim(mid_slice_out_dims_vector);
+  auto anchor_grid_dims = anchor_grid.dims();
+  auto mid_mul_out_dims =
+      BroadCastInferShape(mid_slice_out_dims, anchor_grid_dims, -1);
+  // compute right out_dims
+  std::vector<int64_t> starts_r = {4};
+  std::vector<int64_t> ends_r = {2147483647};
+  std::vector<int64_t> right_slice_out_dims_vector(x_dims_size, -1);
+  phi::funcs::StridedSliceOutDims(starts_r,
+                                  ends_r,
+                                  strides_,
+                                  axes_,
+                                  infer_flags_,
+                                  x_dims,
+                                  decrease_axis_,
+                                  right_slice_out_dims_vector.data(),
+                                  1,
+                                  true);
+  auto right_slice_out_dims = phi::make_ddim(right_slice_out_dims_vector);
+  // compute concat out_dims
+  std::vector<phi::DDim> in_dims;
+  in_dims.reserve(3);
+  in_dims.emplace_back(left_mul_out_dims);
+  in_dims.emplace_back(mid_mul_out_dims);
+  in_dims.emplace_back(right_slice_out_dims);
+  phi::DDim out_dim =
+      phi::funcs::ComputeAndCheckShape(false, in_dims, x_dims_size - 1);
+
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dtype(x.dtype());
+  out_max->set_layout(x.layout());
 }
 
 }  // namespace phi

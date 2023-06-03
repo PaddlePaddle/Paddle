@@ -269,6 +269,14 @@ else()
     SRCS ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
+  if(WITH_PHI_SHARED)
+    set(paddle_phi_lib ${PADDLE_BINARY_DIR}/paddle/phi/libphi.*)
+    copy(
+      inference_lib_dist
+      SRCS ${paddle_phi_lib}
+      DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
+  endif()
+
 endif()
 
 copy(
@@ -285,58 +293,56 @@ include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/api/ext/*.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/ext/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/api/include/*.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/include/
-)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/include/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/api/all.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/api/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/common/*.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/common/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/macros.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/visit_type.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/phi/core/hostdevice.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/core/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/init_phi.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/phi/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/optional.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/none.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/utils/flat_hash_map.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/utils/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/utils/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/extension.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/)
 
-# the header file of phi is copied to the experimental directory,
 # the include path of phi needs to be changed to adapt to inference api path
 add_custom_command(
   TARGET inference_lib_dist

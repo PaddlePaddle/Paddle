@@ -159,7 +159,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/CustomPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
 }
 
@@ -667,15 +667,12 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           AutoInitTensorByPyArray(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(
-                       kw_value, reinterpret_cast<PyObject*>(p_tensor_type))) {
+        } else if (PyObject_TypeCheck(kw_value, p_tensor_type)) {
           VLOG(6) << "Calling case5's or case6's initializer";
           AutoInitTensorByTensor(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(kw_value,
-                                       reinterpret_cast<PyObject*>(
-                                           g_framework_tensor_pytype))) {
+        } else if (PyObject_TypeCheck(kw_value, g_framework_tensor_pytype)) {
           VLOG(6) << "Calling case7's initializer.";
           AutoInitTensorByTensor(py_tensor_ptr,
                                  kws_map,
@@ -693,8 +690,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
               "right way."));
         }
       } else if (kw_dtype != NULL &&
-                 PyObject_IsInstance(
-                     kw_dtype, reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+                 PyObject_TypeCheck(kw_dtype, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer";
 
         PADDLE_ENFORCE_NOT_NULL(
@@ -763,22 +759,19 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     }
   } else if (args_num == (Py_ssize_t)1 || args_num == (Py_ssize_t)2 ||
              args_num == (Py_ssize_t)3) {
-    // 1 to 3 position args, remainting arguments are kwargs
+    // 1 to 3 position args, remaining arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
       VLOG(6) << "Calling case3's or case4's initializer.";
       AutoInitTensorByPyArray(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_IsInstance(
-                   arg0_ptr, reinterpret_cast<PyObject*>(p_tensor_type))) {
+    } else if (PyObject_TypeCheck(arg0_ptr, p_tensor_type)) {
       VLOG(6) << "Calling case5's or case6's initializer.";
       AutoInitTensorByTensor(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_IsInstance(
-                   arg0_ptr,
-                   reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    } else if (PyObject_TypeCheck(arg0_ptr, g_framework_tensor_pytype)) {
       VLOG(6) << "Calling case7's initializer.";
       AutoInitTensorByTensor(py_tensor_ptr,
                              kws_map,
@@ -798,7 +791,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           "constructor."));
     }
   } else if (args_num == (Py_ssize_t)4) {
-    // 4 position args, remainting arguments are kwargs
+    // 4 position args, remaining arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
       VLOG(6) << "Calling case3's or case4's initializer.";
@@ -808,7 +801,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible constructor arguments, "
-          "there are 4 position args and remainting arguments arg kwargs,"
+          "there are 4 position args and remaining arguments arg kwargs,"
           "but the first position args should be PyArray. "
           "Please check your code and make sure the first position args is "
           "PyArray."));
@@ -816,8 +809,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   } else if (args_num == (Py_ssize_t)5) {
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (PyObject_IsInstance(arg0_ptr,
-                              reinterpret_cast<PyObject*>(g_vartype_pytype))) {
+      if (PyObject_TypeCheck(arg0_ptr, g_vartype_pytype)) {
         VLOG(6) << "Calling case2's initializer.";
         paddle::framework::proto::VarType::Type dtype =
             CastPyArg2ProtoType(PyTuple_GET_ITEM(args, 0), 0);
@@ -856,7 +848,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             "Please check your code and make sure you call the existed "
             "constructor."));
       }
-    } else {  // five position args, remainting arguments are kwargs
+    } else {  // five position args, remaining arguments are kwargs
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
       if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
         VLOG(6) << "Calling case3's or case4's initializer";
@@ -866,7 +858,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Incompatible constructor arguments, "
-            "there are 5 position args and remainting arguments are kwargs,"
+            "there are 5 position args and remaining arguments are kwargs,"
             "but the first position args should be PyArray. "
             "Please check your code and make sure the first position args is "
             "PyArray."));
@@ -879,11 +871,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       AutoInitTensorByPyArray(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else {  // six position args, remainting arguments are kwargs, but this
+    } else {  // six position args, remaining arguments are kwargs, but this
               // is not a right way
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible constructor arguments, "
-          "there are 6 position args and the remainting arguments are kwargs. "
+          "there are 6 position args and the remaining arguments are kwargs. "
           "Please check your code and make sure the first position args is "
           "PyArray."));
     }
@@ -1007,9 +999,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           AutoInitStringTensorByPyArray(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
           return 0;
-        } else if (PyObject_IsInstance(
-                       kw_value,
-                       reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+        } else if (PyObject_TypeCheck(kw_value, p_string_tensor_type)) {
           VLOG(6) << "Calling case5's or case6's string initializer";
           AutoInitStringTensorByStringTensor(
               py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
@@ -1050,16 +1040,14 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       }
     }
   } else if (args_num == (Py_ssize_t)1) {  // case 3 ~ 6
-    // 1 position args, remainting arguments are kwargs
+    // 1 position args, remaining arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
       VLOG(6) << "Calling case3's or case4's string initializer.";
       AutoInitStringTensorByPyArray(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else if (PyObject_IsInstance(
-                   arg0_ptr,
-                   reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+    } else if (PyObject_TypeCheck(arg0_ptr, p_string_tensor_type)) {
       VLOG(6) << "Calling case5's or case6's string initializer.";
       AutoInitStringTensorByStringTensor(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
@@ -1076,8 +1064,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     // 2 position args
     if (!flag_kwargs) {
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
-      if (PyObject_IsInstance(
-              arg0_ptr, reinterpret_cast<PyObject*>(p_string_tensor_type))) {
+      if (PyObject_TypeCheck(arg0_ptr, p_string_tensor_type)) {
         VLOG(6) << "Calling case6's string initializer.";
         AutoInitStringTensorByStringTensor(
             py_tensor_ptr, kws_map, args, flag_kwargs, args_num);

@@ -16,6 +16,7 @@
 # safe and performance-critical. These ops are always converted to fp16.
 FP16_WHITE_LIST = {
     'conv2d',
+    'einsum',
     'matmul',
     'matmul_v2',
     'max_pool2d_with_index',
@@ -84,10 +85,9 @@ FP16_EXTRA_BLACK_LIST = {
     'lookup_table',
     'lookup_table_v2',
     'scatter',
-    'depthwise_conv2d',
 }
 
-BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
+BF16_WHITE_LIST = {'conv2d', 'einsum', 'matmul_v2'}
 BF16_BLACK_LIST = set()
 
 

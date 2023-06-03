@@ -58,7 +58,7 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
         (height > 0 && width > 0 && start_idx >= 0),
         true,
         platform::errors::InvalidArgument(
-            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            "height:%ld width:%ld start_idx:%ld must not have negative values",
             height,
             width,
             start_idx));
@@ -79,7 +79,7 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int32 or int64 in CPU and GPU, int32 in NPU "
+             "An input with type int32 or int64 in CPU and GPU, "
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
 
@@ -142,7 +142,7 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
         (height > 0 && width > 0 && start_idx >= 0),
         true,
         platform::errors::InvalidArgument(
-            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            "height:%ld width:%ld start_idx:%ld must not have negative values",
             height,
             width,
             start_idx));

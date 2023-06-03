@@ -103,11 +103,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             ver = paddle_infer.get_trt_compile_version()
             trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
             if trt_version >= 8400:
-                if self.dims == 1 and not dynamic_shape:
+                if self.dims == 1:
                     return 0, 3
                 return 1, 2
             else:
-                if (self.dims == 1 and not dynamic_shape) or (
+                if self.dims <= 2 or (
                     program_config.inputs['input_data'].dtype
                     in ['bool', 'int8', 'uint8']
                 ):

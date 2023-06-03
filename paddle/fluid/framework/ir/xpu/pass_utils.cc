@@ -71,6 +71,23 @@ Node* FindNodeWithName(Graph* graph, std::string name) {
   return nullptr;
 }
 
+std::vector<Node*> FindOpNodeByInputName(Graph* graph,
+                                         const std::string& var_name) {
+  std::vector<Node*> ret;
+  for (auto* node : graph->Nodes()) {
+    if (!node->IsOp()) continue;
+    auto inputs = node->Op()->Inputs();
+    for (auto input : inputs) {
+      auto in_names = input.second;
+      if (std::count(in_names.begin(), in_names.end(), var_name) > 0) {
+        ret.push_back(node);
+        break;
+      }
+    }
+  }
+  return ret;
+}
+
 template <typename T>
 std::string IntTypeToString() {
   LOG(FATAL) << "Not support type.";

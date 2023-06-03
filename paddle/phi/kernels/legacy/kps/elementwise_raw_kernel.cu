@@ -157,13 +157,21 @@ PD_REGISTER_KERNEL(remainder_raw,
                    double,
                    int,
                    float16,
-                   int64_t) {}
+                   int64_t,
+                   bfloat16) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   float,
+                   double,
+                   float16,
+                   bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    KPS,
                    ALL_LAYOUT,

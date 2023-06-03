@@ -15,13 +15,13 @@
 import unittest
 
 import paddle
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
     get_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import set_var_dist_attr
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.utils import set_var_dist_attr
 from paddle.distributed.fleet import auto
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.incubate.autograd import enable_prim
@@ -55,7 +55,7 @@ class TestPrimDistOp(unittest.TestCase):
         self.tmp1 = paddle.static.data(name='tmp1', shape=[20], dtype='float')
         self.tmp2 = paddle.static.data(name='tmp2', shape=[20], dtype='float')
         self.batch_reduced = paddle.static.data(
-            name='batch_reduced', shape=[1], dtype='float'
+            name='batch_reduced', shape=[], dtype='float'
         )
         self.attrs = {}
 
@@ -108,7 +108,6 @@ class TestPrimDistOp(unittest.TestCase):
             self.main_program, self.startup_program, [(self.w, self.w_grad)]
         )
         ops = dist_main_prog.global_block().ops
-
         self.assertTrue(ops[1].type == "c_allreduce_sum")
         self.assertTrue(ops[3].type == "c_allreduce_sum")
 

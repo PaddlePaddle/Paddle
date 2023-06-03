@@ -19,8 +19,8 @@
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
-                                       const ProgramDesc& prog)
-    : place_(place), prog_(prog) {}
+                                       const std::vector<ProgramDesc>& programs)
+    : place_(place), programs_(programs) {}
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     Scope* scope,
@@ -28,28 +28,60 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
 
-  VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-  return core->Run(feed_names);
-}
+  // TODO(Ruibiao): Unified single and multiple program run
+  if (programs_.size() == 1) {  // run single program
+    VLOG(6) << "Run single program";
+    auto core = GetInterpreterCore(scope,
+                                   programs_.at(0),
+                                   feed_names,
+                                   fetch_names,
+                                   0,
+                                   interpreter::ExecutionConfig());
+    VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
+    return core->Run(feed_names);
+  } else {  // run multiple programs
+    VLOG(6) << "Run multiple program, programs_.size() " << programs_.size();
+    FetchList merged_fetch_list;
+    for (size_t program_idx = 0; program_idx < programs_.size();
+         ++program_idx) {
+      const ProgramDesc& program = programs_[program_idx];
 
-framework::interpreter::CostInfo StandaloneExecutor::DryRun(
-    Scope* scope,
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
-  auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
+      interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      // TODO(Ruibiao): hack skip gc for all vars, improve it later
+      std::set<std::string> skip_gc_vars;
+      for (VarDesc* var : program.Block(0).AllVars()) {
+        execution_config.skip_gc_vars.insert(var->Name());
+      }
 
-  return core->DryRun(feed_names, feed_tensors);
+      // TODO(Ruibiao): ONLY support feeds data in the first program for now
+      const std::vector<std::string>& real_feed_names =
+          (program_idx == 0 ? feed_names : std::vector<std::string>());
+      auto core = GetInterpreterCore(scope,
+                                     program,
+                                     real_feed_names,
+                                     fetch_names,
+                                     program_idx,
+                                     execution_config);
+      const FetchList& fetch_list = core->Run(real_feed_names);
+      std::move(fetch_list.begin(),
+                fetch_list.end(),
+                std::back_inserter(merged_fetch_list));
+    }
+    return merged_fetch_list;
+  }
 }
 
 std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     Scope* scope,
-    const ProgramDesc& prog,
+    const ProgramDesc& program,
     const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names,
-    bool add_fetch_op) {
+    size_t program_idx,
+    interpreter::ExecutionConfig execution_config) {
   std::ostringstream oss;
+  oss << "prog_idx:" << program_idx << ",";
   oss << "feed:";
   for (auto& feedname : feed_names) {
     oss << feedname << ",";
@@ -65,14 +97,8 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
             << place_;
-    VLOG(3) << "add fetch op: " << add_fetch_op;
-    std::shared_ptr<InterpreterCore> core = nullptr;
-
-    if (add_fetch_op) {
-      core = CreateInterpreterCore(place_, prog, scope, fetch_names);
-    } else {
-      core = std::make_shared<InterpreterCore>(place_, prog.Block(0), scope);
-    }
+    std::shared_ptr<InterpreterCore> core = std::make_shared<InterpreterCore>(
+        place_, program.Block(0), scope, execution_config);
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {
