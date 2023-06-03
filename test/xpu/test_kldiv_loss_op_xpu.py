@@ -69,6 +69,8 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.outputs = {'Loss': loss.astype('float32')}
 
         def test_check_output(self):
+            # houjue debug
+            raise AssertionError()
             self.check_output(check_dygraph=True)
 
         def test_check_grad(self):
