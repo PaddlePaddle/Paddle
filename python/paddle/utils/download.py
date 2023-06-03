@@ -167,7 +167,7 @@ def _get_download(url, fullname):
     # using requests.get method
     fname = osp.basename(fullname)
     try:
-        req = httpx.get(url, timeout=None)
+        req = httpx.get(url, timeout=None, follow_redirects=True)
     except Exception as e:  # requests.exceptions.ConnectionError
         logger.info(
             "Downloading {} from {} failed with exception {}".format(

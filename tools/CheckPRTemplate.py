@@ -73,7 +73,9 @@ def checkComments(url):
     headers = {
         'Authorization': 'token ' + GITHUB_API_TOKEN,
     }
-    response = httpx.get(url, headers=headers, timeout=None).json()
+    response = httpx.get(
+        url, headers=headers, timeout=None, follow_redirects=True
+    ).json()
     return response
 
 
@@ -138,7 +140,9 @@ def get_a_pull(pull_id):
         'Authorization': 'token ' + GITHUB_API_TOKEN,
         'Accept': 'application/vnd.github+json',
     }
-    response = httpx.request("GET", url, headers=headers, data=payload)
+    response = httpx.request(
+        "GET", url, headers=headers, data=payload, follow_redirects=True
+    )
     return response.json()
 
 

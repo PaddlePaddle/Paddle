@@ -27,7 +27,7 @@ class KVClient:
         key = key if key.startswith('/') else f"/{key}"
         u = f"{self.endpoint}{key}"
         try:
-            r = httpx.post(u, data=value, timeout=None)
+            r = httpx.post(u, data=value, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return True
             else:
@@ -39,7 +39,7 @@ class KVClient:
         key = key if key.startswith('/') else f"/{key}"
         u = f"{self.endpoint}{key}"
         try:
-            r = httpx.get(u, timeout=None)
+            r = httpx.get(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 ret = r.json()
                 return ret.get(key, '')
@@ -52,7 +52,7 @@ class KVClient:
         key = key if key.startswith('/') else f"/{key}"
         u = f"{self.endpoint}{key}"
         try:
-            r = httpx.get(u, timeout=None)
+            r = httpx.get(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return r.json()
         except:
@@ -62,7 +62,7 @@ class KVClient:
         key = key if key.startswith('/') else f"/{key}"
         u = f"{self.endpoint}{key}"
         try:
-            r = httpx.delete(u, timeout=None)
+            r = httpx.delete(u, timeout=None, follow_redirects=True)
             if r.status_code == 200:
                 return True
             else:
