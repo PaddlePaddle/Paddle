@@ -1090,9 +1090,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             ' and not greater than min(m, n)={}'.format(q, min(m, n))
         )
     if not (niter >= 0):
-        raise ValueError(
-            f'niter(={niter}) must be non-negative integer'
-        )
+        raise ValueError(f'niter(={niter}) must be non-negative integer')
 
     dtype = get_floating_dtype(x)
 

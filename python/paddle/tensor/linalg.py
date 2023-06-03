@@ -1965,7 +1965,7 @@ def svd(x, full_matrices=False, name=None):
 
 def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     r"""
-    Performs linear Principal Component Analysis (PCA) on a low-rank matrix, batches of such matrices, or sparse matrix.
+    Performs linear Principal Component Analysis (PCA) on a low-rank matrix or batches of such matrices.
 
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
 
@@ -1994,7 +1994,6 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         .. code-block:: python
 
             import paddle
-
 
             x = paddle.randn((5, 5), dtype='float64')
             U, S, V = paddle.linalg.pca_lowrank(x)
@@ -2108,9 +2107,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             ' and not greater than min(m, n)={}'.format(q, min(m, n))
         )
     if not (niter >= 0):
-        raise ValueError(
-            f'niter(={niter}) must be non-negative integer'
-        )
+        raise ValueError(f'niter(={niter}) must be non-negative integer')
 
     if not center:
         return svd_lowrank(x, q, niter=niter, M=None)
