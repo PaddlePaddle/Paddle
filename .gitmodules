@@ -50,3 +50,12 @@
 	path = third_party/eigen3
 	url = https://gitlab.com/libeigen/eigen.git
 	ignore = dirty
+[submodule "third_party/mkldnn"]
+	path = third_party/mkldnn
+	url = https://github.com/oneapi-src/oneDNN.git
+[submodule "third_party/flashattn"]
+	path = third_party/flashattn
+	url = https://github.com/PaddlePaddle/flash-attention.git
+[submodule "third_party/gtest"]
+	path = third_party/gtest
+	url = https://github.com/google/googletest.git

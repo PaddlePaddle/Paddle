@@ -26,7 +26,7 @@ set(GTEST_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gtest)
 set(GTEST_INCLUDE_DIR
     "${GTEST_INSTALL_DIR}/include"
     CACHE PATH "gtest include directory." FORCE)
-set(GTEST_REPOSITORY ${GIT_URL}/google/googletest.git)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/gtest)
 set(GTEST_TAG release-1.8.1)
 set(GTEST_SOURCE_DIR ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 include_directories(${GTEST_INCLUDE_DIR})
@@ -69,14 +69,13 @@ if(NOT WIN32 AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
   # See: [Why calling some `git` commands before `patch`?]
   set(GTEST_PATCH_COMMAND
       git checkout -- . && git checkout ${GTEST_TAG} && patch -Nd
-      ${GTEST_SOURCE_DIR}/googletest/src < ${native_src})
+      ${SOURCE_DIR}/googletest/src < ${native_src})
 endif()
 if(WIN32)
   ExternalProject_Add(
     extern_gtest
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GTEST_REPOSITORY}
-    GIT_TAG ${GTEST_TAG}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    SOURCE_DIR ${SOURCE_DIR}
     DEPENDS ${GTEST_DEPENDS}
     PREFIX ${GTEST_PREFIX_DIR}
     UPDATE_COMMAND ""
