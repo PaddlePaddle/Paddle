@@ -159,14 +159,6 @@ KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-KernelSignature ReduceMeanGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("mean_grad",
-                         {"X", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(reduce_sum, sum);
@@ -179,8 +171,6 @@ PD_REGISTER_BASE_KERNEL_NAME(reduce_prod, prod);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_all, all);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_any, any);
 
-PD_REGISTER_BASE_KERNEL_NAME(reduce_mean_grad, mean_grad);
-
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_prod, phi::ReduceProdOpArgumentMapping);
@@ -190,6 +180,3 @@ PD_REGISTER_ARG_MAPPING_FN(reduce_min, phi::ReduceMinOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_amin, phi::ReduceAMinOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_all, phi::ReduceAllOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_any, phi::ReduceAnyOpArgumentMapping);
-
-PD_REGISTER_ARG_MAPPING_FN(reduce_mean_grad,
-                           phi::ReduceMeanGradOpArgumentMapping);

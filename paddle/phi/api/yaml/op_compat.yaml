@@ -1799,7 +1799,7 @@
     out : Out
 
 - op : mean (reduce_mean)
-  backward : mean_grad (reduce_mean_grad)
+  backward : mean_grad (reduce_mean_grad), mean_double_grad
   inputs :
     x : X
   outputs :
@@ -1808,6 +1808,14 @@
     {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    mean : GetReduceExpectedKernelType
+    mean_grad : GetReduceGradExpectedKernelType
+  manual_signature : [mean]
 
 - op : mean_all (mean)
   backward : mean_all_grad (mean_grad)

@@ -201,6 +201,24 @@
     data_type : out_grad
   composite : maximum_grad(x, y, out_grad, x_grad, y_grad)
 
+- backward_op : mean_double_grad
+  forward: mean_grad (Tensor x, Tensor grad_out, IntArray axis={},  bool keepdim=false, bool reduce_all = false) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axis={},  bool keepdim=false, bool reduce_all=false)
+  output : Tensor(grad_out_grad)
+  invoke : mean(grad_x_grad, axis, keepdim, reduce_all)
+
+- backward_op : mean_grad
+  forward: mean (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray axis={},  bool keepdim=false, bool reduce_all=false)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : mean_grad
+  no_need_buffer : x
+  backward : mean_double_grad
+
 - backward_op : min_grad
   forward: min (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)

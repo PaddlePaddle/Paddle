@@ -10,7 +10,6 @@ if(WITH_TESTING AND NOT WIN32)
       phi
       elementwise_add_op
       activation_op
-      reduce_mean_op
       feed_op
       fetch_op
       generated_op

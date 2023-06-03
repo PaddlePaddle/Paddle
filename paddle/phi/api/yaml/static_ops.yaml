@@ -396,6 +396,17 @@
     func : maximum
   backward : maximum_grad
 
+- op : mean
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+    param : [x, axis, keepdim, reduce_all]
+  kernel :
+    func : mean_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : mean_grad
+
 - op : min
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
