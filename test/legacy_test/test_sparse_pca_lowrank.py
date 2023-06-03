@@ -34,7 +34,7 @@ def get_cuda_version():
         return -1
 
 
-class TestPcaLowrankAPI(unittest.TestCase):
+class TestSparsePcaLowrankAPI(unittest.TestCase):
     def transpose(self, x):
         shape = x.shape
         perm = list(range(0, len(shape)))
@@ -62,9 +62,7 @@ class TestPcaLowrankAPI(unittest.TestCase):
         )
         return paddle.sparse.coalesce(x)
 
-    def run_subtest(
-            self, guess_rank, matrix_size, batches, pca, **options
-    ):
+    def run_subtest(self, guess_rank, matrix_size, batches, pca, **options):
         density = options.pop('density', 0.5)
         if isinstance(matrix_size, int):
             rows = columns = matrix_size

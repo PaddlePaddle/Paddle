@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import random
-import re
 import unittest
 
 import numpy as np
@@ -46,7 +43,7 @@ class TestPcaLowrankAPI(unittest.TestCase):
         return B.matmul(C)
 
     def run_subtest(
-            self, guess_rank, actual_rank, matrix_size, batches, pca, **options
+        self, guess_rank, actual_rank, matrix_size, batches, pca, **options
     ):
         if isinstance(matrix_size, int):
             rows = columns = matrix_size

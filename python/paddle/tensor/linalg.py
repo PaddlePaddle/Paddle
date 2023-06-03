@@ -2026,7 +2026,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     def transpose(x):
         shape = x.shape
-        perm = [i for i in range(0, len(shape))]
+        perm = list(range(0, len(shape)))
         perm = perm[:-2] + [perm[-1]] + [perm[-2]]
         return paddle.transpose(x, perm)
 
@@ -2096,19 +2096,21 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         return U, S, V
 
     if not paddle.is_tensor(x):
-        raise ValueError('Input must be tensor, but got {}'.format(type(x)))
+        raise ValueError(f'Input must be tensor, but got {type(x)}')
 
     (m, n) = x.shape[-2:]
 
     if q is None:
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
-        raise ValueError('q(={}) must be non-negative integer'
-                         ' and not greater than min(m, n)={}'
-                         .format(q, min(m, n)))
+        raise ValueError(
+            'q(={}) must be non-negative integer'
+            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+        )
     if not (niter >= 0):
-        raise ValueError('niter(={}) must be non-negative integer'
-                         .format(niter))
+        raise ValueError(
+            f'niter(={niter}) must be non-negative integer'
+        )
 
     if not center:
         return svd_lowrank(x, q, niter=niter, M=None)

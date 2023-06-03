@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
 
+import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
@@ -925,34 +925,44 @@ def slice(x, axes, starts, ends, name=None):
 
 def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     r"""
-    Performs linear Principal Component Analysis (PCA) on a low-rank matrix, batches of such matrices, or sparse matrix.
+    Performs linear Principal Component Analysis (PCA) on a sparse matrix.
+
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
+
     .. math::
         X = U * diag(S) * V^{T}
+
     Args:
-        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
-            positive number. The data type of x should be float32 or float64.
+        x (Tensor): The input tensor. Its shape should be `[N, M]`,
+            N and M can be arbitraty positive number.
+            The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
         center (bool, optional): if True, center the input tensor, otherwise,
             Default value is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         - Tensor U, is N x q matrix.
         - Tensor S, is a vector with length q.
         - Tensor V, is M x q matrix.
+
         tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of a centered matrix :math:`X`.
+
     Examples:
         .. code-block:: python
+
             import paddle
+
             format = "coo"
             dense_x = paddle.randn((5, 5), dtype='float64')
+
             if format == "coo":
                 sparse_x = dense_x.to_sparse_coo(len(x.shape))
             else:
                 sparse_x = dense_x.to_sparse_csr()
+
             U, S, V = paddle.sparse.pca_lowrank(sparse_x)
             print(U)
             # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
@@ -961,9 +971,11 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             #         [ 0.02206024,  0.53170082, -0.22392168,  0.81141059,  0.09099187],
             #         [ 0.15045792,  0.37840027,  0.91333217, -0.00000000,  0.00000000],
             #         [ 0.98787775, -0.09325209, -0.12410317, -0.00000000, -0.00000000]])
+
             print(S)
             # Tensor(shape=[5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [2.28621761, 0.93618564, 0.53234942, 0.00000000, 0.00000000])
+
             print(V)
             # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [[ 0.26828910, -0.57116436, -0.26548201,  0.67342660, -0.27894114],
@@ -991,7 +1003,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     def transpose(x):
         shape = x.shape
-        perm = [i for i in range(0, len(shape))]
+        perm = list(range(0, len(shape)))
         perm = perm[:-2] + [perm[-1]] + [perm[-2]]
         if x.is_sparse():
             return paddle.sparse.transpose(x, perm)
@@ -1063,7 +1075,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         return U, S, V
 
     if not paddle.is_tensor(x):
-        raise ValueError('Input must be tensor, but got {}'.format(type(x)))
+        raise ValueError(f'Input must be tensor, but got {type(x)}')
 
     if not x.is_sparse():
         raise ValueError('Input must be sparse, but got dense')
@@ -1073,12 +1085,14 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     if q is None:
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
-        raise ValueError('q(={}) must be non-negative integer'
-                         ' and not greater than min(m, n)={}'
-                         .format(q, min(m, n)))
+        raise ValueError(
+            'q(={}) must be non-negative integer'
+            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+        )
     if not (niter >= 0):
-        raise ValueError('niter(={}) must be non-negative integer'
-                         .format(niter))
+        raise ValueError(
+            f'niter(={niter}) must be non-negative integer'
+        )
 
     dtype = get_floating_dtype(x)
 
@@ -1089,12 +1103,15 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         raise ValueError('input is expected to be 2-dimensional tensor')
     s_sum = paddle.sparse.sum(x, axis=-2)
     s_val = s_sum.values() / m
-    c = paddle.sparse.sparse_coo_tensor(s_sum.indices(), s_val, dtype=s_sum.dtype, place=s_sum.place)
+    c = paddle.sparse.sparse_coo_tensor(
+        s_sum.indices(), s_val, dtype=s_sum.dtype, place=s_sum.place
+    )
     column_indices = c.indices()[0]
     indices = paddle.zeros((2, len(column_indices)), dtype=column_indices.dtype)
     indices[0] = column_indices
     C_t = paddle.sparse.sparse_coo_tensor(
-        indices, c.values(), (n, 1), dtype=dtype, place=x.place)
+        indices, c.values(), (n, 1), dtype=dtype, place=x.place
+    )
 
     ones_m1_t = paddle.ones(x.shape[:-2] + [1, m], dtype=dtype)
     M = transpose(paddle.matmul(C_t.to_dense(), ones_m1_t))
