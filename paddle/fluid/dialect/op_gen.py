@@ -283,12 +283,6 @@ class OpInfoParser:
             self.input_name_list, self.input_type_list, self.input_optional_list
         )
 
-        # parse mutable attributes (as inputs)
-        (
-            self.mutable_attribute_name_list,
-            self.mutable_attribute_type_list,
-        ) = self.parse_mutable_attribute()
-
         # parse outputs
         self.output_name_list = self.parse_output_name_list()
         self.output_type_list = self.parse_output_type_list()
@@ -359,6 +353,12 @@ class OpInfoParser:
         )
         self.cross_check(self.attribute_name_list, self.attribute_type_list)
 
+        # parse mutable attributes (as inputs)
+        (
+            self.mutable_attribute_name_list,
+            self.mutable_attribute_type_list,
+        ) = self.parse_mutable_attribute()
+
         # parse infermeta && kernel
         self.infer_meta_map = self.parse_infer_meta_map()
         self.kernel_map = self.parse_kernel_map()
@@ -399,30 +399,44 @@ class OpInfoParser:
         """
         mutable_attribute_name_list = []
         mutable_attribute_type_list = []
+        # scalar
         if (self.op_compat_item is not None) and (
             'scalar' in self.op_compat_item
         ):
             for scalar_attr in self.op_compat_item['scalar'].keys():
-                if (
-                    self.op_compat_item['scalar'][scalar_attr]['data_type']
-                    == "std::string"
-                ):
-                    # see isclose and allclose in op_compat.yaml
-                    mutable_attribute_name_list.append(scalar_attr)
-                    mutable_attribute_type_list.append(
-                        ["ir::StrAttribute", "std::string"]
-                    )
+                if 'data_type' in self.op_compat_item['scalar'][scalar_attr]:
+                    if (
+                        self.op_compat_item['scalar'][scalar_attr]['data_type']
+                        == "std::string"
+                    ):
+                        # see isclose and allclose in op_compat.yaml
+                        mutable_attribute_name_list.append(scalar_attr)
+                        mutable_attribute_type_list.append(
+                            ["ir::StrAttribute", "std::string"]
+                        )
+                    else:
+                        mutable_attribute_name_list.append(scalar_attr)
+                        mutable_attribute_type_list.append(
+                            [
+                                "paddle::dialect::ScalarAttribute",
+                                self.op_compat_item['scalar'][scalar_attr][
+                                    'data_type'
+                                ],
+                            ]
+                        )
+                # See eye in op_compat.yaml
                 else:
                     mutable_attribute_name_list.append(scalar_attr)
                     mutable_attribute_type_list.append(
                         [
                             "paddle::dialect::ScalarAttribute",
-                            self.op_compat_item['scalar'][scalar_attr][
-                                'data_type'
+                            self.attribute_data_type_list[
+                                self.attribute_name_list.index(scalar_attr)
                             ],
                         ]
                     )
 
+        # int_array
         if (self.op_compat_item is not None) and (
             'int_array' in self.op_compat_item
         ):

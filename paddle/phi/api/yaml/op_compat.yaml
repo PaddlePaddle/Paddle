@@ -915,10 +915,8 @@
     out : Out
   scalar :
     num_rows :
-      data_type: float
       support_tensor : true
     num_columns :
-      data_type: float
       support_tensor : true
 
 - op : fake_channel_wise_quantize_abs_max
