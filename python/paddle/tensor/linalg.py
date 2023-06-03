@@ -1970,7 +1970,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
 
     .. math::
-        X = U * diag(S) * V^(T)
+        X = U * diag(S) * V^{T}
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
@@ -1979,7 +1979,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
         center (bool, optional): if True, center the input tensor, otherwise,
-            assume that the input is centered.
+            Default value is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2019,19 +2019,6 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             #         [ 0.67604895,  0.45688227,  0.50959437,  0.13179682,  0.23908071]])
     """
 
-    def get_floating_dtype(x):
-        dtype = x.dtype
-        if dtype in (paddle.float16, paddle.float32, paddle.float64):
-            return dtype
-        return paddle.float32
-
-    def matmul(x, B):
-        if x is None:
-            return B
-        if x.is_sparse():
-            return paddle.sparse.matmul(x, B)
-        return paddle.matmul(x, B)
-
     def conjugate(x):
         if x.is_complex():
             return x.conj()
@@ -2039,10 +2026,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     def transpose(x):
         shape = x.shape
-        perm = list(range(0, len(shape)))
+        perm = [i for i in range(0, len(shape))]
         perm = perm[:-2] + [perm[-1]] + [perm[-2]]
-        if x.is_sparse():
-            return paddle.sparse.transpose(x, perm)
         return paddle.transpose(x, perm)
 
     def transjugate(x):
@@ -2055,18 +2040,19 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
         R = paddle.randn((n, q), dtype=x.dtype)
 
-        A_H = conjugate(transpose(x))
+        A_t = transpose(x)
+        A_H = conjugate(A_t)
         if M is None:
-            Q = qr(matmul(x, R))[0]
+            Q = qr(paddle.matmul(x, R))[0]
             for i in range(niter):
-                Q = qr(matmul(A_H, Q))[0]
-                Q = qr(matmul(x, Q))[0]
+                Q = qr(paddle.matmul(A_H, Q))[0]
+                Q = qr(paddle.matmul(x, Q))[0]
         else:
             M_H = transjugate(M)
-            Q = qr(matmul(x, R) - matmul(M, R))[0]
+            Q = qr(paddle.matmul(x, R) - paddle.matmul(M, R))[0]
             for i in range(niter):
-                Q = qr(matmul(A_H, Q) - matmul(M_H, Q))[0]
-                Q = qr(matmul(x, Q) - matmul(M, Q))[0]
+                Q = qr(paddle.matmul(A_H, Q) - paddle.matmul(M_H, Q))[0]
+                Q = qr(paddle.matmul(x, Q) - paddle.matmul(M, Q))[0]
 
         return Q
 
@@ -2083,9 +2069,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             Q = get_approximate_basis(A_t, q, niter=niter, M=M_t)
             Q_c = conjugate(Q)
             if M is None:
-                B_t = matmul(x, Q_c)
+                B_t = paddle.matmul(x, Q_c)
             else:
-                B_t = matmul(x, Q_c) - matmul(M, Q_c)
+                B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
             assert B_t.shape[-2] == m, (B_t.shape, m)
             assert B_t.shape[-1] == q, (B_t.shape, q)
             assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
@@ -2096,9 +2082,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             Q = get_approximate_basis(x, q, niter=niter, M=M)
             Q_c = conjugate(Q)
             if M is None:
-                B = matmul(A_t, Q_c)
+                B = paddle.matmul(A_t, Q_c)
             else:
-                B = matmul(A_t, Q_c) - matmul(M_t, Q_c)
+                B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
             B_t = transpose(B)
             assert B_t.shape[-2] == q, (B_t.shape, q)
             assert B_t.shape[-1] == n, (B_t.shape, n)
@@ -2110,50 +2096,25 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         return U, S, V
 
     if not paddle.is_tensor(x):
-        raise ValueError(f'Input must be tensor, but got {type(x)}')
+        raise ValueError('Input must be tensor, but got {}'.format(type(x)))
 
     (m, n) = x.shape[-2:]
 
     if q is None:
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
-        raise ValueError(
-            'q(={}) must be non-negative integer'
-            ' and not greater than min(m, n)={}'.format(q, min(m, n))
-        )
+        raise ValueError('q(={}) must be non-negative integer'
+                         ' and not greater than min(m, n)={}'
+                         .format(q, min(m, n)))
     if not (niter >= 0):
-        raise ValueError(f'niter(={niter}) must be non-negative integer')
-
-    dtype = get_floating_dtype(x)
+        raise ValueError('niter(={}) must be non-negative integer'
+                         .format(niter))
 
     if not center:
         return svd_lowrank(x, q, niter=niter, M=None)
 
-    if x.is_sparse():
-        if len(x.shape) != 2:
-            raise ValueError(
-                'pca_lowrank input is expected to be 2-dimensional tensor'
-            )
-        s_sum = paddle.sparse.sum(x, axis=-2)
-        s_val = s_sum.values() / m
-        c = paddle.sparse.sparse_coo_tensor(
-            s_sum.indices(), s_val, dtype=s_sum.dtype, place=s_sum.place
-        )
-        column_indices = c.indices()[0]
-        indices = paddle.zeros(
-            (2, len(column_indices)), dtype=column_indices.dtype
-        )
-        indices[0] = column_indices
-        C_t = paddle.sparse.sparse_coo_tensor(
-            indices, c.values(), (n, 1), dtype=dtype, place=x.place
-        )
-
-        ones_m1_t = paddle.ones(x.shape[:-2] + [1, m], dtype=dtype)
-        M = transpose(paddle.matmul(C_t.to_dense(), ones_m1_t))
-        return svd_lowrank(x, q, niter=niter, M=M)
-    else:
-        C = x.mean(axis=-2, keepdim=True)
-        return svd_lowrank(x - C, q, niter=niter, M=None)
+    C = x.mean(axis=-2, keepdim=True)
+    return svd_lowrank(x - C, q, niter=niter, M=None)
 
 
 def matrix_power(x, n, name=None):

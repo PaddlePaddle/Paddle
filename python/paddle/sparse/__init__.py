@@ -28,6 +28,7 @@ from .unary import square
 from .unary import log1p
 from .unary import abs
 from .unary import pow
+from .unary import pca_lowrank
 from .unary import cast
 from .unary import neg
 from .unary import coalesce
@@ -68,6 +69,7 @@ __all__ = [
     'log1p',
     'abs',
     'pow',
+    'pca_lowrank',
     'cast',
     'neg',
     'deg2rad',
