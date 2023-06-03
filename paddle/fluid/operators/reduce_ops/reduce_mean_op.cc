@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 #include <memory>
 #include <string>
