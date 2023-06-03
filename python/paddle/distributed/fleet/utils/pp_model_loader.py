@@ -139,7 +139,7 @@ class PipeLineModelLoader:
             or force_convert
         ):
             converted_model_path = (
-                "./tmp_converted{:0>2d}_sharding_{:0>2d}".format(
+                "./tmp_converted_mp{:0>2d}_sharding{:0>2d}".format(
                     mp_rank, sharding_rank
                 )
             )
