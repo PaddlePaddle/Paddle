@@ -229,9 +229,14 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // some ops are only implemented in paddle-trt,
   // but not in paddle ,we should revert it.
   for (auto *op_node : framework::ir::TopologyVarientSort(
-      *graph, static_cast<framework::ir::SortKind>(0))) {
-    if(op_node->Op()->Type() == "matrix_multiply") {
-     // op_node->Op()->SetType(op_node->Op()->GetAttrIfExists<std::string>("original_type"));
+           *graph, static_cast<framework::ir::SortKind>(0))) {
+    if (op_node->Op()->Type() == "matrix_multiply") {
+      auto origin_type =
+          op_node->Op()->GetAttrIfExists<std::string>("original_type");
+      LOG(WARNING) << "matrix_multiply can't enter into paddle-trt,"
+                   << "we will revert to " << origin_type;
+      op_node->Op()->SetType(origin_type);
+      op_node->RenameOp(origin_type);
     }
   }
 }

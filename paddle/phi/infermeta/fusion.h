@@ -135,4 +135,14 @@ void FusedMultiTransformerXpuInferMeta(
     int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out);
+
+void YoloBoxXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& x_max,
+                         const MetaTensor& grid,
+                         const MetaTensor& stride,
+                         const MetaTensor& anchor_grid,
+                         float offset,
+                         MetaTensor* out,
+                         MetaTensor* out_max);
+
 }  // namespace phi

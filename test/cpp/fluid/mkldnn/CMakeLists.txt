@@ -16,7 +16,6 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_mul_op
     elementwise_add_op
     activation_op
-    conv_op
     phi
     scope
     device_context
@@ -43,7 +42,6 @@ cc_test_old(
   recurrent_op
   op_registry
   pool_op
-  shape_op
   crop_op
   activation_op
   generated_op
