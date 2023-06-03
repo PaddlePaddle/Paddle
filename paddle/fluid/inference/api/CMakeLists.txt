@@ -25,6 +25,7 @@ cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 set(paddle_inference_api_deps
     reset_tensor_array
     paddle_infer_contrib
+    paddle_pass_builder
     zero_copy_tensor
     trainer_desc_proto
     custom_operator
