@@ -18,6 +18,7 @@ import shutil
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.log_util import logger
 from paddle.distributed.fleet.utils.pp_parallel_adaptor import (
     ParallelConfig,
     PipeLineModelAdaptor,
@@ -170,7 +171,7 @@ class PipeLineModelLoader:
     ):
         # convert model, only dp_rank 0 and pp_rank 0 with do the work
         # barrier cross pp group and pp group
-        print(
+        logger.info(
             f"begin convert model in {src_model_dir} with pp {model_pp_degree} vp {model_vp_degree} to {dest_model_dir}"
         )
         cur_model_degree = self._hcg.get_model_parallel_world_size()
@@ -209,11 +210,11 @@ class PipeLineModelLoader:
             paddle.distributed.barrier(self._hcg.get_pipe_parallel_group())
         # barrier cross dp group
         paddle.distributed.barrier(self._hcg.get_data_parallel_group())
-        print(f"end convert model {src_model_dir} to {dest_model_dir}")
+        logger.info(f"end convert model {src_model_dir} to {dest_model_dir}")
 
     def _load(self, model_dir, with_opt):
         full_path = os.path.join(model_dir, self._create_subpath_name())
-        print(f"begin load model from {full_path}")
+        logger.info(f"begin load model from {full_path}")
         model_path = os.path.join(full_path, "model.pdparams")
         opt_path = os.path.join(full_path, "model_state.pdopt")
         meta_path = os.path.join(full_path, "meta_state.pdopt")
@@ -244,7 +245,7 @@ class PipeLineModelLoader:
                 raise ValueError(
                     "No optimizer checkpoint file found in %s." % opt_path
                 )
-        print(f"load model from {full_path} successfully")
+        logger.info(f"load model from {full_path} successfully")
 
     def _remove_converted_model(self, sub_model_dir):
         paddle.distributed.barrier()
@@ -259,5 +260,5 @@ class PipeLineModelLoader:
 if __name__ == "__main__":
     loader = PipeLineModelLoader()
     subdirs = loader._list_subdirs("./output/epoch_0_step_90")
-    print(subdirs)
-    print(loader._parse_grid_dim(subdirs))
+    logger.info(subdirs)
+    logger.info(loader._parse_grid_dim(subdirs))
