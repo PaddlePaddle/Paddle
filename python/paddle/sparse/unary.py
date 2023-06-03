@@ -959,7 +959,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             dense_x = paddle.randn((5, 5), dtype='float64')
 
             if format == "coo":
-                sparse_x = dense_x.to_sparse_coo(len(x.shape))
+                sparse_x = dense_x.to_sparse_coo(len(dense_x.shape))
             else:
                 sparse_x = dense_x.to_sparse_csr()
 
