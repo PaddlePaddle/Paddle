@@ -39,6 +39,7 @@ from .unary import transpose
 from .unary import sum
 from .unary import reshape
 from .unary import isnan
+from .unary import slice
 
 from .binary import mv
 from .binary import matmul
@@ -89,4 +90,5 @@ __all__ = [
     'is_same_shape',
     'reshape',
     'isnan',
+    'slice',
 ]

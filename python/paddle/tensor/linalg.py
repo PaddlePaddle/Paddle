@@ -3480,3 +3480,119 @@ def corrcoef(x, rowvar=True, name=None):
         c = paddle.clip(c, -1, 1)
 
     return c
+
+
+def cdist(
+    x, y, p=2.0, compute_mode="use_mm_for_euclid_dist_if_necessary", name=None
+):
+    r"""
+
+    Compute the p-norm distance between each pair of the two collections of inputs.
+
+    This function is equivalent to `scipy.spatial.distance.cdist(input,'minkowski', p=p)`
+    if :math:`p \in (0, \infty)`. When :math:`p = 0` it is equivalent to `scipy.spatial.distance.cdist(input, 'hamming') * M`.
+    When :math:`p = \infty`, the closest scipy function is `scipy.spatial.distance.cdist(xn, lambda x, y: np.abs(x - y).max())`.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`B \times P \times M`.
+        y (Tensor): A tensor with shape :math:`B \times R \times M`.
+        p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
+        compute_mode (str, optional): The mode for compute distance.
+
+            - ``use_mm_for_euclid_dist_if_necessary`` , for p = 2.0 and (P > 25 or R > 25), it will use matrix multiplication to calculate euclid distance if possible.
+            - ``use_mm_for_euclid_dist`` , for p = 2.0, it will use matrix multiplication to calculate euclid distance.
+            - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
+
+            Default: ``use_mm_for_euclid_dist_if_necessary``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the dtype is same as input tensor.
+
+        If x has shape :math:`B \times P \times M` and y has shape :math:`B \times R \times M` then
+        the output will have shape :math:`B \times P \times R`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([[0.9041,  0.0196], [-0.3108, -2.4423], [-0.4821,  1.059]], dtype=paddle.float32)
+            y = paddle.to_tensor([[-2.1763, -0.4713], [-0.6986,  1.3702]], dtype=paddle.float32)
+            distance = paddle.cdist(x, y)
+            print(distance)
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            # [[3.1193, 2.0959], [2.7138, 3.8322], [2.2830, 0.3791]])
+    """
+
+    check_variable_and_dtype(x, 'x', ('float32', 'float64'), 'cdist')
+    check_variable_and_dtype(y, 'y', ('float32', 'float64'), 'cdist')
+    check_type(p, 'p', (float, int), 'cdist')
+
+    if compute_mode not in [
+        'use_mm_for_euclid_dist_if_necessary',
+        'use_mm_for_euclid_dist',
+        'donot_use_mm_for_euclid_dist',
+    ]:
+        raise ValueError(
+            "The compute_mode should be 'use_mm_for_euclid_dist_if_necessary', "
+            "'use_mm_for_euclid_dist' or 'donot_use_mm_for_euclid_dist', "
+            "but received compute_mode is %s." % compute_mode
+        )
+
+    mode = 0
+    if compute_mode == 'use_mm_for_euclid_dist_if_necessary':
+        mode = 0
+    elif compute_mode == 'use_mm_for_euclid_dist':
+        mode = 1
+    elif compute_mode == 'donot_use_mm_for_euclid_dist':
+        mode = 2
+
+    x_shape = list(x.shape)
+    assert len(x_shape) >= 2, (
+        "The x must be at least 2-dimensional, "
+        "But received Input x's dimensional is %s.\n" % len(x_shape)
+    )
+    y_shape = list(y.shape)
+    assert len(y_shape) >= 2, (
+        "The y must be at least 2-dimensional, "
+        "But received Input y's dimensional is %s.\n" % len(y_shape)
+    )
+    assert x_shape[-1] == y_shape[-1], (
+        "The x and y must have same last dimension, "
+        "But received Input x's last dimension is {}, "
+        "Input y's last dimension is {}.\n".format(x_shape[-1], y_shape[-1])
+    )
+    assert p >= 0, (
+        "The p must be greater than or equal to 0, "
+        "But received p is %s.\n" % p
+    )
+
+    r1 = x.shape[-2]
+    r2 = y.shape[-2]
+    c1 = x.shape[-1]
+
+    p = float(p)
+
+    if r1 == 0 or r2 == 0:
+        return paddle.empty((r1, r2), dtype=x.dtype)
+
+    if c1 == 0:
+        return paddle.zeros((r1, r2), dtype=x.dtype)
+
+    if p == 2.0 and (mode == 1 or (mode == 0 and (r1 > 25 or r2 > 25))):
+        x_norm = paddle.sum(x.pow(2), axis=-1, keepdim=True)
+        y_norm = paddle.sum(y.pow(2), axis=-1, keepdim=True)
+        y_transposed = paddle.transpose(
+            y, perm=[*range(y.ndim - 2), y.ndim - 1, y.ndim - 2]
+        )
+        y_norm_transposed = paddle.transpose(
+            y_norm,
+            perm=[*range(y_norm.ndim - 2), y_norm.ndim - 1, y_norm.ndim - 2],
+        )
+        res = paddle.matmul(x, y_transposed) * -2 + y_norm_transposed + x_norm
+        res = paddle.clip(res, min=0.0).sqrt()
+        return res
+
+    return paddle.linalg.norm(
+        x[..., None, :] - y[..., None, :, :], p=p, axis=-1
+    )

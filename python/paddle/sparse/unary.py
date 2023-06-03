@@ -839,15 +839,96 @@ def isnan(x, name=None):
         return out
 
 
+def slice(x, axes, starts, ends, name=None):
+    """
+    This operator produces a slice of ``x`` along multiple axes for sparse tensors.
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input sparse tensor (x). If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`, it represents the reverse position of
+    the axis :math:`i-1` (here 0 is the initial position).
+    If the value passed to ``starts`` or ``ends`` is greater than the number of elements
+    in the dimenstion (n), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended to pass
+    in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
+
+    Args:
+        x (Tensor): The input Tensor (``SparseCooTensor`` or ``SparseCsrTensor``), it's data type should be ``float16``, ``float32``, ``float64``, ``int32``, ``int64``.
+        axes (list|tuple|Tensor): The data type is ``int32``.If ``axes`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``axes`` is a Tensor, it should be a 1-D Tensor.
+                Axes that `starts` and `ends` apply to.
+        starts (list|tuple|Tensor): The data type is ``int32``. If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is a Tensor, it should be a 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Tensor): The data type is ``int32``. If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is a Tensor, it should be a 1-D Tensor.
+                It represents ending indices of corresponding axis in ``axes``.
+
+    Returns:
+        A Sparse Tensor. The data type is same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            format = 'coo'
+            np_x = np.asarray([[4, 0, 7, 0], [0, 0, 5, 0], [-4, 2, 0, 0]])
+            dense_x = paddle.to_tensor(np_x)
+            if format == 'coo':
+                sp_x = dense_x.to_sparse_coo(len(np_x.shape))
+            else:
+                sp_x = dense_x.to_sparse_csr()
+
+            axes = [0, 1]
+            starts = [1, 0]
+            ends = [3, -2]
+            sp_out = paddle.sparse.slice(sp_x, axes, starts, ends)
+            # sp_out is x[1:3, 0:-2]
+
+            print(sp_out)
+            # Tensor(shape=[2, 2], dtype=paddle.int64, place=Place(cpu), stop_gradient=True,
+            #        indices=[[1, 1],
+            #                 [0, 1]],
+            #        values=[-4,  2])
+
+    """
+    if in_dynamic_mode():
+        return _C_ops.sparse_slice(x, axes, starts, ends)
+    else:
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'sparse_slice',
+        )
+        check_type(axes, 'axes', (list, tuple), 'sparse_slice')
+        check_type(starts, 'starts', (list, tuple), 'sparse_slice')
+        check_type(ends, 'ends', (list, tuple), 'sparse_slice')
+        op_type = 'sparse_slice'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs=attrs
+        )
+        return out
+
+
 def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     r"""
     Performs linear Principal Component Analysis (PCA) on a low-rank matrix, batches of such matrices, or sparse matrix.
-
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
-
     .. math::
         X = U * diag(S) * V^{T}
-
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
             where `...` is zero or more batch dimensions. N and M can be arbitraty
@@ -858,27 +939,20 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             Default value is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-
     Returns:
         - Tensor U, is N x q matrix.
         - Tensor S, is a vector with length q.
         - Tensor V, is M x q matrix.
-
         tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of a centered matrix :math:`X`.
-
     Examples:
         .. code-block:: python
-
             import paddle
-
             format = "coo"
             dense_x = paddle.randn((5, 5), dtype='float64')
-
             if format == "coo":
                 sparse_x = dense_x.to_sparse_coo(len(x.shape))
             else:
                 sparse_x = dense_x.to_sparse_csr()
-
             U, S, V = paddle.sparse.pca_lowrank(sparse_x)
             print(U)
             # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
@@ -887,11 +961,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             #         [ 0.02206024,  0.53170082, -0.22392168,  0.81141059,  0.09099187],
             #         [ 0.15045792,  0.37840027,  0.91333217, -0.00000000,  0.00000000],
             #         [ 0.98787775, -0.09325209, -0.12410317, -0.00000000, -0.00000000]])
-
             print(S)
             # Tensor(shape=[5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [2.28621761, 0.93618564, 0.53234942, 0.00000000, 0.00000000])
-
             print(V)
             # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [[ 0.26828910, -0.57116436, -0.26548201,  0.67342660, -0.27894114],

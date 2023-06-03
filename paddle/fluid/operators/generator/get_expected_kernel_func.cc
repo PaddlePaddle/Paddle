@@ -61,6 +61,16 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
   return true;
 }
 
+phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto dtype = framework::proto::VarType::FP32;
+  if (ctx.MultiInputVar("X").size() >= 1) {
+    dtype = op_ptr->IndicateVarDataType(ctx, "X");
+  }
+  return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -97,6 +107,15 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
+  kt.set_backend(
+      phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+  return kt;
 }
 
 phi::KernelKey GetAssignExpectedKernelType(

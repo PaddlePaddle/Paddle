@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,19 +11,31 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op.h"
+#pragma once
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
-namespace operators {
+namespace framework {
 
-struct AnyFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->any(dim);
+class Job final {
+ public:
+  explicit Job(const std::string& type) : type_(type), micro_batch_id_(-1) {}
+  ~Job() = default;
+
+  const std::string& GetJobType() const { return type_; }
+  int64_t GetMicroBatchId() const { return micro_batch_id_; }
+
+  void SetMicroBatchId(int64_t micro_batch_id) {
+    micro_batch_id_ = micro_batch_id;
   }
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(Job);
+
+  std::string type_;
+  int64_t micro_batch_id_;
 };
 
-}  // namespace operators
+}  // namespace framework
 }  // namespace paddle

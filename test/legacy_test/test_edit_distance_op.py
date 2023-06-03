@@ -83,7 +83,7 @@ class TestEditDistanceOp(OpTest):
 
         num_strs = len(self.x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
-        sequence_num = np.array(2).astype("int64")
+        sequence_num = np.array([2]).astype("int64")
 
         x1_offset = 0
         x2_offset = 0
@@ -128,7 +128,7 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
 
         num_strs = len(self.x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
-        sequence_num = np.array(num_strs).astype("int64")
+        sequence_num = np.array([num_strs]).astype("int64")
 
         x1_offset = 0
         x2_offset = 0
@@ -184,7 +184,7 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
 
         num_strs = len(self.x1_lod)
         distance = np.zeros((num_strs, 1)).astype("float32")
-        sequence_num = np.array(num_strs).astype("int64")
+        sequence_num = np.array([num_strs]).astype("int64")
 
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
