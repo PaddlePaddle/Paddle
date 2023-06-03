@@ -456,10 +456,10 @@ if(WITH_MKLDNN)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
-      conv_op
       conv_transpose_op
       batch_norm_op
       generated_op
+      generated_static_op
       activation_op
       elementwise_add_op
       concat_and_split
