@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -118,18 +118,22 @@ class TestFP16MeanOp(TestMeanOp):
                 np.testing.assert_array_equal(dx, dx_expected)
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestBF16MeanOp(TestMeanOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CUDAPlace(0))
 
     def test_checkout_grad(self):
-        place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out')
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -209,8 +213,9 @@ class TestReduceMeanOp_ZeroDim(TestReduceMeanOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestReduceMeanBF16Op(OpTest):
     def setUp(self):
@@ -276,6 +281,9 @@ class TestReduceMeanOpFloat32(TestReduceMeanOp):
         self.dtype = 'float32'
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpFloat16(TestReduceMeanOp):
     def set_attrs(self):
         self.dtype = 'float16'
@@ -286,6 +294,9 @@ class TestReduceMeanOpShape1D(TestReduceMeanOp):
         self.shape = [100]
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpShape1DFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [100]
@@ -297,11 +308,20 @@ class TestReduceMeanOpShape6D(TestReduceMeanOp):
         self.shape = [2, 3, 4, 5, 6, 7]
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpShape6DBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
@@ -313,12 +333,21 @@ class TestReduceMeanOpAxisAll(TestReduceMeanOp):
         self.axis = [0, 1, 2, 3]
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpAxisAllFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
         self.dtype = 'float16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpAxisAllBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
@@ -329,12 +358,21 @@ class TestReduceMeanOpAxisTuple(TestReduceMeanOp):
         self.axis = (0, 1, 2)
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpAxisTupleFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.axis = (0, 1, 2)
         self.dtype = 'float16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpAxisTupleBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.axis = (0, 1, 2)
@@ -345,12 +383,21 @@ class TestReduceMeanOpAxisNegative(TestReduceMeanOp):
         self.axis = [-2, -1]
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpAxisNegativeFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.axis = [-2, -1]
         self.dtype = 'float16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpAxisNegativeBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.axis = [-2, -1]
@@ -361,12 +408,21 @@ class TestReduceMeanOpKeepdimTrue1(TestReduceMeanOp):
         self.keepdim = True
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpKeepdimTrue1FP16(TestReduceMeanOp):
     def set_attrs(self):
         self.keepdim = True
         self.dtype = 'float16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpKeepdimTrue1BF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.keepdim = True
@@ -378,6 +434,9 @@ class TestReduceMeanOpKeepdimTrue2(TestReduceMeanOp):
         self.keepdim = True
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpKeepdimTrue2FP16(TestReduceMeanOp):
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
@@ -385,6 +444,12 @@ class TestReduceMeanOpKeepdimTrue2FP16(TestReduceMeanOp):
         self.dtype = 'float16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpKeepdimTrue2BF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
@@ -396,12 +461,21 @@ class TestReduceMeanOpReduceAllTrue(TestReduceMeanOp):
         self.reduce_all = True
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestReduceMeanOpReduceAllTrueFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.reduce_all = True
         self.dtype = 'float16'
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestReduceMeanOpReduceAllTrueBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.reduce_all = True
