@@ -169,7 +169,11 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         sed -i
         "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
         ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
-        && sed -i "134,135 i -Wno-error=array-bounds #Warning in gcc12"
+        && sed -i "134,135 i -Wno-error=array-bounds #Warning in gcc12" && sed
+        -e
+        "s#bool operator ()(const FieldDescriptor\\* f1, const FieldDescriptor\\* f2)#bool operator ()(const FieldDescriptor\\* f1, const FieldDescriptor\\* f2) const#g"
+        -i
+        ${LITE_SOURCE_DIR}/third-party/protobuf-mobile/src/google/protobuf/compiler/java/java_file.cc
         ${LITE_SOURCE_DIR}/cmake/flags.cmake
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND ""
