@@ -123,6 +123,15 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
+  kt.set_backend(
+      phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+  return kt;
+}
+
 phi::KernelKey GetAssignExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {

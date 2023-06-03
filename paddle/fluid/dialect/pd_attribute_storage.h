@@ -55,7 +55,7 @@ struct IntArrayAttributeStorage : public ir::AttributeStorage {
 };
 
 struct ScalarAttributeStorage : public ir::AttributeStorage {
-  using ParamKey = phi::Scalar;
+  using ParamKey = paddle::experimental::Scalar;
 
   explicit ScalarAttributeStorage(const ParamKey &key) { data_ = key; }
 
@@ -73,7 +73,7 @@ struct ScalarAttributeStorage : public ir::AttributeStorage {
   ParamKey GetAsKey() const { return ParamKey(data_); }
 
  private:
-  phi::Scalar data_;
+  paddle::experimental::Scalar data_;
 };
 
 struct DataTypeAttributeStorage : public ir::AttributeStorage {

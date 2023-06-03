@@ -18,12 +18,13 @@
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
-#include "paddle/ir/core/value_impl.h"
 
 namespace ir {
 class OpBase;
 class Program;
 class Block;
+class OpOperand;
+class OpResult;
 
 class alignas(8) Operation final {
  public:
@@ -47,9 +48,9 @@ class alignas(8) Operation final {
 
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index) const;
+  OpResult GetResultByIndex(uint32_t index) const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index) const;
+  OpOperand GetOperandByIndex(uint32_t index) const;
 
   std::string print();
 
