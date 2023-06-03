@@ -23,21 +23,25 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.cost import (
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.cost import (
     AllreduceSumOpCost,
     _g_op_cost_factory,
 )
-from paddle.distributed.auto_parallel.cost.base_cost import (
+from paddle.distributed.auto_parallel.static.cost.base_cost import (
     build_comm_costs_from_descs,
     build_comm_desc_from_dist_op,
     build_comp_costs_from_descs,
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.parallelizer import (
+    AutoParallelizer,
+)
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()

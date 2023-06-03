@@ -60,6 +60,8 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
+    auto place = ctx.GetPlace();
+
     PADDLE_ENFORCE_GE(rank,
                       0,
                       platform::errors::PreconditionNotMet(
@@ -98,8 +100,27 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
       auto task = pg->AllGather(in_tensor, out_tensor);
       task->Wait();
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "CustomDevice c_concat only support ProcessGroup"));
+      auto comm = platform::XCCLCommContext::Instance(place.GetDeviceType())
+                      .Get(rid, place);
+      PADDLE_ENFORCE_EQ(
+          nranks,
+          comm->nranks(),
+          platform::errors::InvalidArgument(
+              "nranks: %s should equal to %s", nranks, comm->nranks()));
+
+      int64_t send_numel = x->numel();
+      const T* send_buff = x->data<T>();
+      T* recv_buff = temp_out.data<T>();
+      // should ExecutionContext for calc stream.
+      auto& stream = *dev_ctx.GetStream();
+      phi::DeviceManager::CCLAllGather(
+          place.GetDeviceType(),
+          reinterpret_cast<void*>(const_cast<T*>(send_buff)),
+          recv_buff,
+          send_numel,
+          phi::ccl::ToCCLDataType(x->dtype()),
+          comm->comm(),
+          stream);
     }
     std::vector<phi::DenseTensor> inputs;
     int axis = x->dims().size() - 1;
@@ -623,6 +644,30 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
+    auto place = ctx.GetPlace();
+    int64_t numel = in->numel();
+    const void* sendbuff = in->data();
+    void* recvbuff = ctx.device_context().Alloc<T>(out);
+    int rid = ctx.Attr<int>("ring_id");
+    auto comm = platform::XCCLCommContext::Instance(place.GetDeviceType())
+                    .Get(rid, place);
+    phi::DeviceManager::CCLAllReduce(place.GetDeviceType(),
+                                     const_cast<void*>(sendbuff),
+                                     recvbuff,
+                                     numel,
+                                     phi::ccl::ToCCLDataType(in->dtype()),
+                                     phi::ccl::CCLReduceOp::SUM,
+                                     comm->comm(),
+                                     *(comm->stream()));
+  }
+};
+
 template <typename Context>
 void FeedDenseTensorKernel(const Context& dev_ctx,
                            const phi::ExtendedTensor& x,
@@ -869,6 +914,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::CBroadcastOpCustomDeviceKernel<double>,
       paddle::operators::CBroadcastOpCustomDeviceKernel<
           paddle::platform::float16>) {}
+  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
+      barrier,
+      device_type,
+      paddle::operators::BarrierOpCustomDeviceKernel<int>) {}
 #endif
 }
 

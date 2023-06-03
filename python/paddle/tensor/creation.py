@@ -1301,14 +1301,18 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if isinstance(val, Variable) and not val.is_integer():
-                dtype = paddle.get_default_dtype()
-                break
-            elif not isinstance(val, int) and not isinstance(val, Variable):
-                dtype = paddle.get_default_dtype()
-                break
+            if isinstance(val, Variable):
+                if not val.is_integer():
+                    dtype = paddle.get_default_dtype()
+                    break
+                else:
+                    dtype = 'int64'
             else:
-                dtype = 'int64'
+                if not isinstance(val, np.integer) and not isinstance(val, int):
+                    dtype = paddle.get_default_dtype()
+                    break
+                else:
+                    dtype = 'int64'
 
     out_shape = None
     if not in_dynamic_mode() and (

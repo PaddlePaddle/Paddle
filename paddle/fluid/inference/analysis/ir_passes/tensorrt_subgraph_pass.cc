@@ -224,6 +224,20 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
           ->SetAllNodesLowerToTrt(use_cuda_graph);
     }
   }
+
+  // some ops are only implemented in paddle-trt,
+  // but not in paddle ,we should revert it.
+  for (auto *op_node : framework::ir::TopologyVarientSort(
+           *graph, static_cast<framework::ir::SortKind>(0))) {
+    if (op_node->Op()->Type() == "matrix_multiply") {
+      auto origin_type =
+          op_node->Op()->GetAttrIfExists<std::string>("original_type");
+      LOG(WARNING) << "matrix_multiply can't enter into paddle-trt,"
+                   << "we will revert to " << origin_type;
+      op_node->Op()->SetType(origin_type);
+      op_node->RenameOp(origin_type);
+    }
+  }
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
@@ -434,7 +448,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                                              &max_shape_tensor,
                                              &opt_shape_tensor);
       } else {
-        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT, 0644);
+        int fd = open(shape_range_info_path.c_str(), O_WRONLY | O_CREAT, 0644);
         close(fd);
       }
     }
