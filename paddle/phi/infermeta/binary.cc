@@ -626,7 +626,7 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                             MetaConfig config) {
   auto x_dims = x.dims();
   auto filter_dims = filter.dims();
-
+std::cout << "filter_dims" << filter_dims[0] << filter_dims[1] << filter_dims[2] << std::endl;
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
 

@@ -20,6 +20,89 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+ 
+class ExprWrapper {
+  public:
+  ExprWrapper(){}
+  ExprWrapper(const nvinfer1::IDimensionExpr* expr, nvinfer1::IExprBuilder* expr_builder) {
+    this->expr = expr;
+    this->expr_builder = expr_builder;
+  }
+
+  const nvinfer1::IDimensionExpr* extract_expr() {
+    return expr;
+  }
+
+  public:
+
+
+  friend ExprWrapper BinaryOp(const ExprWrapper& a, const ExprWrapper& b, nvinfer1::DimensionOperation op) {
+    ExprWrapper result;
+    if(a.expr_builder) {
+      result.expr_builder = a.expr_builder;
+    }
+    if(b.expr_builder) {
+      result.expr_builder = b.expr_builder;
+    }
+    assert(result.expr);
+    result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
+    return result;
+  }
+
+  friend ExprWrapper operator+(const ExprWrapper& a, const ExprWrapper& b) {
+    return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUB);
+  }
+
+  friend ExprWrapper operator+(const ExprWrapper& a, int b_value) {
+    assert(a.expr_builder);
+    ExprWrapper b;
+    b.expr_builder = a.expr_builder;
+    b.expr = b.expr_builder->constant(b_value);
+    return a - b;
+  }
+
+  friend ExprWrapper operator-(const ExprWrapper& a, const ExprWrapper& b) {
+    return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUM);
+  }
+
+  friend ExprWrapper operator-(const ExprWrapper& a, int b_value) {
+    assert(a.expr_builder);
+    ExprWrapper b;
+    b.expr_builder = a.expr_builder;
+    b.expr = b.expr_builder->constant(b_value);
+    return a + b;
+  }
+
+  friend ExprWrapper operator*(const ExprWrapper& a, const ExprWrapper& b) {
+    return BinaryOp(a, b, nvinfer1::DimensionOperation::kPROD);
+  }
+
+  friend ExprWrapper operator*(const ExprWrapper& a, int b_value) {
+    assert(a.expr_builder);
+    ExprWrapper b;
+    b.expr_builder = a.expr_builder;
+    b.expr = b.expr_builder->constant(b_value);
+    return a * b;
+  }
+
+  friend ExprWrapper operator/(const ExprWrapper& a, const ExprWrapper& b) {
+    return BinaryOp(a, b, nvinfer1::DimensionOperation::kFLOOR_DIV);
+  }
+
+  friend ExprWrapper operator/(const ExprWrapper& a, int b_value) {
+    assert(a.expr_builder);
+    ExprWrapper b;
+    b.expr_builder = a.expr_builder;
+    b.expr = b.expr_builder->constant(b_value);
+    return a / b;
+  }
+
+  public:
+  const nvinfer1::IDimensionExpr* expr;
+  nvinfer1::IExprBuilder* expr_builder;
+};
+
+
 
 nvinfer1::DimsExprs GatherNdInferMeta(
     int output_index,
@@ -417,6 +500,191 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
   return output;
 }
 
+inline const void UpdatePaddingAndDilation(
+     std::vector<const nvinfer1::IDimensionExpr*>* paddings,
+     std::vector<const nvinfer1::IDimensionExpr*>* dilation,
+     const std::string padding_algorithm,
+     const std::vector<const nvinfer1::IDimensionExpr*>& data_dims,
+     const std::vector<const nvinfer1::IDimensionExpr*>& strides,
+     const std::vector<const nvinfer1::IDimensionExpr*>& ksize,
+     nvinfer1::IExprBuilder& expr_builder  // NOLINT
+ ) {
+   if (paddings->size() == data_dims.size()) {
+     for (size_t i = 0; i < data_dims.size(); ++i) {
+       const nvinfer1::IDimensionExpr* copy_pad = *(paddings->begin() + 2 * i);
+       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
+     }
+   }
+
+   // when padding_algorithm is "VALID" or "SAME"
+   if (padding_algorithm == "SAME") {
+     for (size_t i = 0; i < data_dims.size(); ++i) {
+       const nvinfer1::IDimensionExpr* out_size = expr_builder.operation(
+           nvinfer1::DimensionOperation::kFLOOR_DIV,
+           *expr_builder.operation(
+               nvinfer1::DimensionOperation::kSUB,
+               *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                       *data_dims[i],
+                                       *strides[i]),
+               *expr_builder.constant(1)),
+           *strides[i]);
+       const nvinfer1::IDimensionExpr* pad_sum = expr_builder.operation(
+           nvinfer1::DimensionOperation::kMAX,
+           *expr_builder.operation(
+               nvinfer1::DimensionOperation::kSUM,
+               *expr_builder.operation(
+                   nvinfer1::DimensionOperation::kPROD,
+                   *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                           *out_size,
+                                           *expr_builder.constant(1)),
+                   *strides[i]),
+               *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                       *ksize[i],
+                                       *data_dims[i])),
+           *expr_builder.constant(0));
+       const nvinfer1::IDimensionExpr* pad_0 =
+           expr_builder.operation(nvinfer1::DimensionOperation::kFLOOR_DIV,
+                                  *pad_sum,
+                                  *expr_builder.constant(2));
+       const nvinfer1::IDimensionExpr* pad_1 = expr_builder.operation(
+           nvinfer1::DimensionOperation::kSUB, *pad_sum, *pad_0);
+
+       *(paddings->begin() + i * 2) = pad_0;
+       *(paddings->begin() + i * 2 + 1) = pad_1;
+
+       // dilation
+       *(dilation->begin() + i) = expr_builder.constant(1);
+     }
+
+   } else if (padding_algorithm == "VALID") {
+     for (auto it = paddings->begin(); it != paddings->end(); it++) {
+       *it = expr_builder.constant(0);
+     }
+   }
+ }
+
+ inline const nvinfer1::IDimensionExpr* ConvOutputSize(
+     const nvinfer1::IDimensionExpr* input_size,
+     const nvinfer1::IDimensionExpr* filter_size,
+     const nvinfer1::IDimensionExpr* dilation,
+     const nvinfer1::IDimensionExpr* padding_1,
+     const nvinfer1::IDimensionExpr* padding_2,
+     const nvinfer1::IDimensionExpr* stride,
+     nvinfer1::IExprBuilder& expr_builder  // NOLINT
+ ) {
+   
+   ExprWrapper input_size_wrap(input_size, &expr_builder);
+   ExprWrapper filter_size_wrap(filter_size, &expr_builder);
+   ExprWrapper dilation_wrap(dilation, &expr_builder);
+   ExprWrapper padding_1_wrap(padding_1, &expr_builder);
+   ExprWrapper padding_2_wrap(padding_2, &expr_builder);
+   ExprWrapper stride_wrap(stride, &expr_builder);
+
+   auto dkernel = (dilation_wrap * (filter_size_wrap - 1) + 1);
+
+printf("9999\n");
+
+   const nvinfer1::IDimensionExpr* output_size = ((input_size_wrap + dkernel + padding_1_wrap + padding_2_wrap) / stride_wrap + 1).extract_expr();
+
+   return output_size;
+ }
+
+ nvinfer1::DimsExprs Conv2dFusionInferMeta(
+     int output_index,
+     const nvinfer1::DimsExprs* inputs,
+     int nb_inputs,
+     nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+     const framework::OpDesc& op_desc) {
+   const std::vector<int> dilations =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+   const std::vector<int> strides =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+   std::vector<int> paddings =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+
+   std::string padding_algorithm = "EXPLICIT";
+   if (op_desc.HasAttr("padding_algorithm"))
+     padding_algorithm =
+         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+   if (padding_algorithm == "VALID") {
+     for (size_t i = 0; i < paddings.size(); i++) {
+       paddings[i] = 0;
+     }
+   }
+
+   // TODO(zhangjun): nhwc support
+   bool channel_last = false;
+   // conv_fusion: input, filter, bias
+   const nvinfer1::DimsExprs input_dims = inputs[0];
+   const nvinfer1::DimsExprs filter_dims = inputs[1];
+   std::vector<const nvinfer1::IDimensionExpr*> in_data_dims;  // d, h, w
+   if (channel_last) {
+     for (int i = 1; i < input_dims.nbDims - 1; ++i) {
+       in_data_dims.emplace_back(input_dims.d[i]);
+     }
+   } else {
+     for (int i = 2; i < input_dims.nbDims; ++i) {
+       in_data_dims.emplace_back(input_dims.d[i]);
+     }
+   }
+
+   std::vector<const nvinfer1::IDimensionExpr*>
+       filter_data_dims;  // filter_h, filter_w
+   if (channel_last) {
+     for (int i = 1; i < filter_dims.nbDims - 1; ++i) {
+       filter_data_dims.emplace_back(filter_dims.d[i]);
+     }
+   } else {
+     for (int i = 2; i < filter_dims.nbDims; ++i) {
+       filter_data_dims.emplace_back(filter_dims.d[i]);
+     }
+   }
+
+   std::vector<const nvinfer1::IDimensionExpr*> paddings_exprs;
+   for (size_t i = 0; i < paddings.size(); ++i) {
+     paddings_exprs.emplace_back(expr_builder.constant(paddings[i]));
+   }
+
+   std::vector<const nvinfer1::IDimensionExpr*> dilations_exprs;
+   for (size_t i = 0; i < dilations.size(); ++i) {
+     dilations_exprs.emplace_back(expr_builder.constant(dilations[i]));
+   }
+
+   std::vector<const nvinfer1::IDimensionExpr*> strides_exprs;
+   for (size_t i = 0; i < strides.size(); ++i) {
+     strides_exprs.emplace_back(expr_builder.constant(strides[i]));
+   }
+
+   UpdatePaddingAndDilation(&paddings_exprs,
+                            &dilations_exprs,
+                            padding_algorithm,
+                            in_data_dims,
+                            strides_exprs,
+                            filter_data_dims,
+                            expr_builder);
+   nvinfer1::DimsExprs output;
+   output.nbDims = 2 + in_data_dims.size();
+   int out_idx = 0;
+   output.d[out_idx++] = input_dims.d[0];
+   if (!channel_last) {
+     output.d[out_idx++] = filter_dims.d[0];
+   }
+   for (size_t i = 0; i < in_data_dims.size(); ++i) {
+     output.d[out_idx++] = ConvOutputSize(in_data_dims[i],
+                                          filter_data_dims[i],
+                                          dilations_exprs[i],
+                                          paddings_exprs[2 * i],
+                                          paddings_exprs[2 * i + 1],
+                                          expr_builder.constant(strides[i]),
+                                          expr_builder);
+   }
+   if (channel_last) {
+     output.d[out_idx++] = filter_dims.d[0];
+   }
+   return output;
+ }
+
+
 nvinfer1::DimsExprs LookupTableV2InferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -435,6 +703,236 @@ nvinfer1::DimsExprs LookupTableV2InferMeta(
   return output;
 }
 
+
+nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
+                              const nvinfer1::DimsExprs* inputs,
+                              int nb_inputs,
+                              nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+                              const framework::OpDesc& op_desc) {
+  auto x_dims = inputs[0];
+  auto filter_dims = inputs[1];
+
+   const std::vector<int> dilations =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+   const std::vector<int> strides =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+   std::vector<int> paddings =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+   std::vector<int> output_size =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_size"));
+   std::vector<int> output_padding =
+       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+  auto data_format = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("data_format"));
+  int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
+
+   std::vector<const nvinfer1::IDimensionExpr*> paddings_exprs;
+   for (size_t i = 0; i < paddings.size(); ++i) {
+     paddings_exprs.emplace_back(expr_builder.constant(paddings[i]));
+   }
+
+   std::vector<const nvinfer1::IDimensionExpr*> dilations_exprs;
+   for (size_t i = 0; i < dilations.size(); ++i) {
+     dilations_exprs.emplace_back(expr_builder.constant(dilations[i]));
+   }
+
+   std::vector<const nvinfer1::IDimensionExpr*> strides_exprs;
+   for (size_t i = 0; i < strides.size(); ++i) {
+     strides_exprs.emplace_back(expr_builder.constant(strides[i]));
+   }
+
+
+  //  std::vector<const nvinfer1::IDimensionExpr*>
+  //      filter_hw_dims;  // filter_h, filter_w
+  //  if (channel_last) {
+  //    for (int i = 1; i < filter_dims.nbDims - 1; ++i) {
+  //      filter_hw_dims.emplace_back(filter_dims.d[i]);
+  //    }
+  //  } else {
+  //    for (int i = 2; i < filter_dims.nbDims; ++i) {
+  //      filter_hw_dims.emplace_back(filter_dims.d[i]);
+  //    }
+  //  }
+
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.nbDims == 4 || x_dims.nbDims == 5,
+      true,
+      phi::errors::InvalidArgument("Input of Op(conv_transpose) should be 4-D or "
+                              "5-D Tensor. But received: %u-D Tensor, "
+                              "the shape of input is [%s]",
+                              x_dims.nbDims,
+                              "哈哈哈"));
+  PADDLE_ENFORCE_EQ(
+      x_dims.nbDims,
+      filter_dims.nbDims,
+      phi::errors::InvalidArgument(
+          "The input's dimension size and filter's dimension size of "
+          "Op (conv_transpose) should be equal. But received: the shape of "
+          "input is [%s], the dimension size of input is [%d], the shape "
+          "of filter is [%s],  the dimension size of filter is [%d]. ",
+          "x_dims",
+          x_dims.nbDims,
+          "filter_dims",
+          filter_dims.nbDims));
+
+  int stride_size = strides.size();
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The stride of Op(Conv) should be larget than 0, but received "
+            "stride is %d.",
+            strides[i]));
+  }
+
+  int in_sub_stride_size = x_dims.nbDims - stride_size;
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.nbDims - strides.size(),
+      2U,
+      phi::errors::InvalidArgument(
+          "The input's dimension size minus Attr(stride)'s size must "
+          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "input's dimension size is [%d], the shape of input "
+          "is [%s], the Attr(stride)'s size is [%d].",
+          in_sub_stride_size,
+          x_dims.nbDims,
+          "x_dims",
+          strides.size()));
+
+  if (output_size.size())
+    PADDLE_ENFORCE_EQ(
+        output_size.size(),
+        strides.size(),
+        phi::errors::InvalidArgument(
+            "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+  if (output_padding.size())
+    PADDLE_ENFORCE_EQ(
+        output_padding.size(),
+        strides.size(),
+        phi::errors::InvalidArgument(
+            "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
+
+  // const int64_t C =
+  //     (data_layout != DataLayout::kNHWC ? x_dims[1]
+  //                                       : x_dims[x_dims.size() - 1]);
+  // PADDLE_ENFORCE_EQ(
+  //     C,
+  //     filter_dims[0],
+  //     errors::InvalidArgument(
+  //         "The number of input channels should be equal to filter channels "
+  //         "for Op(conv_transpose). But received: the input's channels is "
+  //         "[%d], the shape of input is [%s], the filter's channels is [%d], "
+  //         "the shape of filter is [%s]. The data_format is %s."
+  //         "The error may come from wrong data_format setting.",
+  //         C,
+  //         x_dims,
+  //         filter_dims[0],
+  //         filter_dims,
+  //         data_format));
+
+  // DDim x_data_dims;
+  // if (data_layout != DataLayout::kNHWC) {
+  //   x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  // } else {
+  //   x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  // }
+  // DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
+  // std::vector<int> ksize = vectorize<int>(filter_data_dims);
+
+  //if(0) UpdatePaddingAndDilation(&paddings_exprs, &dilations_exprs, padding_algorithm, x_dims, strides_exprs, ksize);
+  
+  nvinfer1::DimsExprs output_shape;
+  output_shape.nbDims = x_dims.nbDims;
+  output_shape.d[0] = x_dims.d[0];
+  output_shape.d[1] = expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
+      *filter_dims.d[1],
+      *expr_builder.constant(groups));
+
+
+  // if (data_layout == DataLayout::kNHWC) {
+  //   output_shape.push_back(filter_dims[1] * groups);
+  // }
+
+  // const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
+  // for (size_t i = 0; i < strides.size(); ++i) {
+
+  //   auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
+  //   auto infer_shape = (config.is_runtime || x_dims[i + offset] > 0)
+  //                          ? (x_dims[i + offset] - 1) * strides[i] -
+  //                                paddings_[2 * i] - paddings_[2 * i + 1] +
+  //                                filter_extent
+  //                          : -1;
+    
+  //   if (output_size.size()) {
+  //     if (config.is_runtime) {
+  //       PADDLE_ENFORCE_GE(
+  //           output_size[i],
+  //           infer_shape,
+  //           errors::InvalidArgument(
+  //               "output_size of Op(ConvTransposeOp) should not be "
+  //               "less than the infered output size. But received output_size = "
+  //               "[%s], whose dim %d is less than the infered output size [%s]",
+  //               make_ddim(output_size).to_str(),
+  //               i,
+  //               infer_shape));
+  //       PADDLE_ENFORCE_LT(
+  //           output_size[i],
+  //           infer_shape + strides[i],
+  //           errors::InvalidArgument(
+  //               "output_size of Op(ConvTransposeOp) should be less "
+  //               "than infered size + stride. But received output_size = [%s], "
+  //               "whose dim %d is not less than the infered output size (%d) + "
+  //               "stride (%d) = %d",
+  //               make_ddim(output_size).to_str(),
+  //               i,
+  //               infer_shape,
+  //               strides[i],
+  //               infer_shape + strides[i]));
+  //     }
+  //     output_shape.push_back(output_size[i]);
+  //   } else if (output_padding.size()) {
+  //     if (config.is_runtime) {
+  //       PADDLE_ENFORCE_GE(
+  //           output_padding[i],
+  //           0,
+  //           errors::InvalidArgument(
+  //               "output_padding of Op(ConvTransposeOp) should not be "
+  //               "less than the 0. But received output_padding = "
+  //               "[%s], whose dim %d is less than 0",
+  //               make_ddim(output_padding).to_str(),
+  //               i));
+  //       PADDLE_ENFORCE_LT(
+  //           output_padding[i],
+  //           std::max(strides[i], dilations_[i]),
+  //           errors::InvalidArgument(
+  //               "output_padding of Op(ConvTransposeOp) should be less "
+  //               "than either stride or dilation. But received output_size = "
+  //               "[%s], "
+  //               "whose dim %d is not less than either stride (%d)  or "
+  //               "dilation (%d)",
+  //               make_ddim(output_size).to_str(),
+  //               i,
+  //               strides[i],
+  //               dilations_[i]));
+  //     }
+  //     output_shape.push_back((infer_shape + output_padding[i]));
+  //   } else {
+  //     output_shape.push_back(infer_shape);
+  //   }
+  // }
+  // if (data_layout == DataLayout::kNHWC) {
+  //   output_shape.push_back(filter_dims[1] * groups);
+  // }
+
+  // out->set_dims(make_ddim(output_shape));
+  // out->set_dtype(x.dtype());
+  return output_shape;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -444,6 +942,9 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
+//PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
 
 }  // namespace tensorrt

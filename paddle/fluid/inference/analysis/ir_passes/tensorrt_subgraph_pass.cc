@@ -162,10 +162,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
         }
       }
     }
+    std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);
-    if (!is_ok)
-      VLOG(3) << node->Op()->Type().c_str() << " op is not in TensorRT";
+    if (!is_ok || 1)
+      std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
     return is_ok;
   };
 
@@ -222,6 +223,15 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
           inference::tensorrt::TRTEngineManager>::Global()
           .Get(name)
           ->SetAllNodesLowerToTrt(use_cuda_graph);
+    }
+  }
+
+  // some ops are only implemented in paddle-trt,
+  // but not in paddle ,we should revert it.
+  for (auto *op_node : framework::ir::TopologyVarientSort(
+      *graph, static_cast<framework::ir::SortKind>(0))) {
+    if(op_node->Op()->Type() == "matrix_multiply") {
+     // op_node->Op()->SetType(op_node->Op()->GetAttrIfExists<std::string>("original_type"));
     }
   }
 }

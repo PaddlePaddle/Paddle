@@ -57,60 +57,50 @@ void TrtMapOpsToMatrixMultiplyPass::ApplyImpl(ir::Graph* graph) const {
     VLOG(4) << "trt map some ops to matrix_multiply";
     GET_IR_NODE_FROM_SUBGRAPH(ops, ops, mul_matmul_matmul_v2);
     GET_IR_NODE_FROM_SUBGRAPH(ops_out, ops_out, mul_matmul_matmul_v2);
-    OpDesc desc(ops->Op()->Block());
-    desc.SetType("matrix_multiply");
-    desc.SetInput("X", {ops->Op()->Input("X").front()});
-    desc.SetInput("Y", {ops->Op()->Input("Y").front()});
-    desc.SetOutput("Out", {ops_out->Name()});
+    auto op_desc = ops->Op();
+    op_desc->SetType("matrix_multiply");
 
-    if (ops->Op()->HasAttr("transpose_X") || ops->Op()->HasAttr("trans_x")) {
-      if (ops->Op()->HasAttr("transpose_X")) {
-        desc.SetAttr("transpose_x", ops->Op()->GetAttr("transpose_X"));
+    // OpDesc original_desc(*(ops->Op()));
+    op_desc->SetAttr("original_type", ops->Op()->Type());
+
+    if (op_desc->HasAttr("transpose_X") || op_desc->HasAttr("trans_x")) {
+      if (op_desc->HasAttr("transpose_X")) {
+        op_desc->SetAttr("transpose_x", op_desc->GetAttr("transpose_X"));
       } else {
-        desc.SetAttr("transpose_x", ops->Op()->GetAttr("trans_x"));
+        op_desc->SetAttr("transpose_x", op_desc->GetAttr("trans_x"));
       }
     } else {
-      desc.SetAttr("transpose_x", false);
+      op_desc->SetAttr("transpose_x", false);
     }
 
-    if (ops->Op()->HasAttr("transpose_Y") || ops->Op()->HasAttr("trans_y")) {
-      if (ops->Op()->HasAttr("transpose_Y")) {
-        desc.SetAttr("transpose_y", ops->Op()->GetAttr("transpose_Y"));
+    if (op_desc->HasAttr("transpose_Y") || op_desc->HasAttr("trans_y")) {
+      if (op_desc->HasAttr("transpose_Y")) {
+        op_desc->SetAttr("transpose_y", op_desc->GetAttr("transpose_Y"));
       } else {
-        desc.SetAttr("transpose_y", ops->Op()->GetAttr("trans_y"));
+        op_desc->SetAttr("transpose_y", op_desc->GetAttr("trans_y"));
       }
     } else {
-      desc.SetAttr("transpose_y", false);
-    }
-
-    if (ops->Op()->HasAttr("out_threshold")) {
-      desc.SetAttr("out_threshold", ops->Op()->GetAttr("out_threshold"));
+      op_desc->SetAttr("transpose_y", false);
     }
 
     // Todo: remove attr(x_num_col_dims, y_num_col_dims, alpha)
-    if (ops->Op()->HasAttr("x_num_col_dims")) {
-      desc.SetAttr("x_num_col_dims", ops->Op()->GetAttr("x_num_col_dims"));
+    if (op_desc->HasAttr("x_num_col_dims")) {
+      op_desc->SetAttr("x_num_col_dims", op_desc->GetAttr("x_num_col_dims"));
     } else {
       int32_t x_num_col_dims = -1;
-      desc.SetAttr("x_num_col_dims", x_num_col_dims);
+      op_desc->SetAttr("x_num_col_dims", x_num_col_dims);
     }
 
     // op_teller: Only support y_num_col_dims == y.rank - 1;
     int32_t y_num_col_dims = -1;
-    desc.SetAttr("y_num_col_dims", y_num_col_dims);
+    op_desc->SetAttr("y_num_col_dims", y_num_col_dims);
 
     float alpha = 1;
-    if (ops->Op()->HasAttr("alpha")) {
-      alpha = PADDLE_GET_CONST(float, ops->Op()->GetAttr("alpha"));
+    if (op_desc->HasAttr("alpha")) {
+      alpha = PADDLE_GET_CONST(float, op_desc->GetAttr("alpha"));
     }
-    desc.SetAttr("alpha", alpha);
+    op_desc->SetAttr("alpha", alpha);
 
-    auto matrix_multiply_node = g->CreateOpNode(&desc);
-    for (auto node : ops->inputs) {
-      IR_NODE_LINK_TO(node, matrix_multiply_node);
-    }
-    IR_NODE_LINK_TO(matrix_multiply_node, ops_out);
-    GraphSafeRemoveNodes(graph, {ops});
     ++found_count;
   };
   gpd(graph, handler);

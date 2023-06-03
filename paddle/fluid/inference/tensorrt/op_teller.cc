@@ -2350,6 +2350,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "set_value") {
+      return false;
 #if !IS_TRT_VERSION_GE(8200)
       return false;
 #endif
