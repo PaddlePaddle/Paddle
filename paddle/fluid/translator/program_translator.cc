@@ -76,7 +76,7 @@ void ProgramTranslator::ExtractParameterFromSingleBlock(
     std::string get_parameter_op_name(ir::GetParameterOp::name());
     ir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
     std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-        {"parameter_name", ir::StrAttribute::get(ctx, var->Name())},
+        {var->Name(), ir::StrAttribute::get(ctx, var->Name())},
     };
     ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
     ir::Operation* operation = ir::Operation::create(
