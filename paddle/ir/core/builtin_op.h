@@ -107,4 +107,18 @@ class SliceOp : public ir::Op<SliceOp> {
                      const ir::AttributeMap &attributes);
 };
 
+class ConstantOp : public ir::Op<ConstantOp> {
+ public:
+  using Op::Op;
+
+  static const char *name() { return "builtin.constant"; }
+
+  static constexpr uint32_t attributes_num = 0;
+
+  static constexpr const char **attributes_name = nullptr;
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes);
+};
+
 }  // namespace ir

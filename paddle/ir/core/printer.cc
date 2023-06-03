@@ -51,6 +51,11 @@ class Printer {
   explicit Printer(std::ostream& os) : os(os) {}
 
   void PrintType(ir::Type type) {
+    if (!type) {
+      os << "<!TypeNull>";
+      return;
+    }
+
     if (type.isa<ir::Float16Type>()) {
       os << "f16";
     } else if (type.isa<ir::Float32Type>()) {
@@ -83,10 +88,6 @@ class Printer {
 };
 
 void Type::print(std::ostream& os) const {
-  if (!*this) {
-    os << "<!TypeNull>";
-    return;
-  }
   Printer p(os);
   p.PrintType(*this);
 }
@@ -105,6 +106,10 @@ class ProgramPrinter : public Printer {
   }
 
   void PrintValue(ir::Value v) {
+    if (!v) {
+      os << "<<NULL VALUE>>";
+      return;
+    }
     const void* key = static_cast<const void*>(v.impl());
     auto ret = aliases.find(key);
     if (ret != aliases.end()) {
@@ -176,7 +181,12 @@ class ProgramPrinter : public Printer {
     std::vector<ir::Type> op_operand_types;
     op_operand_types.reserve(num_op_operands);
     for (size_t idx = 0; idx < num_op_operands; idx++) {
-      op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
+      auto op_operand = op->GetOperandByIndex(idx);
+      if (op_operand) {
+        op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
+      } else {
+        op_operand_types.push_back(ir::Type(nullptr));
+      }
     }
     PrintInterleave(
         op_operand_types.begin(),
@@ -190,7 +200,12 @@ class ProgramPrinter : public Printer {
     std::vector<ir::Type> op_result_types;
     op_result_types.reserve(num_op_result);
     for (size_t idx = 0; idx < num_op_result; idx++) {
-      op_result_types.push_back(op->GetResultByIndex(idx).type());
+      auto op_result = op->GetResultByIndex(idx);
+      if (op_result) {
+        op_result_types.push_back(op_result.type());
+      } else {
+        op_result_types.push_back(ir::Type(nullptr));
+      }
     }
     PrintInterleave(
         op_result_types.begin(),
