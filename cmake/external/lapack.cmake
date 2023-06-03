@@ -63,14 +63,7 @@ else()
   set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.3.dylib")
 endif()
 
-find_file(
-  LOCAL_LAPACK_LIB_ZIP
-  NAMES ${LAPACK_VER}
-  PATHS ${LAPACK_DOWNLOAD_DIR}
-  NO_DEFAULT_PATH)
-
-# Download lapack.
-if(NOT LOCAL_LAPACK_LIB_ZIP)
+function(download_lapack)
   message(
     STATUS "Downloading ${LAPACK_URL} to ${LAPACK_DOWNLOAD_DIR}/${LAPACK_VER}")
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
@@ -86,6 +79,22 @@ if(NOT LOCAL_LAPACK_LIB_ZIP)
         "Download failed, error: ${ERR}\n You can try downloading ${LAPACK_VER} again"
     )
   endif()
+endfunction()
+
+find_file(
+  LOCAL_LAPACK_LIB_ZIP
+  NAMES ${LAPACK_VER}
+  PATHS ${LAPACK_DOWNLOAD_DIR}
+  NO_DEFAULT_PATH)
+
+# Download and check lapack.
+if(LOCAL_LAPACK_LIB_ZIP)
+  file(MD5 ${LAPACK_DOWNLOAD_DIR}/${LAPACK_VER} LAPACK_MD5)
+  if(NOT LAPACK_MD5 EQUAL LAPACK_URL_MD5)
+    download_lapack()
+  endif()
+else()
+  download_lapack()
 endif()
 
 ExternalProject_Add(
