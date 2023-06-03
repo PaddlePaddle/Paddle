@@ -50,7 +50,7 @@ class ExprWrapper {
   }
 
   friend ExprWrapper operator+(const ExprWrapper& a, const ExprWrapper& b) {
-    return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUB);
+    return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUM);
   }
 
   friend ExprWrapper operator+(const ExprWrapper& a, int b_value) {
@@ -58,11 +58,11 @@ class ExprWrapper {
     ExprWrapper b;
     b.expr_builder = a.expr_builder;
     b.expr = b.expr_builder->constant(b_value);
-    return a - b;
+    return a + b;
   }
 
   friend ExprWrapper operator-(const ExprWrapper& a, const ExprWrapper& b) {
-    return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUM);
+    return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUB);
   }
 
   friend ExprWrapper operator-(const ExprWrapper& a, int b_value) {
@@ -70,7 +70,7 @@ class ExprWrapper {
     ExprWrapper b;
     b.expr_builder = a.expr_builder;
     b.expr = b.expr_builder->constant(b_value);
-    return a + b;
+    return a - b;
   }
 
   friend ExprWrapper operator*(const ExprWrapper& a, const ExprWrapper& b) {
@@ -573,20 +573,17 @@ inline const void UpdatePaddingAndDilation(
      nvinfer1::IExprBuilder& expr_builder  // NOLINT
  ) {
    
-   ExprWrapper input_size_wrap(input_size, &expr_builder);
-   ExprWrapper filter_size_wrap(filter_size, &expr_builder);
-   ExprWrapper dilation_wrap(dilation, &expr_builder);
-   ExprWrapper padding_1_wrap(padding_1, &expr_builder);
-   ExprWrapper padding_2_wrap(padding_2, &expr_builder);
-   ExprWrapper stride_wrap(stride, &expr_builder);
+   // Here are all examples of using h(height), ok for weight too.
+   ExprWrapper ih(input_size, &expr_builder);
+   ExprWrapper kh(filter_size, &expr_builder);
+   ExprWrapper dilation_h(dilation, &expr_builder);
+   ExprWrapper pad_h1(padding_1, &expr_builder);
+   ExprWrapper pad_h2(padding_2, &expr_builder);
+   ExprWrapper stride_h(stride, &expr_builder);
 
-   auto dkernel = (dilation_wrap * (filter_size_wrap - 1) + 1);
+  ExprWrapper oh = (ih + pad_h1 + pad_h2 - dilation_h * (kh - 1) - 1) / stride_h + 1;
+  return oh.extract_expr();
 
-printf("9999\n");
-
-   const nvinfer1::IDimensionExpr* output_size = ((input_size_wrap + dkernel + padding_1_wrap + padding_2_wrap) / stride_wrap + 1).extract_expr();
-
-   return output_size;
  }
 
  nvinfer1::DimsExprs Conv2dFusionInferMeta(
@@ -711,48 +708,37 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
                               const framework::OpDesc& op_desc) {
   auto x_dims = inputs[0];
   auto filter_dims = inputs[1];
+  std::vector<ExprWrapper> x_dims_wrap;
+  for (int i = 0; i < x_dims.nbDims; i++) {
+    x_dims_wrap.push_back(ExprWrapper(x_dims.d[i], &expr_builder));
+  }
+  std::vector<ExprWrapper> filter_dims_wrap;
+  for (int i = 0; i < filter_dims.nbDims; i++) {
+    filter_dims_wrap.push_back(ExprWrapper(filter_dims.d[i], &expr_builder));
+  }
 
-   const std::vector<int> dilations =
-       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
-   const std::vector<int> strides =
-       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
-   std::vector<int> paddings =
-       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-   std::vector<int> output_size =
-       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_size"));
-   std::vector<int> output_padding =
-       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
-  auto data_format = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("data_format"));
+  const std::vector<int> dilations =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+  const std::vector<int> strides =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+  std::vector<int> paddings =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+  std::vector<int> output_size =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_size"));
+  std::vector<int> output_padding =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
+  auto data_format = PADDLE_GET_CONST(std::string, op_desc.GetAttr("data_format"));
   int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
 
-   std::vector<const nvinfer1::IDimensionExpr*> paddings_exprs;
-   for (size_t i = 0; i < paddings.size(); ++i) {
-     paddings_exprs.emplace_back(expr_builder.constant(paddings[i]));
+   std::string padding_algorithm = "EXPLICIT";
+   if (op_desc.HasAttr("padding_algorithm")) {
+     padding_algorithm =
+         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
    }
-
-   std::vector<const nvinfer1::IDimensionExpr*> dilations_exprs;
-   for (size_t i = 0; i < dilations.size(); ++i) {
-     dilations_exprs.emplace_back(expr_builder.constant(dilations[i]));
-   }
-
-   std::vector<const nvinfer1::IDimensionExpr*> strides_exprs;
-   for (size_t i = 0; i < strides.size(); ++i) {
-     strides_exprs.emplace_back(expr_builder.constant(strides[i]));
-   }
-
-
-  //  std::vector<const nvinfer1::IDimensionExpr*>
-  //      filter_hw_dims;  // filter_h, filter_w
-  //  if (channel_last) {
-  //    for (int i = 1; i < filter_dims.nbDims - 1; ++i) {
-  //      filter_hw_dims.emplace_back(filter_dims.d[i]);
-  //    }
-  //  } else {
-  //    for (int i = 2; i < filter_dims.nbDims; ++i) {
-  //      filter_hw_dims.emplace_back(filter_dims.d[i]);
-  //    }
-  //  }
-
+   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
+   CHECK_EQ(data_format == "NCHW", true);
+   CHECK_EQ(output_size.size() == 0, true);
+   CHECK_EQ(paddings.size() == 2, true);
 
   PADDLE_ENFORCE_EQ(
       x_dims.nbDims == 4 || x_dims.nbDims == 5,
@@ -845,13 +831,24 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
 
   //if(0) UpdatePaddingAndDilation(&paddings_exprs, &dilations_exprs, padding_algorithm, x_dims, strides_exprs, ksize);
   
-  nvinfer1::DimsExprs output_shape;
-  output_shape.nbDims = x_dims.nbDims;
-  output_shape.d[0] = x_dims.d[0];
-  output_shape.d[1] = expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
-      *filter_dims.d[1],
-      *expr_builder.constant(groups));
+  
+  std::vector<ExprWrapper> output_dims_wrap(x_dims.nbDims);
+  output_dims_wrap[0] = x_dims_wrap[0];
+  output_dims_wrap[1] = filter_dims_wrap[1] * groups;
 
+  auto ih = x_dims_wrap[2];
+  auto iw = x_dims_wrap[3];
+
+  auto kh = filter_dims_wrap[2];
+  auto kw = filter_dims_wrap[3];
+
+  int pad_h0 = paddings[0];
+  int pad_h1 = paddings[0];
+  int pad_w0 = paddings[1];
+  int pad_w1 = paddings[1];
+
+  output_dims_wrap[2] = (ih - 1) * strides[0] - pad_h0 - pad_h1  + (kh - 1) * dilations[0] + 1;
+  output_dims_wrap[3] = (iw - 1) * strides[1] - pad_w0 - pad_w1  + (kw - 1) * dilations[1] + 1;
 
   // if (data_layout == DataLayout::kNHWC) {
   //   output_shape.push_back(filter_dims[1] * groups);
@@ -930,7 +927,16 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
 
   // out->set_dims(make_ddim(output_shape));
   // out->set_dtype(x.dtype());
-  return output_shape;
+  
+  nvinfer1::DimsExprs output_dims;
+  output_dims.nbDims = x_dims.nbDims;
+  for (int i = 0; i < output_dims.nbDims; i++) {
+    output_dims.d[i] = output_dims_wrap[i].extract_expr();
+  }
+
+printf("9999\n");
+
+  return output_dims;
 }
 
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
@@ -944,7 +950,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
-//PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
 
 }  // namespace tensorrt
