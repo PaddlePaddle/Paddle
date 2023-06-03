@@ -169,6 +169,8 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         sed -i
         "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
         ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
+        && sed -i "134,135 i -Wno-error=array-bounds #Warning in gcc12"
+        ${LITE_SOURCE_DIR}/cmake/flags.cmake
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND ""
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

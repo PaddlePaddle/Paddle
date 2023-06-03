@@ -3492,7 +3492,7 @@ EOF
     export WITH_XPU=${WITH_XPU:-OFF}
     export WITH_IPU=${WITH_IPU:-OFF}
     export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
-    export WITH_LITE=OFF
+    export WITH_LITE=${WITH_LITE:-OFF}
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
     export WITH_STRIP=${WITH_STRIP:-ON}
