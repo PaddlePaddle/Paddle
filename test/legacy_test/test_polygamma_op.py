@@ -14,6 +14,7 @@
 
 import unittest
 
+import scipy
 import numpy as np
 from eager_op_test import OpTest
 from scipy import special
