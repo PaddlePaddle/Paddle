@@ -51,25 +51,11 @@ else()
     DEPS executor paddle_inference_io ${paddle_inference_api_deps})
 endif()
 
-if(WIN32)
-  cc_library(
-    analysis_config
-    SRCS analysis_config.cc
-    DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
-         utf8proc paddle_inference_api)
-else()
-  cc_library(
-    analysis_config
-    SRCS analysis_config.cc
-    DEPS analysis_helper
-         paddle_inference_api
-         processgroup_comm_utils
-         ${mkldnn_quantizer_cfg}
-         lod_tensor
-         paddle_pass_builder
-         table_printer
-         utf8proc)
-endif()
+cc_library(
+  analysis_config
+  SRCS analysis_config.cc
+  DEPS ${mkldnn_quantizer_cfg} paddle_inference_api lod_tensor
+       paddle_pass_builder table_printer utf8proc)
 
 if(WIN32)
   target_link_libraries(paddle_inference_api phi)
