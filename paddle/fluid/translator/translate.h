@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/ir/program.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 
