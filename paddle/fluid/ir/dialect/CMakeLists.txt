@@ -1,8 +1,8 @@
-set(PD_DIALECT_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/fluid/dialect")
-set(PD_DIALECT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/fluid/dialect")
+set(PD_DIALECT_SOURCE_DIR "${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect")
+set(PD_DIALECT_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/fluid/ir/dialect")
 
 # Generate pd_dialect files defining op using op_gen_file
-set(op_gen_file ${PADDLE_SOURCE_DIR}/paddle/fluid/dialect/op_gen.py)
+set(op_gen_file ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/op_gen.py)
 set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
@@ -16,7 +16,7 @@ set(op_backward_yaml_file1
 set(op_backward_yaml_file2
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_backward_ops.parsed.yaml
 )
-set(op_yaml_file3 ${PADDLE_SOURCE_DIR}/paddle/fluid/dialect/pd_op.yaml)
+set(op_yaml_file3 ${PADDLE_SOURCE_DIR}/paddle/fluid/ir/dialect/pd_op.yaml)
 set(op_yaml_files
     ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3}
 )

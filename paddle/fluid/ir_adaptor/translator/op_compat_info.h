@@ -18,7 +18,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/translator/utils.h"
+#include "paddle/fluid/ir_adaptor/translator/utils.h"
 
 #pragma once
 
