@@ -66,27 +66,26 @@ __global__ void FusedSoftmaxMaskVecKernel(T* dst,
   // ((bid*head_num + hid)*seq_len + seq_id) * seq_len
   int offset =
       ((blockIdx.y * gridDim.z + blockIdx.z) * seq_len + seq_id) * seq_len;
-  // (bid * seq_len + seq_id) * seq_len
-  int mask_offset = (blockIdx.y * seq_len + seq_id) * seq_len;
+
   src += offset;
   dst += offset;
-  mask += mask_offset;
+  mask += offset;
 
   static_assert(ELEMENTS_PER_THREADS % VEC_SIZE == 0, "");
   constexpr int VEC_NUMS = ELEMENTS_PER_THREADS / VEC_SIZE;
   using VecT = phi::AlignedVector<T, VEC_SIZE>;
 
   VecT elements[VEC_NUMS];
-  VecT tmp_mask;
+  VecT tmp_mask[VEC_NUMS];
   float max_val = -std::numeric_limits<float>::infinity();
 
   for (int i = 0; (i * warp_size + threadIdx.x) * VEC_SIZE < seq_len; ++i) {
     phi::Load(src + (i * warp_size + threadIdx.x) * VEC_SIZE, &elements[i]);
-    phi::Load(mask + (i * warp_size + threadIdx.x) * VEC_SIZE, &tmp_mask);
+    phi::Load(mask + (i * warp_size + threadIdx.x) * VEC_SIZE, &tmp_mask[i]);
 #pragma unroll
     for (int j = 0; j < VEC_SIZE; ++j) {
       // TODO(wangxi): vec add
-      elements[i][j] += tmp_mask[j];
+      elements[i][j] += tmp_mask[i][j];
       max_val = max(max_val, static_cast<float>(elements[i][j]));
     }
   }

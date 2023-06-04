@@ -964,6 +964,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
     phi::DenseTensor *buf0 = nullptr;
     phi::DenseTensor *buf1 = nullptr;
+    
+    if (token_num == 0) {
+      return;
+    }
 
     // step0:  x   --> buf1
     // step1: buf1 --> buf0
@@ -1026,10 +1030,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step2";
 #endif
-
       // step3. fmha
       const phi::DenseTensor *cache_kv =
           cache_kvs.size() > 0 ? cache_kvs[i] : nullptr;
+
       phi::DenseTensor *cache_kv_out = cache_kv ? cache_kv_outs[i] : nullptr;
 
       if (time_step) {  // generation decoder stage
@@ -1050,6 +1054,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 time_step->data<int>()[0],
                 rotary_emb_dims,
                 1. / sqrt(dim_head));
+
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
