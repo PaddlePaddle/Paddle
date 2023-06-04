@@ -3307,7 +3307,7 @@ function check_coverage_build() {
     set -x
 }
 function run_setup(){
-    startTime_s=`date +%s` 
+    startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
