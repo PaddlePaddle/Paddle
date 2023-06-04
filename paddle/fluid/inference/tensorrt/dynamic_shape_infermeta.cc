@@ -20,7 +20,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
- 
+
 class ExprWrapper {
   public:
   ExprWrapper(){}
@@ -35,7 +35,6 @@ class ExprWrapper {
 
   public:
 
-
   friend ExprWrapper BinaryOp(const ExprWrapper& a, const ExprWrapper& b, nvinfer1::DimensionOperation op) {
     ExprWrapper result;
     if(a.expr_builder) {
@@ -49,16 +48,20 @@ class ExprWrapper {
     return result;
   }
 
+  friend ExprWrapper BinaryOp(const ExprWrapper& a, int b_value, nvinfer1::DimensionOperation op) {
+    assert(a.expr_builder);
+    ExprWrapper b;
+    b.expr_builder = a.expr_builder;
+    b.expr = b.expr_builder->constant(b_value);
+    return BinaryOp(a, b, op);
+  }
+
   friend ExprWrapper operator+(const ExprWrapper& a, const ExprWrapper& b) {
     return BinaryOp(a, b, nvinfer1::DimensionOperation::kSUM);
   }
 
   friend ExprWrapper operator+(const ExprWrapper& a, int b_value) {
-    assert(a.expr_builder);
-    ExprWrapper b;
-    b.expr_builder = a.expr_builder;
-    b.expr = b.expr_builder->constant(b_value);
-    return a + b;
+    return BinaryOp(a, b_value, nvinfer1::DimensionOperation::kSUM);
   }
 
   friend ExprWrapper operator-(const ExprWrapper& a, const ExprWrapper& b) {
@@ -66,11 +69,7 @@ class ExprWrapper {
   }
 
   friend ExprWrapper operator-(const ExprWrapper& a, int b_value) {
-    assert(a.expr_builder);
-    ExprWrapper b;
-    b.expr_builder = a.expr_builder;
-    b.expr = b.expr_builder->constant(b_value);
-    return a - b;
+    return BinaryOp(a, b_value, nvinfer1::DimensionOperation::kSUB);
   }
 
   friend ExprWrapper operator*(const ExprWrapper& a, const ExprWrapper& b) {
@@ -78,11 +77,7 @@ class ExprWrapper {
   }
 
   friend ExprWrapper operator*(const ExprWrapper& a, int b_value) {
-    assert(a.expr_builder);
-    ExprWrapper b;
-    b.expr_builder = a.expr_builder;
-    b.expr = b.expr_builder->constant(b_value);
-    return a * b;
+    return BinaryOp(a, b_value, nvinfer1::DimensionOperation::kPROD);
   }
 
   friend ExprWrapper operator/(const ExprWrapper& a, const ExprWrapper& b) {
@@ -90,11 +85,7 @@ class ExprWrapper {
   }
 
   friend ExprWrapper operator/(const ExprWrapper& a, int b_value) {
-    assert(a.expr_builder);
-    ExprWrapper b;
-    b.expr_builder = a.expr_builder;
-    b.expr = b.expr_builder->constant(b_value);
-    return a / b;
+    return BinaryOp(a, b_value, nvinfer1::DimensionOperation::kFLOOR_DIV);
   }
 
   public:
@@ -572,7 +563,7 @@ inline const void UpdatePaddingAndDilation(
      const nvinfer1::IDimensionExpr* stride,
      nvinfer1::IExprBuilder& expr_builder  // NOLINT
  ) {
-   
+
    // Here are all examples of using h(height), ok for weight too.
    ExprWrapper ih(input_size, &expr_builder);
    ExprWrapper kh(filter_size, &expr_builder);
@@ -830,8 +821,8 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
   // std::vector<int> ksize = vectorize<int>(filter_data_dims);
 
   //if(0) UpdatePaddingAndDilation(&paddings_exprs, &dilations_exprs, padding_algorithm, x_dims, strides_exprs, ksize);
-  
-  
+
+
   std::vector<ExprWrapper> output_dims_wrap(x_dims.nbDims);
   output_dims_wrap[0] = x_dims_wrap[0];
   output_dims_wrap[1] = filter_dims_wrap[1] * groups;
@@ -850,91 +841,12 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
   output_dims_wrap[2] = (ih - 1) * strides[0] - pad_h0 - pad_h1  + (kh - 1) * dilations[0] + 1;
   output_dims_wrap[3] = (iw - 1) * strides[1] - pad_w0 - pad_w1  + (kw - 1) * dilations[1] + 1;
 
-  // if (data_layout == DataLayout::kNHWC) {
-  //   output_shape.push_back(filter_dims[1] * groups);
-  // }
 
-  // const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
-  // for (size_t i = 0; i < strides.size(); ++i) {
-
-  //   auto filter_extent = dilations_[i] * (filter_dims[i + 2] - 1) + 1;
-  //   auto infer_shape = (config.is_runtime || x_dims[i + offset] > 0)
-  //                          ? (x_dims[i + offset] - 1) * strides[i] -
-  //                                paddings_[2 * i] - paddings_[2 * i + 1] +
-  //                                filter_extent
-  //                          : -1;
-    
-  //   if (output_size.size()) {
-  //     if (config.is_runtime) {
-  //       PADDLE_ENFORCE_GE(
-  //           output_size[i],
-  //           infer_shape,
-  //           errors::InvalidArgument(
-  //               "output_size of Op(ConvTransposeOp) should not be "
-  //               "less than the infered output size. But received output_size = "
-  //               "[%s], whose dim %d is less than the infered output size [%s]",
-  //               make_ddim(output_size).to_str(),
-  //               i,
-  //               infer_shape));
-  //       PADDLE_ENFORCE_LT(
-  //           output_size[i],
-  //           infer_shape + strides[i],
-  //           errors::InvalidArgument(
-  //               "output_size of Op(ConvTransposeOp) should be less "
-  //               "than infered size + stride. But received output_size = [%s], "
-  //               "whose dim %d is not less than the infered output size (%d) + "
-  //               "stride (%d) = %d",
-  //               make_ddim(output_size).to_str(),
-  //               i,
-  //               infer_shape,
-  //               strides[i],
-  //               infer_shape + strides[i]));
-  //     }
-  //     output_shape.push_back(output_size[i]);
-  //   } else if (output_padding.size()) {
-  //     if (config.is_runtime) {
-  //       PADDLE_ENFORCE_GE(
-  //           output_padding[i],
-  //           0,
-  //           errors::InvalidArgument(
-  //               "output_padding of Op(ConvTransposeOp) should not be "
-  //               "less than the 0. But received output_padding = "
-  //               "[%s], whose dim %d is less than 0",
-  //               make_ddim(output_padding).to_str(),
-  //               i));
-  //       PADDLE_ENFORCE_LT(
-  //           output_padding[i],
-  //           std::max(strides[i], dilations_[i]),
-  //           errors::InvalidArgument(
-  //               "output_padding of Op(ConvTransposeOp) should be less "
-  //               "than either stride or dilation. But received output_size = "
-  //               "[%s], "
-  //               "whose dim %d is not less than either stride (%d)  or "
-  //               "dilation (%d)",
-  //               make_ddim(output_size).to_str(),
-  //               i,
-  //               strides[i],
-  //               dilations_[i]));
-  //     }
-  //     output_shape.push_back((infer_shape + output_padding[i]));
-  //   } else {
-  //     output_shape.push_back(infer_shape);
-  //   }
-  // }
-  // if (data_layout == DataLayout::kNHWC) {
-  //   output_shape.push_back(filter_dims[1] * groups);
-  // }
-
-  // out->set_dims(make_ddim(output_shape));
-  // out->set_dtype(x.dtype());
-  
   nvinfer1::DimsExprs output_dims;
   output_dims.nbDims = x_dims.nbDims;
   for (int i = 0; i < output_dims.nbDims; i++) {
     output_dims.d[i] = output_dims_wrap[i].extract_expr();
   }
-
-printf("9999\n");
 
   return output_dims;
 }
