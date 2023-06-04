@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -1668,9 +1669,10 @@ static void Interpolate2DInferShapeCheck(
     MetaConfig config) {
   auto dim_x = x.dims();
 
-  PADDLE_ENFORCE(
-      "bilinear" == interp_method || "nearest" == interp_method ||
-          "bicubic" == interp_method,
+  PADDLE_ENFORCE_EQ(
+      ("bilinear" == interp_method || "nearest" == interp_method ||
+       "bicubic" == interp_method),
+      true,
       phi::errors::InvalidArgument(
           "Interpolation method can only be \"bilinear\" or \"nearest\" when "
           "Input(X) dimension is 4, but got method = %s.",
@@ -1818,12 +1820,14 @@ static void Interpolate3DInferShapeCheck(
     MetaConfig config) {
   auto dim_x = x.dims();
 
-  PADDLE_ENFORCE("nearest" == interp_method || "trilinear" == interp_method,
-                 phi::errors::InvalidArgument(
-                     "Interpolation method can only be \"trilinear\" or "
-                     "\"nearest\" when Input(X) "
-                     "dimension is 5, but got method = %s .",
-                     interp_method));
+  PADDLE_ENFORCE_EQ(
+      ("nearest" == interp_method || "trilinear" == interp_method),
+      true,
+      phi::errors::InvalidArgument(
+          "Interpolation method can only be \"trilinear\" or "
+          "\"nearest\" when Input(X) "
+          "dimension is 5, but got method = %s .",
+          interp_method));
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   for (int i = 0; i < dim_x.size(); ++i) {
@@ -1972,8 +1976,9 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config) {
   auto dim_x = x.dims();  // NCHW format
-  PADDLE_ENFORCE(
-      dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
+  PADDLE_ENFORCE_EQ(
+      (dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5),
+      true,
       phi::errors::Unimplemented(
           "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
           dim_x.size()));
@@ -3314,6 +3319,34 @@ void FusedAdamInferMeta(
       master_params_out[i]->set_dtype(master_params.get()[i]->dtype());
     }
   }
+}
+
+void FusedConvInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const MetaTensor& bias,
+                        const MetaTensor& residual_param,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations,
+                        int groups,
+                        const std::string& data_format,
+                        const std::string& mkldnn_data_type,
+                        const std::string& fuse_activation,
+                        bool fuse_residual_conn,
+                        bool force_fp32_output,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
 }
 
 void MoeInferMeta(const MetaTensor& x,

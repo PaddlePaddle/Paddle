@@ -139,9 +139,8 @@ class ForLoopTuplePreTransformer(BaseTransformer):
     >>>     body
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)
