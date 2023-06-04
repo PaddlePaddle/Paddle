@@ -230,6 +230,8 @@ TEST(program_test, program) {
   // (8) Traverse Program
   EXPECT_EQ(program.block()->size() == 4, true);
   EXPECT_EQ(program.parameters_num() == 3, true);
+
+  program.Print(std::cout);
 }
 
 TEST(program_test, slice_combine_test) {

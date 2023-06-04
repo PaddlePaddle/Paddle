@@ -5,8 +5,20 @@ namespace translator {
     
 OpNameNormalizer::OpNameNormalizer() {
     op_name_mappings = {
-        {% for legacy_name, normalized_name in op_name_paris.items() %}
+        {% for legacy_name, normalized_name in op_name_pairs.items() %}
         { "{{legacy_name}}", "{{normalized_name}}" },
+        {% endfor %}
+    };
+    op_arg_name_mappings = {
+        {% for op_name, arg_name_mappings in op_arg_name_pairs.items() %}
+        { 
+            "{{op_name}}", 
+            {
+                {% for normalized_name, legacy_name in arg_name_mappings.items() %}
+                { "{{normalized_name}}", "{{legacy_name}}" },
+                {% endfor %}
+            }, 
+        },
         {% endfor %}
     };
 }
