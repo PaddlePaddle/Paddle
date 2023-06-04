@@ -15,6 +15,7 @@
 #pragma once
 
 #include <list>
+#include <ostream>
 #include <unordered_map>
 
 #include "paddle/ir/core/attribute.h"
@@ -49,6 +50,8 @@ class Program {
 
   ModuleOp module_op() { return module_; }
 
+  void print(std::ostream& os);
+
   Block* block() { return module_.block(); }
 
   Parameter* GetParameter(std::string name) const;
@@ -65,7 +68,5 @@ class Program {
   // weight
   ParameterMap parameters_;
 };
-
-std::ostream& operator<<(std::ostream& os, Program& program);
 
 }  // namespace ir
