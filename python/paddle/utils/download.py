@@ -167,7 +167,28 @@ def _get_download(url, fullname):
     # using requests.get method
     fname = osp.basename(fullname)
     try:
-        req = httpx.get(url, timeout=None, follow_redirects=True)
+        with httpx.stream("GET", url) as req:
+            if req.status_code != 200:
+                raise RuntimeError(
+                    "Downloading from {} failed with code "
+                    "{}!".format(url, req.status_code)
+                )
+
+            tmp_fullname = fullname + "_tmp"
+            total_size = req.headers.get('content-length')
+            with open(tmp_fullname, 'wb') as f:
+                if total_size:
+                    with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
+                        for chunk in req.iter_bytes(chunk_size=1024):
+                            f.write(chunk)
+                            pbar.update(1)
+                else:
+                    for chunk in req.iter_bytes(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+            shutil.move(tmp_fullname, fullname)
+            return fullname
+
     except Exception as e:  # requests.exceptions.ConnectionError
         logger.info(
             "Downloading {} from {} failed with exception {}".format(
@@ -175,31 +196,6 @@ def _get_download(url, fullname):
             )
         )
         return False
-
-    if req.status_code != 200:
-        raise RuntimeError(
-            "Downloading from {} failed with code "
-            "{}!".format(url, req.status_code)
-        )
-
-    # For protecting download interrupted, download to
-    # tmp_fullname firstly, move tmp_fullname to fullname
-    # after download finished
-    tmp_fullname = fullname + "_tmp"
-    total_size = req.headers.get('content-length')
-    with open(tmp_fullname, 'wb') as f:
-        if total_size:
-            with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
-                for chunk in req.iter_content(chunk_size=1024):
-                    f.write(chunk)
-                    pbar.update(1)
-        else:
-            for chunk in req.iter_content(chunk_size=1024):
-                if chunk:
-                    f.write(chunk)
-    shutil.move(tmp_fullname, fullname)
-
-    return fullname
 
 
 def _wget_download(url, fullname):

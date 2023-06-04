@@ -91,30 +91,30 @@ class TestPostTrainingQuantization(unittest.TestCase):
             )
             sys.stderr.write("Begin to download\n")
             try:
-                r = httpx.get(url, timeout=10.0, follow_redirects=True)
-                total_length = r.headers.get('content-length')
+                with httpx.stream("GET", url) as r:
+                    total_length = r.headers.get('content-length')
 
-                if total_length is None:
-                    with open(filename, 'wb') as f:
-                        shutil.copyfileobj(r.raw, f)
-                else:
-                    with open(filename, 'wb') as f:
-                        chunk_size = 4096
-                        total_length = int(total_length)
-                        total_iter = total_length / chunk_size + 1
-                        log_interval = (
-                            total_iter // 20 if total_iter > 20 else 1
-                        )
-                        log_index = 0
-                        bar = paddle.hapi.progressbar.ProgressBar(
-                            total_iter, name='item'
-                        )
-                        for data in r.iter_content(chunk_size=chunk_size):
-                            f.write(data)
-                            log_index += 1
-                            bar.update(log_index, {})
-                            if log_index % log_interval == 0:
-                                bar.update(log_index)
+                    if total_length is None:
+                        with open(filename, 'wb') as f:
+                            shutil.copyfileobj(r.raw, f)
+                    else:
+                        with open(filename, 'wb') as f:
+                            chunk_size = 4096
+                            total_length = int(total_length)
+                            total_iter = total_length / chunk_size + 1
+                            log_interval = (
+                                total_iter // 20 if total_iter > 20 else 1
+                            )
+                            log_index = 0
+                            bar = paddle.hapi.progressbar.ProgressBar(
+                                total_iter, name='item'
+                            )
+                            for data in r.iter_content(chunk_size=chunk_size):
+                                f.write(data)
+                                log_index += 1
+                                bar.update(log_index, {})
+                                if log_index % log_interval == 0:
+                                    bar.update(log_index)
 
             except Exception as e:
                 # re-try
