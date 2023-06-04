@@ -264,8 +264,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
         "conv2d_fusion_layout_transfer_pass",  //
-        "auto_mixed_precision_pass",           //
-        "inplace_op_var_pass",                 // should be the last pass.
+        "transfer_layout_elim_pass",
+        "auto_mixed_precision_pass",  //
+        "inplace_op_var_pass",        // should be the last pass.
   });
 
   use_gpu_ = true;
@@ -521,6 +522,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",
+      "fold_interp_outsize_fuse_pass",
       "delete_cast_op_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
@@ -528,6 +530,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
+      "yolo_box_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",

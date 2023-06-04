@@ -15,12 +15,10 @@
 #pragma once
 
 #include "paddle/fluid/dialect/pd_type_storage.h"
-#include "paddle/ir/type.h"
+#include "paddle/ir/core/type.h"
 
 namespace paddle {
 namespace dialect {
-#define GET_PD_DIALECT_TYPE_LIST paddle::dialect::DenseTensorType
-
 ///
 /// \brief Define built-in parametric types.
 ///
@@ -32,12 +30,11 @@ class DenseTensorType : public ir::Type {
 
   const ir::Type &dtype() const;
 
-  const paddle::dialect::DenseTensorTypeStorage::Dim &dim() const;
+  const phi::DDim &dims() const;
 
-  const paddle::dialect::DenseTensorTypeStorage::DataLayout &data_layout()
-      const;
+  const phi::DataLayout &data_layout() const;
 
-  const paddle::dialect::DenseTensorTypeStorage::LoD &lod() const;
+  const phi::LoD &lod() const;
 
   const size_t &offset() const;
 };

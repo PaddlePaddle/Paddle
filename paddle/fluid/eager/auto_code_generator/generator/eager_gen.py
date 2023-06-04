@@ -67,6 +67,7 @@ black_ops_list = [
 prim_white_list = [
     "matmul_double_grad",
     "subtract_double_grad",
+    "add_triple_grad",
     "silu_double_grad",
 ]
 
@@ -392,7 +393,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 PHI_DECLARE_string(tensor_operants_mode);
 {}
 {}

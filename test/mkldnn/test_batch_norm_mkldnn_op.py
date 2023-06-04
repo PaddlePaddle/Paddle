@@ -15,16 +15,16 @@
 import unittest
 
 import numpy as np
+from eager_op_test import _set_use_system_allocator
 from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
-
-from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import _set_use_system_allocator
-from paddle.fluid.tests.unittests.test_batch_norm_op import (
+from test_batch_norm_op import (
     TestBatchNormOpInference,
     TestBatchNormOpTraining,
     _reference_grad,
     _reference_training,
 )
+
+from paddle.fluid import core
 
 _set_use_system_allocator(True)
 
