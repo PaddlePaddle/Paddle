@@ -64,7 +64,7 @@ cc_test(
        op_registry
        variable_helper
        mul_op
-       reduce_sum_op
+       generated_static_op
        elementwise_add_op
        memcpy)
 cc_test(
