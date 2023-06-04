@@ -251,6 +251,7 @@ def _download(url, path, md5sum=None, method='get'):
 
     logger.info(f"Downloading {fname} from {url}")
     while not (osp.exists(fullname) and _md5check(fullname, md5sum)):
+        logger.info(f"md5check {fullname} and {md5sum}")
         if retry_cnt < DOWNLOAD_RETRY_LIMIT:
             retry_cnt += 1
         else:

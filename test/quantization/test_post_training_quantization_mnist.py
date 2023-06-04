@@ -109,7 +109,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                             bar = paddle.hapi.progressbar.ProgressBar(
                                 total_iter, name='item'
                             )
-                            for data in r.iter_content(chunk_size=chunk_size):
+                            for data in r.iter_bytes(chunk_size=chunk_size):
                                 f.write(data)
                                 log_index += 1
                                 bar.update(log_index, {})
