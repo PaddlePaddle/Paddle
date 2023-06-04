@@ -27,5 +27,5 @@ proto_library(paddle_rpc_proto SRCS rpc.proto)
 cc_library(
   paddle_rpc
   SRCS ${PADDLE_RPC_SRCS}
-  DEPS ${PADDLE_RPC_DEPS} paddle_rpc_proto pybind)
+  DEPS ${PADDLE_RPC_DEPS} paddle_rpc_proto)
 add_dependencies(paddle_rpc brpc)

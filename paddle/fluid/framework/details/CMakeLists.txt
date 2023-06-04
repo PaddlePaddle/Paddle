@@ -85,14 +85,13 @@ if(WITH_GPU)
   nv_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         variable_visitor
-         op_handle_base
+    DEPS op_handle_base
          scope
          lod_tensor
          phi
          memory
          dynload_cuda
+         variable_visitor
          place)
   nv_library(
     grad_merge_all_reduce_op_handle
@@ -160,14 +159,13 @@ elseif(WITH_ROCM)
   hip_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS all_reduce_op_handle
-         op_handle_base
-         variable_visitor
+    DEPS op_handle_base
          scope
          lod_tensor
          phi
          memory
          dynload_cuda
+         variable_visitor
          place)
   hip_library(
     grad_merge_all_reduce_op_handle

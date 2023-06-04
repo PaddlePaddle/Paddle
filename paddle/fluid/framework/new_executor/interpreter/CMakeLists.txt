@@ -37,7 +37,7 @@ set(INTERPRETER_DEPS
 cc_library(
   interpreter
   SRCS ${INTERPRETER_SRCS}
-  DEPS standalone_executor ${INTERPRETER_DEPS})
+  DEPS ${INTERPRETER_DEPS})
 
 cc_library(
   plan

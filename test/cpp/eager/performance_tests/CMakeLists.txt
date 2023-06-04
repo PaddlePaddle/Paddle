@@ -17,7 +17,6 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_eager_cpu.cc
     DEPS
-    conditional_block_op
     performance_benchmark_utils
     ${eager_deps}
     ${fluid_deps})
@@ -26,7 +25,6 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_fluid_cpu.cc
     DEPS
-    dygraph_function
     performance_benchmark_utils
     ${eager_deps}
     ${fluid_deps})
@@ -36,7 +34,6 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_eager_cuda.cc
     DEPS
-    conditional_block_op
     performance_benchmark_utils
     ${eager_deps}
     ${fluid_deps})
@@ -45,10 +42,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_fluid_cuda.cc
     DEPS
-    conditional_block_op
-    standalone_executor
     performance_benchmark_utils
-    dygraph_function
     ${eager_deps}
     ${fluid_deps})
 endif()

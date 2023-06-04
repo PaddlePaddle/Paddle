@@ -39,9 +39,7 @@ cc_library(
        cinn_cache_key
        cinn_graph_symbolization
        cinn
-       cinn_launch_context
-       python
-       pybind)
+       cinn_launch_context)
 
 if(WITH_TESTING)
   # cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinn)

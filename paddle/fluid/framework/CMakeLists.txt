@@ -695,14 +695,14 @@ endif()
 cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
-  DEPS while_op_helper
-       recurrent_op_helper
-       conditional_block_op_helper
-       scope
+  DEPS scope
        proto_desc
        operator
        garbage_collector
-       op_registry)
+       op_registry
+       while_op_helper
+       recurrent_op_helper
+       conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(
@@ -729,10 +729,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS fleet_executor
-           fleet_wrapper
-           recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -740,6 +737,7 @@ if(WITH_DISTRIBUTE)
            glog
            fs
            shell
+           fleet_wrapper
            heter_wrapper
            ps_gpu_wrapper
            box_wrapper
@@ -755,6 +753,7 @@ if(WITH_DISTRIBUTE)
            timer
            monitor
            heter_service_proto
+           fleet_executor
            ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -807,8 +806,7 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -885,8 +883,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -947,8 +944,7 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -996,8 +992,7 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto

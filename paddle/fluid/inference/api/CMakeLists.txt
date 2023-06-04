@@ -15,24 +15,12 @@ if(WITH_MKLDNN)
       ${mkldnn_quantizer_cfg}
       PARENT_SCOPE)
 endif()
-if(WIN32)
-  cc_library(
-    analysis_config
-    SRCS analysis_config.cc
-    DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
-         utf8proc)
-else()
-  cc_library(
-    analysis_config
-    SRCS analysis_config.cc
-    DEPS analysis_helper
-         processgroup_comm_utils
-         ${mkldnn_quantizer_cfg}
-         lod_tensor
-         paddle_pass_builder
-         table_printer
-         utf8proc)
-endif()
+
+cc_library(
+  analysis_config
+  SRCS analysis_config.cc
+  DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
+       utf8proc)
 
 cc_library(
   paddle_infer_contrib
@@ -56,17 +44,11 @@ endif()
 if(WITH_CUSTOM_DEVICE)
   set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
 endif()
-if(WIN32)
-  cc_library(
-    paddle_inference_api
-    SRCS api.cc api_impl.cc helper.cc
-    DEPS executor ${paddle_inference_api_deps})
-else()
-  cc_library(
-    paddle_inference_api
-    SRCS api.cc api_impl.cc helper.cc
-    DEPS executor paddle_inference_io ${paddle_inference_api_deps})
-endif()
+
+cc_library(
+  paddle_inference_api
+  SRCS api.cc api_impl.cc helper.cc
+  DEPS ${paddle_inference_api_deps})
 
 if(WIN32)
   target_link_libraries(paddle_inference_api phi)

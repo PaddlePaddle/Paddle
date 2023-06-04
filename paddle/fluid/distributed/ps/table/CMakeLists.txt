@@ -39,7 +39,8 @@ set(TABLE_SRC memory_dense_table.cc barrier_table.cc common_graph_table.cc)
 cc_library(
   common_table
   SRCS ${TABLE_SRC}
-  DEPS ${RPC_DEPS}
+  DEPS ${TABLE_DEPS}
+       ${RPC_DEPS}
        graph_edge
        graph_node
        device_context

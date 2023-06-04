@@ -74,8 +74,6 @@ cc_test_old(
   brpc_utils
   scope
   phi
-  sendrecv_rpc
-  ps_service
   ${COMMON_DEPS}
   ${RPC_DEPS})
 

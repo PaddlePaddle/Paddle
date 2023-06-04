@@ -7,8 +7,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   cc_library(
     tensorrt_subgraph_pass
     SRCS tensorrt_subgraph_pass.cc
-    DEPS convert_to_mixed_precision subgraph_util tensorrt_op_teller
-         infer_io_utils)
+    DEPS subgraph_util tensorrt_op_teller infer_io_utils)
 
   set(analysis_deps
       ${analysis_deps} subgraph_util tensorrt_subgraph_pass

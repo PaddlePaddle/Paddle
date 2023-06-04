@@ -126,11 +126,7 @@ if (WITH_GPU OR WITH_ROCM)
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS})
-if (WITH_ROCM)
-    op_library(recurrent_op DEPS executor ${OP_HEADER_DEPS})
-else()
-    op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
-endif()
+op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})

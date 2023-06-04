@@ -41,7 +41,6 @@ brpc_library(
   PROTO
   sendrecv.proto
   DEPS
-  ps_framework_proto
   ${BRPC_DEPS})
 
 #set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
@@ -123,7 +122,6 @@ cc_library(
        scope
        phi
        ps_gpu_wrapper
-       fleet
        ${RPC_DEPS})
 
 #cc_library(
