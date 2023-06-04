@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/operation.h"
+#include <ostream>
+
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/op_info.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/utils.h"
@@ -160,7 +163,7 @@ void Operation::destroy() {
   aligned_free(reinterpret_cast<void *>(aligned_ptr));
 }
 
-IrContext *Operation::ir_context() const { return op_info_.ir_context(); }
+IrContext *Operation::ir_context() const { return info_.ir_context(); }
 
 Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
@@ -168,7 +171,7 @@ Operation::Operation(const AttributeMap &attributes,
                      uint32_t num_operands,
                      uint32_t num_regions)
     : attributes_(attributes),
-      op_info_(op_info),
+      info_(op_info),
       num_results_(num_results),
       num_operands_(num_operands),
       num_regions_(num_regions) {}
@@ -203,27 +206,10 @@ ir::OpOperand Operation::GetOperandByIndex(uint32_t index) const {
   return ir::OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
 }
 
-std::string Operation::print() {
-  std::stringstream result;
-  result << "{ " << num_results_ << " outputs, " << num_operands_
-         << " inputs } : ";
-  result << "[ ";
-  for (size_t idx = num_results_; idx > 0; idx--) {
-    result << GetResultByIndex(idx - 1).impl_ << ", ";
-  }
-  result << "] = ";
-  result << this << "( ";
-  for (size_t idx = 0; idx < num_operands_; idx++) {
-    result << reinterpret_cast<void *>(reinterpret_cast<char *>(this) +
-                                       sizeof(Operation) +
-                                       idx * sizeof(detail::OpOperandImpl))
-           << ", ";
-  }
-  result << ")";
-  return result.str();
+std::string Operation::name() const {
+  auto p_name = info_.name();
+  return p_name ? p_name : "";
 }
-
-std::string Operation::op_name() const { return op_info_.name(); }
 
 Region *Operation::GetParentRegion() const {
   return parent_ ? parent_->GetParentRegion() : nullptr;
