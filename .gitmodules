@@ -54,7 +54,6 @@
 	path = third_party/snappy
 	url = https://github.com/google/snappy.git
 	ignore = dirty
-	branch = 1.1.7
 [submodule "third_party/cub"]
 	path = third_party/cub
 	url = https://github.com/NVIDIA/cub.git
@@ -63,4 +62,3 @@
 	path = third_party/cutlass
 	url = https://github.com/NVIDIA/cutlass.git
 	ignore = dirty
-	branch = v2.11.0
