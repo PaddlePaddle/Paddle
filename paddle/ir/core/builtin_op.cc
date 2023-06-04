@@ -41,7 +41,7 @@ ModuleOp ModuleOp::create(IrContext *context, Program *pointer) {
   ir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
   argument.AddRegion()->emplace_back();
-  argument.addAttribute("program", PointerAttribute::get(context, pointer));
+  argument.AddAttribute("program", PointerAttribute::get(context, pointer));
   return ModuleOp(Operation::create(std::move(argument)));
 }
 
@@ -212,6 +212,23 @@ void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
           input_type[index],
           index,
           outputs[0]));
+}
+
+void ConstantOp::verify(const std::vector<ir::OpResult> &inputs,
+                        const std::vector<ir::Type> &outputs,
+                        const ir::AttributeMap &attributes) {
+  // outputs.size() == 1
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      phi::errors::PreconditionNotMet(
+          "The size %d of outputs must be equal to 1.", outputs.size()));
+  // inputs.size() == 0
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      0,
+      phi::errors::PreconditionNotMet(
+          "The size %d of outputs must be equal to 1.", outputs.size()));
 }
 
 }  // namespace ir

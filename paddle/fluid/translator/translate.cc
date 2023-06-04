@@ -28,7 +28,7 @@ using Program = ::ir::Program;
 
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
-  auto program = std::make_unique<Program>();
+  auto program = std::make_unique<Program>(ir::IrContext::Instance());
 
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());

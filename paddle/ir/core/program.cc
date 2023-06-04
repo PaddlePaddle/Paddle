@@ -21,8 +21,6 @@ Program::Program(IrContext* context) {
   module_ = ModuleOp::create(context, this);
 }
 
-Program::Program() : Program(IrContext::Instance()) {}
-
 Program::~Program() {
   if (module_) {
     module_.destroy();

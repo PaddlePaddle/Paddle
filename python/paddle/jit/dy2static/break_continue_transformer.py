@@ -111,11 +111,10 @@ class BreakContinueTransformer(BaseNodeVisitor):
           In general, we recommend to inheriting NodeTransformer to modify node!
     """
 
-    def __init__(self, wrapper_root):
+    def __init__(self, root):
         super().__init__()
 
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+        self.root = root
 
     def transform(self):
         self.visit(self.root)
@@ -336,11 +335,10 @@ class BreakTransformOptimizer(BaseNodeVisitor):
     usually brings very heavy overhead.
     """
 
-    def __init__(self, wrapper_root):
+    def __init__(self, root):
         super().__init__()
 
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+        self.root = root
 
     def transform(self):
         self.visit(self.root)

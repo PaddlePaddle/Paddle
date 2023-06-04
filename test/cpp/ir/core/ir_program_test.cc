@@ -188,9 +188,9 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> abs_op_attribute;
   std::vector<ir::Type> output_types = {dense_tensor_dtype};
   ir::OperationArgument abs_argument(abs_info);
-  abs_argument.addOperands(operands.begin(), operands.end());
-  abs_argument.addAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
-  abs_argument.addTypes(output_types.begin(), output_types.end());
+  abs_argument.AddOperands(operands.begin(), operands.end());
+  abs_argument.AddAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
+  abs_argument.AddTypes(output_types.begin(), output_types.end());
   ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
   paddle::dialect::GetOpInfoInterface interface =
       abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
@@ -205,15 +205,14 @@ TEST(program_test, program) {
 
   ir::OperationArgument op4_argument(
       {op3->GetResultByIndex(0)}, {}, {}, op4_info);
-  op4_argument.addAttributes(op4_attribute.begin(), op4_attribute.end());
+  op4_argument.AddAttributes(op4_attribute.begin(), op4_attribute.end());
   ir::Operation *op4 = ir::Operation::create(std::move(op4_argument));
   block->push_back(op4);
 
-  EXPECT_EQ(op4->GetOperandByIndex(0).impl()->source().type().dialect().id(),
+  EXPECT_EQ(op4->GetOperandByIndex(0).source().type().dialect().id(),
             paddle_dialect->id());
   Interface *c_interface = op4->GetOperandByIndex(0)
-                               .impl()
-                               ->source()
+                               .source()
                                .type()
                                .dialect()
                                .GetRegisteredInterface<Interface>();
@@ -239,7 +238,7 @@ TEST(program_test, slice_combine_test) {
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
 
   // (2) Create an empty program object
-  ir::Program program;
+  ir::Program program(ctx);
   //   ir::Program *program = new ir::Program();
   EXPECT_EQ(program.block()->size() == 0, true);
 
@@ -255,13 +254,10 @@ TEST(program_test, slice_combine_test) {
       ir::Operation::create({}, op1_attribute, {fp32_dtype}, op1_info);
   program.block()->push_back(op1);
 
-  // (5) Def b = GetParameterOp("b")
-  std::string op2_name = std::string(ir::GetParameterOp::name());
+  // (5) Def b = Constant("b")
+  std::string op2_name = std::string(ir::ConstantOp::name());
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  std::unordered_map<std::string, ir::Attribute> op2_attribute{
-      {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
-  ir::Operation *op2 =
-      ir::Operation::create({}, op2_attribute, {fp32_dtype}, op2_info);
+  ir::Operation *op2 = ir::Operation::create({}, {}, {fp32_dtype}, op2_info);
   program.block()->push_back(op2);
 
   // (6) Def combine_op = CombineOp("a", "b")

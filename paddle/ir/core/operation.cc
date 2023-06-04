@@ -18,6 +18,7 @@
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/utils.h"
+#include "paddle/ir/core/value_impl.h"
 
 namespace ir {
 Operation *Operation::create(OperationArgument &&argument) {

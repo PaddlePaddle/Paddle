@@ -103,11 +103,11 @@ class Operation1 : public ir::Op<Operation1> {
     std::unordered_map<std::string, ir::Attribute> attributes =
         CreateAttributeMap({"op1_attr1", "op1_attr2"},
                            {"op1_attr1", "op1_attr2"});
-    argument.addOperands<std::vector<ir::OpResult>::iterator>(inputs.begin(),
+    argument.AddOperands<std::vector<ir::OpResult>::iterator>(inputs.begin(),
                                                               inputs.end());
-    argument.addTypes<std::vector<ir::Type>::iterator>(output_types.begin(),
+    argument.AddTypes<std::vector<ir::Type>::iterator>(output_types.begin(),
                                                        output_types.end());
-    argument.addAttributes<
+    argument.AddAttributes<
         std::unordered_map<std::string, ir::Attribute>::iterator>(
         attributes.begin(), attributes.end());
   }

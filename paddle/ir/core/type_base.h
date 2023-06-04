@@ -259,17 +259,4 @@ struct TypeManager {
   static concrete_type get(ir::IrContext *ctx, Args... args) {             \
     return ir::TypeManager::template get<concrete_type>(ctx, args...);     \
   }
-
-///
-/// \brief This macro definition is used to register custom Type class.
-///
-#define REGISTER_TYPE_2_IRCONTEXT(concrete_type, dialect)                 \
-  ir::AbstractType *abstract_type_##concrete_type = new ir::AbstractType( \
-      std::move(ir::AbstractType::get<concrete_type>(*dialect)));         \
-                                                                          \
-  dialect->ir_context()->RegisterAbstractType(                            \
-      ir::TypeId::get<concrete_type>(), abstract_type_##concrete_type);   \
-                                                                          \
-  ir::TypeManager::RegisterType<concrete_type>(dialect->ir_context());
-
 }  // namespace ir
