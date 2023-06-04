@@ -16,13 +16,12 @@ include(ExternalProject)
 
 set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
 
-set(CUTLASS_REPOSITORY https://github.com/NVIDIA/cutlass.git)
-set(CUTLASS_TAG v2.11.0)
+set(CUTLASS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cutlass)
 
-include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/")
-include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/include/")
+include_directories("${CUTLASS_SOURCE_DIR}/src/extern_cutlass/")
+include_directories("${CUTLASS_SOURCE_DIR}/src/extern_cutlass/include/")
 include_directories(
-  "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/util/include/")
+  "${CUTLASS_SOURCE_DIR}/src/extern_cutlass/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
 
@@ -32,9 +31,8 @@ endif()
 
 ExternalProject_Add(
   extern_cutlass
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${CUTLASS_REPOSITORY}
-  GIT_TAG "${CUTLASS_TAG}"
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${CUTLASS_SOURCE_DIR}
   PREFIX ${CUTLASS_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
