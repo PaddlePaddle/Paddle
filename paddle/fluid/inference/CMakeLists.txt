@@ -32,6 +32,7 @@ endif()
 
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 set(utils_modules pretty_log string_helper benchmark)
 
 add_subdirectory(api)
@@ -63,8 +64,9 @@ else()
   # message("${fluid_modules}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
-  create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API}
-                    ${utils_modules})
+  # message("${phi_modules}")
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -138,13 +140,6 @@ if(NOT APPLE
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS
       "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
-
-  # temporarily fix brpc double link issue(52842)
-  if(WITH_INFERENCE_API_TEST
-     AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-     AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 10.4)
-    set(LINK_FLAGS "${LINK_FLAGS} -Wl,-Bsymbolic")
-  endif()
 
   set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
                                                            "${LINK_FLAGS}")

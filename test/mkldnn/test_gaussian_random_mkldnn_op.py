@@ -15,12 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
+from test_gaussian_random_op import TestGaussianRandomOp
 
 import paddle
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_gaussian_random_op import (
-    TestGaussianRandomOp,
-)
 
 
 class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):

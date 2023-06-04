@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -3318,6 +3319,34 @@ void FusedAdamInferMeta(
       master_params_out[i]->set_dtype(master_params.get()[i]->dtype());
     }
   }
+}
+
+void FusedConvInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const MetaTensor& bias,
+                        const MetaTensor& residual_param,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations,
+                        int groups,
+                        const std::string& data_format,
+                        const std::string& mkldnn_data_type,
+                        const std::string& fuse_activation,
+                        bool fuse_residual_conn,
+                        bool force_fp32_output,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
 }
 
 void MoeInferMeta(const MetaTensor& x,

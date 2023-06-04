@@ -61,6 +61,16 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
   return true;
 }
 
+phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto dtype = framework::proto::VarType::FP32;
+  if (ctx.MultiInputVar("X").size() >= 1) {
+    dtype = op_ptr->IndicateVarDataType(ctx, "X");
+  }
+  return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -97,6 +107,15 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
+  kt.set_backend(
+      phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+  return kt;
 }
 
 phi::KernelKey GetAssignExpectedKernelType(
@@ -322,6 +341,32 @@ phi::KernelKey GetLayerNormExpectedKernelType(
     op_ptr->SetDnnFallback(true);
   }
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetConvExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "Input");
+  // todo enable data layout when it's ready
+  // (https://github.com/PaddlePaddle/Paddle/pull/20042)
+
+  if (input_data_type != framework::proto::VarType::INT8 &&
+      input_data_type != framework::proto::VarType::UINT8 &&
+      input_data_type != framework::proto::VarType::BF16) {
+    auto filter_data_type = framework::TransToProtoVarType(
+        ctx.Input<phi::DenseTensor>("Filter")->dtype());
+    PADDLE_ENFORCE_EQ(
+        input_data_type,
+        filter_data_type,
+        platform::errors::InvalidArgument(
+            "input and filter data type should be consistent, "
+            "but received input data type is %s and filter type "
+            "is %s",
+            paddle::framework::DataTypeToString(input_data_type),
+            paddle::framework::DataTypeToString(filter_data_type)));
+  }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }

@@ -22,6 +22,7 @@
 #include "paddle/fluid/translator/op_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/operation.h"
@@ -75,12 +76,12 @@ void ProgramTranslator::ExtractParameterFromSingleBlock(
     std::string get_parameter_op_name(ir::GetParameterOp::name());
     ir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
     std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-        {var->Name(), ir::StrAttribute::get(ctx, var->Name())},
+        {"parameter_name", ir::StrAttribute::get(ctx, var->Name())},
     };
     ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
     ir::Operation* operation = ir::Operation::create(
         {}, op_attribute_map, {translated_var_type}, op_info);
-    program->InsertOp(operation);
+    program->block()->push_back(operation);
     param_map[var->Name()] =
         VariableDefiningInfo(operation->GetResultByIndex(0));
     VLOG(10) << "[op translated][get parameter]" << operation;
