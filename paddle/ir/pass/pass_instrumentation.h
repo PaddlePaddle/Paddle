@@ -33,21 +33,21 @@ class PassInstrumentation {
   virtual ~PassInstrumentation() = default;
 
   /// A callback to run before a pass pipeline is executed.
-  virtual void RunBeforePipeline(ir::Operation* op) {}
+  virtual void RunBeforePipeline(Operation* op) {}
 
-  virtual void RunAfterPipeline(ir::Operation* op) {}
+  virtual void RunAfterPipeline(Operation* op) {}
 
-  virtual void RunBeforePass(Pass* pass, ir::Operation* op) {}
+  virtual void RunBeforePass(Pass* pass, Operation* op) {}
 
-  virtual void RunAfterPass(Pass* pass, ir::Operation* op) {}
+  virtual void RunAfterPass(Pass* pass, Operation* op) {}
 
   virtual void RunBeforeAnalysis(const std::string& name,
-                                 ir::TypeId id,
-                                 ir::Operation* op) {}
+                                 TypeId id,
+                                 Operation* op) {}
 
   virtual void RunAfterAnalysis(const std::string& name,
-                                ir::TypeId id,
-                                ir::Operation* op) {}
+                                TypeId id,
+                                Operation* op) {}
 };
 
 /// This class holds a collection of PassInstrumentation obejcts, and invokes
@@ -61,21 +61,17 @@ class PassInstrumentor {
 
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
-  void RunBeforePipeline(ir::Operation* op);
+  void RunBeforePipeline(Operation* op);
 
-  void RunAfterPipeline(ir::Operation* op);
+  void RunAfterPipeline(Operation* op);
 
-  void RunBeforePass(Pass* pass, ir::Operation* op);
+  void RunBeforePass(Pass* pass, Operation* op);
 
-  void RunAfterPass(Pass* pass, ir::Operation* op);
+  void RunAfterPass(Pass* pass, Operation* op);
 
-  void RunBeforeAnalysis(const std::string& name,
-                         ir::TypeId id /* */,
-                         ir::Operation* op);
+  void RunBeforeAnalysis(const std::string& name, TypeId id, Operation* op);
 
-  void RunAfterAnalysis(const std::string& name,
-                        ir::TypeId id,
-                        ir::Operation* op);
+  void RunAfterAnalysis(const std::string& name, TypeId id, Operation* op);
 
   // TODO(wilber): Add other hooks.
 
