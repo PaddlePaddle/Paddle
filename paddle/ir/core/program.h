@@ -50,7 +50,7 @@ class Program {
 
   ModuleOp module_op() { return module_; }
 
-  void print(std::ostream& os);
+  void Print(std::ostream& os);
 
   Block* block() { return module_.block(); }
 
