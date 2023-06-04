@@ -12,15 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/type.h"
-#include "paddle/ir/core/dialect.h"
+#pragma once
 
-namespace ir {
-IrContext* Type::ir_context() const { return dialect().ir_context(); }
+#include <string>
+#include <string_view>
 
-std::ostream& operator<<(std::ostream& os, Type type) {
-  type.Print(os);
-  return os;
+namespace paddle {
+namespace translator {
+
+static std::string UnderscoreToCamelCase(std::string str) {
+  std::string camel_case;
+  bool next_upper = true;
+  for (char c : str) {
+    if (c == '_') {
+      next_upper = true;
+    } else {
+      if (next_upper) {
+        camel_case += toupper(c);
+        next_upper = false;
+      } else {
+        camel_case += c;
+      }
+    }
+  }
+  return camel_case;
 }
 
-}  // namespace ir
+}  // namespace translator
+}  // namespace paddle

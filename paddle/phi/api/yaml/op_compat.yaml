@@ -2388,18 +2388,23 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : sum (reduce_sum)
-  backward : (sum_grad) reduce_sum_grad
+  backward : sum_grad (reduce_sum_grad), sum_double_grad
   inputs:
     {x : X}
-  attrs:
-    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
   outputs:
     out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
+  extra :
+    attrs : [bool use_mkldnn = false]
   int_array:
       axis :
         data_type : int
-  extra :
-    attrs : [bool use_mkldnn = false]
+        support_tensor : true
+  get_expected_kernel_type :
+    sum : GetReduceExpectedKernelType
+    sum_grad : GetReduceGradExpectedKernelType
+  manual_signature : [sum]
 
 - op : svd
   backward : svd_grad
