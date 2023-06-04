@@ -1469,9 +1469,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Get return type list & outputs
         returns_type_list = ["" for i in range(num_outputs)]
         returns_list = ["" for i in range(num_outputs)]
+        left_intermediate_num = 0
         for name, (rtype, pos) in forward_outputs_position_map.items():
             if name in intermediate_outputs:
+                left_intermediate_num += 1
                 continue
+            pos -= left_intermediate_num
             returns_list[pos] = f"{name}"
 
             if IsPlainTensorType(rtype):
