@@ -20,7 +20,7 @@
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
+ 
 class ExprWrapper {
   public:
   ExprWrapper(){}
@@ -29,7 +29,7 @@ class ExprWrapper {
     this->expr_builder = expr_builder;
   }
 
-  const nvinfer1::IDimensionExpr* extract_expr() {
+  const nvinfer1::IDimensionExpr* extract_expr() const {
     return expr;
   }
 
@@ -93,7 +93,22 @@ class ExprWrapper {
   nvinfer1::IExprBuilder* expr_builder;
 };
 
+static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(const nvinfer1::DimsExprs& x_dims, nvinfer1::IExprBuilder& expr_builder) {
+  std::vector<ExprWrapper> x_dims_wrap;
+  for (int i = 0; i < x_dims.nbDims; i++) {
+    x_dims_wrap.push_back(ExprWrapper(x_dims.d[i], &expr_builder));
+  }
+  return x_dims_wrap;
+}
 
+static nvinfer1::DimsExprs VecExprWrapper2DimsExprs(const std::vector<ExprWrapper>& output_dims_wrapper) {
+  nvinfer1::DimsExprs output_dims;
+  output_dims.nbDims = output_dims_wrapper.size();
+  for (int i = 0; i < output_dims.nbDims; i++) {
+    output_dims.d[i] = output_dims_wrapper[i].extract_expr();
+  }
+  return output_dims;
+}
 
 nvinfer1::DimsExprs GatherNdInferMeta(
     int output_index,
@@ -563,7 +578,7 @@ inline const void UpdatePaddingAndDilation(
      const nvinfer1::IDimensionExpr* stride,
      nvinfer1::IExprBuilder& expr_builder  // NOLINT
  ) {
-
+   
    // Here are all examples of using h(height), ok for weight too.
    ExprWrapper ih(input_size, &expr_builder);
    ExprWrapper kh(filter_size, &expr_builder);
@@ -699,14 +714,8 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
                               const framework::OpDesc& op_desc) {
   auto x_dims = inputs[0];
   auto filter_dims = inputs[1];
-  std::vector<ExprWrapper> x_dims_wrap;
-  for (int i = 0; i < x_dims.nbDims; i++) {
-    x_dims_wrap.push_back(ExprWrapper(x_dims.d[i], &expr_builder));
-  }
-  std::vector<ExprWrapper> filter_dims_wrap;
-  for (int i = 0; i < filter_dims.nbDims; i++) {
-    filter_dims_wrap.push_back(ExprWrapper(filter_dims.d[i], &expr_builder));
-  }
+  std::vector<ExprWrapper> x_dims_wrap = DimsExprs2VecExprWrapper(x_dims, expr_builder);
+  std::vector<ExprWrapper> filter_dims_wrap = DimsExprs2VecExprWrapper(filter_dims, expr_builder);
 
   const std::vector<int> dilations =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
@@ -726,110 +735,35 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
      padding_algorithm =
          PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
    }
-   CHECK_EQ(padding_algorithm == "EXPLICIT", true);
-   CHECK_EQ(data_format == "NCHW", true);
-   CHECK_EQ(output_size.size() == 0, true);
-   CHECK_EQ(paddings.size() == 2, true);
-
-  PADDLE_ENFORCE_EQ(
-      x_dims.nbDims == 4 || x_dims.nbDims == 5,
-      true,
-      phi::errors::InvalidArgument("Input of Op(conv_transpose) should be 4-D or "
-                              "5-D Tensor. But received: %u-D Tensor, "
-                              "the shape of input is [%s]",
-                              x_dims.nbDims,
-                              "哈哈哈"));
-  PADDLE_ENFORCE_EQ(
-      x_dims.nbDims,
-      filter_dims.nbDims,
-      phi::errors::InvalidArgument(
-          "The input's dimension size and filter's dimension size of "
-          "Op (conv_transpose) should be equal. But received: the shape of "
-          "input is [%s], the dimension size of input is [%d], the shape "
-          "of filter is [%s],  the dimension size of filter is [%d]. ",
-          "x_dims",
-          x_dims.nbDims,
-          "filter_dims",
-          filter_dims.nbDims));
+  CHECK_EQ(padding_algorithm == "EXPLICIT", true);
+  CHECK_EQ(data_format == "NCHW", true);
+  CHECK_EQ(output_size.size() == 0, true);
+  CHECK_EQ(paddings.size() == 2, true);
+  CHECK_EQ(x_dims.nbDims == 4, true);
+  CHECK_EQ(x_dims.nbDims == filter_dims.nbDims, true);
 
   int stride_size = strides.size();
   for (int i = 0; i < stride_size; ++i) {
-    PADDLE_ENFORCE_GT(
-        strides[i],
-        0,
-        phi::errors::InvalidArgument(
-            "The stride of Op(Conv) should be larget than 0, but received "
-            "stride is %d.",
-            strides[i]));
+    CHECK_EQ(strides[i] > 0, true);
   }
 
   int in_sub_stride_size = x_dims.nbDims - stride_size;
+  CHECK_EQ(in_sub_stride_size == 2, true);
 
-  PADDLE_ENFORCE_EQ(
-      x_dims.nbDims - strides.size(),
-      2U,
-      phi::errors::InvalidArgument(
-          "The input's dimension size minus Attr(stride)'s size must "
-          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
-          "input's dimension size is [%d], the shape of input "
-          "is [%s], the Attr(stride)'s size is [%d].",
-          in_sub_stride_size,
-          x_dims.nbDims,
-          "x_dims",
-          strides.size()));
+  if (output_size.size()) {
+    CHECK_EQ(output_size.size() == strides.size(), true);
+  }
 
-  if (output_size.size())
-    PADDLE_ENFORCE_EQ(
-        output_size.size(),
-        strides.size(),
-        phi::errors::InvalidArgument(
-            "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
-            "should be the same."));
-  if (output_padding.size())
-    PADDLE_ENFORCE_EQ(
-        output_padding.size(),
-        strides.size(),
-        phi::errors::InvalidArgument(
-            "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
-            "should be the same."));
-
-  // const int64_t C =
-  //     (data_layout != DataLayout::kNHWC ? x_dims[1]
-  //                                       : x_dims[x_dims.size() - 1]);
-  // PADDLE_ENFORCE_EQ(
-  //     C,
-  //     filter_dims[0],
-  //     errors::InvalidArgument(
-  //         "The number of input channels should be equal to filter channels "
-  //         "for Op(conv_transpose). But received: the input's channels is "
-  //         "[%d], the shape of input is [%s], the filter's channels is [%d], "
-  //         "the shape of filter is [%s]. The data_format is %s."
-  //         "The error may come from wrong data_format setting.",
-  //         C,
-  //         x_dims,
-  //         filter_dims[0],
-  //         filter_dims,
-  //         data_format));
-
-  // DDim x_data_dims;
-  // if (data_layout != DataLayout::kNHWC) {
-  //   x_data_dims = slice_ddim(x_dims, 2, x_dims.size());
-  // } else {
-  //   x_data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
-  // }
-  // DDim filter_data_dims = slice_ddim(filter_dims, 2, filter_dims.size());
-  // std::vector<int> ksize = vectorize<int>(filter_data_dims);
-
-  //if(0) UpdatePaddingAndDilation(&paddings_exprs, &dilations_exprs, padding_algorithm, x_dims, strides_exprs, ksize);
-
-
+  if (output_padding.size()) {
+    CHECK_EQ(strides.size() == output_padding.size(), true);
+  }
+  
   std::vector<ExprWrapper> output_dims_wrap(x_dims.nbDims);
   output_dims_wrap[0] = x_dims_wrap[0];
   output_dims_wrap[1] = filter_dims_wrap[1] * groups;
 
   auto ih = x_dims_wrap[2];
   auto iw = x_dims_wrap[3];
-
   auto kh = filter_dims_wrap[2];
   auto kw = filter_dims_wrap[3];
 
@@ -841,14 +775,7 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(int output_index,
   output_dims_wrap[2] = (ih - 1) * strides[0] - pad_h0 - pad_h1  + (kh - 1) * dilations[0] + 1;
   output_dims_wrap[3] = (iw - 1) * strides[1] - pad_w0 - pad_w1  + (kw - 1) * dilations[1] + 1;
 
-
-  nvinfer1::DimsExprs output_dims;
-  output_dims.nbDims = x_dims.nbDims;
-  for (int i = 0; i < output_dims.nbDims; i++) {
-    output_dims.d[i] = output_dims_wrap[i].extract_expr();
-  }
-
-  return output_dims;
+  return VecExprWrapper2DimsExprs(output_dims_wrap);
 }
 
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
