@@ -59,5 +59,5 @@ TEST(PaddleDialectTest, Translator) {
   // ops.size() = op size in BlockDesc + get_parameter_op + combine op
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 21);
 
-  std::cout << *program << std::endl;
+  program->Print(std::cout);
 }

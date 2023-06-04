@@ -231,7 +231,7 @@ TEST(program_test, program) {
   EXPECT_EQ(program.block()->size() == 4, true);
   EXPECT_EQ(program.parameters_num() == 3, true);
 
-  program.print(std::cout);
+  program.Print(std::cout);
 }
 
 TEST(program_test, slice_combine_test) {
