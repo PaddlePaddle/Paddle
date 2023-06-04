@@ -160,6 +160,16 @@
     func : concat
   backward : concat_grad
 
+- op : conv2d_transpose
+  args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+  kernel :
+    func : conv2d_transpose
+    data_type : x
+  backward : conv2d_transpose_grad
+
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
   output : Tensor(out)
@@ -195,6 +205,16 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
+
+- op : depthwise_conv2d_transpose
+  args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+  kernel :
+    func : depthwise_conv2d_transpose
+    data_type : x
+  backward : depthwise_conv2d_transpose_grad
 
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
