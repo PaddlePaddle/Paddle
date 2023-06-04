@@ -140,14 +140,15 @@ class BottleneckBlock(nn.Layer):
         base_width=64,
         dilation=1,
         norm_layer=None,
+        data_format='NCHW',
     ):
         super().__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
         width = int(planes * (base_width / 64.0)) * groups
 
-        self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False)
-        self.bn1 = norm_layer(width)
+        self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False, data_format=data_format)
+        self.bn1 = norm_layer(width, data_format=data_format)
 
         self.conv2 = nn.Conv2D(
             width,
@@ -158,13 +159,14 @@ class BottleneckBlock(nn.Layer):
             groups=groups,
             dilation=dilation,
             bias_attr=False,
+            data_format=data_format,
         )
-        self.bn2 = norm_layer(width)
+        self.bn2 = norm_layer(width, data_format=data_format)
 
         self.conv3 = nn.Conv2D(
-            width, planes * self.expansion, 1, bias_attr=False
+            width, planes * self.expansion, 1, bias_attr=False, data_format=data_format
         )
-        self.bn3 = norm_layer(planes * self.expansion)
+        self.bn3 = norm_layer(planes * self.expansion, data_format=data_format)
         self.relu = nn.ReLU()
         self.downsample = downsample
         self.stride = stride
@@ -242,6 +244,7 @@ class ResNet(nn.Layer):
         num_classes=1000,
         with_pool=True,
         groups=1,
+        data_format='NCHW',
     ):
         super().__init__()
         layer_cfg = {
@@ -268,21 +271,22 @@ class ResNet(nn.Layer):
             stride=2,
             padding=3,
             bias_attr=False,
+            data_format=data_format,
         )
-        self.bn1 = self._norm_layer(self.inplanes)
+        self.bn1 = self._norm_layer(self.inplanes, data_format=data_format)
         self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.maxpool = nn.MaxPool2D(kernel_size=3, stride=2, padding=1, data_format=data_format)
+        self.layer1 = self._make_layer(block, 64, layers[0], data_format=data_format)
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, data_format=data_format)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, data_format=data_format)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, data_format=data_format)
         if with_pool:
-            self.avgpool = nn.AdaptiveAvgPool2D((1, 1))
+            self.avgpool = nn.AdaptiveAvgPool2D((1, 1), data_format=data_format)
 
         if num_classes > 0:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+    def _make_layer(self, block, planes, blocks, stride=1, dilate=False, data_format='NCHW'):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -297,8 +301,9 @@ class ResNet(nn.Layer):
                     1,
                     stride=stride,
                     bias_attr=False,
+                    data_format=data_format,
                 ),
-                norm_layer(planes * block.expansion),
+                norm_layer(planes * block.expansion, data_format=data_format),
             )
 
         layers = []
@@ -312,6 +317,7 @@ class ResNet(nn.Layer):
                 self.base_width,
                 previous_dilation,
                 norm_layer,
+                data_format=data_format,
             )
         )
         self.inplanes = planes * block.expansion
@@ -323,6 +329,7 @@ class ResNet(nn.Layer):
                     groups=self.groups,
                     base_width=self.base_width,
                     norm_layer=norm_layer,
+                    data_format=data_format,
                 )
             )
 
