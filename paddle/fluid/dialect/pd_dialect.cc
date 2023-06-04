@@ -116,7 +116,7 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
     os << d;
     os << "x";
   }
-  tensor_type.dtype().print(os);
+  tensor_type.dtype().Print(os);
   os << ">";
 }
 
