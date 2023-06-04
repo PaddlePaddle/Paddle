@@ -66,7 +66,7 @@ class TestLinspaceOpNumOneCase(TestLinspaceOpCommonCase):
             'Stop': np.array([0]).astype(self.dtype),
             'Num': np.array([1]).astype('int32'),
         }
-        self.outputs = {'Out': np.array(10, dtype=self.dtype)}
+        self.outputs = {'Out': np.array([10], dtype=self.dtype)}
 
     def test_check_output(self):
         self.check_output()
@@ -136,7 +136,7 @@ class TestLinspaceOpNumOneCaseBF16(TestLinspaceOpCommonCaseBF16):
             'Num': np.array([1]).astype('int32'),
         }
         self.outputs = {
-            'Out': convert_float_to_uint16(np.array(10, dtype="float32"))
+            'Out': convert_float_to_uint16(np.array([10], dtype="float32"))
         }
 
 

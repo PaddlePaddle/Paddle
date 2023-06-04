@@ -208,8 +208,8 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         )
 
                         np.testing.assert_allclose(
-                            integral_data.grad.numpy(),
-                            integral_grad.numpy(),
+                            integral_data.grad.numpy(False),
+                            integral_grad.numpy(False),
                             rtol=1e-5,
                             atol=1e-7,
                         )

@@ -146,9 +146,10 @@ TEST(StandaloneExecutor, run) {
   ProgramDesc main_prog = GetLmMainProgram();
 
   Scope scope;
-  StandaloneExecutor startup_exec(place, startup_prog);
+  StandaloneExecutor startup_exec(place,
+                                  std::vector<ProgramDesc>{startup_prog});
   startup_exec.Run(&scope, {}, {});
-  StandaloneExecutor exec(place, main_prog);
+  StandaloneExecutor exec(place, std::vector<ProgramDesc>{main_prog});
   exec.Run(&scope, {}, {});
   auto start = std::chrono::steady_clock::now();
 

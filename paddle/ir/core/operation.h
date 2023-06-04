@@ -18,12 +18,13 @@
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
-#include "paddle/ir/core/value_impl.h"
 
 namespace ir {
 class OpBase;
 class Program;
 class Block;
+class OpOperand;
+class OpResult;
 
 class alignas(8) Operation final {
  public:
@@ -34,7 +35,7 @@ class alignas(8) Operation final {
   /// used in conjunction.
   ///
   static Operation *create(const std::vector<ir::OpResult> &inputs,
-                           const AttributeMap &attribute,
+                           const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
                            size_t num_regions = 0);
@@ -45,17 +46,19 @@ class alignas(8) Operation final {
   ///
   void destroy();
 
-  Block *parent() const { return parent_; }
-
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index) const;
+  OpResult GetResultByIndex(uint32_t index) const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index) const;
+  OpOperand GetOperandByIndex(uint32_t index) const;
 
   std::string print();
 
-  const AttributeMap &attribute() const { return attribute_; }
+  const AttributeMap &attributes() const { return attributes_; }
+
+  void SetAttribute(const std::string &key, Attribute value) {
+    attributes_[key] = value;
+  }
 
   ir::OpInfo op_info() const { return op_info_; }
 
@@ -82,11 +85,13 @@ class alignas(8) Operation final {
     return op_info_.HasInterface<Interface>();
   }
 
-  Program *parent_program() const { return parent_program_; }
+  Block *GetParentBlock() const { return parent_; }
 
-  void set_parent_program(Program *parent_program) {
-    parent_program_ = parent_program;
-  }
+  Region *GetParentRegion() const;
+
+  Operation *GetParentOp() const;
+
+  Program *GetParentProgram();
 
   /// Returns the region held by this operation at position 'index'.
   Region &GetRegion(unsigned index);
@@ -115,7 +120,7 @@ class alignas(8) Operation final {
     static T call(Operation *op) { return T::dyn_cast(op); }
   };
 
-  AttributeMap attribute_;
+  AttributeMap attributes_;
 
   OpInfo op_info_;
 
@@ -124,7 +129,6 @@ class alignas(8) Operation final {
   const uint32_t num_regions_ = 0;
 
   Region *regions_{nullptr};
-  Program *parent_program_{nullptr};
   Block *parent_{nullptr};
 };
 

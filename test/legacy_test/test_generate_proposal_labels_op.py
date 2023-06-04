@@ -420,7 +420,7 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.bbox_targets = np.vstack(self.bbox_targets)
         self.bbox_inside_weights = np.vstack(self.bbox_inside_weights)
         self.bbox_outside_weights = np.vstack(self.bbox_outside_weights)
-        self.max_overlap_with_gt = np.vstack(self.max_overlap_with_gt)
+        self.max_overlap_with_gt = np.concatenate(self.max_overlap_with_gt)
 
 
 class TestCascade(TestGenerateProposalLabelsOp):

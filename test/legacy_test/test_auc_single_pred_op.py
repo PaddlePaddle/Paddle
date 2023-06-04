@@ -104,8 +104,8 @@ class TestAucGlobalSinglePredOp(OpTest):
         neg = python_auc._stat_neg
         self.outputs = {
             'AUC': np.array(python_auc.accumulate()),
-            'StatPosOut': np.array(pos),
-            'StatNegOut': np.array(neg),
+            'StatPosOut': np.array([pos]),
+            'StatNegOut': np.array([neg]),
         }
 
     def test_check_output(self):

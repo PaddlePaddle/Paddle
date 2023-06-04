@@ -198,6 +198,23 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : any (reduce_any)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    any : GetReduceOpUseInputPlaceExpectedKernelType
+  manual_signature : [any]
+
 - op : arange(range)
   inputs :
     {start : Start, end : End, step : Step}
@@ -414,6 +431,14 @@
     x : X
   outputs :
     out : Out
+
+- op : check_finite_and_unscale_
+  inputs :
+    {x : X, scale: Scale}
+  outputs :
+    {out : Out, found_infinite: FoundInfinite}
+  get_expected_kernel_type :
+    check_finite_and_unscale_ : GetCheckFiniteAndUnscaleExpectedKernelType
 
 - op : cholesky
   inputs :
@@ -1574,11 +1599,16 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
   int_array:
     axis :
       data_type : int
-  extra :
-    attrs : [bool use_mkldnn = false]
+      support_tensor : true
+  get_expected_kernel_type :
+    max : GetReduceExpectedKernelType
+    max_grad : GetReduceGradExpectedKernelType
+  manual_signature : [max]
 
 - op : max_pool2d_with_index
   inputs :
@@ -1609,7 +1639,7 @@
     out : Out
 
 - op : mean (reduce_mean)
-  backward : reduce_mean_grad
+  backward : mean_grad (reduce_mean_grad)
   inputs :
     x : X
   outputs :
@@ -1852,6 +1882,8 @@
 
 - op : pool2d
   backward : pool2d_grad
+  attrs:
+    kernel_size: ksize
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]
@@ -1949,10 +1981,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : reduce_any
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : reduce_min
   backward : reduce_min_grad
   extra :
@@ -1996,6 +2024,7 @@
     x : X
   outputs:
     out : Out
+    xshape: XShape
   int_array:
     shape :
       data_type : int
@@ -2148,6 +2177,12 @@
     sgd_ : GetSgdExpectedKernelType
   extra :
     attrs : [bool use_mkldnn=false]
+
+- op : shape
+  inputs :
+    input : Input
+  outputs :
+    out : Out
 
 - op : shape
   extra :
@@ -2391,6 +2426,10 @@
 
 - op : swish
   backward : swish_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 

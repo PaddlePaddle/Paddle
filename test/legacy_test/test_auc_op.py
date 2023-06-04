@@ -99,8 +99,8 @@ class TestGlobalAucOp(OpTest):
         neg = python_auc._stat_neg
         self.outputs = {
             'AUC': np.array(python_auc.accumulate()),
-            'StatPosOut': np.array(pos),
-            'StatNegOut': np.array(neg),
+            'StatPosOut': np.array([pos]),
+            'StatNegOut': np.array([neg]),
         }
 
     def test_check_output(self):
@@ -132,8 +132,9 @@ class TestAucAPI(unittest.TestCase):
             feed={"input": x, "label": y, "ins_tag_weight": z},
             fetch_list=[result[0]],
         )
-        auc_np = np.array([0.66666667]).astype("float32")
+        auc_np = np.array(0.66666667).astype("float32")
         np.testing.assert_allclose(output, auc_np, rtol=1e-05)
+        assert auc_np.shape == auc_np.shape
 
 
 class TestAucOpError(unittest.TestCase):

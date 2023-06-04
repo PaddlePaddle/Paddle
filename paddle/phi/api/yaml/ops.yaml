@@ -378,6 +378,18 @@
     func : celu
   backward : celu_grad
 
+- op : check_finite_and_unscale_
+  args : (Tensor[] x, Tensor scale)
+  output : Tensor[](out){x.size()}, Tensor(found_infinite)
+  infer_meta :
+    func : CheckFiniteAndUnscaleInferMeta
+    param : [x, scale]
+  kernel :
+    func : check_finite_and_unscale
+    param : [x, scale]
+    data_type : x
+  inplace : (x -> out)
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
@@ -1982,6 +1994,17 @@
     support_trans_dtype : learning_rate
   optional : master_param, master_param_out
   inplace : (param -> param_out), (master_param -> master_param_out)
+
+- op : shape
+  args : (Tensor input)
+  output : Tensor(out)
+  infer_meta :
+    func : ShapeInferMeta
+  kernel :
+    func : shape {dense -> dense},
+           shape_sr {selected_rows -> selected_rows}
+  data_transform:
+    skip_transform : input
 
 - op : shard_index
   args : (Tensor input, int index_num, int nshards, int shard_id, int ignore_value=-1)
