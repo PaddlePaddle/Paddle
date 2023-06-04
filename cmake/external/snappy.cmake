@@ -16,6 +16,7 @@ include(ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
 
+set(SNAPPY_TAG 1.1.7)
 set(SNAPPY_PREFIX_DIR ${THIRD_PARTY_PATH}/snappy)
 set(SNAPPY_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/snappy)
 set(SNAPPY_INCLUDE_DIR
