@@ -359,6 +359,8 @@ class CutlassTeller {
   const std::unordered_set<int> cutlass_sm = {
       75,
       80,
+      85,
+      86,
   };
   const std::unordered_set<std::string> cba_act_set = {
       "relu", "swish", "identity", "leaky_relu", "sigmoid"};

@@ -78,6 +78,7 @@ void Conv2dFusionKernel(const Context& ctx,
   const int dilation_w = dilations[1];
   const int oc = filter_dims[0];
   const int kh = filter_dims[1];
+
   const int kw = filter_dims[2];
 
   CHECK_EQ(out_dims.size() == 4UL, true);
@@ -136,7 +137,7 @@ void Conv2dFusionKernel(const Context& ctx,
                           ow,
                           groups,
                           &ctx,
-                          0,   // alpha
+                          0,                               // alpha
                           cutlass_sm_version(sm_version),  // sm_version
                           dtype2string(x.dtype())};
 
