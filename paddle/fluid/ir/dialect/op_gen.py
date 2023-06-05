@@ -36,7 +36,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/fluid/ir/dialect/utils.h"
-#include "paddle/fluid/ir/dialect/pd_interface.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -1051,7 +1051,7 @@ def OpGenerator(
         # others
         op_infer_meta_map = op_info.infer_meta_map
         op_kernel_map = op_info.kernel_map
-        op_interfaces = ["GetOpInfoInterface"]
+        op_interfaces = ["OpYamlInfoInterface"]
         op_traits = []
 
         exclusive_interface_str = ""

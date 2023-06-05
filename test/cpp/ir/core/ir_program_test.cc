@@ -15,9 +15,9 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_interface.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
@@ -195,8 +195,8 @@ TEST(program_test, program) {
   abs_argument.AddAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
   abs_argument.AddTypes(output_types.begin(), output_types.end());
   ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
-  paddle::dialect::GetOpInfoInterface interface =
-      abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
+  paddle::dialect::OpYamlInfoInterface interface =
+      abs_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
   EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name == "x", true);
 
   // (8) Def SetParameterOp(c, "c")
