@@ -27,6 +27,8 @@ set(CUB_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cub)
 if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
   # cuda_11.6/11.7/11.8‘s own cub is 1.15.0, which will cause compiling error in windows.
   set(CUB_TAG 1.16.0)
+  execute_process(COMMAND git --git-dir=${CUB_SOURCE_DIR}/.git
+                          --work-tree=${CUB_SOURCE_DIR} checkout ${CUB_TAG})
   # cub 1.16.0 is not compitable with current thrust version
   add_definitions(-DTHRUST_IGNORE_CUB_VERSION_CHECK)
 else()
