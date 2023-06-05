@@ -19,7 +19,7 @@
 #include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/translator/program_translator.h"
-#include "paddle/ir/program.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 
@@ -28,7 +28,7 @@ using Program = ::ir::Program;
 
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
-  auto program = std::make_unique<Program>();
+  auto program = std::make_unique<Program>(ir::IrContext::Instance());
 
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());

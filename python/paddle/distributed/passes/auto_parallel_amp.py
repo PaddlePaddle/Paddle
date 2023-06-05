@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
@@ -42,7 +44,7 @@ from paddle.static.amp.fp16_utils import (
 from paddle.utils import unique_name
 
 from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_loss_grad_op,
