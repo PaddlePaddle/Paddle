@@ -28,9 +28,8 @@ RUN apt-get update --allow-unauthenticated && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
     coreutils ntp language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
-
+    
 RUN ln -s /lib/x86_64-linux-gnu/libssl.so.1.1 /lib/x86_64-linux-gnu/libssl.so.1.0.0
-
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
 COPY tools/dockerfile/build_scripts /build_scripts 
@@ -105,6 +104,8 @@ RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.17.2.li
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 # should not be in the same line with GOROOT definition, otherwise docker build could not find GOROOT.
 ENV PATH=${PATH}:${GOROOT}/bin:${GOPATH}/bin
+# install glide
+RUN curl -s -q https://glide.sh/get | bash
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
