@@ -365,6 +365,8 @@ static char* GetGpuHintStringPtr(const phi::GPUContext& ctx,
                                  const std::string& op_type,
                                  const std::string& var_name,
                                  int dev_id) {
+  std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
+
   std::string op_var =
       GetHintString<T>(op_type, var_name, ctx.GetPlace(), dev_id);
   char* gpu_str_ptr = nullptr;
@@ -492,8 +494,6 @@ void CheckNumericsKernel(const Context& ctx,
                          const std::string& output_dir,
                          DenseTensor* stats,
                          DenseTensor* values) {
-  std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
-
   int dev_id = tensor.place().device;
   VLOG(6) << "op_type=" << op_type << ", var_name=" << var_name
           << ", dev_id=gpu:" << dev_id
