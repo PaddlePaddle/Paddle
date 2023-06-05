@@ -66,7 +66,7 @@ struct LogSoftmaxFunctor {
         T sum = 0;
         funcs::vec_sum<T, phi::backends::cpu::avx>(num_classes, out_data, &sum);
         funcs::vec_add_bias<T, phi::backends::cpu::avx>(
-            num_classes, -std::log(sum), out_data, out_data);
+            num_classes, max_val - std::log(sum), in_data, out_data);
 
         in_data += num_classes;
         out_data += num_classes;
