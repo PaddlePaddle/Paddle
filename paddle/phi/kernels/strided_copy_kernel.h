@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
@@ -36,11 +37,19 @@ DenseTensor StridedCopy(const Context& dev_ctx,
                         const std::vector<int64_t>& dims,
                         const std::vector<int64_t>& out_strides) {
   DenseTensor dense_out;
-  MetaTensor meta_input(input);
-  MetaTensor meta_out(&dense_out);
-  UnchangedInferMeta(meta_input, &meta_out);
   StridedCopyKernel<T, Context>(dev_ctx, input, dims, out_strides, &dense_out);
   return dense_out;
 }
 
+template <typename Context>
+void StridedCopy(const Context& dev_ctx,
+                 const DenseTensor& input,
+                 const std::vector<int64_t>& dims,
+                 const std::vector<int64_t>& out_strides,
+                 DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(input.dtype(), "StridedCopy", ([&] {
+                       phi::StridedCopyKernel<data_t, Context>(
+                           dev_ctx, input, dims, out_strides, out);
+                     }));
+}
 }  // namespace phi
