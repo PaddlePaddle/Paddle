@@ -669,8 +669,9 @@ def raise_error_template(func_str):
 class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
-            raise NotImplementedError(
-                "Symbolic Trace don't support input_spec arguments."
+            warnings.warn(
+                "\nSymbolic Trace don't support input_spec arguments. It will Will not produce any effect.\n"
+                "1. You can disable fallback mode by `paddle.jit.to_static(enable_fallback=False)` to switch to AST to static, then you can assign input spec.\n"
             )
         super().__init__(function, input_spec, **kwargs)
 
