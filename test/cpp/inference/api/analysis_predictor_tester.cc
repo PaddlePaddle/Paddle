@@ -17,10 +17,6 @@
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
 #endif
-#if defined(PADDLE_WITH_XPU)
-#include "xpu/runtime.h"
-#include "xpu/xdnn.h"
-#endif
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -131,6 +127,19 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_EQ(naive_outputs.size(), 1UL);
   inference::CompareTensor(outputs.front(), naive_outputs.front());
 }
+
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, save_optimized_model_on) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+  config.EnableSaveOptimModel(true);
+  config.EnableXpu();
+  config.SetXpuDeviceId(0);
+  LOG(INFO) << config.Summary();
+  CreatePaddlePredictor<AnalysisConfig>(config);
+}
+#endif
 
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
@@ -658,61 +667,59 @@ TEST(Predictor, Streams) {
 }
 #endif
 
-#if defined(PADDLE_WITH_XPU)
-TEST(Predictor, XPUStreams) {
-  // external stream
-  {
-    auto context = baidu::xpu::api::create_context();
-    xpu_stream_create(&context->xpu_stream);
-
-    Config config;
-    config.SetModel(FLAGS_dirname);
-    config.EnableXpu();
-    config.SetExecStream(static_cast<void*>(context->xpu_stream));
-    CHECK_EQ(config.external_stream_enabled(), true);
-
-    auto predictor = CreatePredictor(config);
-    auto stream = predictor->GetExecStream();
-    CHECK_EQ(static_cast<void*>(context->xpu_stream), stream);
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetXPUResource(stream));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
-  }
-
-  // 2 predictor on 2 stream
-  {
-    auto context1 = baidu::xpu::api::create_context();
-    xpu_stream_create(&context1->xpu_stream);
-
-    Config config;
-    config.SetModel(FLAGS_dirname);
-    config.EnableXpu();
-    config.SetExecStream(static_cast<void*>(context1->xpu_stream));
-    auto predictor = CreatePredictor(config);
-    auto stream1 = predictor->GetExecStream();
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetXPUResource(stream1));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream1), 1);
-
-    auto context2 = baidu::xpu::api::create_context();
-    xpu_stream_create(&context2->xpu_stream);
-
-    Config config2;
-    config2.SetModel(FLAGS_dirname);
-    config2.EnableXpu();
-    config2.SetExecStream(static_cast<void*>(context2->xpu_stream));
-    auto predictor2 = CreatePredictor(config2);
-    auto stream2 = predictor2->GetExecStream();
-    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetXPUResource(stream2));
-    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
-
-    CHECK_NE(stream1, stream2);
-  }
-}
-#endif
-
-TEST(AnalysisPredictor, OutputHookFunc) {
+TEST(AnalysisPredictor, OutputTensorHookFunc) {
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
                      const Tensor& tensor) { LOG(INFO) << "in hook function"; };
+
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+
+    auto predictor = CreatePredictor(config);
+
+    predictor->RegisterOutputHook(hookfunc);
+    auto w0 = predictor->GetInputHandle("firstw");
+    auto w1 = predictor->GetInputHandle("secondw");
+    auto w2 = predictor->GetInputHandle("thirdw");
+    auto w3 = predictor->GetInputHandle("forthw");
+    w0->Reshape({4, 1});
+    w1->Reshape({4, 1});
+    w2->Reshape({4, 1});
+    w3->Reshape({4, 1});
+    auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
+    for (int i = 0; i < 4; i++) {
+      w0_data[i] = i;
+      w1_data[i] = i;
+      w2_data[i] = i;
+      w3_data[i] = i;
+    }
+    predictor->Run();
+    predictor->TryShrinkMemory();
+  }
+
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableMemoryOptim();
+    config.EnableUseGpu(100, 0);
+
+    auto predictor = CreatePredictor(config);
+
+    predictor->RegisterOutputHook(hookfunc);
+  }
+}
+
+TEST(AnalysisPredictor, OutputTensorHookFunc_V2) {
+  auto hookfunc = [](const std::string& type,
+                     const std::string& var_name,
+                     const paddle::Tensor& tensor) {
+    LOG(INFO) << "in hook function";
+  };
 
   {
     Config config;

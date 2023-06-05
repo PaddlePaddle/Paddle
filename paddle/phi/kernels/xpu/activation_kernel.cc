@@ -333,9 +333,15 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
 
     auto xpu_context = dev_ctx.x_context();
-    int r =
-        xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+    if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
+      int r = xpu::fast_swish(
+          xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+    } else {
+      int r =
+          xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+    }
   }
 };
 

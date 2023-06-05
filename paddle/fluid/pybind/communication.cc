@@ -79,6 +79,7 @@ void BindTCPStore(py::module *m) {
                           const std::string &key) -> py::bytes {
                          auto data = self.get(key);
                          std::string s(data.begin(), data.end());
+                         py::gil_scoped_acquire acquire;
                          return py::bytes(s);
                        },
                        py::arg("key"),

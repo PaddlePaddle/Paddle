@@ -22,7 +22,7 @@ from paddle.fluid.framework import (
     core,
     dygraph_only,
 )
-from paddle.framework import LayerHelper, in_dygraph_mode
+from paddle.framework import LayerHelper
 
 __all__ = []
 
@@ -198,7 +198,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
     else:
         if axis is None:
@@ -834,5 +834,89 @@ def isnan(x, name=None):
         out = helper.create_sparse_variable_for_type_inference(x.dtype)
         helper.append_op(
             type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
+        return out
+
+
+def slice(x, axes, starts, ends, name=None):
+    """
+    This operator produces a slice of ``x`` along multiple axes for sparse tensors.
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input sparse tensor (x). If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`, it represents the reverse position of
+    the axis :math:`i-1` (here 0 is the initial position).
+    If the value passed to ``starts`` or ``ends`` is greater than the number of elements
+    in the dimenstion (n), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended to pass
+    in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
+
+    Args:
+        x (Tensor): The input Tensor (``SparseCooTensor`` or ``SparseCsrTensor``), it's data type should be ``float16``, ``float32``, ``float64``, ``int32``, ``int64``.
+        axes (list|tuple|Tensor): The data type is ``int32``.If ``axes`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``axes`` is a Tensor, it should be a 1-D Tensor.
+                Axes that `starts` and `ends` apply to.
+        starts (list|tuple|Tensor): The data type is ``int32``. If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is a Tensor, it should be a 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Tensor): The data type is ``int32``. If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is a Tensor, it should be a 1-D Tensor.
+                It represents ending indices of corresponding axis in ``axes``.
+
+    Returns:
+        A Sparse Tensor. The data type is same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            format = 'coo'
+            np_x = np.asarray([[4, 0, 7, 0], [0, 0, 5, 0], [-4, 2, 0, 0]])
+            dense_x = paddle.to_tensor(np_x)
+            if format == 'coo':
+                sp_x = dense_x.to_sparse_coo(len(np_x.shape))
+            else:
+                sp_x = dense_x.to_sparse_csr()
+
+            axes = [0, 1]
+            starts = [1, 0]
+            ends = [3, -2]
+            sp_out = paddle.sparse.slice(sp_x, axes, starts, ends)
+            # sp_out is x[1:3, 0:-2]
+
+            print(sp_out)
+            # Tensor(shape=[2, 2], dtype=paddle.int64, place=Place(cpu), stop_gradient=True,
+            #        indices=[[1, 1],
+            #                 [0, 1]],
+            #        values=[-4,  2])
+
+    """
+    if in_dynamic_mode():
+        return _C_ops.sparse_slice(x, axes, starts, ends)
+    else:
+        attrs = {'axes': axes, 'starts': starts, 'ends': ends}
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'sparse_slice',
+        )
+        check_type(axes, 'axes', (list, tuple), 'sparse_slice')
+        check_type(starts, 'starts', (list, tuple), 'sparse_slice')
+        check_type(ends, 'ends', (list, tuple), 'sparse_slice')
+        op_type = 'sparse_slice'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs=attrs
         )
         return out

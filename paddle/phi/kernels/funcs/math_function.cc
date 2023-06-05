@@ -196,15 +196,16 @@ void set_constant_with_place<phi::GPUPinnedPlace>(
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
-struct TensorSetConstantWithPlace
-    : public std::unary_function<phi::Place, void> {
+struct TensorSetConstantWithPlace {
+  using argument_type = phi::Place;
+  using result_type = void;
   TensorSetConstantWithPlace(const phi::DeviceContext& context,
                              phi::DenseTensor* tensor,
                              float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename Place>
-  void operator()(Place place) const {
+  void operator()(Place place UNUSED) const {
     set_constant_with_place<Place>(context_, tensor_, value_);
   }
 

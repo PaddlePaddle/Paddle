@@ -747,7 +747,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       for (size_t i = 0; i < slot_outs_num; i++) {
         const auto& size_pair = ctx.OutputRangeAt(i);
         const std::vector<paddle::Tensor>& out_tensors =
-            ctx.OutputsBetweeen(size_pair.first, size_pair.second);
+            ctx.OutputsBetween(size_pair.first, size_pair.second);
         for (size_t j = size_pair.first; j < size_pair.second; j++) {
           // SetOutRankWithSlot: slot_id = i, rank = j - size_pair.first
           outs_auto_grad_metas[j]->SetSingleOutRankWithSlot(
@@ -763,8 +763,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                 << " to grad_inputs: " << it->second;
         grad_node->fwd_outs[it->second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
-                ctx.OutputsBetweeen(ctx.OutputRangeAt(it->first).first,
-                                    ctx.OutputRangeAt(it->first).second));
+                ctx.OutputsBetween(ctx.OutputRangeAt(it->first).first,
+                                   ctx.OutputRangeAt(it->first).second));
       }
 
       // Prepare Grad inputs with fwd inputs
@@ -1254,10 +1254,9 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   for (auto& tensor : tensor_list) {
     VLOG(6) << "set master_grad for tensor: " << tensor.name();
-    PADDLE_ENFORCE_EQ(
-        egr::egr_utils_api::IsLeafTensor(tensor),
-        true,
-        paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+    if (!egr::egr_utils_api::IsLeafTensor(tensor)) {
+      continue;
+    }
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
     PADDLE_ENFORCE_NE(grad,
                       nullptr,
@@ -1265,13 +1264,13 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
                           "Detected NULL grad"
                           "Please check if you have manually cleared"
                           "the grad inside autograd_meta"));
-    auto dtype = (*grad).dtype();
-    if ((*grad).initialized() &&
-        (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16)) {
+    if ((*grad).initialized() && ((*grad).dtype() == phi::DataType::FLOAT16 ||
+                                  (*grad).dtype() == phi::DataType::BFLOAT16)) {
       auto master_grad =
           paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
       grad->set_impl(master_grad.impl());
     }
+    VLOG(6) << "finish setting master_grad for tensor: " << tensor.name();
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL

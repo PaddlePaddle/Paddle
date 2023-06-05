@@ -221,7 +221,7 @@
 - backward_op : broadcast_tensors_grad
   forward : broadcast_tensors (Tensor[] input) -> Tensor[](out)
   args : (Tensor[] input, Tensor[] out_grad)
-  output : Tensor[](input_grad)
+  output : Tensor[](input_grad){input.size()}
   infer_meta :
     func : UnchangedMultiInferMeta
     param : [input]
@@ -324,6 +324,64 @@
   output : Tensor(x_grad)
   invoke : conj(out_grad)
 
+- backward_op : conv2d_grad
+  forward : conv2d (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int[] dilations={1, 1}, int groups=1, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv2d_grad
+    data_type : input
+  backward : conv2d_grad_grad
+
+- backward_op : conv2d_grad_grad
+  forward : conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [input, filter, grad_out]
+  kernel :
+    func : conv2d_double_grad
+    data_type : input
+  optional : grad_input_grad, grad_filter_grad
+
+- backward_op : conv3d_double_grad
+  forward : conv3d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [input, filter, grad_out]
+  kernel :
+    func : conv3d_double_grad
+    data_type : input
+  optional : grad_input_grad, grad_filter_grad
+
+- backward_op : conv3d_grad
+  forward : conv3d (Tensor input, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCDHW") -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : conv3d_grad
+    data_type : input
+  backward : conv3d_double_grad
+
+- backward_op : conv3d_transpose_grad
+  forward : conv3d_transpose(Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(x_grad), Tensor(filter_grad)
+  infer_meta :
+    func : ConvTransposeGradInferMeta
+  kernel :
+    func : conv3d_transpose_grad
+    data_type : x
+
 - backward_op : cos_double_grad
   forward : cos_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
@@ -414,6 +472,30 @@
     param: [x]
   kernel :
     func : cumprod_grad
+
+- backward_op : depthwise_conv2d_double_grad
+  forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param: [input, filter, grad_out]
+  kernel :
+    func : depthwise_conv2d_double_grad
+    data_type : input
+  optional : grad_input_grad, grad_filter_grad
+
+- backward_op : depthwise_conv2d_grad
+  forward : depthwise_conv2d (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(input_grad), Tensor(filter_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [input, filter]
+  kernel :
+    func : depthwise_conv2d_grad
+    data_type : input
+  backward : depthwise_conv2d_double_grad
 
 - backward_op : det_grad
   forward : det (Tensor x) -> Tensor(out)
@@ -748,6 +830,20 @@
   kernel :
     func : grid_sample_grad
     data_type : x
+
+- backward_op : group_norm_grad
+  forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, float epsilon, int groups, str data_layout)
+  output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [y, scale, bias]
+  kernel :
+    func : group_norm_grad
+    data_type : y_grad
+  composite : group_norm_grad(x, scale, bias, y, mean, variance, y_grad, epsilon, groups, data_layout, x_grad, scale_grad, bias_grad)
+  optional: scale, bias
+  inplace : (y_grad -> x_grad)
 
 - backward_op : gumbel_softmax_grad
   forward : gumbel_softmax (Tensor x, float temperature, bool hard, int axis) -> Tensor(out)
@@ -1363,6 +1459,27 @@
     param: [x]
   kernel :
     func : p_norm_grad
+
+- backward_op : pad3d_double_grad
+  forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode="constant", float pad_value=0.0, str data_format="NCDHW") -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray paddings, str mode, float pad_value, str data_format)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : Pad3dInferMeta
+  kernel :
+    func : pad3d
+
+- backward_op : pad3d_grad
+  forward : pad3d(Tensor x, IntArray paddings, str mode="constant", float pad_value=0.0, str data_format="NCDHW") -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode, float pad_value, str data_format)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pad3d_grad
+  no_need_buffer : x
+  backward : pad3d_double_grad
 
 - backward_op : pixel_shuffle_grad
   forward : pixel_shuffle (Tensor x, int upscale_factor=1, str data_format="NCHW") -> Tensor(out)
@@ -1982,6 +2099,7 @@
     func : tanh_double_grad
   composite : tanh_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
+  backward : tanh_triple_grad
 
 - backward_op : tanh_grad
   forward : tanh (Tensor x) -> Tensor(out)
@@ -2006,6 +2124,18 @@
   kernel :
     func : tanh_shrink_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : tanh_triple_grad
+  forward : tanh_double_grad (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_out_new), Tensor(grad_out_grad)
+  args : (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_out_new_grad, Tensor grad_out_grad_grad)
+  output : Tensor(out_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [out, out, grad_x_grad_forward]
+  kernel :
+    func : tanh_triple_grad
+  inplace : (grad_x_grad_forward -> grad_out_forward_grad)
+  optional : grad_out_new_grad, grad_out_grad_grad
 
 - backward_op : temporal_shift_grad
   forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW") -> Tensor(out)

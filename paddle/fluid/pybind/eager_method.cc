@@ -76,7 +76,7 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
 extern PyTypeObject* p_tensor_type;
 
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
     paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
@@ -295,7 +295,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      // TODO(qili93): temporary for ascned npu performance to be removed along
+      // TODO(qili93): temporary for ascend npu performance to be removed along
       // with npu_identity op
       paddle::Tensor temp_tensor(std::make_shared<phi::DenseTensor>());
       if (dense_tensor->storage_properties_initialized()) {
@@ -422,7 +422,7 @@ static void IncreaseTensorReferenceCountUntilCopyComplete(
   // Note(dev): This is an empty callback, the only way is to "reference"
   // inner memory Holder, so it will not be destructed until the kernels
   // launched at current stream of given place is finished, such as
-  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  // CUDAPinned Mem -> CUDA by cudaMemcpyAsync.
   auto callback = [tensor, place_]() {
     VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
             << place_;
@@ -1313,7 +1313,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
-    auto self_numpy = TensorToPyArray(*self_tensor);
+    auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {
       VLOG(4) << "index is tensor";

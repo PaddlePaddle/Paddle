@@ -221,7 +221,7 @@ bool InitAndCheckAttrs(const size_t &found_adamw_count,
     }
   }
 
-  // Check whether with_decay and multi_precision are matched。
+  // Check whether with_decay and multi_precision are matched
   if (config->with_decay !=
           PADDLE_GET_CONST(bool, adamw_op_desc->GetAttr("with_decay")) ||
       config->multi_precision !=

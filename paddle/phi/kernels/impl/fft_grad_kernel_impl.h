@@ -81,7 +81,7 @@ void FFTC2RGradKernel(const Context& ctx,
                       const std::vector<int64_t>& axes,
                       const std::string& normalization,
                       bool forward,
-                      int64_t last_dim_size,
+                      int64_t last_dim_size UNUSED,
                       DenseTensor* x_grad) {
   using C = phi::dtype::complex<T>;
   ctx.template Alloc<C>(x_grad);

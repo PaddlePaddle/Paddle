@@ -17,6 +17,11 @@ limitations under the License. */
 #include <Python.h>
 #include <code.h>
 #include <frameobject.h>
+
+#if PY_VERSION_HEX >= 0x030b0000
+#include <internal/pycore_frame.h>
+#endif
+
 #include <object.h>
 #include <pystate.h>
 
@@ -35,6 +40,12 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
+
+#if PY_VERSION_HEX >= 0x030b0000
+typedef _PyInterpreterFrame FrameObject;
+#else
+typedef PyFrameObject FrameObject;
+#endif
 
 #define unlikely(x) __builtin_expect((x), 0)
 
@@ -56,7 +67,7 @@ inline static void eval_frame_callback_set(PyObject *obj) {
 
 // call python default eval frame to interpret current frame.
 inline static PyObject *eval_frame_default(PyThreadState *tstate,
-                                           PyFrameObject *frame,
+                                           FrameObject *frame,
                                            int throw_flag) {
 #if PY_VERSION_HEX >= 0x03090000
   if (tstate == NULL) {
@@ -71,7 +82,7 @@ inline static PyObject *eval_frame_default(PyThreadState *tstate,
 // Start a new frame and run code in this frame.
 // Execute a piece of code by default frame-hook.
 inline static PyObject *eval_custom_code(PyThreadState *tstate,
-                                         PyFrameObject *frame,
+                                         FrameObject *frame,
                                          PyCodeObject *code,
                                          int throw_flag) {
   Py_ssize_t ncells = 0;
@@ -79,18 +90,26 @@ inline static PyObject *eval_custom_code(PyThreadState *tstate,
   Py_ssize_t nlocals_new = code->co_nlocals;
   Py_ssize_t nlocals_old = frame->f_code->co_nlocals;
 
-  if ((code->co_flags & CO_NOFREE) == 0) {
-    ncells = PyTuple_GET_SIZE(code->co_cellvars);
-    nfrees = PyTuple_GET_SIZE(code->co_freevars);
-  }
+#if PY_VERSION_HEX >= 0x030b0000
+  ncells = code->co_ncellvars;
+  nfrees = code->co_nfreevars;
+#else
+  ncells = PyTuple_GET_SIZE(code->co_cellvars);
+  nfrees = PyTuple_GET_SIZE(code->co_freevars);
+#endif
 
   PyFrameObject *shadow = PyFrame_New(tstate, code, frame->f_globals, NULL);
   if (shadow == NULL) {
     return NULL;
   }
 
+#if PY_VERSION_HEX >= 0x030b0000
+  PyObject **fastlocals_old = frame->localsplus;
+  PyObject **fastlocals_new = shadow->f_frame->localsplus;
+#else
   PyObject **fastlocals_old = frame->f_localsplus;
   PyObject **fastlocals_new = shadow->f_localsplus;
+#endif
 
   for (Py_ssize_t i = 0; i < nlocals_old; i++) {
     Py_XINCREF(fastlocals_old[i]);
@@ -102,18 +121,26 @@ inline static PyObject *eval_custom_code(PyThreadState *tstate,
     fastlocals_new[nlocals_new + i] = fastlocals_old[nlocals_old + i];
   }
 
+#if PY_VERSION_HEX >= 0x030b0000
+  PyObject *result = eval_frame_default(tstate, shadow->f_frame, throw_flag);
+#else
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+#endif
   Py_DECREF(shadow);
   return result;
 }
 
 static PyObject *_custom_eval_frame(PyThreadState *tstate,
-                                    PyFrameObject *frame,
+                                    FrameObject *frame,
                                     int throw_flag,
                                     PyObject *callback) {
-  // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
-  // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
+// https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
+// https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
+#if PY_VERSION_HEX >= 0x030b0000
+  if (PyFrame_FastToLocalsWithError(frame->frame_obj) < 0) {
+#else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
+#endif
     return NULL;
   }
 
@@ -146,9 +173,19 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     //  NOTE: Cache is not supported now
     PyCodeObject *code = reinterpret_cast<PyCodeObject *>(
         PyObject_GetAttrString(result, "code"));
-    // Re-enable custom behavior
-    eval_frame_callback_set(callback);
-    return eval_custom_code(tstate, frame, code, throw_flag);
+    PyObject *disable_eval_frame =
+        PyObject_GetAttrString(result, "disable_eval_frame");
+    if (disable_eval_frame != Py_True) {
+      // Re-enable custom behavior
+      eval_frame_callback_set(callback);
+      auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      return out;
+    } else {
+      auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      // Re-enable custom behavior
+      eval_frame_callback_set(callback);
+      return out;
+    }
   } else {
     // Re-enable custom behavior
     eval_frame_callback_set(callback);
@@ -157,7 +194,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 }
 
 static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
-                                         PyFrameObject *frame,
+                                         FrameObject *frame,
                                          int throw_flag) {
   PyObject *callback = eval_frame_callback_get();
 
@@ -170,12 +207,12 @@ static PyObject *_custom_eval_frame_shim(PyThreadState *tstate,
 
 #if PY_VERSION_HEX >= 0x03090000
 static PyObject *custom_eval_frame_shim(PyThreadState *tstate,
-                                        PyFrameObject *frame,
+                                        FrameObject *frame,
                                         int throw_flag) {
   return _custom_eval_frame_shim(tstate, frame, throw_flag);
 }
 #else
-static PyObject *custom_eval_frame_shim(PyFrameObject *frame, int throw_flag) {
+static PyObject *custom_eval_frame_shim(FrameObject *frame, int throw_flag) {
   PyThreadState *tstate = PyThreadState_GET();
   return _custom_eval_frame_shim(tstate, frame, throw_flag);
 }
@@ -183,7 +220,7 @@ static PyObject *custom_eval_frame_shim(PyFrameObject *frame, int throw_flag) {
 
 static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // Change the eval frame callback and return the old one
-  //  - None: disables: diable custom callback.
+  //  - None: disables: disable custom callback.
   //  - Python callable(): enables custom callback.
   //  NOTE: Cache is not supported now
   PyObject *old_callback = eval_frame_callback_get();
