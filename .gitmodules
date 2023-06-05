@@ -2,6 +2,10 @@
 	path = third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf.git
 	ignore = dirty
+[submodule "third_party/pocketfft"]
+	path = third_party/pocketfft
+	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
+	ignore = dirty
 [submodule "third_party/gflags"]
 	path = third_party/gflags
 	url = https://github.com/gflags/gflags.git
