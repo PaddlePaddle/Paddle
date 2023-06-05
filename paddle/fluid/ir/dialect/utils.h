@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/ir/dialect/pd_type_storage.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 

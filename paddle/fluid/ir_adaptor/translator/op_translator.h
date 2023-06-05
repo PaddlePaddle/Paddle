@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/translator/program_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"

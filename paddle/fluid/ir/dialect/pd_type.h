@@ -14,15 +14,30 @@
 
 #pragma once
 
-#include <memory>
-
-#include "paddle/fluid/dialect/pd_dialect.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/ir/core/type.h"
 
 namespace paddle {
+namespace dialect {
+///
+/// \brief Define built-in parametric types.
+///
+class DenseTensorType : public ir::Type {
+ public:
+  using Type::Type;
 
-std::unique_ptr<::ir::Program> TranslateLegacyProgramToProgram(
-    const ::paddle::framework::ProgramDesc& legacy_program);
+  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
 
+  const ir::Type &dtype() const;
+
+  const phi::DDim &dims() const;
+
+  const phi::DataLayout &data_layout() const;
+
+  const phi::LoD &lod() const;
+
+  const size_t &offset() const;
+};
+
+}  // namespace dialect
 }  // namespace paddle
