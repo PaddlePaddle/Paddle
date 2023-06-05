@@ -16,13 +16,11 @@ import re
 import sys
 
 import numpy as np
+from eager_op_test import OpTest
 from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
 
 import paddle
 from paddle import _C_ops
-
-sys.path.append("../")
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 paddle.enable_static()
 

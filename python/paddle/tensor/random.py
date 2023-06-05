@@ -77,7 +77,9 @@ def bernoulli(x, name=None):
     if in_dynamic_mode():
         return _C_ops.bernoulli(x)
     else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
+        check_variable_and_dtype(
+            x, "x", ["float32", "float64", "float16", "uint16"], "bernoulli"
+        )
 
         helper = LayerHelper("randint", **locals())
         out = helper.create_variable_for_type_inference(
