@@ -19,11 +19,6 @@ limitations under the License. */
 
 namespace phi {
 
-template <>
-const TypeInfo<DeviceContext>
-    TypeInfoTraits<DeviceContext, CustomContext>::kType =
-        RegisterStaticType<DeviceContext>(CustomContext::name());
-
 struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
 

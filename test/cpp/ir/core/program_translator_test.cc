@@ -18,11 +18,11 @@
 #include <map>
 #include <string>
 
-#include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/translator/translate.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
@@ -59,5 +59,5 @@ TEST(PaddleDialectTest, Translator) {
   // ops.size() = op size in BlockDesc + get_parameter_op + combine op
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 21);
 
-  std::cout << *program << std::endl;
+  program->Print(std::cout);
 }

@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/dialect/pd_dialect.h"
-#include "paddle/fluid/dialect/pd_interface.h"
-#include "paddle/fluid/dialect/pd_type.h"
-#include "paddle/fluid/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/dialect/pd_interface.h"
+#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
@@ -230,6 +230,8 @@ TEST(program_test, program) {
   // (8) Traverse Program
   EXPECT_EQ(program.block()->size() == 4, true);
   EXPECT_EQ(program.parameters_num() == 3, true);
+
+  program.Print(std::cout);
 }
 
 TEST(program_test, slice_combine_test) {

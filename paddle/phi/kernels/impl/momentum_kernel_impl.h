@@ -168,7 +168,7 @@ class DenseMomentumFunctor<T, TG, MT, kRegType, UseNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - (grad + velocity_out * mu_) * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -232,7 +232,7 @@ class DenseMomentumFunctor<T, TG, MT, kRegType, NoNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - lr * velocity_out;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -315,7 +315,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - (grad + velocity_out * mu_) * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -395,7 +395,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - velocity_out * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
