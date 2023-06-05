@@ -1,7 +1,7 @@
 cinn_cc_library(test_program_builder SRCS program_builder.cc DEPS cinncore)
 
 if(WITH_TESTING)
-  include_directories(${CMAKE_SOURCE_DIR}/cinn/runtime)
+  include_directories(${CMAKE_SOURCE_DIR}/paddle/cinn/runtime)
   add_subdirectory(benchmark)
 
   cinn_cc_test(

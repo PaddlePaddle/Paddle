@@ -25,6 +25,8 @@ if(WITH_OPENMP)
 endif()
 add_subdirectory(llvm)
 
+include_directories(${CMAKE_SOURCE_DIR}/paddle/cinn/runtime)
+
 if(WITH_GPU)
   cinn_nv_test(test_raw_cuda_code SRCS raw_cuda_code_test.cu DEPS cinncore)
 endif()
@@ -48,7 +50,6 @@ cinn_cc_test(
 cinn_cc_test(test_generated1 SRCS generated_module1.cc DEPS cinn_runtime)
 add_run_test_dependency(test_generated1 test_codegen_c)
 cinn_cc_test(test_ir_schedule SRCS ir_schedule_test.cc DEPS cinncore)
-include_directories(${CMAKE_SOURCE_DIR}/cinn/runtime)
 if(TARGET test_generated1)
   add_dependencies(test_generated1 test_codegen_c)
 endif()
