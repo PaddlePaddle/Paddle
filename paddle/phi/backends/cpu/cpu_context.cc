@@ -24,10 +24,6 @@
 
 namespace phi {
 
-template <>
-const TypeInfo<DeviceContext> TypeInfoTraits<DeviceContext, CPUContext>::kType =
-    RegisterStaticType<DeviceContext>(CPUContext::name());
-
 struct CPUContext::Impl {
   Impl() : place_(CPUPlace()) {}
 

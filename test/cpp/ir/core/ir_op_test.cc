@@ -83,7 +83,7 @@ class Operation1 : public ir::Op<Operation1> {
   static const char *name() { return "test.operation1"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
     if (attributes.count("op1_attr1") == 0 ||
@@ -95,7 +95,7 @@ class Operation1 : public ir::Op<Operation1> {
       throw("Type of attribute: parameter_name is not right.");
     }
   }
-  static void build(const ir::Builder &builder,
+  static void Build(const ir::Builder &builder,
                     ir::OperationArgument &argument) {  // NOLINT
     std::vector<ir::OpResult> inputs = {};
     std::vector<ir::Type> output_types = {
@@ -123,7 +123,7 @@ class Operation2
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
     if (attributes.count("op2_attr1") == 0 ||
