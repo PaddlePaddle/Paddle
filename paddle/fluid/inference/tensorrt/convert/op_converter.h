@@ -372,6 +372,13 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
+    layer->setOutputType(0, dtype);
+    layer->getOutput(0)->setType(dtype);
+    return layer->getOutput(0);
+  }
+
   // rank(result) = rank(input)
   nvinfer1::ITensor* Gather(nvinfer1::ITensor* input,
                             const std::vector<int32_t> indices,
@@ -400,6 +407,25 @@ class OpConverter {
                                  dims, Add1DConstantLayer(1)}),
                              *Add1DConstantLayer(subscripts),
                              0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
+    return result;
+  }
+
+  nvinfer1::ITensor* Squeeze(nvinfer1::ITensor* input,
+                             const std::vector<int32_t> axis) {
+    const auto dims = Shape(input);
+    std::vector<int32_t> subscripts(dims->getDimensions().nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    auto p =
+        std::remove_if(subscripts.begin(), subscripts.end(), [axis](int x) {
+          return std::find(axis.begin(), axis.end(), x) != axis.end();
+        });
+    subscripts.resize(p - subscripts.begin());
+
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, Gather, *dims, *Add1DConstantLayer(subscripts), 0)
             ->getOutput(0);
     auto result = Reshape(input, new_dim);
     return result;

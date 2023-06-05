@@ -47,9 +47,6 @@ class SetValueConverter : public OpConverter {
     auto* updates = engine_->GetITensor(op_desc.Input("ValueTensor")[0]);
     const auto decrease_axes = PADDLE_GET_CONST(
         std::vector<int64_t>, op_desc.GetAttr("decrease_axes"));
-    for (size_t i = 0; i < decrease_axes.size(); ++i) {
-      std::cout << "set_value, " << i << " - " << decrease_axes[i] << std::endl;
-    }
     std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
     auto value_rank = updates->getDimensions().nbDims;
     auto input_rank = inputs->getDimensions().nbDims;
