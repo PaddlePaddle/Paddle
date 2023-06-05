@@ -5734,7 +5734,7 @@ def polygamma(x, n, name=None):
     Calculates the polygamma of the given input tensor, element-wise.
 
     The equation is:
-    
+
     .. math::
         \Phi^n(x) = \frac{d^n}{dx^n} [\ln(\Gamma(x))]
 
