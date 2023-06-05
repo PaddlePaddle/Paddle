@@ -40,8 +40,8 @@ class ModuleOp : public ir::Op<ModuleOp> {
   //
   // As the top operation, ModuleOp only support create&destroye through
   // below interface: "create"&"destroy".
-  static ModuleOp create(IrContext *context, Program *pointer);
-  void destroy();
+  static ModuleOp Create(IrContext *context, Program *pointer);
+  void Destroy();
 };
 
 ///
@@ -125,8 +125,7 @@ class ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
 
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
+  static void Build(OperationArgument &argument,  // NOLINT
                     Attribute value,
                     Type output_type);
 

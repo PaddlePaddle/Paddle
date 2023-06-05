@@ -126,7 +126,7 @@ inline ir::Operation* InsertSliceOperationForTarget(
   ir::VectorType src_vec_type =
       defining_info.value.type().dyn_cast<ir::VectorType>();
   ir::Operation* operation =
-      ir::Operation::create({defining_info.value},
+      ir::Operation::Create({defining_info.value},
                             op_attribute_map,
                             {src_vec_type[defining_info.idx_in_vector]},
                             op_info);
@@ -153,7 +153,7 @@ inline ir::Operation* InsertCombineOperationForTarget(
   }
   ir::Type target_vec_type = ir::VectorType::get(ctx, types_in_vec);
   ir::Operation* operation =
-      ir::Operation::create(src_values, {}, {target_vec_type}, op_info);
+      ir::Operation::Create(src_values, {}, {target_vec_type}, op_info);
   program->block()->push_back(operation);
   return operation;
 }
@@ -165,7 +165,7 @@ inline ir::Operation* InsertConstantOperationForOptionalArg(
 
   ir::Type null_type = ir::Type(nullptr);
   ir::Operation* operation =
-      ir::Operation::create({}, {}, {null_type}, op_info);
+      ir::Operation::Create({}, {}, {null_type}, op_info);
   program->block()->push_back(operation);
   return operation;
 }
@@ -401,7 +401,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
+      ir::Operation::Create(op_inputs, attribute_map, op_output_types, op_info);
   VLOG(4) << "[general op][" << op_desc.Type() << "] opearation creation end.";
   program->block()->push_back(operation);
 
@@ -436,7 +436,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   };
 
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
+      ir::Operation::Create(op_inputs, attribute_map, op_output_types, op_info);
   program->block()->push_back(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
@@ -466,7 +466,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   };
 
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, attribute_map, op_output_types, op_info);
+      ir::Operation::Create(op_inputs, attribute_map, op_output_types, op_info);
   program->block()->push_back(operation);
 
   return operation;
