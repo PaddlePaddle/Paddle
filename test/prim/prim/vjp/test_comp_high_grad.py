@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../../legacy_test")
 import gradient_checker
 import numpy as np
 import parameterized as param
