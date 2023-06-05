@@ -911,7 +911,7 @@ function get_precision_ut_mac() {
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
     precision_cases=""
     if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-        python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+        python $PADDLE_ROOT/tools/get_pr_ut.py
         if [[ -f "ut_list" ]]; then
             echo "PREC length: "`wc -l ut_list`
             precision_cases=`cat ut_list`
