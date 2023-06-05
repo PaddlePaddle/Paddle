@@ -171,12 +171,14 @@ PassInstrumentor::PassInstrumentor()
 PassInstrumentor::~PassInstrumentor() = default;
 
 void PassInstrumentor::RunBeforePipeline(ir::Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforePipeline(op);
   }
 }
 
 void PassInstrumentor::RunAfterPipeline(ir::Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {
@@ -185,12 +187,14 @@ void PassInstrumentor::RunAfterPipeline(ir::Operation* op) {
 }
 
 void PassInstrumentor::RunBeforePass(Pass* pass, ir::Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforePass(pass, op);
   }
 }
 
 void PassInstrumentor::RunAfterPass(Pass* pass, ir::Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {
@@ -201,6 +205,7 @@ void PassInstrumentor::RunAfterPass(Pass* pass, ir::Operation* op) {
 void PassInstrumentor::RunBeforeAnalysis(const std::string& name,
                                          ir::TypeId id,
                                          ir::Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforeAnalysis(name, id, op);
   }
@@ -209,6 +214,7 @@ void PassInstrumentor::RunBeforeAnalysis(const std::string& name,
 void PassInstrumentor::RunAfterAnalysis(const std::string& name,
                                         ir::TypeId id,
                                         ir::Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {
