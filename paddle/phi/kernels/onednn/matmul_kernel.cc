@@ -28,6 +28,30 @@ using phi::ReshapeToMatrix;
 
 namespace phi {
 
+KernelKey MatmulGetkernelTypeForVar(const GetKernelTypeForVarContext *ctx) {
+  const DenseTensor &tensor = ctx->GetTensor();
+  const KernelKey &expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap &attrs = ctx->GetAttrs();
+  if (phi::IsComplexType(expected_kernel_type.dtype())) {
+    // only promote inputs’s types when contains complex input
+    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  } else {
+#ifdef PADDLE_WITH_MKLDNN
+    // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
+    // op previously) then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+        (tensor.layout() != phi::DataLayout::ONEDNN) &&
+        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+            phi::DataLayout::kNHWC) {
+      return phi::KernelKey(
+          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
+    }
+#endif
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  }
+}
+
 void CalculateMatrixDims(const std::vector<int64_t> &x_dims,
                          const std::vector<int64_t> &y_dims,
                          std::vector<int64_t> *x_bd_dims,
@@ -534,7 +558,9 @@ PD_REGISTER_KERNEL(matmul,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::MatmulGetkernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    OneDNN,

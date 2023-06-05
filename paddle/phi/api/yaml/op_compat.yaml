@@ -1541,6 +1541,8 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [matmul, matmul_grad, matmul_double_grad, matmul_triple_grad]
+  complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)

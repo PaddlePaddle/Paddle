@@ -260,6 +260,15 @@
   data_transform :
     skip_transform : start, stop, number
 
+- op : matmul
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
+  output : Tensor
+  infer_meta :
+    func : MatmulInferMeta
+  kernel :
+    func : matmul
+  backward : matmul_grad
+
 - op : matrix_rank
   args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
   output : Tensor(out)
