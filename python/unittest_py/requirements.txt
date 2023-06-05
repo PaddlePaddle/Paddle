@@ -6,7 +6,7 @@ gym==0.25.2
 pygame==2.1.0
 hypothesis
 opencv-python<=4.2.0.32
-visualdl==2.5.0
+visualdl
 paddle2onnx>=0.9.6
 scipy>=1.6, !=1.7.2, !=1.7.3
 prettytable
