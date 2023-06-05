@@ -429,15 +429,6 @@
     func : swish_raw
   backward : swish_grad
 
-- op : transpose(transpose2)
-  args : (Tensor x, int[] perm)
-  output : Tensor
-  infer_meta :
-    func : TransposeInferMeta
-  kernel :
-    func : transpose
-  backward : transpose_grad
-
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)
