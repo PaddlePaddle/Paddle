@@ -83,9 +83,20 @@ class BasicIRPrinter {
     }
   }
 
-  void PrintAttribute(ir::Operation* op) { os << " { ATTRIBUTE }"; }
+  void PrintAttribute(const ir::Attribute& attr) {
+    if (!attr) {
+      os << "<#AttrNull>";
+      return;
+    }
 
- protected:
+    if (auto s = attr.dyn_cast<ir::StrAttribute>()) {
+      os << s.data();
+    } else if (auto b = attr.dyn_cast<ir::BoolAttribute>()) {
+      os << b.data();
+    }
+  }
+
+ public:
   std::ostream& os;
 };
 
@@ -120,7 +131,7 @@ class IRPrinter : public BasicIRPrinter {
           // TODO(lyk): add API to get operands directly
           PrintOpOperands(op);
 
-          PrintAttribute(op);
+          PrintAttributeMap(op);
           os << " :";
 
           // PrintOpSingature
@@ -156,6 +167,25 @@ class IRPrinter : public BasicIRPrinter {
     os << new_name;
   }
 
+  /// @brief print operation
+  /// @param op
+  /// @example
+  void PrintOperation(ir::Operation* op) {
+    PrintOpResult(op);  // TODO(lyk): add API to get opresults directly
+    os << " = ";
+
+    os << "\"" << op->op_name() << "\"";
+    PrintOpOperands(op);  // TODO(lyk): add API to get operands directly
+
+    PrintAttribute(op);
+    os << " : ";
+
+    // PrintOpSingature
+    PrintOperandsType(op);
+    os << " -> ";
+    PrintOpReturnType(op);  // TODO(lyk): add API to get opresults directly
+  }
+
   void PrintOpResult(ir::Operation* op) {
     os << " (";
     auto num_op_result = op->num_results();
@@ -170,6 +200,22 @@ class IRPrinter : public BasicIRPrinter {
         [this](ir::Value v) { this->PrintValue(v); },
         [this]() { this->os << ", "; });
     os << ")";
+  }
+
+  void PrintAttributeMap(ir::Operation* op) {
+    os << "{";
+
+    PrintInterleave(
+        op->attributes().begin(),
+        op->attributes().end(),
+        [this](std::pair<std::string, Attribute> it) {
+          this->os << it.first;
+          this->os << ":";
+          this->PrintAttribute(it.second);
+        },
+        [this]() { this->os << ","; });
+
+    os << "}";
   }
 
   void PrintOpOperands(ir::Operation* op) {
