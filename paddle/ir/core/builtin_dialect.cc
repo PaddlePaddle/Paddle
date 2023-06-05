@@ -18,36 +18,39 @@
 #include "paddle/ir/core/builtin_type.h"
 
 namespace ir {
-BuiltinDialect::BuiltinDialect(ir::IrContext *context)
-    : ir::Dialect(name(), context, ir::TypeId::get<BuiltinDialect>()) {
+BuiltinDialect::BuiltinDialect(IrContext *context)
+    : Dialect(name(), context, TypeId::get<BuiltinDialect>()) {
   initialize();
 }
 
 void BuiltinDialect::initialize() {
   // Register all built-in types defined in builtin_type.h.
-  RegisterTypes<ir::BFloat16Type,
-                ir::Float16Type,
-                ir::Float32Type,
-                ir::Float64Type,
-                ir::Int8Type,
-                ir::Int16Type,
-                ir::Int32Type,
-                ir::Int64Type,
-                ir::BoolType,
-                ir::VectorType>();
+  RegisterTypes<BFloat16Type,
+                Float16Type,
+                Float32Type,
+                Float64Type,
+                Int8Type,
+                Int16Type,
+                Int32Type,
+                Int64Type,
+                BoolType,
+                VectorType>();
 
-  RegisterAttributes<ir::StrAttribute,
-                     ir::BoolAttribute,
-                     ir::FloatAttribute,
-                     ir::DoubleAttribute,
-                     ir::Int32_tAttribute,
-                     ir::Int64_tAttribute,
-                     ir::ArrayAttribute>();
+  RegisterAttributes<StrAttribute,
+                     BoolAttribute,
+                     FloatAttribute,
+                     DoubleAttribute,
+                     PointerAttribute,
+                     Int32_tAttribute,
+                     Int64_tAttribute,
+                     ArrayAttribute>();
 
-  RegisterOps<ir::GetParameterOp,
-              ir::SetParameterOp,
-              ir::CombineOp,
-              ir::SliceOp>();
+  RegisterOps<ModuleOp,
+              GetParameterOp,
+              SetParameterOp,
+              CombineOp,
+              SliceOp,
+              ConstantOp>();
 }
 
 }  // namespace ir

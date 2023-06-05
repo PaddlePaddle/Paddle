@@ -14,10 +14,10 @@
 
 import unittest
 
-import config
 import mock_data as mock
 import numpy as np
 import parameterize
+from distribution import config
 
 import paddle
 

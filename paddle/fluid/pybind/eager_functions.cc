@@ -1254,10 +1254,9 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   for (auto& tensor : tensor_list) {
     VLOG(6) << "set master_grad for tensor: " << tensor.name();
-    PADDLE_ENFORCE_EQ(
-        egr::egr_utils_api::IsLeafTensor(tensor),
-        true,
-        paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+    if (!egr::egr_utils_api::IsLeafTensor(tensor)) {
+      continue;
+    }
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);
     PADDLE_ENFORCE_NE(grad,
                       nullptr,
@@ -1265,13 +1264,13 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
                           "Detected NULL grad"
                           "Please check if you have manually cleared"
                           "the grad inside autograd_meta"));
-    auto dtype = (*grad).dtype();
-    if ((*grad).initialized() &&
-        (dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16)) {
+    if ((*grad).initialized() && ((*grad).dtype() == phi::DataType::FLOAT16 ||
+                                  (*grad).dtype() == phi::DataType::BFLOAT16)) {
       auto master_grad =
           paddle::experimental::cast(*grad, phi::DataType::FLOAT32);
       grad->set_impl(master_grad.impl());
     }
+    VLOG(6) << "finish setting master_grad for tensor: " << tensor.name();
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
