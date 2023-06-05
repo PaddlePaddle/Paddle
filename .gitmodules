@@ -61,6 +61,7 @@
 [submodule "third_party/cutlass"]
 	path = third_party/cutlass
 	url = https://github.com/NVIDIA/cutlass.git
+	ignore = dirty
 [submodule "third_party/mkldnn"]
 	path = third_party/mkldnn
 	url = https://github.com/oneapi-src/oneDNN.git
