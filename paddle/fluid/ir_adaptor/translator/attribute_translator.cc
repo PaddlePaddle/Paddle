@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/translator/attribute_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
