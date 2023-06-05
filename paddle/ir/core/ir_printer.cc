@@ -93,6 +93,23 @@ class BasicIRPrinter {
       os << s.data();
     } else if (auto b = attr.dyn_cast<ir::BoolAttribute>()) {
       os << b.data();
+    } else if (auto f = attr.dyn_cast<ir::FloatAttribute>()) {
+      os << f.data();
+    } else if (auto d = attr.dyn_cast<ir::DoubleAttribute>()) {
+      os << d.data();
+    } else if (auto i = attr.dyn_cast<ir::Int32_tAttribute>()) {
+      os << i.data();
+    } else if (auto i = attr.dyn_cast<ir::Int64_tAttribute>()) {
+      os << i.data();
+    } else if (auto arr = attr.dyn_cast<ir::ArrayAttribute>()) {
+      const auto& vec = arr.data();
+      PrintInterleave(
+          vec.begin(),
+          vec.end(),
+          [this](ir::Attribute v) { this->PrintAttribute(v); },
+          [this]() { this->os << ", "; });
+    } else {
+      os << "<#CustomTODO>";
     }
   }
 
@@ -165,25 +182,6 @@ class IRPrinter : public BasicIRPrinter {
     cur_var_number_++;
     aliases_[key] = new_name;
     os << new_name;
-  }
-
-  /// @brief print operation
-  /// @param op
-  /// @example
-  void PrintOperation(ir::Operation* op) {
-    PrintOpResult(op);  // TODO(lyk): add API to get opresults directly
-    os << " = ";
-
-    os << "\"" << op->op_name() << "\"";
-    PrintOpOperands(op);  // TODO(lyk): add API to get operands directly
-
-    PrintAttribute(op);
-    os << " : ";
-
-    // PrintOpSingature
-    PrintOperandsType(op);
-    os << " -> ";
-    PrintOpReturnType(op);  // TODO(lyk): add API to get opresults directly
   }
 
   void PrintOpResult(ir::Operation* op) {

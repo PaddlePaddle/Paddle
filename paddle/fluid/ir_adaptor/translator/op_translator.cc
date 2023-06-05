@@ -22,7 +22,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/dialect/pd_interface.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -160,13 +159,18 @@ inline ir::Operation* InsertCombineOperationForTarget(
 }
 
 inline ir::Operation* InsertConstantOperationForOptionalArg(
-    ir::IrContext* ctx, ir::Program* program) {
+    ir::IrContext* ctx, ir::Program* program, ir::Attribute attr) {
   std::string constant_op_name(ir::ConstantOp::name());
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(constant_op_name);
 
-  ir::Type null_type = ir::Type(nullptr);
+  ir::Type null_type = paddle::dialect::DenseTensorType::get(
+      ctx,
+      ir::Type(nullptr),
+      paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED,
+      {},
+      0);  // TODO(lyk): to be done
   ir::Operation* operation =
-      ir::Operation::create({}, {}, {null_type}, op_info);
+      ir::Operation::create({}, {{"value", attr}}, {null_type}, op_info);
   program->block()->push_back(operation);
   return operation;
 }
@@ -234,6 +238,45 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
       auto* combine_op = InsertCombineOperationForTarget(
           ctx, param_map, program, legacy_input_vars);
       op_inputs.push_back(combine_op->GetResultByIndex(0));
+    }
+  }
+
+  // TODO(lyk): need optimization
+  if (!op_normalizer.HasMutableAttribute(op_desc.Type())) {
+    return op_inputs;
+  }
+
+  VLOG(10) << "[handle mutable attribute]";
+
+  const auto& mutable_attributes =
+      op_normalizer.GetMutableAttributes(op_desc.Type());
+  for (const auto& attr_name : mutable_attributes) {
+    const auto& candidate_var_names =
+        op_normalizer.GetMutableAttributeInfos(op_desc.Type(), attr_name);
+
+    VLOG(10) << "[handle mutable attribute][" << attr_name << "]";
+    for (const auto& var_name : candidate_var_names) {
+      VLOG(10) << "[handle mutable attribute][" << attr_name << "][" << var_name
+               << "]";
+      if (op_desc.HasInput(var_name)) {
+        const auto& legacy_input_vars = op_desc.Input(var_name, true);
+        if (legacy_input_vars.size() < 1) continue;
+        bool is_vector = false;  // TODO(lyk): need to judge by tensor/tensors
+
+        // if src type is Tensor
+        if (!is_vector) {
+          auto defining_info = (*param_map)[legacy_input_vars[0]];
+          op_inputs.push_back(defining_info.value);
+
+          // if src type is Vector<Tesnor> , need an additional `CombineOp` to
+          // assemble them.
+        } else {
+          auto* combine_op = InsertCombineOperationForTarget(
+              ctx, param_map, program, legacy_input_vars);
+          op_inputs.push_back(combine_op->GetResultByIndex(0));
+        }
+        break;
+      }
     }
   }
 
@@ -327,6 +370,13 @@ inline ir::AttributeMap TranslateOpAttribute(
   auto& op_normalizer = OpNameNormalizer::instance();
   ir::AttributeMap attribute_map = {};
 
+  // TODO(lyk): need optimization
+  VLOG(10) << "[handle mutable attribute]";
+  std::unordered_set<std::string> mutable_attributes = {};
+  if (op_normalizer.HasMutableAttribute(op_desc.Type())) {
+    mutable_attributes = op_normalizer.GetMutableAttributes(op_desc.Type());
+  }
+
   for (const auto& info : op_attr_infos) {
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
@@ -338,6 +388,9 @@ inline ir::AttributeMap TranslateOpAttribute(
     VLOG(10) << "attribute in " << op_desc.Type()
              << " name: " << legacy_attr_name << " " << legacy_attr.index();
     ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
+    if (mutable_attributes.count(info.name) != 0) {
+      continue;
+    }
     attribute_map[info.name] = new_attr;
     if (!new_attr) {
       VLOG(0) << "empty attribute in " << op_desc.Type()

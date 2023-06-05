@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -68,6 +69,30 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
           "Unsupported phi data type `%s` when casting it into "
           "ir data type.",
           dtype));
+  }
+}
+
+static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
+                                               ir::IrContext *ctx = nullptr) {
+  if (ctx == nullptr) {
+    ctx = ir::IrContext::Instance();
+  }
+  switch (scalar.dtype()) {
+    case phi::DataType::FLOAT32:
+      return ir::FloatAttribute::get(ctx, scalar.to<float>());
+    case phi::DataType::FLOAT64:
+      return ir::DoubleAttribute::get(ctx, scalar.to<double>());
+    case phi::DataType::INT32:
+      return ir::Int32_tAttribute::get(ctx, scalar.to<int32_t>());
+    case phi::DataType::INT64:
+      return ir::Int64_tAttribute::get(ctx, scalar.to<int64_t>());
+    case phi::DataType::BOOL:
+      return ir::BoolAttribute::get(ctx, scalar.to<bool>());
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported phi data type `%s` when casting it into "
+          "ir attribute.",
+          scalar.dtype()));
   }
 }
 
