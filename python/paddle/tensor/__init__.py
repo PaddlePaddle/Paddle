@@ -70,6 +70,7 @@ from .linalg import solve  # noqa: F401
 from .linalg import cholesky_solve  # noqa: F401
 from .linalg import lu  # noqa: F401
 from .linalg import lu_unpack  # noqa: F401
+from .linalg import cdist  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -261,6 +262,7 @@ from .math import i0  # noqa: F401
 from .math import i0e  # noqa: F401
 from .math import i1  # noqa: F401
 from .math import i1e  # noqa: F401
+from .math import polygamma  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -519,6 +521,7 @@ tensor_method_func = [  # noqa
     'acosh',
     'lu',
     'lu_unpack',
+    'cdist',
     'as_complex',
     'as_real',
     'rad2deg',
@@ -560,6 +563,7 @@ tensor_method_func = [  # noqa
     'i0e',
     'i1',
     'i1e',
+    'polygamma',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

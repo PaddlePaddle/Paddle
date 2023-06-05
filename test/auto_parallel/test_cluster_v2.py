@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.cluster_v2 import DeviceMesh
+from paddle.distributed.auto_parallel.static.cluster_v2 import DeviceMesh
 from paddle.framework import core
 
 

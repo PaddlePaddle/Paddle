@@ -29,6 +29,7 @@ WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
 cd `dirname $0`
 current_dir=`pwd`
+
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
