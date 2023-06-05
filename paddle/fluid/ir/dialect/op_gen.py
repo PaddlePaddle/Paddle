@@ -658,7 +658,6 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
                     attr_size=op_attribute_name_list[idx] + ".size()",
                     create_attribute=SCALAR_STR_TEMPLATE.format(
                         attr_name=op_attribute_name_list[idx],
-                        op_attribute_type=inner_attribute_type,
                         attr=op_attribute_name_list[idx] + "[i]",
                     ),
                 )
@@ -682,7 +681,10 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
             )
 
         elif op_attribute_type_list[idx] == "paddle::dialect::ScalarAttribute":
-            raise Exception("should have a concrete type instead of scalar")
+            attr_str += SCALAR_STR_TEMPLATE.format(
+                attr_name=op_attribute_name_list[idx],
+                attr=op_attribute_name_list[idx],
+            )
         else:
             attr_str += STR_TEMPLATE.format(
                 attr_name=op_attribute_name_list[idx],
