@@ -21,11 +21,11 @@ set(MKLML_DOWNLOAD_DIR
     ${PADDLE_SOURCE_DIR}/third_party/mklml/${CMAKE_SYSTEM_NAME})
 
 if(WIN32)
-  set(MKLML_VER
+  set(MKLML_FILE
       "mklml_win_2019.0.5.20190502.zip"
       CACHE STRING "" FORCE)
   set(MKLML_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}"
+      "https://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
       CACHE STRING "" FORCE)
   set(MKLML_URL_MD5 ff8c5237570f03eea37377ccfc95a08a)
   set(MKLML_LIB ${MKLML_LIB_DIR}/mklml.lib)
@@ -36,11 +36,11 @@ else()
   #TODO(intel-huying):
   #  Now enable csrmm function in mklml library temporarily,
   #  it will be updated as offical version later.
-  set(MKLML_VER
+  set(MKLML_FILE
       "csrmm_mklml_lnx_2019.0.5.tgz"
       CACHE STRING "" FORCE)
   set(MKLML_URL
-      "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}"
+      "http://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
       CACHE STRING "" FORCE)
   set(MKLML_URL_MD5 bc6a7faea6a2a9ad31752386f3ae87da)
   set(MKLML_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
@@ -50,36 +50,36 @@ else()
 endif()
 
 set(MKLML_PROJECT "extern_mklml")
-message(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
+message(STATUS "MKLML_FILE: ${MKLML_FILE}, MKLML_URL: ${MKLML_URL}")
 set(MKLML_PREFIX_DIR ${THIRD_PARTY_PATH}/mklml)
 
 function(download_mklml)
   message(
-    STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}")
+    STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}")
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
   file(
-    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}
+    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
     EXPECTED_MD5 ${MKLML_URL_MD5}
     STATUS ERR)
   if(ERR EQUAL 0)
-    message(STATUS "Download ${MKLML_VER} success")
+    message(STATUS "Download ${MKLML_FILE} success")
   else()
     message(
       FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_VER} again"
+        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_FILE} again"
     )
   endif()
 endfunction()
 
 find_file(
   LOCAL_MKLML_LIB_ZIP
-  NAMES ${MKLML_VER}
+  NAMES ${MKLML_FILE}
   PATHS ${MKLML_DOWNLOAD_DIR}
   NO_DEFAULT_PATH)
 
 # Download and check mklml.
 if(LOCAL_MKLML_LIB_ZIP)
-  file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_VER} MKLML_MD5)
+  file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
   if(NOT MKLML_MD5 EQUAL MKLML_URL_MD5)
     download_mklml()
   endif()
@@ -95,7 +95,7 @@ endif()
 ExternalProject_Add(
   ${MKLML_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${MKLML_DOWNLOAD_DIR}/${MKLML_VER}
+  URL ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
   URL_MD5 ${MKLML_URL_MD5}
   DOWNLOAD_DIR ${MKLML_DOWNLOAD_DIR}
   SOURCE_DIR ${MKLML_INSTALL_DIR}

@@ -23,11 +23,11 @@ set(LAPACK_LIB_DIR ${LAPACK_INSTALL_DIR}/lib)
 # Note(zhouwei): lapack need fortan compiler which many machines don't have, so use precompiled library.
 # use lapack tag v3.10.0 on 06/28/2021 https://github.com/Reference-LAPACK/lapack
 if(LINUX)
-  set(LAPACK_VER
+  set(LAPACK_FILE
       "lapack_lnx_v3.10.0.20210628.tar.gz"
       CACHE STRING "" FORCE)
   set(LAPACK_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_VER}"
+      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
       CACHE STRING "" FORCE)
   set(LAPACK_URL_MD5 71f8cc8237a8571692f3e07f9a4f25f6)
   set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.so.0")
@@ -36,11 +36,11 @@ if(LINUX)
   set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.so.3")
 elseif(WIN32)
   # Refer to [lapack-for-windows] http://icl.cs.utk.edu/lapack-for-windows/lapack/#lapacke
-  set(LAPACK_VER
+  set(LAPACK_FILE
       "lapack_win_v3.10.0.20210628.zip"
       CACHE STRING "" FORCE)
   set(LAPACK_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_VER}"
+      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
       CACHE STRING "" FORCE)
   set(LAPACK_URL_MD5 590d080392dcd5abbd5dca767a50b63a)
   set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath-0.dll")
@@ -49,11 +49,11 @@ elseif(WIN32)
   set(BLAS_LIB "${LAPACK_LIB_DIR}/libblas.dll")
   set(LAPACK_LIB "${LAPACK_LIB_DIR}/liblapack.dll")
 else()
-  set(LAPACK_VER
+  set(LAPACK_FILE
       "lapack_mac_v3.10.0.20210628.tar.gz"
       CACHE STRING "" FORCE)
   set(LAPACK_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_VER}"
+      "https://paddlepaddledeps.bj.bcebos.com/${LAPACK_FILE}"
       CACHE STRING "" FORCE)
   set(LAPACK_URL_MD5 427aecf8dee8523de3566ca8e47944d7)
   set(GNU_RT_LIB_1 "${LAPACK_LIB_DIR}/libquadmath.0.dylib")
@@ -65,31 +65,31 @@ endif()
 
 function(download_lapack)
   message(
-    STATUS "Downloading ${LAPACK_URL} to ${LAPACK_DOWNLOAD_DIR}/${LAPACK_VER}")
+    STATUS "Downloading ${LAPACK_URL} to ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE}")
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
   file(
-    DOWNLOAD ${LAPACK_URL} ${LAPACK_DOWNLOAD_DIR}/${LAPACK_VER}
+    DOWNLOAD ${LAPACK_URL} ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE}
     EXPECTED_MD5 ${LAPACK_URL_MD5}
     STATUS ERR)
   if(ERR EQUAL 0)
-    message(STATUS "Download ${LAPACK_VER} success")
+    message(STATUS "Download ${LAPACK_FILE} success")
   else()
     message(
       FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${LAPACK_VER} again"
+        "Download failed, error: ${ERR}\n You can try downloading ${LAPACK_FILE} again"
     )
   endif()
 endfunction()
 
 find_file(
   LOCAL_LAPACK_LIB_ZIP
-  NAMES ${LAPACK_VER}
+  NAMES ${LAPACK_FILE}
   PATHS ${LAPACK_DOWNLOAD_DIR}
   NO_DEFAULT_PATH)
 
 # Download and check lapack.
 if(LOCAL_LAPACK_LIB_ZIP)
-  file(MD5 ${LAPACK_DOWNLOAD_DIR}/${LAPACK_VER} LAPACK_MD5)
+  file(MD5 ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE} LAPACK_MD5)
   if(NOT LAPACK_MD5 EQUAL LAPACK_URL_MD5)
     download_lapack()
   endif()
@@ -100,7 +100,7 @@ endif()
 ExternalProject_Add(
   extern_lapack
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${LAPACK_DOWNLOAD_DIR}/${LAPACK_VER}
+  URL ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE}
   URL_MD5 ${LAPACK_URL_MD5}
   DOWNLOAD_DIR ${LAPACK_DOWNLOAD_DIR}
   SOURCE_DIR ${LAPACK_LIB_DIR}
