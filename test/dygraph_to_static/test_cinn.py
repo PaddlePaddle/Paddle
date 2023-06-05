@@ -64,6 +64,13 @@ class TestCINN(unittest.TestCase):
             sgd.clear_grad()
 
             res.append(out.numpy())
+
+            if use_cinn:
+                self.assertTrue(
+                    paddle.device.is_run_with_cinn(),
+                    msg="The test was not running with CINN! Please check.",
+                )
+
         return res
 
     def test_cinn(self):
