@@ -23,6 +23,16 @@ cc_test_old(
   gtest)
 
 cc_test_old(
+  ir_exe_test
+  SRCS
+  ir_exe_test.cc
+  DEPS
+  new_ir
+  pd_dialect
+  phi
+  gtest)
+
+cc_test_old(
   scalar_attribute_test
   SRCS
   scalar_attribute_test.cc

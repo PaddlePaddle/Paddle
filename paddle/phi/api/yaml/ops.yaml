@@ -1725,6 +1725,16 @@
     func : poisson
   backward : poisson_grad
 
+- op : polygamma
+  args : (Tensor x, int n)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : polygamma
+  backward : polygamma_grad
+
 - op : pow
   args : (Tensor x, Scalar y=1.0f)
   output : Tensor(out)
