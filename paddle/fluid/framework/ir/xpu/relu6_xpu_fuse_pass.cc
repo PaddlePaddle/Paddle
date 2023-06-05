@@ -43,10 +43,10 @@ namespace patterns {
 fuse fill_constant + clip block in to relu6 op
 For example:
 graph:
-                    Input
-                      |
-                      |
-                    clip (Min: 6.0, Max: 6.0)
+            Min(0)  Input  Max(6.0)
+               \      |     /
+                 \    |   /
+                    clip
                       |
                       |
                     Output
