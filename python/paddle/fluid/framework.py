@@ -62,6 +62,7 @@ __all__ = [
     'device_guard',
     'set_flags',
     'get_flags',
+    'is_run_with_cinn',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -693,6 +694,26 @@ def is_compiled_with_cinn():
             support_cinn = paddle.device.is_compiled_with_cinn()
     """
     return core.is_compiled_with_cinn()
+
+
+def is_run_with_cinn():
+    """
+    Whether the model is running with CINN.
+
+    Make sure this whl package can be used to run the model on CINN, you can check it by calling `paddle.device.is_compiled_with_cinn()`.
+
+    Make sure the model has run at least once, before the model run, the API will always return False.
+
+    Returns:
+        Bool: `True` if CINN is currently available, otherwise `False`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            run_cinn = paddle.device.is_run_with_cinn()
+    """
+    return core.is_run_with_cinn()
 
 
 def is_compiled_with_cuda():
