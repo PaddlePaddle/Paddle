@@ -22,12 +22,13 @@
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
-
+#include "paddle/ir/pass/utils.h"
 namespace ir {
 namespace {
 class Timer {
  public:
   Timer() = default;
+
   ~Timer() = default;
 
   void Start() { start_time_ = std::chrono::steady_clock::now(); }
@@ -57,7 +58,7 @@ class PassTimer : public PassInstrumentation {
 
   void RunAfterPipeline(Operation* op) override {
     pipeline_timers_[op].Stop();
-    PrintTime(std::cout, op);
+    PrintTime(op, std::cout);
   }
 
   void RunBeforePass(Pass* pass, Operation* op) override {
@@ -73,14 +74,11 @@ class PassTimer : public PassInstrumentation {
   }
 
  private:
-  void PrintTime(std::ostream& os, Operation* op) {
+  void PrintTime(Operation* op, std::ostream& os) {
     if (print_module_ && op->name() != "builtin.module") return;
 
     std::string header = "PassTiming on " + op->name();
-    unsigned padding = (80 - header.size()) / 2;
-    os << "===" << std::string(73, '-') << "===\n";
-    os << std::string(padding, ' ') << header << "\n";
-    os << "===" << std::string(73, '-') << "===\n";
+    ir::detail::PrintHeader(header, os);
 
     os << "  Total Execution Time: " << std::fixed << std::setprecision(3)
        << pipeline_timers_[op].GetTimePerSecond() << " seconds\n\n";
@@ -111,6 +109,7 @@ class PassTimer : public PassInstrumentation {
   bool print_module_;
 
   std::unordered_map<Operation*, Timer> pipeline_timers_;
+
   std::unordered_map<Operation*,
                      std::unordered_map<std::string /*pass name*/, Timer>>
       pass_timers_;

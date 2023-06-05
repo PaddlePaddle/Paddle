@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include <ostream>
+#include <string>
 #include <unordered_map>
 
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
+#include "paddle/ir/pass/utils.h"
 
 namespace ir {
 
@@ -53,10 +55,7 @@ class IRPrinting : public PassInstrumentation {
     option_->PrintBeforeIfEnabled(pass, op, [&](std::ostream &os) {
       std::string header =
           "IRPrinting on " + op->name() + " before " + pass->name() + " pass";
-      unsigned padding = (80 - header.size()) / 2;
-      os << "===" << std::string(73, '-') << "===\n";
-      os << std::string(padding, ' ') << header << "\n";
-      os << "===" << std::string(73, '-') << "===\n";
+      ir::detail::PrintHeader(header, os);
       PrintIR(op, option_->EnablePrintModule(), os);
       os << "\n\n";
     });
@@ -70,10 +69,7 @@ class IRPrinting : public PassInstrumentation {
     option_->PrintAfterIfEnabled(pass, op, [&](std::ostream &os) {
       std::string header =
           "IRPrinting on " + op->name() + " after " + pass->name() + " pass";
-      unsigned padding = (80 - header.size()) / 2;
-      os << "===" << std::string(73, '-') << "===\n";
-      os << std::string(padding, ' ') << header << "\n";
-      os << "===" << std::string(73, '-') << "===\n";
+      ir::detail::PrintHeader(header, os);
       PrintIR(op, option_->EnablePrintModule(), os);
       os << "\n\n";
     });
