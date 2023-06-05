@@ -14,6 +14,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/common/datatype.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
@@ -91,14 +92,19 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-  VLOG(2) << "AddKernel x:" << x.dtype() << ", y:" << y.dtype();
-  AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-  // if (x.dtype() == y.dtype()) {
-  //   AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
-  // } else {
-  //   VLOG(2) << "x dtype != y dtype";
-  // CustomAdd
-  // }
+  // AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  if (x.dtype() == y.dtype()) {
+    AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  } else {
+    VLOG(2) << "x dtype != y dtype";
+    PADDLE_ENFORCE_EQ(x.dtype(),
+                      phi::DataType::FLOAT32,
+                      "The x should be float32 dtype in x+y");
+    PADDLE_ENFORCE_EQ(y.dtype(),
+                      phi::DataType::BFLOAT16,
+                      "The x should be float32 dtype in x+y");
+    // TODO(kendron): The x_float32 + y_bfloat16 kernel implementation
+  }
 }
 
 template <typename T, typename Context>

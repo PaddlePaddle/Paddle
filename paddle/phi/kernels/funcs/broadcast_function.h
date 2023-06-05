@@ -14,11 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
 #include <sstream>
-
-#include "glog/logging.h"
-
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
@@ -66,7 +62,6 @@ struct LoaderTypeClassifier {
     uint64_t in_addr = static_cast<uint64_t>(0);
     numel = (*outs)[0]->numel();
     for (int i = 0; i < Arity; ++i) {
-      VLOG(2) << "i:" << i << ", dtype:" << ins[i]->dtype();
       auto in_data = ins[i]->data<InT>();
       ins_data[i] = (const _ptr_ InT *)(in_data);
 
@@ -894,10 +889,6 @@ void BroadcastKernelForDifferentVecSize(
   bool use_int64_index_kernel =
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
-  VLOG(2) << "use_int64_index_kernel:" << use_int64_index_kernel;
-  for (uint32_t i = 0; i < ins.size(); i++) {
-    VLOG(2) << "ins " << i << " dtype:" << ins[i]->dtype();
-  }
   if (use_int64_index_kernel) {
     auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
     switch (loader_classifier.vec_size) {
@@ -977,14 +968,7 @@ void BroadcastKernelForDifferentVecSize(
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  for (uint32_t i = 0; i < ins.size(); i++) {
-    VLOG(2) << "ins " << i << " dtype:" << ins[i]->dtype();
-  }
   auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
-  VLOG(2) << "loader_classifier.all_elementwise:"
-          << loader_classifier.all_elementwise
-          << ", loader_classifier.vec_size:" << loader_classifier.vec_size
-          << ", ins size:" << ins.size();
   if (!loader_classifier.all_elementwise) {
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
@@ -1044,7 +1028,6 @@ void BroadcastKernel(const KPDevice &ctx,
   int max_rank = 0;
   int min_rank = phi::DDim::kMaxRank;
   for (auto *in : ins) {
-    VLOG(2) << "in dtype:" << in->dtype();
     max_rank = std::max(max_rank, in->dims().size());
     min_rank = std::min(min_rank, in->dims().size());
   }
@@ -1054,7 +1037,6 @@ void BroadcastKernel(const KPDevice &ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-  VLOG(2) << "invoke BroadcastKernelForDifferentVecSize";
   BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
       ctx, ins, outs, axis, func);
 }

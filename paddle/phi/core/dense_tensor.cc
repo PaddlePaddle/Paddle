@@ -155,8 +155,6 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
 
 template <typename T>
 const T* DenseTensor::data() const {
-  VLOG(2) << "dtype():" << dtype() << ", phi::CppTypeToDataType<T>::Type():"
-          << phi::CppTypeToDataType<T>::Type();
   PADDLE_ENFORCE_EQ(
       dtype(),
       phi::CppTypeToDataType<T>::Type(),
