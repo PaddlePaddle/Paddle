@@ -2239,9 +2239,9 @@ set +x
         collect_failed_tests
         xputest_error=0
         retry_unittests_record=''
-        retry_time=3
+        retry_time=4
         exec_times=0
-        exec_time_array=('first' 'second' 'third')
+        exec_time_array=('first' 'second' 'third' 'fourth')
         exec_retry_threshold=10
         is_retry_execuate=0
         if [ -n "$failed_test_lists" ];then
