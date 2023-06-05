@@ -14,7 +14,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/phi/common/datatype.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
