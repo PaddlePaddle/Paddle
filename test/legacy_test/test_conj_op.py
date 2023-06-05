@@ -36,7 +36,6 @@ class TestConjOp(OpTest):
         self.python_api = paddle.tensor.conj
         self.init_dtype_type()
         self.init_input_output()
-        self.init_grad_input_output()
 
     def init_dtype_type(self):
         self.dtype = np.complex64
@@ -50,12 +49,6 @@ class TestConjOp(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
-    def init_grad_input_output(self):
-        self.grad_out = (np.ones((12, 14)) + 1j * np.ones((12, 14))).astype(
-            self.dtype
-        )
-        self.grad_in = np.conj(self.grad_out)
-
     def test_check_output(self):
         self.check_output()
 
@@ -63,8 +56,6 @@ class TestConjOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[self.grad_in],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
 
