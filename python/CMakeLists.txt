@@ -84,9 +84,9 @@ add_custom_target(
 # some executables at the same time, a `file not recognized, file truncated`
 # error may occur, result in the compilation error.
 # So, add dependency to force the cpp tests built before running `setup.py.in`.
-if(WITH_TESTING)
-  add_dependencies(copy_libpaddle build_tests)
-endif()
+#if(WITH_TESTING)
+#  add_dependencies(copy_libpaddle build_tests)
+#endif()
 
 if(WIN32)
   if(WITH_SETUP_INSTALL)
