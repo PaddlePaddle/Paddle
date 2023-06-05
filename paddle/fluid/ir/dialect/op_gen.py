@@ -303,10 +303,10 @@ class OpInfoParser:
         self.attr_types_map = {
             'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
             'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-            'Scalar(int)': ['paddle::dialect::ScalarAttribute', 'int'],
-            'Scalar(int64_t)': ['paddle::dialect::ScalarAttribute', 'int64_t'],
-            'Scalar(float)': ['paddle::dialect::ScalarAttribute', 'float'],
-            'Scalar(dobule)': ['paddle::dialect::ScalarAttribute', 'dobule'],
+            'Scalar(int)': ['ir::Int32_tAttribute', 'int'],
+            'Scalar(int64_t)': ['ir::Int64_tAttribute', 'int64_t'],
+            'Scalar(float)': ['ir::FloatAttribute', 'float'],
+            'Scalar(dobule)': ['ir::DoubleAttribute', 'dobule'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
                 'std::vector<Scalar>',
@@ -627,7 +627,7 @@ def GenBuildInputs(op_input_name_list):
 def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
     INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr}));
 """
-    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::Scalar({attr}));
+    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = TransToIrDataType({attr}, ir::IrContext::Instance());
 """
     STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr});
 """
@@ -682,11 +682,7 @@ def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
             )
 
         elif op_attribute_type_list[idx] == "paddle::dialect::ScalarAttribute":
-            attr_str += SCALAR_STR_TEMPLATE.format(
-                attr_name=op_attribute_name_list[idx],
-                op_attribute_type=op_attribute_type_list[idx],
-                attr=op_attribute_name_list[idx],
-            )
+            raise Exception("should have a concrete type instead of scalar")
         else:
             attr_str += STR_TEMPLATE.format(
                 attr_name=op_attribute_name_list[idx],
