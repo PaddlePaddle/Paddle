@@ -868,7 +868,7 @@ def _getitem_iter(x, indices):
         x(Tensor): Tensor to be indexing.
         indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
     """
-    advanced_index = []
+    advanced_index = []  # content is (dim, index)
 
     # for slice/stride slice OP
     decrease_axes = []
@@ -891,6 +891,10 @@ def _getitem_iter(x, indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+        elif isinstance(slice_item, bool):
+            # single bool is advanced-indexing
+            none_axes.append(dim)
+            advanced_index.append((dim, paddle.to_tensor(slice_item)))
         elif isinstance(slice_item, slice):
             start = slice_item.start
             end = slice_item.stop
@@ -904,5 +908,7 @@ def _getitem_iter(x, indices):
             if end is None:
                 end = MAX_INTEGER if step > 0 else -1
             step = 1 if step is None else step
-        elif isinstance(slice_item, list):
-            pass
+        elif isinstance(slice_item, (list, tuple)):
+            advanced_index.append((dim, paddle.to_tensor(slice_item)))
+        elif isinstance(slice_item, paddle.fluid.Variable):
+            advanced_index.append((dim, slice_item))
