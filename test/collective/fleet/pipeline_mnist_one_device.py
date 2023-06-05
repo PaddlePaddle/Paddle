@@ -19,7 +19,7 @@ from legacy_test.test_dist_base import TestDistRunnerBase, runtime_main
 import paddle
 from paddle import fluid
 from paddle.distributed import fleet
-from paddle.fluid.tests.unittests import nets
+from legacy_test import nets
 
 paddle.enable_static()
 
