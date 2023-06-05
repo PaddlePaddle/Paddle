@@ -42,13 +42,14 @@ class Timer {
 
  private:
   std::chrono::time_point<std::chrono::steady_clock> start_time_;
+
   std::chrono::nanoseconds walk_time = std::chrono::nanoseconds(0);
 };
 }  // namespace
 
 class PassTimer : public PassInstrumentation {
  public:
-  explicit PassTimer(bool print_module = true) : print_module_(print_module) {}
+  explicit PassTimer(bool print_module) : print_module_(print_module) {}
   ~PassTimer() = default;
 
   void RunBeforePipeline(ir::Operation* op) override {
@@ -78,7 +79,7 @@ class PassTimer : public PassInstrumentation {
     if (print_module_ && op->name() != "builtin.module") return;
 
     std::string header = "PassTiming on " + op->name();
-    ir::detail::PrintHeader(header, os);
+    detail::PrintHeader(header, os);
 
     os << "  Total Execution Time: " << std::fixed << std::setprecision(3)
        << pipeline_timers_[op].GetTimePerSecond() << " seconds\n\n";

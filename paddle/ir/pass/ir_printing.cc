@@ -55,7 +55,7 @@ class IRPrinting : public PassInstrumentation {
     option_->PrintBeforeIfEnabled(pass, op, [&](std::ostream &os) {
       std::string header =
           "IRPrinting on " + op->name() + " before " + pass->name() + " pass";
-      ir::detail::PrintHeader(header, os);
+      detail::PrintHeader(header, os);
       PrintIR(op, option_->EnablePrintModule(), os);
       os << "\n\n";
     });
@@ -69,7 +69,7 @@ class IRPrinting : public PassInstrumentation {
     option_->PrintAfterIfEnabled(pass, op, [&](std::ostream &os) {
       std::string header =
           "IRPrinting on " + op->name() + " after " + pass->name() + " pass";
-      ir::detail::PrintHeader(header, os);
+      detail::PrintHeader(header, os);
       PrintIR(op, option_->EnablePrintModule(), os);
       os << "\n\n";
     });
