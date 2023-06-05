@@ -484,6 +484,16 @@
     func : conv3d
   backward : conv3d_grad
 
+- op : conv3d_transpose
+  args : (Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : ConvTransposeInferMeta
+  kernel :
+    func : conv3d_transpose
+    data_type : x
+  backward : conv3d_transpose_grad
+
 - op : cos
   args : (Tensor x)
   output : Tensor
@@ -1547,6 +1557,16 @@
   kernel :
     func : multi_dot
   backward : multi_dot_grad
+
+- op : multiclass_nms3
+  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
+  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
+  infer_meta :
+    func : MultiClassNMSInferMeta
+  kernel :
+    func : multiclass_nms3
+    data_type : scores
+  optional : rois_num, nms_rois_num
 
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
