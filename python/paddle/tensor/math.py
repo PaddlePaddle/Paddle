@@ -5750,12 +5750,21 @@ def ldexp(x, y, name=None):
 
             import paddle
 
+            #example1
             x = paddle.to_tensor([1, 2, 3], dtype='float32')
             y = paddle.to_tensor([2, 3, 4], dtype='int32')
             res = paddle.ldexp(x, y)
             print(res)
             # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [4., 16., 48.])
+
+            #example2
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+            y = paddle.to_tensor([2], dtype='int32')
+            res = paddle.ldexp(x, y)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [4., 8., 12.])
 
     """
     if not isinstance(x, (paddle.Tensor, Variable)):
@@ -5765,7 +5774,7 @@ def ldexp(x, y, name=None):
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
         out_dtype = paddle.float64
     else:
-        out_dtype = paddle.float32
+        out_dtype = paddle.get_default_dtype()
     x = paddle.cast(x, dtype=out_dtype)
     y = paddle.cast(y, dtype=out_dtype)
     two = paddle.to_tensor(2, dtype=out_dtype)
