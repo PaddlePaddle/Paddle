@@ -30,6 +30,7 @@ RUN apt-get update --allow-unauthenticated && \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool kmod
     
 RUN ln -s /lib/x86_64-linux-gnu/libssl.so.1.1 /lib/x86_64-linux-gnu/libssl.so.1.0.0
+RUN ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.1 /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
 COPY tools/dockerfile/build_scripts /build_scripts 
