@@ -25,16 +25,6 @@ limitations under the License. */
   } while (0)
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 // we use tensorrt ScatterElement to generate set value
@@ -61,7 +51,11 @@ class SetValueConverter : public OpConverter {
       std::cout << "set_value, " << i << " - " << decrease_axes[i] << std::endl;
     }
     std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
-    updates = Unsqueeze(updates, decr_axes);
+    auto value_rank = updates->getDimensions().nbDims;
+    auto input_rank = inputs->getDimensions().nbDims;
+    if (decrease_axes.size() > 0 && value_rank != input_rank) {
+      updates = Unsqueeze(updates, decr_axes);
+    }
 
     int64_t axes = 0;
     int64_t starts = 0;
@@ -122,39 +116,14 @@ class SetValueConverter : public OpConverter {
         indices.insert(indices.end(), axes_index.begin(), axes_index.end());
       }
 
-      nvinfer1::Dims indice_dims = update_dims;
-
-      // create a tensor to store data
-      std::vector<int> indice_dim_vec;
-      for (int i = 0; i < update_dims.nbDims; i++) {
-        indice_dim_vec.emplace_back(update_dims.d[i]);
-      }
-      auto indice_tensor_dims = phi::make_ddim(indice_dim_vec);
-      std::unique_ptr<phi::DenseTensor> indice_tensor(
-          std::make_unique<phi::DenseTensor>());
-      indice_tensor->Resize(indice_tensor_dims);
-
-      auto* dev_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
-      auto* weight_data = dev_ctx->template HostAlloc<int>(indice_tensor.get());
-
-      memcpy(weight_data, indices.data(), sizeof(int) * indice_tensor->numel());
-
-      TensorRTEngine::Weight weight{
-          nvinfer1::DataType::kINT32,
-          static_cast<void*>(weight_data),
-          static_cast<size_t>(indice_tensor->numel())};
       auto output_name = op_desc.Output("Out")[0];
-      engine_->SetWeights("set_value_index_" + output_name,
-                          std::move(indice_tensor));
-
-      auto const_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Constant, indice_dims, weight.get());
+      const auto const_layer = AddConstantLayer(
+          indices.data(), update_dims, "set_value_index_" + output_name);
 
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
                                          Scatter,
                                          *inputs,
-                                         *const_layer->getOutput(0),
+                                         *const_layer,
                                          *updates,
                                          nvinfer1::ScatterMode::kELEMENT);
 
