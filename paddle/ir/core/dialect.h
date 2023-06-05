@@ -131,7 +131,7 @@ class Dialect {
   }
 
   virtual void PrintType(ir::Type type, std::ostream &os) {
-    throw std::logic_error("dialect has no registered type printing hook");
+    IR_THROW("dialect has no registered type printing hook");
   }
 
  private:

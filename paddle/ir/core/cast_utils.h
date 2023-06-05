@@ -16,6 +16,8 @@
 
 #include <type_traits>
 
+#include "paddle/ir/core/enforce.h"
+
 namespace ir {
 ///
 /// \brief The template function actually called by isa_wrap.
@@ -61,9 +63,7 @@ struct isa_wrap<
     typename std::enable_if_t<std::is_pointer<std::decay_t<From>>::value>> {
   static inline bool call(
       std::remove_pointer_t<std::decay_t<From>> const *Val) {
-    if (Val == nullptr) {
-      throw("isa<> used on a null pointer");
-    }
+    IR_ENFORCE(Val != nullptr, "isa<> used on a null pointer.");
     return isa_impl<Target, std::remove_pointer_t<std::decay_t<From>>>::call(
         *Val);
   }
@@ -126,17 +126,13 @@ struct cast_impl {
 
 template <typename To, typename From>
 inline typename ReturnTypeDuduction<To, From>::type cast(From &Val) {  // NOLINT
-  if (!isa<To>(Val)) {
-    throw("cast<To>() argument of incompatible type!");
-  }
+  IR_ENFORCE(isa<To>(Val), "cast<To>() argument of incompatible type!");
   return cast_impl<To, From>::call(Val);
 }
 
 template <typename To, typename From>
 inline typename ReturnTypeDuduction<To, From *>::type cast(From *Val) {
-  if (!isa<To>(Val)) {
-    throw("cast<To>() argument of incompatible type!");
-  }
+  IR_ENFORCE(isa<To>(Val), "cast<To>() argument of incompatible type!");
   return cast_impl<To, From *>::call(Val);
 }
 

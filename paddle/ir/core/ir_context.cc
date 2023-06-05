@@ -20,6 +20,7 @@
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/op_info_impl.h"
 #include "paddle/ir/core/spin_lock.h"
 #include "paddle/ir/core/type_base.h"
@@ -306,7 +307,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   if (abstract_type) {
     return *abstract_type;
   } else {
-    throw("Abstract type not found in IrContext.");
+    IR_THROW("Abstract type not found in IrContext.");
   }
 }
 
@@ -317,7 +318,7 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   if (abstract_attribute) {
     return *abstract_attribute;
   } else {
-    throw("Abstract attribute not found in IrContext.");
+    IR_THROW("Abstract attribute not found in IrContext.");
   }
 }
 
