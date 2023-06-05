@@ -707,7 +707,7 @@ def GenBuildAttributes(
 ):
     INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr}));
 """
-    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = TransToIrDataType({attr}, ir::IrContext::Instance());
+    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = TransToIrAttribute({attr}, ir::IrContext::Instance());
 """
     STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr});
 """

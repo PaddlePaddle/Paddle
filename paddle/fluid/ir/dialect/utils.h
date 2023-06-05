@@ -71,6 +71,30 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
   }
 }
 
+static inline ir::Type TransToIrAttribute(phi::Scalar scalar,
+                                          ir::IrContext *ctx = nullptr) {
+  if (ctx == nullptr) {
+    ctx = ir::IrContext::Instance();
+  }
+  switch (scalar.dtype()) {
+    case phi::DataType::FLOAT32:
+      return ir::FloatAttribute::get(ctx, scalar.to<float>());
+    case phi::DataType::FLOAT64:
+      return ir::DoubleAttribute::get(ctx, scalar.to<double>());
+    case phi::DataType::INT32:
+      return ir::Int32_tAttribute::get(ctx, scalar.to<int32_t>());
+    case phi::DataType::INT64:
+      return ir::Int64_tAttribute::get(ctx, scalar.to<int64_t>());
+    case phi::DataType::BOOL:
+      return ir::BoolAttribute::get(ctx, scalar.to<bool>());
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported phi data type `%s` when casting it into "
+          "ir attribute.",
+          dtype));
+  }
+}
+
 struct OpInputInfo {
   std::string name;
   std::string type_name;
