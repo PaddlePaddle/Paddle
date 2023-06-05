@@ -36,14 +36,6 @@ bool isnan_(T x) {
 }
 #endif
 
-std::vector<int> build_range(int stop) {
-  std::vector<int> result(stop);
-  for (int i = 0; i < stop; i++) {
-    result[i] = i;
-  }
-  return result;
-}
-
 template <typename T>
 T compute_stride(T axis, phi::DDim dims) {
   T size = 1;
