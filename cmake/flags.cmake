@@ -150,7 +150,6 @@ if(NOT WIN32)
       -Wextra
       -Wno-unused-parameter
       -Wno-unused-function
-      -Wno-unknown-pragmas
       -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
