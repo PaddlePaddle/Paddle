@@ -63,6 +63,7 @@ endif()
 if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
+
   set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
   set(LITE_BINARY_DIR ${LITE_PREFIX_DIR}/src/extern_lite-build)
