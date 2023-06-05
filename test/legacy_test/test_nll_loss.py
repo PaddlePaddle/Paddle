@@ -38,9 +38,9 @@ def nll_loss_1d(
         total_weight += cur_weight
         out[i] = -logs[i][cur_target] * cur_weight
     if reduction == 'sum':
-        return np.sum(out), np.array([total_weight]).astype('float64')
+        return np.sum(out), np.array(total_weight).astype('float64')
     elif reduction == 'mean':
-        return out.sum() / total_weight, np.array([total_weight]).astype(
+        return out.sum() / total_weight, np.array(total_weight).astype(
             'float64'
         )
     elif reduction == 'none':
@@ -67,9 +67,9 @@ def nll_loss_2d(
                 total_weight += cur_weight
                 out[i][h][w] = -logs[i][cur_target][h][w] * cur_weight
     if reduction == 'sum':
-        return np.sum(out), np.array([total_weight]).astype('float64')
+        return np.sum(out), np.array(total_weight).astype('float64')
     elif reduction == 'mean':
-        return out.sum() / total_weight, np.array([total_weight]).astype(
+        return out.sum() / total_weight, np.array(total_weight).astype(
             'float64'
         )
     elif reduction == 'none':
@@ -993,7 +993,7 @@ class TestNLLLossOp1DNoReduce(OpTest):
             0, self.input_shape[1], self.label_shape
         ).astype("int64")
         output_np = nll_loss_1d(input_np, label_np, reduction='none')
-        total_weight_np = np.array([0]).astype('float64')
+        total_weight_np = np.array(0).astype('float64')
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
             np.random.seed(200)
@@ -1094,7 +1094,7 @@ class TestNLLLossOp2DNoReduce(OpTest):
             0, self.input_shape[1], self.label_shape
         ).astype("int64")
         output_np = nll_loss_2d(input_np, label_np, reduction='none')
-        total_weight_np = np.array([0]).astype('float64')
+        total_weight_np = np.array(0).astype('float64')
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
             np.random.seed(200)

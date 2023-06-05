@@ -113,7 +113,7 @@ class TestLogspaceOpNumOneCase(TestLogspaceOpCommonCase):
             'Base': np.array([2]).astype(dtype),
         }
         self.attrs = {'dtype': int(paddle.float32)}
-        self.outputs = {'Out': np.power(2, np.array(10)).astype(dtype)}
+        self.outputs = {'Out': np.power(2, np.array([10])).astype(dtype)}
 
 
 class TestLogspaceOpMinusBaseCase(TestLogspaceOpCommonCase):
