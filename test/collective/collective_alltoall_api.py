@@ -18,9 +18,46 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import fluid, framework
+from paddle.fluid import data_feeder
 
 paddle.enable_static()
+
+
+def alltoall_new(tensor, out, group=None):
+    op_type = 'all_to_all'
+
+    tensor = paddle.stack(tensor, axis=0)
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+            'uint16',
+        ],
+        op_type,
+    )
+
+    helper = framework.LayerHelper(op_type, **locals())
+    ring_id = 0 if group is None else group.id
+
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'x': [tensor]},
+        outputs={'out': [out]},
+        attrs={
+            'ring_id': ring_id,
+        },
+    )
 
 
 class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
@@ -36,6 +73,19 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
             tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
             paddle.distributed.alltoall(tindata, tout_data)
+            return tout_data
+
+    def get_model_new(
+        self, main_prog, startup_program, rank, dtype=None, reduce_type=None
+    ):
+        with fluid.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
+            tindata = paddle.split(tindata, 2, axis=0)
+            tout_data = []
+            alltoall_new(tindata, tout_data)
             return tout_data
 
 
