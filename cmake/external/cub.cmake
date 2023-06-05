@@ -35,7 +35,7 @@ else()
   set(CUB_TAG 1.8.0)
 endif()
 
-set(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR}/src/extern_cub)
+set(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR})
 message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
 include_directories(${CUB_INCLUDE_DIR})
 
