@@ -147,7 +147,9 @@ class FusedCommBuffer:
         elif self._act == HOOK_ACTION.REDUCE:
             assert dst != -1
         else:
-            raise ValueError("act value not in HOOK_ACTION")
+            raise ValueError(
+                "The act should be allreudce for dp or reduce for sharding."
+            )
         self._dst = dst
 
         self._init_step_dict()
