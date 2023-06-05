@@ -304,7 +304,7 @@ class OpInfoParser:
             'Scalar(dobule)': ['paddle::dialect::ScalarAttribute', 'dobule'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-                'std::vector<Scalar>',
+                'const std::vector<Scalar>&',
             ],
             'int': ['ir::Int32_tAttribute', 'int'],
             'int32_t': ['ir::Int32_tAttribute', 'int32_t'],
@@ -314,18 +314,18 @@ class OpInfoParser:
             'float': ['ir::FloatAttribute', 'float'],
             'float[]': [
                 'ir::ArrayAttribute<ir::FloatAttribute>',
-                'std::vector<float>',
+                'const std::vector<float>&',
             ],
             'double': ['ir::DoubleAttribute', 'double'],
             'bool': ['ir::BoolAttribute', 'bool'],
             'bool[]': [
                 'ir::ArrayAttribute<ir::BoolAttribute>',
-                'std::vecot<bool>',
+                'const std::vecot<bool>&',
             ],
             'str': ['ir::StrAttribute', 'std::string'],
             'str[]': [
                 'ir::ArrayAttribute<ir::StrAttribute>',
-                'std::vector<std::string>',
+                'const std::vector<std::string>&',
             ],
             'Place': ['paddle::dialect::PlaceAttribute', 'Place'],
             'DataLayout': [
@@ -335,11 +335,11 @@ class OpInfoParser:
             'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
             'int64_t[]': [
                 'ir::ArrayAttribute<ir::Int64_tAttribute>',
-                'std::vector<int64_t>',
+                'const std::vector<int64_t>&',
             ],
             'int[]': [
                 'ir::ArrayAttribute<ir::Int32_tAttribute>',
-                'std::vector<int>',
+                'const std::vector<int>&',
             ],
         }
         self.attribute_name_list = self.parse_attribute_name_list()
