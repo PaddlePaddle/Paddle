@@ -101,7 +101,9 @@ def download(url, module_name, md5sum, save_name=None):
         sys.stderr.write("Begin to download\n")
         try:
             # (risemeup1):use httpx to replace requests
-            with httpx.stream("GET", url) as r:
+            with httpx.stream(
+                "GET", url, timeout=None, follow_redirects=True
+            ) as r:
                 total_length = r.headers.get('content-length')
                 if total_length is None:
                     with open(filename, 'wb') as f:
