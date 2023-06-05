@@ -1466,7 +1466,7 @@ static PyObject* tensor__clear_dataptr(TensorObject* self,
                                        PyObject* args,
                                        PyObject* kwargs) {
   EAGER_TRY
-  self->tensor.set_impl(std::make_shared<phi::DenseTensor>());
+  self->tensor.set_impl(nullptr);
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
