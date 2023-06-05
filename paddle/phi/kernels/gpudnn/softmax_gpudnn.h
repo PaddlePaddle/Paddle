@@ -1279,7 +1279,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       int batches_per_warp = 1;
       int warps_per_block = 1;
       int sm_count = dev_ctx.GetSMCount();
-      if (N < 4 * sm_count) {
+      if (N <= 4 * sm_count) {
         warps_per_block = 1;
         batches_per_warp = 1;
       } else {
@@ -1379,11 +1379,20 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
       int dim_log2 = Log2Ceil(dim);
       int dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
-      int batches_per_warp = (dim_ceil <= 128) ? 2 : 1;
 
-      constexpr int threads_per_block = 128;
+      int batches_per_warp = 1;
+      int warps_per_block = 1;
+      int sm_count = dev_ctx.GetSMCount();
+      if (N <= 4 * sm_count) {
+        warps_per_block = 1;
+        batches_per_warp = 1;
+      } else {
+        // use 128 threads per block to maximimize gpu utilization
+        int threads_per_block = 128;
+        warps_per_block = (threads_per_block / warp_size);
+        batches_per_warp = (dim_ceil <= 128) ? 2 : 1;
+      }
 
-      int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
       int blocks = (N + batches_per_block - 1) / batches_per_block;
 
