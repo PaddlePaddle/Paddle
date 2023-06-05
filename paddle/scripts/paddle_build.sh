@@ -1399,7 +1399,7 @@ set -x
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            python $PADDLE_ROOT/tools/get_pr_ut.py
             if [[ -f "ut_list" ]]; then
                 set +x
                 echo "PREC length: "`wc -l ut_list`
@@ -2368,7 +2368,7 @@ set -x
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
-            python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
+            python $PADDLE_ROOT/tools/get_pr_ut.py
         fi
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
