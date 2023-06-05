@@ -27,7 +27,6 @@ function(install_py_pyyaml)
       ${PYTHON_EXECUTABLE} "-c"
       "import re, pyyaml; print(re.compile('/__init__.py.*').sub('',pyyaml.__file__))"
     RESULT_VARIABLE _pyyaml_status
-    OUTPUT_VARIABLE _pyyaml_location
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   if(NOT _pyyaml_status EQUAL 0)
@@ -43,7 +42,6 @@ function(install_py_jinja2)
       ${PYTHON_EXECUTABLE} "-c"
       "import re, jinja2; print(re.compile('/__init__.py.*').sub('',jinja2.__file__))"
     RESULT_VARIABLE _jinja2_status
-    OUTPUT_VARIABLE _jinja2_location
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   if(_jinja2_status EQUAL 0)
@@ -87,7 +85,6 @@ function(install_py_typing_extensions)
       ${PYTHON_EXECUTABLE} "-c"
       "import re, typing_extensions; print(re.compile('/__init__.py.*').sub('',typing_extensions.__file__))"
     RESULT_VARIABLE _te_status
-    OUTPUT_VARIABLE _te_location
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   if(NOT _te_status EQUAL 0)
