@@ -1002,7 +1002,7 @@ struct SetAttrDescVisitor {
   void operator()(paddle::blank) const {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported calling method of SetAttrDescVisitor object for "
-        "`boosst::blank` type."));
+        "`boost::blank` type."));
   }
 };
 

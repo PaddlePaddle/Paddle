@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/ir/core/builtin_op.h"
-
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace ir {
@@ -52,7 +52,7 @@ void ModuleOp::destroy() {
   }
 }
 
-void ModuleOp::verify(const std::vector<ir::OpResult> &inputs,
+void ModuleOp::Verify(const std::vector<ir::OpResult> &inputs,
                       const std::vector<ir::Type> &outputs,
                       const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
@@ -76,7 +76,7 @@ void ModuleOp::verify(const std::vector<ir::OpResult> &inputs,
 const char *GetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
-void GetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+void GetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
                             const std::vector<ir::Type> &outputs,
                             const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
@@ -97,7 +97,7 @@ void GetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
 const char *SetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
-void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+void SetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
                             const std::vector<ir::Type> &outputs,
                             const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
@@ -115,7 +115,7 @@ void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
   }
 }
 
-void CombineOp::verify(const std::vector<ir::OpResult> &inputs,
+void CombineOp::Verify(const std::vector<ir::OpResult> &inputs,
                        const std::vector<ir::Type> &outputs,
                        const ir::AttributeMap &attributes) {
   // outputs.size() == 1
@@ -154,7 +154,7 @@ void CombineOp::verify(const std::vector<ir::OpResult> &inputs,
 }
 
 const char *SliceOp::attributes_name[attributes_num] = {"index"};
-void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
+void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
   // inputs.size() == 1
@@ -213,5 +213,26 @@ void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
           index,
           outputs[0]));
 }
+
+const char *ConstantOp::attributes_name[attributes_num] = {"value"};
+
+void ConstantOp::Build(Builder &builder,
+                       OperationArgument &argument,
+                       Attribute value,
+                       Type output_type) {
+  argument.AddAttribute("value", value);
+  argument.output_types.push_back(output_type);
+}
+
+void ConstantOp::Verify(const std::vector<ir::OpResult> &inputs,
+                        const std::vector<ir::Type> &outputs,
+                        const ir::AttributeMap &attributes) {
+  IR_ENFORCE(inputs.size() == 0, "The size of inputs must be equal to 0.");
+  IR_ENFORCE(outputs.size() == 1, "The size of outputs must be equal to 1.");
+  IR_ENFORCE(attributes.count("value") > 0,
+             "Type of attribute: value is not right.");
+}
+
+Attribute ConstantOp::value() { return operation()->attributes().at("value"); }
 
 }  // namespace ir
