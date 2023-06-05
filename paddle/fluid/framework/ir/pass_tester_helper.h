@@ -361,20 +361,31 @@ struct Layers {
     return outs;
   }
 
-  std::vector<VarDesc*> split(VarDesc* x, int num_or_section, int axis = 0) {
-    std::vector<VarDesc*> outs(num_or_section);
-    for (int i = 0; i < num_or_section; i++) {
+  std::vector<VarDesc*> split(VarDesc* x,
+                              int num_or_section = 0,
+                              int axis = 0,
+                              std::vector<int> sections = {-1}) {
+    int out_num = num_or_section;
+    if (num_or_section == 0) {
+      out_num = sections.size();
+    }
+    std::vector<VarDesc*> outs(out_num);
+    for (int i = 0; i < out_num; i++) {
       outs[i] = lod_tensor(unique_name());
     }
-    std::vector<std::string> out_names(num_or_section);
-    for (int i = 0; i < num_or_section; i++) {
+    std::vector<std::string> out_names(out_num);
+    for (int i = 0; i < out_num; i++) {
       out_names[i] = outs[i]->Name();
     }
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("split");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", out_names);
-    op->SetAttr("num_or_section", num_or_section);
+    if (num_or_section == 0) {
+      op->SetAttr("sections", sections);
+    } else {
+      op->SetAttr("num_or_section", num_or_section);
+    }
     op->SetAttr("axis", axis);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
@@ -824,6 +835,17 @@ struct Layers {
     return unary_op("logical_not", input);
   }
 
+  VarDesc* not_equal(VarDesc* x, VarDesc* y, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("not_equal");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
   VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
@@ -835,6 +857,16 @@ struct Layers {
     op->SetInput("X", input_names);
     op->SetAttr("axis", axis);
     op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
+  VarDesc* tile(VarDesc* x, const std::vector<int>& repeat_times = {2}) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("tile");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("repeat_times", repeat_times);
+    op->SetOutput("Out", {out->Name()});
     return out;
   }
 

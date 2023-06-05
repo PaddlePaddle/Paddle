@@ -28,7 +28,7 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_sum,
                           ALL_LAYOUT,
                           ops::CAllReduceSumCUDAKernel,
                           float,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           double,

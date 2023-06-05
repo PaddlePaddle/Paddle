@@ -20,13 +20,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void UniformInplaceGradKernel(const Context& ctx,
-                              const DenseTensor& out_grad,
-                              float min,
-                              float max,
-                              int seed,
-                              int diag_num,
-                              int diag_step,
-                              float diag_val,
+                              const DenseTensor& out_grad UNUSED,
+                              float min UNUSED,
+                              float max UNUSED,
+                              int seed UNUSED,
+                              int diag_num UNUSED,
+                              int diag_step UNUSED,
+                              float diag_val UNUSED,
                               DenseTensor* x_grad) {
   if (x_grad) {
     auto* data = ctx.template Alloc<T>(x_grad);

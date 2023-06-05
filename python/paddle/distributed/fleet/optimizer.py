@@ -15,7 +15,7 @@
 import copy
 
 from paddle.distributed import fleet
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 from .meta_optimizers import HeterParallelOptimizer, HybridParallelOptimizer
 from .utils.log_util import logger
@@ -71,6 +71,11 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
             ].dp_comm_overlap:
                 hp_optim._dp_enable = False
 
+            if fleet_env._user_defined_strategy.hybrid_configs[
+                "pp_configs"
+            ].sharding_comm_overlap:
+                hp_optim._sharding_enable = False
+
             return hp_optim
         else:
             return HeterParallelOptimizer(
@@ -81,7 +86,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
 
 def distributed_optimizer(*args, **kwargs):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _dygraph_distributed_optimizer(*args, **kwargs)
     else:
         return fleet.fleet.distributed_optimizer(*args, **kwargs)

@@ -150,18 +150,6 @@
     func : channel_shuffle
   backward : channel_shuffle_grad
 
-- op : check_finite_and_unscale_
-  args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
-  output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
-  infer_meta :
-    func : CheckFiniteAndUnscaleInferMeta
-    param : [x, scale]
-  kernel :
-    func : check_finite_and_unscale
-    param : [x, scale]
-    data_type : x
-  inplace : (x -> out), (input_found_infinite -> output_found_infinite)
-
 - op : concat
   args : (Tensor[] x, Scalar(int64_t) axis)
   output : Tensor
@@ -172,41 +160,15 @@
     func : concat
   backward : concat_grad
 
-- op : conv2d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
-  output : Tensor
-  infer_meta :
-    func : ConvInferMeta
-  kernel :
-    func : conv2d
-  backward : conv2d_grad
-
 - op : conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
   kernel :
     func : conv2d_transpose
+    data_type : x
   backward : conv2d_transpose_grad
-
-- op : conv3d
-  args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor
-  infer_meta :
-    func : Conv3DInferMeta
-  kernel :
-    func : conv3d
-  backward : conv3d_grad
-
-- op : conv3d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : ConvTransposeInferMeta
-  kernel :
-    func : conv3d_transpose
-  backward : conv3d_transpose_grad
 
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
@@ -244,24 +206,14 @@
   optional : mask
   backward : deformable_conv_grad
 
-- op : depthwise_conv2d
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : DepthwiseConvInferMeta
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-  kernel :
-    func : depthwise_conv2d
-    param : [x, filter, strides, paddings, padding_algorithm, groups, dilations, data_format]
-  backward : depthwise_conv2d_grad
-
 - op : depthwise_conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
   kernel :
     func : depthwise_conv2d_transpose
+    data_type : x
   backward : depthwise_conv2d_transpose_grad
 
 - op : distribute_fpn_proposals
@@ -296,7 +248,7 @@
 
 - op : einsum
   args : (Tensor[] x, str equation)
-  output : Tensor, Tensor[]{x.size()}, Tensor[]{x.size()}
+  output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
   infer_meta :
     func : EinsumRawInferMeta
     param : [x, equation]
@@ -538,17 +490,6 @@
   kernel :
     func : greater_than
 
-- op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
-  output : Tensor(y), Tensor(mean), Tensor(variance)
-  infer_meta :
-    func : GroupNormInferMeta
-  kernel :
-    func : group_norm
-  optional : scale, bias
-  intermediate : mean, variance
-  backward : group_norm_grad
-
 - op : hardswish
   args : (Tensor x)
   output : Tensor(out)
@@ -587,17 +528,6 @@
   kernel :
     func : increment
   inplace : (x -> out)
-
-- op : layer_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
-  output : Tensor(out), Tensor(mean), Tensor(variance)
-  infer_meta :
-    func : LayerNormInferMeta
-  kernel :
-    func : layer_norm
-    data_type : x
-  backward : layer_norm_grad
-  optional : scale, bias
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -696,7 +626,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : OriginReduceInferMeta
+    func : ReduceIntArrayAxisInferMeta
   kernel :
     func : mean
   backward : mean_grad
@@ -728,15 +658,6 @@
   kernel :
     func : mish
   backward : mish_grad
-
-- op : multiclass_nms3
-  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
-  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
-  infer_meta :
-    func : MultiClassNMSInferMeta
-  kernel :
-    func : multiclass_nms3
-  optional : rois_num
 
 - op : multiply
   args : (Tensor x, Tensor y)
@@ -792,15 +713,6 @@
   kernel :
     func : pad
   backward : pad_grad
-
-- op : pad3d
-  args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : Pad3dInferMeta
-  kernel :
-    func : pad3d
-  backward : pad3d_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -974,17 +886,6 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
-
-- op : shape
-  args : (Tensor input)
-  output : Tensor(out)
-  infer_meta :
-    func : ShapeInferMeta
-  kernel :
-    func : shape {dense -> dense},
-           shape_sr {selected_rows -> selected_rows}
-  data_transform:
-    skip_transform : input
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)

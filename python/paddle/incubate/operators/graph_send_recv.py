@@ -22,8 +22,9 @@ from paddle.fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 from paddle.utils import deprecated
 
 
@@ -124,7 +125,7 @@ def graph_send_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
             x, src_index, dst_index, pool_type.upper(), out_size
