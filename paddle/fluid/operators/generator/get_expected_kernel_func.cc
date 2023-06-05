@@ -61,6 +61,20 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
   return true;
 }
 
+// only poolop
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // oneDNN is supporting only unchangable in size pool window
+  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
+  if (!ctx.HasAttr("ksize")) {
+    return false;
+  }
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+          (src_tz[src_tz.size() - 2] % ksize[0] == 0));
+}
+
 phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -211,6 +225,31 @@ phi::KernelKey GetBatchNormDoubleGradExpectedKernelType(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
   return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+}
+
+phi::KernelKey GetPoolExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "grad_x@GRAD");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetSgdExpectedKernelType(
