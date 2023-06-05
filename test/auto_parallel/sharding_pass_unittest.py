@@ -34,6 +34,16 @@ def apply_pass(use_sharding=False, stage=None):
         sharding.degree = 2
         sharding.stage = stage
 
+    amp = strategy.amp
+    amp.enable = True
+    amp.dtype = "float16"
+    amp.level = "o1"
+    amp.custom_black_list = [
+        'c_softmax_with_cross_entropy',
+        'elementwise_div',
+        'reduce_sum',
+    ]
+
     return strategy
 
 
