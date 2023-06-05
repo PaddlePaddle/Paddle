@@ -16,12 +16,12 @@ import contextlib
 import inspect
 import unittest
 
+import nets
 import numpy as np
 from decorator_helper import prog_scope
 from test_imperative_base import new_program_scope
 
 import paddle
-import nets
 import paddle.nn.functional as F
 from paddle import fluid
 from paddle.fluid import core, layers
@@ -1434,6 +1434,7 @@ class TestLayer(LayerTest):
             exe.run(fluid.default_startup_program())
             # x = np.random.rand(3, 32, 32).astype("float32")
             # y = np.array([[1], [0], [1]])
+
             static_out = exe.run(
                 feed={"input": x, "label": y}, fetch_list=result
             )
@@ -2197,7 +2198,7 @@ class TestBook(LayerTest):
             rank_offset = paddle.static.data(
                 name="rank_offset", shape=[None, 7], dtype="int32"
             )
-            out = fluid.contrib.layers.rank_attention(
+            out = rank_attention(
                 input=input,
                 rank_offset=rank_offset,
                 rank_param_shape=[18, 3],
