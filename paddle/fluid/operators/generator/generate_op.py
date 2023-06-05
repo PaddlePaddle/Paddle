@@ -318,6 +318,10 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
             for out_item in forward_op_item['outputs']:
                 if out_item['name'] in op_args['extra']['outputs']:
                     out_item['is_extra'] = True
+        if 'extra' in op_args and 'inputs' in op_args['extra']:
+            for input_item in forward_op_item['inputs']:
+                if input_item['name'] in op_args['extra']['inputs']:
+                    input_item['is_extra'] = True
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}

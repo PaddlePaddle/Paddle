@@ -100,8 +100,8 @@ class TestDistTraning(unittest.TestCase):
             model_b.clear_gradients()
 
     def check_acc(self, grad, acc_grad):
-        grad = grad.numpy() if grad is not None else None
-        acc_grad = acc_grad.numpy() if acc_grad is not None else None
+        grad = grad.numpy(False) if grad is not None else None
+        acc_grad = acc_grad.numpy(False) if acc_grad is not None else None
         return np.testing.assert_allclose(grad, acc_grad, rtol=1e-6)
 
     def broadcast_param(self, param, root):
@@ -115,7 +115,9 @@ class TestDistTraning(unittest.TestCase):
                 grad = param._grad_ivar()
                 other_grad = self.broadcast_param(grad.clone(), root=1)
                 if self.trainer_id == 0:
-                    np.testing.assert_allclose(other_grad.numpy(), grad.numpy())
+                    np.testing.assert_allclose(
+                        other_grad.numpy(False), grad.numpy(False)
+                    )
 
 
 if __name__ == '__main__':
