@@ -42,7 +42,7 @@ class TestFleetWithQAT(unittest.TestCase):
     def setUp(self):
         self.input_size = 4096
         self.output_size = 4096
-        self.batch_size = 1000
+        self.batch_size = 8
 
     def setup_strategy(self, strategy):
         strategy.qat = True
