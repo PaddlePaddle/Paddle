@@ -44,6 +44,15 @@ class TestNanInfBase(unittest.TestCase):
         returncode = proc.returncode
         return returncode, out, err
 
+    def generate_inputs(self, shape, dtype="float32"):
+        data = np.random.random(size=shape).astype(dtype)
+        # [-10, 10)
+        x = (data * 20 - 10) * np.random.randint(
+            low=0, high=2, size=shape
+        ).astype(dtype)
+        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
+        return x, y
+
 
 class TestNanInf(TestNanInfBase):
     def setUp(self):
@@ -172,15 +181,6 @@ class TestNanInfStack(TestNanInfBase):
 
 
 class TestNanInfCheckResult(TestNanInfBase):
-    def generate_inputs(self, shape, dtype="float32"):
-        data = np.random.random(size=shape).astype(dtype)
-        # [-10, 10)
-        x = (data * 20 - 10) * np.random.randint(
-            low=0, high=2, size=shape
-        ).astype(dtype)
-        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
-        return x, y
-
     def get_reference_num_nan_inf(self, x):
         out = np.log(x)
         num_nan = np.sum(np.isnan(out))
@@ -272,7 +272,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             )
 
 
-class TestCheckNumericsAPI(unittest.TestCase):
+class TestCheckNumericsAPI(TestNanInfBase):
     def test_eager(self):
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, "float16")
