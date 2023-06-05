@@ -19,6 +19,7 @@ from legacy_test.test_dist_base import TestDistRunnerBase, runtime_main
 import paddle
 from paddle import fluid
 from paddle.distributed import fleet
+from paddle.fluid.tests.unittests import nets
 
 paddle.enable_static()
 
@@ -31,7 +32,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
@@ -42,7 +43,7 @@ def cnn_model(data):
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,

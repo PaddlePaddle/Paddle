@@ -32,26 +32,6 @@ def glu(x, dim=-1):
     return out
 
 
-class TestGLUCase(unittest.TestCase):
-    def setUp(self):
-        self.x = np.random.randn(5, 20)
-        self.dim = -1
-        self.out = glu(self.x, self.dim)
-
-    def check_identity(self, place):
-        with dg.guard(place):
-            x_var = dg.to_variable(self.x)
-            y_var = fluid.nets.glu(x_var, self.dim)
-            y_np = y_var.numpy()
-
-        np.testing.assert_allclose(y_np, self.out)
-
-    def test_case(self):
-        self.check_identity(fluid.CPUPlace())
-        if fluid.is_compiled_with_cuda():
-            self.check_identity(fluid.CUDAPlace(0))
-
-
 class TestGLUV2(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(5, 20)

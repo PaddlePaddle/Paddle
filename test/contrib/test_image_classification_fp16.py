@@ -22,6 +22,9 @@ import unittest
 
 import numpy
 
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
 from paddle.static.amp import decorate
@@ -76,7 +79,7 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
+        return nets.img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
