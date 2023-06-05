@@ -74,10 +74,7 @@ void ComputeImp(const DenseTensor& x,
   while (!finished) {
     T1 max = *reinterpret_cast<const T1*>(x_data);
     int idx = 0;
-    for (const auto i : build_range(x_dim_size)) {
-      if (axis == -2) {
-        std::cout << "stop point 1" << std::endl;
-      }
+    for (int i = 0; i < x_dim_size; i++) {
       T1 curr_elem = *reinterpret_cast<const T1*>(&x_data[i * x_stride]);
       if (isnan_(curr_elem) || (!isnan_(max) && op(curr_elem, max))) {
         max = curr_elem;
@@ -87,10 +84,7 @@ void ComputeImp(const DenseTensor& x,
       indices_data[i * indices_stride] = idx;
     }
     if (ndims == 1) break;
-    for (const auto dim_i : build_range(ndims)) {
-      if (axis == -2) {
-        std::cout << "stop point 2" << std::endl;
-      }
+    for (int dim_i = 0; dim_i < ndims; dim_i++) {
       if (dim_i == axis) {
         if (dim_i == (ndims - 1)) {
           finished = 1;
