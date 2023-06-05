@@ -135,8 +135,6 @@ void Relu6XPUFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->Var(clip_max->Name())->GetMutable<phi::DenseTensor>();
     float* clip_min_ptr = clip_min_t->data<float>();
     float* clip_max_ptr = clip_max_t->data<float>();
-    std::cout << "clip min: " << clip_min_ptr[0] << std::endl;
-    std::cout << "clip max: " << clip_max_ptr[0] << std::endl;
     if (clip_min_ptr[0] != 0.f || clip_max_ptr[0] != 6.f) return;
     // Generate relu6 op
     framework::OpDesc relu6_op_desc(block);
