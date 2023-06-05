@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -71,8 +72,8 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
   }
 }
 
-static inline ir::Type TransToIrAttribute(phi::Scalar scalar,
-                                          ir::IrContext *ctx = nullptr) {
+static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
+                                               ir::IrContext *ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
@@ -91,7 +92,7 @@ static inline ir::Type TransToIrAttribute(phi::Scalar scalar,
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
           "ir attribute.",
-          dtype));
+          scalar.dtype()));
   }
 }
 
