@@ -67,6 +67,7 @@ black_ops_list = [
 prim_white_list = [
     "matmul_double_grad",
     "subtract_double_grad",
+    "add_triple_grad",
     "silu_double_grad",
 ]
 
@@ -1468,9 +1469,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Get return type list & outputs
         returns_type_list = ["" for i in range(num_outputs)]
         returns_list = ["" for i in range(num_outputs)]
+        num_visited_intermediate_outputs = 0
         for name, (rtype, pos) in forward_outputs_position_map.items():
             if name in intermediate_outputs:
+                num_visited_intermediate_outputs += 1
                 continue
+            pos -= num_visited_intermediate_outputs
             returns_list[pos] = f"{name}"
 
             if IsPlainTensorType(rtype):

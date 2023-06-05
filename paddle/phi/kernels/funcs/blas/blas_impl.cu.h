@@ -391,7 +391,8 @@ struct CUBlas<phi::dtype::float16> {
 #endif
   }
 
-  // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
+  // NOTES: GEMM_EX can use Tensor Core to accelerate
+  // matrix multiply.
   // https://docs.nvidia.com/cuda/cublas/index.html#cublassetmathmode
   template <typename... ARGS>
   static void GEMM_EX(phi::GPUContext *dev_ctx,
@@ -1759,6 +1760,96 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 }
 
 #if defined(__NVCC__)
+template <>
+template <>
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               double alpha,
+                                               const double **A,
+                                               const double **B,
+                                               double beta,
+                                               double **C,
+                                               int batchCount) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  thrust::device_vector<const double *> A_ptr(A, A + batchCount);
+  thrust::device_vector<const double *> B_ptr(B, B + batchCount);
+  thrust::device_vector<double *> C_ptr(C, C + batchCount);
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<double>::GEMM_BATCH(handle,
+                               cuTransB,
+                               cuTransA,
+                               N,
+                               M,
+                               K,
+                               &alpha,
+                               B_ptr.data().get(),
+                               ldb,
+                               A_ptr.data().get(),
+                               lda,
+                               &beta,
+                               C_ptr.data().get(),
+                               ldc,
+                               batchCount);
+  });
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               float alpha,
+                                               const float **A,
+                                               const float **B,
+                                               float beta,
+                                               float **C,
+                                               int batchCount) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  thrust::device_vector<const float *> A_ptr(A, A + batchCount);
+  thrust::device_vector<const float *> B_ptr(B, B + batchCount);
+  thrust::device_vector<float *> C_ptr(C, C + batchCount);
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<float>::GEMM_BATCH(handle,
+                              cuTransB,
+                              cuTransA,
+                              N,
+                              M,
+                              K,
+                              &alpha,
+                              B_ptr.data().get(),
+                              ldb,
+                              A_ptr.data().get(),
+                              lda,
+                              &beta,
+                              C_ptr.data().get(),
+                              ldc,
+                              batchCount);
+  });
+}
+
 template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,

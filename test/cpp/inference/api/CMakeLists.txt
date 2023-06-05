@@ -2,15 +2,17 @@
 # in Linux, c_api test cant do like this or graph_to_program register more than once.
 # Both Windows and Linux can only use paddle_inference_c, but this will increase size
 # of build folder by 30G.
+set(inference_api_tester_deps paddle_inference_api analysis_config)
+
 cc_test(
   test_paddle_inference_api
   SRCS api_tester.cc
-  DEPS paddle_inference_api)
+  DEPS ${inference_api_tester_deps})
 
 cc_test(
   inference_api_helper_test
   SRCS helper_test.cc
-  DEPS paddle_inference_api)
+  DEPS ${inference_api_tester_deps})
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
@@ -127,7 +129,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       EXTRA_DEPS
       paddle_inference_shared
       python
-      pybind
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -142,7 +143,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       EXTRA_DEPS
       paddle_inference_shared
       python
-      pybind
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -465,7 +465,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${ERNIE_INSTALL_DIR}/model
     --infer_data=${ERNIE_INSTALL_DIR}/data.txt
@@ -512,7 +511,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -525,7 +523,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -581,7 +578,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${DENSEBOX_INSTALL_DIR}/model
     --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
@@ -1178,7 +1174,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
   inference_analysis_test(
@@ -1188,7 +1183,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     paddle_inference_shared
     python
-    pybind
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1214,7 +1208,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
     python
-    pybind
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
   if(WIN32)
@@ -1248,7 +1241,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       EXTRA_DEPS
       ${INFERENCE_C_EXTRA_DEPS}
       python
-      pybind
       ARGS
       --infer_model=${MOBILENET_INSTALL_DIR}/model)
     if(WIN32)
@@ -1333,7 +1325,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
     python
-    pybind
     ARGS
     --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
   if(WIN32)
@@ -1367,7 +1358,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   cc_test(
     paddle_infer_api_errors_test
     SRCS paddle_infer_api_errors_tester.cc
-    DEPS paddle_inference_api)
+    DEPS ${inference_api_tester_deps})
 
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_resnext_test PROPERTIES TIMEOUT 300)
@@ -1496,7 +1487,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${RESNET50_MODEL_DIR})
   endif()
 
-  set(inference_deps ${analysis_deps} paddle_inference_api analysis
+  set(inference_deps ${analysis_deps} ${inference_api_tester_deps} analysis
                      naive_executor ${GLOB_PASS_LIB})
 
   if(WITH_TESTING)
@@ -1543,7 +1534,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       analysis_predictor
       benchmark
       ${inference_deps}
-      pybind
       ARGS
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()
