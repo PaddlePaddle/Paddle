@@ -4103,6 +4103,7 @@ create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
+    enable_cinn=True,
     rev_comp_rtol=1e-2,
     rev_comp_atol=1e-2,
     cinn_rtol=1e-2,
