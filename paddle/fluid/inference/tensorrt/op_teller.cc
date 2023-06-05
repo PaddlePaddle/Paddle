@@ -87,7 +87,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool with_dynamic_shape = false) override {
     const std::string op_type = desc.Type();
     // do not support the op which is labeled the `skip_quant`
-    LOG(INFO) << op_type;
     if ((desc.HasAttr("namescope") &&
          PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
              "/skip_quant_2/") ||
