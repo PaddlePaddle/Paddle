@@ -2863,7 +2863,7 @@ Predictor::Predictor(const Config &config) {
                       "and it falls back to use Paddle Inference.";
     } else if (!paddle::CheckConvertToONNX(config)) {
       LOG(WARNING)
-          << "Paddle2ONNX do't support convert the Model， fall back to using "
+          << "Paddle2ONNX do't support convert the Model, fall back to using "
              "Paddle Inference.";
     } else {
       predictor_ =
