@@ -1088,8 +1088,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     cuda_version = paddle.version.cuda()
     if cuda_version is None or cuda_version == 'False' or int(cuda_version.split('.')[0]) < 11:
-        print("sparse.pca_lowrank API only support CUDA 11.x")
-        return None, None, None
+        raise ValueError('sparse.pca_lowrank API only support CUDA 11.x')
 
     (m, n) = x.shape[-2:]
 
