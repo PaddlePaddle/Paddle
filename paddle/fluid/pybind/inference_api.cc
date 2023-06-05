@@ -772,6 +772,7 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const paddle_infer::XpuConfig &xpu_config) {
              self.SetXpuConfig(xpu_config);
            })
+      .def("xpu_config", &AnalysisConfig::xpu_config)
       .def("enable_custom_device",
            &AnalysisConfig::EnableCustomDevice,
            py::arg("device_type"),

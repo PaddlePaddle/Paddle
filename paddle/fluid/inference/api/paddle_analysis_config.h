@@ -80,7 +80,9 @@ struct PD_INFER_DECL XpuConfig {
   // Select which xpu device to run model.
   int device_id{0};
 
-  // Available l3 size
+  // Available l3 size (Byte)
+  // For kunlun1, max l3_size is 16773120 Byte
+  // For kunlun2, max l3_size is 67104768 Byte
   size_t l3_size{0};
   // If l3_ptr is not nullptr, it is used as l3 buffer.
   // If l3_ptr is nullptr, new l3 buffer will be created.
@@ -125,7 +127,7 @@ struct PD_INFER_DECL XpuConfig {
   // Which method to optimize softmax in transformer structure. Optional values
   // are 0,1,2. Note: Paddle-Lite only.
   int transformer_softmax_optimize_level{0};
-  // Whather enable adaptive_seqlen optimize on transformer encoder.
+  // Whether enable adaptive_seqlen optimize on transformer encoder.
   // Note: Paddle-Lite only.
   bool transformer_encoder_adaptive_seqlen{true};
 
@@ -138,7 +140,7 @@ struct PD_INFER_DECL XpuConfig {
   // For kunlun2, optional values are 0(per_tensor) or non-zero(every_16).
   // Note: Paddle-Lite only.
   int quant_post_dynamic_activation_method{0};
-  // Preprocess weight to quant_post_dynamic_weight_precision  if use dynamic
+  // Preprocess weight to quant_post_dynamic_weight_precision if use dynamic
   // post-quantization. Optional values is 0,1,2.
   // * If 0, preprocess weight to int8.
   // * If 1, preprocess weight to int16.
@@ -375,6 +377,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param config Configs for xpu. See XpuConfig for more details.
   ///
   void SetXpuConfig(const XpuConfig& config);
+
+  ///
+  /// \brief Get configs of xpu
+  ///
+  /// \return XpuConfig The configs of xpu.
+  ///
+  XpuConfig xpu_config() { return xpu_config_; }
 
   ///
   /// \brief configs of IPU

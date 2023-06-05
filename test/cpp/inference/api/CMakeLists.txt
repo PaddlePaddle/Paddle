@@ -1475,6 +1475,15 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(WITH_XPU)
     inference_analysis_test(
+      xpu_config_resnet50_test
+      SRCS
+      xpu_config_resnet50_test.cc
+      EXTRA_DEPS
+      paddle_inference_shared
+      python
+      ARGS
+      --infer_model=${RESNET50_MODEL_DIR})
+    inference_analysis_test(
       xpu_runtime_config_resnet50_test
       SRCS
       xpu_runtime_config_resnet50_test.cc
