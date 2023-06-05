@@ -161,22 +161,14 @@
   backward : concat_grad
 
 - op : conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
   kernel :
     func : conv2d_transpose
+    data_type : x
   backward : conv2d_transpose_grad
-
-- op : conv3d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : ConvTransposeInferMeta
-  kernel :
-    func : conv3d_transpose
-  backward : conv3d_transpose_grad
 
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)
@@ -215,12 +207,13 @@
   backward : deformable_conv_grad
 
 - op : depthwise_conv2d_transpose
-  args : (Tensor x, Tensor filter, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
   infer_meta :
     func : Conv2dTransposeInferMeta
   kernel :
     func : depthwise_conv2d_transpose
+    data_type : x
   backward : depthwise_conv2d_transpose_grad
 
 - op : distribute_fpn_proposals

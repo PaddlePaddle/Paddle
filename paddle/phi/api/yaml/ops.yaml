@@ -484,6 +484,16 @@
     func : conv3d
   backward : conv3d_grad
 
+- op : conv3d_transpose
+  args : (Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : ConvTransposeInferMeta
+  kernel :
+    func : conv3d_transpose
+    data_type : x
+  backward : conv3d_transpose_grad
+
 - op : cos
   args : (Tensor x)
   output : Tensor
