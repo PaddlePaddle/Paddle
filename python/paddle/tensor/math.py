@@ -5733,10 +5733,10 @@ def polygamma(x, n, name=None):
     r"""
     Calculates the polygamma of the given input tensor, element-wise.
 
-    Equation:
-        ..  math::
-
-            \Phi^n(x) = \frac{d^n}{dx^n} [\ln(\Gamma(x))]
+    The equation is:
+    
+    .. math::
+        \Phi^n(x) = \frac{d^n}{dx^n} [\ln(\Gamma(x))]
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
