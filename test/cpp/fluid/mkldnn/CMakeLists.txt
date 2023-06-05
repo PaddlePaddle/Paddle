@@ -36,8 +36,7 @@ cc_test_old(
   test_mkldnn_op_nhwc.cc
   DEPS
   op_registry
-  pool_op
-  shape_op
+  generated_static_op
   crop_op
   activation_op
   generated_op

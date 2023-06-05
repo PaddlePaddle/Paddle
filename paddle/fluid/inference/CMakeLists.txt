@@ -33,7 +33,7 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-set(utils_modules pretty_log string_helper benchmark)
+set(utils_modules pretty_log string_helper benchmark utf8proc)
 
 add_subdirectory(api)
 

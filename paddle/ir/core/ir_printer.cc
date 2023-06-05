@@ -233,7 +233,7 @@ class IRPrinter : public BasicIRPrinter {
   std::unordered_map<const void*, std::string> aliases_;
 };
 
-void Program::print(std::ostream& os) {
+void Program::Print(std::ostream& os) {
   IRPrinter printer(os);
   printer.PrintProgram(this);
 }
@@ -243,7 +243,7 @@ void Operation::Print(std::ostream& os) {
   printer.PrintOperation(this);
 }
 
-void Type::print(std::ostream& os) const {
+void Type::Print(std::ostream& os) const {
   BasicIRPrinter printer(os);
   printer.PrintType(*this);
 }

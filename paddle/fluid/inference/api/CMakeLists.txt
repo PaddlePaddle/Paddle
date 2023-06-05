@@ -17,12 +17,6 @@ if(WITH_MKLDNN)
 endif()
 
 cc_library(
-  analysis_config
-  SRCS analysis_config.cc
-  DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
-       utf8proc)
-
-cc_library(
   paddle_infer_contrib
   SRCS paddle_infer_contrib.cc
   DEPS zero_copy_tensor)
@@ -30,8 +24,8 @@ cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 set(paddle_inference_api_deps
     reset_tensor_array
-    analysis_config
     paddle_infer_contrib
+    paddle_pass_builder
     zero_copy_tensor
     trainer_desc_proto
     custom_operator
@@ -57,12 +51,18 @@ else()
     DEPS executor paddle_inference_io ${paddle_inference_api_deps})
 endif()
 
+cc_library(
+  analysis_config
+  SRCS analysis_config.cc
+  DEPS ${mkldnn_quantizer_cfg} paddle_inference_api lod_tensor
+       paddle_pass_builder table_printer utf8proc)
+
 if(WIN32)
   target_link_libraries(paddle_inference_api phi)
 endif()
 
 set(inference_deps ${analysis_deps} paddle_inference_api analysis
-                   naive_executor ${GLOB_PASS_LIB})
+                   analysis_config naive_executor ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)

@@ -1254,7 +1254,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
   auto tensor_list = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   for (auto& tensor : tensor_list) {
     VLOG(6) << "set master_grad for tensor: " << tensor.name();
-    if (!egr::egr_utils_api::IsLeafTensor(tensor)) {
+    if (!egr::EagerUtils::IsLeafTensor(tensor)) {
       continue;
     }
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(tensor);

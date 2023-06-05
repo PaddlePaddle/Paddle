@@ -1,4 +1,4 @@
-if(NOT WITH_NEWIR)
+if(NOT WITH_IR)
   return()
 endif()
 
