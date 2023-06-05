@@ -38,10 +38,16 @@ class NCCLCommContext final : public CommContext {
                  int root,
                  gpuStream_t stream);
   void Send(const phi::DenseTensor& in_tensor,
+            const int64_t& count,
             const int& peer,
-            gpuStream_t stream);
+            gpuStream_t stream,
+            ncclComm_t comm = nullptr);
 
-  void Recv(phi::DenseTensor* out_tensor, const int& peer, gpuStream_t stream);
+  void Recv(phi::DenseTensor* out_tensor,
+            const int64_t& count,
+            const int& peer,
+            gpuStream_t stream,
+            ncclComm_t comm = nullptr);
 
   void ReduceScatter(phi::DenseTensor* out_tensor,
                      const phi::DenseTensor& in_tensor,

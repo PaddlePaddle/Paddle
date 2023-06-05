@@ -38,7 +38,7 @@ def alltoall_new(tensor, out, group=None):
             'int32',
             'int64',
             'int8',
-            'uint8', 
+            'uint8',
             'bool',
             'uint16',
         ],
@@ -48,9 +48,7 @@ def alltoall_new(tensor, out, group=None):
     helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
 
-    out = helper.create_variable_for_type_inference(
-            dtype=tensor.dtype
-            )
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
 
     helper.append_op(
         type=op_type,
@@ -60,6 +58,7 @@ def alltoall_new(tensor, out, group=None):
             'ring_id': ring_id,
         },
     )
+
 
 class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
@@ -88,6 +87,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
             tout_data = []
             alltoall_new(tindata, tout_data)
             return tout_data
+
 
 if __name__ == "__main__":
     runtime_main(TestCollectiveAllToAllAPI, "alltoall")
