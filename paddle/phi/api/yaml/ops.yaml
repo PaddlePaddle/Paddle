@@ -1548,6 +1548,16 @@
     func : multi_dot
   backward : multi_dot_grad
 
+- op : multiclass_nms3
+  args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
+  output : Tensor(out), Tensor(index), Tensor(nms_rois_num)
+  infer_meta :
+    func : MultiClassNMSInferMeta
+  kernel :
+    func : multiclass_nms3
+    data_type : scores
+  optional : rois_num, nms_rois_num
+
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
   output : Tensor(out)
