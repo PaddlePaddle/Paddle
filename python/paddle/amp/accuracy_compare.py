@@ -33,6 +33,7 @@ def is_allclose(actual, expected, atol=1e-2, rtol=1e-2):
 
 class TensorInfo:
     def __init__(self):
+        self.device = None
         self.op_type = None
         self.tensor_name = None
         self.dtype = None
@@ -45,7 +46,8 @@ class TensorInfo:
         self.num_zero = None
 
     def __str__(self):
-        return "[TensorInfo] op_type={}, tensor_name={}, dtype={}, numel={}, has_inf={}, has_nan={}, num_zero={}, max_value={:.6f}, min_value={:.6f}, mean_value={:.6f}".format(
+        return "[TensorInfo] device={}, op_type={}, tensor_name={}, dtype={}, numel={}, num_inf={}, num_nan={}, num_zero={}, max_value={:.6f}, min_value={:.6f}, mean_value={:.6f}".format(
+            self.device,
             self.op_type,
             self.tensor_name,
             self.dtype,
@@ -73,6 +75,8 @@ class TensorInfo:
                 words = word_str.split("=")
                 if words[0] == "op":
                     self.op_type = words[1]
+                elif words[0] == "device":
+                    self.device = words[1]
                 elif words[0] == "tensor":
                     self.tensor_name = words[1]
                 elif words[0] == "dtype":
@@ -380,8 +384,8 @@ class ExcelWriter:
             "max_value": 16,
             "min_value": 16,
             "mean_value": 16,
-            "has_inf": 8,
-            "has_nan": 8,
+            "num_inf": 8,
+            "num_nan": 8,
         }
         title_names = ["op_type", "tensor_name", "numel", "infinite"]
         if self.log_fp16_dir is None:
@@ -412,8 +416,8 @@ class ExcelWriter:
                     "min_value",
                     "mean_value",
                     "num_zero",
-                    "has_inf",
-                    "has_nan",
+                    "num_inf",
+                    "num_nan",
                 ]
             )
         else:
@@ -435,8 +439,8 @@ class ExcelWriter:
                     "min_value",
                     "mean_value",
                     "num_zero",
-                    "has_inf",
-                    "has_nan",
+                    "num_inf",
+                    "num_nan",
                     "max_value",
                     "min_value",
                     "mean_value",
@@ -572,39 +576,45 @@ class ExcelWriter:
         print(f"-- OP Types produce infinite outputs: {infinite_op_types}")
 
 
+def parse_lines(lines, specified_op_list=None):
+    tensor_info_list = []
+
+    for i in range(len(lines)):
+        if i % 10 == 0:
+            print(
+                f"-- Processing {i:-8d} / {len(lines):-8d} line",
+                end="\r",
+            )
+        line = lines[i]
+        if "[PRECISION]" in line:
+            tensor_info = TensorInfo()
+            tensor_info.init_from_string(line)
+            if (
+                tensor_info.tensor_name is not None
+                and tensor_info.tensor_name != ""
+            ):
+                has_tensor_name = True
+            if (
+                specified_op_list is None
+                or tensor_info.op_type in specified_op_list
+            ):
+                tensor_info_list.append(tensor_info)
+            # print(tensor_info)
+    return tensor_info_list
+
+
 def parse_log(log_dir, filename, specified_op_list=None):
     if log_dir is None or filename is None:
         return None
 
     complete_filename = log_dir + "/" + filename
-    tensor_info_list = []
+    tensor_info_list = None
     has_tensor_name = False
 
     try:
         with open(complete_filename, 'r') as f:
             lines = f.readlines()
-            for i in range(len(lines)):
-                if i % 10 == 0:
-                    print(
-                        f"-- Processing {i:-8d} / {len(lines):-8d} line",
-                        end="\r",
-                    )
-                # [op=adamw] [tensor=encoder_layer_20_multi_head_att_output_fc_0.w_0], numel: 294912, max: 0.005773, min: -0.005774
-                line = lines[i]
-                if "[PRECISION]" in line:
-                    tensor_info = TensorInfo()
-                    tensor_info.init_from_string(line)
-                    if (
-                        tensor_info.tensor_name is not None
-                        and tensor_info.tensor_name != ""
-                    ):
-                        has_tensor_name = True
-                    if (
-                        specified_op_list is None
-                        or tensor_info.op_type in specified_op_list
-                    ):
-                        tensor_info_list.append(tensor_info)
-                    # print(tensor_info)
+            tensor_info_list = parse_lines(lines, specified_op_list)
     except FileNotFoundError:
         print("the file ", complete_filename, "is not found")
         return None, has_tensor_name
