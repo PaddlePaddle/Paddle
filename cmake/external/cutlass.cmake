@@ -25,6 +25,7 @@ include_directories(
   "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
+add_definitions("-DSPCONV_WITH_CUTLASS=0")
 
 if(NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)
