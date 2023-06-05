@@ -23,6 +23,7 @@ include_directories("${CUTLASS_SOURCE_DIR}/include/")
 include_directories("${CUTLASS_SOURCE_DIR}/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
+add_definitions("-DSPCONV_WITH_CUTLASS=0")
 
 if(NOT PYTHON_EXECUTABLE)
   find_package(PythonInterp REQUIRED)

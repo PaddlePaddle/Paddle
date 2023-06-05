@@ -32,7 +32,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#include "paddle/fluid/interface/infershape.h"
+#include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
@@ -44,7 +44,7 @@ class OperationTest : public ir::Op<OperationTest, InferShapeInterface> {
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {}
   static void InferShape(phi::InferMetaContext *infer_meta) {
