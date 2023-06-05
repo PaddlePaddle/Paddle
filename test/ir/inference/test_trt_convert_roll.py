@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
 from functools import partial
 from typing import Any, Dict, List
@@ -33,7 +34,7 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        self.trt_param.workspace_size = 1 << 30
+        self.trt_param.workspace_size = random.randint(1024, 1 << 30)
 
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 56, 56, 192]).astype(np.float32)
