@@ -33,6 +33,8 @@ PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sigmoid, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sigmoid_grad, CPU, ALL_LAYOUT);
 
+using eager_test::CreateTensorWithValue;
+
 namespace egr {
 
 paddle::Tensor hook_function(const paddle::Tensor& t) {
@@ -67,13 +69,12 @@ void test_sigmoid(bool is_remove_gradient_hook) {
   paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
 
   VLOG(6) << "Make paddle::Tensor";
-  paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           0.0,
-                                           true);
+  paddle::Tensor tensor = CreateTensorWithValue(ddim,
+                                                paddle::platform::CPUPlace(),
+                                                phi::DataType::FLOAT32,
+                                                phi::DataLayout::NCHW,
+                                                0.0,
+                                                true);
 
   VLOG(6) << "Make ReduceHook function";
   auto reduce_hook = [&](void) -> void {
@@ -132,8 +133,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::Tensor X =
-      egr_utils_api::CreateTensorWithValue(ddimX,
+  paddle::Tensor X = CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -142,8 +142,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({4, 16});
-  paddle::Tensor Y =
-      egr_utils_api::CreateTensorWithValue(ddimY,
+  paddle::Tensor Y = CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -196,8 +195,7 @@ void test_matmul(bool is_remove_gradient_hook) {
 
   // 1. Prepare Input
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::Tensor X =
-      egr_utils_api::CreateTensorWithValue(ddimX,
+  paddle::Tensor X = CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -206,8 +204,7 @@ void test_matmul(bool is_remove_gradient_hook) {
   egr_utils_api::RetainGradForTensor(X);
 
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
-  paddle::Tensor Y =
-      egr_utils_api::CreateTensorWithValue(ddimY,
+  paddle::Tensor Y = CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -259,8 +256,7 @@ void test_backward_final_hooks() {
 
   VLOG(6) << "Make paddle::Tensor";
   paddle::framework::DDim ddimX = phi::make_ddim({4, 16});
-  paddle::Tensor X =
-      egr_utils_api::CreateTensorWithValue(ddimX,
+  paddle::Tensor X = CreateTensorWithValue(ddimX,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -269,8 +265,7 @@ void test_backward_final_hooks() {
   paddle::framework::DDim ddimY = phi::make_ddim({16, 20});
   egr_utils_api::RetainGradForTensor(X);
 
-  paddle::Tensor Y =
-      egr_utils_api::CreateTensorWithValue(ddimY,
+  paddle::Tensor Y = CreateTensorWithValue(ddimY,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
