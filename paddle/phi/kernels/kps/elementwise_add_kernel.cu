@@ -114,11 +114,10 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-  AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
   if (x.dtype() == y.dtype()) {
     AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
   } else {
-    VLOG(2) << "x dtype:" << x.dtype() << " != y dtype:" << y.dtype();
+    VLOG(6) << "x dtype:" << x.dtype() << " != y dtype:" << y.dtype();
     PADDLE_ENFORCE_EQ(
         x.dtype(),
         phi::DataType::FLOAT32,
