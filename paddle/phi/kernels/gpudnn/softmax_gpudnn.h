@@ -567,7 +567,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
 
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
-    // tmp_data stores the data obtained by exp(src_data - max)
+    // exp_data stores the data obtained by exp(src_data - max)
     kps::ElementwiseUnary<AccT, AccT, kNumElems, 1, SubExpFunctor<AccT>>(
         &exp_data[i][0], &sub_data[i][0], SubExpFunctor<AccT>(max[i]));
   }
@@ -595,7 +595,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
                             1,
                             LogSoftmaxForwardFunctor<AccT>>(
           &inout_data[i][0],
-          &exp_data[i][0],
+          &sub_data[i][0],
           LogSoftmaxForwardFunctor<AccT>(max[i], sum[i]));
     } else {
       kps::ElementwiseUnary<AccT, T, kNumElems, 1, DivSumFunctor<AccT>>(
@@ -1276,18 +1276,18 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       if (!std::is_same<T, float>::value && !std::is_same<T, double>::value) {
         vec_size = (dim % 4 == 0) ? 4 : ((dim % 2 == 0) ? 2 : 1);
       }
-      int batches_per_warp = 1;
-      int warps_per_block = 1;
-      int sm_count = dev_ctx.GetSMCount();
-      if (N <= 4 * sm_count) {
-        warps_per_block = 1;
-        batches_per_warp = 1;
-      } else {
-        // use 128 threads per block to maximimize gpu utilization
-        int threads_per_block = 128;
-        warps_per_block = (threads_per_block / warp_size);
-        batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
-      }
+      // int batches_per_warp = 1;
+      // int warps_per_block = 1;
+      // int sm_count = dev_ctx.GetSMCount();
+      // if (N <= 4 * sm_count) {
+      //   warps_per_block = 1;
+      //   batches_per_warp = 1;
+      // } else {
+      // use 128 threads per block to maximimize gpu utilization
+      int threads_per_block = 128;
+      int warps_per_block = (threads_per_block / warp_size);
+      int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
+      // }
 
       int batches_per_block = warps_per_block * batches_per_warp;
       IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
@@ -1380,18 +1380,18 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
       int dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
 
-      int batches_per_warp = 1;
-      int warps_per_block = 1;
-      int sm_count = dev_ctx.GetSMCount();
-      if (N <= 4 * sm_count) {
-        warps_per_block = 1;
-        batches_per_warp = 1;
-      } else {
-        // use 128 threads per block to maximimize gpu utilization
-        int threads_per_block = 128;
-        warps_per_block = (threads_per_block / warp_size);
-        batches_per_warp = (dim_ceil <= 128) ? 2 : 1;
-      }
+      // int batches_per_warp = 1;
+      // int warps_per_block = 1;
+      // int sm_count = dev_ctx.GetSMCount();
+      // if (N <= 4 * sm_count) {
+      //   warps_per_block = 1;
+      //   batches_per_warp = 1;
+      // } else {
+      // use 128 threads per block to maximimize gpu utilization
+      int threads_per_block = 128;
+      int warps_per_block = (threads_per_block / warp_size);
+      int batches_per_warp = (dim_ceil <= 128) ? 2 : 1;
+      // }
 
       int batches_per_block = warps_per_block * batches_per_warp;
       int blocks = (N + batches_per_block - 1) / batches_per_block;
