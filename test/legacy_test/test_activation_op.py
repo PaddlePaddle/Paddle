@@ -112,6 +112,8 @@ class TestExpFp32_Prim(OpTest):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+        self.if_enable_cinn()
+        self.convert_input_output()
 
     def test_check_output(self):
         self.check_output()
@@ -124,6 +126,12 @@ class TestExpFp32_Prim(OpTest):
 
     def init_shape(self):
         self.shape = [12, 17]
+
+    def if_enable_cinn(self):
+        pass
+
+    def convert_input_output(self):
+        pass
 
 
 class TestExpFp64_Prim(TestExpFp32_Prim):
@@ -266,9 +274,6 @@ class TestSigmoid_ZeroDim(TestSigmoid):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
@@ -327,6 +332,7 @@ class TestSilu(TestActivation):
         self.public_python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -338,6 +344,9 @@ class TestSilu(TestActivation):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -481,6 +490,7 @@ class TestTanh(TestActivation, TestParameter):
         self.public_python_api = paddle.tanh
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -499,6 +509,9 @@ class TestTanh(TestActivation, TestParameter):
         # when using and not using inplace. Therefore, set dtype as float32
         # for now.
         self.dtype = np.float32
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestTanh_ZeroDim(TestTanh):
@@ -1400,9 +1413,6 @@ class TestAbs_ZeroDim(TestAbs):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestCeil(TestActivation):
     def setUp(self):
@@ -1490,6 +1500,7 @@ class TestCos(TestActivation):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1505,6 +1516,9 @@ class TestCos(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestCos_ZeroDim(TestCos):
@@ -1626,6 +1640,7 @@ class TestSin(TestActivation, TestParameter):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1641,6 +1656,9 @@ class TestSin(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestSin_ZeroDim(TestSin):
@@ -1799,6 +1817,7 @@ class TestRelu(TestActivation):
         self.public_python_api = paddle.nn.functional.relu
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1817,6 +1836,9 @@ class TestRelu(TestActivation):
 
     def test_check_output(self):
         self.check_output(check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestRelu_ZeroDim(TestRelu):
@@ -2069,6 +2091,7 @@ class TestGelu(TestActivation):
         np.random.seed(2048)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
+        self.if_enable_cinn()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -2081,6 +2104,9 @@ class TestGelu(TestActivation):
         # Cumulative error occurs between comp and cinn, so that we also set cinn_rtol to 1e-8 as rev_comp_rtol = 1e-8
         self.cinn_rtol = 1e-8
         self.cinn_atol = 1e-8
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -2726,6 +2752,7 @@ class TestLog(TestActivation):
         self.public_python_api = paddle.log
         self.init_dtype()
         self.init_shape()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -2734,6 +2761,9 @@ class TestLog(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -3975,6 +4005,7 @@ create_test_act_fp16_class(TestRelu, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
+    enable_cinn=True,
     rev_comp_rtol=1e-3,
     rev_comp_atol=1e-3,
     cinn_rtol=1e-3,
@@ -4103,7 +4134,6 @@ create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
-    enable_cinn=True,
     rev_comp_rtol=1e-2,
     rev_comp_atol=1e-2,
     cinn_rtol=1e-2,
