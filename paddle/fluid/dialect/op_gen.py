@@ -101,6 +101,7 @@ CC_FILE_TEMPLATE = """#include "{h_file}"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
+
 {input}
 """
 
@@ -921,6 +922,7 @@ def OpGenerator(
             op_interfaces_str = ""
             if len(op_interfaces) > 0:
                 op_interfaces_str = "," + ",".join(op_interfaces)
+
             op_traits_str = ""
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
