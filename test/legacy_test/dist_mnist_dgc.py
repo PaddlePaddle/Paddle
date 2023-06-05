@@ -14,6 +14,7 @@
 
 from functools import reduce
 
+import nets
 from legacy_test.test_dist_base import (
     TestDistRunnerBase,
     _insert_comm_op,
@@ -22,7 +23,6 @@ from legacy_test.test_dist_base import (
 
 import paddle
 from paddle import fluid
-import nets
 
 paddle.enable_static()
 
