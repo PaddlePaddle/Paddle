@@ -167,7 +167,9 @@ def _get_download(url, fullname):
     # using requests.get method
     fname = osp.basename(fullname)
     try:
-        with httpx.stream("GET", url) as req:
+        with httpx.stream(
+            "GET", url, timeout=None, follow_redirects=True
+        ) as req:
             if req.status_code != 200:
                 raise RuntimeError(
                     "Downloading from {} failed with code "
