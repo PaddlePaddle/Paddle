@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/dialect/pd_attribute_storage.h"
+#include "paddle/fluid/ir/dialect/pd_attribute_storage.h"
 #include "paddle/ir/core/attribute.h"
 
 namespace paddle {

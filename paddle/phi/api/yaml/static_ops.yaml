@@ -100,6 +100,19 @@
     func : broadcast
     param: [x, root]
 
+- op : conv2d_transpose
+  args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel :
+    func : conv2d_transpose
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+    data_type : x
+  optional : bias
+  backward : conv2d_transpose_grad
+
 - op : decode_jpeg
   args : (Tensor x, str mode = "unchanged")
   output : Tensor(out)
@@ -119,6 +132,19 @@
     func : deformable_conv
     data_type : x
   backward : deformable_conv_grad
+
+- op : depthwise_conv2d_transpose
+  args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel :
+    func : depthwise_conv2d_transpose
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+    data_type : x
+  optional : bias
+  backward : depthwise_conv2d_transpose_grad
 
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)

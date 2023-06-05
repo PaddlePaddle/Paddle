@@ -32,7 +32,7 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#include "paddle/fluid/interface/infershape.h"
+#include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
