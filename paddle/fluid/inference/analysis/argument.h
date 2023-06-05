@@ -335,7 +335,7 @@ struct Argument {
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(xpu_lite_l3_locked, XpuLiteL3Locked, bool);
   DECL_ARGUMENT_FIELD(xpu_lite_enable_multi_stream,
-                      XpuLiteEnableMultiStream_,
+                      XpuLiteEnableMultiStream,
                       bool);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);

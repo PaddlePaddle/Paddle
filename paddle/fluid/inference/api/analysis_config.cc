@@ -175,6 +175,7 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                const std::string &transformer_encoder_precision,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
+#ifdef PADDLE_WITH_XPU
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
@@ -191,6 +192,10 @@ void AnalysisConfig::EnableXpu(int l3_size,
   xpu_lite_l3_locked_ = l3_locked;
   xpu_lite_enable_multi_stream_ = enable_multi_stream;
   Update();
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "To use XPU inference, please compile with option 'WITH_XPU' first."));
+#endif
 }
 
 void AnalysisConfig::SetXpuDeviceId(int device_id) {
@@ -203,6 +208,16 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 }
 
 void AnalysisConfig::SetXpuConfig(const XpuConfig &config) {
+  PADDLE_ENFORCE(use_xpu_,
+                 platform::errors::PreconditionNotMet(
+                     "Should call EnableXpu before SetXpuConfig."));
+  PADDLE_ENFORCE_LE(
+      config.l3_autotune_size,
+      config.l3_size,
+      phi::errors::InvalidArgument(
+          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
+          config.l3_autotune_size,
+          config.l3_size));
   xpu_config_ = config;
   Update();
 }

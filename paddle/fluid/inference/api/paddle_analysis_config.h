@@ -117,13 +117,10 @@ struct PD_INFER_DECL XpuConfig {
   // Note: Paddle-Lite only.
   bool fc_autotune_file_writeback{false};
 
-  // Gemm compute precision. Optional values are -1,0,1,2.
-  // * If -1, int8 for int8 model, int16 for fp32/fp16 model, int31 for fp32
-  // model(should set quant_post_dynamic_weight_precision  to 2).
-  // * If 0, use int8 gemm compute precision.
-  // * If 1, use int16 gemm compute precision.
-  // * If 2, use int31 gemm compute precision. Note: Paddle-Lite only.
-  int gemm_compute_precision{-1};
+  // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
+  // Note: "gemm_compute_precision" has no effect on quanted ops of quant model
+  // Note: Paddle-Lite only.
+  int gemm_compute_precision{1};
   // Which method to optimize softmax in transformer structure. Optional values
   // are 0,1,2. Note: Paddle-Lite only.
   int transformer_softmax_optimize_level{0};
@@ -345,7 +342,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on XPU.
   ///
   /// \param l3_workspace_size The size of the video memory allocated by the l3
-  ///         cache, the maximum is 16M.
+  ///       cache, the maximum is 16M.
   /// \param l3_locked Whether the allocated L3 cache can be locked. If false,
   ///       it means that the L3 cache is not locked, and the allocated L3
   ///       cache can be shared by multiple models, and multiple models
@@ -360,8 +357,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param transformer_encoder_precision Calculation accuracy of multi_encoder
   /// \param transformer_encoder_adaptive_seqlen Is the input of multi_encoder
-  /// variable length \param enable_multi_stream Whether to enable the multi
-  /// stream of xpu.
+  ///       variable length
+  /// \param enable_multi_stream Whether to enable the multi
+  ///       stream of xpu.
   ///
   void EnableXpu(int l3_size = 0xfffc00,
                  bool l3_locked = false,
@@ -1269,8 +1267,8 @@ struct PD_INFER_DECL AnalysisConfig {
   // XPU related.
   bool use_xpu_{false};
   XpuConfig xpu_config_;
-  bool xpu_lite_l3_locked_;
-  bool xpu_lite_enable_multi_stream_;
+  bool xpu_lite_l3_locked_{false};
+  bool xpu_lite_enable_multi_stream_{false};
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};
