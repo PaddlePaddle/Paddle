@@ -243,8 +243,13 @@ class FusedCommBuffer:
             self._comm_grads()
 
     @imperative_base.no_grad
-    def _comm_grads(self):
-        assert self._all_params_checked_in
+    def comm_grads(self):
+        assert self._all_params_checked_in, (
+            "Not all params checked in."
+            "Parameter number: {}, Check-in number: {}".format(
+                len(self._params), self._params_checked_in
+            )
+        )
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
@@ -258,7 +263,6 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
-
         self._task = task
 
     @imperative_base.no_grad
