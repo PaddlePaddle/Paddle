@@ -72,8 +72,6 @@ void build_scope(ir::Block* block,
 
     if (out_num > 0) {
       for (int i = 0; i < out_num; ++i) {
-        VLOG(6) << "output " << (*it)->GetResultByIndex(i).impl();
-
         ir::Value ptr = (*it)->GetResultByIndex(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
