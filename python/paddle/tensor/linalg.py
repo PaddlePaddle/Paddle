@@ -1978,7 +1978,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             positive number. The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
-        center (bool, optional): if True, center the input tensor, otherwise,
+        center (bool, optional): if True, center the input tensor.
             Default value is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.

@@ -938,7 +938,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             The data type of x should be float32 or float64.
         q (int, optional): a slightly overestimated rank of :math:`X`.
             Default value is :math:`q=min(6,N,M)`.
-        center (bool, optional): if True, center the input tensor, otherwise,
+        center (bool, optional): if True, center the input tensor.
             Default value is True.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -963,7 +963,13 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             else:
                 sparse_x = dense_x.to_sparse_csr()
 
-            U, S, V = paddle.sparse.pca_lowrank(sparse_x)
+            cuda_version = paddle.version.cuda()
+            if cuda_version is None or cuda_version == 'False' or int(cuda_version.split('.')[0]) < 11:
+                print("sparse.pca_lowrank API only support CUDA 11.x")
+                U, S, V = None, None, None
+            else:
+                U, S, V = paddle.sparse.pca_lowrank(sparse_x)
+
             print(U)
             # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
             #        [[ 0.02206024,  0.53170082, -0.22392168, -0.48450657,  0.65720625],
@@ -1079,6 +1085,11 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     if not x.is_sparse():
         raise ValueError('Input must be sparse, but got dense')
+
+    cuda_version = paddle.version.cuda()
+    if cuda_version is None or cuda_version == 'False' or int(cuda_version.split('.')[0]) < 11:
+        print("sparse.pca_lowrank API only support CUDA 11.x")
+        return None, None, None
 
     (m, n) = x.shape[-2:]
 
