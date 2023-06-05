@@ -129,8 +129,6 @@ class TestCheckLayerNumerics(unittest.TestCase):
             @paddle.amp.debugging.check_layer_numerics
             def forward(self, x):
                 return x * self._w + self._b
-
-        # 示例调用
         with paddle.fluid.dygraph.guard():
             dtype = 'float32'
             x = paddle.rand([10, 2, 3], dtype=dtype)
