@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/translator/type_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 
-#include "paddle/fluid/dialect/pd_type.h"
-#include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/pd_type_storage.h"
 #include "paddle/ir/core/builtin_type.h"
 
 namespace paddle {

@@ -99,6 +99,22 @@
             gradient accumulation.
           default : "false"
 
+- op : conv2d_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+    - checkpoint : Upgrade conv2d transpose to add a new attributes [force_fp32_output, mkldnn_data_type].
+      action :
+        - add_attr : force_fp32_output
+          comment : Force BF16 kernel output FP32, only used in MKL-DNN BF16.
+          default : "false"
+        - add_attr : mkldnn_data_type
+          comment : Data type of mkldnn kernel.
+          default : "\"float32\""
+
 - op : conv3d
   version :
     - checkpoint : Upgrade conv3d, add a new attribute [use_addto].
@@ -108,6 +124,22 @@
             gradient accumulation.
           default : "false"
 
+- op : conv3d_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+
+- op : conv_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+
 - op : depthwise_conv2d
   version :
     - checkpoint : Upgrade depthwise_conv2d, add a new attribute [use_addto].
@@ -116,6 +148,14 @@
           comment : In order to support new feature (inplace addto strategy) for
             gradient accumulation.
           default : "false"
+
+- op : depthwise_conv2d_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
 
 - op : embedding
   version :

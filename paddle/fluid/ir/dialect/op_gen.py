@@ -34,10 +34,10 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/op_base.h"
-#include "paddle/fluid/dialect/utils.h"
-#include "paddle/fluid/dialect/pd_interface.h"
+#include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/pd_interface.h"
 
-#include "paddle/fluid/interface/infershape.h"
+#include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
@@ -78,8 +78,8 @@ OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()
 # String Template for cc file code gen
 # =====================================
 CC_FILE_TEMPLATE = """#include "{h_file}"
-#include "paddle/fluid/dialect/pd_type.h"
-#include "paddle/fluid/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/ir_context.h"
