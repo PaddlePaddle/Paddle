@@ -18,10 +18,9 @@ set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
 set(CUTLASS_TAG v2.11.0)
 set(CUTLASS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cutlass)
 
-include_directories("${CUTLASS_SOURCE_DIR}/src/extern_cutlass/")
-include_directories("${CUTLASS_SOURCE_DIR}/src/extern_cutlass/include/")
-include_directories(
-  "${CUTLASS_SOURCE_DIR}/src/extern_cutlass/tools/util/include/")
+include_directories("${CUTLASS_SOURCE_DIR}/")
+include_directories("${CUTLASS_SOURCE_DIR}/include/")
+include_directories("${CUTLASS_SOURCE_DIR}/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
 
@@ -58,7 +57,7 @@ add_custom_target(
   COMMAND
     ${PYTHON_EXECUTABLE} -B
     ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/gather_gemm_scatter_generator.py
-    "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
+    "${CUTLASS_SOURCE_DIR}/tools/library/scripts/"
     "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator"
     "${CMAKE_CUDA_COMPILER_VERSION}"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_gemm_operations_file}
