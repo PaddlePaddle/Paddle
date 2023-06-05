@@ -22,9 +22,8 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 PHI_DECLARE_int32(check_nan_inf_level);
-
+PHI_DECLARE_int32(check_nan_inf_stack_limit);
 namespace paddle {
 namespace framework {
 namespace details {
@@ -60,6 +59,7 @@ struct TensorCheckerVisitor {
     phi::DenseTensor stats;
     phi::DenseTensor values;
     auto file_path = GetNanPath();
+<<<<<<< HEAD
     phi::CheckNumericsKernel<T, Context>(*dev_ctx,
                                          tensor,
                                          op_type,
@@ -69,6 +69,10 @@ struct TensorCheckerVisitor {
                                          file_path,
                                          &stats,
                                          &values);
+=======
+    phi::CheckNumericsKernel<T, Context>(
+        *dev_ctx, tensor, op_type, var_name, FLAGS_check_nan_inf_stack_limit, file_path);
+>>>>>>> Update nan_inf_utils_detail.h
   }
 
   std::string op_type;
