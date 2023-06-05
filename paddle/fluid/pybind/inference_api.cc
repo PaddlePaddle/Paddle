@@ -36,6 +36,7 @@
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -1128,7 +1129,11 @@ void BindPaddleInferPredictor(py::module *m) {
       .def("clear_intermediate_tensor",
            &paddle_infer::Predictor::ClearIntermediateTensor)
       .def("register_output_hook",
-           &paddle_infer::Predictor::RegisterOutputHook);
+           py::overload_cast<const paddle_infer::OutputTensorHookFunc &>(
+               &paddle_infer::Predictor::RegisterOutputHook))
+      .def("register_output_hook_v2",
+           py::overload_cast<const paddle_infer::OutputTensorHookFunc_V2 &>(
+               &paddle_infer::Predictor::RegisterOutputHook));
 }
 
 void BindZeroCopyTensor(py::module *m) {

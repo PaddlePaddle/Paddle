@@ -35,13 +35,13 @@ ParameterConvertInterface::ParameterToVariable(ir::Parameter *parameter) {
         std::make_shared<paddle::framework::Variable>();
     phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     // Init DenseTensor
-    auto dim = parameter->type().dyn_cast<DenseTensorType>().dim();
+    auto dim = parameter->type().dyn_cast<DenseTensorType>().dims();
     phi::DenseTensorMeta meta(
         TransToPhiDataType(
             parameter->type().dyn_cast<DenseTensorType>().dtype()),
-        phi::DDim(dim.data(), dim.size()),
-        TransToPhiDataLayout(
-            parameter->type().dyn_cast<DenseTensorType>().data_layout()),
+        dim,
+
+        parameter->type().dyn_cast<DenseTensorType>().data_layout(),
         parameter->type().dyn_cast<DenseTensorType>().lod(),
         parameter->type().dyn_cast<DenseTensorType>().offset());
     tensor->set_meta(meta);
@@ -67,17 +67,13 @@ std::unique_ptr<ir::Parameter> ParameterConvertInterface::VariableToParameter(
     // Get Meta
     ir::IrContext *ctx = ir::IrContext::Instance();
     ir::Type data_type = TransToIrDataType(tensor->dtype(), ctx);
-    DenseTensorTypeStorage::Dim dims(tensor->dims().size());
-    std::copy(tensor->dims().Get(),
-              tensor->dims().Get() + tensor->dims().size(),
-              dims.data());
-    DenseTensorTypeStorage::DataLayout data_layout =
-        TransToIrDataLayout(tensor->layout());
-    DenseTensorTypeStorage::LoD lod = tensor->lod();
-    size_t offset = tensor->meta().offset;
     void *data = tensor->data();
-    ir::Type dense_tensor_type =
-        DenseTensorType::get(ctx, data_type, dims, data_layout, lod, offset);
+    ir::Type dense_tensor_type = DenseTensorType::get(ctx,
+                                                      data_type,
+                                                      tensor->dims(),
+                                                      tensor->layout(),
+                                                      tensor->lod(),
+                                                      tensor->meta().offset);
     return std::make_unique<ir::Parameter>(
         data,
         tensor->numel() * phi::SizeOf(tensor->dtype()),
@@ -116,12 +112,11 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
   DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
 
   os << "tensor<";
-  auto &dims = tensor_type.dim();
-  for (auto d : dims) {
+  for (auto d : phi::vectorize(tensor_type.dims())) {
     os << d;
     os << "x";
   }
-  tensor_type.dtype().print(os);
+  tensor_type.dtype().Print(os);
   os << ">";
 }
 

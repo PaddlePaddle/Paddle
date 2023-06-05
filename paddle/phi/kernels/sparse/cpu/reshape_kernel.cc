@@ -28,11 +28,11 @@
 namespace phi {
 namespace sparse {
 
-template <typename T, typename Context>
-void ReshapeCooKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      const phi::IntArray& shape,
-                      SparseCooTensor* out) {
+template <typename T, typename IntT, typename Context>
+void ReshapeCooCPUKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const phi::IntArray& shape,
+                         SparseCooTensor* out) {
   // TODO(OccupyMars2025): Currently, reshape is only applicable to sparse dims
   int64_t x_nnz = x.nnz();
 
@@ -48,15 +48,15 @@ void ReshapeCooKernel(const Context& dev_ctx,
   for (int i = 0; i < out_dims.size() - x.dense_dim(); ++i) {
     out_sparse_part_dims.push_back(out_dims[i]);
   }
-  DenseTensor out_indices = Empty<int64_t, Context>(
+  DenseTensor out_indices = Empty<IntT, Context>(
       dev_ctx, {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz});
   DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices
   const DenseTensor& x_indices = x.indices();
-  const auto* x_indices_data = x_indices.data<int64_t>();
-  auto* out_indices_data = out_indices.data<int64_t>();
+  const auto* x_indices_data = x_indices.data<IntT>();
+  auto* out_indices_data = out_indices.data<IntT>();
 
   const phi::DDim& x_sparse_part_strides =
       phi::stride(phi::make_ddim(x_sparse_part_dims));
@@ -73,6 +73,17 @@ void ReshapeCooKernel(const Context& dev_ctx,
       location %= out_sparse_part_strides[i];
     }
   }
+}
+
+template <typename T, typename Context>
+void ReshapeCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const phi::IntArray& shape,
+                      SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "ReshapeCooCPUKernel", ([&] {
+        ReshapeCooCPUKernel<T, data_t, Context>(dev_ctx, x, shape, out);
+      }));
 }
 
 template <typename T, typename Context>
