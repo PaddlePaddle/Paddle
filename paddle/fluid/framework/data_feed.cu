@@ -1459,7 +1459,8 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num, int te
                                                d_feature_size_list_buf_,
                                                d_feature_size_prefixsum_buf_,
                                                d_feature_list,
-                                               d_slot_list);
+                                               d_slot_list,
+                                               conf_.sage_mode);
   // num of slot feature
   int slot_num = conf_.slot_num - float_slot_num_;
   int64_t *slot_tensor_ptr_[slot_num];

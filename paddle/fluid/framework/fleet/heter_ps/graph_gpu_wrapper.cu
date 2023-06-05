@@ -997,7 +997,8 @@ int GraphGpuWrapper::get_feature_info_of_nodes(
     std::shared_ptr<phi::Allocation> &size_list,
     std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
     std::shared_ptr<phi::Allocation> &feature_list,
-    std::shared_ptr<phi::Allocation> &slot_list) {
+    std::shared_ptr<phi::Allocation> &slot_list,
+    bool sage_mode) {
   platform::CUDADeviceGuard guard(gpu_id);
   PADDLE_ENFORCE_NOT_NULL(graph_table,
                           paddle::platform::errors::InvalidArgument(
@@ -1009,7 +1010,8 @@ int GraphGpuWrapper::get_feature_info_of_nodes(
                                   size_list,
                                   size_list_prefix_sum,
                                   feature_list,
-                                  slot_list);
+                                  slot_list,
+                                  sage_mode);
 }
 
 int GraphGpuWrapper::get_float_feature_info_of_nodes(

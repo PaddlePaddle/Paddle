@@ -3073,7 +3073,8 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
     std::shared_ptr<phi::Allocation> &size_list,
     std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
     std::shared_ptr<phi::Allocation>& feature_list,
-    std::shared_ptr<phi::Allocation>& slot_list) {
+    std::shared_ptr<phi::Allocation>& slot_list,
+    bool sage_mode) {
    if (node_num == 0) {
      return 0;
    }
@@ -3086,7 +3087,8 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
      } else {
        if (FLAGS_enable_graph_multi_node_sampling) {
          all_fea_num = get_feature_info_of_nodes_all2all(gpu_id, d_nodes, node_num, size_list,
-                                           size_list_prefix_sum, feature_list, slot_list);
+                                           size_list_prefix_sum, feature_list, slot_list,
+                                           sage_mode);
        }
      }
    } else {
@@ -3104,7 +3106,8 @@ int GpuPsGraphTable::get_feature_info_of_nodes_all2all(
      std::shared_ptr<phi::Allocation> &size_list,
      std::shared_ptr<phi::Allocation> &size_list_prefix_sum,
      std::shared_ptr<phi::Allocation>& feature_list,
-     std::shared_ptr<phi::Allocation>& slot_list) {
+     std::shared_ptr<phi::Allocation>& slot_list,
+     bool sage_mode) {
    if (node_num == 0) {
      return 0;
    }
@@ -3241,7 +3244,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes_all2all(
                                         reinterpret_cast<uint64_t*>(feature_list_ptr),
                                         reinterpret_cast<uint64_t*>(inter_feature_list_ptr),
                                         stream,
-                                        false,
+                                        sage_mode,
                                         true);
    VLOG(2) << "end send feature list";
 
@@ -3260,7 +3263,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes_all2all(
                                         reinterpret_cast<uint8_t*>(slot_list_ptr),
                                         reinterpret_cast<uint8_t*>(inter_slot_list_ptr),
                                         stream,
-                                        false,
+                                        sage_mode,
                                         true);
    VLOG(2) << "end send slot list";
 
