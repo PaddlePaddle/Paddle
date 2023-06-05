@@ -17,6 +17,8 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #endif
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -41,6 +43,72 @@ void AddCudaFunctor(const Context& dev_ctx,
       dev_ctx, inputs, &outputs, funcs::AddFunctor<T>(), axis);
 }
 
+template <int64_t VecSize>
+__global__ void fused_add_cuda_forward(const float* x,
+                                       const phi::bfloat16* y,
+                                       float* out,
+                                       int64_t numel) {
+  int64_t i =
+      (threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x) * VecSize;
+  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x * VecSize;
+
+  for (; i + VecSize <= numel; i += stride) {
+    phi::AlignedVector<float, VecSize> x_vec;
+    phi::AlignedVector<phi::bfloat16, VecSize> y_vec;
+    phi::AlignedVector<float, VecSize> out_vec;
+    phi::Load(x + i, &x_vec);
+    phi::Load(y + i, &y_vec);
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      out_vec[j] = x_vec[j] + static_cast<float>(y_vec[j]);
+    }
+    phi::Store(out_vec, out + i);
+  }
+
+  for (; i < numel; ++i) {
+    out[i] = x[i] + static_cast<float>(y[i]);
+  }
+}
+
+template <typename Context>
+void FusedAddCudaFunctor(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         DenseTensor* out) {
+  int64_t numel = x.numel();
+  auto place = phi::GPUPlace();
+  int x_vec_size = phi::GetVectorizedSize(x.data<float>());
+  int y_vec_size = phi::GetVectorizedSize(y.data<phi::bfloat16>());
+  int out_vec_size = phi::GetVectorizedSize(out->data<float>());
+  int vec_size = min(x_vec_size, min(y_vec_size, out_vec_size));
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
+  auto threads = config.GetBlockSize();
+  auto blocks = config.block_per_grid;
+  auto stream = dev_ctx.stream();
+  switch (vec_size) {
+    case 4:
+      fused_add_cuda_forward<4><<<blocks, threads, 0, stream>>>(
+          x.data<float>(), y.data<phi::bfloat16>(), out->data<float>(), numel);
+      break;
+
+    case 2:
+      fused_add_cuda_forward<2><<<blocks, threads, 0, stream>>>(
+          x.data<float>(), y.data<phi::bfloat16>(), out->data<float>(), numel);
+      break;
+
+    case 1:
+      fused_add_cuda_forward<1><<<blocks, threads, 0, stream>>>(
+          x.data<float>(), y.data<phi::bfloat16>(), out->data<float>(), numel);
+      break;
+    default: {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported vectorized size: %d !", vec_size));
+      break;
+    }
+  }
+}
+
 template <typename T, typename Context>
 void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
@@ -51,7 +119,15 @@ void AddKernel(const Context& dev_ctx,
     AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
   } else {
     VLOG(2) << "x dtype:" << x.dtype() << " != y dtype:" << y.dtype();
-    // TODO(kendron): The x_float32 + y_bfloat16 kernel implementation
+    PADDLE_ENFORCE_EQ(
+        x.dtype(),
+        phi::DataType::FLOAT32,
+        phi::errors::InvalidArgument("The x should be float32 dtype in x+y."));
+    PADDLE_ENFORCE_EQ(
+        y.dtype(),
+        phi::DataType::BFLOAT16,
+        phi::errors::InvalidArgument("The y should be bfloat16 dtype in x+y."));
+    FusedAddCudaFunctor<Context>(dev_ctx, x, y, out);
   }
 }
 
