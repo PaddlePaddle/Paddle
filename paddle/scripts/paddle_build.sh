@@ -3124,20 +3124,20 @@ function build_document_preview() {
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
-        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl --force-reinstall
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
     else
         echo "WARNING: PR wheel is not found. Use develop wheel !!!"
-        pip install ${PADDLE_ROOT}/build/python/dist/*.whl  --force-reinstall
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     fi
 
     python -c "import paddle;print(paddle.__version__);paddle.version.show()"
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py cpu; example_error=$?
+        python sampcd_processor.py --debug cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} gpu; example_error=$?
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
