@@ -41,7 +41,11 @@
 
 #include "paddle/fluid/dialect/pd_attribute.h"
 
+#include "paddle/phi/core/kernel_registry.h"
 #include "test/cpp/ir/core/phi_kernel_adaptor.h"
+
+PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 

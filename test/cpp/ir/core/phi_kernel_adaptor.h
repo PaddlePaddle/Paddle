@@ -179,7 +179,7 @@ class PhiKernelAdaptor {
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
     for (auto it = block->begin(); it != block->end(); ++it) {
-      VLOG(6) << "begin to run op " << (*it)->op_name();
+      VLOG(6) << "begin to run op " << (*it)->name();
 
       auto attr_map = (*it)->attributes();
 
@@ -198,13 +198,18 @@ class PhiKernelAdaptor {
 
       auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
           runtime_info.kernel_func[0]);
+
       phi::KernelKey kernel_key(phi::TransToPhiBackend(cpu_place),
-                                phi::DataLayout::ALL_LAYOUT,
+                                phi::DataLayout::ANY,
                                 phi::DataType::FLOAT32);
       auto found_it = phi_kernels.find(kernel_key);
       if (found_it == phi_kernels.end()) {
+        std::cerr << "kernel name " << runtime_info.kernel_func[0] << std::endl;
+        std::cerr << "kernel key " << kernel_key.backend() << "\t"
+                  << kernel_key.dtype() << "\t" << kernel_key.layout()
+                  << std::endl;
         PADDLE_THROW(paddle::platform::errors::NotFound(
-            "can not found kerenl for [%s]", (*it)->op_name()));
+            "can not found kerenl for [%s]", (*it)->name()));
       } else {
         phi::KernelContext kernel_ctx(dev_ctx);
 
