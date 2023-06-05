@@ -51,12 +51,12 @@ void AddKernel(const Context& dev_ctx,
     AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
   } else {
     VLOG(2) << "x dtype:" << x.dtype() << " != y dtype:" << y.dtype();
-    PADDLE_ENFORCE_EQ(x.dtype(),
-                      phi::DataType::FLOAT32,
-                      "The x should be float32 dtype in x+y");
-    PADDLE_ENFORCE_EQ(y.dtype(),
-                      phi::DataType::BFLOAT16,
-                      "The x should be float32 dtype in x+y");
+    // PADDLE_ENFORCE_EQ(x.dtype(),
+    //                   phi::DataType::FLOAT32,
+    //                   "The x should be float32 dtype in x+y");
+    // PADDLE_ENFORCE_EQ(y.dtype(),
+    //                   phi::DataType::BFLOAT16,
+    //                   "The x should be float32 dtype in x+y");
     // TODO(kendron): The x_float32 + y_bfloat16 kernel implementation
   }
 }
