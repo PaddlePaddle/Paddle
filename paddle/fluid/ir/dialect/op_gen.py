@@ -249,6 +249,15 @@ def to_phi_and_fluid_op_name(op_item):
         return phi_name, fluid_name
 
 
+scalar_type_maps = {
+    'int': 'ir::Int32_tAttribute',
+    'int64_t': 'ir::Int64_tAttribute',
+    'float': 'ir::FloatAttribute',
+    'dobule': 'ir::DoubleAttribute',
+    'bool': 'ir::BoolAttribute',
+}
+
+
 # =====================================
 # Parse Op Compat From Yaml
 # =====================================
@@ -826,7 +835,7 @@ def GenBuildOutputs(
   }}
  """
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE = """  std::vector<int64_t> {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData(); (void){name};\n"""
-    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{dtype}>(); (void){name};\n"""
+    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<{ir_type}>().data(); (void){name};\n"""
     CREATE_STRING_MUTABLE_ATTRIBUE_TEMPLATE = """  std::string {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<ir::StrAttribute>().data(); (void){name};\n"""
 
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
@@ -867,7 +876,9 @@ def GenBuildOutputs(
         # scalar
         elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
             build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                name=op_mutable_attribute_name_list[idx], dtype=attr_dtype[1]
+                name=op_mutable_attribute_name_list[idx],
+                dtype=attr_dtype[1],
+                ir_type=scalar_type_maps[attr_dtype[1]],
             )
         # string
         elif attr_dtype[0] == "ir::StrAttribute":
