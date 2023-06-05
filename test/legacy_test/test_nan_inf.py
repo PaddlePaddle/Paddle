@@ -275,21 +275,47 @@ class TestNanInfCheckResult(TestNanInfBase):
 class TestCheckNumericsAPI(TestNanInfBase):
     def test_eager(self):
         shape = [8, 8]
-        x_np, y_np = self.generate_inputs(shape, "float16")
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        paddle.tensor.debugging.check_numerics(
-            tensor=x,
-            op_type="to_tensor",
-            var_name="x",
-            debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
-        )
-        paddle.tensor.debugging.check_numerics(
-            tensor=y,
-            op_type="to_tensor",
-            var_name="y",
-            debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
-        )
+        x_np, y_np = self.generate_inputs(shape, "float32")
+
+        device_list = ["cpu"]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            device_list.append("gpu:0")
+
+        for device in device_list:
+            paddle.device.set_device(device)
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            paddle.tensor.debugging.check_numerics(
+                tensor=x,
+                op_type="to_tensor",
+                var_name="x",
+                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            )
+            paddle.tensor.debugging.check_numerics(
+                tensor=y,
+                op_type="to_tensor",
+                var_name="y",
+                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            )
+
+    def test_static(self):
+        shape = [8, 8]
+        x_np, y_np = self.generate_inputs(shape, "float32")
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=[8, 8], dtype="float32")
+            y = paddle.static.data(name='y', shape=[8, 8], dtype="float32")
+            out = paddle.add(x, y)
+            paddle.tensor.debugging.check_numerics(
+                tensor=out,
+                op_type="elementwise_add",
+                var_name=out.name,
+                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            )
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(main_program, feed={"x": x, "y": y}, fetch_list=[out.name])
 
 
 if __name__ == '__main__':
