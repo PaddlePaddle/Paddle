@@ -632,10 +632,10 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor:
-    def __init__(self, place, programs, scope):
+    def __init__(self, place, plan, scope):
         self._place = core.Place()
         self._place.set_place(place)
-        self._programs = programs
+        self._plan = plan
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
@@ -660,9 +660,7 @@ class _StandaloneExecutor:
             return tensors
 
     def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(
-            self._place, [program.desc for program in self._programs]
-        )
+        new_exe = core.StandaloneExecutor(self._place, self._plan)
 
         return new_exe
 
@@ -813,7 +811,6 @@ class _ExecutorCache:
                 converted_program.lr_scheduler = inner_program.lr_scheduler
 
             inner_program = converted_program
-            # print(f"Program after convert:\n {inner_program}", flush=True)
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
@@ -851,9 +848,23 @@ class _ExecutorCache:
                 program, enable_inplace, enable_addto, skip_var_names
             )
 
-        new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, [new_program], scope)
-        return new_program, new_exe
+        plan = None
+        if program._pipeline_opt:
+            # TODO: add pipeline pass to get 1f1b plan or f-then-b plan
+            raise RuntimeError()
+        else:
+            single_job = core.job("single")
+            single_job.set_micro_batch_id(0)
+            type_to_program = {"single": program}
+            plan = core.plan(
+                [single_job], type_to_program, feed_program=program
+            )
+
+        if hasattr(program, 'lr_scheduler'):
+            plan.lr_scheduler = program.lr_scheduler
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
+        return plan, new_exe
 
 
 class Executor:
@@ -1580,7 +1591,7 @@ class Executor:
                         stored_flag[flag] = bool(value)
                     set_flags({f: True for f in schedule_flag})
 
-            program, new_exe = self._executor_cache.get_program_and_executor(
+            plan, new_exe = self._executor_cache.get_program_and_executor(
                 program,
                 feed,
                 fetch_list,
@@ -1589,17 +1600,17 @@ class Executor:
                 self.place,
                 scope,
             )
+            self._feed_data(plan.feed_program, feed, feed_var_name, scope)
 
-            self._feed_data(program, feed, feed_var_name, scope)
-            if hasattr(program, 'lr_scheduler'):
+            if hasattr(plan, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
                 assert isinstance(
-                    program.lr_scheduler, LRScheduler
+                    plan.lr_scheduler, LRScheduler
                 ), "must be LRScheduler"
-                lr_scheduler = program.lr_scheduler
+                lr_scheduler = plan.lr_scheduler
                 lr_value = lr_scheduler()
-                lr_var = program.global_block().vars[lr_scheduler._var_name]
+                lr_var = plan.global_block().vars[lr_scheduler._var_name]
                 data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
                 tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
                 # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
@@ -1619,6 +1630,9 @@ class Executor:
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
             set_flags(stored_flag)
+
+            # TODO: merge ret of micro_batches
+
             return ret
 
         compiled = isinstance(program, compiler.CompiledProgram)
@@ -2308,6 +2322,7 @@ class Executor:
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
+        # cache micro scopes
         if micro_cached_scopes is None:
             micro_cached_scopes = []
             if (

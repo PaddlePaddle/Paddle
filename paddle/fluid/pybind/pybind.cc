@@ -1870,7 +1870,8 @@ All parameter, weight, gradient are variables in Paddle.
            py::arg("job_list"),
            py::arg("type_to_program"))
       .def("job_list", &framework::Plan::GetJobList)
-      .def("type_to_program", &framework::Plan::GetTypeToProgram);
+      .def("type_to_program", &framework::Plan::GetTypeToProgram)
+      .def("feed_program", &framdwork::Plan::FeedProgram);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);

@@ -27,18 +27,23 @@ class Job;
 class Plan final {
  public:
   Plan(const std::vector<Job*>& job_list,
-       const std::unordered_map<std::string, ProgramDesc*>& type_to_program)
-      : job_list_(job_list), type_to_program_(type_to_program) {}
+       const std::unordered_map<std::string, ProgramDesc*>& type_to_program,
+       const ProgramDesc& feed_program)
+      : job_list_(job_list),
+        type_to_program_(type_to_program),
+        feed_program_(feed_program) {}
   ~Plan() = default;
 
   const std::vector<Job*>& GetJobList() const;
   const std::unordered_map<std::string, ProgramDesc*>& GetTypeToProgram() const;
+  const ProgramDesc& FeedProgram() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(Plan);
 
   std::vector<Job*> job_list_;
   std::unordered_map<std::string, ProgramDesc*> type_to_program_;
+  ProgramDesc feed_program_;
 };
 
 }  // namespace framework

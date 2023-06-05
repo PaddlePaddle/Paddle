@@ -26,5 +26,7 @@ const std::unordered_map<std::string, ProgramDesc*>& Plan::GetTypeToProgram()
   return type_to_program_;
 }
 
+const ProgramDesc& Plan::FeedProgram() const { return feed_program_; }
+
 }  // namespace framework
 }  // namespace paddle
