@@ -68,8 +68,9 @@ message HybridConfig {
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
   optional int32 sharding_degree = 4 [ default = 1 ];
-  optional MpConfig mp_configs = 5;
-  optional PpConfig pp_configs = 6;
+  optional int32 sep_degree = 5 [ default = 1 ];
+  optional MpConfig mp_configs = 6;
+  optional PpConfig pp_configs = 7;
 }
 
 message AMPConfig {

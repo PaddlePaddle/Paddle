@@ -54,8 +54,8 @@ class ParallelMode:
 class CommunicateTopology:
     def __init__(
         self,
-        hybrid_group_names=["data", "pipe", "sharding", "model"],
-        dims=[1, 1, 1, 1],
+        hybrid_group_names=["data", "pipe", "sharding", "sep", "model"],
+        dims=[1, 1, 1, 1, 1],
     ):
         self._parallel_names = hybrid_group_names
         self._dims = dims
@@ -106,6 +106,33 @@ class CommunicateTopology:
         assert axis_name in self._parallel_names
         return self._dims[self._parallel_names.index(axis_name)]
 
+    def get_fused_ranks(self, fused_axis):
+        non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
+        non_fused_ranges = []
+        for axis_name in non_fused_axis:
+            non_fused_ranges.append(
+                range(self._dims[self._parallel_names.index(axis_name)])
+            )
+        fused_ranges = []
+        for axis_name in fused_axis:
+            fused_ranges.append(
+                range(self._dims[self._parallel_names.index(axis_name)])
+            )
+
+        rank_list = []
+        for non_fused_ranks in product(*non_fused_ranges):
+            coord_dict = {}
+            ranks = []
+            for i, non_fused_rank in enumerate(non_fused_ranks):
+                coord_dict[non_fused_axis[i]] = non_fused_rank
+            for fused_ranks in product(*fused_ranges):
+                for i, fused_rank in enumerate(fused_ranks):
+                    coord_dict[fused_axis[i]] = fused_rank
+                ranks.append(self._coord2rank[self.coordinate(**coord_dict)])
+            rank_list.append(ranks)
+
+        return rank_list
+
     def get_comm_list(self, axis_name):
         assert axis_name in self._parallel_names
         other_axis_names = [
@@ -147,20 +174,23 @@ class HybridCommunicateGroup:
         self._mp_degree = self._topo.get_dim('model')
         self._pp_degree = self._topo.get_dim('pipe')
         self._sharding_degree = self._topo.get_dim('sharding')
+        self._sep_degree = self._topo.get_dim('sep')
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
         self._sharding_parallel_id = self._get_sharding_parallel_id()
+        self._sep_parallel_id = self._get_sharding_parallel_id()
         self.stage_id = self._get_pipe_parallel_id()
 
         assert self._check_vaild_topo(), (
             "Here is an unreasonable topogy setting. world_size: {}, but"
-            "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}".format(
+            "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
                 self.nranks,
                 self._mp_degree,
                 self._sharding_degree,
                 self._pp_degree,
                 self._dp_degree,
+                self._sep_degree,
             )
         )
 
@@ -178,9 +208,20 @@ class HybridCommunicateGroup:
             "sharding"
         )
 
+        # create comm group for sep parallel
+        self._sep_group, self._sep_comm_group = self._set_comm_group("sep")
+
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
             "data"
+        )
+
+        # create fused comm group
+        self._dp_sep_group, self._dp_sep_comm_group = self.create_fuse_group(
+            ["data", "sep"]
+        )
+        self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
+            ["pipe", "model"]
         )
 
         # create p2p group
@@ -194,22 +235,24 @@ class HybridCommunicateGroup:
 
         debug_str = (
             "HybridParallelInfo: rank_id: %d, mp_degree: %d, "
-            "sharding_degree: %d, pp_degree: %d, dp_degree: %d"
+            "sharding_degree: %d, pp_degree: %d, dp_degree: %d, sep_degree: %d"
             % (
                 self.global_rank,
                 self._mp_degree,
                 self._sharding_degree,
                 self._pp_degree,
                 self._dp_degree,
+                self._sep_degree,
             )
         )
         debug_str += (
-            ", mp_group: %s,  sharding_group: %s, pp_group: %s, dp_group: %s, check/clip group: %s"
+            ", mp_group: %s,  sharding_group: %s, pp_group: %s, dp_group: %s, sep:group: %s, check/clip group: %s"
             % (
                 self._mp_group,
                 self._sharding_group,
                 self._pp_group,
                 self._dp_group,
+                self._sep_group,
                 self._check_group,
             )
         )
@@ -245,6 +288,7 @@ class HybridCommunicateGroup:
             * self._mp_degree
             * self._pp_degree
             * self._sharding_degree
+            * self._sep_degree
             == self.nranks
         )
 
@@ -358,6 +402,22 @@ class HybridCommunicateGroup:
     def get_pipe_parallel_group(self):
         return self._pp_comm_group
 
+    # sep parallel message:
+    def _get_sep_parallel_id(self):
+        return self._topo.get_coord(self.global_rank).sep
+
+    def get_sep_parallel_rank(self):
+        return self._sep_parallel_id
+
+    def get_sep_parallel_world_size(self):
+        return self._sep_degree
+
+    def get_sep_parallel_group(self):
+        return self._sep_comm_group
+
+    def get_sep_parallel_group_src_rank(self):
+        return self._sep_comm_group.ranks[0]
+
     # sharding parallel message:
     def _get_sharding_parallel_id(self):
         return self._topo.get_coord(self.global_rank).sharding
@@ -383,6 +443,42 @@ class HybridCommunicateGroup:
         return self._topo.get_rank_from_stage(
             self.global_rank, pipe=stage_id, **kwargs
         )
+
+    # fuse comm group message
+    def get_dp_sep_parallel_group(self):
+        return self._dp_sep_comm_group
+
+    def get_pp_mp_parallel_group(self):
+        return self._pp_mp_comm_group
+
+    def create_fuse_group(self, fused_strategy_list):
+        assert (
+            len(fused_strategy_list) > 0
+        ), "the length of fused_strategy_list must be greater than 0."
+
+        parallel_group = []
+        parallel_comm_group = []
+        parallel_groups = self._topo.get_fused_ranks(fused_strategy_list)
+        parallel_groups.sort()
+
+        for group in parallel_groups:
+            comm_group = paddle.distributed.new_group(ranks=group)
+            if self.global_rank in group:
+                parallel_group.append(group)
+                parallel_comm_group.append(comm_group)
+
+        assert len(parallel_group) > 0
+        assert len(parallel_comm_group) > 0
+
+        logger.info(
+            "Total {} comm group(s) of fused {} create successfully!".format(
+                len(parallel_groups), fused_strategy_list
+            )
+        )
+        if len(parallel_group) > 1:
+            return parallel_group, parallel_comm_group
+        else:
+            return parallel_group[0], parallel_comm_group[0]
 
 
 class _CommunicateGroup:
