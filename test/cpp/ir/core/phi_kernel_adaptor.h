@@ -94,8 +94,8 @@ void build_context(ir::Operation* op,
                    paddle::framework::Scope* scope,
                    T* ctx,
                    bool is_infer_meta = true) {
-  paddle::dialect::GetOpInfoInterface op_info_interface =
-      op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
+  paddle::dialect::OpYamlInfoInterface op_info_interface =
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
   auto op_info_res = op_info_interface.GetOpInfo();
 
   auto input_info = std::get<0>(op_info_res);
@@ -188,8 +188,8 @@ class PhiKernelAdaptor {
 
       interface.InferShape(&ctx);
 
-      paddle::dialect::GetOpInfoInterface op_info_interface =
-          (*it)->dyn_cast<paddle::dialect::GetOpInfoInterface>();
+      paddle::dialect::OpYamlInfoInterface op_info_interface =
+          (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
       auto op_info_res = op_info_interface.GetOpInfo();
 
       auto runtime_info = std::get<3>(op_info_res);
