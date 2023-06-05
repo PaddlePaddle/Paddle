@@ -361,7 +361,7 @@ __global__ void LayerNormFwdWithWelford(
         row_src, buffer, last_tid_idx, read_times, cols_this_thread);
 
     for (int i = 0; i < cols_this_thread; i++) {
-      if constexpr (UseWelford) {
+      if (UseWelford) {
         WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
       } else {
         LegacyOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
@@ -372,7 +372,7 @@ __global__ void LayerNormFwdWithWelford(
     U warp_mean = tid_mean;
     U warp_square = tid_square;
 
-    if constexpr (UseWelford) {
+    if (UseWelford) {
       WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
     } else {
       LegacyWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
@@ -382,7 +382,7 @@ __global__ void LayerNormFwdWithWelford(
     U row_variance;
     U row_inv_var;
 
-    if constexpr (UseWelford) {
+    if (UseWelford) {
       row_variance = max(warp_square / warp_cnt, 0.f);
       row_inv_var = funcs::rsqrt_(row_variance + epsilon);
     } else {
