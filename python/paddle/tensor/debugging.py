@@ -15,20 +15,24 @@
 # TODO: define functions to debug a tensor
 
 from paddle import _C_ops
+from paddle.amp.debugging import DebugMode
 
 from ..framework import LayerHelper, in_dynamic_mode
 
 __all__ = ["check_numerics"]
 
 
-def check_numerics(tensor, op_type, var_name):
+def check_numerics(
+    tensor, op_type, var_name, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT
+):
     """
     This function is used to debugging a tensor, finding the number of NaNs, Infs and zeros in the tensor.
 
     Args:
-        tensor (Tensor): The target tensor to check.
-        op_type (str): The OP or API name which produce the target tensor.
-        var_name (str): The name of target tensor.
+        tensor(Tensor): The target tensor to check.
+        op_type(str): The OP or API name which produce the target tensor.
+        var_name(str): The name of target tensor.
+        debug_mode(paddle.amp.debugging.DebugMode, optional): The mode of debugging to be used. Default is DebugMode.CHECK_NAN_INF_AND_ABORT.
 
     Returns:
         stats(Tensor): The output stats tensor stores the number of NaNs, Infs and zeros of input tensor. The shape is [3] and dtype is int64.
@@ -50,11 +54,16 @@ def check_numerics(tensor, op_type, var_name):
 
     """
     stack_height_limit = -1
-    output_dir = None
+    output_dir = ""
 
     if in_dynamic_mode():
         return _C_ops.check_numerics(
-            tensor, op_type, var_name, stack_height_limit, output_dir
+            tensor,
+            op_type,
+            var_name,
+            debug_mode.value,
+            stack_height_limit,
+            output_dir,
         )
 
     helper = LayerHelper("check_numerics", **locals())
@@ -70,6 +79,7 @@ def check_numerics(tensor, op_type, var_name):
         attrs={
             'op_type': op_type,
             'var_name': var_name,
+            'check_nan_inf_level': debug_mode.value,
             'stack_height_limit': stack_height_limit,
             'output_dir': output_dir,
         },

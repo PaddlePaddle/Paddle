@@ -15,11 +15,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/check_numerics_utils.h"
-
-PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace phi {
 
@@ -28,6 +25,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
+                         const int check_nan_inf_level,
                          const int stack_height_limit,
                          const std::string& output_dir,
                          DenseTensor* stats,
@@ -45,7 +43,7 @@ void CheckNumericsKernel(const Context& ctx,
   phi::funcs::CheckNumericsCpuImpl(tensor.data<T>(),
                                    tensor.numel(),
                                    cpu_hint_str,
-                                   FLAGS_check_nan_inf_level,
+                                   check_nan_inf_level,
                                    "cpu",
                                    output_dir,
                                    stats_ptr,

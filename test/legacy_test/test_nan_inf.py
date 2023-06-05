@@ -271,17 +271,25 @@ class TestNanInfCheckResult(TestNanInfBase):
                 use_cuda=True, dtype="float16", level=level
             )
 
-    def test_check_numerics(self):
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-        )
 
+class TestCheckNumericsAPI(unittest.TestCase):
+    def test_eager(self):
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, "float16")
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
-        paddle.tensor.debugging.check_numerics(x, "to_tensor", "x")
-        paddle.tensor.debugging.check_numerics(y, "to_tensor", "y")
+        paddle.tensor.debugging.check_numerics(
+            tensor=x,
+            op_type="to_tensor",
+            var_name="x",
+            debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+        )
+        paddle.tensor.debugging.check_numerics(
+            tensor=y,
+            op_type="to_tensor",
+            var_name="y",
+            debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+        )
 
 
 if __name__ == '__main__':

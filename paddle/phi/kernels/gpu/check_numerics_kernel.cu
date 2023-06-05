@@ -19,12 +19,9 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/check_numerics_utils.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
-
-PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace phi {
 
@@ -454,7 +451,8 @@ static void WriteToOutputDir(const phi::GPUContext& ctx,
                              const DenseTensor& values,
                              const std::string& op_type,
                              const std::string& var_name,
-                             const std::string& output_dir) {
+                             const std::string& output_dir,
+                             const int check_nan_inf_level) {
   // Copy stats and values from GPU to CPU.
   phi::DenseTensor cpu_stats;
   cpu_stats.Resize({static_cast<int64_t>(3)});
@@ -469,7 +467,6 @@ static void WriteToOutputDir(const phi::GPUContext& ctx,
   const std::string debug_info =
       GetHintString<T>(op_type, var_name, tensor.place(), dev_id);
   std::string log_name = "gpu." + std::to_string(dev_id);
-  int check_nan_inf_level = FLAGS_check_nan_inf_level;
   int64_t* cpu_stats_ptr = cpu_stats.data<int64_t>();
   float* cpu_values_ptr = cpu_values.data<float>();
   phi::funcs::WriteToFileForDifferentLevel<T, MT>(debug_info.c_str(),
@@ -490,6 +487,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
+                         const int check_nan_inf_level,
                          const int stack_height_limit,
                          const std::string& output_dir,
                          DenseTensor* stats,
@@ -554,8 +552,6 @@ void CheckNumericsKernel(const Context& ctx,
                                              tensor_block_min_ptr,
                                              tensor_block_mean_ptr);
 
-  int check_nan_inf_level = FLAGS_check_nan_inf_level;
-
   // stats stores the checking result of num_nan, num_inf and num_zero.
   stats->Resize({static_cast<int64_t>(3)});
   int64_t* stats_ptr = ctx.template Alloc<int64_t>(stats);
@@ -580,8 +576,14 @@ void CheckNumericsKernel(const Context& ctx,
 
   if (output_dir.size() > 0) {
     // Write log to output_dir.
-    WriteToOutputDir<T, MT>(
-        ctx, tensor, *stats, *values, op_type, var_name, output_dir);
+    WriteToOutputDir<T, MT>(ctx,
+                            tensor,
+                            *stats,
+                            *values,
+                            op_type,
+                            var_name,
+                            output_dir,
+                            check_nan_inf_level);
   }
 
   if (check_nan_inf_level == 0 && stack_height_limit > 0) {

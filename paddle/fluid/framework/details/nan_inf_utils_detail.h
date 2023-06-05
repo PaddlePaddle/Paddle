@@ -19,8 +19,11 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+
+PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -65,6 +68,7 @@ struct TensorCheckerVisitor {
                                          tensor,
                                          op_type,
                                          var_name,
+                                         FLAGS_check_nan_inf_level,
                                          GetNanInfStackLimit(),
                                          file_path,
                                          &stats,
