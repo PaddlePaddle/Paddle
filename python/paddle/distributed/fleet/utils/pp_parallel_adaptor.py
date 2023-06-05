@@ -19,6 +19,7 @@ import shutil
 from collections import OrderedDict
 
 import paddle
+from paddle.distributed.fleet.utils.log_util import logger
 
 
 class ParallelConfig:
@@ -116,7 +117,7 @@ class PipeLineModelAdaptor:
         # first rank extract shared layer
         with_shared = True
         for dir in src_dirs:
-            print("extract layer params in dir %s" % dir)
+            logger.info("extract layer params in dir %s" % dir)
             layers.extend(
                 self.extract_layers(dir, with_shared, tmp_dir=tmp_dir)
             )
@@ -140,7 +141,7 @@ class PipeLineModelAdaptor:
 
         # 4、merge layers belonging to the same node
         for (layer_segment, dir_) in zip(layer_segments, dst_dirs):
-            print(f"merge {len(layer_segment)} layers to {dir_}")
+            logger.info(f"merge {len(layer_segment)} layers to {dir_}")
             self.merge_layers(layer_segment, dir_)
 
         # 5、copy meta_state.pdopt
@@ -169,13 +170,13 @@ class PipeLineModelAdaptor:
                     for e in group
                 ]
                 for dir in dirs:
-                    print(f"peek partial model in {dir}:")
+                    logger.info(f"peek partial model in {dir}:")
                     self.peek_partial_model(dir)
 
     def peek_partial_model(self, sub_dir: str):
         state_dict = paddle.load(f"{sub_dir}/model.pdparams")
         for (k, v) in state_dict.items():
-            print(f"\t{k} -> {v.name}")
+            logger.info(f"\t{k} -> {v.name}")
 
     def extract_layers(
         self, dir: str, with_shared: bool, tmp_dir="./tmp_layer_files"
@@ -246,7 +247,7 @@ class PipeLineModelAdaptor:
             file_name = f"{tmp_dir}/{layer_name}.tmp"
             paddle.save(layer, file_name)
             ans.append((layer_name, file_name))
-            print(f"save layer {layer_name} to {file_name}")
+            logger.info(f"save layer {layer_name} to {file_name}")
         return ans
 
     def sort_layers(self, layers: list):
@@ -261,7 +262,7 @@ class PipeLineModelAdaptor:
             return float(match.group(1).lstrip("."))
 
         # strictly sort layers
-        print("before sort %s" % ("|".join([e[0] for e in layers])))
+        logger.info("before sort %s" % ("|".join([e[0] for e in layers])))
         layers.sort(key=priority)
         # unique
         unique_layers = []
@@ -269,7 +270,9 @@ class PipeLineModelAdaptor:
             if unique_layers and e[0] == unique_layers[-1][0]:
                 continue
             unique_layers.append(e)
-        print("after sort %s " % ("|".join([e[0] for e in unique_layers])))
+        logger.info(
+            "after sort %s " % ("|".join([e[0] for e in unique_layers]))
+        )
         return unique_layers
 
     def segment_layers(
@@ -360,10 +363,10 @@ class PipeLineModelAdaptor:
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
 
         for (pp_rank, segs) in enumerate(segments):
-            print(f"segmentment result for pp_rank {pp_rank}:")
-            print(50 * "=")
+            logger.info(f"segmentment result for pp_rank {pp_rank}:")
+            logger.info(50 * "=")
             for seg in segs:
-                print(f"{seg[0]} => {seg[1]}")
+                logger.info(f"{seg[0]} => {seg[1]}")
         return segments
 
     def merge_layers(self, layers_segment: list, save_dir: str):
@@ -379,7 +382,7 @@ class PipeLineModelAdaptor:
 
         lr_scheduler = None
         for (layer_names, file_path) in layers_segment:
-            print("load %s" % file_path)
+            logger.info("load %s" % file_path)
             layer = paddle.load(file_path)
 
             def get_param_name_mapper(layer_name):
@@ -579,7 +582,7 @@ def parse_args():
         "layer",
     ], "segment_method should be 'uniform' or 'layer"
 
-    print(
+    logger.info(
         "adapt model dumped by task with pp degree:{}, vp degree:{}, mp degree:{} to task with pp degree:{}, vp degree:{}, mp degree:{}".format(
             args.src_pp,
             args.src_vp,

@@ -133,16 +133,16 @@ class PipeLineModelLoader:
         converted_model_path = model_dir
         mp_rank = self._hcg.get_model_parallel_rank()
         sharding_rank = self._hcg.get_sharding_parallel_rank()
+        pp_rank = self._hcg.get_stage_id()
+        dp_rank = self._hcg.get_data_parallel_rank()
         # convert model as appropriate
         if (
             cur_pp_degree != model_mp_degree
             or model_vp_degree != cur_vp_degree
             or force_convert
         ):
-            converted_model_path = (
-                "./tmp_converted_mp{:0>2d}_sharding{:0>2d}".format(
-                    mp_rank, sharding_rank
-                )
+            converted_model_path = "./tmp_converted_mp{:0>2d}_sharding{:0>2d}_pp{:0>2d}_dp{:0>2d}".format(
+                mp_rank, sharding_rank, pp_rank, dp_rank
             )
             self._convert_model(
                 model_dir,
@@ -201,15 +201,9 @@ class PipeLineModelLoader:
         pp_rank = self._hcg.get_stage_id()
         dp_rank = self._hcg.get_data_parallel_rank()
 
-        if dp_rank == 0:
-            if pp_rank == 0:
-                adaptor.apply_for_pp_group(
-                    src_model_dir, dest_model_dir, mp_rank, sharding_rank
-                )
-            # barrier cross pp group
-            paddle.distributed.barrier(self._hcg.get_pipe_parallel_group())
-        # barrier cross dp group
-        paddle.distributed.barrier(self._hcg.get_data_parallel_group())
+        adaptor.apply_for_pp_group(
+            src_model_dir, dest_model_dir, mp_rank, sharding_rank
+        )
         logger.info(f"end convert model {src_model_dir} to {dest_model_dir}")
 
     def _load(self, model_dir, with_opt):
@@ -248,13 +242,7 @@ class PipeLineModelLoader:
         logger.info(f"load model from {full_path} successfully")
 
     def _remove_converted_model(self, sub_model_dir):
-        paddle.distributed.barrier()
-
-        pp_rank = self._hcg.get_stage_id()
-        dp_rank = self._hcg.get_data_parallel_rank()
-        if dp_rank == 0:
-            if pp_rank == 0:
-                shutil.rmtree(sub_model_dir, ignore_errors=True)
+        shutil.rmtree(sub_model_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":
