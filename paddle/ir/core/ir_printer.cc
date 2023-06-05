@@ -46,13 +46,13 @@ void PrintInterleave(ForwardIterator begin,
 
 }  // namespace
 
-class Printer {
+class BasicIRPrinter {
  public:
-  explicit Printer(std::ostream& os) : os(os) {}
+  explicit BasicIRPrinter(std::ostream& os) : os(os) {}
 
   void PrintType(ir::Type type) {
     if (!type) {
-      os << "<!TypeNull>";
+      os << "<<NULL TYPE>>";
       return;
     }
 
@@ -75,7 +75,7 @@ class Printer {
           inner_types.begin(),
           inner_types.end(),
           [this](ir::Type v) { this->PrintType(v); },
-          [this]() { this->os << ","; });
+          [this]() { this->os << ", "; });
       os << ">";
     } else {
       auto& dialect = type.dialect();
@@ -83,63 +83,77 @@ class Printer {
     }
   }
 
- public:
+  void PrintAttribute(ir::Operation* op) { os << " { ATTRIBUTE }"; }
+
+ protected:
   std::ostream& os;
 };
 
-void Type::print(std::ostream& os) const {
-  Printer p(os);
-  p.PrintType(*this);
-}
-
-class ProgramPrinter : public Printer {
+class IRPrinter : public BasicIRPrinter {
  public:
-  explicit ProgramPrinter(std::ostream& os) : Printer(os), cur_var_number(0) {}
+  explicit IRPrinter(std::ostream& os) : BasicIRPrinter(os) {}
 
-  void Print(ir::Program& program) {
-    auto iterator = program.block()->begin();
-    while (iterator != program.block()->end()) {
-      PrintOperation(*iterator);
-      os << newline;
-      iterator++;
-    }
-  }
-
-  void PrintValue(ir::Value v) {
-    if (!v) {
-      os << "<<NULL VALUE>>";
-      return;
-    }
-    const void* key = static_cast<const void*>(v.impl());
-    auto ret = aliases.find(key);
-    if (ret != aliases.end()) {
-      os << ret->second;
-      return;
-    }
-
-    std::string new_name = "%" + std::to_string(cur_var_number);
-    cur_var_number++;
-    aliases[key] = new_name;
-    os << new_name;
+  /// @brief print program
+  /// @param program
+  /// @example
+  void PrintProgram(ir::Program* program) {
+    PrintOperation(program->module_op());
   }
 
   /// @brief print operation
   /// @param op
   /// @example
   void PrintOperation(ir::Operation* op) {
-    PrintOpResult(op);  // TODO(lyk): add API to get opresults directly
-    os << " = ";
+    for (size_t i = 0; i < op->num_regions(); ++i) {
+      auto& region = op->GetRegion(i);
+      for (auto it = region.begin(); it != region.end(); ++it) {
+        auto* block = *it;
+        os << "{\n";
+        for (auto it = block->begin(); it != block->end(); ++it) {
+          auto* op = *it;
+          // TODO(lyk): add API to get opresults directly
+          PrintOpResult(op);
+          os << " =";
 
-    os << "\"" << op->op_name() << "\"";
-    PrintOpOperands(op);  // TODO(lyk): add API to get operands directly
+          os << " \"" << op->name() << "\"";
 
-    PrintAttribute(op);
-    os << " : ";
+          // TODO(lyk): add API to get operands directly
+          PrintOpOperands(op);
 
-    // PrintOpSingature
-    PrintOperandsType(op);
-    os << " -> ";
-    PrintOpReturnType(op);  // TODO(lyk): add API to get opresults directly
+          PrintAttribute(op);
+          os << " :";
+
+          // PrintOpSingature
+          PrintOperandsType(op);
+          os << " -> ";
+
+          // TODO(lyk): add API to get opresults directly
+          PrintOpReturnType(op);
+
+          os << newline;
+        }
+        os << "}\n";
+      }
+    }
+  }
+
+ private:
+  void PrintValue(ir::Value v) {
+    if (!v) {
+      os << "<<NULL VALUE>>";
+      return;
+    }
+    const void* key = static_cast<const void*>(v.impl());
+    auto ret = aliases_.find(key);
+    if (ret != aliases_.end()) {
+      os << ret->second;
+      return;
+    }
+
+    std::string new_name = "%" + std::to_string(cur_var_number_);
+    cur_var_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
   }
 
   void PrintOpResult(ir::Operation* op) {
@@ -154,11 +168,9 @@ class ProgramPrinter : public Printer {
         op_results.begin(),
         op_results.end(),
         [this](ir::Value v) { this->PrintValue(v); },
-        [this]() { this->os << ","; });
-    os << ") ";
+        [this]() { this->os << ", "; });
+    os << ")";
   }
-
-  void PrintAttribute(ir::Operation* op) { os << " { ATTRIBUTE } "; }
 
   void PrintOpOperands(ir::Operation* op) {
     os << " (";
@@ -172,8 +184,8 @@ class ProgramPrinter : public Printer {
         op_operands.begin(),
         op_operands.end(),
         [this](ir::Value v) { this->PrintValue(v); },
-        [this]() { this->os << ","; });
-    os << ") ";
+        [this]() { this->os << ", "; });
+    os << ")";
   }
 
   void PrintOperandsType(ir::Operation* op) {
@@ -188,11 +200,13 @@ class ProgramPrinter : public Printer {
         op_operand_types.push_back(ir::Type(nullptr));
       }
     }
+    os << " (";
     PrintInterleave(
         op_operand_types.begin(),
         op_operand_types.end(),
         [this](ir::Type t) { this->PrintType(t); },
-        [this]() { this->os << ","; });
+        [this]() { this->os << ", "; });
+    os << ")";
   }
 
   void PrintOpReturnType(ir::Operation* op) {
@@ -211,18 +225,27 @@ class ProgramPrinter : public Printer {
         op_result_types.begin(),
         op_result_types.end(),
         [this](ir::Type t) { this->PrintType(t); },
-        [this]() { this->os << ","; });
+        [this]() { this->os << ", "; });
   }
 
  private:
-  size_t cur_var_number;
-  std::unordered_map<const void*, std::string> aliases;
+  size_t cur_var_number_{0};
+  std::unordered_map<const void*, std::string> aliases_;
 };
 
-std::ostream& operator<<(std::ostream& os, Program& program) {
-  ProgramPrinter printer(os);
-  printer.Print(program);
-  return os;
+void Program::Print(std::ostream& os) {
+  IRPrinter printer(os);
+  printer.PrintProgram(this);
+}
+
+void Operation::Print(std::ostream& os) {
+  IRPrinter printer(os);
+  printer.PrintOperation(this);
+}
+
+void Type::Print(std::ostream& os) const {
+  BasicIRPrinter printer(os);
+  printer.PrintType(*this);
 }
 
 }  // namespace ir

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/translator/translate.h"
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 
 #include <memory>
 
-#include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/translator/program_translator.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/ir/core/program.h"
 
 namespace paddle {

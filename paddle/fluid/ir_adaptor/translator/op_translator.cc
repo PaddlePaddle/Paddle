@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/translator/op_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 
 #include <algorithm>
 #include <cctype>
@@ -22,12 +22,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/dialect/pd_interface.h"
 #include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/translator/attribute_translator.h"
-#include "paddle/fluid/translator/op_compat_info.h"
-#include "paddle/fluid/translator/program_translator.h"
-#include "paddle/fluid/translator/type_translator.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/ir_context.h"
@@ -380,7 +380,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
                                 const OpDesc& op_desc) {
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   auto* op_info_concept =
-      op_info.GetInterfaceImpl<paddle::dialect::GetOpInfoInterface>();
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
 
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
@@ -418,7 +418,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
 
   auto* op_info_concept =
-      op_info.GetInterfaceImpl<paddle::dialect::GetOpInfoInterface>();
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;
@@ -450,7 +450,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
 
   auto* op_info_concept =
-      op_info.GetInterfaceImpl<paddle::dialect::GetOpInfoInterface>();
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
   OpOutputInfoList output_infos;

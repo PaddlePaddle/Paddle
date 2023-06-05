@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/ir/core/op_base.h"
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
@@ -24,7 +24,7 @@ using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
 
 namespace paddle {
 namespace dialect {
-class GetOpInfoInterface : public ir::OpInterfaceBase<GetOpInfoInterface> {
+class OpYamlInfoInterface : public ir::OpInterfaceBase<OpYamlInfoInterface> {
  public:
   struct Concept {
     explicit Concept(OpInfoTuple (*get_op_info)())
@@ -39,8 +39,8 @@ class GetOpInfoInterface : public ir::OpInterfaceBase<GetOpInfoInterface> {
     Model() : Concept(GetOpInfo) {}
   };
 
-  GetOpInfoInterface(ir::Operation *op, Concept *impl)
-      : ir::OpInterfaceBase<GetOpInfoInterface>(op), impl_(impl) {}
+  OpYamlInfoInterface(ir::Operation *op, Concept *impl)
+      : ir::OpInterfaceBase<OpYamlInfoInterface>(op), impl_(impl) {}
 
   OpInfoTuple GetOpInfo() { return impl_->get_op_info_(); }
 
