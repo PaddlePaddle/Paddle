@@ -37,6 +37,12 @@ set(utils_modules pretty_log string_helper benchmark utf8proc)
 
 add_subdirectory(api)
 
+if(WITH_PHI_SHARED)
+  set(PHI_LIB phi_static)
+else()
+  set(PHI_LIB phi)
+endif()
+
 # Create static inference library if needed
 # All static libs in inference/api
 set(STATIC_INFERENCE_API
@@ -96,7 +102,7 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
+set(SHARED_INFERENCE_DEPS ${PHI_LIB} ${fluid_modules} analysis_predictor
                           ${utils_modules})
 
 if(WITH_CRYPTO)
@@ -128,7 +134,7 @@ target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
   set_property(TARGET paddle_inference_shared
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(paddle_inference_shared phi)
+  target_link_libraries(paddle_inference_shared ${PHI_LIB})
 endif()
 
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME

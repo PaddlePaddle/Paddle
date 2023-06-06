@@ -349,6 +349,8 @@ function(cc_library TARGET_NAME)
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+    elseif(cc_library_OBJECT OR cc_library_object)
+      add_library(${TARGET_NAME} OBJECT ${cc_library_SRCS})
     elseif(cc_library_INTERFACE OR cc_library_interface)
       generate_dummy_static_lib(
         LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS} GENERATOR
@@ -568,6 +570,8 @@ function(nv_library TARGET_NAME)
       # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
       if(nv_library_SHARED OR nv_library_shared) # build *.so
         add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+      elseif(nv_library_OBJECT OR nv_library_object) # build *.o
+        add_library(${TARGET_NAME} OBJECT ${nv_library_SRCS})
       else()
         add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
         find_fluid_modules(${TARGET_NAME})

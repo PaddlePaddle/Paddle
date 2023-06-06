@@ -49,6 +49,10 @@ set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
 
 if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
+  set_source_files_properties(
+    backends/gpu/gpu_resources.cc
+    PROPERTIES COMPILE_FLAGS
+               "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
 endif()
 
 if(WITH_ASCEND_CL)
@@ -98,37 +102,38 @@ set(PHI_SRCS
     ${capi_srcs})
 
 if(WITH_PHI_SHARED)
-  set(PHI_BUILD_TYPE
-      SHARED
-      CACHE INTERNAL "" FORCE)
-else()
-  set(PHI_BUILD_TYPE
-      STATIC
-      CACHE INTERNAL "" FORCE)
-endif()
-
-if(WITH_GPU)
-  set_source_files_properties(
-    backends/gpu/gpu_resources.cc
-    PROPERTIES COMPILE_FLAGS
-               "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
-  nv_library(
-    phi ${PHI_BUILD_TYPE}
-    SRCS ${PHI_SRCS}
-    DEPS ${PHI_DEPS})
-elseif(WITH_ROCM)
-  hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
+  # build shared and static phi library
+  if(WITH_GPU)
+    nv_library(phi_obj OBJECT SRCS ${PHI_SRCS})
+  else()
+    cc_library(phi_obj OBJECT SRCS ${PHI_SRCS})
+  endif()
+  # shared libraries need PIC
+  set_property(TARGET phi_obj PROPERTY POSITION_INDEPENDENT_CODE 1)
+  add_library(phi SHARED $<TARGET_OBJECTS:phi_obj>)
+  add_library(phi_static STATIC $<TARGET_OBJECTS:phi_obj>)
   target_link_libraries(phi ${PHI_DEPS})
-elseif(WITH_XPU_KP)
-  xpu_library(
-    phi ${PHI_BUILD_TYPE}
-    SRCS ${PHI_SRCS}
-    DEPS ${PHI_DEPS})
+  target_link_libraries(phi_static ${PHI_DEPS})
 else()
-  cc_library(
-    phi ${PHI_BUILD_TYPE}
-    SRCS ${PHI_SRCS}
-    DEPS ${PHI_DEPS})
+  if(WITH_GPU)
+    nv_library(
+      phi STATIC
+      SRCS ${PHI_SRCS}
+      DEPS ${PHI_DEPS})
+  elseif(WITH_ROCM)
+    hip_add_library(phi STATIC ${PHI_SRCS})
+    target_link_libraries(phi ${PHI_DEPS})
+  elseif(WITH_XPU_KP)
+    xpu_library(
+      phi STATIC
+      SRCS ${PHI_SRCS}
+      DEPS ${PHI_DEPS})
+  else()
+    cc_library(
+      phi STATIC
+      SRCS ${PHI_SRCS}
+      DEPS ${PHI_DEPS})
+  endif()
 endif()
 
 if(WIN32)
@@ -187,11 +192,13 @@ if(WITH_FLASHATTN)
 endif()
 
 # for inference static library
-if(NOT WITH_PHI_SHARED)
-  get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+if(WITH_PHI_SHARED)
+  set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi_static)
+else()
   set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
-  set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 endif()
+set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
