@@ -46,7 +46,7 @@ cc_library(
   layer
   SRCS layer.cc
   DEPS prepared_operator phi imperative_flag variable_helper op_registry
-       var_helper)
+       var_helper debug_op)
 add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(

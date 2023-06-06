@@ -17,6 +17,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/api/lib/debug_op.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/type_traits.h"
@@ -124,7 +125,79 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                  phi::DenseTensor*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
+    paddle::experimental::OpIdAdd();
+    VLOG(10) << "Op ID: " << paddle::experimental::OpId();
+    std::string debug_str = "";
+    std::vector<const phi::TensorBase*> dev2_input_x(x.size());
+    std::vector<std::shared_ptr<phi::DenseTensor>> dev2_temp_dense_tensots;
+    std::vector<std::shared_ptr<phi::SelectedRows>> dev2_temp_select_rows;
+    dev2_temp_dense_tensots.reserve(x.size());
+    dev2_temp_select_rows.reserve(x.size());
+    std::shared_ptr<phi::DenseTensor> dev2_kernel_out_smart_ptr;
+    phi::DenseTensor* dev2_kernel_out = nullptr;
+    if (paddle::experimental::DebugOrNot() && ContinueOrNot("add_n")) {
+      VLOG(10) << "Start copy input and output!";
+      for (size_t i = 0; i < input_x.size(); ++i) {
+        if (phi::DenseTensor::classof(input_x[i])) {
+          dev2_temp_dense_tensots.push_back(
+              paddle::experimental::CopyDenseTensor(
+                  static_cast<const phi::DenseTensor*>(input_x[i]),
+                  paddle::experimental::GetDebugDev2Type()));
+          dev2_input_x[i] = dev2_temp_dense_tensots.back().get();
+        } else if (phi::SelectedRows::classof(input_x[i])) {
+          dev2_temp_select_rows.push_back(
+              paddle::experimental::CopySelectedRows(
+                  static_cast<const phi::SelectedRows*>(input_x[i]),
+                  paddle::experimental::GetDebugDev2Type()));
+          dev2_input_x[i] = dev2_temp_select_rows.back().get();
+        } else {
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "Expected type of Input(X) of %d-th must be Tensor, "
+              "SelectedRows. But got "
+              "unsupport type: %s.",
+              input_x[i]->type_info().name()));
+        }
+      }
+      dev2_kernel_out_smart_ptr = paddle::experimental::CopyDenseTensor(
+          kernel_out, paddle::experimental::GetDebugDev2Type());
+      dev2_kernel_out =
+          dev2_kernel_out_smart_ptr ? dev2_kernel_out_smart_ptr.get() : nullptr;
+      VLOG(10) << "End copy input and output!";
+      VLOG(10) << "Start check acc for input!";
+      debug_str += paddle::experimental::XPUDebugString(
+          "add_n", "input_x", input_x, dev2_input_x);
+      VLOG(10) << "End check acc for input!";
+    }
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+
+    if (paddle::experimental::DebugOrNot() && ContinueOrNot("add_n")) {
+      Backend dev2_kernel_backend = TransToPhiBackend(GetDebugDev2Type());
+      VLOG(6) << "add_n API kernel key Dev2: [" << dev2_kernel_backend << ", "
+              << kernel_layout << ", " << kernel_data_type << "]";
+      auto dev2_kernel_result =
+          phi::KernelFactory::Instance().SelectKernelOrThrowError(
+              "add_n", {dev2_kernel_backend, kernel_layout, kernel_data_type});
+      const auto& dev2_kernel = dev2_kernel_result.kernel;
+      auto* dev2_ctx = GetDeviceContextByBackend(
+          dev2_kernel_result.has_fallback_cpu ? Backend::CPU
+                                              : dev2_kernel_backend);
+      auto* dev2_kernel_fn =
+          dev2_kernel.GetVariadicKernelFn<kernel_signature>();
+      std::string debug_start_str = paddle::experimental::XPUDebugStartString(
+          "add_n",
+          kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend,
+          kernel_data_type);
+      VLOG(10) << "Strat run kernel on device 2";
+      (*dev2_kernel_fn)(*dev2_ctx, dev2_input_x, dev2_kernel_out);
+      VLOG(10) << "End run kernel on device 2";
+      VLOG(10) << "Start check acc for output!";
+      debug_str += "out: ";
+      debug_str += paddle::experimental::XPUDebugString(
+          "add_n", "kernel_out", kernel_out, dev2_kernel_out);
+      VLOG(10) << "End check acc for output!";
+      if (debug_str != "out: ")
+        std::cout << debug_start_str << "in: " << debug_str << std::endl;
+    }
     if (kernel_result.has_fallback_cpu) {
       TransDataBackend(kernel_out, kernel_backend, kernel_out);
     }
@@ -202,12 +275,87 @@ void embedding_grad_impl(const Tensor& x,
                                         int64_t,
                                         phi::DenseTensor*);
       auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+      paddle::experimental::OpIdAdd();
+      VLOG(10) << "Op ID: " << paddle::experimental::OpId();
+      std::string debug_str = "";
+      std::shared_ptr<phi::DenseTensor> dev2_input_x;
+      std::shared_ptr<phi::DenseTensor> dev2_input_weight;
+      std::shared_ptr<phi::DenseTensor> dev2_input_out_grad;
+      std::shared_ptr<phi::DenseTensor> dev2_kernel_out_smart_ptr;
+      phi::DenseTensor* dev2_kernel_out = nullptr;
+      if (paddle::experimental::DebugOrNot() &&
+          ContinueOrNot("embedding_grad")) {
+        VLOG(10) << "Start copy input and output!";
+        dev2_input_x = paddle::experimental::CopyDenseTensor(
+            input_x, paddle::experimental::GetDebugDev2Type());
+        dev2_input_weight = paddle::experimental::CopyDenseTensor(
+            input_weight, paddle::experimental::GetDebugDev2Type());
+        dev2_input_out_grad = paddle::experimental::CopyDenseTensor(
+            input_out_grad, paddle::experimental::GetDebugDev2Type());
+
+        dev2_kernel_out_smart_ptr = paddle::experimental::CopyDenseTensor(
+            kernel_out, paddle::experimental::GetDebugDev2Type());
+        dev2_kernel_out = dev2_kernel_out_smart_ptr
+                              ? dev2_kernel_out_smart_ptr.get()
+                              : nullptr;
+        VLOG(10) << "End copy input and output!";
+        VLOG(10) << "Start check acc for input!";
+        debug_str += paddle::experimental::XPUDebugString(
+            "embedding_grad", "input_x;", *input_x, *dev2_input_x);
+        debug_str += paddle::experimental::XPUDebugString("embedding_grad",
+                                                          "input_weight",
+                                                          *input_weight,
+                                                          *dev2_input_weight);
+        debug_str += paddle::experimental::XPUDebugString("embedding_grad",
+                                                          "input_out_grad",
+                                                          *input_out_grad,
+                                                          *dev2_input_out_grad);
+        VLOG(10) << "End check acc for input!";
+      }
       (*kernel_fn)(*dev_ctx,
                    *input_x,
                    *input_weight,
                    *input_out_grad,
                    padding_idx,
                    kernel_out);
+      if (paddle::experimental::DebugOrNot() &&
+          ContinueOrNot("embedding_grad")) {
+        Backend dev2_kernel_backend = TransToPhiBackend(GetDebugDev2Type());
+        VLOG(6) << "embedding_grad API kernel key Dev2: ["
+                << dev2_kernel_backend << ", " << kernel_key.layout() << ", "
+                << kernel_data_type << "]";
+        auto dev2_kernel_result =
+            phi::KernelFactory::Instance().SelectKernelOrThrowError(
+                "embedding_grad",
+                {dev2_kernel_backend, kernel_key.layout(), kernel_data_type});
+        const auto& dev2_kernel = dev2_kernel_result.kernel;
+        auto* dev2_ctx = GetDeviceContextByBackend(
+            dev2_kernel_result.has_fallback_cpu ? Backend::CPU
+                                                : dev2_kernel_backend);
+        auto* dev2_kernel_fn =
+            dev2_kernel.GetVariadicKernelFn<kernel_signature>();
+        std::string debug_start_str = paddle::experimental::XPUDebugStartString(
+            "embedding_grad",
+            kernel_result.has_fallback_cpu ? Backend::CPU
+                                           : kernel_key.backend(),
+            kernel_data_type);
+        VLOG(10) << "Strat run kernel on device 2";
+        (*dev2_kernel_fn)(*dev2_ctx,
+                          *dev2_input_x,
+                          *dev2_input_weight,
+                          *dev2_input_out_grad,
+                          padding_idx,
+                          dev2_kernel_out);
+        VLOG(10) << "End run kernel on device 2";
+        VLOG(10) << "Start check acc for output!";
+        debug_str += "out: ";
+        debug_str += paddle::experimental::XPUDebugString(
+            "embedding_grad", "kernel_out", kernel_out, dev2_kernel_out);
+        VLOG(10) << "End check acc for output!";
+        if (debug_str != "out: ")
+          std::cout << debug_start_str << "in: " << debug_str << std::endl;
+      }
     }
   } else {
     std::string kernel_name = sparse ? "sparse_weight_embedding_sparse_grad"

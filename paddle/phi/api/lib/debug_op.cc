@@ -782,6 +782,58 @@ std::string XPUDebugString(const std::string& op_name,
   }
 }
 
+std::string XPUDebugString(const std::string& op_name,
+                           const std::string& tensor_name,
+                           const std::vector<const phi::TensorBase*>& a,
+                           const std::vector<const phi::TensorBase*>& b) {
+  VLOG(10) << "a.size() = " << a.size() << ", b.size() = " << b.size();
+  PADDLE_ENFORCE_EQ(a.size(),
+                    b.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of vector A (%s) does not match the "
+                        "size of tensor B (%s).",
+                        a.size(),
+                        b.size()));
+  std::string str = "-vector{";
+  bool thres_open = false;
+  bool flag = false;
+  for (auto& i : GetDebugThres(3)) {
+    if (i < -2) {
+      flag = true;
+    }
+  }
+  for (size_t i = 0; i < a.size(); ++i) {
+    if (a[i]) {
+      std::pair<std::string, bool> tmp = {"", false};
+      if (phi::DenseTensor::classof(a[i])) {
+        tmp = XPUDebugStringImpl(tensor_name,
+                                 *static_cast<const phi::DenseTensor*>(a[i]),
+                                 *static_cast<const phi::DenseTensor*>(b[i]));
+      } else if (phi::SelectedRows::classof(a[i])) {
+        tmp = XPUDebugStringImpl(
+            tensor_name,
+            static_cast<const phi::SelectedRows*>(a[i])->value(),
+            static_cast<const phi::SelectedRows*>(b[i])->value());
+      }
+      if (tmp.second) {
+        thres_open = true;
+        str += (std::to_string(i) + tmp.first + ",");
+      }
+    } else {
+      if (flag) {
+        str += (std::to_string(i) + "-NOT_INITED,");
+      }
+    }
+  }
+  str = str.substr(0, str.length() - 1) + "} ";
+  VLOG(10) << tensor_name + str;
+  if (!thres_open && !flag) {
+    return "";
+  } else {
+    return tensor_name + str;
+  }
+}
+
 std::string XPUDebugString(
     const std::string& op_name,
     const std::string& tensor_name,

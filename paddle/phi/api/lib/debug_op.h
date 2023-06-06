@@ -123,6 +123,11 @@ std::string XPUDebugString(const std::string& op_name,
                            const std::vector<const phi::DenseTensor*>& a,
                            const std::vector<const phi::DenseTensor*>& b);
 
+std::string XPUDebugString(const std::string& op_name,
+                           const std::string& tensor_name,
+                           const std::vector<const phi::TensorBase*>& a,
+                           const std::vector<const phi::TensorBase*>& b);
+
 std::string XPUDebugString(
     const std::string& op_name,
     const std::string& tensor_name,
