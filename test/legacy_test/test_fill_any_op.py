@@ -32,7 +32,7 @@ class TestFillAnyOp(OpTest):
         self.value = 0.0
         self.init()
         self.inputs = {'X': np.random.random((20, 30)).astype(self.dtype)}
-        self.attrs = {'value': self.value}
+        self.attrs = {'value': float(self.value)}
         self.outputs = {
             'Out': self.value
             * np.ones_like(self.inputs["X"]).astype(self.dtype)
