@@ -187,7 +187,7 @@ void SPMDRuleMap::Insert(const std::string& op_type, std::unique_ptr<SPMDRuleBas
   PADDLE_ENFORCE_NE(Has(op_type),
                     true,
                     platform::errors::AlreadyExists(
-                        "SPMD Rule for Operator [%s] has been registered.", type));
+                        "SPMD Rule for Operator [%s] has been registered.", op_type));
   map_.insert({op_type, std::move(rule)});
 }
 
