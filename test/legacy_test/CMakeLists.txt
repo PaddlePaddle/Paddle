@@ -1035,7 +1035,7 @@ set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
 set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
-set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
@@ -1199,7 +1199,8 @@ set(TEST_CINN_OPS
     test_flip
     test_triangular_solve_op
     test_scatter_nd_op
-    test_strided_slice_op)
+    test_strided_slice_op
+    test_pool2d_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
