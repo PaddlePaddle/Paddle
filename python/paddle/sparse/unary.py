@@ -963,12 +963,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             else:
                 sparse_x = dense_x.to_sparse_csr()
 
-            cuda_version = paddle.version.cuda()
-            if cuda_version is None or cuda_version == 'False' or int(cuda_version.split('.')[0]) < 11:
-                print("sparse.pca_lowrank API only support CUDA 11.x")
-                U, S, V = None, None, None
-            else:
-                U, S, V = paddle.sparse.pca_lowrank(sparse_x)
+            print("sparse.pca_lowrank API only support CUDA 11.x")
+            U, S, V = None, None, None
+            # U, S, V = pca_lowrank(sparse_x)
 
             print(U)
             # Tensor(shape=[5, 5], dtype=float64, place=Place(gpu:0), stop_gradient=True,
@@ -1087,7 +1084,11 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         raise ValueError('Input must be sparse, but got dense')
 
     cuda_version = paddle.version.cuda()
-    if cuda_version is None or cuda_version == 'False' or int(cuda_version.split('.')[0]) < 11:
+    if (
+        cuda_version is None
+        or cuda_version == 'False'
+        or int(cuda_version.split('.')[0]) < 11
+    ):
         raise ValueError('sparse.pca_lowrank API only support CUDA 11.x')
 
     (m, n) = x.shape[-2:]
