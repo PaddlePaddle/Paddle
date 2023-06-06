@@ -82,8 +82,10 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
         assert (
-            core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
-        ), "Only GPU and XPU is supported now"
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or (device in core.get_all_custom_device_type())
+        ), "Only GPU and XPU and CustomDevice is supported now"
 
         # Segmentation information
         self._dtype_rank_params = (
@@ -371,6 +373,13 @@ class GroupShardedOptimizerStage2(Optimizer):
         Count the memory size of the parameters corresponding to rank under the corresponding dtype.
         """
         # CUDA alignment 256 bytes
+        if self._default_device in core.get_all_custom_device_type():
+            device_alignment = core.libpaddle._get_device_min_chunk_size(
+                self._default_device
+            )
+        else:
+            device_alignment = alignment[self._default_device]
+
         if len(self._rank_buffer_size) == 0:
             for dtype in self.dtype_rank_params.keys():
                 if dtype not in self._rank_buffer_size.keys():
@@ -384,11 +393,11 @@ class GroupShardedOptimizerStage2(Optimizer):
                         if not param.trainable:
                             continue
                         size = param._numel() * align[dtype]
-                        remaining = size % alignment[self._default_device]
+                        remaining = size % device_alignment
                         ali = (
                             0
                             if remaining == 0
-                            else alignment[self._default_device] - remaining
+                            else device_alignment - remaining
                         )
                         align_ = ali // align[dtype]
                         self._rank_buffer_size[dtype][dst_rank] += (
@@ -439,14 +448,17 @@ class GroupShardedOptimizerStage2(Optimizer):
         if self.offload:
             self._optim._master_weights = self._master_params
             cpu_master_params = list(self._master_params.values())
+            if self._default_device in core.get_all_custom_device_type():
+                device_alignment = core.libpaddle._get_device_min_chunk_size(
+                    self._default_device
+                )
+            else:
+                device_alignment = alignment[self._default_device]
+
             for param in cpu_master_params:
                 size = param._numel() * align[Type.fp32.value]
-                remaining = size % alignment[self.offload_device]
-                ali = (
-                    0
-                    if remaining == 0
-                    else alignment[self.offload_device] - remaining
-                )
+                remaining = size % device_alignment
+                ali = 0 if remaining == 0 else device_alignment - remaining
                 align_ = ali // align[Type.fp32.value]
                 self.offload_buffer_size += param._numel() + align_
                 self.offload_param2align[param.name] = align_

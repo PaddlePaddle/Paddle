@@ -89,7 +89,10 @@ class GroupShardedStage3(nn.Layer):
         super().__init__()
 
         # Default configs
-        assert core.is_compiled_with_cuda(), "Only support CUDA."
+        assert core.is_compiled_with_cuda() or (
+            device in core.get_all_custom_device_type()
+        ), "Only support CUDA / CustomDevice."
+
         self._layer = layer
         self._default_device = device
         self.__sync_buffers = sync_buffers
@@ -718,10 +721,14 @@ class GroupShardedStage3(nn.Layer):
     def _param2align(self, param):
         # CUDA alignment 256 bytes
         size = param._numel() * align[param.dtype]
-        remaining = size % alignment[self._default_device]
-        ali = (
-            0 if remaining == 0 else alignment[self._default_device] - remaining
-        )
+        if self._default_device in core.get_all_custom_device_type():
+            device_alignment = core.libpaddle._get_device_min_chunk_size(
+                self._default_device
+            )
+        else:
+            device_alignment = alignment[self._default_device]
+        remaining = size % device_alignment
+        ali = 0 if remaining == 0 else device_alignment - remaining
         align_ = ali // align[param.dtype]
         return align_
 
