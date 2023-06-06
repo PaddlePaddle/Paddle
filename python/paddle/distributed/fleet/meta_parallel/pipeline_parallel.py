@@ -404,6 +404,7 @@ class PipelineParallel(MetaParallelBase):
         data = self._prepare_training(data, optimizer, lr_scheduler)
         # 1f1b scheduler for pipeline parallel
         train_loss = self.forward_backward_pipeline(data, scaler)
+
         # optimizer
         with paddle.amp.auto_cast(enable=False):
             self._optimizer_step()
@@ -919,7 +920,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         data = self._prepare_training(data, optimizer, lr_scheduler)
-
         # interleave scheduler for pipeline parallel
         train_loss = self.forward_backward_pipeline(data, scaler)
 
