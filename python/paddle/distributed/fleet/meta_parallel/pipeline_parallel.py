@@ -543,9 +543,9 @@ class PipelineParallel(MetaParallelBase):
     def _check_micro_batch_data_valid(self, micro_batch_data):
         if isinstance(micro_batch_data, tuple):
             for data in micro_batch_data:
-                self._check_micro_batch_data_valid(data)
+                self._check_micro_batch_data_valid(micro_batch_data)
         else:
-            micro_batch_size = data.shape[0]
+            micro_batch_size = micro_batch_data.shape[0]
             assert (
                 micro_batch_size == self.micro_batch_size
             ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
