@@ -148,6 +148,41 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
       .substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
 }
 
+// SPMDRuleMap
+SPMDRuleMap& SPMDRuleMap::Instance();
+  static SPMDRuleMap g_spmd_rule_map;
+  return g_spmd_rule_map;
+}
+
+// TODO enable default replicated spmd rule for op that are NOT registered 
+// which all tensors of inputs and outputs will be replicated in all ranks of the mesh.
+SPMDRuleBase& SPMDRuleMap::Get(const std::string& op_type) const {
+  auto rule_ptr = GetNullable(op_type);
+  PADDLE_ENFORCE_NOT_NULL(
+      rule_ptr,
+      platform::errors::NotFound("NO SPMD Rule has been registered for Operator [%s].", op_type));
+  return *rule_ptr;
+}
+
+SPMDRuleBase* SPMDRuleMap::GetNullable(const std::string& op_type) const {
+  auto it = map_.find(op_type);
+  if (it == map_.end()) {
+    return nullptr;
+  } else {
+    return it->second.get();
+  }
+}
+
+void SPMDRuleMap::Insert(const std::string& op_type, std::unique_ptr<SPMDRuleBase> rule){
+  PADDLE_ENFORCE_NE(Has(op_type),
+                    true,
+                    platform::errors::AlreadyExists(
+                        "SPMD Rule for Operator [%s] has been registered.", type));
+  map_.insert({op_type, std::move(rule)});
+}
+
+
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

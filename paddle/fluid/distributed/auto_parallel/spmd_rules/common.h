@@ -109,6 +109,41 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet);
 
+// The static map that stores and initializes all the registered SPMD rules.
+class SPMDRuleMap {
+ public:
+  ~SPMDRuleMap() = default;
+
+  // A singleton
+  static SPMDRuleMap& Instance();
+
+  // Returns the spmd rule for the given op_type
+  SPMDRuleBase& Get(const std::string& op_type) const;
+
+  // Returns the spmd by name or nullptr if not registered
+  SPMDRuleBase* GetNullable(const std::string& op_type) const;
+
+  // Register a spmd for an op_type.
+  void Insert(const std::string& op_type, std::unique_ptr<SPMDRuleBase> rule); 
+
+
+  bool Has(const std::string& op_type) const {
+    return map_.find(op_type) != map_.end();
+  }
+
+ private:
+  SPMDRuleMap() = default;
+  paddle::flat_hash_map<std::string, std::unique_ptr<SPMDRuleBase>> map_;
+  DISABLE_COPY_AND_ASSIGN(SPMDRuleMap);
+
+};
+
+#define REGISTER_SPMDRULE(op_type, rule_class, ...)     \
+    SPMDRuleMap::Instance().Insert(                     \
+             op_type,                                   \
+             std::make_unique<rule_class>(__VA_ARGS__))
+
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
