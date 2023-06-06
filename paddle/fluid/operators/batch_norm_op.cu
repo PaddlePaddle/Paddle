@@ -24,7 +24,6 @@ limitations under the License. */
 namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/flags.h"
