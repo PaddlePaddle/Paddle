@@ -17,7 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
@@ -54,7 +54,7 @@ TEST(MatmulSPMDRule, Ctor) {
   attrs["trans_x"] = false;
   attrs["trans_y"] = false;
 
-  MatmulSPMDRule matmul_rule = MatmulSPMDRule();
+  const SPMDRuleBase& matmul_rule = SPMDRuleMap::Instance().Get(matmul);
 
   // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
   std::vector<TensorDistAttr> infered_dist_attrs =
