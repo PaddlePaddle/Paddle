@@ -20,10 +20,10 @@
 namespace phi {
 
 template <typename Context>
-void TransposeGradStrideKernel(const Context& dev_ctx,
-                               const DenseTensor& out_grad,
-                               const std::vector<int>& axis,
-                               DenseTensor* x_grad) {
+void TransposeGradStridedKernel(const Context& dev_ctx,
+                                const DenseTensor& out_grad,
+                                const std::vector<int>& axis,
+                                DenseTensor* x_grad) {
   size_t axis_size = axis.size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {
@@ -37,11 +37,11 @@ void TransposeGradStrideKernel(const Context& dev_ctx,
     reversed_axis[formated_axis[i]] = i;
   }
 
-  TransposeStrideKernel<Context>(dev_ctx, out_grad, reversed_axis, x_grad);
+  TransposeStridedKernel<Context>(dev_ctx, out_grad, reversed_axis, x_grad);
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose_grad,
                                          STRIDED,
-                                         phi::TransposeGradStrideKernel) {}
+                                         phi::TransposeGradStridedKernel) {}

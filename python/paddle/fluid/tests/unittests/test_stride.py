@@ -98,7 +98,7 @@ class TestStrides(unittest.TestCase):
 
 
 class TestStridesCPU(TestStrides):
-    def test_strides_cpu(self):
+    def test_stride_cpu(self):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('cpu')
         self.call_strides()
@@ -110,7 +110,7 @@ class TestStridesCPU(TestStrides):
     "core is not compiled with CUDA",
 )
 class TestStridesGPU(TestStrides):
-    def test_strides_gpu(self):
+    def test_stride_gpu(self):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('gpu')
         self.call_strides()

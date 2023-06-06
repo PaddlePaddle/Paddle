@@ -19,12 +19,12 @@
 namespace phi {
 
 template <typename Context>
-void DiagonalStrideKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          int offset,
-                          int axis1,
-                          int axis2,
-                          DenseTensor* out) {
+void DiagonalStridedKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           int offset,
+                           int axis1,
+                           int axis2,
+                           DenseTensor* out) {
   size_t x_rank = x.dims().size();
   if (axis1 < 0) {
     axis1 += x_rank;
@@ -70,4 +70,4 @@ void DiagonalStrideKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(diagonal,
                                          STRIDED,
-                                         phi::DiagonalStrideKernel) {}
+                                         phi::DiagonalStridedKernel) {}

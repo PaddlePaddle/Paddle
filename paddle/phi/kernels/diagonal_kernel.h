@@ -42,12 +42,12 @@ void DiagonalKernel(const Context& dev_ctx,
                     DenseTensor* out);
 
 template <typename Context>
-void DiagonalStrideKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          int offset,
-                          int axis1,
-                          int axis2,
-                          DenseTensor* out);
+void DiagonalStridedKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           int offset,
+                           int axis1,
+                           int axis2,
+                           DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Diagonal(const Context& dev_ctx,

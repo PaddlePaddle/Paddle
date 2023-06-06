@@ -78,11 +78,11 @@ bool ReshapeStride(const DDim& old_dims,
 }
 
 template <typename Context>
-void ReshapeStrideKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const IntArray& shape,
-                         DenseTensor* out,
-                         DenseTensor* xshape) {
+void ReshapeStridedKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const IntArray& shape,
+                          DenseTensor* out,
+                          DenseTensor* xshape) {
   auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
   DDim strides;
   if (ReshapeStride(x_dims, x.stride(), out->dims(), &stride)) {
@@ -103,4 +103,4 @@ void ReshapeStrideKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
                                          STRIDED,
-                                         phi::ReshapeStrideKernel) {}
+                                         phi::ReshapeStridedKernel) {}

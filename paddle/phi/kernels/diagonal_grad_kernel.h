@@ -28,11 +28,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         DenseTensor* in_grad);
 
 template <typename Context>
-void DiagonalGradStrideKernel(const Context& dev_ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& out_grad,
-                              int offset,
-                              int axis1,
-                              int axis2,
-                              DenseTensor* in_grad);
+void DiagonalGradStridedKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& out_grad,
+                               int offset,
+                               int axis1,
+                               int axis2,
+                               DenseTensor* in_grad);
 }  // namespace phi

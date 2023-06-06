@@ -22,17 +22,17 @@
 namespace phi {
 
 template <typename Context>
-void DiagonalGradStrideKernel(const Context& dev_ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& out_grad,
-                              int offset,
-                              int axis1,
-                              int axis2,
-                              DenseTensor* in_grad) {
+void DiagonalGradStridedKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const DenseTensor& out_grad,
+                               int offset,
+                               int axis1,
+                               int axis2,
+                               DenseTensor* in_grad) {
   dev_ctx.Alloc(in_grad, in_grad->dtype());
   Fill<Context>(dev_ctx, *in_grad, 0, in_grad);
   DenseTensor tmp;
-  DiagonalStrideKernel<Context>(dev_ctx, *in_grad, offset, axis1, axis2, &tmp);
+  DiagonalStridedKernel<Context>(dev_ctx, *in_grad, offset, axis1, axis2, &tmp);
   StridedCopy<Context>(dev_ctx,
                        out_grad,
                        phi::vectorize<int64_t>(tmp.dims()),
@@ -44,4 +44,4 @@ void DiagonalGradStrideKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(diagonal_grad,
                                          STRIDED,
-                                         phi::DiagonalGradStrideKernel) {}
+                                         phi::DiagonalGradStridedKernel) {}
