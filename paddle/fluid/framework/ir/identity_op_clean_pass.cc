@@ -45,7 +45,7 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
             return true;
           });
 
-  // 这个无用的Op必须一个输入一个输出
+  // This useless_op must have only one input and one output!
   auto useless_op =
       detector.mutable_pattern()
           ->NewNode("useless_op")
