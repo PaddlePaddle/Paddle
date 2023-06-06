@@ -136,9 +136,9 @@ if '${WITH_MKL}' == 'ON':
     cinnlibs.append('${MKLML_IOMP_LIB}')
 
 if '${WITH_GPU}' == 'ON':
-    cinnlibs.append('${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
-    cinnlibs.append('${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/cinn/runtime/cuda/float16.h')
-    cinnlibs.append('${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/cinn/runtime/cuda/bfloat16.h')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/float16.h')
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/bfloat16.h')
 
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)
@@ -174,7 +174,7 @@ with redirect_stdout():
         description='CINN: a Compiler Infrastructure for Neural Networks',
         maintainer="PaddlePaddle",
         maintainer_email="Paddle-better@baidu.com",
-        url='https://github.com/PaddlePaddle/CINN',
+        url='https://github.com/PaddlePaddle/Paddle',
         license='Apache Software License',
         packages=packages,
         package_data=package_data

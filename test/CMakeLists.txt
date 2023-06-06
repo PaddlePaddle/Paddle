@@ -1,4 +1,5 @@
 if(CINN_ONLY)
+  add_subdirectory(cinn)
   return()
 endif()
 

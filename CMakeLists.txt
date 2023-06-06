@@ -534,16 +534,14 @@ if(PUBLISH_LIBS)
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
-    file(
-      COPY ${header}
-      DESTINATION ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/${prefix})
+    file(COPY ${header}
+         DESTINATION ${CMAKE_BINARY_DIR}/dist/cinn/include/${prefix})
   endforeach()
 
   foreach(proto_header ${core_proto_includes})
     string(REPLACE ${CMAKE_BINARY_DIR}/ "" relname ${proto_header})
     get_filename_component(prefix ${relname} DIRECTORY)
-    set(target_name
-        ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/include/${relname})
+    set(target_name ${CMAKE_BINARY_DIR}/dist/cinn/include/${relname})
     add_custom_command(
       TARGET cinnapi
       POST_BUILD
@@ -555,32 +553,35 @@ if(PUBLISH_LIBS)
     TARGET cinnapi
     POST_BUILD
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinnapi.so
-            ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/lib/libcinnapi.so
+            ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinnapi.so
     COMMAND cmake -E copy_directory ${CMAKE_BINARY_DIR}/thirds/install
-            ${CMAKE_BINARY_DIR}/paddle/cinn/dist/third_party DEPENDS cinnapi)
+            ${CMAKE_BINARY_DIR}/dist/third_party DEPENDS cinnapi)
   add_custom_command(
     TARGET cinncore_static
     POST_BUILD
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinncore_static.a
-            ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/lib/libcinncore_static.a
+            ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinncore_static.a
     COMMAND
       cmake -E copy
       ${CMAKE_BINARY_DIR}/paddle/cinn/frontend/paddle/libframework_proto.a
-      ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/lib/libframework_proto.a
+      ${CMAKE_BINARY_DIR}/dist/cinn/lib/libframework_proto.a
     COMMAND
       cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/hlir/pe/libparam_proto.a
-      ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/lib/libparam_proto.a
+      ${CMAKE_BINARY_DIR}/dist/cinn/lib/libparam_proto.a
     COMMAND
       cmake -E copy
       ${CMAKE_BINARY_DIR}/paddle/cinn/auto_schedule/libauto_schedule_proto.a
-      ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/lib/libauto_schedule_proto.a
+      ${CMAKE_BINARY_DIR}/dist/cinn/lib/libauto_schedule_proto.a
     COMMAND
       cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/ir/libschedule_desc_proto.a
-      ${CMAKE_BINARY_DIR}/paddle/cinn/dist/cinn/lib/libschedule_desc_proto.a
+      ${CMAKE_BINARY_DIR}/dist/cinn/lib/libschedule_desc_proto.a
     COMMENT "distribute libcinncore_static.a and related header files." DEPENDS
             cinncore_static)
 endif()
 # --------distribute cinncore lib and include end--------
+
+add_subdirectory(python)
+add_subdirectory(test)
 
 if(CINN_ONLY)
   return()
