@@ -37,7 +37,7 @@ def CTCAlign(input, lod, blank, merge_repeated, padding=0, input_length=None):
             cur_offset += lod0[i]
         result = np.array(result).reshape([len(result), 1]).astype("int32")
         if len(result) == 0:
-            result = np.array([-1])
+            result = np.array([[-1]])
         return result
     else:
         result = [[] for i in range(len(input))]

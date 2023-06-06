@@ -20,7 +20,6 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -75,7 +74,7 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
   EAGER_TRY
-  return ToPyObject(egr::egr_utils_api::IsLeafTensor(self->tensor));
+  return ToPyObject(egr::EagerUtils::IsLeafTensor(self->tensor));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -115,7 +114,7 @@ int tensor_properties_set_grad(TensorObject* self,
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
   PADDLE_ENFORCE(
-      egr::egr_utils_api::IsLeafTensor(self->tensor),
+      egr::EagerUtils::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
 
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -228,19 +227,19 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
+PyObject* tensor_properties_get_stride(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
     return ToPyObject(value);
   }
 
-  auto strides = self->tensor.strides();
-  size_t rank = static_cast<size_t>(strides.size());
+  auto stride = self->tensor.stride();
+  size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
 
   for (size_t i = 0; i < rank; i++) {
-    value[i] = strides[i];
+    value[i] = stride[i];
   }
 
   return ToPyObject(value);
@@ -327,11 +326,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
     {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
-    {"strides",
-     (getter)tensor_properties_get_strides,
-     nullptr,
-     nullptr,
-     nullptr},
+    {"stride", (getter)tensor_properties_get_stride, nullptr, nullptr, nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,

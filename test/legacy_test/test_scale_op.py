@@ -154,6 +154,9 @@ class TestScaleFp16Op(TestScaleOp):
         self.check_grad(["X"], "Out")
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_rocm(), "core is not compiled with CUDA"
+)
 class TestScaleBF16Op(OpTest):
     def setUp(self):
         self.op_type = "scale"

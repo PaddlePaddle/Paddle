@@ -398,7 +398,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       auto inplace_tensor_autograd_meta =
           egr::EagerUtils::autograd_meta(inplace_tensor);
       PADDLE_ENFORCE_EQ(!inplace_tensor_autograd_meta->StopGradient() &&
-                            egr::egr_utils_api::IsLeafTensor(*inplace_tensor),
+                            egr::EagerUtils::IsLeafTensor(*inplace_tensor),
                         false,
                         paddle::platform::errors::InvalidArgument(
                             "Leaf Var (%s) that doesn't stop gradient "

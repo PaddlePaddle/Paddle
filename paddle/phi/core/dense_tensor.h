@@ -86,13 +86,13 @@ class DenseTensor : public TensorBase,
   /// \return The dims of the tensor.
   const DDim& dims() const noexcept override { return meta_.dims; }
 
-  /// \brief Returns the strides of the tensor.
-  /// \return The strides of the tensor.
-  const DDim& strides() const noexcept { return meta_.strides; }
+  /// \brief Returns the stride of the tensor.
+  /// \return The stride of the tensor.
+  const DDim& stride() const noexcept { return meta_.stride; }
 
-  /// \brief Sets the strides of the tensor.
-  /// \param meta The strides of the tensor.
-  void set_strides(const DDim& strides) { meta_.strides = strides; }
+  /// \brief Sets the stride of the tensor.
+  /// \param meta The stride of the tensor.
+  void set_stride(const DDim& stride) { meta_.stride = stride; }
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.

@@ -93,7 +93,7 @@ class TestGatherNdOpWithIndex1(OpTest):
             target_dtype = "float32"
         xnp = np.random.random((5, 20)).astype(target_dtype)
         index = np.array([1]).astype("int32")
-        output = xnp[index]
+        output = xnp[index[-1]]
         if self.dtype == np.uint16:
             xnp = convert_float_to_uint16(xnp)
             output = convert_float_to_uint16(output)
@@ -150,7 +150,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
             target_dtype = "float32"
         xnp = np.random.uniform(0, 100, (10, 10)).astype(target_dtype)
         index = np.array([[1], [2]]).astype("int64")
-        output = xnp[tuple(index.T)]  # [[14, 25, 1], [76, 22, 3]]
+        output = xnp[tuple(index.T)]  # shape is [2, 10]
 
         if self.dtype == np.uint16:
             xnp = convert_float_to_uint16(xnp)

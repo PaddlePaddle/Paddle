@@ -294,7 +294,7 @@ phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {
   return out->impl().get();
 }
 
-phi::DenseTensor* ProcessStridesBackup(phi::DenseTensor** tensor) {
+phi::DenseTensor* ProcessStrideBackup(phi::DenseTensor** tensor) {
   if (!FLAGS_use_stride_kernel || *tensor == nullptr ||
       !(*tensor)->IsInitialized() || (*tensor)->meta().is_contiguous()) {
     return nullptr;
@@ -305,7 +305,7 @@ phi::DenseTensor* ProcessStridesBackup(phi::DenseTensor** tensor) {
   }
 }
 
-std::vector<phi::DenseTensor*> ProcessStridesBackup(
+std::vector<phi::DenseTensor*> ProcessStrideBackup(
     std::vector<phi::DenseTensor*>* tensor) {
   std::vector<phi::DenseTensor*> backup;
   backup.reserve(tensor->size());
@@ -321,7 +321,7 @@ std::vector<phi::DenseTensor*> ProcessStridesBackup(
   return backup;
 }
 
-phi::SelectedRows* ProcessStridesBackup(phi::SelectedRows** tensor) {
+phi::SelectedRows* ProcessStrideBackup(phi::SelectedRows** tensor) {
   return nullptr;
 }
 
@@ -335,7 +335,7 @@ void TransStride(const Context& dev_ctx,
                              dev_ctx,
                              *from,
                              phi::vectorize<int64_t>(to->dims()),
-                             phi::vectorize<int64_t>(to->strides()),
+                             phi::vectorize<int64_t>(to->stride()),
                              to);
                        }));
   }
@@ -352,7 +352,7 @@ void TransStride(const Context& dev_ctx,
                                dev_ctx,
                                *from[i],
                                phi::vectorize<int64_t>(to[i]->dims()),
-                               phi::vectorize<int64_t>(to[i]->strides()),
+                               phi::vectorize<int64_t>(to[i]->stride()),
                                to[i]);
                          }));
     }
@@ -370,7 +370,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                *cpu_ctx,
                                *from,
                                phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               phi::vectorize<int64_t>(to->stride()),
                                to);
                          }));
       return;
@@ -383,7 +383,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                *gpu_ctx,
                                *from,
                                phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               phi::vectorize<int64_t>(to->stride()),
                                to);
                          }));
       return;
@@ -397,7 +397,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                *xpu_ctx,
                                *from,
                                phi::vectorize<int64_t>(to->dims()),
-                               phi::vectorize<int64_t>(to->strides()),
+                               phi::vectorize<int64_t>(to->stride()),
                                to);
                          }));
       return;
@@ -418,7 +418,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                  *cpu_ctx,
                                  *from[i],
                                  phi::vectorize<int64_t>(to[i]->dims()),
-                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 phi::vectorize<int64_t>(to[i]->stride()),
                                  to[i]);
                            }));
         continue;
@@ -431,7 +431,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                  *gpu_ctx,
                                  *from[i],
                                  phi::vectorize<int64_t>(to[i]->dims()),
-                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 phi::vectorize<int64_t>(to[i]->stride()),
                                  to[i]);
                            }));
         continue;
@@ -445,7 +445,7 @@ void TransStride(phi::DeviceContext* dev_ctx,
                                  *xpu_ctx,
                                  *from[i],
                                  phi::vectorize<int64_t>(to[i]->dims()),
-                                 phi::vectorize<int64_t>(to[i]->strides()),
+                                 phi::vectorize<int64_t>(to[i]->stride()),
                                  to[i]);
                            }));
         continue;

@@ -964,6 +964,11 @@ class OpTest(unittest.TestCase):
         for name in api_outs:
             np_api = np.array(api_outs[name])
             np_dyg = np.array(dygraph_outs[name])
+            assert (
+                np_api.shape == np_dyg.shape
+            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
+                self.op_type, name, np_dyg.shape, np_api.shape
+            )
             np.testing.assert_allclose(
                 np_api,
                 np_dyg,
@@ -1230,6 +1235,11 @@ class OpTest(unittest.TestCase):
             # to check inplace result instead of numpy.array_equal.
             expect_out = np.array(expect_outs[i])
             actual_out = np.array(actual_outs[i])
+            assert (
+                actual_out.shape == expect_out.shape
+            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
+                self.op_type, name, expect_out.shape, actual_out.shape
+            )
             if inplace_atol is not None:
                 np.testing.assert_allclose(
                     expect_out,
@@ -1720,41 +1730,28 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if actual_np.shape == expect_np.shape:
-                    np.testing.assert_allclose(
-                        actual_np,
-                        expect_np,
-                        atol=self.atol if hasattr(self, 'atol') else atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                        equal_nan=equal_nan,
-                        err_msg=(
-                            "Operator ("
-                            + self.op_type
-                            + ") Output ("
-                            + name
-                            + ") has diff at "
-                            + str(place)
-                            + " in "
-                            + self.checker_name
-                        ),
-                    )
-                    return
-                self.op_test.assertTrue(
-                    np.allclose(
-                        actual_np,
-                        expect_np,
-                        atol=self.atol if hasattr(self, 'atol') else atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                        equal_nan=equal_nan,
+                expect_np = np.array(expect_np)
+                assert (
+                    actual_np.shape == expect_np.shape
+                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
+                    self.op_type, name, expect_np.shape, actual_np.shape
+                )
+                np.testing.assert_allclose(
+                    actual_np,
+                    expect_np,
+                    atol=self.atol if hasattr(self, 'atol') else atol,
+                    rtol=self.rtol if hasattr(self, 'rtol') else rtol,
+                    equal_nan=equal_nan,
+                    err_msg=(
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name
                     ),
-                    "Operator ("
-                    + self.op_type
-                    + ") Output ("
-                    + name
-                    + ") has diff at "
-                    + str(place)
-                    + " in "
-                    + self.checker_name,
                 )
 
             def _compare_list(self, name, actual, expect):
@@ -1775,10 +1772,6 @@ class OpTest(unittest.TestCase):
                 )
                 # modify there for fp32 check
 
-                # NOTE(zhiqiu): np.allclose([], [1.]) returns True
-                # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
-                if expect_np.size == 0:
-                    self.op_test.assertTrue(actual_np.size == 0)
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1905,41 +1898,19 @@ class OpTest(unittest.TestCase):
                     self.op_test.disable_cal_ref_output()
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if (
-                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
-                    == 0
-                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
-                    == 0
-                ):
-                    pass
-                else:
-                    if actual_np.shape == expect_np.shape:
-                        np.testing.assert_allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                            equal_nan=equal_nan,
-                            err_msg=(
-                                "Operator ("
-                                + self.op_type
-                                + ") Output ("
-                                + name
-                                + ") has diff at "
-                                + str(place)
-                                + " in "
-                                + self.checker_name
-                            ),
-                        )
-                        return
-                    self.op_test.assertTrue(
-                        np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                            equal_nan=equal_nan,
-                        ),
+                expect_np = np.array(expect_np)
+                assert (
+                    actual_np.shape == expect_np.shape
+                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
+                    self.op_type, name, expect_np.shape, actual_np.shape
+                )
+                np.testing.assert_allclose(
+                    actual_np,
+                    expect_np,
+                    atol=atol,
+                    rtol=self.rtol if hasattr(self, 'rtol') else rtol,
+                    equal_nan=equal_nan,
+                    err_msg=(
                         "Operator ("
                         + self.op_type
                         + ") Output ("
@@ -1947,8 +1918,9 @@ class OpTest(unittest.TestCase):
                         + ") has diff at "
                         + str(place)
                         + " in "
-                        + self.checker_name,
-                    )
+                        + self.checker_name
+                    ),
+                )
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
                 if actual_np.dtype == np.uint16:
@@ -2236,6 +2208,11 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
+            assert tuple(a.shape) == tuple(
+                b.shape
+            ), "Operator ({}) : Output ({}) gradient shape mismatch, expect shape is {}, but actual shape is {}".format(
+                self.op_type, name, a.shape, b.shape
+            )
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
@@ -2441,6 +2418,14 @@ class OpTest(unittest.TestCase):
         ):
             numeric_grad_delta = 1e-5
             max_relative_error = 1e-7
+
+        if (
+            self.dtype == np.complex128
+            and self.op_type
+            not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+        ):
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-6
 
         cache_list = None
         if hasattr(self, "cache_name_list"):
@@ -2717,7 +2702,7 @@ class OpTest(unittest.TestCase):
                     inputs=paddle.utils.flatten(inputs),
                     grad_outputs=grad_outputs,
                 )
-                return [grad.numpy() for grad in grad_inputs]
+                return [grad.numpy(False) for grad in grad_inputs]
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):

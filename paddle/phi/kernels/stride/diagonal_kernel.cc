@@ -19,12 +19,12 @@
 namespace phi {
 
 template <typename Context>
-void DiagonalStrideKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          int offset,
-                          int axis1,
-                          int axis2,
-                          DenseTensor* out) {
+void DiagonalStridedKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           int offset,
+                           int axis1,
+                           int axis2,
+                           DenseTensor* out) {
   size_t x_rank = x.dims().size();
   if (axis1 < 0) {
     axis1 += x_rank;
@@ -39,28 +39,28 @@ void DiagonalStrideKernel(const Context& dev_ctx,
     diag_size = std::max<int64_t>(
         std::min(x.dims()[axis1], x.dims()[axis2] - offset), 0);
     if (diag_size != 0) {
-      x_offset += offset * x.strides()[axis2] * SizeOf(x.dtype());
+      x_offset += offset * x.stride()[axis2] * SizeOf(x.dtype());
     }
   } else {
     diag_size = std::max<int64_t>(
         std::min(x.dims()[axis1] + offset, x.dims()[axis2]), 0);
     if (diag_size != 0) {
-      x_offset -= offset * x.strides()[axis1] * SizeOf(x.dtype());
+      x_offset -= offset * x.stride()[axis1] * SizeOf(x.dtype());
     }
   }
 
   std::vector<int64_t> shape = phi::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> strides = phi::vectorize<int64_t>(x.strides());
+  std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
   shape.erase(shape.begin() + std::max(axis1, axis2));
-  strides.erase(strides.begin() + std::max(axis1, axis2));
+  stride.erase(stride.begin() + std::max(axis1, axis2));
   shape.erase(shape.begin() + std::min(axis1, axis2));
-  strides.erase(strides.begin() + std::min(axis1, axis2));
+  stride.erase(stride.begin() + std::min(axis1, axis2));
   shape.push_back(diag_size);
-  strides.push_back(x.strides()[axis1] + x.strides()[axis2]);
+  stride.push_back(x.stride()[axis1] + x.stride()[axis2]);
 
   auto meta = x.meta();
   meta.dims = DDim(shape.data(), shape.size());
-  meta.strides = DDim(strides.data(), strides.size());
+  meta.stride = DDim(stride.data(), stride.size());
   meta.offset = x_offset;
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
@@ -70,4 +70,4 @@ void DiagonalStrideKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(diagonal,
                                          STRIDED,
-                                         phi::DiagonalStrideKernel) {}
+                                         phi::DiagonalStridedKernel) {}

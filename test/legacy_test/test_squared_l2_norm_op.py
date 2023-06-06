@@ -81,7 +81,7 @@ class TestL2LossOp(OpTest):
         X = np.random.uniform(-1, 1, (13, 19)).astype("float32")
         X[np.abs(X) < self.max_relative_error] = 0.1
         self.inputs = {'X': X}
-        self.outputs = {'Out': np.square(LA.norm(X))}
+        self.outputs = {'Out': np.array([np.square(LA.norm(X))])}
 
     def test_check_output(self):
         self.check_output()

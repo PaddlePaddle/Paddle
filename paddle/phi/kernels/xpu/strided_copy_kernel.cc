@@ -48,18 +48,18 @@ __global__ void StridedCopyFunc(const T* input_data,
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
-                       const std::vector<int64_t>& out_strides,
+                       const std::vector<int64_t>& out_stride,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.strides = phi::make_ddim(out_strides);
+  meta.stride = phi::make_ddim(out_stride);
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
   const int64_t* dims = input.dims().Get();
-  const int64_t* input_strides = input.strides().Get();
-  const int64_t* output_strides = meta.strides.Get();
+  const int64_t* input_stride = input.stride().Get();
+  const int64_t* output_stride = meta.stride.Get();
   auto numel = input.numel();
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
@@ -67,17 +67,17 @@ void StridedCopyKernel(const Context& dev_ctx,
   int64_t* tmp_data =
       reinterpret_cast<int64_t*>(malloc(sizeof(int64_t) * rank * 3));
   std::memcpy(tmp_data, dims, sizeof(int64_t) * rank);
-  std::memcpy(tmp_data + rank, input_strides, sizeof(int64_t) * rank);
-  std::memcpy(tmp_data + rank + rank, output_strides, sizeof(int64_t) * rank);
+  std::memcpy(tmp_data + rank, input_stride, sizeof(int64_t) * rank);
+  std::memcpy(tmp_data + rank + rank, output_stride, sizeof(int64_t) * rank);
 
-  auto dims_strides = paddle::memory::Alloc(
+  auto dims_stride = paddle::memory::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * rank * 3,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int64_t* dims_strides_data = reinterpret_cast<int64_t*>(dims_strides->ptr());
+  int64_t* dims_stride_data = reinterpret_cast<int64_t*>(dims_stride->ptr());
 
   paddle::memory::Copy(dev_ctx.GetPlace(),
-                       dims_strides_data,
+                       dims_stride_data,
                        phi::CPUPlace(),
                        tmp_data,
                        sizeof(int64_t) * rank * 3);
@@ -86,9 +86,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                             64,
                             dev_ctx.stream()>>>(input_data,
                                                 output_data,
-                                                dims_strides_data + rank,
-                                                dims_strides_data + rank + rank,
-                                                dims_strides_data,
+                                                dims_stride_data + rank,
+                                                dims_stride_data + rank + rank,
+                                                dims_stride_data,
                                                 rank,
                                                 numel);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "StridedCopyFunc");

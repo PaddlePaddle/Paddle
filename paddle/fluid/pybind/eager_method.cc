@@ -77,7 +77,7 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
 extern PyTypeObject* p_tensor_type;
 
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
     paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
@@ -154,11 +154,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_strides[0] = sizeof_dtype * numel;
     }
   } else if (self->tensor.is_dense_tensor()) {
-    auto tensor_strides = self->tensor.strides();
+    auto tensor_stride = self->tensor.stride();
 
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * tensor_strides[i];
+      py_strides[i] = sizeof_dtype * tensor_stride[i];
       numel *= py_dims[i];
     }
   } else {
@@ -595,7 +595,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   }
 
   paddle::Tensor* grad;
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
@@ -651,7 +651,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->tensor.name();
 
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -1035,7 +1035,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   const auto& tensor_dims = tensor.dims();
 
   std::vector<size_t> dims(tensor_dims.size());
-  std::vector<size_t> strides = phi::vectorize<size_t>(tensor.strides());
+  std::vector<size_t> stride = phi::vectorize<size_t>(tensor.stride());
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
@@ -1072,7 +1072,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
               index,
               i,
               dims[i]));
-      offset += index * strides[i];
+      offset += index * stride[i];
     }
   }
 #define PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(_) \
@@ -1188,7 +1188,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
 
     if (egr::Controller::Instance().HasGrad()) {
       PADDLE_ENFORCE_EQ(
-          egr::egr_utils_api::IsLeafTensor(self->tensor) &&
+          egr::EagerUtils::IsLeafTensor(self->tensor) &&
               !egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient(),
           false,
           platform::errors::InvalidArgument(
@@ -1371,7 +1371,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* kwargs) {
   EAGER_TRY
   int64_t hook_id;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
     auto autograd_meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -1438,7 +1438,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
 
   std::shared_ptr<egr::GradNodeBase> grad_node =
       egr::EagerUtils::grad_node(self->tensor);
-  PADDLE_ENFORCE_EQ(egr::egr_utils_api::IsLeafTensor(self->tensor),
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::IsLeafTensor(self->tensor),
                     true,
                     platform::errors::InvalidArgument(
                         "Only can register backward hook for leaf Tensor."));
@@ -1942,7 +1942,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
                         "Detected NULL grad. Please check if you have manually "
                         "cleared the grad inside autograd_meta"));
 
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     std::static_pointer_cast<egr::GradNodeAccumulation>(
         egr::EagerUtils::grad_node(self->tensor))
@@ -1989,11 +1989,11 @@ static PyObject* tensor_method_stride(TensorObject* self,
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
     return ToPyObject(value);
   }
-  auto strides = self->tensor.strides();
-  size_t rank = static_cast<size_t>(strides.size());
+  auto stride = self->tensor.stride();
+  size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
   for (size_t i = 0; i < rank; i++) {
-    value[i] = strides[i];
+    value[i] = stride[i];
   }
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL

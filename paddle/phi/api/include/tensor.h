@@ -58,16 +58,12 @@ class AbstractAutogradMeta {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ "Paddle Tensor Operation (phi)" Library ].
+ * [ "Paddle HIgh reusability operator (phi)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
  * in Tensor is defined by TensorImpl. Tensor only defines the interface for
  * computation.
- *
- * This is a new Tensor design, which is independent of the original
- * phi::DenseTensor in fluid. The original Tensor will be gradually discarded
- * in the future.
  *
  * Note: Tensor can be NULL state, Tensor is meaningful only when the
  * TensorImpl to which it is pointed is not empty.
@@ -79,8 +75,8 @@ class AbstractAutogradMeta {
  * Note: Tensor cannot be inherited. The heterogeneous Tensor implementation
  * can be achieved by inheriting the underlying TensorBase.
  *
- * Note: This Tensor API is suitable for training and custom operators,
- * another simple Tensor design may be required for inference.
+ * Note: This Tensor API is suitable for training，inference and custom
+ * operators.
  */
 
 class PADDLE_API Tensor final {
@@ -182,11 +178,11 @@ class PADDLE_API Tensor final {
   std::vector<int64_t> shape() const;
 
   /**
-   * @brief Return the strides (dimensions) of Tensor.
+   * @brief Return the stride (dimensions) of Tensor.
    *
    * @return std::vector<int64_t>
    */
-  std::vector<int64_t> strides() const;
+  std::vector<int64_t> stride() const;
 
   /**
    * @brief Reset the shape of the tensor.

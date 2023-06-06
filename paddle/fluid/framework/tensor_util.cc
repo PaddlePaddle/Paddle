@@ -288,14 +288,14 @@ void TensorCopy(const phi::DenseTensor& src,
                 const platform::Place& dst_place,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, dst);
-  dst->set_strides(src.strides());
+  dst->set_stride(src.stride());
 }
 void TensorCopy(const phi::DenseTensor& src,
                 const platform::Place& dst_place,
                 const platform::DeviceContext& ctx,
                 phi::DenseTensor* dst) {
   TensorCopyImpl<phi::DenseTensor>(src, dst_place, ctx, dst);
-  dst->set_strides(src.strides());
+  dst->set_stride(src.stride());
 }
 
 void TensorCopySync(const phi::DenseTensor& src,
@@ -451,7 +451,7 @@ void TensorCopySync(const phi::DenseTensor& src,
         "Copy from %s to %s is not supported.", src_place, dst_place));
   }
 #endif
-  dst->set_strides(src.strides());
+  dst->set_stride(src.stride());
 }
 
 void TensorToStream(std::ostream& os,

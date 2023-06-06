@@ -48,9 +48,8 @@ class LogicalTransformer(BaseTransformer):
         a = _jst.And(lambda:x>1, lambda:y<1)
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         return self.visit(self.root)

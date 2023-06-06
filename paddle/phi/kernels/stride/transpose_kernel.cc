@@ -19,10 +19,10 @@
 namespace phi {
 
 template <typename Context>
-void TransposeStrideKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const std::vector<int>& axis,
-                           DenseTensor* out) {
+void TransposeStridedKernel(const Context& ctx,
+                            const DenseTensor& x,
+                            const std::vector<int>& axis,
+                            DenseTensor* out) {
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
@@ -32,10 +32,10 @@ void TransposeStrideKernel(const Context& ctx,
   }
 
   auto meta = out->meta();
-  auto in_strides = x.strides();
+  auto in_stride = x.stride();
   auto in_dims = x.dims();
   for (size_t i = 0; i < formated_axis.size(); i++) {
-    meta.strides[i] = in_strides[formated_axis[i]];
+    meta.stride[i] = in_stride[formated_axis[i]];
     meta.dims[i] = in_dims[formated_axis[i]];
   }
 
@@ -47,4 +47,4 @@ void TransposeStrideKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose,
                                          STRIDED,
-                                         phi::TransposeStrideKernel) {}
+                                         phi::TransposeStridedKernel) {}

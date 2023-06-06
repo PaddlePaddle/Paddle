@@ -48,7 +48,7 @@ using LoD = std::vector<std::vector<size_t>>;
 struct DenseTensorMeta {
   DenseTensorMeta();
   DenseTensorMeta(DataType dtype, const DDim& dims);
-  DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& strides);
+  DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& stride);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
@@ -64,8 +64,8 @@ struct DenseTensorMeta {
   DenseTensorMeta& operator=(const DenseTensorMeta& other);
   DenseTensorMeta& operator=(DenseTensorMeta&& other);
 
-  static DDim calc_strides(const DDim& dims,
-                           DataLayout layout = DataLayout::NCHW);
+  static DDim calc_stride(const DDim& dims,
+                          DataLayout layout = DataLayout::NCHW);
 
   /// \brief Test whether the metadata is valid. Does not throw exceptions.
   /// \return Whether the metadata is valid.
@@ -82,14 +82,14 @@ struct DenseTensorMeta {
   DataLayout layout{DataLayout::NCHW};
   LoD lod;
   size_t offset{0};
-  DDim strides;
+  DDim stride;
 };
 
 inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
   return (lhs.is_scalar == rhs.is_scalar) && lhs.use_gpudnn == rhs.use_gpudnn &&
          (lhs.dims == rhs.dims) && (lhs.dtype == rhs.dtype) &&
          (lhs.layout == rhs.layout) && (lhs.lod == rhs.lod) &&
-         (lhs.offset == rhs.offset) && (lhs.strides == rhs.strides);
+         (lhs.offset == rhs.offset) && (lhs.stride == rhs.stride);
 }
 
 struct StringTensorMeta {

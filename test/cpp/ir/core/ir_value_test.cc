@@ -43,7 +43,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op1_name", "op1_attr"),
                             op1_output_types,
                             nullptr);
-  VLOG(0) << op1->print();
+  op1->Print(std::cout);
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
@@ -52,7 +52,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op2_name", "op2_attr"),
                             op2_output_types,
                             nullptr);
-  VLOG(0) << op2->print() << std::endl;
+  op2->Print(std::cout);
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
                                           op2->GetResultByIndex(0)};
@@ -62,7 +62,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
                             nullptr);
-  VLOG(0) << op3->print() << std::endl;
+  op3->Print(std::cout);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
                                           op3->GetResultByIndex(0)};
@@ -75,7 +75,7 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op4_name", "op4_attr"),
                             op4_output_types,
                             nullptr);
-  VLOG(0) << op4->print() << std::endl;
+  op4->Print(std::cout);
 
   // Test 1:
   EXPECT_EQ(op1->GetResultByIndex(0).GetDefiningOp(), op1);
@@ -85,16 +85,13 @@ TEST(value_test, value_test) {
 
   // Test 2: op1_first_output -> op4_first_input
   ir::OpResult op1_first_output = op1->GetResultByIndex(0);
-  ir::detail::OpOperandImpl *op4_first_input =
-      reinterpret_cast<ir::detail::OpOperandImpl *>(
-          reinterpret_cast<uintptr_t>(op4) + sizeof(ir::Operation));
-  EXPECT_EQ(static_cast<ir::Value>(op1_first_output).impl()->first_use(),
-            op4_first_input);
-  ir::detail::OpOperandImpl *op3_first_input =
-      reinterpret_cast<ir::detail::OpOperandImpl *>(
-          reinterpret_cast<uintptr_t>(op3) + sizeof(ir::Operation));
-  EXPECT_EQ(op4_first_input->next_use(), op3_first_input);
-  EXPECT_EQ(op3_first_input->next_use(), nullptr);
+  ir::OpOperand op4_first_input = op4->GetOperandByIndex(0);
+
+  EXPECT_EQ(op1_first_output.first_use(), op4_first_input);
+  ir::OpOperand op3_first_input = op3->GetOperandByIndex(0);
+
+  EXPECT_EQ(op4_first_input.next_use(), op3_first_input);
+  EXPECT_EQ(op3_first_input.next_use(), nullptr);
 
   // Test 3: Value iterator
   ir::Value::use_iterator iter = op1->GetResultByIndex(0).begin();
