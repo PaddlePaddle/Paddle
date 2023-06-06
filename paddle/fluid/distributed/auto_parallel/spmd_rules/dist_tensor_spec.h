@@ -62,6 +62,8 @@ class DistTensorSpec {
 
   const std::vector<int64_t>& get_shape() const;
 
+  void set_shape(const std::vector<int64_t>& shape);
+
   std::string to_string() const;
 
  private:
