@@ -521,6 +521,18 @@
     func : swish_raw
   backward : swish_grad
 
+- op : sync_batch_norm
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, Tensor MomentumTensor, bool is_test, float momentum=0.9, float epsilon=1e-5, str data_layout="NCHW", bool use_global_stats=false, bool trainable_statistics=false)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta:
+    func : BatchNormInferMeta
+  kernel :
+    func : sync_batch_norm
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
+  optional : MomentumTensor, reserve_space
+  backward : sync_batch_norm_grad
+
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)
