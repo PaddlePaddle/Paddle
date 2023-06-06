@@ -10,5 +10,5 @@ endforeach()
 
 if(WITH_CINN)
   set_tests_properties(test_prim_flags_case PROPERTIES LABELS "RUN_TYPE=CINN")
-  set_tests_properties(test_prim_flags_case PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_cinn_flag PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()
