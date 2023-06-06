@@ -35,7 +35,7 @@ class TestPPAdaptor(TestMultipleGpus):
         self.assertTrue(adaptor is not None)
 
     def test_hybrid_parallel_transformer_unbalanced_data(self):
-        print(f"pwd {os.getcwd()}")
+
         self.run_mnist_2gpu('hybrid_parallel_pp_transformer_save.py')
 
         # model load is tested
@@ -74,9 +74,6 @@ class TestPPAdaptor(TestMultipleGpus):
                     "{}/mp_00_sharding_00_pp_{:0>2d}".format(
                         expected_model_dir, i
                     )
-                )
-                print(
-                    f"converted_model_dir: {sub_converted_model_dir}; expected_model_dir: {sub_expected_model_dir}"
                 )
 
                 def check_names(dict_1, dict_2):

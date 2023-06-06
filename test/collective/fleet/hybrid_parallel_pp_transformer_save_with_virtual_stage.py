@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -52,7 +51,6 @@ class TestDistPPSaveTraning(unittest.TestCase):
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_pp_model(self):
-        print(f"pwd {os.getcwd()}")
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         dp_id = hcg.get_data_parallel_rank()
