@@ -15,9 +15,9 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/fluid/ir/dialect/pd_interface.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
@@ -35,7 +35,7 @@ class AddOp : public ir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  static void verify(const std::vector<ir::OpResult> &inputs,
+  static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
     if (inputs.size() != 2) {
@@ -107,7 +107,7 @@ TEST(pass_manager_test, pass_manager) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
+      ir::Operation::Create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
   ir::Block *block = program.block();
   block->push_back(op1);
@@ -145,7 +145,7 @@ TEST(pass_manager_test, pass_manager) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
-      ir::Operation::create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
+      ir::Operation::Create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
   block->push_back(op2);
 
   EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
@@ -172,7 +172,7 @@ TEST(pass_manager_test, pass_manager) {
       builtin_dialect->name() + "." + std::string(AddOp::name());
   ir::OpInfo op3_info = ctx->GetRegisteredOpInfo(op3_name);
   std::unordered_map<std::string, ir::Attribute> op3_attribute;
-  ir::Operation *op3 = ir::Operation::create(
+  ir::Operation *op3 = ir::Operation::Create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
       op3_attribute,
       {dense_tensor_dtype},
@@ -207,9 +207,9 @@ TEST(pass_manager_test, pass_manager) {
   abs_argument.AddOperands(operands.begin(), operands.end());
   abs_argument.AddAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
   abs_argument.AddTypes(output_types.begin(), output_types.end());
-  ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
-  paddle::dialect::GetOpInfoInterface interface =
-      abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
+  ir::Operation *abs_op = ir::Operation::Create(std::move(abs_argument));
+  paddle::dialect::OpYamlInfoInterface interface =
+      abs_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
   EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name == "x", true);
 
   // (8) Def SetParameterOp(c, "c")
@@ -222,7 +222,7 @@ TEST(pass_manager_test, pass_manager) {
   ir::OperationArgument op4_argument(
       {op3->GetResultByIndex(0)}, {}, {}, op4_info);
   op4_argument.AddAttributes(op4_attribute.begin(), op4_attribute.end());
-  ir::Operation *op4 = ir::Operation::create(std::move(op4_argument));
+  ir::Operation *op4 = ir::Operation::Create(std::move(op4_argument));
   block->push_back(op4);
 
   EXPECT_EQ(op4->GetOperandByIndex(0).source().type().dialect().id(),
@@ -254,13 +254,15 @@ TEST(pass_manager_test, pass_manager) {
 
   pm.EnableIRPrinting(std::make_unique<ir::PassManager::IRPrinterOption>(
       [](ir::Pass *pass, ir::Operation *op) {
-        return pass->pass_info().name == "TestPass";
+        return pass->name() == "TestPass";
       },
       [](ir::Pass *pass, ir::Operation *op) {
-        return pass->pass_info().name == "TestPass";
+        return pass->name() == "TestPass";
       },
       true,
-      false));
+      true));
+
+  pm.EnablePassTiming(true);
 
   CHECK_EQ(pm.Run(&program), true);
 }
