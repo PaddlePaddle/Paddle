@@ -85,15 +85,16 @@ class TopKOpConverter : public OpConverter {
       values = Cast(values, nvinfer1::DataType::kINT32);
     }
 
-    values->setName(op_desc.Output("Out").front().c_str());
-    engine_->SetITensor(op_desc.Output("Out").front().c_str(), values);
+    auto out_name = op_desc.Output("Out").front();
+    auto indices_name = op_desc.Output("Indices").front();
+    values->setName(out_name.c_str());
+    engine_->SetITensor(indices_name.c_str(), values);
 
-    indices->setName(op_desc.Output("Indices").front().c_str());
-    engine_->SetITensor(op_desc.Output("Indices").front().c_str(), indices);
+    indices->setName(out_name.c_str());
+    engine_->SetITensor(indices_name.c_str(), indices);
 
-    layer->setName(("top_k (Output: " + op_desc.Output("Out").front() + "," +
-                    op_desc.Output("Indices").front() + ")")
-                       .c_str());
+    layer->setName(
+        ("top_k (Output: " + out_name + "," + indices_name + ")").c_str());
   }
 };
 }  // namespace tensorrt
