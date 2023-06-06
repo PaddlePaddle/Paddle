@@ -47,9 +47,10 @@ ProgramDesc load_from_file(const std::string &file_name) {
 }
 
 TEST(PaddleDialectTest, Translator) {
-  auto p = load_from_file("restnet50_main.prog");
-  // auto p =
-  // load_from_file("/home/lvyongkang/Paddle/build/test/cpp/lm_main_program");
+  // auto p = load_from_file("restnet50_main.prog");
+  auto p = load_from_file(
+      "/home/lvyongkang/Paddle/test_program/"
+      "resnet50_main_no_merged_momentum.prog");
   EXPECT_EQ(p.Size(), 1u);
 
   ir::IrContext *ctx = ir::IrContext::Instance();
@@ -58,8 +59,10 @@ TEST(PaddleDialectTest, Translator) {
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   size_t op_size = program->block()->size();
-  // ops.size() = op size in BlockDesc + get_parameter_op + combine op
-  EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 21);
+  // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
+  // array op + full op
+  EXPECT_EQ(op_size,
+            p.Block(0).OpSize() + program->parameters_num() + 16 + 1 + 8);
 
   program->Print(std::cout);
 }

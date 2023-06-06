@@ -1,7 +1,7 @@
 - name: feed
   inputs: []
   attrs:
-  - {typename: str, name: str}
+  - {typename: str, name: name}
   outputs:
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null

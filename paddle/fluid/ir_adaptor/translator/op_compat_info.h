@@ -63,9 +63,10 @@ class OpNameNormalizer {
     return (op_mutable_attributes.find(op_type) != op_mutable_attributes.end());
   }
 
-  const std::unordered_set<std::string>& GetMutableAttributes(
+  const std::unordered_set<std::string>* GetMutableAttributes(
       const std::string& op_type) {
-    return op_mutable_attributes.at(op_type);
+    if (!HasMutableAttribute(op_type)) return nullptr;
+    return &op_mutable_attributes.at(op_type);
   }
 
   const MutableAttributeInfo& GetMutableAttributeInfos(
