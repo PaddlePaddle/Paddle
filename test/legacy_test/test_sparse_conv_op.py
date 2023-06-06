@@ -373,9 +373,9 @@ class TestStatic(unittest.TestCase):
             )
             correct_out = np.array([[[[[5.0], [11.0]]]]]).astype('float64')
             correct_out_values = [[5.0], [11.0]]
-            assert np.array_equal(correct_out, fetch[0])
-            assert np.array_equal(correct_out_values, fetch[2])
-            assert out_indices.dtype == paddle.int32
+            np.testing.assert_array_equal(correct_out, fetch[0])
+            np.testing.assert_array_equal(correct_out_values, fetch[2])
+            self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
 
     def test2D(self):
@@ -438,7 +438,7 @@ class TestStatic(unittest.TestCase):
             correct_out_values = [[5.0], [11.0]]
             np.testing.assert_array_equal(correct_out, fetch[0])
             np.testing.assert_array_equal(correct_out_values, fetch[2])
-            assert out_indices.dtype == paddle.int32
+            self.assertTrue(out_indices.dtype == paddle.int32)
         paddle.disable_static()
 
 
