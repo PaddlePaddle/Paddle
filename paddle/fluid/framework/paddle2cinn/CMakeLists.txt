@@ -13,11 +13,11 @@ pass_library(cinn_zero_tensor_trick_pass base)
 cc_library(
   transform_desc
   SRCS transform_desc.cc
-  DEPS proto_desc cinn)
+  DEPS proto_desc cinnapi)
 cc_library(
   transform_type
   SRCS transform_type.cc
-  DEPS phi enforce cinn)
+  DEPS phi enforce cinnapi)
 cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc
@@ -29,7 +29,7 @@ cc_library(
 cc_library(
   cinn_graph_symbolization
   SRCS cinn_graph_symbolization.cc
-  DEPS lod_tensor graph transform_desc cinn)
+  DEPS lod_tensor graph transform_desc cinnapi)
 cc_library(
   cinn_compiler
   SRCS cinn_compiler.cc
@@ -38,7 +38,7 @@ cc_library(
        lod_tensor
        cinn_cache_key
        cinn_graph_symbolization
-       cinn
+       cinnapi
        cinn_launch_context)
 
 if(WITH_TESTING)

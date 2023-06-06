@@ -1,4 +1,4 @@
-if(CINN_ONLY)
+if(WITH_CINN)
   file(GLOB_RECURSE CINN_PY_FILES ${PROJECT_SOURCE_DIR}/python/cinn/*.py)
   set(CINN_PYTHON_DIR ${PROJECT_SOURCE_DIR}/python/cinn)
   set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/cinn/core_api.so)
@@ -34,7 +34,10 @@ if(CINN_ONLY)
 
   add_custom_target(COPY_CINN_CORE_API ALL DEPENDS ${CINN_CORE_API}
                                                    ${CINN_PY_FILES})
-  return()
+
+  if(CINN_ONLY)
+    return()
+  endif()
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)

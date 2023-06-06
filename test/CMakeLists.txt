@@ -1,8 +1,3 @@
-if(CINN_ONLY)
-  add_subdirectory(cinn)
-  return()
-endif()
-
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
     CACHE INTERNAL "c++ tests directory")
@@ -96,6 +91,12 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 if(WITH_TESTING)
+  if(WITH_CINN)
+    add_subdirectory(cinn)
+    if(CINN_ONLY)
+      return()
+    endif()
+  endif()
   add_subdirectory(amp)
   add_subdirectory(asp)
   add_subdirectory(autograd)
