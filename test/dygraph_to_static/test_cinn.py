@@ -65,7 +65,7 @@ class TestCINN(unittest.TestCase):
 
             res.append(out.numpy())
 
-            if use_cinn:
+            if use_cinn and paddle.device.is_compiled_with_cinn():
                 self.assertTrue(
                     paddle.device.is_run_with_cinn(),
                     msg="The test was not running with CINN! Please check.",
