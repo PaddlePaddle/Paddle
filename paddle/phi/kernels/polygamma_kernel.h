@@ -12,31 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/ir_context.h"
+#pragma once
 
-namespace ir {
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
-Program::Program(IrContext* context) {
-  module_ = ModuleOp::Create(context, this);
-}
+namespace phi {
 
-Program::~Program() {
-  if (module_) {
-    module_.Destroy();
-  }
-}
+/**
+ * @brief This kernel is used to perform elementwise polygamma for x.
+ * @param  ctx     device context
+ * @param  x       the input tensor of polygamma
+ * @param  n       the input tensor of polygamma
+ * @param  out     the output tensor of polygamma
+ */
+template <typename T, typename Context>
+void PolygammaKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const int n,
+                     DenseTensor* out);
 
-Parameter* Program::GetParameter(std::string name) const {
-  if (parameters_.count(name) != 0) {
-    return parameters_.at(name).get();
-  }
-  return nullptr;
-}
-
-void Program::SetParameter(std::string name,
-                           std::unique_ptr<Parameter>&& parameter) {
-  parameters_[name].reset(parameter.release());
-}
-
-}  // namespace ir
+}  // namespace phi
