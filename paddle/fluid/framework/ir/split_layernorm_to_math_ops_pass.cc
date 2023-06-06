@@ -186,9 +186,8 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
 
     // small feature size has low performance
     constexpr int FEATURE_SIZE_THRESHOLD = 128;
-    std::cout << feature_size << feature_size << std::endl;
     if (feature_size > FEATURE_SIZE_THRESHOLD) {
-     // return;
+      return;
     }
     // since gamma and beta are constant vars, dynamic shape should be useless
     auto min_input_shape =
