@@ -70,6 +70,11 @@ class TestCINN(unittest.TestCase):
                     paddle.device.is_run_with_cinn(),
                     msg="The test was not running with CINN! Please check.",
                 )
+            else:
+                self.assertFalse(
+                    paddle.device.is_run_with_cinn(),
+                    msg="The test should not running with CINN when the whl package was not compiled with CINN! Please check.",
+                )
 
         return res
 
