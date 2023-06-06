@@ -22,7 +22,8 @@ if(WITH_ARM OR WIN32)
 endif()
 
 include(ExternalProject)
-
+set(CUSPARSELT_DOWNLOAD_DIR
+    ${PADDLE_SOURCE_DIR}/third_party/cusparselt/${CMAKE_SYSTEM_NAME})
 set(CUSPARSELT_PROJECT "extern_cusparselt")
 set(CUSPARSELT_P "https://developer.download.nvidia.com/compute")
 set(CUSPARSELT_F "libcusparse_lt-linux-x86_64-0.2.0.1.tar.gz")
@@ -37,22 +38,59 @@ set(CUSPARSELT_INC_DIR
 set(CUSPARSELT_LIB_DIR
     "${CUSPARSELT_INSTALL_DIR}/lib64"
     CACHE PATH "sparselt lib directory." FORCE)
+set(CUSPARSELT_CACHE_FILENAME "${CUSPARSELT_F}")
+set(CUSPARSELT_URL_MD5 "4f72f469e9cb1a85b09017fbace733d7")
+
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${CUSPARSELT_INC_DIR})
+
+function(download_cusparselt)
+  message(
+    STATUS
+      "Downloading ${CUSPARSELT_URL} to ${CUSPARSELT_DOWNLOAD_DIR}/${CUSPARSELT_CACHE_FILENAME}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${CUSPARSELT_URL}
+    ${CUSPARSELT_DOWNLOAD_DIR}/${CUSPARSELT_CACHE_FILENAME}
+    EXPECTED_MD5 ${CUSPARSELT_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${CUSPARSELT_CACHE_FILENAME} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${CUSPARSELT_CACHE_FILENAME} again"
+    )
+  endif()
+endfunction()
+
+find_file(
+  LOCAL_CUSPARSELT_LIB_ZIP
+  NAMES ${CUSPARSELT_CACHE_FILENAME}
+  PATHS ${CUSPARSELT_DOWNLOAD_DIR}
+  NO_DEFAULT_PATH)
+
+if(LOCAL_CUSPARSELT_LIB_ZIP)
+  file(MD5 ${CUSPARSELT_DOWNLOAD_DIR}/${CUSPARSELT_CACHE_FILENAME}
+       CUSPARSELT_MD5)
+  if(NOT CUSPARSELT_MD5 EQUAL CUSPARSELT_URL_MD5)
+    download_cusparselt()
+  endif()
+else()
+  download_cusparselt()
+endif()
 
 ExternalProject_Add(
   ${CUSPARSELT_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${CUSPARSELT_URL}
+  URL ${CUSPARSELT_DOWNLOAD_DIR}/${CUSPARSELT_CACHE_FILENAME}
   PREFIX ${CUSPARSELT_PREFIX_DIR}
+  DOWNLOAD_DIR ${CUSPARSELT_DOWNLOAD_DIR}
   DOWNLOAD_NO_PROGRESS 1
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
-  INSTALL_COMMAND
-    ${CMAKE_COMMAND} -E copy_directory
-    ${CUSPARSELT_PREFIX_DIR}/src/extern_cusparselt/lib64 ${CUSPARSELT_LIB_DIR}
-    && ${CMAKE_COMMAND} -E copy_directory
-    ${CUSPARSELT_PREFIX_DIR}/src/extern_cusparselt/include ${CUSPARSELT_INC_DIR}
+  INSTALL_COMMAND ""
   UPDATE_COMMAND "")
 
 add_library(cusparselt INTERFACE)
