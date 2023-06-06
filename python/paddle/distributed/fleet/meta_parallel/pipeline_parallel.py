@@ -261,7 +261,7 @@ class PipelineParallel(MetaParallelBase):
         all_flag_names = self.timers.timers.keys()
         self.timers.log(all_flag_names)
 
-    def forward_backward_pipeline(self, micro_dataset, scaler=None):
+    def forward_backward_pipeline(self, data, scaler=None):
         # use the 1f1b scheduling strategy.
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
@@ -280,6 +280,8 @@ class PipelineParallel(MetaParallelBase):
 
         input_buffers = []
         output_buffers = []
+
+        micro_dataset = self._wrap_data(data)
 
         for step_id in range(startup_steps):
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
@@ -382,9 +384,13 @@ class PipelineParallel(MetaParallelBase):
 
         return data
 
-    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
-        data = self._prepare_training(data, optimizer, lr_scheduler)
-        # TODO(liuzhnehai): pass micro_dataset from reader
+    def _wrap_data(self, data):
+        """
+        for backward compatibilty, wrap data to Fake FakeMicroDataset if it is of type list or tuple
+        """
+        if (not isinstance(data, tuple)) and (not isinstance(data, list)):
+            return data
+
         micro_dataset = FakeMicroDataset(
             data,
             self.is_pipeline_first_stage(ignore_virtual=True),
@@ -392,10 +398,12 @@ class PipelineParallel(MetaParallelBase):
             self.accumulate_steps,
             self.micro_batch_size,
         )
+        return micro_dataset
 
+    def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
+        data = self._prepare_training(data, optimizer, lr_scheduler)
         # 1f1b scheduler for pipeline parallel
-        train_loss = self.forward_backward_pipeline(micro_dataset, scaler)
-
+        train_loss = self.forward_backward_pipeline(data, scaler)
         # optimizer
         with paddle.amp.auto_cast(enable=False):
             self._optimizer_step()
@@ -422,14 +430,8 @@ class PipelineParallel(MetaParallelBase):
         input_buffers = []
         output_buffers = []
 
-        # TODO(liuzhnehai): pass micro_dataset from reader
-        micro_dataset = FakeMicroDataset(
-            data,
-            self.is_pipeline_first_stage(ignore_virtual=True),
-            self.is_pipeline_last_stage(ignore_virtual=True),
-            self.accumulate_steps,
-            self.micro_batch_size,
-        )
+        # convert to micro dataset
+        micro_dataset = self._wrap_data(data)
 
         for step_id in range(startup_steps):
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
@@ -467,6 +469,7 @@ class PipelineParallel(MetaParallelBase):
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
             input_tensor = next(micro_dataset)
+            self._check_micro_batch_data_valid(input_tensor)
 
         assert chunk_id is None or isinstance(chunk_id, int)
 
@@ -479,6 +482,7 @@ class PipelineParallel(MetaParallelBase):
                     self._layers._loss_fn is not None
                 ), "loss function should exist to compute loss"
                 labels = next(micro_dataset)
+                self._check_micro_batch_data_valid(labels)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
                     output_tensor, (paddle.Tensor, framework.core.eager.Tensor)
@@ -690,7 +694,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         return input_tensor_grad
 
     def forward_backward_pipeline(
-        self, micro_dataset, scaler, forward_only=False, compute_loss=True
+        self, data, scaler, forward_only=False, compute_loss=True
     ):
         # use interleave scheduling strategy.
         # this strategy is inspired by:
@@ -710,6 +714,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.input_tensors = [[] for _ in range(self.num_model_chunks)]
         self.output_tensors = [[] for _ in range(self.num_model_chunks)]
         self.output_tensor_grads = [[] for _ in range(self.num_model_chunks)]
+
+        micro_dataset = self._wrap_data(data)
 
         num_steps = self.accumulate_steps * self.num_model_chunks
         if forward_only:
@@ -913,16 +919,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         data = self._prepare_training(data, optimizer, lr_scheduler)
-        # TODO(liuzhnehai): pass micro_dataset from reader
-        micro_dataset = FakeMicroDataset(
-            data,
-            self.is_pipeline_first_stage(ignore_virtual=True),
-            self.is_pipeline_last_stage(ignore_virtual=True),
-            self.accumulate_steps,
-            self.micro_batch_size,
-        )
+
         # interleave scheduler for pipeline parallel
-        train_loss = self.forward_backward_pipeline(micro_dataset, scaler)
+        train_loss = self.forward_backward_pipeline(data, scaler)
 
         # optimizer
         with paddle.amp.auto_cast(enable=False):
@@ -937,15 +936,4 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._layers.eval()
         self._compute_loss = compute_loss
 
-        # TODO(liuzhnehai): pass micro_dataset from reader
-        micro_dataset = FakeMicroDataset(
-            data,
-            self.is_pipeline_first_stage(ignore_virtual=True),
-            self.is_pipeline_last_stage(ignore_virtual=True),
-            self.accumulate_steps,
-            self.micro_batch_size,
-        )
-
-        return self.forward_backward_pipeline(
-            micro_dataset, None, forward_only=True
-        )
+        return self.forward_backward_pipeline(data, None, forward_only=True)
