@@ -285,6 +285,15 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
+  EAGER_TRY
+  int grad_fn_value = 1;
+  return ToPyObject(grad_fn_value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+
+
 struct PyGetSetDef variable_properties[] = {
     {"grad",
      (getter)tensor_properties_get_grad,
@@ -320,6 +329,7 @@ struct PyGetSetDef variable_properties[] = {
     {"dtype", (getter)tensor_properties_get_dtype, nullptr, nullptr, nullptr},
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
     {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
+    {"grad_fn", (getter)tensor_properties_get_grad_fn, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 // variable_properties for core.eager.StringTensor
