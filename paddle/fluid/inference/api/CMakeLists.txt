@@ -48,7 +48,7 @@ else()
   cc_library(
     paddle_inference_api
     SRCS api.cc api_impl.cc helper.cc
-    DEPS executor paddle_inference_io ${paddle_inference_api_deps})
+    DEPS executor feed_fetch_method ${paddle_inference_api_deps})
 endif()
 
 cc_library(

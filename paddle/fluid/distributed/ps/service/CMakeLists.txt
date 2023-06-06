@@ -34,14 +34,26 @@ else()
 
 endif()
 
-brpc_library(
-  sendrecv_rpc
-  SRCS
-  ${BRPC_SRCS}
-  PROTO
-  sendrecv.proto
-  DEPS
-  ${BRPC_DEPS})
+if(WITH_XPU)
+  brpc_library(
+    sendrecv_rpc
+    SRCS
+    ${BRPC_SRCS}
+    PROTO
+    sendrecv.proto
+    DEPS
+    ps_service
+    ${BRPC_DEPS})
+else()
+  brpc_library(
+    sendrecv_rpc
+    SRCS
+    ${BRPC_SRCS}
+    PROTO
+    sendrecv.proto
+    DEPS
+    ${BRPC_DEPS})
+endif()
 
 #set_property(GLOBAL PROPERTY RPC_DEPS sendrecv_rpc ${BRPC_DEPS} string_helper)
 
