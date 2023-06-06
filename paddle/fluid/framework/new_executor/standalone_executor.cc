@@ -13,97 +13,80 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
+#include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
-                                       const std::vector<ProgramDesc>& programs)
-    : place_(place), programs_(programs) {}
+                                       const interpreter::Plan& plan,
+                                       Scope* scope)
+    : place_(place), plan_(plan), scope_(scope) {
+  int64_t micro_batch_num = plan_.MicroBatchNum();
+  for (int64_t i = 0; i < micro_batch_num; ++i) {
+    micro_batch_scopes_.emplace_back(&scope->NewScope());
+  }
+
+  const std::vector<interpreter::Job>& jobs = plan_.JobList();
+
+  for (const interpreter::Job& job : jobs) {
+    const std::string& job_type = job.Type();
+    std::shared_ptr<ProgramDesc> program =
+        std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
+    SetColAttrForFetchOps(job, program);
+
+    const std::vector<std::string> job_fetch_names = plan_.FetchNames(job_type);
+    int64_t micro_batch_id = job.MicroBatchId();
+    PADDLE_ENFORCE(
+        micro_batch_id >= 0 && micro_batch_id < micro_batch_num,
+        phi::errors::Unavailable("The micro batch id (%lld) out of bound, "
+                                 "which should be in the range of [0, %lld].",
+                                 micro_batch_id,
+                                 micro_batch_num));
+
+    VLOG(6) << "Create interpretercore for job " << job_type
+            << " with micro batch id " << micro_batch_id;
+
+    interpreter::ExecutionConfig execution_config;
+    execution_config.create_local_scope = false;
+    // TODO(Ruibiao): hack skip gc for all vars, improve it later
+    for (VarDesc* var : program->Block(0).AllVars()) {
+      execution_config.skip_gc_vars.insert(var->Name());
+    }
+
+    interpretercores_.emplace_back(
+        std::make_unique<InterpreterCore>(place_,
+                                          program->Block(0),
+                                          micro_batch_scopes_[micro_batch_id],
+                                          execution_config));
+    interpretercores_.back()->SetCopyProgram(program);
+  }
+}
 
 paddle::framework::FetchList StandaloneExecutor::Run(
-    Scope* scope,
     const std::vector<std::string>& feed_names,
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
 
-  // TODO(Ruibiao): Unified single and multiple program run
-  if (programs_.size() == 1) {  // run single program
-    VLOG(6) << "Run single program";
-    auto core = GetInterpreterCore(scope,
-                                   programs_.at(0),
-                                   feed_names,
-                                   fetch_names,
-                                   0,
-                                   interpreter::ExecutionConfig());
-    VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
-    return core->Run(feed_names);
-  } else {  // run multiple programs
-    VLOG(6) << "Run multiple program, programs_.size() " << programs_.size();
-    FetchList merged_fetch_list;
-    for (size_t program_idx = 0; program_idx < programs_.size();
-         ++program_idx) {
-      const ProgramDesc& program = programs_[program_idx];
-
-      interpreter::ExecutionConfig execution_config;
-      execution_config.create_local_scope = false;
-      // TODO(Ruibiao): hack skip gc for all vars, improve it later
-      std::set<std::string> skip_gc_vars;
-      for (VarDesc* var : program.Block(0).AllVars()) {
-        execution_config.skip_gc_vars.insert(var->Name());
-      }
-
-      // TODO(Ruibiao): ONLY support feeds data in the first program for now
-      const std::vector<std::string>& real_feed_names =
-          (program_idx == 0 ? feed_names : std::vector<std::string>());
-      auto core = GetInterpreterCore(scope,
-                                     program,
-                                     real_feed_names,
-                                     fetch_names,
-                                     program_idx,
-                                     execution_config);
-      const FetchList& fetch_list = core->Run(real_feed_names);
-      std::move(fetch_list.begin(),
-                fetch_list.end(),
-                std::back_inserter(merged_fetch_list));
-    }
-    return merged_fetch_list;
+  if (plan_.MicroBatchNum() > 1) {
+    PADDLE_ENFORCE_EQ(feed_names.size(),
+                      0,
+                      phi::errors::Unimplemented(
+                          "Unsupported feed data for multiple micro_batch, "
+                          "please use non-iterative DataLoader for now."));
   }
-}
 
-std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
-    Scope* scope,
-    const ProgramDesc& program,
-    const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names,
-    size_t program_idx,
-    interpreter::ExecutionConfig execution_config) {
-  std::ostringstream oss;
-  oss << "prog_idx:" << program_idx << ",";
-  oss << "feed:";
-  for (auto& feedname : feed_names) {
-    oss << feedname << ",";
+  FetchList merged_fetch_list;
+  for (auto& core : interpretercores_) {
+    const FetchList& fetch_list = core->Run(feed_names);
+    std::move(fetch_list.begin(),
+              fetch_list.end(),
+              std::back_inserter(merged_fetch_list));
   }
-  oss << "fetch:";
-  for (auto& fetchname : fetch_names) {
-    oss << fetchname << ",";
-  }
-  oss << "scope:" << scope;
 
-  auto iter = interpretercores_.find(oss.str());
-
-  if (iter == interpretercores_.end()) {
-    VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
-            << place_;
-    std::shared_ptr<InterpreterCore> core = std::make_shared<InterpreterCore>(
-        place_, program.Block(0), scope, execution_config);
-    interpretercores_.emplace(oss.str(), core);
-    return core;
-  } else {
-    return iter->second;
-  }
+  return merged_fetch_list;
 }
 
 }  // namespace framework

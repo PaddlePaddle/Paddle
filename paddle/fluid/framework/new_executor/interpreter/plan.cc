@@ -13,18 +13,51 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
-#include "paddle/fluid/framework/new_executor/interpreter/job.h"
+
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
+namespace interpreter {
 
-const std::vector<Job*>& Plan::GetJobList() const { return job_list_; }
+Plan::Plan(const std::vector<Job>& job_list,
+           const std::unordered_map<std::string, ProgramDesc*>& type_to_program)
+    : job_list_(job_list),
+      type_to_program_(type_to_program),
+      micro_batch_num_(1) {
+  for (size_t i = 0; i < job_list_.size(); ++i) {
+    const Job& job = job_list_[i];
+    PADDLE_ENFORCE(type_to_program_.find(job.Type()) != type_to_program_.end(),
+                   phi::errors::InvalidArgument(
+                       "The %d-th job (type:%s, micro_batch_id:%d) has no "
+                       "corresponding Program.",
+                       i,
+                       job.Type(),
+                       job.MicroBatchId()));
 
-const std::unordered_map<std::string, ProgramDesc*>& Plan::GetTypeToProgram()
-    const {
-  return type_to_program_;
+    micro_batch_num_ = std::max(micro_batch_num_, job.MicroBatchId() + 1);
+    type_to_fetch_names_[job.Type()] = std::vector<std::string>();
+  }
 }
 
+const std::vector<std::string>& Plan::FetchNames(
+    const std::string& job_type) const {
+  return type_to_fetch_names_.at(job_type);
+}
+
+const std::vector<Job>& Plan::JobList() const { return job_list_; }
+
+const ProgramDesc* Plan::Program(const std::string& job_type) const {
+  return type_to_program_.at(job_type);
+}
+
+int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
+
+void Plan::SetFetchNames(const std::string& job_type,
+                         const std::vector<std::string>& fetch_names) {
+  type_to_fetch_names_[job_type] = fetch_names;
+}
+
+}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
