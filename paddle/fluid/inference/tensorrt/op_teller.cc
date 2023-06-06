@@ -2369,6 +2369,22 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if !IS_TRT_VERSION_GE(8200)
       return false;
 #endif
+      auto inputs = desc.Inputs();
+      if (inputs.find("StartsTensorList") != inputs.end()) {
+        if (desc.Input("StartsTensorList").size() >= 1) {
+          return false;
+        }
+      }
+      if (inputs.find("EndsTensorList") != inputs.end()) {
+        if (desc.Input("EndsTensorList").size() >= 1) {
+          return false;
+        }
+      }
+      if (inputs.find("StepsTensorList") != inputs.end()) {
+        if (desc.Input("StepsTensorList").size() >= 1) {
+          return false;
+        }
+      }
       if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
             desc.HasAttr("steps"))) {
         VLOG(3) << "the " << op_type
@@ -2376,21 +2392,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "starts or steps)";
         return false;
       }
-      const auto decrease_axes =
-          PADDLE_GET_CONST(std::vector<int64_t>, desc.GetAttr("decrease_axes"));
-      for (size_t i = 0; i < decrease_axes.size(); ++i) {
-        std::cout << "set_value, " << i << " - " << decrease_axes[i]
-                  << std::endl;
-      }
-
-      auto* block = desc.Block();
-      auto input_name = desc.Input("Input")[0];
-      auto* input_desc = block->FindVar(input_name);
-      const auto input_shape = input_desc->GetShape();
-      auto update_name = desc.Input("ValueTensor")[0];
-      auto* update_desc = block->FindVar(update_name);
-      const auto update_shape = update_desc->GetShape();
-      // if (update_shape.size() != input_shape.size()) return false;
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {
