@@ -179,7 +179,7 @@ class HybridCommunicateGroup:
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
         self._sharding_parallel_id = self._get_sharding_parallel_id()
-        self._sep_parallel_id = self._get_sharding_parallel_id()
+        self._sep_parallel_id = self._get_sep_parallel_id()
         self.stage_id = self._get_pipe_parallel_id()
 
         assert self._check_vaild_topo(), (
