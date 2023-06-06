@@ -82,7 +82,7 @@ TEST(infershape_test, infershape_test) {
   std::vector<ir::OpResult> op_inputs = {};
   std::vector<ir::Type> op_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op =
-      ir::Operation::create(op_inputs, {}, op_output_types, op_info);
+      ir::Operation::Create(op_inputs, {}, op_output_types, op_info);
 
   InferShapeInterface interface = op->dyn_cast<InferShapeInterface>();
   phi::InferMetaContext infer_meta_ctx;
