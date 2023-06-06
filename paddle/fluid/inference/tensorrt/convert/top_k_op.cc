@@ -40,9 +40,9 @@ class TopKOpConverter : public OpConverter {
 
     const int k =
         op_desc.HasAttr("k") ? PADDLE_GET_CONST(int, op_desc.GetAttr("k")) : 1;
-    const int axis = op_desc.HasAttr("axis")
-                         ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
-                         : -1;
+    int axis = op_desc.HasAttr("axis")
+                   ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
+                   : -1;
     const bool largest =
         op_desc.HasAttr("largest")
             ? PADDLE_GET_CONST(bool, op_desc.GetAttr("largest"))
@@ -50,6 +50,7 @@ class TopKOpConverter : public OpConverter {
     auto flag =
         largest ? nvinfer1::TopKOperation::kMAX : nvinfer1::TopKOperation::kMIN;
 
+    auto input_dims = input_tensor->getDimensions();
     auto input_rank = input_dims.nbDims;
     // 1d needs expand to 2d
     bool expand_to_2d = (input_rank == 1);
@@ -84,11 +85,11 @@ class TopKOpConverter : public OpConverter {
       values = Cast(values, nvinfer1::DataType::kINT32);
     }
 
-    values->setName(op_desc.Output("Out").front());
-    engine_->SetITensor(op_desc.Output("Out").front(), values);
+    values->setName(op_desc.Output("Out").front().c_str());
+    engine_->SetITensor(op_desc.Output("Out").front().c_str(), values);
 
-    indices->setName(op_desc.Output("Indices").front());
-    engine_->SetITensor(op_desc.Output("Indices").front(), indices);
+    indices->setName(op_desc.Output("Indices").front().c_str());
+    engine_->SetITensor(op_desc.Output("Indices").front().c_str(), indices);
 
     layer->setName(("top_k (Output: " + op_desc.Output("Out").front() + "," +
                     op_desc.Output("Indices").front() + ")")
