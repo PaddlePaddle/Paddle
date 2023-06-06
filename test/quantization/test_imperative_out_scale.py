@@ -198,7 +198,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         for i in range(len(loss_list) - 1):
             self.assertTrue(
                 loss_list[i] > loss_list[i + 1],
-                msg='Failed to do the imperative qat.',
+                msg=f'Failed to do the imperative qat becuase the loss is increasing from {loss_list[i]} to {loss_list[i+1]}.',
             )
 
 
