@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -139,10 +140,13 @@ class SPMDRuleMap {
 
 };
 
-#define REGISTER_SPMDRULE(op_type, rule_class, ...)     \
-    SPMDRuleMap::Instance().Insert(                     \
-             op_type,                                   \
-             std::make_unique<rule_class>(__VA_ARGS__))
+#define REGISTER_SPMDRULE(op_type, rule_class, ...)                                              \
+    STATIC_ASSERT_GLOBAL_NAMESPACE(                                                              \
+      __reg_spmd_rule__##op_type,                                                                \
+      "REGISTER_SPMDRULE must be called in global namespace");                                   \
+    ::paddle::distributed::auto_parallel::SPMDRuleMap::Instance().Insert(                        \
+            op_type,                                                                             \
+            std::make_unique<rule_class>(__VA_ARGS__))
 
 
 }  // namespace auto_parallel
