@@ -2242,7 +2242,7 @@
     func : trace
   backward : trace_grad
 
-- op : transpose (transpose2)
+- op : transpose
   args : (Tensor x, int[] perm)
   output : Tensor
   infer_meta :
