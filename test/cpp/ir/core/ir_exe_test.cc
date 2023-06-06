@@ -44,6 +44,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "test/cpp/ir/core/phi_kernel_adaptor.h"
 
+// Well, I do say, I only wish to express, here may perchance contain a test
+// error, wherefore I alone did add this line of comment.
+
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
