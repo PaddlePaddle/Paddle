@@ -226,7 +226,7 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferBackward(
   return {};
 }
 
-REGISTER_SPMDRULE(matmul, MatmulSPMDRule);
+REGISTER_SPMDRULE(matmul, MatmulSPMDRule::MatmulSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

@@ -32,6 +32,8 @@ namespace pybind {
 
 using paddle::distributed::auto_parallel::DistTensorSpec;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
+using paddle::distributed::auto_parallel::SPMDRuleBase;
+using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
 using phi::distributed::auto_parallel::Device;
@@ -44,6 +46,7 @@ using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
 using phi::distributed::auto_parallel::ProcessMesh;
 using phi::distributed::auto_parallel::TensorDistAttr;
+
 
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
@@ -277,6 +280,10 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &TensorDistAttr::to_string);
+      
+  py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
+      .def("infer_forward", &SPMDRuleBase::InferForward)
+      .def("infer_backward", &SPMDRuleBase::InferBackward);
 
   py::class_<DistTensorSpec>(*m, "DistTensorSpec")
       .def(py::init<>())
@@ -399,6 +406,10 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
+
+  m->def("get_spmd_rule", [](const std::string op_type) {
+    return SPMDRuleMap::Instance().Get(op_type);
+  });
 
   // TODO(liuzhenhai): DistributedMapper is not used for now, but
   // dist_mapper_test need the symbols forch DistributedMapper to be linked,
