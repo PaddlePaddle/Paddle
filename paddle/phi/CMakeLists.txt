@@ -108,6 +108,7 @@ if(WITH_PHI_SHARED)
   else()
     cc_library(phi_obj OBJECT SRCS ${PHI_SRCS})
   endif()
+  add_dependencies(phi_obj ${PHI_DEPS})
   # shared libraries need PIC
   set_property(TARGET phi_obj PROPERTY POSITION_INDEPENDENT_CODE 1)
   add_library(phi SHARED $<TARGET_OBJECTS:phi_obj>)
