@@ -154,11 +154,11 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_strides[0] = sizeof_dtype * numel;
     }
   } else if (self->tensor.is_dense_tensor()) {
-    auto tensor_strides = self->tensor.stride();
+    auto tensor_stride = self->tensor.stride();
 
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-      py_strides[i] = sizeof_dtype * tensor_strides[i];
+      py_strides[i] = sizeof_dtype * tensor_stride[i];
       numel *= py_dims[i];
     }
   } else {

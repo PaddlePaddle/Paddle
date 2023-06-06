@@ -50,17 +50,17 @@ void DiagonalStridedKernel(const Context& dev_ctx,
   }
 
   std::vector<int64_t> shape = phi::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> strides = phi::vectorize<int64_t>(x.stride());
+  std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
   shape.erase(shape.begin() + std::max(axis1, axis2));
-  strides.erase(strides.begin() + std::max(axis1, axis2));
+  stride.erase(stride.begin() + std::max(axis1, axis2));
   shape.erase(shape.begin() + std::min(axis1, axis2));
-  strides.erase(strides.begin() + std::min(axis1, axis2));
+  stride.erase(stride.begin() + std::min(axis1, axis2));
   shape.push_back(diag_size);
-  strides.push_back(x.stride()[axis1] + x.stride()[axis2]);
+  stride.push_back(x.stride()[axis1] + x.stride()[axis2]);
 
   auto meta = x.meta();
   meta.dims = DDim(shape.data(), shape.size());
-  meta.stride = DDim(strides.data(), strides.size());
+  meta.stride = DDim(stride.data(), stride.size());
   meta.offset = x_offset;
   out->set_meta(meta);
   out->ResetHolder(x.Holder());

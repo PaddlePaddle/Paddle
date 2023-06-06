@@ -84,16 +84,16 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* xshape) {
   auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
-  DDim strides;
+  DDim stride;
   if (ReshapeStride(x_dims, x.stride(), out->dims(), &stride)) {
-    out->set_stride(strides);
+    out->set_stride(stride);
     out->ResetHolder(x.Holder());
   } else {
   }
 
   auto meta = x.meta();
   meta.dims = DDim(shape.data(), shape.size());
-  meta.stride = DDim(strides.data(), strides.size());
+  meta.stride = DDim(stride.data(), stride.size());
   meta.offset = x_offset;
   out->set_meta(meta);
   out->ResetHolder(x.Holder());

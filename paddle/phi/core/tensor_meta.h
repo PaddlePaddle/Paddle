@@ -48,7 +48,7 @@ using LoD = std::vector<std::vector<size_t>>;
 struct DenseTensorMeta {
   DenseTensorMeta();
   DenseTensorMeta(DataType dtype, const DDim& dims);
-  DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& strides);
+  DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& stride);
   DenseTensorMeta(DataType dtype,
                   const DDim& dims,
                   DataLayout layout,
