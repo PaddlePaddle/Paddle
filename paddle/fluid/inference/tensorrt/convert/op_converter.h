@@ -291,8 +291,9 @@ class OpConverter {
       if (parameters.count(input)) continue;
       // NOTE(liuyuanle): It is a trick. If you need a name [input], then you
       // need to use [input.substr(0, idx)].
-      // Maybe we insert suffix of "_cast.tmp_" in auto_mixed_precision_pass.
-      auto idx = input.find("_cast.tmp_");
+      // Maybe we insert suffix of "_cast_auto_mixed.tmp_" in
+      // auto_mixed_precision_pass.
+      auto idx = input.find("_cast_auto_mixed.tmp_");
       input = input.substr(0, idx);
 
       auto* var = block_desc->FindVar(input);
@@ -529,6 +530,12 @@ class OpConverter {
   nvinfer1::ITensor* GetEleTensorOfShape(nvinfer1::ITensor* shape_tensor,
                                          int index,
                                          bool is_scalar = false) {
+    PADDLE_ENFORCE_GE(
+        index,
+        0,
+        platform::errors::PreconditionNotMet(
+            "The index should be greater or equal than 0, but got %d", index));
+
     auto* tensor =
         TRT_ENGINE_ADD_LAYER(engine_,
                              Gather,

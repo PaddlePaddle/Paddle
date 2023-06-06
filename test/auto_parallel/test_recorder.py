@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from paddle.distributed.auto_parallel.tuner import recorder as rd
+from paddle.distributed.auto_parallel.static.tuner import recorder as rd
 
 
 class TestRecorder(unittest.TestCase):

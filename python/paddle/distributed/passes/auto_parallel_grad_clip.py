@@ -19,18 +19,21 @@ import numpy as np
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..auto_parallel.dist_attribute import OperatorDistAttr, TensorDistAttr
-from ..auto_parallel.operators.common import (
+from ..auto_parallel.process_mesh import ProcessMesh
+from ..auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+    TensorDistAttr,
+)
+from ..auto_parallel.static.operators.common import (
     SyncMode,
     is_data_parallel_reduce_op,
 )
-from ..auto_parallel.process_group import (
+from ..auto_parallel.static.process_group import (
     get_all_process_groups,
     get_world_process_group,
 )
-from ..auto_parallel.process_mesh import ProcessMesh
-from ..auto_parallel.reshard import Resharder
-from ..auto_parallel.utils import (
+from ..auto_parallel.static.reshard import Resharder
+from ..auto_parallel.static.utils import (
     _get_comm_group,
     insert_dependencies_for_vars,
     is_gradient_clip_op,
