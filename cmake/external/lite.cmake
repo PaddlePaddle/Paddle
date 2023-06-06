@@ -66,15 +66,11 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
   set(LITE_BINARY_DIR ${LITE_PREFIX_DIR}/src/extern_lite-build)
-  set(LITE_SOURCE_DIR ${LITE_PREFIX_DIR}/src/extern_lite)
-
+  set(LITE_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/extern_lite)
+  set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
   set(LITE_SHARED_LIB
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
   )
-
-  if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
-  endif()
 
   if(NOT CUDA_ARCH_NAME)
     set(CUDA_ARCH_NAME "Auto")
@@ -108,8 +104,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG ${LITE_GIT_TAG}
+      SOURCE_DIR ${SOURCE_DIR}
       PREFIX ${LITE_PREFIX_DIR}
       PATCH_COMMAND
         mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch
@@ -161,8 +156,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
-      GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG ${LITE_GIT_TAG}
+      SOURCE_DIR ${SOURCE_DIR}
       PREFIX ${LITE_PREFIX_DIR}
       UPDATE_COMMAND ""
       PATCH_COMMAND

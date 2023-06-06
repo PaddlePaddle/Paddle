@@ -16,7 +16,7 @@ include(ExternalProject)
 
 set(CBLAS_PREFIX_DIR ${THIRD_PARTY_PATH}/openblas)
 set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
-set(CBLAS_REPOSITORY ${GIT_URL}/xianyi/OpenBLAS.git)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
 
 # Why use v0.3.18?  The IDG business line encountered a random openblas error,
@@ -64,9 +64,8 @@ if(NOT WIN32)
   set(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
   ExternalProject_Add(
     extern_openblas
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${CBLAS_REPOSITORY}
-    GIT_TAG ${CBLAS_TAG}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    SOURCE_DIR ${SOURCE_DIR}
     PREFIX ${CBLAS_PREFIX_DIR}
     INSTALL_DIR ${CBLAS_INSTALL_DIR}
     BUILD_IN_SOURCE 1
@@ -85,8 +84,7 @@ else()
   ExternalProject_Add(
     extern_openblas
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY ${CBLAS_REPOSITORY}
-    GIT_TAG ${CBLAS_TAG}
+    SOURCE_DIR ${SOURCE_DIR}
     PREFIX ${CBLAS_PREFIX_DIR}
     INSTALL_DIR ${CBLAS_INSTALL_DIR}
     BUILD_IN_SOURCE 0
