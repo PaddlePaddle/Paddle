@@ -58,13 +58,6 @@ struct SetConstant {
                   T num);
 };
 
-template <typename DeviceContext>
-struct SetConstant<DeviceContext, int8_t> {
-  void operator()(const DeviceContext& context,
-                  phi::DenseTensor* tensor,
-                  int8_t num);
-};
-
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 struct SetConstant<phi::XPUContext, T> {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/reshape_kernel.h"
-#include <functional>
+#include <algorithm>
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
@@ -38,7 +38,8 @@ bool ReshapeStride(const DDim& old_dims,
       new_stride = new_dims;
       new_stride[new_dims.size() - 1] = 1;
       for (int i = new_dims.size() - 2; i >= 0; i--) {
-        new_stride[i] = new_stride[i + 1] * std::max(1, new_dims[i + 1]);
+        new_stride[i] = new_stride[i + 1] *
+                        std::max(static_cast<int64_t>(1), new_dims[i + 1]);
       }
     }
     return true;
@@ -82,21 +83,19 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& shape,
                           DenseTensor* out,
-                          DenseTensor* xshape) {
-  auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
+                          DenseTensor* xshape UNUSED) {
+  MetaTensor meta_out(out);
+  InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   DDim stride;
-  if (ReshapeStride(x_dims, x.stride(), out->dims(), &stride)) {
+  if (ReshapeStride(x.dims(), x.stride(), out->dims(), stride)) {
     out->set_stride(stride);
     out->ResetHolder(x.Holder());
   } else {
+    DenseTensor tmp;
+    Contiguous<Context>(dev_ctx, x, &tmp);
+    out->set_stride(DenseTensorMeta::calc_stride(out->dims()));
+    out->ResetHolder(tmp.Holder());
   }
-
-  auto meta = x.meta();
-  meta.dims = DDim(shape.data(), shape.size());
-  meta.stride = DDim(stride.data(), stride.size());
-  meta.offset = x_offset;
-  out->set_meta(meta);
-  out->ResetHolder(x.Holder());
 }
 
 }  // namespace phi

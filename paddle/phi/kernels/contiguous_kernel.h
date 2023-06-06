@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
@@ -36,6 +37,19 @@ DenseTensor Contiguous(const Context& dev_ctx, const DenseTensor& input) {
   UnchangedInferMeta(meta_input, &meta_out);
   ContiguousKernel<T, Context>(dev_ctx, input, &dense_out);
   return dense_out;
+}
+
+template <typename Context>
+void Contiguous(const Context& dev_ctx,
+                const DenseTensor& input,
+                DenseTensor* out) {
+  MetaTensor meta_input(input);
+  MetaTensor meta_out(out);
+  UnchangedInferMeta(meta_input, &meta_out);
+  PD_VISIT_ALL_TYPES(input.dtype(), "Contiguous", ([&] {
+                       phi::ContiguousKernel<data_t, Context>(
+                           dev_ctx, input, out);
+                     }));
 }
 
 }  // namespace phi
