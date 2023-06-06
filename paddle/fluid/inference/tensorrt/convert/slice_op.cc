@@ -68,11 +68,12 @@ class SliceOpConverter : public OpConverter {
           starts_tensor[axes[i]] = GetEleTensorOfShape(
               engine_->GetITensor(op_desc.Input("StartsTensor")[0]), i);
         }
-      } else if(slice_inputs.find("StartsTensorList") != slice_inputs.end() &&
-          op_desc.Input("StartsTensorList").size()) {
+      } else if (slice_inputs.find("StartsTensorList") != slice_inputs.end() &&
+                 op_desc.Input("StartsTensorList").size()) {
         for (size_t i = 0; i < axes.size(); ++i) {
-          starts_tensor[axes[i]] = engine_->GetITensor(op_desc.Input("StartsTensorList")[i]);
-        } 
+          starts_tensor[axes[i]] =
+              engine_->GetITensor(op_desc.Input("StartsTensorList")[i]);
+        }
       } else {
         PADDLE_ENFORCE_EQ(starts.size(),
                           axes.size(),
@@ -102,11 +103,12 @@ class SliceOpConverter : public OpConverter {
           ends_tensor[axes[i]] = GetEleTensorOfShape(
               engine_->GetITensor(op_desc.Input("EndsTensor")[0]), i);
         }
-      } else if(slice_inputs.find("EndsTensorList") != slice_inputs.end() &&
-          op_desc.Input("EndsTensorList").size()) {
+      } else if (slice_inputs.find("EndsTensorList") != slice_inputs.end() &&
+                 op_desc.Input("EndsTensorList").size()) {
         for (size_t i = 0; i < axes.size(); ++i) {
-          ends_tensor[axes[i]] = engine_->GetITensor(op_desc.Input("EndsTensorList")[i]);
-        } 
+          ends_tensor[axes[i]] =
+              engine_->GetITensor(op_desc.Input("EndsTensorList")[i]);
+        }
       } else {
         PADDLE_ENFORCE_EQ(ends.size(),
                           axes.size(),

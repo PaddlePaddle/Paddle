@@ -1500,6 +1500,16 @@
   kernel :
     func : poisson_grad
 
+- backward_op : polygamma_grad
+  forward : polygamma (Tensor x, int n) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int n)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : polygamma_grad
+
 - backward_op : pow_double_grad
   forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, Scalar y)

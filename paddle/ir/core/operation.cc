@@ -24,8 +24,8 @@
 #include "paddle/ir/core/value_impl.h"
 
 namespace ir {
-Operation *Operation::create(OperationArgument &&argument) {
-  Operation *op = create(argument.inputs,
+Operation *Operation::Create(OperationArgument &&argument) {
+  Operation *op = Create(argument.inputs,
                          argument.attributes,
                          argument.output_types,
                          argument.info,
@@ -40,14 +40,14 @@ Operation *Operation::create(OperationArgument &&argument) {
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, Operand.
-Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
+Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const AttributeMap &attributes,
                              const std::vector<ir::Type> &output_types,
                              ir::OpInfo op_info,
                              size_t num_regions) {
   // 0. Verify
   if (op_info) {
-    op_info.verify(inputs, output_types, attributes);
+    op_info.Verify(inputs, output_types, attributes);
   }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
@@ -104,7 +104,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
 
 // Call destructors for OpResults, Operation, and OpOperands in sequence, and
 // finally free memory.
-void Operation::destroy() {
+void Operation::Destroy() {
   // Deconstruct Regions.
   if (num_regions_ > 0) {
     for (size_t idx = 0; idx < num_regions_; idx++) {
