@@ -74,7 +74,7 @@ def check_numerics(
     helper.append_op(
         type='check_numerics',
         inputs={
-            'Tensor': tensor,
+            'tensor': tensor,
         },
         attrs={
             'op_type': op_type,
@@ -83,6 +83,6 @@ def check_numerics(
             'stack_height_limit': stack_height_limit,
             'output_dir': output_dir,
         },
-        outputs={'Stats': [stats], 'Values': [values]},
+        outputs={'stats': [stats], 'values': [values]},
     )
     return stats, values

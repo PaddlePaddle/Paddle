@@ -30,6 +30,7 @@ class TestNanInfBase(unittest.TestCase):
             self._python_interp += " -m coverage run --branch -p"
 
         self.env = os.environ.copy()
+        paddle.disable_static()
 
     def run_command(self, cmd):
         print(f"Run command: {cmd}")
@@ -299,6 +300,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
             )
 
     def test_static(self):
+        paddle.enable_static()
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, "float32")
 
@@ -315,7 +317,10 @@ class TestCheckNumericsAPI(TestNanInfBase):
                 debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
             )
         exe = paddle.static.Executor(paddle.CPUPlace())
-        exe.run(main_program, feed={"x": x, "y": y}, fetch_list=[out.name])
+        exe.run(
+            main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out.name]
+        )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
