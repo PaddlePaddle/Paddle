@@ -88,9 +88,9 @@ class TopKOpConverter : public OpConverter {
     auto out_name = op_desc.Output("Out").front();
     auto indices_name = op_desc.Output("Indices").front();
     values->setName(out_name.c_str());
-    engine_->SetITensor(indices_name.c_str(), values);
+    engine_->SetITensor(out_name.c_str(), values);
 
-    indices->setName(out_name.c_str());
+    indices->setName(indices_name.c_str());
     engine_->SetITensor(indices_name.c_str(), indices);
 
     layer->setName(
