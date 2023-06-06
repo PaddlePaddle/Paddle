@@ -2435,17 +2435,4 @@ def wrap_data_for_completion(
     for attr_name in attr_names:
         attrs[attr_name] = serial_op.desc.attr(attr_name)
 
-    attr_names = {
-        'trans_x': True,
-        'trans_y': False,
-        'shape': [6, 12],
-        'size': 48,
-        'name': 'matmul',
-    }
-    print(attr_names)
-    input_specs[0].test_attr_map(attr_names)
-    test_attr = input_specs[0].get_attr_map()
-    print(test_attr)
-    input_specs[0].validate_attr_map()
-
     return input_specs, output_specs, attrs
