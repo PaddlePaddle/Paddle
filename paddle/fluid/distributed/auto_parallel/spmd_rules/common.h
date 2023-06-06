@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"

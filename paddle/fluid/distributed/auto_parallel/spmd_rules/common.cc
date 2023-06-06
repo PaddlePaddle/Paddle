@@ -159,7 +159,7 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
 }
 
 // SPMDRuleMap
-SPMDRuleMap& SPMDRuleMap::Instance();
+SPMDRuleMap& SPMDRuleMap::Instance(){
   static SPMDRuleMap g_spmd_rule_map;
   return g_spmd_rule_map;
 }
