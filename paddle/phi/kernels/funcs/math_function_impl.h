@@ -33,6 +33,13 @@ void SetConstant<DeviceContext, T>::operator()(const DeviceContext& context,
   t.device(*context.eigen_device()) = t.constant(static_cast<T>(num));
 }
 
+template <typename DeviceContext>
+void SetConstant<DeviceContext, int8_t>::operator()(
+    const DeviceContext& context, phi::DenseTensor* tensor, int8_t num) {
+  auto t = phi::EigenVector<int8_t>::Flatten(*tensor);
+  t.device(*context.eigen_device()) = t.constant(static_cast<int8_t>(num));
+}
+
 #ifdef PADDLE_WITH_XPU
 template <typename T>
 void SetConstant<phi::XPUContext, T>::operator()(const phi::XPUContext& context,

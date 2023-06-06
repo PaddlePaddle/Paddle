@@ -292,7 +292,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
       meta->dims = dims;
-      meta->strides = meta->calc_strides(dims, meta->layout);
+      meta->stride = meta->calc_stride(dims, meta->layout);
     } else if (var->IsType<phi::SelectedRows>()) {
       var->GetMutable<phi::SelectedRows>()->set_height(dims[0]);
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -359,12 +359,12 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
       meta->layout = layout;
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
+      meta->stride = meta->calc_stride(meta->dims, meta->layout);
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
       auto meta = phi::DenseTensorUtils::GetMutableMeta(tensor);
       meta->layout = layout;
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
+      meta->stride = meta->calc_stride(meta->dims, meta->layout);
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
@@ -433,7 +433,7 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
       auto meta =
           phi::DenseTensorUtils::GetMutableMeta(selected_rows->mutable_value());
       meta->dims = input_selected_rows.value().dims();
-      meta->strides = meta->calc_strides(meta->dims, meta->layout);
+      meta->stride = meta->calc_stride(meta->dims, meta->layout);
     }
   }
 }

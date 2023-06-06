@@ -26,14 +26,14 @@ void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.strides = meta.calc_strides(meta.dims, meta.layout);
+  meta.stride = meta.calc_stride(meta.dims, meta.layout);
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
   auto dims = input.dims();
-  auto input_stride = input.strides();
+  auto input_stride = input.stride();
   auto numel = input.numel();
 
   for (int64_t i = 0; i < numel; i++) {

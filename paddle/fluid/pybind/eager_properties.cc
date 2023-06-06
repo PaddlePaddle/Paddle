@@ -234,12 +234,12 @@ PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
     return ToPyObject(value);
   }
 
-  auto strides = self->tensor.strides();
-  size_t rank = static_cast<size_t>(strides.size());
+  auto stride = self->tensor.stride();
+  size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
 
   for (size_t i = 0; i < rank; i++) {
-    value[i] = strides[i];
+    value[i] = stride[i];
   }
 
   return ToPyObject(value);
@@ -326,7 +326,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
     {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
-    {"strides",
+    {"stride",
      (getter)tensor_properties_get_strides,
      nullptr,
      nullptr,

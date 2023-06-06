@@ -1204,12 +1204,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             code_indent,
             inplace_flag,
         )
-        pre_save_strides = ""
+        pre_save_stride = ""
         transdata2strided = ""
         if inplace_flag and kernel_name not in ["squeeze", "unsqueeze"]:
             i = 0
             for kernel_out in outputs_args:
-                pre_save_strides += f"""{code_indent}  auto backup{i} = ProcessStridesBackup(&{kernel_out});\n"""
+                pre_save_stride += f"""{code_indent}  auto backup{i} = ProcessStrideBackup(&{kernel_out});\n"""
                 transdata2strided += f"""{code_indent}  TransStride(dev_ctx, {kernel_out}, backup{i});\n"""
                 i = i + 1
         fallback_kernel_output_trans = ""
@@ -1228,7 +1228,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
-{pre_save_strides}
+{pre_save_stride}
 {code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);

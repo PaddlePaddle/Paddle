@@ -309,8 +309,8 @@ static void RunKernelFunc(
       true_out_meta->dtype = calc_out->dtype();
       true_out_meta->layout = calc_out->layout();
       true_out_meta->offset = calc_out->offset();
-      true_out_meta->strides = true_out_meta->calc_strides(
-          true_out_meta->dims, true_out_meta->layout);
+      true_out_meta->stride = true_out_meta->calc_stride(true_out_meta->dims,
+                                                         true_out_meta->layout);
       // lod no need to be reset
       // reset holder if needed
       if (true_out->Holder() != calc_out->Holder()) {

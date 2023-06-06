@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/visit_type.h"
 
 namespace phi {
 
@@ -24,5 +25,15 @@ void FillKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const Scalar& value,
                 DenseTensor* out);
+
+template <typename Context>
+void Fill(const Context& dev_ctx,
+          const DenseTensor& x UNUSED,
+          const Scalar& value,
+          DenseTensor* out) {
+  PD_VISIT_ALL_TYPES(x.dtype(), "Fill", ([&] {
+                       phi::FillKernel<data_t, Context>(dev_ctx, x, value, out);
+                     }));
+}
 
 }  // namespace phi

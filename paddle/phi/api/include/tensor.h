@@ -178,11 +178,11 @@ class PADDLE_API Tensor final {
   std::vector<int64_t> shape() const;
 
   /**
-   * @brief Return the strides (dimensions) of Tensor.
+   * @brief Return the stride (dimensions) of Tensor.
    *
    * @return std::vector<int64_t>
    */
-  std::vector<int64_t> strides() const;
+  std::vector<int64_t> stride() const;
 
   /**
    * @brief Reset the shape of the tensor.

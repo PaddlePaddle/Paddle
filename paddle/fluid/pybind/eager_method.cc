@@ -154,7 +154,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_strides[0] = sizeof_dtype * numel;
     }
   } else if (self->tensor.is_dense_tensor()) {
-    auto tensor_strides = self->tensor.strides();
+    auto tensor_strides = self->tensor.stride();
 
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
@@ -1035,7 +1035,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   const auto& tensor_dims = tensor.dims();
 
   std::vector<size_t> dims(tensor_dims.size());
-  std::vector<size_t> strides = phi::vectorize<size_t>(tensor.strides());
+  std::vector<size_t> stride = phi::vectorize<size_t>(tensor.stride());
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
@@ -1072,7 +1072,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
               index,
               i,
               dims[i]));
-      offset += index * strides[i];
+      offset += index * stride[i];
     }
   }
 #define PD_FOR_EACH_DENSE_TENSOR_DATA_TYPE(_) \
@@ -1989,11 +1989,11 @@ static PyObject* tensor_method_stride(TensorObject* self,
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
     return ToPyObject(value);
   }
-  auto strides = self->tensor.strides();
-  size_t rank = static_cast<size_t>(strides.size());
+  auto stride = self->tensor.stride();
+  size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
   for (size_t i = 0; i < rank; i++) {
-    value[i] = strides[i];
+    value[i] = stride[i];
   }
   return ToPyObject(value);
   EAGER_CATCH_AND_THROW_RETURN_NULL

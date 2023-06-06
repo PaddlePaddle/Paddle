@@ -25,22 +25,22 @@ template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const std::vector<int64_t>& dims,
-                       const std::vector<int64_t>& out_strides,
+                       const std::vector<int64_t>& out_stride,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.strides = phi::make_ddim(out_strides);
+  meta.stride = phi::make_ddim(out_stride);
   meta.dims = phi::make_ddim(dims);
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
   int input_rank = input.dims().size();
   const int64_t* input_dims = input.dims().Get();
-  const int64_t* input_strides = input.strides().Get();
+  const int64_t* input_stride = input.stride().Get();
 
   T* output_data = dev_ctx.template Alloc<T>(out);
   int output_rank = meta.dims.size();
   const int64_t* output_dims = meta.dims.Get();
-  const int64_t* output_strides = meta.strides.Get();
+  const int64_t* output_stride = meta.stride.Get();
 
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
@@ -62,13 +62,13 @@ void StridedCopyKernel(const Context& dev_ctx,
     int64_t input_offset = 0;
     int64_t index_tmp = i;
     for (int dim = input_rank - 1; dim >= 0; --dim) {
-      input_offset += (index_tmp % input_dims[dim]) * input_strides[dim];
+      input_offset += (index_tmp % input_dims[dim]) * input_stride[dim];
       index_tmp = index_tmp / input_dims[dim];
     }
     int64_t output_offset = 0;
     index_tmp = i;
     for (int dim = output_rank - 1; dim >= 0; --dim) {
-      output_offset += (index_tmp % output_dims[dim]) * output_strides[dim];
+      output_offset += (index_tmp % output_dims[dim]) * output_stride[dim];
       index_tmp = index_tmp / output_dims[dim];
     }
     output_data[output_offset] = input_data[input_offset];

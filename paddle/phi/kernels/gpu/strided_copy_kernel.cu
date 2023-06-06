@@ -18,30 +18,30 @@ limitations under the License. */
 
 namespace phi {
 
-// TODO(wanghuancoder) delete output_rank and output_strides if they are same
+// TODO(wanghuancoder) delete output_rank and output_stride if they are same
 // with input's
 template <typename T>
 __global__ void StridedCopyFunc(const T* input_data,
                                 const int input_rank,
                                 const int64_t* input_dims,
-                                const int64_t* input_strides,
+                                const int64_t* input_stride,
                                 T* output_data,
                                 const int output_rank,
                                 const int64_t* output_dims,
-                                const int64_t* output_strides,
+                                const int64_t* output_stride,
                                 const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
     for (int dim = input_rank - 1; dim >= 0; --dim) {
-      input_offset += (index_tmp % input_dims[dim]) * input_strides[dim];
+      input_offset += (index_tmp % input_dims[dim]) * input_stride[dim];
       index_tmp = index_tmp / input_dims[dim];
     }
     int64_t output_offset = 0;
     index_tmp = i;
     for (int dim = output_rank - 1; dim >= 0; --dim) {
-      output_offset += (index_tmp % output_dims[dim]) * output_strides[dim];
+      output_offset += (index_tmp % output_dims[dim]) * output_stride[dim];
       index_tmp = index_tmp / output_dims[dim];
     }
     output_data[output_offset] = input_data[input_offset];
@@ -52,22 +52,22 @@ template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const std::vector<int64_t>& dims,
-                       const std::vector<int64_t>& out_strides,
+                       const std::vector<int64_t>& out_stride,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.strides = phi::make_ddim(out_strides);
+  meta.stride = phi::make_ddim(out_stride);
   meta.dims = phi::make_ddim(dims);
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
   int input_rank = input.dims().size();
   const int64_t* input_dims = input.dims().Get();
-  const int64_t* input_strides = input.strides().Get();
+  const int64_t* input_stride = input.stride().Get();
 
   T* output_data = dev_ctx.template Alloc<T>(out);
   int output_rank = meta.dims.size();
   const int64_t* output_dims = meta.dims.Get();
-  const int64_t* output_strides = meta.strides.Get();
+  const int64_t* output_stride = meta.stride.Get();
 
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
@@ -91,21 +91,21 @@ void StridedCopyKernel(const Context& dev_ctx,
       malloc(sizeof(int64_t) * (input_rank * 2 + output_rank * 2)));
   std::memcpy(tmp_data, input_dims, sizeof(int64_t) * input_rank);
   std::memcpy(
-      tmp_data + input_rank, input_strides, sizeof(int64_t) * input_rank);
+      tmp_data + input_rank, input_stride, sizeof(int64_t) * input_rank);
   std::memcpy(tmp_data + input_rank + input_rank,
               output_dims,
               sizeof(int64_t) * output_rank);
   std::memcpy(tmp_data + input_rank + input_rank + output_rank,
-              output_strides,
+              output_stride,
               sizeof(int64_t) * output_rank);
 
-  auto dims_strides = memory_utils::Alloc(
+  auto dims_stride = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int64_t* dims_strides_data = reinterpret_cast<int64_t*>(dims_strides->ptr());
+  int64_t* dims_stride_data = reinterpret_cast<int64_t*>(dims_stride->ptr());
   memory_utils::Copy(dev_ctx.GetPlace(),
-                     dims_strides_data,
+                     dims_stride_data,
                      phi::CPUPlace(),
                      tmp_data,
                      sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
@@ -119,12 +119,12 @@ void StridedCopyKernel(const Context& dev_ctx,
   StridedCopyFunc<<<grid, block, 0, dev_ctx.stream()>>>(
       input_data,
       input_rank,
-      dims_strides_data,
-      dims_strides_data + input_rank,
+      dims_stride_data,
+      dims_stride_data + input_rank,
       output_data,
       output_rank,
-      dims_strides_data + input_rank + input_rank,
-      dims_strides_data + input_rank + input_rank + output_rank,
+      dims_stride_data + input_rank + input_rank,
+      dims_stride_data + input_rank + input_rank + output_rank,
       numel);
 }
 

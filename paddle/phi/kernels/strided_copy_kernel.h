@@ -18,26 +18,26 @@ limitations under the License. */
 namespace phi {
 
 /**
- * @brief copy memory with strides.
+ * @brief copy memory with stride.
  * @param  ctx     device context
  * @param  input   Source tensor need copy from
- * @param  out_strides   Dist tensor's strides
+ * @param  out_stride   Dist tensor's stride
  * @param  out     Dist tensor need copy to
  */
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const std::vector<int64_t>& dims,
-                       const std::vector<int64_t>& out_strides,
+                       const std::vector<int64_t>& out_stride,
                        DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor StridedCopy(const Context& dev_ctx,
                         const DenseTensor& input,
                         const std::vector<int64_t>& dims,
-                        const std::vector<int64_t>& out_strides) {
+                        const std::vector<int64_t>& out_stride) {
   DenseTensor dense_out;
-  StridedCopyKernel<T, Context>(dev_ctx, input, dims, out_strides, &dense_out);
+  StridedCopyKernel<T, Context>(dev_ctx, input, dims, out_stride, &dense_out);
   return dense_out;
 }
 
@@ -45,11 +45,11 @@ template <typename Context>
 void StridedCopy(const Context& dev_ctx,
                  const DenseTensor& input,
                  const std::vector<int64_t>& dims,
-                 const std::vector<int64_t>& out_strides,
+                 const std::vector<int64_t>& out_stride,
                  DenseTensor* out) {
   PD_VISIT_ALL_TYPES(input.dtype(), "StridedCopy", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx, input, dims, out_strides, out);
+                           dev_ctx, input, dims, out_stride, out);
                      }));
 }
 }  // namespace phi

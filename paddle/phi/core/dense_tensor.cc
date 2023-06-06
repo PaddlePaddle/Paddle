@@ -223,10 +223,10 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
-  if (product(meta.strides) <= 0) {
-    meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  if (product(meta.stride) <= 0) {
+    meta_.stride = meta_.calc_stride(meta_.dims, meta_.layout);
   } else {
-    meta_.strides = meta.strides;
+    meta_.stride = meta.stride;
   }
 }
 
@@ -247,14 +247,14 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
                       phi::errors::InvalidArgument(
                           "Right now Resize is only supported for contiguous "
                           "Tensor. Tensor dims is %s, Tensor layout is %s, "
-                          "Tensor strides is %s. New dims is %s.",
+                          "Tensor stride is %s. New dims is %s.",
                           meta_.dims,
                           meta_.layout,
-                          meta_.strides,
+                          meta_.stride,
                           dims));
   }
   meta_.dims = dims;
-  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
+  meta_.stride = meta_.calc_stride(meta_.dims, meta_.layout);
 
   if (holder_ != nullptr && place().GetType() != AllocationType::UNDEFINED) {
     mutable_data(place());
