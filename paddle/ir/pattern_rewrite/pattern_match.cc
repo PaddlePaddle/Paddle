@@ -19,9 +19,9 @@
 
 namespace ir {
 
-//---------------------------------------------------------//
-// Pattern Class
-//---------------------------------------------------------//
+//===----------------------------------------------------------------------===//
+// Pattern
+//===----------------------------------------------------------------------===//
 
 // Pattern::Pattern(const void* root_val,
 //                  RootKind root_kind,
@@ -33,7 +33,7 @@ namespace ir {
 
 Pattern::Pattern(const std::string& root_name,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
     : op_name_(root_name),
       root_kind_(RootKind::OperationName),
@@ -74,9 +74,9 @@ Pattern::Pattern(MatchTraitOpTypeTag tag,
 
 RewritePattern::~RewritePattern() = default;
 
-//---------------------------------------------------------//
-// RewriterBase Class
-//---------------------------------------------------------//
+//===----------------------------------------------------------------------===//
+// RewriterBase
+//===----------------------------------------------------------------------===//
 
 RewriterBase::~RewriterBase() = default;
 

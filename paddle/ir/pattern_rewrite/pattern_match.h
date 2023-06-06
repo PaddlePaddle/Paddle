@@ -26,18 +26,12 @@
 #include "paddle/ir/core/type_id.h"
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/value.h"
-#include "paddle/utils/small_vector.h"
 namespace ir {
 
 /// The design is mainly from MLIR, very thanks to the greate project.
 
-//---------------------------------------------------------//
-// Pattern Benefit Class
-//---------------------------------------------------------//
-
 /// This class reprensents the benefit of a pattern. The most common
 /// unit to use is the `numver of operations` in the pattern.
-///
 class PatternBenefit {
  public:
   PatternBenefit(unsigned val) : val_(val) {}  // NOLINT
@@ -55,14 +49,9 @@ class PatternBenefit {
   unsigned int val_{0};
 };
 
-//---------------------------------------------------------//
-// Pattern Class
-//---------------------------------------------------------//
-
 /// This class contains all of the data related to a Pattern, but not contains
 /// any methods for the matching. This class is used to interface with the
 /// metadata of a pattern, such as benefit or root operation.
-///
 class Pattern {
   enum class RootKind { Any, OperationName, InterfaceId, TraitId };
 
@@ -73,15 +62,15 @@ class Pattern {
 
   std::string debug_name() const { return debug_name_; }
 
-  void set_debug_name(const std::string& name) { debug_name_ = name; }
+  void SetDebugName(const std::string& name) { debug_name_ = name; }
 
   const std::vector<std::string>& debug_labels() const { return debug_labels_; }
 
-  void add_debug_labels(const std::vector<std::string>& labels) {
+  void AddDebugLabels(const std::vector<std::string>& labels) {
     debug_labels_.insert(debug_labels_.end(), labels.begin(), labels.end());
   }
 
-  void add_debug_labels(const std::string& label) {
+  void AddDebugLabels(const std::string& label) {
     debug_labels_.push_back(label);
   }
 
@@ -168,7 +157,7 @@ class RewritePattern : public Pattern {
     pattern->Initialize();
 
     if (pattern->debug_name().empty())
-      pattern->set_debug_name(get_type_name<T>());
+      pattern->SetDebugName(get_type_name<T>());
     return pattern;
   }
 
@@ -234,10 +223,6 @@ struct OpRewritePattern
 // TODO(wilber): Support OpInterfaceRewritePattern and OpTraitRewritePattern.
 // ...
 
-//---------------------------------------------------------//
-// RewriterBase Class
-//---------------------------------------------------------//
-
 /// This class provides a series of interfaces for modifying IR and tracking IR
 /// changes. This class provides a unified API for IR modification.
 ///
@@ -302,12 +287,7 @@ class PatternRewriter : public RewriterBase {
   using RewriterBase::RewriterBase;
 };
 
-//---------------------------------------------------------//
-// RewritePatternSet Class
-//---------------------------------------------------------//
-
 /// A pattern collection, easy to add patterns.
-///
 class RewritePatternSet {
   using NativePatternListT = std::vector<std::unique_ptr<RewritePattern>>;
 
@@ -321,7 +301,7 @@ class RewritePatternSet {
 
   IrContext* context() const { return context_; }
 
-  NativePatternListT& GetNativePatterns() { return native_patterns_; }
+  NativePatternListT& native_patterns() { return native_patterns_; }
 
   void Clear() { native_patterns_.clear(); }
 
@@ -365,7 +345,7 @@ class RewritePatternSet {
       const std::vector<std::string>& debug_labels, Args&&... args) {
     std::unique_ptr<T> pattern =
         RewritePattern::Create<T>(std::forward<Args>(args)...);
-    pattern->add_debug_labels(debug_labels);
+    pattern->AddDebugLabels(debug_labels);
     native_patterns_.emplace_back(std::move(pattern));
   }
 

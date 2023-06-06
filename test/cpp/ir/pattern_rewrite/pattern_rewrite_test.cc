@@ -98,12 +98,18 @@ TEST(RewritePattern, OpRewritePattern) {
 
   ir::RewritePatternSet ps(ctx);
   ps.Add<TestPatternRewrite>(ctx, 1);
-  EXPECT_EQ(ps.GetNativePatterns().size(), 1U);
-  EXPECT_TRUE(ps.GetNativePatterns().back()->debug_labels().empty());
-  EXPECT_EQ(ps.GetNativePatterns().back()->benefit(), 1U);
+  EXPECT_EQ(ps.native_patterns().size(), 1U);
+  EXPECT_TRUE(ps.native_patterns().back()->debug_labels().empty());
+  EXPECT_EQ(ps.native_patterns().back()->benefit(), 1U);
   ps.AddWithLabel<TestPatternRewrite2>({"TestPatternRewrite2"}, ctx, 2);
-  EXPECT_EQ(ps.GetNativePatterns().size(), 2U);
-  EXPECT_EQ(ps.GetNativePatterns().back()->debug_labels()[0],
+  EXPECT_EQ(ps.native_patterns().size(), 2U);
+  EXPECT_EQ(ps.native_patterns().back()->debug_labels()[0],
             "TestPatternRewrite2");
-  EXPECT_EQ(ps.GetNativePatterns().back()->benefit(), 2U);
+  EXPECT_EQ(ps.native_patterns().back()->benefit(), 2U);
+
+  ps.Clear();
+  ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
+  EXPECT_EQ(ps.native_patterns().size(), 2U);
+  EXPECT_EQ(ps.native_patterns()[0]->benefit(), 2U);
+  EXPECT_EQ(ps.native_patterns()[1]->benefit(), 2U);
 }
