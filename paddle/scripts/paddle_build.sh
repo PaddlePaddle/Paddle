@@ -3252,7 +3252,8 @@ function build_pr_and_develop() {
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
-    if [ "$url_return" == '200' ];then
+    #If the IMAGE is replaced, need to compare the IPIPE IMAGE URL with 'registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:19f3cf58602e98f0a1e91788cdbcb086'
+    if [ "$url_return" == '200' ] && [ "$IPIPE_IMAGE_URL" == "registry.baidubce.com/baidu.xiaolvyun.images/paddlepaddle:19f3cf58602e98f0a1e91788cdbcb086" ];then
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
