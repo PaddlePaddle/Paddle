@@ -16,6 +16,8 @@ include(ExternalProject)
 
 set(LIBXSMM_PREFIX_DIR ${THIRD_PARTY_PATH}/libxsmm)
 set(LIBXSMM_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libxsmm)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/libxsmm)
+set(LIBXSMM_TAG 7cc03b5b342fdbc6b6d990b190671c5dbb8489a2)
 set(LIBXSMM_INCLUDE_DIR
     "${LIBXSMM_INSTALL_DIR}/include"
     CACHE PATH "LIBXSMM include directory." FORCE)
@@ -27,9 +29,8 @@ set(LIBXSMMNOBLAS_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmmnoblas.a")
 
 ExternalProject_Add(
   extern_libxsmm
-  ${SHALLOW_CLONE}
-  GIT_REPOSITORY "${GIT_URL}/hfp/libxsmm.git"
-  GIT_TAG "7cc03b5b342fdbc6b6d990b190671c5dbb8489a2"
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${LIBXSMM_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""

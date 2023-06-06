@@ -62,3 +62,7 @@
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git
 	ignore = dirty
+[submodule "third_party/libxsmm"]
+	path = third_party/gtest
+	url = https://github.com/hfp/libxsmm.git
+	ignore = dirty
