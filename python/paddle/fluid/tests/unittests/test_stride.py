@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 
-class TestStrides(unittest.TestCase):
+class TestStride(unittest.TestCase):
     def call_transpose(self):
         x_np = np.random.random(size=[2, 3, 4]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -92,16 +92,16 @@ class TestStrides(unittest.TestCase):
         self.assertFalse(out3_c._is_shared_buffer_with(out3))
         self.assertFalse(out4_c._is_shared_buffer_with(out4))
 
-    def call_strides(self):
+    def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
 
 
-class TestStridesCPU(TestStrides):
+class TestStrideCPU(TestStride):
     def test_stride_cpu(self):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('cpu')
-        self.call_strides()
+        self.call_stride()
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
 
@@ -109,11 +109,11 @@ class TestStridesCPU(TestStrides):
     not paddle.fluid.core.is_compiled_with_cuda(),
     "core is not compiled with CUDA",
 )
-class TestStridesGPU(TestStrides):
+class TestStrideGPU(TestStride):
     def test_stride_gpu(self):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('gpu')
-        self.call_strides()
+        self.call_stride()
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
 
