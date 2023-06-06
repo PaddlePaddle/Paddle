@@ -122,6 +122,13 @@
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
 
+- op : gather
+  version :
+    - checkpoint : Upgrade gather, add a new input [Axis]
+      action :
+        - add_input : Axis
+          comment : Specify the axis of gather operation.
+
 - op : gaussian_random
   version :
     - checkpoint : Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
