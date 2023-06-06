@@ -590,9 +590,6 @@ class ModelCheckpoint(Callback):
     """
 
     def __init__(self, save_freq=1, save_dir=None):
-        print(
-            f"debug hapi callback ModelCheckpoint save_freq: {save_freq}, save_dir: {save_dir}"
-        )
         self.save_freq = save_freq
         self.save_dir = save_dir
 
