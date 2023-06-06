@@ -71,6 +71,10 @@ function(download_mklml)
   endif()
 endfunction()
 
+# clean build file
+file(REMOVE_RECURSE ${MKLML_PREFIX_DIR})
+file(REMOVE_RECURSE ${MKLML_INSTALL_DIR})
+
 find_file(
   LOCAL_MKLML_LIB_ZIP
   NAMES ${MKLML_FILE}

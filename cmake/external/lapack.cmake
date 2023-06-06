@@ -81,6 +81,10 @@ function(download_lapack)
   endif()
 endfunction()
 
+# clean build file
+file(REMOVE_RECURSE ${LAPACK_PREFIX_DIR})
+file(REMOVE_RECURSE ${LAPACK_INSTALL_DIR})
+
 find_file(
   LOCAL_LAPACK_LIB_ZIP
   NAMES ${LAPACK_FILE}
@@ -101,7 +105,6 @@ ExternalProject_Add(
   extern_lapack
   ${EXTERNAL_PROJECT_LOG_ARGS}
   URL ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE}
-  URL_MD5 ${LAPACK_URL_MD5}
   DOWNLOAD_DIR ${LAPACK_DOWNLOAD_DIR}
   SOURCE_DIR ${LAPACK_LIB_DIR}
   PREFIX ${LAPACK_PREFIX_DIR}
