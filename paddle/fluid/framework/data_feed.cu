@@ -3410,6 +3410,10 @@ void GraphDataGenerator::DoSageForTrain() {
           ins_buf_pair_len_[tensor_pair_idx] : conf_.batch_size;
       total_instance *= 2;
 
+      if (total_instance == 0) {
+        break;
+      }
+
       ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_[tensor_pair_idx]->ptr());
       ins_cursor = ins_buf + ins_buf_pair_len_[tensor_pair_idx] * 2 - total_instance;
       auto final_sage_nodes = GenerateSampleGraph(ins_cursor,
@@ -3587,6 +3591,7 @@ int dynamic_adjust_total_row_for_infer(int local_reach_end,
 bool FillInferBuf(const std::vector<uint64_t> &h_device_keys_len, // input
                 const std::vector<std::shared_ptr<phi::Allocation>> &d_device_keys,
                 const GraphDataGeneratorConfig &conf,
+                const std::vector<int> &all_node_type,
                 int tensor_pair_idx,
                 int *total_row_ptr,
                 size_t *infer_node_start_ptr,
@@ -3600,6 +3605,13 @@ bool FillInferBuf(const std::vector<uint64_t> &h_device_keys_len, // input
       gpu_graph_ptr->global_infer_node_type_start_[conf.gpuid];
   auto &infer_cursor = gpu_graph_ptr->infer_cursor_[tensor_pair_idx][conf.thread_id];
   *total_row_ptr = 0;
+
+  auto &type_to_index = gpu_graph_ptr->get_graph_type_to_index();
+  std::set<int> all_node_type_index_set;
+  for (auto& node_type: all_node_type) {
+    all_node_type_index_set.insert(type_to_index[node_type]);
+  }
+
   if (infer_cursor < h_device_keys_len.size()) {
     while (global_infer_node_type_start[infer_cursor] >=
            h_device_keys_len[infer_cursor]) {
@@ -3608,11 +3620,24 @@ bool FillInferBuf(const std::vector<uint64_t> &h_device_keys_len, // input
         return false;
       }
     }
+    while (infer_cursor < h_device_keys_len.size()) {
+      if (all_node_type_index_set.find(infer_cursor) == all_node_type_index_set.end()) {
+        VLOG(2) << "Skip cursor[" << infer_cursor << "], by all_node_type_index_set";
+        infer_cursor++;
+        if (infer_cursor >= h_device_keys_len.size()) {
+          return false;
+        }
+        continue;
+      } else {
+        VLOG(2) << "Not skip cursor[" << infer_cursor << "]";
+        break;
+      }
+    }
     if (!conf.infer_node_type_index_set.empty()) {
       while (infer_cursor < h_device_keys_len.size()) {
         if (conf.infer_node_type_index_set.find(infer_cursor) ==
             conf.infer_node_type_index_set.end()) {
-          VLOG(2) << "Skip cursor[" << infer_cursor << "]";
+          VLOG(2) << "Skip cursor[" << infer_cursor << "], by infer_node_type_index_set";
           infer_cursor++;
           continue;
         } else {
@@ -3676,12 +3701,14 @@ bool FillInferBuf(const std::vector<uint64_t> &h_device_keys_len, // input
 
 bool GraphDataGenerator::DoWalkForInfer() {
   platform::CUDADeviceGuard guard(conf_.gpuid);
+  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   bool infer_flag = true;
   for (int tensor_pair_idx = 0; tensor_pair_idx < conf_.tensor_pair_num;
           ++tensor_pair_idx) {
     infer_flag &= FillInferBuf(h_device_keys_len_[tensor_pair_idx],
                             d_device_keys_[tensor_pair_idx],
                             conf_,
+                            gpu_graph_ptr->all_node_type_[tensor_pair_idx],
                             tensor_pair_idx,
                             &total_row_[tensor_pair_idx],
                             &infer_node_start_[tensor_pair_idx],

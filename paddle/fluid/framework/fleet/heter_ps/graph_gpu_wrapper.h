@@ -232,6 +232,7 @@ class GraphGpuWrapper {
   bool conf_initialized_ = false;
   bool type_keys_initialized_ = false;
   std::vector<std::vector<int>> first_node_type_;
+  std::vector<std::vector<int>> all_node_type_;
   std::vector<uint8_t> excluded_train_pair_;
   std::vector<int32_t> pair_label_conf_;
   std::vector<std::vector<std::vector<int>>> meta_path_;

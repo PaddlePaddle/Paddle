@@ -57,6 +57,7 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
     }
     tensor_pair_num_ = first_node_type_vec.size();
     first_node_type_.resize(tensor_pair_num_);
+    all_node_type_.resize(tensor_pair_num_);
     for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_; ++tensor_pair_idx) {
       auto &first_node_type = first_node_type_vec[tensor_pair_idx];
       auto node_types =
@@ -70,6 +71,7 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
             platform::errors::NotFound("(%s) is not found in node_to_id.", type));
         VLOG(2) << "node_to_id[" << type << "] = " << iter->second;
         first_node_type_[tensor_pair_idx].push_back(iter->second);
+        all_node_type_[tensor_pair_idx].push_back(iter->second);
       } // end for (auto &type : node_types)
     } // end for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_;
 
@@ -105,6 +107,8 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
             uint64_t src_node_id = node_to_id.find(nodes[0])->second;
             uint64_t dst_node_id = node_to_id.find(nodes[1])->second;
             edge_to_node_map_[iter->second] = src_node_id << 32 | dst_node_id;
+            all_node_type_[tensor_pair_idx].push_back(src_node_id);
+            all_node_type_[tensor_pair_idx].push_back(dst_node_id);
           }
         } // end for (auto &edge : edges) {
       } // end for (size_t i = 0; i < meta_paths.size(); i++) {
@@ -202,7 +206,6 @@ void GraphGpuWrapper::init_type_keys(
     std::vector<std::vector<std::shared_ptr<phi::Allocation>>>& keys,
     std::vector<std::vector<uint64_t>>& lens) {
   size_t thread_num = device_id_mapping.size();
-  int cnt = 0;
 
   auto &graph_all_type_total_keys = get_graph_type_keys();
   auto &type_to_index = get_graph_type_to_index();
@@ -227,7 +230,7 @@ void GraphGpuWrapper::init_type_keys(
     }
     keys[f_idx].resize(thread_num);
     auto &type_total_key = graph_all_type_total_keys[f_idx];
-    VLOG(0) << "graph_all_type_total_keys[ " << f_idx << "] ="
+    VLOG(0) << "graph_all_type_total_keys[" << f_idx << "] = "
             << graph_all_type_total_keys[f_idx].size();
     for (size_t j = 0; j < type_total_key.size(); j++) {
       uint64_t shard = type_total_key[j] % thread_num;
