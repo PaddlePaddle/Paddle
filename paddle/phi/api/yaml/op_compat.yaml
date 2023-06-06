@@ -62,9 +62,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
 - op : adamax_
@@ -85,9 +85,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
@@ -1951,7 +1951,7 @@
   outputs:
     out : Out
   int_array:
-    axis :
+    dims :
       data_type : int
   extra :
     attrs : [bool use_mkldnn = false]

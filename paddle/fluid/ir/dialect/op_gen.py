@@ -112,9 +112,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
-CONSTRUCT_INPUT_INFO_TEMPLATE = (
-    """OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer})"""
-)
+CONSTRUCT_INPUT_INFO_TEMPLATE = """OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer}, {is_mutable_attribute})"""
 CONSTRUCT_OUTPUT_INFO_TEMPLATE = (
     """OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
 )
@@ -125,6 +123,7 @@ CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = (
 # build
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
+{build_mutable_attributes}
 {build_inputs}
 {build_attributes}
 {build_outputs}
@@ -304,7 +303,7 @@ class OpInfoParser:
             'Scalar(dobule)': ['paddle::dialect::ScalarAttribute', 'dobule'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-                'std::vector<Scalar>',
+                'const std::vector<Scalar>&',
             ],
             'int': ['ir::Int32_tAttribute', 'int'],
             'int32_t': ['ir::Int32_tAttribute', 'int32_t'],
@@ -314,18 +313,18 @@ class OpInfoParser:
             'float': ['ir::FloatAttribute', 'float'],
             'float[]': [
                 'ir::ArrayAttribute<ir::FloatAttribute>',
-                'std::vector<float>',
+                'const std::vector<float>&',
             ],
             'double': ['ir::DoubleAttribute', 'double'],
             'bool': ['ir::BoolAttribute', 'bool'],
             'bool[]': [
                 'ir::ArrayAttribute<ir::BoolAttribute>',
-                'std::vecot<bool>',
+                'const std::vecot<bool>&',
             ],
             'str': ['ir::StrAttribute', 'std::string'],
             'str[]': [
                 'ir::ArrayAttribute<ir::StrAttribute>',
-                'std::vector<std::string>',
+                'const std::vector<std::string>&',
             ],
             'Place': ['paddle::dialect::PlaceAttribute', 'Place'],
             'DataLayout': [
@@ -335,11 +334,11 @@ class OpInfoParser:
             'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
             'int64_t[]': [
                 'ir::ArrayAttribute<ir::Int64_tAttribute>',
-                'std::vector<int64_t>',
+                'const std::vector<int64_t>&',
             ],
             'int[]': [
                 'ir::ArrayAttribute<ir::Int32_tAttribute>',
-                'std::vector<int>',
+                'const std::vector<int>&',
             ],
         }
         self.attribute_name_list = self.parse_attribute_name_list()
@@ -640,10 +639,9 @@ def to_pascal_case(s):
 # =====================================
 def GenBuildInputArgsStr(
     op_input_name_list,
-    op_mutable_attribute_name_list,
-    op_non_mutable_attribute_name_list,
-    op_non_mutable_attribute_build_arg_type_list,
-    op_non_mutable_attribute_default_value_list,
+    op_attribute_name_list,
+    op_attribute_build_arg_type_list,
+    op_attribute_default_value_list,
     for_func_define=True,
 ):
     '''
@@ -654,37 +652,72 @@ def GenBuildInputArgsStr(
     if len(op_input_name_list) > 0:
         for input_name in op_input_name_list:
             build_args_str += ", ir::OpResult " + input_name + "_"
-    # add mutable attributes as inputs
-    if len(op_mutable_attribute_name_list) > 0:
-        for mutable_attr in op_mutable_attribute_name_list:
-            build_args_str += ", ir::OpResult " + mutable_attr + "_"
-
-    # add non-mutable attributes
-    for attr_idx in range(len(op_non_mutable_attribute_name_list)):
+    # add attributes
+    for attr_idx in range(len(op_attribute_name_list)):
         build_args_str += (
             ", "
-            + op_non_mutable_attribute_build_arg_type_list[attr_idx]
+            + op_attribute_build_arg_type_list[attr_idx]
             + " "
-            + op_non_mutable_attribute_name_list[attr_idx]
+            + op_attribute_name_list[attr_idx]
         )
         if for_func_define:
-            if (
-                op_non_mutable_attribute_default_value_list[attr_idx]
-                is not None
-            ):
-                default_value = op_non_mutable_attribute_default_value_list[
-                    attr_idx
-                ]
-                if (
-                    op_non_mutable_attribute_build_arg_type_list[attr_idx]
-                    != "std::string"
-                ):
+            if op_attribute_default_value_list[attr_idx] is not None:
+                default_value = op_attribute_default_value_list[attr_idx]
+                if op_attribute_build_arg_type_list[attr_idx] != "std::string":
                     if default_value[0] == "'" or default_value[0] == '"':
                         default_value = default_value[1:]
                     if default_value[-1] == "'" or default_value[-1] == '"':
                         default_value = default_value[0:-1]
                 build_args_str += "=" + default_value
     return build_args_str
+
+
+mutable_attribute_phi_type_maps = {
+    'int': 'phi::DataType::INT32',
+    'int64_t': 'phi::DataType::INT64',
+    'float': 'phi::DataType::FLOAT32',
+    'std::vector<int64_t>': 'phi::DataType::INT64',
+    'const std::vector<int64_t>&': 'phi::DataType::INT64',
+}
+
+
+def GenBuildMutableAttribute(
+    op_attribute_name_list,
+    op_attribute_build_arg_type_list,
+    op_mutable_attribute_name_list,
+    op_mutable_attribute_type_list,
+):
+    build_mutable_attribute = ""
+    BUILD_INTARRAY_ATTRIBUTE_TEMPLATE = """  // Generate int_array mutable attribute: {attr_name}
+  paddle::dialect::FullIntArrayOp full_{attr_name}_op = builder.create<paddle::dialect::FullIntArrayOp>({attr_name}, {phi_dtype}, phi::CPUPlace());
+  ir::OpResult {attr_name}_ = full_{attr_name}_op->GetResultByIndex(0);
+    """
+    BUILD_SCALAR_ATTRIBUTE_TEMPLATE = """  // Generate scalar mutable attribute: {attr_name}
+  paddle::dialect::FullOp full_{attr_name}_op = builder.create<paddle::dialect::FullOp>(std::vector<int64_t>{{1}}, {attr_name}, {phi_dtype}, phi::CPUPlace());
+  ir::OpResult {attr_name}_ = full_{attr_name}_op->GetResultByIndex(0);
+    """
+    for idx in range(len(op_mutable_attribute_name_list)):
+        attr_name = op_mutable_attribute_name_list[idx]
+        attr_type = op_mutable_attribute_type_list[idx][0]
+        if attr_name in op_attribute_name_list:
+            phi_dtype = mutable_attribute_phi_type_maps[
+                op_attribute_build_arg_type_list[
+                    op_attribute_name_list.index(attr_name)
+                ]
+            ]
+        else:
+            phi_dtype = mutable_attribute_phi_type_maps[
+                op_mutable_attribute_type_list[idx][1]
+            ]
+        if attr_type == "paddle::dialect::IntArrayAttribute":
+            build_mutable_attribute += BUILD_INTARRAY_ATTRIBUTE_TEMPLATE.format(
+                attr_name=attr_name, phi_dtype=phi_dtype
+            )
+        else:
+            build_mutable_attribute += BUILD_SCALAR_ATTRIBUTE_TEMPLATE.format(
+                attr_name=attr_name, phi_dtype=phi_dtype
+            )
+    return build_mutable_attribute
 
 
 def GenBuildInputs(op_input_name_list, op_mutable_attribute_name_list):
@@ -827,9 +860,6 @@ def GenBuildOutputs(
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
  """
-    CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE = """  std::vector<int64_t> {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData(); (void){name};\n"""
-    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{dtype}>(); (void){name};\n"""
-    CREATE_STRING_MUTABLE_ATTRIBUE_TEMPLATE = """  std::string {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<ir::StrAttribute>().data(); (void){name};\n"""
 
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
   phi::MetaTensor meta_{name}(&dense_{name});
@@ -856,29 +886,6 @@ def GenBuildOutputs(
             build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>(); (void){name};\n".format(
                 name=op_input_name_list[idx]
             )
-    # Prepare mutable attributes
-    for idx in range(len(op_mutable_attribute_name_list)):
-        attr_dtype = op_mutable_attribute_type_list[idx]
-        # int_array
-        if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
-            build_output_str += (
-                CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                    name=op_mutable_attribute_name_list[idx]
-                )
-            )
-        # scalar
-        elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-            build_output_str += CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                name=op_mutable_attribute_name_list[idx], dtype=attr_dtype[1]
-            )
-        # string
-        elif attr_dtype[0] == "ir::StrAttribute":
-            build_output_str += CREATE_STRING_MUTABLE_ATTRIBUE_TEMPLATE.format(
-                name=op_mutable_attribute_name_list[idx]
-            )
-        else:
-            assert "mutable attribtue type is not right."
-    build_output_str += "\n"
 
     # Prepare inputs_meta_tensor & attributes for infer meta
     infer_meta_args = []
@@ -1098,20 +1105,25 @@ def OpGenerator(
             if op_infer_meta_map is not None:
                 build_define_input_args_str = GenBuildInputArgsStr(
                     op_input_name_list,
-                    op_mutable_attribute_name_list,
-                    op_non_mutable_attribute_name_list,
-                    op_non_mutable_attribute_build_arg_type_list,
-                    op_non_mutable_attribute_default_value_list,
+                    op_attribute_name_list,
+                    op_attribute_build_arg_type_list,
+                    op_attribute_default_value_list,
                     True,
                 )
                 build_declare_input_args_str = GenBuildInputArgsStr(
                     op_input_name_list,
-                    op_mutable_attribute_name_list,
-                    op_non_mutable_attribute_name_list,
-                    op_non_mutable_attribute_build_arg_type_list,
-                    op_non_mutable_attribute_default_value_list,
+                    op_attribute_name_list,
+                    op_attribute_build_arg_type_list,
+                    op_attribute_default_value_list,
                     False,
                 )
+                build_mutable_attributes_str = GenBuildMutableAttribute(
+                    op_attribute_name_list,
+                    op_attribute_build_arg_type_list,
+                    op_mutable_attribute_name_list,
+                    op_mutable_attribute_type_list,
+                )
+
                 build_inputs_str = GenBuildInputs(
                     op_input_name_list, op_mutable_attribute_name_list
                 )
@@ -1132,6 +1144,7 @@ def OpGenerator(
                 build_func_declare_str = OP_BUILD_TEMPLATE.format(
                     op_name=op_class_name,
                     build_args=build_declare_input_args_str,
+                    build_mutable_attributes=build_mutable_attributes_str,
                     build_inputs=build_inputs_str,
                     build_attributes=build_attributes_str,
                     build_outputs=build_outputs_str,
@@ -1140,6 +1153,7 @@ def OpGenerator(
                 build_func_declare_str = OP_BUILD_TEMPLATE.format(
                     op_name=op_class_name,
                     build_args=build_declare_input_args_str,
+                    build_mutable_attributes="",
                     build_inputs="",
                     build_attributes="",
                     build_outputs="",
@@ -1193,6 +1207,17 @@ def OpGenerator(
                             typename=op_input_type_list[idx],
                             optional=op_input_optional_list[idx],
                             no_need_buffer=op_input_no_need_buffer_list[idx],
+                            is_mutable_attribute='false',
+                        )
+                    )
+                for idx in range(len(op_mutable_attribute_name_list)):
+                    input_info_list.append(
+                        CONSTRUCT_INPUT_INFO_TEMPLATE.format(
+                            name=op_mutable_attribute_name_list[idx],
+                            typename=op_mutable_attribute_type_list[idx][1],
+                            optional='false',
+                            no_need_buffer='false',
+                            is_mutable_attribute='true',
                         )
                     )
                 inputs_info_str = ", ".join(input_info_list)
@@ -1214,14 +1239,16 @@ def OpGenerator(
 
             # generate get op info funciton: attributes
             attribute_info_str = ""
-            if len(op_attribute_name_list) > 0:
+            if len(op_non_mutable_attribute_name_list) > 0:
                 attribute_info_list = []
-                for idx in range(len(op_attribute_name_list)):
+                for idx in range(len(op_non_mutable_attribute_name_list)):
                     attribute_info_list.append(
                         CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE.format(
-                            name=op_attribute_name_list[idx],
-                            typename=op_attribute_type_list[idx],
-                            data_type=op_attribute_data_type_list[idx],
+                            name=op_non_mutable_attribute_name_list[idx],
+                            typename=op_non_mutable_attribute_type_list[idx],
+                            data_type=op_non_mutable_attribute_data_type_list[
+                                idx
+                            ],
                         )
                     )
                 attribute_info_str = ", ".join(attribute_info_list)

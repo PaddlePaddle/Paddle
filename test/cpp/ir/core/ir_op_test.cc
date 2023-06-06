@@ -20,6 +20,7 @@
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/program.h"
@@ -240,10 +241,12 @@ TEST(op_test, module_op_death) {
   ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
 
-  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info), const char *);
-  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info), const char *);
-  EXPECT_THROW(ir::Operation::Create({}, {}, output_types, op_info),
-               const char *);
+  EXPECT_THROW(ir::Operation::create(inputs, {}, {}, op_info),
+               ir::IrNotMetException);
+  EXPECT_THROW(ir::Operation::create({}, attrs, {}, op_info),
+               ir::IrNotMetException);
+  EXPECT_THROW(ir::Operation::create({}, {}, output_types, op_info),
+               ir::IrNotMetException);
 
   ir::Program program(ctx);
 

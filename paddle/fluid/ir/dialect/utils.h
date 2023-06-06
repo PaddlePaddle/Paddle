@@ -75,14 +75,17 @@ struct OpInputInfo {
   std::string type_name;
   bool optional = false;
   bool no_need_buffer = false;
+  bool is_mutable_attribute = false;
   OpInputInfo(std::string name,
               std::string type_name,
               bool optional,
-              bool no_need_buffer)
+              bool no_need_buffer,
+              bool is_mutable_attribute)
       : name(name),
         type_name(type_name),
         optional(optional),
-        no_need_buffer(no_need_buffer) {}
+        no_need_buffer(no_need_buffer),
+        is_mutable_attribute(is_mutable_attribute) {}
 };
 
 struct OpOutputInfo {

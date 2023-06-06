@@ -15,6 +15,7 @@
 #pragma once
 
 #include <exception>
+#include <iostream>
 #include <string>
 
 #if !defined(_WIN32)
