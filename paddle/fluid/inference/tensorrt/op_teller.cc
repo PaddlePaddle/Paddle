@@ -1212,22 +1212,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       }
-      auto inputs = desc.Inputs();
-      if (inputs.find("StartsTensorList") != inputs.end()) {
-        if (desc.Input("StartsTensorList").size() >= 1) {
-          return false;
-        }
-      }
-      if (inputs.find("EndsTensorList") != inputs.end()) {
-        if (desc.Input("EndsTensorList").size() >= 1) {
-          return false;
-        }
-      }
-      if (inputs.find("StepsTensorList") != inputs.end()) {
-        if (desc.Input("StepsTensorList").size() >= 1) {
-          return false;
-        }
-      }
     }
 
     if (op_type == "strided_slice") {
