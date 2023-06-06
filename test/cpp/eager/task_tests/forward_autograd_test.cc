@@ -18,7 +18,6 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -27,6 +26,8 @@
 #include "test/cpp/eager/test_utils.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
+
+using eager_test::CreateTensorWithValue;
 
 namespace egr {
 
@@ -39,8 +40,7 @@ TEST(Forward, SingleNode) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
+  paddle::Tensor t = CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -89,8 +89,7 @@ TEST(Forward, LinearNodes) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
+  paddle::Tensor t = CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
@@ -175,8 +174,7 @@ TEST(Forward, BranchedNodes) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
+  paddle::Tensor t = CreateTensorWithValue(ddim,
                                            paddle::platform::CPUPlace(),
                                            phi::DataType::FLOAT32,
                                            phi::DataLayout::NCHW,
