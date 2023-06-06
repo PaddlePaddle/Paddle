@@ -5797,7 +5797,7 @@ def ldexp(x, y, name=None):
     Args:
         x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
         y (Tensor):  A Tensor of exponents, typically integers.
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
