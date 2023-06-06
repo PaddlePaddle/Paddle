@@ -480,13 +480,13 @@
   backward : sum_grad
 
 - op : swish
-  args : (Tensor x, float beta = 1.0f)
+  args : (Tensor x)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : swish_raw
+    func : swish
   backward : swish_grad
 
 - op : tril_indices
