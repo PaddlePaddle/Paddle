@@ -93,7 +93,7 @@ class Dialect {
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
                                  ConcreteOp::attributes_name,
-                                 ConcreteOp::verify);
+                                 ConcreteOp::Verify);
   }
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);

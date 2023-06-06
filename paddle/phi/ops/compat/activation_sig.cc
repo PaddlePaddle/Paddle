@@ -42,19 +42,9 @@ namespace phi {
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
 
-KernelSignature SwishGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("swish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
-}
-
 KernelSignature HardSwishOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hardswish", {"X"}, {}, {"Out"});
-}
-
-KernelSignature SwishOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("swish", {"X"}, {}, {"Out"});
 }
 
 }  // namespace phi
@@ -63,5 +53,3 @@ PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
 PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
 
 PD_REGISTER_ARG_MAPPING_FN(hard_swish, phi::HardSwishOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(swish_grad, phi::SwishGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(swish, phi::SwishOpArgumentMapping);

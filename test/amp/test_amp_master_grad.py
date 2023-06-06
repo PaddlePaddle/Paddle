@@ -44,7 +44,7 @@ class TestMasterGrad(unittest.TestCase):
         # fp16 calls
         self.assertEqual(int(op_list['matmul_v2'].split(',')[0]), total_steps)
         self.assertEqual(
-            int(op_list['adamw_'].split(',')[0]),
+            int(op_list['adam_'].split(',')[0]),
             2 * (total_steps / accumulate_batchs_num),
         )
         self.assertEqual(
@@ -52,14 +52,11 @@ class TestMasterGrad(unittest.TestCase):
             total_steps + total_steps * 2,
         )
 
-    def run_dygraph(self, total_steps, accumulate_batchs_num):
-        model = SimpleNet(2, 4)
-        opt = paddle.optimizer.AdamW(parameters=model.parameters())
+    def run_dygraph(self, total_steps, accumulate_batchs_num, model, optimizer):
         model, opt = paddle.amp.decorate(
-            model, optimizers=opt, level='O2', master_grad=True
+            model, optimizers=optimizer, level='O2', master_grad=True
         )
         scaler = paddle.amp.GradScaler()
-
         paddle.amp.debugging.enable_operator_stats_collection()
         for i in range(total_steps):
             x = np.random.random((2, 2)).astype('float32')
@@ -81,15 +78,31 @@ class TestMasterGrad(unittest.TestCase):
         op_list = paddle.fluid.core.get_low_precision_op_list()
         return fp32_grads, op_list
 
-    def test_master_grad(self):
+    def test_adam_master_grad(self):
         total_steps = 4
         accumulate_batchs_num = 2
+        model = SimpleNet(2, 4)
+        opt = paddle.optimizer.Adam(parameters=model.parameters())
         fp32_grads, op_list = self.run_dygraph(
-            total_steps, accumulate_batchs_num
+            total_steps, accumulate_batchs_num, model, opt
         )
         self.check_results(
             fp32_grads, op_list, total_steps, accumulate_batchs_num
         )
+
+    def test_momentum_master_grad(self):
+        total_steps = 4
+        accumulate_batchs_num = 1
+        model = SimpleNet(2, 4)
+        L1Decay = paddle.regularizer.L1Decay(0.0001)
+        opt = paddle.optimizer.Momentum(
+            parameters=model.parameters(), weight_decay=L1Decay
+        )
+        fp32_grads, op_list = self.run_dygraph(
+            total_steps, accumulate_batchs_num, model, opt
+        )
+        for grad in fp32_grads:
+            self.assertEqual(grad.dtype, paddle.float32)
 
 
 if __name__ == '__main__':

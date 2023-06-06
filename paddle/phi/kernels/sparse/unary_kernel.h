@@ -224,5 +224,21 @@ SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
   return csr;
 }
 
+template <typename T, typename Context>
+void SliceCooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCsrTensor* out);
+
 }  // namespace sparse
 }  // namespace phi

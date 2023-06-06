@@ -1,5 +1,6 @@
-if(NOT WITH_NEWIR)
+if(NOT WITH_IR)
   return()
 endif()
 
 add_subdirectory(core)
+add_subdirectory(pass)
