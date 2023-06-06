@@ -19,7 +19,10 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import LazyGuard, nn
-from paddle.distributed.auto_parallel.helper import ProgramHelper, ProxyLayer
+from paddle.distributed.auto_parallel.static.helper import (
+    ProgramHelper,
+    ProxyLayer,
+)
 from paddle.distributed.fleet import auto
 from paddle.framework import in_dynamic_mode
 from paddle.io import Dataset
