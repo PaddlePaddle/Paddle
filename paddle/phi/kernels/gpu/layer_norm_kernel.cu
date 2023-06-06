@@ -328,7 +328,7 @@ template <typename IndexT,
           typename U,
           bool IsSameType,
           int VecSize,
-          bool UseWelford = true>
+          bool UseWelford = false>
 __global__ void LayerNormFwdWithWelford(
     const T *__restrict__ src_data,
     T *dst_data,
@@ -382,11 +382,14 @@ __global__ void LayerNormFwdWithWelford(
     U row_variance;
     U row_inv_var;
 
+    auto inv_cnt =
+        static_cast<U>(static_cast<float>(1.) / static_cast<float>(warp_cnt));
+
     if (UseWelford) {
-      row_variance = max(warp_square / warp_cnt, 0.f);
+      row_variance = max(warp_square * inv_cnt, 0.f);
       row_inv_var = funcs::rsqrt_(row_variance + epsilon);
     } else {
-      row_variance = max(warp_square / warp_cnt - warp_mean * warp_mean, 0.f);
+      row_variance = max(warp_square * inv_cnt - warp_mean * warp_mean, 0.f);
       row_inv_var = funcs::rsqrt_(row_variance + epsilon);
     }
 
