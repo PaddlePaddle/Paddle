@@ -135,7 +135,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+        optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
 
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"}
@@ -509,7 +509,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 )
                 avg_cost = paddle.mean(cost)
 
-                optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+                optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
                 amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                     custom_black_varnames={"loss", "conv2d_0.w_0"}
                 )
