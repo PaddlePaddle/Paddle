@@ -77,7 +77,7 @@ class TestUnbind(unittest.TestCase):
 
             np_grad = np.ones(x.shape, np.float32)
             out.backward()
-            np.testing.assert_array_equal(x.grad.numpy(), np_grad)
+            np.testing.assert_array_equal(x.grad.numpy(False), np_grad)
 
 
 class TestLayersUnbind(unittest.TestCase):
@@ -105,7 +105,9 @@ class TestUnbindOp(OpTest):
         pass
 
     def outReshape(self):
-        pass
+        self.out[0] = self.out[0].reshape((2, 2))
+        self.out[1] = self.out[1].reshape((2, 2))
+        self.out[2] = self.out[2].reshape((2, 2))
 
     def setAxis(self):
         pass
@@ -209,12 +211,18 @@ class TestUnbindFP16Op(OpTest):
         self.num = 3
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
+        self.outReshape()
         self.inputs = {'X': x}
         self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
         self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+
+    def outReshape(self):
+        self.out[0] = self.out[0].reshape((2, 2))
+        self.out[1] = self.out[1].reshape((2, 2))
+        self.out[2] = self.out[2].reshape((2, 2))
 
     def get_dtype(self):
         return np.float16
@@ -233,6 +241,7 @@ class TestUnbindBF16Op(OpTest):
         self.num = 3
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
+        self.outReshape()
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'axis': self.axis}
         self.outputs = {
@@ -242,6 +251,11 @@ class TestUnbindBF16Op(OpTest):
             ]
         }
         self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+
+    def outReshape(self):
+        self.out[0] = self.out[0].reshape((2, 2))
+        self.out[1] = self.out[1].reshape((2, 2))
+        self.out[2] = self.out[2].reshape((2, 2))
 
     def get_dtype(self):
         return np.uint16
@@ -277,7 +291,7 @@ class TestUnbindBool(unittest.TestCase):
         x = paddle.to_tensor([[True, True], [False, False]])
         xs = paddle.unbind(x, axis=0)
         self.assertEqual(len(xs), 2)
-        np.testing.assert_array_equal(xs[0].numpy(), [True, True])
+        np.testing.assert_array_equal(xs[0].numpy(False), [True, True])
 
 
 class TestUnbindGradOptionalInput(unittest.TestCase):
@@ -290,7 +304,7 @@ class TestUnbindGradOptionalInput(unittest.TestCase):
         a_grad = a.detach()
         a_grad[:, 0, :] = 1
 
-        np.testing.assert_array_equal(a.grad.numpy(), a_grad.numpy())
+        np.testing.assert_array_equal(a.grad.numpy(False), a_grad.numpy(False))
 
 
 if __name__ == '__main__':

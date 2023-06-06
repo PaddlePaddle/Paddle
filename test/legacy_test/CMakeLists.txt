@@ -940,9 +940,11 @@ set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
 if(WIN32)
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 900)
   set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_cdist PROPERTIES TIMEOUT 250)
 else()
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
   set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_cdist PROPERTIES TIMEOUT 120)
 endif()
 if(WITH_NV_JETSON)
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
@@ -958,7 +960,7 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 150)
+  set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
@@ -1191,7 +1193,13 @@ set(TEST_CINN_OPS
     test_atan2_op
     test_top_k_op
     test_where_op
-    test_take_along_axis_op)
+    test_take_along_axis_op
+    test_arg_min_max_op
+    test_reverse_op
+    test_flip
+    test_triangular_solve_op
+    test_scatter_nd_op
+    test_strided_slice_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

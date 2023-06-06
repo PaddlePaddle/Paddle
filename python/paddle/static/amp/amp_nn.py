@@ -41,7 +41,7 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     found_inf = helper.create_variable_for_type_inference(dtype='bool')
 
     if in_dygraph_mode():
-        _C_ops.check_finite_and_unscale_(x, scale, found_inf)
+        x, found_inf = _C_ops.check_finite_and_unscale_(x, scale)
         return x, found_inf
 
     check_type(x, 'x', (tuple, list), 'check_finite_and_unscale')

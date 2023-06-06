@@ -15,14 +15,19 @@
 #pragma once
 
 #include <list>
+#include <ostream>
 #include <unordered_map>
 
+#include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/parameter.h"
 
 namespace ir {
+
+class IrContext;
 ///
 /// \brief Program is an abstraction of model structure, divided into
 /// computational graphs and weights. At the current stage, a computational
@@ -33,29 +38,35 @@ namespace ir {
 ///
 class Program {
  public:
+  using ParameterMap =
+      std::unordered_map<std::string, std::unique_ptr<Parameter>>;
+  explicit Program(IrContext* context);
+  Program(Program&&) = delete;
+  Program(const Program& program) = delete;
+  Program& operator=(const Program&) = delete;
+  Program& operator=(Program&&);
   ~Program();
-
-  Block* block() { return &block_; }
-
   size_t parameters_num() const { return parameters_.size(); }
 
-  ///
-  /// \brief Insert the Operation* constructed by Operation::create(...) into
-  /// this Program. NOTE: At this time, the memory management permission of
-  /// Operation* will be owned by this Program. The user does not need to call
-  /// Operation::destroy() manually
-  ///
-  void InsertOp(Operation* op);
+  ModuleOp module_op() { return module_; }
+
+  void Print(std::ostream& os);
+
+  Block* block() { return module_.block(); }
 
   Parameter* GetParameter(std::string name) const;
-
   void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
 
- private:
-  Block block_;
-  std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
-};
+  ParameterMap& parameters() { return parameters_; }
+  void set_parameters(ParameterMap&& parameters) {
+    parameters_ = std::move(parameters);
+  }
 
-std::ostream& operator<<(std::ostream& os, Program& program);
+ private:
+  // computation graph
+  ModuleOp module_;
+  // weight
+  ParameterMap parameters_;
+};
 
 }  // namespace ir

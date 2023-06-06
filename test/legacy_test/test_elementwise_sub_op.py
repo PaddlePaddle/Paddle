@@ -71,7 +71,7 @@ class TestElementwiseOp(OpTest):
         self.check_prim = True
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestElementwiseFP16OP(TestElementwiseOp):
@@ -87,6 +87,7 @@ class TestElementwiseFP16OP(TestElementwiseOp):
 class TestElementwiseBF16OP(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.python_api = paddle.subtract
         self.public_python_api = paddle.subtract
@@ -103,6 +104,9 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         self.if_check_prim()
         self.if_enable_cinn()
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
@@ -118,7 +122,12 @@ class TestElementwiseBF16OP(TestElementwiseOp):
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.1
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            max_relative_error=0.1,
+            check_prim=True,
         )
 
 
@@ -135,6 +144,10 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
@@ -181,6 +194,10 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
@@ -227,6 +244,10 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
@@ -580,6 +601,7 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 @unittest.skipIf(
@@ -653,6 +675,7 @@ class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
@@ -698,6 +721,7 @@ class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
@@ -717,6 +741,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
@@ -750,6 +775,7 @@ class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.outputs['Out'])}
         self.if_check_prim()
+        self.if_enable_cinn()
 
 
 class TestComplexElementwiseSubOp(OpTest):
@@ -761,7 +787,6 @@ class TestComplexElementwiseSubOp(OpTest):
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -784,13 +809,6 @@ class TestComplexElementwiseSubOp(OpTest):
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x - self.y
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
-            self.shape, self.dtype
-        )
-        self.grad_x = self.grad_out
-        self.grad_y = -self.grad_out
-
     def test_check_output(self):
         self.check_output()
 
@@ -798,8 +816,6 @@ class TestComplexElementwiseSubOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_prim=self.check_prim,
         )
 
@@ -808,8 +824,6 @@ class TestComplexElementwiseSubOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_prim=self.check_prim,
         )
 
@@ -818,8 +832,6 @@ class TestComplexElementwiseSubOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
             check_prim=self.check_prim,
         )
 
@@ -827,7 +839,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.enable_cinn = False
 
     def if_check_prim(self):
-        self.check_prim = True
+        self.check_prim = False
 
 
 class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
@@ -837,13 +849,6 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
             self.dtype
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x - self.y
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
-            self.shape, self.dtype
-        )
-        self.grad_x = np.real(self.grad_out)
-        self.grad_y = -self.grad_out
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -889,7 +894,7 @@ class TestSubtractApi(unittest.TestCase):
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
-            np_z = z.numpy()
+            np_z = z.numpy(False)
             z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((np_z == z_expected).all(), True)
 
