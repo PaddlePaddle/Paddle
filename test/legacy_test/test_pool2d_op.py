@@ -428,9 +428,7 @@ class TestPool2D_Op_Mixin:
                 check_cinn=True,
             )
         else:
-            self.check_output(
-                check_dygraph=(not self.use_mkldnn), check_cinn=False
-            )
+            self.check_output(check_dygraph=(not self.use_mkldnn))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -451,7 +449,6 @@ class TestPool2D_Op_Mixin:
                 'Out',
                 max_relative_error=0.07,
                 check_dygraph=(not self.use_mkldnn),
-                check_cinn=False,
             )
 
     def init_data_format(self):
