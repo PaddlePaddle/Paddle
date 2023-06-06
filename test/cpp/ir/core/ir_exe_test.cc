@@ -65,31 +65,51 @@ TEST(program_test, program) {
   ir::Type dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
 
-  // (1) Def a = GetParameterOp("a")
-  std::string op1_name = std::string(paddle::dialect::UniformOp::name());
-  ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
+  //
+  std::string constnt_name = std::string(ir::ConstantOp::name());
+  ir::OpInfo constant_op_info = ctx->GetRegisteredOpInfo(constnt_name);
 
-  // ir::Attribute shape_1 = ir::ArrayAttribute::get(ctx, {ten} );
-  ir::Attribute shape_1 = paddle::dialect::IntArrayAttribute::get(
-      ctx, std::vector<int64_t>({2, 2}));
-  ir::Attribute data_type =
-      paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32);
   ir::Attribute min =
       paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
   ir::Attribute max =
       paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(1.0));
+  ir::Attribute shape_1 = paddle::dialect::IntArrayAttribute::get(
+      ctx, std::vector<int64_t>({2, 2}));
+
+  std::unordered_map<std::string, ir::Attribute> constant_op1_attribute_min{
+      {"value", min}};
+  ir::Operation* const_op_min_1 = ir::Operation::create(
+      {}, constant_op1_attribute_min, {dense_tensor_dtype}, constant_op_info);
+
+  std::unordered_map<std::string, ir::Attribute> constant_op1_attribute_max{
+      {"value", max}};
+  ir::Operation* const_op_max_1 = ir::Operation::create(
+      {}, constant_op1_attribute_max, {dense_tensor_dtype}, constant_op_info);
+
+  std::unordered_map<std::string, ir::Attribute> constant_op1_attribute_shape{
+      {"value", shape_1}};
+  ir::Operation* const_op_shape_1 = ir::Operation::create(
+      {}, constant_op1_attribute_shape, {dense_tensor_dtype}, constant_op_info);
+
+  // (1) Def a = GetParameterOp("a")
+  std::string op1_name = std::string(paddle::dialect::UniformOp::name());
+  ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
+
+  ir::Attribute data_type =
+      paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32);
+
   ir::Attribute seed = ir::Int32_tAttribute::get(ctx, 2);
   ir::Attribute uni_place = paddle::dialect::PlaceAttribute::get(
       ctx, phi::Place(phi::AllocationType::CPU));
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
-      {"shape", shape_1},
-      {"dtype", data_type},
-      {"min", min},
-      {"max", max},
-      {"seed", seed},
-      {"place", uni_place}};
+      {"dtype", data_type}, {"seed", seed}, {"place", uni_place}};
   ir::Operation* op1 =
-      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
+      ir::Operation::create({const_op_min_1->GetResultByIndex(0),
+                             const_op_max_1->GetResultByIndex(0),
+                             const_op_shape_1->GetResultByIndex(0)},
+                            op1_attribute,
+                            {dense_tensor_dtype},
+                            op1_info);
 
   block->push_back(op1);
 
@@ -98,8 +118,14 @@ TEST(program_test, program) {
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
   ir::Attribute ten2 = ir::Int32_tAttribute::get(ctx, 3);
   std::unordered_map<std::string, ir::Attribute> op2_attribute{{"shape", ten2}};
+
   ir::Operation* op2 =
-      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op2_info);
+      ir::Operation::create({const_op_min_1->GetResultByIndex(0),
+                             const_op_max_1->GetResultByIndex(0),
+                             const_op_shape_1->GetResultByIndex(0)},
+                            op1_attribute,
+                            {dense_tensor_dtype},
+                            op2_info);
   block->push_back(op2);
 
   // (3) Def out = AddOp(a, b)
