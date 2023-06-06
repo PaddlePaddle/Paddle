@@ -43,7 +43,7 @@ class XPUTestSizeOP(XPUOpTestWrapper):
             self.inputs = {
                 'Input': x,
             }
-            self.outputs = {'Out': np.array([np.size(x)])}
+            self.outputs = {'Out': np.array(np.size(x))}
 
         def initTestCase(self):
             self.shape = (6, 56, 8, 55)

@@ -348,6 +348,7 @@ tensor_method_func = [  # noqa
     'logit',
     'exp',
     'exp_',
+    'expm1',
     'floor',
     'floor_',
     'increment',
