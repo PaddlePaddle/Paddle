@@ -645,10 +645,10 @@ def GenBuildInputArgsStr(
     for_func_define=True,
 ):
     '''
-    Example: ir::OperationArgument &argument, ir::OpResult x_, phi::DataType dtype=phi::DataType::UNDEFINED, phi::Place place={}
+    Example: ir::Builder &builder, ir::OperationArgument &argument, ir::OpResult x_, phi::DataType dtype=phi::DataType::UNDEFINED, phi::Place place={}
     '''
     # add inputs
-    build_args_str = "ir::OperationArgument &argument"
+    build_args_str = "ir::Builder &builder, ir::OperationArgument &argument"
     if len(op_input_name_list) > 0:
         for input_name in op_input_name_list:
             build_args_str += ", ir::OpResult " + input_name + "_"

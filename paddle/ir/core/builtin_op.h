@@ -130,7 +130,8 @@ class ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
 
-  static void Build(OperationArgument &argument,  // NOLINT
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
                     Attribute value,
                     Type output_type);
 

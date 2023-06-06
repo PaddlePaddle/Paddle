@@ -207,7 +207,8 @@ void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};
 
-void ConstantOp::Build(OperationArgument &argument,
+void ConstantOp::Build(Builder &builder,
+                       OperationArgument &argument,
                        Attribute value,
                        Type output_type) {
   argument.AddAttribute("value", value);
