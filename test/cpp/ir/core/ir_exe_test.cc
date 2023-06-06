@@ -89,7 +89,7 @@ TEST(program_test, program) {
       {"seed", seed},
       {"place", uni_place}};
   ir::Operation* op1 =
-      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
+      ir::Operation::Create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
   block->push_back(op1);
 
@@ -99,13 +99,13 @@ TEST(program_test, program) {
   ir::Attribute ten2 = ir::Int32_tAttribute::get(ctx, 3);
   std::unordered_map<std::string, ir::Attribute> op2_attribute{{"shape", ten2}};
   ir::Operation* op2 =
-      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op2_info);
+      ir::Operation::Create({}, op1_attribute, {dense_tensor_dtype}, op2_info);
   block->push_back(op2);
 
   // (3) Def out = AddOp(a, b)
   std::string add_op_name = std::string(paddle::dialect::AddOp::name());
   ir::OpInfo add_op_info = ctx->GetRegisteredOpInfo(add_op_name);
-  ir::Operation* add_op = ir::Operation::create(
+  ir::Operation* add_op = ir::Operation::Create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
       {},
       {dense_tensor_dtype},
