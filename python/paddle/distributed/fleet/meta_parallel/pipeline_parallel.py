@@ -31,6 +31,7 @@ __all__ = []
 
 
 # assume only the first stage and last stage need data, and data consumption is ordred
+# to be replaced by real micro dataset from reader
 class FakeMicroDataset:
     def __init__(
         self, data, is_first_stage, is_last_stage, acc_steps, micro_batch_size
@@ -46,7 +47,7 @@ class FakeMicroDataset:
         return self
 
     def __next__(self):
-        assert self._index < self._total_step
+        assert self._index < self._acc_steps
         assert self._is_first_stage or self._is_last_stage
         micro_batch_data = self._load_micro_batch(self._index)
         self._index += 1
@@ -54,6 +55,7 @@ class FakeMicroDataset:
 
     def _load_micro_batch(self, micro_step):
         inputs = self._data
+
         if self._is_first_stage:
             assert len(inputs) == 2, "length of input should be 2"
             return self._load_micro_batch_impl(inputs[0], micro_step)
@@ -385,8 +387,8 @@ class PipelineParallel(MetaParallelBase):
         # TODO(liuzhnehai): pass micro_dataset from reader
         micro_dataset = FakeMicroDataset(
             data,
-            self.is_pipeline_first_stage(),
-            self.is_pipeline_last_stage(),
+            self.is_pipeline_first_stage(ignore_virtual=True),
+            self.is_pipeline_last_stage(ignore_virtual=True),
             self.accumulate_steps,
             self.micro_batch_size,
         )
@@ -423,8 +425,8 @@ class PipelineParallel(MetaParallelBase):
         # TODO(liuzhnehai): pass micro_dataset from reader
         micro_dataset = FakeMicroDataset(
             data,
-            self.is_pipeline_first_stage(),
-            self.is_pipeline_last_stage(),
+            self.is_pipeline_first_stage(ignore_virtual=True),
+            self.is_pipeline_last_stage(ignore_virtual=True),
             self.accumulate_steps,
             self.micro_batch_size,
         )
@@ -914,8 +916,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         # TODO(liuzhnehai): pass micro_dataset from reader
         micro_dataset = FakeMicroDataset(
             data,
-            self.is_pipeline_first_stage(),
-            self.is_pipeline_last_stage(),
+            self.is_pipeline_first_stage(ignore_virtual=True),
+            self.is_pipeline_last_stage(ignore_virtual=True),
             self.accumulate_steps,
             self.micro_batch_size,
         )
@@ -938,8 +940,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         # TODO(liuzhnehai): pass micro_dataset from reader
         micro_dataset = FakeMicroDataset(
             data,
-            self.is_pipeline_first_stage(),
-            self.is_pipeline_last_stage(),
+            self.is_pipeline_first_stage(ignore_virtual=True),
+            self.is_pipeline_last_stage(ignore_virtual=True),
             self.accumulate_steps,
             self.micro_batch_size,
         )
