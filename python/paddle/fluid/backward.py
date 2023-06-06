@@ -714,7 +714,11 @@ def _addup_repetitive_outputs_(
 
 
 def _remove_no_grad_branch_(
-    op_descs, no_grad_set, grad_op_id_to_fwd_op=None, target_vars=[]
+    op_descs,
+    no_grad_set,
+    grad_op_id_to_fwd_op=None,
+    target_vars=[],
+    composite_add_fill_var=[],
 ):
     """
     Remove unnecessary grad ops
@@ -751,32 +755,34 @@ def _remove_no_grad_branch_(
     ]
     # Insert fill_any_like_op with value 0
     to_insert = []
-    if not core._is_bwd_prim_enabled():
-        for idx, op_desc in enumerate(op_descs):
-            for arg in op_desc.input_arg_names():
-                # arg is a gradient var name and arg should not have gradient
-                if core.grad_var_suffix() in arg and arg in no_grad_set:
-                    x_in = _strip_grad_suffix_(arg)
-                    # the reason should be: arg can be input of another grad op
-                    # and the op is a not-to-remove op
-                    new_op_desc = _create_op_desc_(
-                        "fill_any_like",
-                        {"X": [x_in]},
-                        {"Out": [arg]},
-                        {'value': 0, 'dtype': -1},
-                    )
-                    # update the mapping between fwd and bwd
-                    if (
-                        grad_op_id_to_fwd_op is not None
-                        and grad_op_id_to_fwd_op.get(
-                            op_desc.original_id(), None
-                        )
-                        is not None
-                    ):
-                        grad_op_id_to_fwd_op[
-                            new_op_desc.original_id()
-                        ] = grad_op_id_to_fwd_op[op_desc.original_id()]
-                    to_insert.append((new_op_desc, idx))
+    for idx, op_desc in enumerate(op_descs):
+        for arg in op_desc.input_arg_names():
+            # arg is a gradient var name and arg should not have gradient
+            # and doesn't be added when composite begin
+            if (
+                core.grad_var_suffix() in arg
+                and arg in no_grad_set
+                and arg not in composite_add_fill_var
+            ):
+                x_in = _strip_grad_suffix_(arg)
+                # the reason should be: arg can be input of another grad op
+                # and the op is a not-to-remove op
+                new_op_desc = _create_op_desc_(
+                    "fill_any_like",
+                    {"X": [x_in]},
+                    {"Out": [arg]},
+                    {'value': 0, 'dtype': 5},
+                )
+                # update the mapping between fwd and bwd
+                if (
+                    grad_op_id_to_fwd_op is not None
+                    and grad_op_id_to_fwd_op.get(op_desc.original_id(), None)
+                    is not None
+                ):
+                    grad_op_id_to_fwd_op[
+                        new_op_desc.original_id()
+                    ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+                to_insert.append((new_op_desc, idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
@@ -1350,7 +1356,7 @@ def _append_backward_ops_(
     if rename_var_map is None:
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
-
+    composite_add_fill_var = []
     if core._is_bwd_prim_enabled():
         grad_name_set = set()
         for target in target_vars:
@@ -1361,16 +1367,19 @@ def _append_backward_ops_(
                 for out_name in op.desc.output_arg_names():
                     grad_name_set.add(out_name)
                 continue
-            for var_name in op.desc.output_arg_names():
-                grad_var_name = _append_grad_suffix_(var_name)
-                if grad_var_name not in grad_name_set:
-                    op_desc = _create_op_desc_(
-                        "fill_any_like",
-                        {"X": [var_name]},
-                        {"Out": [grad_var_name]},
-                        {'value': 0, 'dtype': target_vars[0].dtype},
-                    )
-                    block.desc.append_op().copy_from(op_desc)
+            #
+            if op.type == "split":
+                for var_name in op.desc.output_arg_names():
+                    grad_var_name = _append_grad_suffix_(var_name)
+                    if grad_var_name not in grad_name_set:
+                        op_desc = _create_op_desc_(
+                            "fill_any_like",
+                            {"X": [var_name]},
+                            {"Out": [grad_var_name]},
+                            {'value': 0, 'dtype': target_vars[0].dtype},
+                        )
+                        block.desc.append_op().copy_from(op_desc)
+                        composite_add_fill_var.append(grad_var_name)
             break
         block.program._sync_with_cpp()
 
@@ -1575,7 +1584,6 @@ def _append_backward_ops_(
         grad_var_to_var,
         grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
     )
-
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
     grad_op_descs = _remove_no_grad_branch_(
@@ -1583,8 +1591,8 @@ def _append_backward_ops_(
         no_grad_dict[block.idx],
         grad_op_id_to_fwd_op,
         target_vars,
+        composite_add_fill_var,
     )
-
     # remove some backward ops
     # TODO(Jiabin): Support this in prime later, it will prune add_grad, fix this problem
     if not core._is_bwd_prim_enabled():
@@ -2455,7 +2463,6 @@ def calc_gradient_helper(
         no_grad_set = _get_no_grad_set_name(copy.copy(no_grad_set))
     no_grad_dict = _get_stop_gradients_(prog)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
-
     fwd_op_num = block.desc.op_size()
 
     input_grad_names_set = set()
@@ -2512,13 +2519,11 @@ def calc_gradient_helper(
     op_path = _find_op_path_(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
-
     # find no grad var by op_path
     no_grad_vars = _find_no_grad_vars(
         block, op_path, targets, block_no_grad_set
     )
     block_no_grad_set.update(no_grad_vars)
-
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
