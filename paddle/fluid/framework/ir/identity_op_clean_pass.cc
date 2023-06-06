@@ -72,7 +72,7 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
             if (x->Op()->Type() == "c_identity") {
               return true;
             }
-
+            // you can add more cases here.
             return false;
           });
   auto useless_op_out = detector.mutable_pattern()->NewNode("useless_op_out");
