@@ -22,12 +22,12 @@ namespace ir {
 
 class Graph;
 
-class IdentityScaleOpCleanPass : public FusePassBase {
+class IdentityOpCleanPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  virtual ~IdentityScaleOpCleanPass() = default;
+  virtual ~IdentityOpCleanPass() = default;
 };
 
 }  // namespace ir

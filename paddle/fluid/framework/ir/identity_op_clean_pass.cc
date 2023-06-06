@@ -23,7 +23,7 @@ namespace ir {
 
 class Graph;
 
-void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("identity_scale_op_clean", graph);
 
   // pre_op -> useless_op_in -> useless_op -> useless_op_out
@@ -126,7 +126,7 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(identity_op_clean_pass,
-              paddle::framework::ir::IdentityScaleOpCleanPass);
+              paddle::framework::ir::IdentityOpCleanPass);
 REGISTER_PASS_CAPABILITY(identity_op_clean_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
