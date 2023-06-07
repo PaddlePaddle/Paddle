@@ -109,10 +109,8 @@ class LayerNormOpConverter : public OpConverter {
                            ("layer_norm_eps: reshape_for_broadcast: (Output(" +
                             output_name + ")")
                                .c_str()));
-      auto sigma_layer = TRT_ENGINE_ADD_LAYER(∏ engine_,
-                                              Unary,
-                                              *sum_out,
-                                              nvinfer1::UnaryOperation::kSQRT);
+      auto sigma_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Unary, *sum_out, nvinfer1::UnaryOperation::kSQRT);
       auto sigma_output = sigma_layer->getOutput(0);
       // σ/sigma
       auto div_out = Div(xsubmiu_output, sigma_output);
