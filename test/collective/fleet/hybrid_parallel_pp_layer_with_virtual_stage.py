@@ -84,7 +84,7 @@ class TestPipeLayerAPI(unittest.TestCase):
         assert len(pipe_model.parameters()) > 0
         model_chunks = pipe_model.get_model_chunks()
         assert model_chunks is not None
-        assert len(model_chunks) == 2
+        assert len(model_chunks) == 3
 
         optimizer = paddle.optimizer.SGD(parameters=pipe_model.parameters())
 

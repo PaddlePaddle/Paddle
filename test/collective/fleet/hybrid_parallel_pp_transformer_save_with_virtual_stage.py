@@ -30,7 +30,7 @@ length = 8
 micro_batch_size = 2
 vocab_size = 128
 
-transformer_layer_num = 8
+transformer_layer_num = 12
 
 
 class TestDistPPSaveTraning(unittest.TestCase):
