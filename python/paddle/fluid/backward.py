@@ -714,6 +714,7 @@ def _addup_repetitive_outputs_(
 
 
 def _remove_no_grad_branch_(
+    block,
     op_descs,
     no_grad_set,
     grad_op_id_to_fwd_op=None,
@@ -771,7 +772,7 @@ def _remove_no_grad_branch_(
                     "fill_any_like",
                     {"X": [x_in]},
                     {"Out": [arg]},
-                    {'value': 0, 'dtype': 5},
+                    {'value': 0, 'dtype': block.var(x_in).dtype},
                 )
                 # update the mapping between fwd and bwd
                 if (
@@ -1207,6 +1208,7 @@ def _append_backward_ops_with_checkpoints_(
     )
     # 4) remove no grad branch as it is in _remove_no_grad_branch_
     grad_op_descs = _remove_no_grad_branch_(
+        block,
         grad_op_descs,
         no_grad_dict[block.idx],
         grad_op_id_to_fwd_op,
@@ -1587,6 +1589,7 @@ def _append_backward_ops_(
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
     grad_op_descs = _remove_no_grad_branch_(
+        block,
         grad_op_descs,
         no_grad_dict[block.idx],
         grad_op_id_to_fwd_op,
