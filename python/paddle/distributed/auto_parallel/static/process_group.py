@@ -55,7 +55,9 @@ def remove_process_group(ring_id):
         _g_process_group_map.pop(ring_id)
 
 
-def new_process_group(ranks, group_id=None, force_new_group=False):
+def new_process_group(
+    ranks, group_id=None, force_new_group=False, group_type=None
+):
 
     global _g_process_group_map
     if not force_new_group:
@@ -74,6 +76,17 @@ def new_process_group(ranks, group_id=None, force_new_group=False):
 
     new_pg = ProcessGroup(group_id, ranks)
     _g_process_group_map[group_id] = new_pg
+
+    # NOTE(zhiqiu): to avoid send/recv hang in lazy init
+    if group_type == 'p2p':
+        alltoall_tmp = paddle.empty(
+            shape=[new_pg.nranks, new_pg.nranks], dtype="int32"
+        )
+        paddle._legacy_C_ops.alltoall(
+            alltoall_tmp, 'use_calc_stream', True, 'ring_id', new_pg.id
+        )
+        paddle.device.cuda.synchronize()
+
     return new_pg
 
 

@@ -337,7 +337,7 @@ class Inserter:
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
         # use pair comm group
-        process_group = new_process_group([src, dst])
+        process_group = new_process_group([src, dst], group_type='p2p')
         send_op = block._insert_op(
             idx,
             type=op_type,
@@ -357,7 +357,7 @@ class Inserter:
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
         # use pair group
-        process_group = new_process_group([src, dst])
+        process_group = new_process_group([src, dst], group_type='p2p')
         recv_op = block._insert_op(
             idx,
             type=op_type,
