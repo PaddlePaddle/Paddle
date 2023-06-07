@@ -20,7 +20,7 @@
 
 namespace phi {
 
-template <typename T, typename Context>
+template <typename Context>
 void RealGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx) {
@@ -40,7 +40,7 @@ void RealGradStridedKernel(const Context& dev_ctx,
                      }));
 }
 
-template <typename T, typename Context>
+template <typename Context>
 void ImagGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx) {
