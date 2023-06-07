@@ -83,9 +83,6 @@ class PipelineParallel(MetaParallelBase):
         self._enable_timer = self._strategy.hybrid_configs[
             "pp_configs"
         ].enable_timer
-        self._use_main_grad = self._strategy.hybrid_configs[
-            "pp_configs"
-        ].use_main_grad
 
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
@@ -215,13 +212,7 @@ class PipelineParallel(MetaParallelBase):
                 var_groups = assign_group_by_size(parameter_list)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
-                        group_idx,
-                        parameters,
-                        comm_group,
-                        acc_steps,
-                        act,
-                        dst,
-                        self._use_main_grad,
+                        group_idx, parameters, comm_group, acc_steps, act, dst
                     )
                     self._comm_buffers.append(buffer)
                     for param in parameters:

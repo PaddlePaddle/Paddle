@@ -161,20 +161,13 @@ def flatten_dense_tensors(parameters, use_main_grad=False):
 
 
 class FusedCommBuffer:
-    def __init__(
-        self,
-        id,
-        params,
-        comm_group,
-        acc_steps=1,
-        act=None,
-        dst=-1,
-        use_main_grad=False,
-    ):
+    def __init__(self, id, params, comm_group, acc_steps=1, act=None, dst=-1):
         self._id = id
         self._params = params
         self._acc_steps = acc_steps
         self._comm_group = comm_group
+
+        use_main_grad = hasattr(self._params[0], "main_grad")
 
         self._task = None
         self._params_step_dict = {}

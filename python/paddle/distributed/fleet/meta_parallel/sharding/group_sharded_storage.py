@@ -315,14 +315,12 @@ class GradStorage(InternalStorage):
         assert (
             param._numel() > 0
         ), "Cannot add a gradient to a released InternalStorage, please rebuild"
-        assert (
-            param.dtype == self.buffer.dtype
-            or self.buffer.dtype == paddle.float32
-        )
-        use_main_grad = (
-            param.dtype != self.buffer.dtype
-            and self.buffer.dtype == paddle.float32
-        )
+
+        use_main_grad = hasattr(param, "main_grad")
+        if use_main_grad:
+            assert self.buffer.dtype == paddle.float32
+        else:
+            assert param.dtype == self.buffer.dtype
 
         grad_end = self._fill + param._numel()
         offset = grad_end + align
