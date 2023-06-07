@@ -249,6 +249,15 @@ def to_phi_and_fluid_op_name(op_item):
         return phi_name, fluid_name
 
 
+scalar_type_maps = {
+    'int': 'ir::Int32_tAttribute',
+    'int64_t': 'ir::Int64_tAttribute',
+    'float': 'ir::FloatAttribute',
+    'dobule': 'ir::DoubleAttribute',
+    'bool': 'ir::BoolAttribute',
+}
+
+
 # =====================================
 # Parse Op Compat From Yaml
 # =====================================
@@ -298,10 +307,10 @@ class OpInfoParser:
         self.attr_types_map = {
             'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
             'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-            'Scalar(int)': ['paddle::dialect::ScalarAttribute', 'int'],
-            'Scalar(int64_t)': ['paddle::dialect::ScalarAttribute', 'int64_t'],
-            'Scalar(float)': ['paddle::dialect::ScalarAttribute', 'float'],
-            'Scalar(dobule)': ['paddle::dialect::ScalarAttribute', 'dobule'],
+            'Scalar(int)': ['ir::Int32_tAttribute', 'int'],
+            'Scalar(int64_t)': ['ir::Int64_tAttribute', 'int64_t'],
+            'Scalar(float)': ['ir::FloatAttribute', 'float'],
+            'Scalar(dobule)': ['ir::DoubleAttribute', 'dobule'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
                 'const std::vector<Scalar>&',
@@ -741,7 +750,7 @@ def GenBuildAttributes(
 ):
     INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr}));
 """
-    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::Scalar({attr}));
+    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = TransToIrAttribute({attr}, ir::IrContext::Instance());
 """
     STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr});
 """
@@ -776,7 +785,6 @@ def GenBuildAttributes(
                     + ".size()",
                     create_attribute=SCALAR_STR_TEMPLATE.format(
                         attr_name=op_non_mutable_attribute_name_list[idx],
-                        op_attribute_type=inner_attribute_type,
                         attr=op_non_mutable_attribute_name_list[idx] + "[i]",
                     ),
                 )
@@ -807,7 +815,6 @@ def GenBuildAttributes(
         ):
             attr_str += SCALAR_STR_TEMPLATE.format(
                 attr_name=op_non_mutable_attribute_name_list[idx],
-                op_attribute_type=op_non_mutable_attribute_type_list[idx],
                 attr=op_non_mutable_attribute_name_list[idx],
             )
         else:

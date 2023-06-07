@@ -165,9 +165,6 @@ void build_context(ir::Operation* op,
       } else if (type_name == "paddle::dialect::DataTypeAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "paddle::dialect::ScalarAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
       } else if (type_name == "ir::Int32_tAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<ir::Int32_tAttribute>().data());
