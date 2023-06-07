@@ -140,27 +140,32 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     grad_node->SetAttributeaxis(-1);
     // Set TensorWrappers for Forward Inputs if needed
     if (paddle::platform::is_gpu_place(x.place())) {
-      if (!x_autograd_meta->StopGradient() &&
-          !y_autograd_meta->StopGradient()) {
+      x_autograd_meta->StopGradient();
+      if (x_autograd_meta != nullptr && !x_autograd_meta->StopGradient() &&
+          y_autograd_meta != nullptr && !y_autograd_meta->StopGradient()) {
         grad_node->SetTensorWrapperx(x);
         grad_node->SetTensorWrappery(y);
-      } else if (x_autograd_meta->StopGradient() &&
+      } else if (x_autograd_meta != nullptr &&
+                 x_autograd_meta->StopGradient() &&
+                 y_autograd_meta != nullptr &&
                  !y_autograd_meta->StopGradient()) {
         grad_node->SetTensorWrapperx(x);
         grad_node->SetTensorWrapperNoNeedBuffery(y);
-      } else if (!x_autograd_meta->StopGradient() &&
+      } else if (x_autograd_meta != nullptr &&
+                 !x_autograd_meta->StopGradient() &&
+                 y_autograd_meta != nullptr &&
                  y_autograd_meta->StopGradient()) {
         grad_node->SetTensorWrapperNoNeedBufferx(x);
         grad_node->SetTensorWrappery(y);
       } else {
-        grad_node->SetTensorWrapperNoNeedBufferx(x);
-        grad_node->SetTensorWrapperNoNeedBuffery(y);
+        grad_node->SetTensorWrapperx(x);
+        grad_node->SetTensorWrappery(y);
       }
     } else {
       grad_node->SetTensorWrapperx(x);
       grad_node->SetTensorWrappery(y);
     }
-
+    std::cout << "12" << std::endl;
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(y, 1);
