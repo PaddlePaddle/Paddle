@@ -28,4 +28,5 @@ __all__ = [  # noqa
     'parameters_to_vector',
     'vector_to_parameters',
     'clip_grad_norm_',
+    'clip_grad_value_',
 ]
