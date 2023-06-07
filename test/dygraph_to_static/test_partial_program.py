@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from d2s_util import run_ast, run_both
+from dygraph_to_static_util import run_ast, run_both
 from test_fetch_feed import Linear
 
 import paddle
