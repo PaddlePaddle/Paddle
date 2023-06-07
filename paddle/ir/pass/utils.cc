@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/ir/pass/utils.h"
 
-namespace paddle {
-namespace dialect {
-phi::IntArray IntArrayAttribute::data() const { return storage()->GetAsKey(); }
+namespace ir {
+namespace detail {
 
-phi::DataType DataTypeAttribute::data() const { return storage()->GetAsKey(); }
-
-phi::Place PlaceAttribute::data() const { return storage()->GetAsKey(); }
-
-phi::DataLayout DataLayoutAttribute::data() const {
-  return storage()->GetAsKey();
+void PrintHeader(const std::string &header, std::ostream &os) {
+  unsigned padding = (80 - header.size()) / 2;
+  os << "===" << std::string(73, '-') << "===\n";
+  os << std::string(padding, ' ') << header << "\n";
+  os << "===" << std::string(73, '-') << "===\n";
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace detail
+}  // namespace ir
