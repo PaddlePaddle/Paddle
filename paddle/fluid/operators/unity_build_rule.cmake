@@ -86,8 +86,6 @@ register_unity_group(
   real_op.cc
   sync_batch_norm_op.cc
   top_k_op.cc
-  conv_op.cc
-  conv_transpose_op.cc
   gru_unit_op.cc)
 register_unity_group(
   cc
@@ -201,7 +199,6 @@ register_unity_group(
   cc
   partial_sum_op.cc
   pixel_shuffle_op.cc
-  pool_op.cc
   pool_with_index_op.cc
   positive_negative_pair_op.cc
   prelu_op.cc
@@ -342,14 +339,8 @@ register_unity_group(
   run_program_op.cc
   softmax_with_cross_entropy_op.cc
   warpctc_op.cc)
-register_unity_group(
-  cc
-  conv_op.cu.cc
-  lstm_op.cu.cc
-  rnn_op.cu.cc
-  split_op.cu.cc
-  assign_value_op.cu.cc
-  warpctc_op.cu.cc)
+register_unity_group(cc lstm_op.cu.cc rnn_op.cu.cc split_op.cu.cc
+                     assign_value_op.cu.cc warpctc_op.cu.cc)
 register_unity_group(
   cu
   addmm_op.cu
@@ -373,9 +364,7 @@ register_unity_group(
 register_unity_group(
   cu
   center_loss_op.cu
-  conv_op.cu
   conv_transpose_cudnn_op.cu
-  conv_transpose_op.cu
   cos_sim_op.cu
   crop_op.cu
   conj_op.cu

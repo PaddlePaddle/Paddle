@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from utils import TOLERANCE
+from prim.composite_ops.utils import TOLERANCE
 
 np.random.seed(2013)
 
