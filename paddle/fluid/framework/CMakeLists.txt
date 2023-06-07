@@ -662,7 +662,6 @@ cc_library(
   DEPS lod_tensor)
 
 if(TENSORRT_FOUND)
-  message(STATUS "TENSORRT FOUND")
   cc_library(
     naive_executor
     SRCS naive_executor.cc
@@ -678,7 +677,6 @@ if(TENSORRT_FOUND)
          variable_helper
          tensorrt_engine_op)
 else()
-  message(STATUS "TENSORRT NOT FOUND")
   cc_library(
     naive_executor
     SRCS naive_executor.cc
