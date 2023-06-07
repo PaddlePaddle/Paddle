@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/core/flags.h"
@@ -138,20 +139,26 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     // SetAttributes if needed
     grad_node->SetAttributeaxis(-1);
     // Set TensorWrappers for Forward Inputs if needed
-    if (!x_autograd_meta->StopGradient() && !y_autograd_meta->StopGradient()) {
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrappery(y);
-    } else if (x_autograd_meta->StopGradient() &&
-               !y_autograd_meta->StopGradient()) {
-      grad_node->SetTensorWrapperx(x);
-      grad_node->SetTensorWrapperNoNeedBuffery(y);
-    } else if (!x_autograd_meta->StopGradient() &&
-               y_autograd_meta->StopGradient()) {
-      grad_node->SetTensorWrapperNoNeedBufferx(x);
-      grad_node->SetTensorWrappery(y);
+    if (paddle::platform::is_gpu_place(x.place())) {
+      if (!x_autograd_meta->StopGradient() &&
+          !y_autograd_meta->StopGradient()) {
+        grad_node->SetTensorWrapperx(x);
+        grad_node->SetTensorWrappery(y);
+      } else if (x_autograd_meta->StopGradient() &&
+                 !y_autograd_meta->StopGradient()) {
+        grad_node->SetTensorWrapperx(x);
+        grad_node->SetTensorWrapperNoNeedBuffery(y);
+      } else if (!x_autograd_meta->StopGradient() &&
+                 y_autograd_meta->StopGradient()) {
+        grad_node->SetTensorWrapperNoNeedBufferx(x);
+        grad_node->SetTensorWrappery(y);
+      } else {
+        grad_node->SetTensorWrapperNoNeedBufferx(x);
+        grad_node->SetTensorWrapperNoNeedBuffery(y);
+      }
     } else {
-      grad_node->SetTensorWrapperNoNeedBufferx(x);
-      grad_node->SetTensorWrapperNoNeedBuffery(y);
+      grad_node->SetTensorWrapperx(x);
+      grad_node->SetTensorWrappery(y);
     }
 
     // SetGradOutMeta & SetEdges
