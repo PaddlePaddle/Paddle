@@ -140,6 +140,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"clip",
        XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32})},
       {"clip_by_norm", XPUKernelSet({phi::DataType::FLOAT32})},
