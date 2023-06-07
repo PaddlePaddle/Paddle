@@ -19,7 +19,9 @@
 namespace paddle {
 namespace framework {
 
-const std::vector<Job*>& Plan::GetJobList() const { return job_list_; }
+const std::vector<std::shared_ptr<Job>>& Plan::GetJobList() const {
+  return job_list_;
+}
 
 const std::unordered_map<std::string, ProgramDesc*>& Plan::GetTypeToProgram()
     const {
