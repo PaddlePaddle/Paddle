@@ -254,13 +254,15 @@ TEST(pass_manager_test, pass_manager) {
 
   pm.EnableIRPrinting(std::make_unique<ir::PassManager::IRPrinterOption>(
       [](ir::Pass *pass, ir::Operation *op) {
-        return pass->pass_info().name == "TestPass";
+        return pass->name() == "TestPass";
       },
       [](ir::Pass *pass, ir::Operation *op) {
-        return pass->pass_info().name == "TestPass";
+        return pass->name() == "TestPass";
       },
       true,
-      false));
+      true));
+
+  pm.EnablePassTiming(true);
 
   CHECK_EQ(pm.Run(&program), true);
 }
