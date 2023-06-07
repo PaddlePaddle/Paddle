@@ -205,11 +205,10 @@ func (config *Config) EnableXpu(l3Size int32, l3Locked bool, convAutotune bool, 
 	cConvAutotuneFile := C.CString(convAutotuneFile)
 	cTransformerEencoderPrecision := C.CString(transformerEencoderPrecision)
 	defer func() {
-		C.free(unsafe.Pointer(cAutotuneFile))
-		C.free(unsafe.Pointer(cPrecision))
+		C.free(unsafe.Pointer(cConvAutotuneFile))
+		C.free(unsafe.Pointer(cTransformerEencoderPrecision))
 	}()
-	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3Size), cvtGoBoolToPD(l3Locked), cvtGoBoolToPD(convAutotune),
-		cAutotuneFile, cTransformerEencoderPrecision, cvtGoBoolToPD(transformerEncoderAdaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
+	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3Size), cvtGoBoolToPD(l3Locked), cvtGoBoolToPD(convAutotune), cConvAutotuneFile, cTransformerEencoderPrecision, cvtGoBoolToPD(transformerEncoderAdaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
 }
 
 ///
