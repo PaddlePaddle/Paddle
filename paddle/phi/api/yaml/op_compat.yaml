@@ -1532,7 +1532,7 @@
     out : Y
 
 - op : matmul (matmul_v2)
-  backward : matmul_grad (matmul_v2_grad)
+  backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_double_grad)
   inputs :
     {x : X, y : Y}
   attrs :
