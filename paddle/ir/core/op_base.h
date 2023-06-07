@@ -113,7 +113,7 @@ class OpInterfaceBase : public OpBase {
   static ConcreteInterface dyn_cast(Operation *op) {
     if (op && op->HasInterface<ConcreteInterface>()) {
       return ConcreteInterface(
-          op, op->op_info().GetInterfaceImpl<ConcreteInterface>());
+          op, op->info().GetInterfaceImpl<ConcreteInterface>());
     }
     return ConcreteInterface(nullptr, nullptr);
   }
@@ -184,7 +184,7 @@ class Op : public OpBase {
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
   static ConcreteOp dyn_cast(Operation *op) {
-    if (op && op->op_info().id() == TypeId::get<ConcreteOp>()) {
+    if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
     }
     return ConcreteOp(nullptr);

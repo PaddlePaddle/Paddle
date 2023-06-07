@@ -14,16 +14,17 @@
 
 #pragma once
 
-#include <iostream>
+#include <ostream>
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
-#include "paddle/ir/core/value_impl.h"
 
 namespace ir {
 class OpBase;
 class Program;
 class Block;
+class OpOperand;
+class OpResult;
 
 class alignas(8) Operation final {
  public:
@@ -33,25 +34,25 @@ class alignas(8) Operation final {
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *create(const std::vector<ir::OpResult> &inputs,
+  static Operation *Create(const std::vector<ir::OpResult> &inputs,
                            const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
                            size_t num_regions = 0);
-  static Operation *create(OperationArgument &&op_argument);
+  static Operation *Create(OperationArgument &&op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
-  void destroy();
+  void Destroy();
 
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index) const;
+  OpResult GetResultByIndex(uint32_t index) const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index) const;
+  OpOperand GetOperandByIndex(uint32_t index) const;
 
-  std::string print();
+  void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
 
@@ -59,7 +60,7 @@ class alignas(8) Operation final {
     attributes_[key] = value;
   }
 
-  ir::OpInfo op_info() const { return op_info_; }
+  ir::OpInfo info() const { return info_; }
 
   uint32_t num_results() const { return num_results_; }
 
@@ -67,7 +68,7 @@ class alignas(8) Operation final {
 
   uint32_t num_regions() const { return num_regions_; }
 
-  std::string op_name() const;
+  std::string name() const;
 
   template <typename T>
   T dyn_cast() {
@@ -76,12 +77,12 @@ class alignas(8) Operation final {
 
   template <typename Trait>
   bool HasTrait() const {
-    return op_info_.HasTrait<Trait>();
+    return info_.HasTrait<Trait>();
   }
 
   template <typename Interface>
   bool HasInterface() const {
-    return op_info_.HasInterface<Interface>();
+    return info_.HasInterface<Interface>();
   }
 
   Block *GetParentBlock() const { return parent_; }
@@ -121,7 +122,7 @@ class alignas(8) Operation final {
 
   AttributeMap attributes_;
 
-  OpInfo op_info_;
+  OpInfo info_;
 
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;

@@ -17,7 +17,14 @@ import os
 from paddle.distributed.auto_parallel.static.process_group import (
     remove_process_group,
 )
+from paddle.distributed.auto_parallel.static.utils import (
+    is_backward_op,
+    is_forward_op,
+    is_lr_sched_op,
+    is_optimize_op,
+)
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Program
 
@@ -30,6 +37,12 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
+
+
+def is_reshard_op(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/reshard" in op.attr(
+        'op_namescope'
+    )
 
 
 @register_pass("auto_parallel_pipeline")
@@ -62,7 +75,8 @@ class PipelinePass(PassBase):
         self._cur_pp_stage = self._get_pp_stage(self._cur_rank)
 
         if self._mode == "1F1B":
-            raise NotImplementedError("1F1B has not been implemented")
+            self._insert_sync_ops_for_1f1b()
+            self._task_1f1b()
         elif self._mode == "F-Then-B":
             raise NotImplementedError("F-Then-B has not been implemented")
         elif self._mode == "stream":
@@ -107,6 +121,98 @@ class PipelinePass(PassBase):
                 nop_op.desc.set_input('X', [var_name])
                 nop_op.desc.set_output('Out', [var_name])
 
+            block._sync_with_cpp()
+
+    def _insert_sync_ops_for_1f1b(self):
+        """
+        This implementation refers to lots of Paddle/python/paddle/fluid/optimizer.py.
+        The difference between this function with 'PipelineOptimizer' is that
+        'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
+        """
+
+        for block in self._program.blocks:
+            offset = 0
+            first_optimize_index = None
+            for index, op in enumerate(list(block.ops)):
+                if is_optimize_op(op):
+                    first_optimize_index = index
+                    break
+
+            # insert sync ops
+            for index, op in enumerate(list(block.ops)):
+                # NOTE: pipeline might hang when dynamic_shape is True
+                if op.type in ['send_v2', 'recv_v2']:
+                    op._set_attr("dynamic_shape", False)
+                # set send op on comm stream
+                if op.type == 'send_v2':
+                    # step1: set 'use_calc_stream' False
+                    op._set_attr("use_calc_stream", False)
+                    op_role = op.attr('op_role')
+                    ring_id = op.attr('ring_id')
+                    # step2: insert 'c_sync_calc_stream' op before 'send_v2' op
+                    var_name = op.input_arg_names[0]
+                    var = block.var(var_name)
+                    block._insert_op_without_sync(
+                        index=index + offset,
+                        type="c_sync_calc_stream",
+                        inputs={'X': [var]},
+                        outputs={'Out': [var]},
+                        attrs={'op_role': op_role},
+                    )
+                    offset += 1
+                    # step3: insert 'c_sync_comm_stream' op after 'send_v2' op or
+                    # before the first optimize op
+                    if int(op_role) == int(OpRole.Backward):
+                        index = first_optimize_index + offset
+                        new_op_role = OpRole.Optimize
+                    else:
+                        index = index + offset + 1
+                        new_op_role = OpRole.Backward
+                    sync_comm_op = block._insert_op_without_sync(
+                        index=index,
+                        type="c_sync_comm_stream",
+                        inputs={'X': [var]},
+                        outputs={'Out': [var]},
+                        attrs={
+                            'op_role': new_op_role,
+                            'ring_id': ring_id,
+                        },
+                    )
+                    # step4: If 'send_v2' op in forward parse, set 'pipeline_flag' to distinguish
+                    # whether the 'c_sync_comm_stream' op is inserted for pipeline.
+                    if int(op_role) == int(OpRole.Forward):
+                        sync_comm_op._set_attr('pipeline_flag', '')
+                        offset += 1
+            block._sync_with_cpp()
+
+            offset = 0
+            backward_recv_index = None
+            for index, op in enumerate(block.ops):
+                if op.type == "recv_v2" and is_backward_op(op):
+                    backward_recv_index = index
+                    break
+            if backward_recv_index is None:
+                continue
+
+            # replace 'c_sync_comm_stream' op with 'nop' op
+            # use nop op for gc
+            for index, op in enumerate(list(block.ops)):
+                if index >= backward_recv_index:
+                    break
+                if op.type == 'c_sync_comm_stream' and op.has_attr(
+                    'pipeline_flag'
+                ):
+                    var_name = op.output_arg_names[0]
+                    var = block.var(var_name)
+                    block._remove_op(index + offset, sync=False)
+                    offset -= 1
+                    block._insert_op_without_sync(
+                        index=backward_recv_index,
+                        type="nop",
+                        inputs={'X': [var]},
+                        outputs={'Out': [var]},
+                        attrs={'op_role': OpRole.Backward},
+                    )
             block._sync_with_cpp()
 
     def _create_param(self, dst_block, src_var):
@@ -195,6 +301,183 @@ class PipelinePass(PassBase):
                 pp_idx = idx
                 break
         return pp_idx
+
+    def _task_1f1b(self):
+        # create fwd, bwd, opt program with op_role
+        num_of_functionality = 4
+        lr_prog = Program()
+        fwd_prog = Program()
+        bwd_prog = Program()
+        opt_prog = Program()
+
+        for idx, src_block in enumerate(self._program.blocks):
+            if idx == 0:
+                lr_block = lr_prog.block(0)
+                fwd_block = fwd_prog.block(0)
+                bwd_block = bwd_prog.block(0)
+                opt_block = opt_prog.block(0)
+            else:
+                lr_block = lr_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                fwd_block = fwd_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block = bwd_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                opt_block = opt_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                lr_block._set_forward_block_idx(src_block.forward_block_idx)
+                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                opt_block._set_forward_block_idx(src_block.forward_block_idx)
+
+            # split the program based on the op_role
+            for op in src_block.ops:
+                if is_lr_sched_op(op):
+                    self._create_program(src_block, lr_block, op)
+                if is_forward_op(op):
+                    self._create_program(src_block, fwd_block, op)
+                elif is_backward_op(op):
+                    self._create_program(src_block, bwd_block, op)
+                elif is_optimize_op(op):
+                    self._create_program(src_block, opt_block, op)
+                else:
+                    raise ValueError(
+                        "The op role: "
+                        + str(op.attr('op_role'))
+                        + " isn't one of LRSched, Forward, Backward or Optimizer."
+                    )
+
+        lr_prog._sync_with_cpp()
+        fwd_prog._sync_with_cpp()
+        bwd_prog._sync_with_cpp()
+        opt_prog._sync_with_cpp()
+
+        lr_prog._rollback()
+        fwd_prog._rollback()
+        bwd_prog._rollback()
+        opt_prog._rollback()
+
+        # Create task nodes.
+        lr_task_node = TaskNode(
+            rank=self._cur_rank,
+            max_run_times=self._acc_steps,
+            program=lr_prog,
+            task_id=int(self._cur_rank * num_of_functionality + 0),
+            node_type="Amplifier",
+            lazy_initialize=True,
+        )
+        lr_task_node.set_run_pre_steps(self._acc_steps)
+        fwd_task_node = TaskNode(
+            rank=self._cur_rank,
+            max_run_times=self._acc_steps,
+            program=fwd_prog,
+            task_id=int(self._cur_rank * num_of_functionality + 1),
+            node_type="Compute",
+            lazy_initialize=True,
+        )
+        bwd_task_node = TaskNode(
+            rank=self._cur_rank,
+            max_run_times=self._acc_steps,
+            program=bwd_prog,
+            task_id=int(self._cur_rank * num_of_functionality + 2),
+            node_type="Compute",
+            lazy_initialize=True,
+        )
+        opt_task_node = TaskNode(
+            rank=self._cur_rank,
+            max_run_times=self._acc_steps,
+            program=opt_prog,
+            task_id=int(self._cur_rank * num_of_functionality + 3),
+            node_type="Amplifier",
+            lazy_initialize=True,
+        )
+        opt_task_node.set_run_pre_steps(self._acc_steps)
+        opt_task_node.set_run_at_offset(self._acc_steps - 1)
+        task_nodes = {
+            "lr": lr_task_node,
+            "fwd": fwd_task_node,
+            "bwd": bwd_task_node,
+            "opt": opt_task_node,
+        }
+
+        # get upstream ranks and downstream ranks of cur_rank
+        up_down_streams = self._dist_context.up_down_streams
+        pp_upstream_ranks = up_down_streams.ups(self._cur_rank)
+        pp_downstream_ranks = up_down_streams.downs(self._cur_rank)
+
+        # set upstream/downstream for task_nodes of cur_rank
+        for i, (task_role, task_node) in enumerate(task_nodes.items()):
+
+            cur_id = int(self._cur_rank * num_of_functionality + i)
+            ups = []
+            downs = []
+
+            # set upstream/downstream and buffersize in pipeline stage
+            pp_buff_size = int(self._pp_stages - self._cur_pp_stage)
+            prev_id = cur_id - 1
+            next_id = cur_id + 1
+            if task_role != "lr":
+                buf_size = pp_buff_size if task_role == "bwd" else 2
+                ups.append((prev_id, buf_size))
+            if task_role != "opt":
+                buf_size = pp_buff_size if task_role == "fwd" else 2
+                downs.append((next_id, buf_size))
+
+            # set upstream/downstream and buffersize cross pipeline stage
+            for upstream in pp_upstream_ranks:
+                upstream_id = int(upstream * num_of_functionality + i)
+                if task_role == "fwd":
+                    if upstream != -1:
+                        ups.append((upstream_id, 2))
+                elif task_role == "bwd":
+                    if upstream != -1:
+                        downs.append((upstream_id, 2))
+            for downstream in pp_downstream_ranks:
+                downstream_id = int(downstream * num_of_functionality + i)
+                if task_role == "fwd":
+                    if downstream != -1:
+                        downs.append((downstream_id, 2))
+                elif task_role == "bwd":
+                    if downstream != -1:
+                        ups.append((downstream_id, 2))
+
+            for up in ups:
+                print(
+                    "Task:",
+                    cur_id,
+                    "'s upstream includes:",
+                    up[0],
+                    ", buffer size is:",
+                    up[1],
+                )
+                task_node.add_upstream_task(up[0], up[1])
+            for down in downs:
+                print(
+                    "Task:",
+                    cur_id,
+                    "'s downstream includes:",
+                    down[0],
+                    ", buffer size is:",
+                    down[1],
+                )
+                task_node.add_downstream_task(down[0], down[1])
+
+        # record global message: task_id_to_rank
+        task_id_to_rank = {}
+        for i in range(self._nrank):
+            for j in range(num_of_functionality):
+                task_id_to_rank[int(i * num_of_functionality + j)] = i
+
+        self._program._pipeline_opt = {}
+        self._program._pipeline_opt['fleet_opt'] = {
+            "tasks": list(task_nodes.values()),
+            "task_id_to_rank": task_id_to_rank,
+            "num_micro_batches": self._acc_steps,
+        }
 
     def _task_stream(self):
         num_of_functionality = 5
