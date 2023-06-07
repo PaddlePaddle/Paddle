@@ -230,26 +230,26 @@ class TestSubtractHighGradCheck(unittest.TestCase):
 @param.parameterized_class(
     ('shape1', 'shape2'),
     [
-        # (
-        #     [2, 3, 4],
-        #     [2, 3, 4],
-        # ),
-        # (
-        #     [2, 3, 3, 4],
-        #     [3, 1, 4],
-        # ),
-        # (
-        #     [2, 3, 3, 4],
-        #     [3, 1, 1],
-        # ),
+        (
+            [2, 3, 4],
+            [2, 3, 4],
+        ),
+        (
+            [2, 3, 3, 4],
+            [3, 1, 4],
+        ),
+        (
+            [2, 3, 3, 4],
+            [3, 1, 1],
+        ),
         (
             [2, 3, 3, 4],
             [2, 3, 1, 4],
         ),
-        # (
-        #     [2, 3, 3, 4],
-        #     [2, 3, 1, 1],
-        # ),
+        (
+            [2, 3, 3, 4],
+            [2, 3, 1, 1],
+        ),
     ],
 )
 class TestMultiplyHighGradCheck(unittest.TestCase):
