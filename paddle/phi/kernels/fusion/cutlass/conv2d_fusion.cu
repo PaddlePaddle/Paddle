@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
+#include <thread>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -49,6 +52,9 @@ void Conv2dFusionKernel(const Context& ctx,
   const int ic = in_dims[3];
   const int ih = in_dims[1];
   const int iw = in_dims[2];
+
+  std::chrono::milliseconds duration(20);
+  std::this_thread::sleep_for(duration);
 
   CHECK_EQ(ic == groups * filter_dims[3], true);
   int pad_h0 = 0;
