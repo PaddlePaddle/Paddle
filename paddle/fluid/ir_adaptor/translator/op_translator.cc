@@ -226,8 +226,8 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
         legacy_attr_name));
   }
   paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
-  VLOG(10) << "attribute in " << op_desc.Type() << " name: " << legacy_attr_name
-           << " " << legacy_attr.index();
+  VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+           << " name: " << legacy_attr_name << " " << legacy_attr.index();
   ir::Attribute new_attr =
       attribute_translator(input_info.type_name, legacy_attr);
 

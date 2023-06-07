@@ -76,7 +76,6 @@ def OpNameNormalizerInitialization(
                 attribute_name,
                 mutable_attribute_info,
             ) in mutable_attribute_infos.items():
-                print(attribute_name, mutable_attribute_info)
                 op_mutable_attribues[op_name].add(attribute_name)
                 op_mutable_attribute_infos[op_name][attribute_name] = []
                 for k, v in mutable_attribute_info.items():
