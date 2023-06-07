@@ -56,16 +56,12 @@ ExternalProject_Add(
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${LEVELDB_PREFIX_DIR}
   SOURCE_DIR ${LEVELDB_SOURCE_DIR}
+  INSTALL_DIR ${LEVELDB_INSTALL_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND export "CXXFLAGS=${LEVELDN_CXXFLAGS}" && make -j
                 ${NUM_OF_PROCESSOR} libleveldb.a
-  INSTALL_COMMAND
-    mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ && cp
-    ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/libleveldb.a ${LEVELDB_LIBRARIES}
-    && cp -r ${LEVELDB_PREFIX_DIR}/src/extern_leveldb/include
-    ${LEVELDB_INSTALL_DIR}/
-  BUILD_IN_SOURCE 1
+  INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${LEVELDB_LIBRARIES})
 add_dependencies(extern_leveldb snappy)
 
