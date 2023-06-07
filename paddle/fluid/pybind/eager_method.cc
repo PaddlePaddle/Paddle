@@ -76,7 +76,7 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
 extern PyTypeObject* p_tensor_type;
 
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
     paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
@@ -575,7 +575,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   }
 
   paddle::Tensor* grad;
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
@@ -631,7 +631,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->tensor.name();
 
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -1169,7 +1169,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
 
     if (egr::Controller::Instance().HasGrad()) {
       PADDLE_ENFORCE_EQ(
-          egr::egr_utils_api::IsLeafTensor(self->tensor) &&
+          egr::EagerUtils::IsLeafTensor(self->tensor) &&
               !egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient(),
           false,
           platform::errors::InvalidArgument(
@@ -1352,7 +1352,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* kwargs) {
   EAGER_TRY
   int64_t hook_id;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
     auto autograd_meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -1419,7 +1419,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
 
   std::shared_ptr<egr::GradNodeBase> grad_node =
       egr::EagerUtils::grad_node(self->tensor);
-  PADDLE_ENFORCE_EQ(egr::egr_utils_api::IsLeafTensor(self->tensor),
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::IsLeafTensor(self->tensor),
                     true,
                     platform::errors::InvalidArgument(
                         "Only can register backward hook for leaf Tensor."));
@@ -1923,7 +1923,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
                         "Detected NULL grad. Please check if you have manually "
                         "cleared the grad inside autograd_meta"));
 
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     std::static_pointer_cast<egr::GradNodeAccumulation>(
         egr::EagerUtils::grad_node(self->tensor))

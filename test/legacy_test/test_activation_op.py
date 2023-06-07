@@ -113,6 +113,7 @@ class TestExpFp32_Prim(OpTest):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.if_enable_cinn()
+        self.convert_input_output()
 
     def test_check_output(self):
         self.check_output()
@@ -129,6 +130,9 @@ class TestExpFp32_Prim(OpTest):
     def if_enable_cinn(self):
         pass
 
+    def convert_input_output(self):
+        pass
+
 
 class TestExpFp64_Prim(TestExpFp32_Prim):
     def init_dtype(self):
@@ -138,9 +142,6 @@ class TestExpFp64_Prim(TestExpFp32_Prim):
 class TestExpPrim_ZeroDim(TestExpFp32_Prim):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestExpm1(TestActivation):
@@ -273,12 +274,10 @@ class TestSigmoid_ZeroDim(TestSigmoid):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestSigmoidBF16(OpTest):
     def setUp(self):
@@ -356,9 +355,6 @@ class TestSilu(TestActivation):
 class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -521,9 +517,6 @@ class TestTanh(TestActivation, TestParameter):
 class TestTanh_ZeroDim(TestTanh):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestTanhAPI(unittest.TestCase):
@@ -1232,12 +1225,10 @@ class TestSqrt_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestSqrtBF16(OpTest):
     def setUp(self):
@@ -1422,9 +1413,6 @@ class TestAbs_ZeroDim(TestAbs):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestCeil(TestActivation):
     def setUp(self):
@@ -1503,9 +1491,6 @@ class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestCos(TestActivation):
     def setUp(self):
@@ -1515,8 +1500,7 @@ class TestCos(TestActivation):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
-        # prim not support now
-        self.enable_cinn = False
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1532,6 +1516,9 @@ class TestCos(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestCos_ZeroDim(TestCos):
@@ -1653,8 +1640,7 @@ class TestSin(TestActivation, TestParameter):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
-        # prim not support now
-        self.enable_cinn = False
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1670,6 +1656,9 @@ class TestSin(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_prim=True)
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestSin_ZeroDim(TestSin):
@@ -1855,9 +1844,6 @@ class TestRelu(TestActivation):
 class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestReluAPI(unittest.TestCase):
@@ -2135,9 +2121,6 @@ class TestGelu_ZeroDim(TestGelu):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestGELUAPI(unittest.TestCase):
     # test paddle.nn.GELU, paddle.nn.functional.gelu
@@ -2390,7 +2373,6 @@ class TestHardSwish(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
-        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2411,10 +2393,6 @@ class TestHardSwish(TestActivation):
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
-    def setUp(self):
-        super().setUp()
-        self.enable_cinn = False
-
     def init_shape(self):
         self.shape = []
 
@@ -2825,9 +2803,6 @@ class TestLog_ZeroDim(TestLog):
     def init_shape(self):
         self.shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestLog2(TestActivation):
     def setUp(self):
@@ -3060,7 +3035,8 @@ class TestSquare_ZeroDim(TestSquare):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestSquareBF16(OpTest):
     def setUp(self):
@@ -3123,9 +3099,6 @@ class TestPow(TestActivation):
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestPow_factor_tensor(TestActivation):
@@ -3350,7 +3323,8 @@ class TestSoftplus_ZeroDim(TestSoftplus):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestSoftplusBF16(OpTest):
     def setUp(self):
@@ -3999,6 +3973,7 @@ def create_test_act_fp16_class(
 
 
 create_test_act_fp16_class(TestActivation)
+create_test_act_fp16_class(TestExpFp32_Prim, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid, check_prim=True, enable_cinn=True)
 create_test_act_fp16_class(TestSilu, check_prim=True, enable_cinn=True)
@@ -4129,6 +4104,7 @@ def create_test_act_bf16_class(
 
 
 create_test_act_bf16_class(TestActivation)
+create_test_act_bf16_class(TestExpFp32_Prim, check_prim=True)
 create_test_act_bf16_class(TestExpm1)
 create_test_act_bf16_class(TestSigmoid, check_prim=True)
 create_test_act_bf16_class(TestSilu, check_prim=True)

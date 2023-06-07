@@ -613,7 +613,9 @@ class TestMulticlassNMS2Op(TestMulticlassNMSOp):
             else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
-            det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
+            det_outs[:, -1:].astype('int')
+            if len(det_outs)
+            else np.array([], dtype='int').reshape([0, 1])
         )
         self.op_type = 'multiclass_nms2'
         self.inputs = {'BBoxes': boxes, 'Scores': scores}
@@ -685,7 +687,9 @@ class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
             else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
-            det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
+            det_outs[:, -1:].astype('int')
+            if len(det_outs)
+            else np.array([], dtype='int').reshape([0, 1])
         )
         self.op_type = 'multiclass_nms2'
         self.inputs = {
@@ -760,7 +764,9 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
             else np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
         )
         index_outs = (
-            det_outs[:, -1:].astype('int') if len(det_outs) else det_outs
+            det_outs[:, -1:].astype('int')
+            if len(det_outs)
+            else np.array([], dtype='int').reshape([0, 1])
         )
         self.op_type = 'multiclass_nms3'
         self.inputs = {'BBoxes': boxes, 'Scores': scores}

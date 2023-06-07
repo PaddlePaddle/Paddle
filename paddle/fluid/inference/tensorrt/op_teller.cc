@@ -1404,14 +1404,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
       if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
-        if (desc.Input("StartsTensorList").size()) {
-          return false;
-        }
+        VLOG(3) << "The Slice has StartsTensorList input.";
       }
       if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
-        if (desc.Input("EndsTensorList").size()) {
-          return false;
-        }
+        VLOG(3) << "The Slice has EndsTensorList input.";
       }
     }
 

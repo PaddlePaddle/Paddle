@@ -64,12 +64,8 @@ def fused_adam_step(inputs, attributes, num):
         )
 
     for i in range(num):
-        beta1_pows_out.append(
-            np.array([beta1_pows[i][1]]).astype("float32") * beta1
-        )
-        beta2_pows_out.append(
-            np.array([beta2_pows[i][1]]).astype("float32") * beta2
-        )
+        beta1_pows_out.append(beta1_pows[i][1] * beta1)
+        beta2_pows_out.append(beta2_pows[i][1] * beta2)
 
     return (
         params_out,

@@ -377,6 +377,19 @@ class XPUTestGeluOP(XPUOpTestWrapper):
             self.outputs = {'Out': out}
             self.attrs = {"approximate": approximate, 'use_xpu': True}
 
+    class XPUTestGeluApproximate(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "gelu"
+            self.dtype = self.in_type
+
+            approximate = True
+            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            out = gelu(x, approximate)
+
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out}
+            self.attrs = {"approximate": approximate, 'use_xpu': True}
+
 
 support_types = get_xpu_op_support_types('gelu')
 for stype in support_types:

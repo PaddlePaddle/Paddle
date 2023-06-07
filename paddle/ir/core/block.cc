@@ -33,7 +33,7 @@ Block::iterator Block::insert(const_iterator iterator, Operation *op) {
 
 void Block::clear() {
   while (!empty()) {
-    ops_.back()->destroy();
+    ops_.back()->Destroy();
     ops_.pop_back();
   }
 }
