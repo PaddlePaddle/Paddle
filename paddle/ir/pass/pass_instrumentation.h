@@ -32,19 +32,24 @@ class PassInstrumentation {
   PassInstrumentation() = default;
   virtual ~PassInstrumentation() = default;
 
-  /// A callback to run before a pass pipeline is executed.
+  // A callback to run before a pass pipeline is executed.
   virtual void RunBeforePipeline(Operation* op) {}
 
+  // A callback to run after a pass pipeline is executed.
   virtual void RunAfterPipeline(Operation* op) {}
 
+  // A callback to run before a pass is executed.
   virtual void RunBeforePass(Pass* pass, Operation* op) {}
 
+  // A callback to run after a pass is executed.
   virtual void RunAfterPass(Pass* pass, Operation* op) {}
 
+  // A callback to run before a analysis is executed.
   virtual void RunBeforeAnalysis(const std::string& name,
                                  TypeId id,
                                  Operation* op) {}
 
+  // A callback to run after a analysis is executed.
   virtual void RunAfterAnalysis(const std::string& name,
                                 TypeId id,
                                 Operation* op) {}
