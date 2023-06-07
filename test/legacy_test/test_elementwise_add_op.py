@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import unittest
 import warnings
@@ -734,10 +735,10 @@ class TestComplexElementwiseAddOp(OpTest):
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.y = np.random.random(self.shape).astype(
+        self.x = np.random.random(self.shape).astype(
             self.dtype
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
 
 
@@ -846,6 +847,36 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
                 in str(context[-1].message)
             )
             os.environ['FLAGS_print_extra_attrs'] = "0"
+
+
+class TestTensorFfloa32Bfloat16OrFloat16Add(unittest.TestCase):
+    def _floa32_bfloat16_add(self, y_dtype):
+        paddle.disable_static()
+        test_num = 5
+        val_range = 10000
+        shapes = []
+        for i in range(test_num):
+            shape = [np.random.randint(val_range), np.random.randint(val_range)]
+            shapes.append(shape)
+
+        for i, shape in enumerate(shapes):
+            x = paddle.randn(list(shape), dtype=paddle.float32)
+            x_copy = copy.deepcopy(x)
+            y = paddle.randn(list(shape), dtype=y_dtype)
+            x.add_(y)
+            x_copy.add_(paddle.cast(y, paddle.float32))
+            np.testing.assert_equal(x.numpy(), x_copy.numpy())
+            del x, x_copy
+
+    def test_floa32_bfloat16_add(self):
+        place = core.CUDAPlace(0)
+        with fluid.dygraph.base.guard(place=place):
+            self._floa32_bfloat16_add(y_dtype=paddle.bfloat16)
+
+    def test_floa32_float16_add(self):
+        place = core.CUDAPlace(0)
+        with fluid.dygraph.base.guard(place=place):
+            self._floa32_bfloat16_add(y_dtype=paddle.float16)
 
 
 if __name__ == '__main__':

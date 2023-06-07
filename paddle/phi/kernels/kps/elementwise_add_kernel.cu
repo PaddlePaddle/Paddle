@@ -42,11 +42,56 @@ void AddCudaFunctor(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void Float32Bfloat16AddCudaFunctor(const Context& dev_ctx,
+                                   const DenseTensor& x,
+                                   const DenseTensor& y,
+                                   DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  funcs::ElementwiseKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::Float32Bfloat16AddFunctor<T>());
+}
+
+template <typename T, typename Context>
+void Float32Float16AddCudaFunctor(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const DenseTensor& y,
+                                  DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  funcs::ElementwiseKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::Float32Float16AddFunctor<T>());
+}
+
+template <typename T, typename Context>
 void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
-  AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+  if (x.dtype() == y.dtype()) {
+    AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+  } else if (x.dtype() == phi::DataType::FLOAT32 &&
+             y.dtype() == phi::DataType::BFLOAT16) {
+    Float32Bfloat16AddCudaFunctor<T, Context>(dev_ctx, x, y, out);
+  } else if (x.dtype() == phi::DataType::FLOAT32 &&
+             y.dtype() == phi::DataType::FLOAT16) {
+    Float32Float16AddCudaFunctor<T, Context>(dev_ctx, x, y, out);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupport x dtype:%s, y dtype:%s for x+y operation",
+        phi::DataTypeToString(x.type()),
+        phi::DataTypeToString(y.type())));
+  }
 }
 
 template <typename T, typename Context>
