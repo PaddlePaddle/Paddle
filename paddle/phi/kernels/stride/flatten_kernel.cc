@@ -39,12 +39,8 @@ void FlattenStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_infer,
-                                         STRIDED,
-                                         phi::FlattenInferStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    flatten_infer, STRIDED, phi::FlattenInferStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten,
-                                         STRIDED,
-                                         phi::FlattenStridedKernel) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    flatten, STRIDED, phi::FlattenStridedKernel) {}

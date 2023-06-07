@@ -63,12 +63,8 @@ void ImagGradStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(real_grad,
-                                         STRIDED,
-                                         phi::RealGradStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    real_grad, STRIDED, phi::RealGradStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(imag_grad,
-                                         STRIDED,
-                                         phi::ImagGradStridedKernel) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    imag_grad, STRIDED, phi::ImagGradStridedKernel) {}
