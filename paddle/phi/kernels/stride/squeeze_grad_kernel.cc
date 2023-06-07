@@ -26,7 +26,8 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
                               DenseTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  ReshapeStridedKernel<Context>(dev_ctx, dout, IntArray(x_dims), dx, nullptr);
+  ReshapeStridedKernel<Context>(
+      dev_ctx, dout, IntArray(phi::vectorize<int64_t>(x_dims)), dx, nullptr);
 }
 
 }  // namespace phi
