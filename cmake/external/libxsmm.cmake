@@ -14,29 +14,33 @@
 
 include(ExternalProject)
 
-set(LIBXSMM_PREFIX_DIR ${THIRD_PARTY_PATH}/libxsmm)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/libxsmm)
+set(LIBXSMM_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/libxsmm)
 set(LIBXSMM_TAG 7cc03b5b342fdbc6b6d990b190671c5dbb8489a2)
 
+set(LIBXSMM_PREFIX_DIR ${THIRD_PARTY_PATH}/libxsmm)
+set(LEVELDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/leveldb)
 set(LIBXSMM_INCLUDE_DIR
-    "${SOURCE_DIR}/include"
+    "${LEVELDB_INSTALL_DIR}/include"
     CACHE PATH "LIBXSMM include directory." FORCE)
 set(LIBXSMM_LIBRARY_DIR
-    "${SOURCE_DIR}/lib"
+    "${LEVELDB_INSTALL_DIR}/lib"
     CACHE PATH "LIBXSMM library directory." FORCE)
 set(LIBXSMM_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmm.a")
 set(LIBXSMMNOBLAS_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmmnoblas.a")
 
+execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${LIBXSMM_TAG}
+                        "https://github.com/hfp/libxsmm" ${LIBXSMM_SOURCE_DIR})
+
 ExternalProject_Add(
   extern_libxsmm
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  SOURCE_DIR ${SOURCE_DIR}
+  SOURCE_DIR ${LIBXSMM_SOURCE_DIR}
   PREFIX ${LIBXSMM_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_IN_SOURCE 1
-  BUILD_COMMAND $(MAKE) --silent PREFIX=${SOURCE_DIR} CXX=g++ CC=gcc WARP=0
-                install
+  BUILD_COMMAND $(MAKE) --silent PREFIX=${LEVELDB_INSTALL_DIR} CXX=g++ CC=gcc
+                WARP=0 install
   INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${LIBXSMM_LIB}
   BUILD_BYPRODUCTS ${LIBXSMMNOBLAS_LIB})

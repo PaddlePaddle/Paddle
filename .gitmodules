@@ -74,7 +74,3 @@
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git
 	ignore = dirty
-[submodule "third_party/openblas"]
-	path = third_party/openblas
-	url = https://github.com/xianyi/OpenBLAS.git
-	ignore = dirty

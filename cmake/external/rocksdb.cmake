@@ -15,15 +15,14 @@
 include(ExternalProject)
 
 # find_package(jemalloc REQUIRED)
-
+set(ROCKSDB_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/rocksdb)
+set(ROCKSDB_TAG 6.19.fb)
 set(JEMALLOC_INCLUDE_DIR ${THIRD_PARTY_PATH}/install/jemalloc/include)
 set(JEMALLOC_LIBRARIES
     ${THIRD_PARTY_PATH}/install/jemalloc/lib/libjemalloc_pic.a)
 message(STATUS "rocksdb jemalloc:" ${JEMALLOC_LIBRARIES})
 
 set(ROCKSDB_PREFIX_DIR ${THIRD_PARTY_PATH}/rocksdb)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/rocksdb)
-set(ROCKSDB_TAG v6.10.1)
 set(ROCKSDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/rocksdb)
 set(ROCKSDB_INCLUDE_DIR
     "${SOURCE_DIR}/include"
@@ -46,13 +45,17 @@ set(ROCKSDB_CMAKE_C_FLAGS
 
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} clone -b ${ROCKSDB_TAG}
+          "https://github.com/Thunderbrook/rocksdb" ${ROCKSDB_SOURCE_DIR})
+
 set(CMAKE_CXX_LINK_EXECUTABLE
     "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -Wl,--no-as-needed -ldl -lrt -lz")
 ExternalProject_Add(
   extern_rocksdb
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${ROCKSDB_PREFIX_DIR}
-  SOURCE_DIR ${SOURCE_DIR}
+  SOURCE_DIR ${ROCKSDB_SOURCE_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -67,9 +70,10 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   INSTALL_COMMAND
-    mkdir -p ${SOURCE_DIR}/lib/ && cp
+    mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp
     ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
-    && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include ${SOURCE_DIR}/
+    && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
+    ${ROCKSDB_INSTALL_DIR}/
   BUILD_IN_SOURCE 1
   BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
 

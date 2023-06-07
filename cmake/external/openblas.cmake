@@ -16,8 +16,7 @@ include(ExternalProject)
 
 set(CBLAS_PREFIX_DIR ${THIRD_PARTY_PATH}/openblas)
 set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
-set(CBLAS_TAG v0.3.7)
+set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 
 # Why use v0.3.18?  The IDG business line encountered a random openblas error,
 # which can be resolved after upgrading openblas.
@@ -43,12 +42,16 @@ if(WITH_LOONGARCH)
   set(CBLAS_TAG v0.3.18)
 endif()
 
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
+          "https://github.com/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
+
 if(NOT WIN32)
   set(CBLAS_LIBRARIES
-      "${SOURCE_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
       CACHE FILEPATH "openblas library." FORCE)
   set(CBLAS_INC_DIR
-      "${SOURCE_DIR}/include"
+      "${CBLAS_INSTALL_DIR}/include"
       CACHE PATH "openblas include directory." FORCE)
   set(OPENBLAS_CC
       "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
@@ -65,9 +68,9 @@ if(NOT WIN32)
   ExternalProject_Add(
     extern_openblas
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    SOURCE_DIR ${SOURCE_DIR}
+    SOURCE_DIR ${CBLAS_SOURCE_DIR}
     PREFIX ${CBLAS_PREFIX_DIR}
-    INSTALL_DIR ${SOURCE_DIR}
+    INSTALL_DIR ${CBLAS_INSTALL_DIR}
     BUILD_IN_SOURCE 1
     BUILD_COMMAND make -j${NPROC} ${COMMON_ARGS} ${OPTIONAL_ARGS}
     INSTALL_COMMAND make install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR>
@@ -76,35 +79,35 @@ if(NOT WIN32)
     BUILD_BYPRODUCTS ${CBLAS_LIBRARIES})
 else()
   set(CBLAS_LIBRARIES
-      "${SOURCE_DIR}/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      "${CBLAS_INSTALL_DIR}/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
       CACHE FILEPATH "openblas library." FORCE)
   set(CBLAS_INC_DIR
-      "${SOURCE_DIR}/include/openblas"
+      "${CBLAS_INSTALL_DIR}/include/openblas"
       CACHE PATH "openblas include directory." FORCE)
   ExternalProject_Add(
     extern_openblas
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    SOURCE_DIR ${SOURCE_DIR}
+    SOURCE_DIR ${CBLAS_SOURCE_DIR}
     PREFIX ${CBLAS_PREFIX_DIR}
-    INSTALL_DIR ${SOURCE_DIR}
+    INSTALL_DIR ${CBLAS_INSTALL_DIR}
     BUILD_IN_SOURCE 0
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
                -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-               -DCMAKE_INSTALL_PREFIX=${SOURCE_DIR}
+               -DCMAKE_INSTALL_PREFIX=${CBLAS_INSTALL_DIR}
                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                -DBUILD_SHARED_LIBS=ON
                -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS
-      -DCMAKE_INSTALL_PREFIX:PATH=${SOURCE_DIR}
+      -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
       -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
       -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
     # ninja need to know where openblas.lib comes from
     BUILD_BYPRODUCTS ${CBLAS_LIBRARIES})
   set(OPENBLAS_SHARED_LIB
-      ${SOURCE_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
+      ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
