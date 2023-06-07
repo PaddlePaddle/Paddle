@@ -84,6 +84,9 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           const IntArray& shape,
                           DenseTensor* out,
                           DenseTensor* xshape UNUSED) {
+  if (x.Holder() == out->Holder()) {
+    return;
+  }
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   DDim stride;
