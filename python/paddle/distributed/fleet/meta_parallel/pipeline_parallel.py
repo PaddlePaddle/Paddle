@@ -43,7 +43,6 @@ class PipelineParallel(MetaParallelBase):
         )
 
         self.total_loss = None
-
         self.micro_batch_size = self._strategy.pipeline_configs[
             'micro_batch_size'
         ]
