@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/all_to_all_kernel.h"
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -44,13 +45,16 @@ void AllToAllKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(stream,
                           errors::NotFound("Should initialize NCCL firstly."));
 
-  comm_ctx->GroupStart();
   int nranks = comm_ctx->GetSize();
   int send_numel = x.numel() / nranks;
-
-  auto recv_buf = out->data();
   size_t offset = 0;
 
+  VLOG(0) << "all to all kernel group start";
+  VLOG(0) << "nranks " << nranks << ", send_numel " << send_numel;
+  comm_ctx->GroupStart();
+
+  const auto* send_buf = x.data<T>();
+  auto* recv_buf = out->data<T>();
   for (auto i = 0; i < nranks; ++i) {
     auto send_buf = phi::distributed::GetPartialTensor(x, offset, send_numel);
     comm_ctx->Send(send_buf, send_numel, i, stream);
@@ -80,10 +84,10 @@ PD_REGISTER_KERNEL(all_to_all,
                    float,
                    double,
                    int,
-                   bool,
                    int8_t,
                    uint8_t,
                    int64_t,
+                   bool,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
@@ -94,9 +98,9 @@ PD_REGISTER_KERNEL(all_to_all,
                    float,
                    double,
                    int,
-                   bool,
                    int8_t,
                    uint8_t,
                    int64_t,
+                   bool,
                    phi::dtype::float16) {}
 #endif
