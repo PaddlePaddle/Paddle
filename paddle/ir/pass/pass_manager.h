@@ -42,7 +42,7 @@ class PassManager {
 
   const std::vector<std::unique_ptr<Pass>> &passes() const { return passes_; }
 
-  bool empty() const { return passes_.empty(); }
+  bool Empty() const { return passes_.empty(); }
 
   IrContext *context() const { return context_; }
 
@@ -110,6 +110,8 @@ class PassManager {
   };
 
   void EnableIRPrinting(std::unique_ptr<IRPrinterOption> config);
+
+  void EnablePassTiming(bool print_module = true);
 
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 

@@ -12,31 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/pass/utils.h"
 
 namespace ir {
+namespace detail {
 
-Program::Program(IrContext* context) {
-  module_ = ModuleOp::Create(context, this);
+void PrintHeader(const std::string &header, std::ostream &os) {
+  unsigned padding = (80 - header.size()) / 2;
+  os << "===" << std::string(73, '-') << "===\n";
+  os << std::string(padding, ' ') << header << "\n";
+  os << "===" << std::string(73, '-') << "===\n";
 }
 
-Program::~Program() {
-  if (module_) {
-    module_.Destroy();
-  }
-}
-
-Parameter* Program::GetParameter(std::string name) const {
-  if (parameters_.count(name) != 0) {
-    return parameters_.at(name).get();
-  }
-  return nullptr;
-}
-
-void Program::SetParameter(std::string name,
-                           std::unique_ptr<Parameter>&& parameter) {
-  parameters_[name].reset(parameter.release());
-}
-
+}  // namespace detail
 }  // namespace ir

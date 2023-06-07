@@ -37,17 +37,17 @@ Block *ModuleOp::block() {
   return operation()->GetRegion(0).front();
 }
 
-ModuleOp ModuleOp::create(IrContext *context, Program *pointer) {
+ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   ir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
   argument.AddRegion()->emplace_back();
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
-  return ModuleOp(Operation::create(std::move(argument)));
+  return ModuleOp(Operation::Create(std::move(argument)));
 }
 
-void ModuleOp::destroy() {
+void ModuleOp::Destroy() {
   if (operation()) {
-    operation()->destroy();
+    operation()->Destroy();
     *this = ModuleOp(nullptr);
   }
 }
@@ -216,8 +216,7 @@ void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};
 
-void ConstantOp::Build(Builder &builder,
-                       OperationArgument &argument,
+void ConstantOp::Build(OperationArgument &argument,
                        Attribute value,
                        Type output_type) {
   argument.AddAttribute("value", value);
