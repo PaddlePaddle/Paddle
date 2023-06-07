@@ -11,18 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/phi/kernels/squeeze_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/flatten_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
 namespace phi {
 
 template <typename Context>
-void FlattenGradStridedKernel(const Context& dev_ctx,
+void SqueezeGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& xshape,
-                              const DenseTensor& out_grad,
-                              DenseTensor* x_grad) {
+                              const DenseTensor& dout,
+                              const IntArray& axes,
+                              DenseTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
   ReshapeStridedKernel<Context>(
@@ -31,6 +32,6 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_grad,
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_grad,
                                          STRIDED,
-                                         phi::FlattenGradStridedKernel) {}
+                                         phi::SqueezeGradStridedKernel) {}
