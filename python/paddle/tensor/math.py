@@ -5785,3 +5785,55 @@ def polygamma(x, n, name=None):
                 attrs={'n': n},
             )
         return out
+
+
+def ldexp(x, y, name=None):
+    """
+    Compute the result of multiplying x by 2 to the power of y. The equation is:
+
+    .. math::
+        out = x * 2^{y}
+
+    Args:
+        x (Tensor): The input Tensor, the data type is float32, float64, int32 or int64.
+        y (Tensor):  A Tensor of exponents, typically integers.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape, its shape is the same as x and y. And the data type is float32 or float64.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            #example1
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+            y = paddle.to_tensor([2, 3, 4], dtype='int32')
+            res = paddle.ldexp(x, y)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [4., 16., 48.])
+
+            #example2
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+            y = paddle.to_tensor([2], dtype='int32')
+            res = paddle.ldexp(x, y)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [4., 8., 12.])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(y, (paddle.Tensor, Variable)):
+        raise TypeError(f"y must be tensor type, but got {type(y)}")
+    if x.dtype == paddle.float64 or y.dtype == paddle.float64:
+        out_dtype = paddle.float64
+    else:
+        out_dtype = paddle.get_default_dtype()
+    x = paddle.cast(x, dtype=out_dtype)
+    y = paddle.cast(y, dtype=out_dtype)
+    two = paddle.to_tensor(2, dtype=out_dtype)
+    return paddle.multiply(x, paddle.pow(two, y))
