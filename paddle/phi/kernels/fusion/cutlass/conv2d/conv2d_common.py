@@ -49,10 +49,14 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
 
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<kernel_base>;
-  const half *input = params.input;
-  const half *weight = params.weight;
-  const half *bias = params.bias;
-  half *output = params.output;
+  ${element_a} *input = (${element_a} *)(params.input);
+  ${element_b} *weight = (${element_b} *)(params.weight);
+  ${element_c} *bias = (${element_c} *)(params.bias);
+  ${element_c} *output = (${element_c} *)(params.output);
+
+  // only used by conv2d_bias_residual
+  auto residual = (${element_c} *)(params.residual);
+
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -139,7 +143,7 @@ void ${func_name}(const ConvAllParams& params) {
   std::vector<int> problem_size = {
       batch, ic, ih, iw, kh, kw, oc, groups, stride_h, stride_w};
 
-  if (map_problem_${func_name}.count(problem_size)) {
+  if (map_problem_${func_name}.count(problem_size) && 1) {
     ${func_name}_all_func[map_problem_${func_name}.at(problem_size)](
         params);
     return;
@@ -168,7 +172,7 @@ void ${op_name}(const ConvAllParams& params) {
 
 
 CommonDispatchTemp = '''
-    if (params.sm_version == ${sm_code})
+    if (params.sm_version == ${sm_code} && params.data_type == \"${data_type}\")
     {
         ${op_name_with_sm}(params);
     }
@@ -186,16 +190,21 @@ CommonTail = '''
 
 # Wrap different sm versions into a function called by phi
 def GenerateFunctionForPhi(
-    sm_versions, support_epi_funcs, underscore_names, camel_names
+    sm_versions_and_types, support_epi_funcs, underscore_names, camel_names
 ):
     generated_code = ""
     for epi_func in support_epi_funcs:
         dispatch_body = ""
-        for sm_version in sm_versions:
+        for sm_version, data_type in sm_versions_and_types:
             sm_dicts = {}
             sm_dicts["sm_code"] = sm_version
+            sm_dicts["data_type"] = data_type
             sm_dicts["op_name_with_sm"] = (
-                underscore_names[epi_func].lower() + "_sm" + sm_version
+                underscore_names[epi_func].lower()
+                + "_sm"
+                + sm_version
+                + "_"
+                + data_type
             )
             dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
         op_dicts = {}

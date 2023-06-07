@@ -24,11 +24,11 @@ namespace fusion {
 namespace cutlass_internal {
 
 typedef struct {
-  const half *input;
-  const half *weight;
-  const half *bias;
-  const half *residual;
-  half *output;
+  const void *input;
+  const void *weight;
+  const void *bias;
+  const void *residual;
+  void *output;
   int batch;
   int ic;
   int ih;
@@ -49,11 +49,17 @@ typedef struct {
   int groups;
   const phi::GPUContext *ctx;
   float alpha;  // for leaky_relu use
-  int sm_version = 75;
+  int sm_version = 80;
+  // 输入类型
+  // 4 : float
+  // 2 : half
+  std::string data_type = "fp32";
 } ConvAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.
 void Conv2dBiasAddRelu(const ConvAllParams &params);
+void Conv2dBiasAdd(const ConvAllParams &params);
+void Conv2dBiasSiluAdd(const ConvAllParams &params);
 void Conv2dBiasRelu(const ConvAllParams &params);
 void Conv2dBiasLeakyRelu(const ConvAllParams &params);
 void Conv2dBiasSilu(const ConvAllParams &params);

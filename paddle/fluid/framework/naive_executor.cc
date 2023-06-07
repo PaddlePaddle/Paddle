@@ -66,6 +66,17 @@ void NaiveExecutor::Run() {
                                 platform::NvtxRangeColor::Green);
 #endif
 
+    // std::cout << "culster：：" <<  sum / (1024*1024*1024) << std:: endl;
+    std::cout << paddle::memory::DeviceMemoryStatCurrentValue(
+                     "Allocated", place_.GetDeviceId()) /
+                     (1 << 20)
+              << std::endl;
+    std::cout << paddle::memory::DeviceMemoryStatCurrentValue(
+                     "Reserved", place_.GetDeviceId()) /
+                     (1 << 20)
+              << std::endl;
+    paddle::memory::Release(place_);
+
     op->Run(*scope_, place_);
 
     // Update the shared_holder so that only records the max one.

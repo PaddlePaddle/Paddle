@@ -648,5 +648,6 @@ PD_REGISTER_KERNEL(conv2d_fusion,  // cuda_only
                    phi::fusion::ConvFusionKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #endif
