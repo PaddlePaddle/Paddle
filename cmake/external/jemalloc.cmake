@@ -3,7 +3,7 @@ include(ExternalProject)
 set(JEMALLOC_DOWNLOAD_DIR
     ${PADDLE_SOURCE_DIR}/third_party/jemalloc/${CMAKE_SYSTEM_NAME})
 set(JEMALLOC_PROJECT "extern_jemalloc")
-set(JEMALLOC_PREFIX_DIR "${THIRD_PARTY_PATH}/jemalloc")
+set(JEMALLOC_PREFIX_DIR ${THIRD_PARTY_PATH}/jemalloc)
 set(JEMALLOC_URL
     https://github.com/jemalloc/jemalloc/releases/download/5.1.0/jemalloc-5.1.0.tar.bz2
 )
@@ -56,10 +56,10 @@ endif()
 ExternalProject_Add(
   extern_jemalloc
   PREFIX ${JEMALLOC_PREFIX_DIR}
-  URL ${JEMALLOC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME}
+  URL ${JEMALLOC_DOWNLOAD_DIR}/${JEMALLOC_CACHE_FILENAME}
   URL_MD5 ${JEMALLOC_URL_MD5}
   INSTALL_DIR ${JEMALLOC_INSTALL}
-  DOWNLOAD_DIR "${JEMALLOC_DOWNLOAD_DIR}"
+  DOWNLOAD_DIR ${JEMALLOC_DOWNLOAD_DIR}
   SOURCE_DIR ${JEMALLOC_INSTALL_DIR}
   BUILD_COMMAND make
   BUILD_IN_SOURCE 1
