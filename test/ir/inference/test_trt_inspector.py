@@ -72,7 +72,7 @@ class TensorRTInspectorTest(InferencePassTest):
                 self.assertTrue('====== engine info ======' in engine_info)
                 self.assertTrue('====== engine info end ======' in engine_info)
                 self.assertTrue('matmul' in engine_info)
-                self.assertTrue('LayerType: Scale' in engine_info)
+                self.assertTrue('"LayerType": "Scale"' in engine_info)
                 self.assertTrue('batch_norm' in engine_info)
             else:
                 self.assertTrue(

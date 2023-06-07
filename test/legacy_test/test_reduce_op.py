@@ -277,12 +277,15 @@ class TestMaxOp_ZeroDim(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.max
         self.public_python_api = paddle.max
-        self.enable_cinn = False
+        self.if_enable_cinn()
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.attrs = {'dim': []}
         self.outputs = {
             'Out': self.inputs['X'].max(axis=tuple(self.attrs['dim']))
         }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output()

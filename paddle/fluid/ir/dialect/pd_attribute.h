@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/ir/dialect/pd_attribute_storage.h"
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/builtin_attribute.h"
 
 namespace paddle {
 namespace dialect {
@@ -37,13 +38,13 @@ class ScalarAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
 
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(ScalarAttribute, ScalarAttributeStorage);
-
-  bool operator<(const ScalarAttribute &right) const {
-    return storage() < right.storage();
+  static bool classof(ir::Attribute val) {
+    return (val.type_id() == ir::BoolAttribute::type_id()) ||
+           (val.type_id() == ir::FloatAttribute::type_id()) ||
+           (val.type_id() == ir::DoubleAttribute::type_id()) ||
+           (val.type_id() == ir::Int32_tAttribute::type_id()) ||
+           (val.type_id() == ir::Int64_tAttribute::type_id());
   }
-
-  paddle::experimental::Scalar data() const;
 };
 
 class DataTypeAttribute : public ir::Attribute {

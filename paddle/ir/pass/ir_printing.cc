@@ -13,25 +13,23 @@
 // limitations under the License.
 
 #include <ostream>
+#include <string>
 #include <unordered_map>
 
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
+#include "paddle/ir/pass/utils.h"
 
 namespace ir {
 
 namespace {
 void PrintIR(Operation *op, bool print_module, std::ostream &os) {
-  // Otherwise, check to see if we are not printing at module scope.
-  if (print_module) {
+  if (!print_module) {
     op->Print(os << "\n");
     return;
   }
-
-  // Otherwise, we are printing at module scope.
-  os << " ('" << op->name() << "' operation)\n";
 
   // Find the top-level operation.
   auto *top_op = op;
@@ -55,7 +53,9 @@ class IRPrinting : public PassInstrumentation {
     }
 
     option_->PrintBeforeIfEnabled(pass, op, [&](std::ostream &os) {
-      os << "// *** IR Dump Before " << pass->pass_info().name << " ***";
+      std::string header =
+          "IRPrinting on " + op->name() + " before " + pass->name() + " pass";
+      detail::PrintHeader(header, os);
       PrintIR(op, option_->EnablePrintModule(), os);
       os << "\n\n";
     });
@@ -66,8 +66,10 @@ class IRPrinting : public PassInstrumentation {
       // TODO(liuyuanle): support print on change
     }
 
-    option_->PrintBeforeIfEnabled(pass, op, [&](std::ostream &os) {
-      os << "// *** IR Dump After " << pass->pass_info().name << " ***";
+    option_->PrintAfterIfEnabled(pass, op, [&](std::ostream &os) {
+      std::string header =
+          "IRPrinting on " + op->name() + " after " + pass->name() + " pass";
+      detail::PrintHeader(header, os);
       PrintIR(op, option_->EnablePrintModule(), os);
       os << "\n\n";
     });

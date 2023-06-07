@@ -20,7 +20,6 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/common/scalar.h"
 
 namespace paddle {
 namespace dialect {
@@ -52,28 +51,6 @@ struct IntArrayAttributeStorage : public ir::AttributeStorage {
 
  private:
   phi::IntArray data_;
-};
-
-struct ScalarAttributeStorage : public ir::AttributeStorage {
-  using ParamKey = paddle::experimental::Scalar;
-
-  explicit ScalarAttributeStorage(const ParamKey &key) { data_ = key; }
-
-  static ScalarAttributeStorage *Construct(ParamKey key) {
-    return new ScalarAttributeStorage(key);
-  }
-
-  static std::size_t HashValue(const ParamKey &key) {
-    return ir::hash_combine(std::hash<std::string>()(key.ToString()),
-                            std::hash<bool>()(key.FromTensor()));
-  }
-
-  bool operator==(const ParamKey &key) const { return data_ == key; }
-
-  ParamKey GetAsKey() const { return ParamKey(data_); }
-
- private:
-  paddle::experimental::Scalar data_;
 };
 
 struct DataTypeAttributeStorage : public ir::AttributeStorage {
