@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import run_ast, run_both
 from test_fetch_feed import Linear
 
 import paddle
@@ -124,11 +125,12 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(dy_var, st_var)
 
 
+@run_both
 class TestWithTrainAndEval(unittest.TestCase):
     def test_switch_eval_and_train(self):
-
         with fluid.dygraph.guard():
             linear_net = Linear()
+            linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((4, 10)).astype('float32')
             x = fluid.dygraph.to_variable(x_data)
             linear_net(x)
@@ -155,16 +157,19 @@ class TestWithTrainAndEval(unittest.TestCase):
             )
 
 
+@run_ast
 class TestWithNoGrad(unittest.TestCase):
     def test_with_no_grad(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
+            linear_net = paddle.jit.to_static(linear_net)
             x_data = np.random.random((5, 10)).astype('float32')
             x = fluid.dygraph.to_variable(x_data)
 
             with paddle.no_grad():
                 linear_net.train()
                 linear_net(x)
+                # BUG: 我们希望这里 是 ASTStaticFunction(StaticFunction):
                 _, partial_layer = linear_net.forward.program_cache.last()[-1]
                 self.assertEqual(
                     partial_layer.program, partial_layer._train_program
