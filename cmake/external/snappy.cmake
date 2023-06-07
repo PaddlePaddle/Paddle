@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 include(ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
@@ -64,9 +63,7 @@ ExternalProject_Add(
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${SNAPPY_LIBRARIES})
-
 add_library(snappy STATIC IMPORTED GLOBAL)
 set_property(TARGET snappy PROPERTY IMPORTED_LOCATION ${SNAPPY_LIBRARIES})
-
 include_directories(${SNAPPY_INCLUDE_DIR})
 add_dependencies(snappy extern_snappy)

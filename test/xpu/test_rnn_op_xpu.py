@@ -11,9 +11,13 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append('../rnn')
+
 from convert import get_params_for_net
 from get_test_cover_info import (
     XPUOpTestWrapper,

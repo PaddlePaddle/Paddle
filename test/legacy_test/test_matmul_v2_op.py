@@ -598,7 +598,6 @@ class TestComplexMatMulOp(OpTest):
         self.python_api = paddle.tensor.matmul
         self.init_base_dtype()
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -608,7 +607,7 @@ class TestComplexMatMulOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random((10, 10)).astype(
@@ -619,13 +618,6 @@ class TestComplexMatMulOp(OpTest):
         ) + 1j * np.random.random((10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 10), self.dtype) + 1j * np.ones(
-            (10, 10), self.dtype
-        )
-        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
-        self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
-
     def test_check_output(self):
         self.check_output(check_cinn=False)
 
@@ -633,8 +625,6 @@ class TestComplexMatMulOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -643,8 +633,6 @@ class TestComplexMatMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -653,8 +641,6 @@ class TestComplexMatMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -665,7 +651,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.python_api = paddle.tensor.matmul
         self.init_base_dtype()
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -675,7 +660,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random((10, 2, 5)).astype(
@@ -686,15 +671,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
         ) + 1j * np.random.random((5, 20)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 2, 20), self.dtype) + 1j * np.ones(
-            (10, 2, 20), self.dtype
-        )
-        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T)
-        self.grad_y = np.sum(
-            np.matmul(np.conj(self.x).transpose(0, 2, 1), self.grad_out), axis=0
-        )
-
     def test_check_output(self):
         self.check_output(check_cinn=False)
 
@@ -702,8 +678,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -712,8 +686,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -722,8 +694,6 @@ class TestComplexMatMulOpBroadcast(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
             check_cinn=False,
         )
 
@@ -735,13 +705,6 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
             self.dtype
         ) + 1j * np.random.random((10, 10)).astype(self.dtype)
         self.out = np.dot(self.x, self.y)
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((10, 10), self.dtype) + 1j * np.ones(
-            (10, 10), self.dtype
-        )
-        self.grad_x = np.matmul(self.grad_out, np.conj(self.y).T).real
-        self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
 
 class TestMatmulop(unittest.TestCase):

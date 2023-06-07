@@ -18,12 +18,12 @@
 namespace ir {
 
 Program::Program(IrContext* context) {
-  module_ = ModuleOp::create(context, this);
+  module_ = ModuleOp::Create(context, this);
 }
 
 Program::~Program() {
   if (module_) {
-    module_.destroy();
+    module_.Destroy();
   }
 }
 
