@@ -28,16 +28,30 @@ void GeluGradKernel(const Context& dev_ctx,
                     bool approximate,
                     DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
   dev_ctx.template Alloc<T>(x_grad);
-  int r = xpu::gelu_grad<XPUType>(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x.data<T>()),
-      nullptr,
-      reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-      reinterpret_cast<XPUType*>(x_grad->data<T>()),
-      x_grad->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
+  if (approximate) {
+    // int approximate_gelu_grad(Context* ctx, const T* x, const T* y, const T*
+    // dy, T* dx, int64_t len);
+    int r = xpu::approximate_gelu_grad<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        nullptr,
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "approximate_gelu_grad");
+  } else {
+    // int gelu_grad(Context* ctx, const T* x, const T* y, const T* dy, T* dx,
+    // int64_t len);
+    int r = xpu::gelu_grad<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        nullptr,
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
+  }
 }
 }  // namespace phi
 

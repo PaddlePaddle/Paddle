@@ -1200,7 +1200,9 @@ set(TEST_CINN_OPS
     test_triangular_solve_op
     test_scatter_nd_op
     test_strided_slice_op
-    test_pool2d_op)
+    test_pool2d_op
+    test_instance_norm_op
+    test_cumsum_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
