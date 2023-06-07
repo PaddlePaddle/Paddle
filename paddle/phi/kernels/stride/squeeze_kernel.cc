@@ -37,7 +37,7 @@ void SqueezeStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_infer,
                                          STRIDED,
                                          phi::SqueezeInferStridedKernel) {}
@@ -45,3 +45,4 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_infer,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze,
                                          STRIDED,
                                          phi::SqueezeStridedKernel) {}
+#endif
