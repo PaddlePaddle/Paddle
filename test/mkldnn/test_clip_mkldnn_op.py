@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 class TestClipOneDNNOp(OpTest):

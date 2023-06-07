@@ -126,6 +126,7 @@ from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
+from .tensor.linalg import cdist  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
@@ -300,6 +301,7 @@ from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
+from .tensor.math import ldexp  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -308,6 +310,7 @@ from .tensor.math import i0  # noqa: F401
 from .tensor.math import i0e  # noqa: F401
 from .tensor.math import i1  # noqa: F401
 from .tensor.math import i1e  # noqa: F401
+from .tensor.math import polygamma  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -536,6 +539,7 @@ __all__ = [  # noqa
     'triu',
     'sin',
     'dist',
+    'cdist',
     'unbind',
     'meshgrid',
     'arange',
@@ -696,6 +700,7 @@ __all__ = [  # noqa
     'triu_indices',
     'take',
     'frexp',
+    'ldexp',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
@@ -706,4 +711,5 @@ __all__ = [  # noqa
     'i0e',
     'i1',
     'i1e',
+    'polygamma',
 ]
