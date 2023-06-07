@@ -23,6 +23,7 @@
 namespace paddle {
 
 std::unique_ptr<::ir::Program> TranslateLegacyProgramToProgram(
-    const ::paddle::framework::ProgramDesc& legacy_program);
+    const ::paddle::framework::ProgramDesc& legacy_program,
+    bool startup_program = false);
 
 }  // namespace paddle

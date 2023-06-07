@@ -27,12 +27,12 @@ using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
 using Program = ::ir::Program;
 
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
-    const LegacyProgramDesc& legacy_program) {
+    const LegacyProgramDesc& legacy_program, bool startup_program) {
   auto program = std::make_unique<Program>(ir::IrContext::Instance());
 
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
-  program_translator.Translate();
+  program_translator.Translate(startup_program);
 
   return program;
 }

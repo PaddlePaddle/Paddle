@@ -8,6 +8,7 @@
   data_transform: null
   inplace: null
   backward: null
+
 - name: fetch
   inputs:
   - typename: Tensor

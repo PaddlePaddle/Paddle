@@ -202,11 +202,11 @@ const void* DenseTensor::data() const {
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
-  PADDLE_ENFORCE_EQ(meta_.valid(),
-                    false,
-                    phi::errors::InvalidArgument(
-                        "Only when the original attribute of Tensor is "
-                        "incomplete, can it be reset."));
+  // PADDLE_ENFORCE_EQ(meta_.valid(),
+  //                   false,
+  //                   phi::errors::InvalidArgument(
+  //                       "Only when the original attribute of Tensor is "
+  //                       "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
 

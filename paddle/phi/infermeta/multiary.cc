@@ -577,6 +577,7 @@ void BatchNormInferMeta(const MetaTensor& x,
                         MetaTensor* saved_variance,
                         MetaTensor* reserve_space,
                         MetaConfig config) {
+  std::cerr << "batch norm infer meta " << std::endl;
   const auto x_dims = x.dims();
   for (int i = 0; i < x_dims.size(); i++) {
     PADDLE_ENFORCE_EQ(

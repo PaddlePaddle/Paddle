@@ -67,7 +67,14 @@ inline bool IsInplace(const OpDesc& op_desc) {
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
 
+  if (input_names.size() == 0 || output_names.size() == 0) {
+    return inplace;
+  }
+
   std::vector<std::string> name_intersection;
+  std::sort(input_names.begin(), input_names.end());
+  std::sort(output_names.begin(), output_names.end());
+
   std::set_intersection(input_names.begin(),
                         input_names.end(),
                         output_names.begin(),
@@ -203,23 +210,46 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
   std::vector<ir::OpResult> op_inputs;
   auto& op_normalizer = OpNameNormalizer::instance();
 
+  if (op_desc.Type() == "sum") {
+    // change sum to add
+
+    const auto& legacy_input_vars = op_desc.Input("X");
+    std::cerr << " input size " << legacy_input_vars.size() << std::endl;
+    for (size_t i = 0; i < legacy_input_vars.size(); ++i) {
+      auto defining_info = (*param_map)[legacy_input_vars[i]];
+      op_inputs.push_back(defining_info.value);
+    }
+
+    return op_inputs;
+  }
+
   for (const auto& info : input_infos) {
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
     // return empty OpResult if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
-    if (!op_desc.HasInput(legacy_input_name)) {
-      PADDLE_ENFORCE(info.optional,
-                     platform::errors::PreconditionNotMet(
-                         "Op %s arg %s should be optional if it can be empty",
-                         op_desc.Type(),
-                         legacy_input_name));
-      op_inputs.push_back(ir::OpResult(nullptr));
-      continue;
+
+    VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
+             << legacy_input_name;
+
+    std::vector<std::string> legacy_input_vars;
+    // return empty OpResult if this arg is optional and not shown in OpDesc
+    // TODO(lyk): HasInput doesnot consider variadic attribute
+    if (op_desc.HasInput(legacy_input_name)) {
+      legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
 
-    const auto& legacy_input_vars = op_desc.Input(legacy_input_name, true);
+    if (legacy_input_vars.size() == 0) {
+      if (info.optional) {
+        op_inputs.push_back(ir::OpResult(nullptr));
+        continue;
+      }
+    }
+
+    VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
+             << legacy_input_name << " " << legacy_input_vars.size();
+
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
     // if src type is Tensor

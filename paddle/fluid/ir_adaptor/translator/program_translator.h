@@ -55,7 +55,7 @@ class ProgramTranslator {
   explicit ProgramTranslator(const ProgramDesc* legacy_program,
                              ir::Program* program);
 
-  void Translate();
+  void Translate(bool startup_program = false);
 
  private:
   const ProgramDesc* legacy_program;
@@ -71,8 +71,10 @@ class ProgramTranslator {
   /// `ExtractParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
-  void ExtractParameterFromSingleBlock(const BlockDesc& block);
+  void ExtractParameterFromSingleBlock(const BlockDesc& block,
+                                       bool startup_program);
   void InsertOperationToSingleBlock(const BlockDesc& block);
+  void InsertOperationToSingleBlockAndSetParameter(const BlockDesc& block);
 };
 
 }  // namespace translator
