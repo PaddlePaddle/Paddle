@@ -33,6 +33,7 @@ class TestTensorClone(unittest.TestCase):
         return tensor_clone(x).numpy()
 
     def test_tensor_clone(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
@@ -53,6 +54,7 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
         return y.numpy()
 
     def test_to_static_numpy_report_error(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         with self.assertRaises(AssertionError):
             static_res = self._run(to_static=True)
@@ -74,6 +76,7 @@ class TestTensorItem(unittest.TestCase):
         return tensor_item(x)
 
     def test_tensor_clone(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res)
@@ -93,9 +96,13 @@ class TestTensorSize(unittest.TestCase):
         x = paddle.ones([1, 2, 3])
         if not to_static:
             return tensor_size(x)
-        return tensor_size(x).numpy()
+        ret = tensor_size(x)
+        if hasattr(ret, 'numpy'):
+            ret = ret.numpy()
+        return ret
 
     def test_tensor_clone(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
@@ -115,6 +122,7 @@ class TestTrueDiv(unittest.TestCase):
         return true_div(x, y).numpy()
 
     def test_ture_div(self):
+        paddle.disable_static()
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
