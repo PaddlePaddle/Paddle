@@ -40,14 +40,12 @@ class NCCLCommContext final : public CommContext {
   void Send(const phi::DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
-            gpuStream_t stream,
-            ncclComm_t comm = nullptr);
+            gpuStream_t stream);
 
   void Recv(phi::DenseTensor* out_tensor,
             const int64_t& count,
             const int& peer,
-            gpuStream_t stream,
-            ncclComm_t comm = nullptr);
+            gpuStream_t stream);
 
   void ReduceScatter(phi::DenseTensor* out_tensor,
                      const phi::DenseTensor& in_tensor,

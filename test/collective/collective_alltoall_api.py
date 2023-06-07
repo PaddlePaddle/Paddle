@@ -18,19 +18,54 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
+import paddle.distributed as dist
 from paddle import fluid, framework
 from paddle.fluid import data_feeder
 
 paddle.enable_static()
 
 
-def alltoall_new(tensor, out, group=None):
+def alltoall_new(
+    in_tensor_or_tensor_list,
+    out_tensor_or_tensor_list,
+    group=None,
+    sync_op=True,
+):
     op_type = 'all_to_all'
 
-    tensor = paddle.stack(tensor, axis=0)
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+    helper = framework.LayerHelper(op_type, **locals())
+
+    with open("debug.log", "a") as wobj:
+        wobj.write(f"raw in tensor: {in_tensor_or_tensor_list}\n")
+    in_tensor = in_tensor_or_tensor_list
+    if isinstance(in_tensor_or_tensor_list, list):
+        if len(in_tensor_or_tensor_list) == 0:
+            raise RuntimeError("The input tensor_list should not be empty.")
+        # 0-D use stack/unstack while others use concat/split
+        if len(in_tensor_or_tensor_list[0].shape) == 0:
+            in_tensor = paddle.stack(in_tensor_or_tensor_list, axis=0)
+        else:
+            in_tensor = paddle.concat(in_tensor_or_tensor_list, axis=0)
+            with open("debug.log", "a") as wobj:
+                wobj.write(
+                    f"after concat in tensor: {in_tensor_or_tensor_list}\n"
+                )
+
+    out_tensor = out_tensor_or_tensor_list
+    if isinstance(out_tensor_or_tensor_list, list):
+        if len(out_tensor_or_tensor_list) != 0:
+            raise ValueError(
+                "The 'out_tensor_list' for all_to_all " "must be an empty list."
+            )
+        out_tensor = helper.create_variable_for_type_inference(
+            dtype=in_tensor.dtype
+        )
+
     data_feeder.check_variable_and_dtype(
-        tensor,
-        'tensor',
+        in_tensor,
+        'in_tensor',
         [
             'float16',
             'float32',
@@ -42,22 +77,31 @@ def alltoall_new(tensor, out, group=None):
             'bool',
             'uint16',
         ],
-        op_type,
+        'all_to_all',
     )
-
-    helper = framework.LayerHelper(op_type, **locals())
-    ring_id = 0 if group is None else group.id
-
-    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
-
     helper.append_op(
         type=op_type,
-        inputs={'x': [tensor]},
-        outputs={'out': [out]},
+        inputs={'x': [in_tensor]},
+        outputs={'out': [out_tensor]},
         attrs={
             'ring_id': ring_id,
         },
     )
+    # NOTE(liyurui): If the argument `out_tensor_or_tensor_list` is a tensor_list,
+    # we need to split the result. So we should wait the result of all_to_all
+    # before split if the communication is not on calc stream.
+    if isinstance(out_tensor_or_tensor_list, list):
+        if not sync_op:
+            dist.wait(out_tensor, use_calc_stream=False)
+        # 0-D use stack/unstack while others use concat/split
+        if len(in_tensor_or_tensor_list[0].shape) == 0:
+            out_tensor_or_tensor_list.extend(paddle.unstack(out_tensor, 0))
+        else:
+            out_tensor_or_tensor_list.extend(
+                paddle.split(out_tensor, nranks, 0)
+            )
+
+    return None
 
 
 class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
