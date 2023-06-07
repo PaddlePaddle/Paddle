@@ -308,10 +308,10 @@ class TestAdagradOptimizer(unittest.TestCase):
         # Check init_program
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 2)
-        self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), learning_rate)
         self.assertEqual(init_ops[0].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[0].attr('value'), 0.0)
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
+        self.assertEqual(init_ops[1].type, "fill_constant")
+        self.assertAlmostEqual(init_ops[1].attr('value'), 0.0)
 
 
 class TestAdamOptimizer(unittest.TestCase):
@@ -452,8 +452,8 @@ class TestAdamaxOptimizer(unittest.TestCase):
         # Check init_program
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 4)
-        self.assertEqual(init_ops[-1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[-1].attr('value'), learning_rate)
+        self.assertEqual(init_ops[0].type, "fill_constant")
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
 
 
 class TestDpsgdOptimizer(unittest.TestCase):

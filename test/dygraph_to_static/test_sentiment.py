@@ -328,8 +328,8 @@ def train(args, to_static):
             model = GRU(args.vocab_size, args.batch_size, args.padding_size)
         elif args.model_type == 'bigru_net':
             model = BiGRU(args.vocab_size, args.batch_size, args.padding_size)
-        sgd_optimizer = fluid.optimizer.Adagrad(
-            learning_rate=args.lr, parameter_list=model.parameters()
+        sgd_optimizer = paddle.optimizer.Adagrad(
+            learning_rate=args.lr, parameters=model.parameters()
         )
 
         loss_data = []

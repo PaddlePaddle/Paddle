@@ -157,7 +157,7 @@ class TestWeightDecay(unittest.TestCase):
                 for var in main_prog.block(0).all_parameters()
             ]
 
-            optimizer = fluid.optimizer.Adagrad(
+            optimizer = paddle.optimizer.Adagrad(
                 learning_rate=self.learning_rate
             )
             optimizer.minimize(avg_cost)
