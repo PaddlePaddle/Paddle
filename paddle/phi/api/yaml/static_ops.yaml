@@ -193,16 +193,6 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
 
-- op : fmax
-  args : (Tensor x, Tensor y, int axis = -1)
-  output : Tensor(out)
-  infer_meta :
-    param: [x, y]
-    func : ElementwiseRawInferMeta
-  kernel :
-    func : fmax
-  backward : fmax_grad
-
 - op : frobenius_norm
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
