@@ -18,6 +18,8 @@ import threading
 from http.server import HTTPServer
 from multiprocessing import Process
 
+from .topology import SingleNodeTopology
+
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -69,10 +71,11 @@ class KVServer(HTTPServer):
     def __init__(self, port):
         super().__init__(('', port), KVHandler)
         self.kv_lock = threading.Lock()
-        self.kv = {'/healthy': b'ok'}
         self.port = port
+        self.kv = {'/healthy': b'ok'}
         self.stopped = False
         self.started = False
+        self.node_topo = None
 
     def start(self):
         self.listen_thread = threading.Thread(target=self.serve_forever)
@@ -84,6 +87,12 @@ class KVServer(HTTPServer):
         self.listen_thread.join()
         self.server_close()
         self.stopped = True
+
+    def get_topology(self):
+        if self.node_topo is None:
+            self.node_topo = SingleNodeTopology()
+        self.node_topo.detect()
+        return self.node_topo.json_object
 
 
 class PKVServer:
