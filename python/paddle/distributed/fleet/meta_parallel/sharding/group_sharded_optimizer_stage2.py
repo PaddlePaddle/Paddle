@@ -540,11 +540,26 @@ class GroupShardedOptimizerStage2(Optimizer):
 
             for param in self._local_params:
                 if param.name in self._master_params.keys():
-                    param.set_value(
-                        self._master_params[param.name]
-                        .cuda(self.dev_id)
-                        .cast(dtype=param.dtype)
-                    )
+                    if (
+                        self._default_device
+                        in core.get_all_custom_device_type()
+                    ):
+                        param.set_value(
+                            self._master_params[param.name]
+                            ._copy_to(
+                                paddle.CustomPlace(
+                                    self._default_device, self.dev_id
+                                ),
+                                True,
+                            )
+                            .cast(dtype=param.dtype)
+                        )
+                    else:
+                        param.set_value(
+                            self._master_params[param.name]
+                            .cuda(self.dev_id)
+                            .cast(dtype=param.dtype)
+                        )
         else:
             self._optim.step()
 

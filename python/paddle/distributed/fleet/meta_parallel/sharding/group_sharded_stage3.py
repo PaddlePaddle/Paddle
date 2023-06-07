@@ -246,7 +246,15 @@ class GroupShardedStage3(nn.Layer):
         else:
             for param in list(self._unslice_params):
                 param.clear_gradient(False)
-                tmp_var = param.cuda(DEV_ID)
+                if (
+                    self._default_device
+                    in paddle.device.get_all_custom_device_type()
+                ):
+                    tmp_var = param._copy_to(
+                        paddle.CustomPlace(self._default_device, DEV_ID), True
+                    )
+                else:
+                    tmp_var = param.cuda(DEV_ID)
 
                 if (
                     tmp_var.dtype == Type.fp32.value
@@ -1102,7 +1110,10 @@ def _device2cpu(trans_param, convert_dtype=False):
 
 
 def _cpu2device(param):
-    tmp_p = param.fw_storage.cuda(DEV_ID)
+    if DEV in paddle.device.get_all_custom_device_type():
+        tmp_p = param.fw_storage._copy_to(paddle.CustomPlace(DEV, DEV_ID), True)
+    else:
+        tmp_p = param.fw_storage.cuda(DEV_ID)
     if (
         tmp_p.dtype == Type.fp32.value
         and param2dtype[param.name] == Type.fp16.value

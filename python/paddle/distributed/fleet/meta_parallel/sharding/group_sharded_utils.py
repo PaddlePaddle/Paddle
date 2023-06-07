@@ -162,8 +162,14 @@ class GroupShardedClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
+        dev_type = self._device.split(':')[0]
         if paddle.device.get_device() == "cpu":
-            global_norm_var = global_norm_var.cuda(dev_id)
+            if dev_type in paddle.device.get_all_custom_device_type():
+                global_norm_var = global_norm_var._copy_to(
+                    paddle.CustomPlace(dev_type, dev_id), True
+                )
+            else:
+                global_norm_var = global_norm_var.cuda(dev_id)
 
         with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
