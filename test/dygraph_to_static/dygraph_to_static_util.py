@@ -39,27 +39,37 @@ def to_ast(func):
     return impl
 
 
-def run_both(cls):
+def dy2static_unittest(cls):
     """
-    run dy2static by ast and fallback
+    dy2static unittest must be decorated to each Dy2static Unittests.
+    run both in Fallback and Ast mode.
+    Usage like:
+
+    @dy2static_unittest
+    class TestA (unittest.TestCase):
+        ...
     """
     for key in dir(cls):
         if key.startswith("test"):
-            test_func = getattr(cls, key)
-
-            setattr(cls, key + "_ast", to_ast(test_func))
-
+            if not key.endswith("_ast"):
+                test_func = getattr(cls, key)
+                setattr(cls, key + "_ast", to_ast(test_func))
     return cls
 
 
-def run_ast(cls):
+def ast_only_test(func):
     """
-    run dy2staic by ast
+    run this test function in ast only mode.
+    Usage:
+
+    class TestA (unittest.TestCase):
+        @ast_only_test
+        def test_ast_only(self):
+            pass
     """
 
-    for key in dir(cls):
-        if key.startswith("test"):
-            test_func = getattr(cls, key)
-            setattr(cls, key, to_ast(test_func))
+    def impl(*args, **kwargs):
+        if os.environ.get("ENABLE_FALL_BACK", "True") == "False":
+            func(*args, **kwargs)
 
-    return cls
+    return impl

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import run_ast, run_both
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from test_fetch_feed import Linear
 
 import paddle
@@ -53,6 +53,7 @@ def fake_data(shape):
     return fluid.dygraph.to_variable(x_data)
 
 
+@dy2static_unittest
 class TestWithNestedInput(unittest.TestCase):
     def setUp(self):
         self.x = None
@@ -89,6 +90,7 @@ class TestWithNestedInput(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
+@dy2static_unittest
 class TestWithNestedOutput(unittest.TestCase):
     def setUp(self):
         self.x = None
@@ -125,8 +127,9 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(dy_var, st_var)
 
 
-@run_both
+@dy2static_unittest
 class TestWithTrainAndEval(unittest.TestCase):
+    @ast_only_test
     def test_switch_eval_and_train(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
@@ -157,8 +160,9 @@ class TestWithTrainAndEval(unittest.TestCase):
             )
 
 
-@run_ast
+@dy2static_unittest
 class TestWithNoGrad(unittest.TestCase):
+    @ast_only_test
     def test_with_no_grad(self):
         with fluid.dygraph.guard():
             linear_net = Linear()
@@ -192,6 +196,7 @@ class GPT2LMHeadModel(paddle.nn.Layer):
         return x1
 
 
+@dy2static_unittest
 class TestPruneUnusedParamInProgram(unittest.TestCase):
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")
