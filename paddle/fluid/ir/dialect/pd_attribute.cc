@@ -18,10 +18,6 @@ namespace paddle {
 namespace dialect {
 phi::IntArray IntArrayAttribute::data() const { return storage()->GetAsKey(); }
 
-paddle::experimental::Scalar ScalarAttribute::data() const {
-  return storage()->GetAsKey();
-}
-
 phi::DataType DataTypeAttribute::data() const { return storage()->GetAsKey(); }
 
 phi::Place PlaceAttribute::data() const { return storage()->GetAsKey(); }

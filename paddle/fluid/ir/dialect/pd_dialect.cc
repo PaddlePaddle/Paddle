@@ -92,7 +92,6 @@ void PaddleDialect::initialize() {
   RegisterTypes<paddle::dialect::DenseTensorType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
-                     paddle::dialect::ScalarAttribute,
                      paddle::dialect::DataTypeAttribute,
                      paddle::dialect::PlaceAttribute,
                      paddle::dialect::DataLayoutAttribute>();
