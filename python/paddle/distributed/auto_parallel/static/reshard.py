@@ -1794,9 +1794,13 @@ class Resharder:
                 elif isinstance(op_desc, AllGatherConcatOpDesc):
                     new_process_group(op_desc.group)
                 elif isinstance(op_desc, SendOpDesc):
-                    new_process_group([op_desc.src, op_desc.dst])
+                    new_process_group(
+                        [op_desc.src, op_desc.dst], group_type='p2p'
+                    )
                 elif isinstance(op_desc, RecvOpDesc):
-                    new_process_group([op_desc.src, op_desc.dst])
+                    new_process_group(
+                        [op_desc.src, op_desc.dst], group_type='p2p'
+                    )
 
         tensor_list = []
         partition_tensor_list = []
@@ -2721,7 +2725,10 @@ class Resharder:
                                             # Ensure every rank has a global view of communicator groups for entire cluters.
                                             # When initialize communicators for pipeline parallel, every rank could
                                             # conduct a correct global synchronization.
-                                            new_process_group([item, recv_rank])
+                                            new_process_group(
+                                                [item, recv_rank],
+                                                group_type='p2p',
+                                            )
                             else:
                                 for index, tensor_process in enumerate(
                                     tensor_processes
@@ -2748,7 +2755,9 @@ class Resharder:
                                         # Ensure every rank has a global view of communicator groups for entire cluters.
                                         # When initialize communicators for pipeline parallel, every rank could
                                         # conduct a correct global synchronization.
-                                        new_process_group([item, recv_rank])
+                                        new_process_group(
+                                            [item, recv_rank], group_type='p2p'
+                                        )
 
                             cur_op_count = len(block.ops)
                             idx_offset = (

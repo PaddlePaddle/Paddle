@@ -74,18 +74,8 @@ def new_process_group(
     if group_id is None:
         group_id = _new_ring_id() + num_groups + 1
 
-    new_pg = ProcessGroup(group_id, ranks)
+    new_pg = ProcessGroup(group_id, ranks, group_type)
     _g_process_group_map[group_id] = new_pg
-
-    # NOTE(zhiqiu): to avoid send/recv hang in lazy init
-    if group_type == 'p2p':
-        alltoall_tmp = paddle.empty(
-            shape=[new_pg.nranks, new_pg.nranks], dtype="int32"
-        )
-        paddle._legacy_C_ops.alltoall(
-            alltoall_tmp, 'use_calc_stream', True, 'ring_id', new_pg.id
-        )
-        paddle.device.cuda.synchronize()
 
     return new_pg
 
@@ -97,7 +87,7 @@ def new_process_group(
 # the instantiation process in a more general way. In the future, the process group may
 # handle the communication implementation choice.
 class ProcessGroup:
-    def __init__(self, group_id, ranks):
+    def __init__(self, group_id, ranks, group_type=None):
         if group_id == 0 and get_process_group(0) is not None:
             assert (
                 group_id != 0
@@ -109,6 +99,7 @@ class ProcessGroup:
             global _g_process_group_map
             _g_process_group_map[0].add_ranks(ranks)
         self._is_instantiate = False
+        self._group_type = group_type
 
     @property
     def id(self):
@@ -121,6 +112,10 @@ class ProcessGroup:
     @property
     def nranks(self):
         return len(self._ranks)
+
+    @property
+    def group_type(self):
+        return self._group_type
 
     def add_ranks(self, new_ranks):
         if set(new_ranks) <= set(self.ranks):
@@ -204,6 +199,16 @@ class ProcessGroup:
             paddle._legacy_C_ops.barrier(
                 barrier_tensor, barrier_tensor, 'ring_id', ring_id
             )
+
+            # NOTE(zhiqiu): to avoid send/recv hang in lazy init
+            if self._group_type == 'p2p':
+                alltoall_tmp = paddle.empty(
+                    shape=[self.nranks, self.nranks], dtype="int32"
+                )
+                paddle._legacy_C_ops.alltoall(
+                    alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
+                )
+                paddle.device.cuda.synchronize()
 
         if self.nranks > 1:
             barrier_tensor = paddle.full([1], 1, dtype="int32")
