@@ -47,6 +47,10 @@ class MLPForVirtualStageLayerTest(PipelineLayer):
             LayerDesc(nn.Linear, self.num_classes, 2),
             LayerDesc(nn.Linear, 2, self.num_classes),
             LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
+            LayerDesc(nn.Linear, 2, self.num_classes),
+            LayerDesc(nn.Linear, self.num_classes, 2),
         ]
         super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
 
@@ -69,7 +73,7 @@ class TestPipeLayerAPI(unittest.TestCase):
         pipe_model = MLPForVirtualStageLayerTest(
             seg_method="layer:Linear",
             num_stages=self.pipeline_parallel_size,
-            num_virtual_pipeline_stages=2,
+            num_virtual_pipeline_stages=3,
             recompute_interval=1,
             recompute_ctx={
                 "mp_group": self.hcg.get_model_parallel_group(),

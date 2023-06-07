@@ -36,7 +36,7 @@ def set_random_seed(seed, dp_id, rank_id):
 batch_size = 8
 length = 8
 micro_batch_size = 2
-num_virtual_pipeline_stages = 2
+num_virtual_pipeline_stages = 3
 vocab_size = 128
 hidden_size = 16
 d_model = hidden_size
@@ -120,7 +120,7 @@ class CriterionPipe(Layer):
 
 
 class ModelPipe(PipelineLayer):
-    def __init__(self, topology, transformer_layer_num: int = 8):
+    def __init__(self, topology, transformer_layer_num: int = 12):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
         for x in range(transformer_layer_num):
