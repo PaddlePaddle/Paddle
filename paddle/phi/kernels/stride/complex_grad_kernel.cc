@@ -25,14 +25,19 @@ void RealGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx) {
   dev_ctx.Alloc(dx, dx->dtype());
-  Fill<Context>(dev_ctx, *in_grad, 0, in_grad);
+  PD_VISIT_ALL_TYPES(dx->dtype(), "RealGradStridedKernel", ([&] {
+                       phi::FillKernel<data_t, Context>(dev_ctx, *dx, 0, dx);
+                     }));
   DenseTensor tmp;
-  RealStridedKernel<Context>(dev_ctx, *in_grad, &tmp);
-  StridedCopy<Context>(dev_ctx,
-                       dout,
-                       phi::vectorize<int64_t>(tmp.dims()),
-                       phi::vectorize<int64_t>(tmp.stride()),
-                       &tmp);
+  RealStridedKernel<Context>(dev_ctx, *dx, &tmp);
+  PD_VISIT_ALL_TYPES(dout.dtype(), "RealGradStridedKernel", ([&] {
+                       phi::StridedCopyKernel<data_t, Context>(
+                           dev_ctx,
+                           dout,
+                           phi::vectorize<int64_t>(tmp.dims()),
+                           phi::vectorize<int64_t>(tmp.stride()),
+                           &tmp);
+                     }));
 }
 
 template <typename T, typename Context>
@@ -40,14 +45,20 @@ void ImagGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx) {
   dev_ctx.Alloc(dx, dx->dtype());
-  Fill<Context>(dev_ctx, *in_grad, 0, in_grad);
+  PD_VISIT_ALL_TYPES(dx->dtype(), "ImagGradStridedKernel", ([&] {
+                       phi::FillKernel<data_t, Context>(dev_ctx, *dx, 0, dx);
+                     }));
+
   DenseTensor tmp;
-  ImagStridedKernel<Context>(dev_ctx, *in_grad, &tmp);
-  StridedCopy<Context>(dev_ctx,
-                       dout,
-                       phi::vectorize<int64_t>(tmp.dims()),
-                       phi::vectorize<int64_t>(tmp.stride()),
-                       &tmp);
+  ImagStridedKernel<Context>(dev_ctx, *dx, &tmp);
+  PD_VISIT_ALL_TYPES(dout.dtype(), "ImagGradStridedKernel", ([&] {
+                       phi::StridedCopyKernel<data_t, Context>(
+                           dev_ctx,
+                           dout,
+                           phi::vectorize<int64_t>(tmp.dims()),
+                           phi::vectorize<int64_t>(tmp.stride()),
+                           &tmp);
+                     }));
 }
 
 }  // namespace phi

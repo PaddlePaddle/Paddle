@@ -14,6 +14,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/flatten_kernel.h"
+#include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
 
 namespace phi {

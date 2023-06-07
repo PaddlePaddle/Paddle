@@ -40,16 +40,4 @@ DenseTensor StridedCopy(const Context& dev_ctx,
   StridedCopyKernel<T, Context>(dev_ctx, input, dims, out_stride, &dense_out);
   return dense_out;
 }
-
-template <typename Context>
-void StridedCopy(const Context& dev_ctx,
-                 const DenseTensor& input,
-                 const std::vector<int64_t>& dims,
-                 const std::vector<int64_t>& out_stride,
-                 DenseTensor* out) {
-  PD_VISIT_ALL_TYPES(input.dtype(), "StridedCopy", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx, input, dims, out_stride, out);
-                     }));
-}
 }  // namespace phi
