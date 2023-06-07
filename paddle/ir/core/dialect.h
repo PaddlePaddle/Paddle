@@ -35,15 +35,15 @@ class DialectInterface;
 ///
 class Dialect {
  public:
-  Dialect(std::string name, ir::IrContext *context, ir::TypeId id);
+  Dialect(std::string name, IrContext *context, TypeId id);
 
   virtual ~Dialect();
 
   const std::string &name() const { return name_; }
 
-  ir::IrContext *ir_context() const { return context_; }
+  IrContext *ir_context() const { return context_; }
 
-  ir::TypeId id() const { return id_; }
+  TypeId id() const { return id_; }
 
   ///
   /// \brief Register all types contained in the template parameter Args.
@@ -132,11 +132,11 @@ class Dialect {
     return *interface;
   }
 
-  virtual void PrintType(ir::Type type, std::ostream &os) const {
+  virtual void PrintType(Type type, std::ostream &os) const {
     IR_THROW("dialect has no registered type printing hook");
   }
 
-  virtual void PrintAttribute(ir::Attribute type, std::ostream &os) const {
+  virtual void PrintAttribute(Attribute type, std::ostream &os) const {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 
@@ -147,9 +147,9 @@ class Dialect {
 
   std::string name_;
 
-  ir::IrContext *context_;  // not owned
+  IrContext *context_;  // not owned
 
-  ir::TypeId id_;
+  TypeId id_;
 
   std::unordered_map<TypeId, std::unique_ptr<DialectInterface>>
       registered_interfaces_;
