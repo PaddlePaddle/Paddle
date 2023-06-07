@@ -35,7 +35,6 @@ class CumsumOpConverter : public OpConverter {
     auto dims = input_x_tensor->getDimensions();
     auto rank = dims.nbDims;
     if (rank == 0) {
-      LOG(INFO) << "go to rank 0!";
       nvinfer1::IShuffleLayer* layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_x_tensor);
       nvinfer1::Dims cumsum_dim;
