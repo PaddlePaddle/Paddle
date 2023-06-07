@@ -157,7 +157,7 @@ def flatten_dense_tensors(parameters, use_main_grad=False):
     for param in parameters:
         grad_storage.add_grad(param, _param2align[param.name])
 
-    return grad_storage
+    return grad_storage.buffer
 
 
 class FusedCommBuffer:
