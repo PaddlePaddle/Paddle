@@ -27,8 +27,8 @@ from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
+from ..process_mesh import ProcessMesh
 from .dist_attribute import DistTensorSpec, OperatorDistAttr, TensorDistAttr
-from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -2414,24 +2414,23 @@ def wrap_data_for_completion(
     output_specs = []
     attrs = {}
 
-    serial_op = dist_op.serial_op
-
     # Construct each input tensor's DistTensorSpec with shape and dist_attr
     for name in input_names:
-        tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(name)
-        var = serial_op.block._var_recursive(name)
+        var = dist_op.get_serial_input(name)
         tensor_shape = var.shape
+        tensor_dist_attr = var.dist_attr
         dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
         input_specs.append(dist_spec)
 
     # Construct each output tensor's DistTensorSpec with shape and dist_attr
     for name in output_names:
-        tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
-        var = serial_op.block._var_recursive(name)
+        var = dist_op.get_serial_output(name)
         tensor_shape = var.shape
+        tensor_dist_attr = var.dist_attr
         dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
         output_specs.append(dist_spec)
 
+    serial_op = dist_op.serial_op
     for attr_name in attr_names:
         attrs[attr_name] = serial_op.desc.attr(attr_name)
 

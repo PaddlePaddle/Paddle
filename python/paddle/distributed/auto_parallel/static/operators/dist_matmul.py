@@ -106,17 +106,6 @@ def _update_dims_mapping_for_matmul(dist_op):
     op_desc = dist_op.serial_op.desc
     op_dist_attr = dist_op.dist_attr
 
-    # test DistTensorSpec
-    # input_name_list = []
-    # output_name_list = []
-    # input_name_list.append(op_desc.input('X')[0])
-    # input_name_list.append(op_desc.input('Y')[0])
-    # output_name_list.append(op_desc.output('Out')[0])
-    # attr_name_list = ['trans_x', 'trans_y']
-    # input_specs, output_specs, attrs = wrap_data_for_completion(
-    #     dist_op, input_name_list, output_name_list, attr_name_list
-    # )
-
     x_name = op_desc.input('X')[0]
     y_name = op_desc.input('Y')[0]
     out_name = op_desc.output('Out')[0]

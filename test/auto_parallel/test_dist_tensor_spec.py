@@ -15,13 +15,15 @@
 import unittest
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     OperatorDistAttr,
     TensorDistAttr,
 )
-from paddle.distributed.auto_parallel.dist_op import DistributedOperator
-from paddle.distributed.auto_parallel.utils import wrap_data_for_completion
+from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.static.utils import (
+    wrap_data_for_completion,
+)
 from paddle.distributed.fleet import auto
 
 
@@ -75,13 +77,19 @@ class TestDistTensorSpec(unittest.TestCase):
                 X = op.input_arg_names[0]
                 Y = op.input_arg_names[1]
                 out = op.output_arg_names[0]
+                var_x = op.block._var_recursive(X)
+                var_y = op.block._var_recursive(Y)
+                var_out = op.block._var_recursive(out)
+                var_x.dist_attr.dims_mapping = [-1, 1]
+                var_y.dist_attr.dims_mapping = [1, -1]
+                var_out.dist_attr.dims_mapping = [-1, -1]
                 op_dist_attr.set_input_dims_mapping(X, [-1, 1])
                 op_dist_attr.set_input_dims_mapping(Y, [1, -1])
                 op_dist_attr.set_output_dims_mapping(out, [-1, -1])
                 dist_op = DistributedOperator(op, op_dist_attr)
                 input_names = [X, Y]
                 output_names = [out]
-                attr_names = []
+                attr_names = ['trans_x', 'trans_y']
                 input_spec, output_spec, attrs = wrap_data_for_completion(
                     dist_op, input_names, output_names, attr_names
                 )
