@@ -16,8 +16,10 @@
 
 #include <ostream>
 
+#include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/dialect_interface.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/type_base.h"
@@ -130,8 +132,12 @@ class Dialect {
     return *interface;
   }
 
-  virtual void PrintType(ir::Type type, std::ostream &os) {
-    throw std::logic_error("dialect has no registered type printing hook");
+  virtual void PrintType(ir::Type type, std::ostream &os) const {
+    IR_THROW("dialect has no registered type printing hook");
+  }
+
+  virtual void PrintAttribute(ir::Attribute type, std::ostream &os) const {
+    IR_THROW("dialect has no registered attribute printing hook");
   }
 
  private:

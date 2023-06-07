@@ -103,13 +103,16 @@ class BasicIRPrinter {
       os << i.data();
     } else if (auto arr = attr.dyn_cast<ir::ArrayAttribute>()) {
       const auto& vec = arr.data();
+      os << "array<";
       PrintInterleave(
           vec.begin(),
           vec.end(),
           [this](ir::Attribute v) { this->PrintAttribute(v); },
           [this]() { this->os << ", "; });
+      os << ">";
     } else {
-      os << "<#CustomTODO>";
+      auto& dialect = attr.dialect();
+      dialect.PrintAttribute(attr, os);
     }
   }
 
@@ -290,6 +293,21 @@ void Operation::Print(std::ostream& os) {
 void Type::Print(std::ostream& os) const {
   BasicIRPrinter printer(os);
   printer.PrintType(*this);
+}
+
+void Attribute::Print(std::ostream& os) const {
+  BasicIRPrinter printer(os);
+  printer.PrintAttribute(*this);
+}
+
+std::ostream& operator<<(std::ostream& os, Type type) {
+  type.Print(os);
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Attribute attr) {
+  attr.Print(os);
+  return os;
 }
 
 }  // namespace ir

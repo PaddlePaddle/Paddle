@@ -114,10 +114,9 @@ inline ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) {
           << target_op_name;
   auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
   if (!op_info) {
-    IR_THROW(platform::errors::PreconditionNotMet(
-        "Op %d should have corresponding OpInfo %d",
-        op_desc.Type(),
-        target_op_name));
+    IR_THROW("Op %d should have corresponding OpInfo %d",
+             op_desc.Type(),
+             target_op_name);
   }
 
   return op_info;
@@ -173,20 +172,26 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
                                                            ir::Program* program,
                                                            ir::Attribute attr) {
   float data = 0.0f;
+  phi::DataType dtype = phi::DataType::UNDEFINED;
   if (attr.isa<ir::FloatAttribute>()) {
     data = attr.dyn_cast<ir::FloatAttribute>().data();
+    dtype = phi::DataType::FLOAT32;
   } else if (attr.isa<ir::DoubleAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::DoubleAttribute>().data());
+    dtype = phi::DataType::FLOAT64;
   } else if (attr.isa<ir::Int32_tAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::Int32_tAttribute>().data());
+    dtype = phi::DataType::INT32;
   } else if (attr.isa<ir::Int64_tAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::Int64_tAttribute>().data());
+    dtype = phi::DataType::INT64;
   } else if (attr.isa<ir::BoolAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::BoolAttribute>().data());
+    dtype = phi::DataType::BOOL;
   }
   ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program->block());
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{1}, data, phi::DataType::FLOAT32, phi::CPUPlace());
+      std::vector<int64_t>{1}, data, dtype, phi::CPUPlace());
 
   return full_op.operation();
 }
@@ -220,10 +225,9 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
       op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
 
   if (!op_desc.HasAttr(legacy_attr_name)) {
-    IR_THROW(platform::errors::PreconditionNotMet(
-        "Op %s arg %s should not be zero size",
-        op_desc.Type(),
-        legacy_attr_name));
+    IR_THROW("Op %s arg %s should not be zero size",
+             op_desc.Type(),
+             legacy_attr_name);
   }
   paddle::framework::Attribute legacy_attr = op_desc.GetAttr(legacy_attr_name);
   VLOG(10) << "[" << op_desc.Type() << "][attribute]"
@@ -259,11 +263,10 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
 
     for (const auto& arg_name : args) {
       IR_ENFORCE(param_map->count(arg_name) != 0,
-                 platform::errors::PreconditionNotMet(
-                     "arg %s.%s as input should be exists before prasing %s",
-                     name,
-                     arg_name,
-                     op_desc.Type()));
+                 "arg %s.%s as input should be exists before prasing %s",
+                 name,
+                 arg_name,
+                 op_desc.Type());
       auto defining_info = (*param_map)[arg_name];
       if (defining_info.generated_by_vector) {
         InsertSliceOperationForTarget(
@@ -369,10 +372,9 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
                << "[" << op_desc.Type() << "] optional " << info.name << " :"
                << info.type_name << " " << legacy_output_name;
       IR_ENFORCE(info.optional,
-                 platform::errors::PreconditionNotMet(
-                     "Op %s arg %s should be optional if it can be empty",
-                     op_desc.Type(),
-                     legacy_output_name));
+                 "Op %s arg %s should be optional if it can be empty",
+                 op_desc.Type(),
+                 legacy_output_name);
       op_output_types.push_back(ir::Type(nullptr));
       continue;
     }
