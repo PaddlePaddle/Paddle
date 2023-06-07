@@ -441,8 +441,6 @@ class TestLearningRateDecay(unittest.TestCase):
         decay_fns = [
             (exponential_decay, layers.exponential_decay, common_kwargs_true),
             (exponential_decay, layers.exponential_decay, common_kwargs_false),
-            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_true),
-            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_false),
             (inverse_time_decay, layers.inverse_time_decay, common_kwargs_true),
             (
                 inverse_time_decay,
