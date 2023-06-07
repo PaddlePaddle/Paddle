@@ -125,6 +125,7 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{len(job_endpoints)}",
                 "PADDLE_RANK_IN_NODE": str(i),
+                "PADDLE_AUTO_CLUSTER": str(self.ctx.args.auto_cluster_config),
             }
             if self._tuner_run_mode is not None:
                 e.update(
@@ -218,6 +219,7 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{global_size}",
                 "PADDLE_RANK_IN_NODE": str(i),
+                "PADDLE_AUTO_CLUSTER": str(self.ctx.args.auto_cluster_config),
             }
             if self._tuner_run_mode is not None:
                 e.update(

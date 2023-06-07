@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import os
 import subprocess
 import warnings
 
@@ -143,7 +144,7 @@ class SingleNodeTopology:
         column_id = 2 + target_id
 
         cmd = (
-            "cat matrix.txt | awk 'FNR=="
+            "cat /tmp/matrix.txt | awk 'FNR=="
             + str(row_id)
             + " {print $"
             + str(column_id)
@@ -202,6 +203,9 @@ class SingleNodeTopology:
         default_value = "8"
         self.nb_devices = int(call_cmd(cmd, err_msg, default_value))
 
+        local_size = int(os.getenv("PADDLE_LOCAL_SIZE"))
+        if local_size < self.nb_devices:
+            self.nb_devices = local_size
         # Get PCIe latency and bandwidth (ms, GB/s)
         for i in range(self.nb_devices):
             cmd = (
@@ -278,6 +282,8 @@ class SingleNodeTopology:
 
         self.machine['latency'] = self.pcie_latency
         self.machine['bandwidth'] = self.pcie_bandwidth
+        self.machine['device_type'] = dev_types[0]
+        self.machine['device_type_full'] = f"{dev_types[0]}-{dev_models[0]}"
         self.machine['devices'] = self.devices
 
     def get_link_info(self):
@@ -287,7 +293,7 @@ class SingleNodeTopology:
         link_latencies = []  # ms
         link_bandwidths = []  # GB/s
 
-        cmd = "nvidia-smi topo -m > matrix.txt"
+        cmd = "nvidia-smi topo -m > /tmp/matrix.txt"
         err_msg = "Failed to get topo matrix"
         default_value = ""
         call_cmd(cmd, err_msg, default_value)
@@ -317,10 +323,10 @@ class SingleNodeTopology:
             link_types.pop(i * self.nb_devices + i)
             link_bandwidths.pop(i * self.nb_devices + i)
 
-        cmd = "rm matrix.txt"
+        cmd = "rm /tmp/matrix.txt"
         err_msg = "Failed to delete matrix.txt"
         default_value = ""
-        call_cmd(cmd, err_msg, default_value)
+        # call_cmd(cmd, err_msg, default_value)
 
         for i in range(len(link_types)):
             link = {}
@@ -344,7 +350,7 @@ class SingleNodeTopology:
         self.get_link_info()
 
         self.json_object = json.dumps(self.machine, indent=4)
-        print(self.json_object)
+        # print(self.json_object)
 
     def dump(self, output_path):
         with open(output_path, "w") as outfile:
