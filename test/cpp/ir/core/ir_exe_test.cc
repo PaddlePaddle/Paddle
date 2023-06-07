@@ -96,9 +96,6 @@ TEST(program_test, program) {
       true);
   EXPECT_EQ(block->size(), 9u);
 
-  // Print program
-  program.Print(std::cout);
-
   // Execute program
   paddle::framework::Scope scope;
   PhiKernelAdaptor phi_kernel_adaptor(&scope);

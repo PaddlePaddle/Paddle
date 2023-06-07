@@ -325,20 +325,3 @@ TEST(program_test, builder) {
   EXPECT_EQ(constant.value().dyn_cast<ir::Int32_tAttribute>().data() == 2,
             true);
 }
-
-TEST(program_test, full_int_array) {
-  phi::CPUContext *dev_ctx = static_cast<phi::CPUContext *>(
-      paddle::platform::DeviceContextPool::Instance().Get(
-          paddle::platform::CPUPlace()));
-
-  std::vector<int64_t> data = {1, 2, 3};
-
-  phi::DenseTensor out;
-  phi::FullIntArrayKernel<int64_t, phi::CPUContext>(
-      *dev_ctx, data, phi::DataType::INT64, &out);
-
-  std::cout << "out.numel(): " << out.numel() << std::endl;
-  for (int64_t i = 0; i < out.numel(); i++) {
-    std::cout << *(out.data<int64_t>() + i) << std::endl;
-  }
-}

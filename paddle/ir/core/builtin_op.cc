@@ -163,7 +163,7 @@ void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
                  "The size %d of outputs must be equal to 1.", outputs.size()));
 
   // attributes contains index: Int32
-  IR_ENFORCE(attributes.count("index") == 0,
+  IR_ENFORCE(attributes.count("index") != 0,
              paddle::string::Sprintf("The attributes must contains index."));
   const ir::Attribute &attr = attributes.at("index");
   IR_ENFORCE(attr.isa<ir::Int32_tAttribute>(),
