@@ -270,6 +270,14 @@ else()
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 
+  if(WITH_PHI_SHARED)
+    set(paddle_phi_lib ${PADDLE_BINARY_DIR}/paddle/phi/libphi.so)
+    copy(
+      inference_lib_dist
+      SRCS ${paddle_phi_lib}
+      DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
+  endif()
+
 endif()
 
 copy(

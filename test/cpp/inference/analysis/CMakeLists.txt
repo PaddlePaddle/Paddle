@@ -59,7 +59,7 @@ if(NOT APPLE AND NOT WIN32)
     analyzer_tester.cc
     EXTRA_DEPS
     reset_tensor_array
-    paddle_inference_shared
+    inference_shared_for_test
     python
     ARGS
     --inference_model_dir=${WORD2VEC_MODEL_DIR})

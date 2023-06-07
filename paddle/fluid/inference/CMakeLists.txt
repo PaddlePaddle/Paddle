@@ -32,15 +32,21 @@ endif()
 
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+
 set(utils_modules pretty_log string_helper benchmark utf8proc)
+
+if(NOT WITH_PHI_SHARED)
+  get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+else()
+  set(phi_modules)
+endif()
 
 add_subdirectory(api)
 
 if(WITH_PHI_SHARED)
-  set(PHI_LIB phi_static)
+  set(PHI_STATIC phi_static)
 else()
-  set(PHI_LIB phi)
+  set(PHI_STATIC phi)
 endif()
 
 # Create static inference library if needed
@@ -102,8 +108,7 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS ${PHI_LIB} ${fluid_modules} analysis_predictor
-                          ${utils_modules})
+set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor ${utils_modules})
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
@@ -127,14 +132,25 @@ endif()
 cc_library(
   paddle_inference_shared SHARED
   SRCS ${SHARED_INFERENCE_SRCS}
-  DEPS ${SHARED_INFERENCE_DEPS})
+  DEPS ${SHARED_INFERENCE_DEPS} ${PHI_STATIC})
+
+# this target is for inference test. Why we don't use paddle_inference_shared?
+# Because paddle_inference_shared links static phi lib and there will be a conflict
+# with gflags when unittest linking it. We will remove inference_shared_for_test
+# when PaddlePaddle has its own "gflags".
+cc_library(
+  inference_shared_for_test SHARED
+  SRCS ${SHARED_INFERENCE_SRCS}
+  DEPS ${SHARED_INFERENCE_DEPS} phi)
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_inference_shared ${os_dependency_modules})
+target_link_libraries(inference_shared_for_test ${os_dependency_modules})
 if(WIN32)
   set_property(TARGET paddle_inference_shared
                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(paddle_inference_shared ${PHI_LIB})
+  set_property(TARGET inference_shared_for_test
+               PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 set_target_properties(paddle_inference_shared PROPERTIES OUTPUT_NAME
@@ -149,6 +165,8 @@ if(NOT APPLE
 
   set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
                                                            "${LINK_FLAGS}")
+  set_target_properties(inference_shared_for_test PROPERTIES LINK_FLAGS
+                                                             "${LINK_FLAGS}")
   # check symbol hidden
   file(
     WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
