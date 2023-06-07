@@ -20,6 +20,13 @@ cc_library(
   SRCS ${C_API_SRCS}
   DEPS paddle_inference)
 
+# The same reason for inference_c_test,
+# please refer inference_shared_test in paddle/fluid/inference/CMakeLists
+cc_library(
+  inference_c_test
+  SRCS ${C_API_SRCS}
+  DEPS ${inference_c_deps})
+
 if(NOT ON_INFER AND NOT WIN32)
   return()
 endif()
@@ -31,6 +38,7 @@ cc_library(
   DEPS paddle_inference)
 set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME
                                                            paddle_inference_c)
+
 if(WIN32)
   target_link_libraries(paddle_inference_c_shared shlwapi.lib)
 endif()
