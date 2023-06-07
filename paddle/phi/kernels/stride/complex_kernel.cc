@@ -43,12 +43,12 @@ void ImagStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(real,
-                                         STRIDED,
-                                         phi::RealStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(real,
+                                                       STRIDED,
+                                                       phi::RealStridedKernel) {
+}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(imag,
-                                         STRIDED,
-                                         phi::ImagStridedKernel) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(imag,
+                                                       STRIDED,
+                                                       phi::ImagStridedKernel) {
+}

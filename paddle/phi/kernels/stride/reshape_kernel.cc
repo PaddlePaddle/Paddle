@@ -106,8 +106,5 @@ void ReshapeStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
-                                         STRIDED,
-                                         phi::ReshapeStridedKernel) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
+    reshape, STRIDED, phi::ReshapeStridedKernel) {}
