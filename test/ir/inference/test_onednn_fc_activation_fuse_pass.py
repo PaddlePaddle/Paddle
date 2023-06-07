@@ -89,7 +89,6 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={"X": ["fc_output"]},
                 outputs={"Out": ["activation_output"]},
-                threshold=6,
             )
         elif activation_type == "scale":
             activation_op = OpConfig(
@@ -103,7 +102,6 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={"X": ["fc_output"]},
                 outputs={"Out": ["activation_output"]},
-                beta=1.0,
             )
         else:
             activation_op = OpConfig(
