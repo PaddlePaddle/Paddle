@@ -20,7 +20,6 @@
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/op_info_impl.h"
 #include "paddle/ir/core/spin_lock.h"
 #include "paddle/ir/core/type_base.h"

@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/value.h"
 
 namespace ir {
