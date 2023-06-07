@@ -237,7 +237,7 @@ def to_static(
     input_spec=None,
     build_strategy=None,
     backend=None,
-    enable_fallback=True,
+    enable_fallback=None,
     **kwargs,
 ):
     """
@@ -288,6 +288,15 @@ def to_static(
         """
         Decorates a python function into a ASTStaticFunction object.
         """
+
+        nonlocal enable_fallback
+        if enable_fallback is None:
+            flag = os.environ.get("ENABLE_FALL_BACK", None)
+            if flag == "False":
+                enable_fallback = False
+            else:  # None or True
+                enable_fallback = True
+
         StaticClass = StaticFunctionClass = {
             True: SymbolicStaticFunction,
             False: ASTStaticFunction,
