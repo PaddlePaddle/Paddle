@@ -662,6 +662,7 @@ cc_library(
   DEPS lod_tensor)
 
 if(TENSORRT_FOUND)
+  message(STATUS "TENSORRT FOUND")
   cc_library(
     naive_executor
     SRCS naive_executor.cc
@@ -677,6 +678,7 @@ if(TENSORRT_FOUND)
          variable_helper
          tensorrt_engine_op)
 else()
+  message(STATUS "TENSORRT NOT FOUND")
   cc_library(
     naive_executor
     SRCS naive_executor.cc
@@ -729,8 +731,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS fleet_executor
-           fleet_wrapper
+      DEPS fleet_wrapper
            recurrent_op_helper
            op_registry
            device_context
@@ -837,7 +838,6 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -907,8 +907,7 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor
-           fleet_executor)
+           monitor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -969,7 +968,6 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
-         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -1017,8 +1015,7 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor
-         fleet_executor)
+         monitor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper
