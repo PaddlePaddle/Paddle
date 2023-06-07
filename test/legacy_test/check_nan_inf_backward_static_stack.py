@@ -23,7 +23,7 @@ def static_model(x, y):
 def main():
     paddle.enable_static()
     paddle.set_flags({"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 0})
-
+    paddle.set_flags({"FLAGS_check_nan_inf_stack_limit": 1})
     x_static = paddle.static.data(name='x_static', shape=[3], dtype='float32')
     y_static = paddle.static.data(name='y_static', shape=[3], dtype='float32')
     x_static.stop_gradient = False
