@@ -38,6 +38,10 @@
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb
 	ignore = dirty
+[submodule "third_party/pybind"]
+	path = third_party/pybind
+	url = https://github.com/pybind/pybind11.git
+	ignore = dirty
 [submodule "third_party/threadpool"]
 	path = third_party/threadpool
 	url = https://github.com/progschj/ThreadPool.git
