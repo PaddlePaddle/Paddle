@@ -24,7 +24,11 @@ void ReshapeGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
   ReshapeStridedKernel<Context>(
-      dev_ctx, out_grad, IntArray(x_grad->dims()), x_grad, nullptr);
+      dev_ctx,
+      out_grad,
+      IntArray(phi::vectorize<int64_t>(x_grad->dims())),
+      x_grad,
+      nullptr);
 }
 
 template <typename Context>

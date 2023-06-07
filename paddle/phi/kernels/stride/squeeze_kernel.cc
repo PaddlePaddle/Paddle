@@ -24,7 +24,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
                                const IntArray& axes UNUSED,
                                DenseTensor* out) {
   ReshapeStridedKernel<Context>(
-      dev_ctx, x, IntArray(out->dims()), out, nullptr);
+      dev_ctx, x, IntArray(phi::vectorize<int64_t>(out->dims())), out, nullptr);
 }
 
 template <typename Context>
