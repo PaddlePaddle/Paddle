@@ -221,7 +221,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   void SyncCalcStream(const Place& place);
 
   std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
-      std::function<void(ncclComm_t, gpuStream_t)> fn,
+      std::function<void(gpuStream_t)> fn,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
