@@ -136,8 +136,8 @@ class TestConcatOp6(TestConcatOp):
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
-        self.enable_cinn = False
         self.init_test_data()
+        self.if_enable_cinn()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]
         self.inputs = {
@@ -155,6 +155,9 @@ class TestConcatOp6(TestConcatOp):
             self.actual_axis = self.axis
         out = np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
         self.outputs = {'Out': (out, self.out_lod)}
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -177,7 +180,7 @@ class TestConcatOp7(TestConcatOp):
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_cinn = True
+        self.if_enable_cinn()
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -193,6 +196,9 @@ class TestConcatOp7(TestConcatOp):
                 (self.x0, self.x1, self.x2), axis=self.actual_axis
             )
         }
+
+    def if_enable_cinn(self):
+        pass
 
     def get_dtype(self):
         return "float64"
@@ -226,7 +232,6 @@ def create_test_AxisTensor(parent):
             self.op_type = "concat"
             self.python_api = paddle.concat
             self.public_python_api = paddle.concat
-            self.enable_cinn = False
             self.dtype = self.get_dtype()
             self.init_test_data()
             self.inputs = {
@@ -286,7 +291,6 @@ def create_test_fp16(parent):
             self.op_type = "concat"
             self.python_api = paddle.concat
             self.public_python_api = paddle.concat
-            self.enable_cinn = False
             self.dtype = self.get_dtype()
             self.init_test_data()
             self.inputs = {
