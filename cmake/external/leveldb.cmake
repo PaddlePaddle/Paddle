@@ -14,6 +14,8 @@
 
 include(ExternalProject)
 
+set(LEVELDB_TAG v1.18)
+set(LEVELDB_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/leveldb)
 set(LEVELDB_PREFIX_DIR ${THIRD_PARTY_PATH}/leveldb)
 set(LEVELDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/leveldb)
 set(LEVELDB_INCLUDE_DIR
@@ -27,12 +29,16 @@ set(LEVELDN_CXXFLAGS "-fPIC")
 if(WITH_HETERPS AND WITH_PSLIB)
   set(LEVELDN_CXXFLAGS "${LEVELDN_CXXFLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
 endif()
+
+execute_process(
+  COMMAND ${GIT_EXECUTABLE} clone -b ${LEVELDB_TAG}
+          "https://github.com/google/leveldb" ${LEVELDB_SOURCE_DIR})
+
 ExternalProject_Add(
   extern_leveldb
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${LEVELDB_PREFIX_DIR}
-  GIT_REPOSITORY "https://github.com/google/leveldb"
-  GIT_TAG v1.18
+  SOURCE_DIR ${LEVELDB_SOURCE_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND export "CXXFLAGS=${LEVELDN_CXXFLAGS}" && make -j
