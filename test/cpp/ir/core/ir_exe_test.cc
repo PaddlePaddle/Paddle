@@ -74,10 +74,8 @@ TEST(program_test, program) {
       ctx, std::vector<int64_t>({2, 2}));
   ir::Attribute data_type =
       paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32);
-  ir::Attribute min =
-      paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
-  ir::Attribute max =
-      paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(1.0));
+  ir::Attribute min = ir::FloatAttribute::get(ctx, 0.0);
+  ir::Attribute max = ir::FloatAttribute::get(ctx, 1.0);
   ir::Attribute seed = ir::Int32_tAttribute::get(ctx, 2);
   ir::Attribute uni_place = paddle::dialect::PlaceAttribute::get(
       ctx, phi::Place(phi::AllocationType::CPU));
