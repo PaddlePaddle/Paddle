@@ -28,7 +28,7 @@ class InterfaceValue {
     val.type_id_ = TypeId::get<T>();
     val.model_ = malloc(sizeof(typename T::template Model<ConcreteOp>));
     if (val.model_ == nullptr) {
-      IR_THROW("Alloc memory for interface failed.");
+      throw("Alloc memory for interface failed.");
     }
     static_assert(std::is_trivially_destructible<
                       typename T::template Model<ConcreteOp>>::value,

@@ -103,7 +103,7 @@ class alignas(8) ValueImpl {
   ///
   explicit ValueImpl(ir::Type type, uint32_t index) {
     if (index > OUTLINE_OP_RESULT_INDEX) {
-      IR_THROW("The value of index must not exceed 6");
+      throw("The value of index must not exceed 6");
     }
     type_ = type;
     first_use_offseted_by_index_ = reinterpret_cast<OpOperandImpl *>(
@@ -167,7 +167,7 @@ class OpInlineResultImpl : public OpResultImpl {
   OpInlineResultImpl(ir::Type type, uint32_t result_index)
       : OpResultImpl(type, result_index) {
     if (result_index > GetMaxInlineResultIndex()) {
-      IR_THROW("Inline result index should not exceed MaxInlineResultIndex(5)");
+      throw("Inline result index should not exceed MaxInlineResultIndex(5)");
     }
   }
 

@@ -241,12 +241,10 @@ TEST(op_test, module_op_death) {
   ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
 
-  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info),
-               ir::IrNotMetException);
-  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info),
-               ir::IrNotMetException);
+  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info), const char *);
+  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info), const char *);
   EXPECT_THROW(ir::Operation::Create({}, {}, output_types, op_info),
-               ir::IrNotMetException);
+               const char *);
 
   ir::Program program(ctx);
 

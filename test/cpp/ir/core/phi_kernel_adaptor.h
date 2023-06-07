@@ -130,7 +130,6 @@ void build_context(ir::Operation* op,
   }
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
-      VLOG(6) << t << " is a inputset at: " << input_index_map[t];
       // get information from input
       ir::Value ptr = op->GetOperandByIndex(input_index_map[t]).source();
       auto in_var_name = name_map.at(ptr);
@@ -205,10 +204,8 @@ class PhiKernelAdaptor {
       phi::InferMetaContext ctx;
 
       build_context<phi::InferMetaContext>((*it), name_map, scope_, &ctx);
-      VLOG(6) << "build infermeta context ";
 
       interface.InferShape(&ctx);
-      VLOG(6) << "execute infershape ";
 
       paddle::dialect::OpYamlInfoInterface op_info_interface =
           (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -223,7 +220,6 @@ class PhiKernelAdaptor {
                                 phi::DataLayout::ANY,
                                 phi::DataType::FLOAT32);
       if (runtime_info.kernel_func[0] == "full_int_array") {
-        VLOG(4) << "full int array kernel dtype is int64";
         kernel_key.set_dtype(phi::DataType::INT64);
       }
       auto found_it = phi_kernels.find(kernel_key);
@@ -239,9 +235,7 @@ class PhiKernelAdaptor {
 
         build_context<phi::KernelContext>(
             (*it), name_map, scope_, &kernel_ctx, false);
-        VLOG(6) << "build  KernelContext ";
         found_it->second(&kernel_ctx);
-        VLOG(6) << "execute  KernelContext ";
 
         auto out_value = (*it)->GetResultByIndex(0);
         out_name = name_map[out_value];

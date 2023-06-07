@@ -107,20 +107,6 @@ void SetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
   IR_ENFORCE(outputs.size() == 0, "The size of outputs must be equal to 0.");
 }
 
-void CombineOp::Build(Builder &builder,
-                      OperationArgument &argument,
-                      const std::vector<ir::OpResult> &inputs) {
-  argument.AddOperands(inputs.begin(), inputs.end());
-  std::vector<ir::Type> output_types;
-  std::vector<ir::Type> input_types;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    input_types.push_back(inputs[i].type());
-  }
-  output_types.push_back(
-      ir::VectorType::get(ir::IrContext::Instance(), input_types));
-  argument.AddTypes(output_types.begin(), output_types.end());
-}
-
 void CombineOp::Verify(const std::vector<ir::OpResult> &inputs,
                        const std::vector<ir::Type> &outputs,
                        const ir::AttributeMap &attributes) {

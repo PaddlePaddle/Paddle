@@ -106,7 +106,7 @@ class alignas(8) Operation final {
   template <typename T, typename Enabler = void>
   struct CastUtil {
     static T call(Operation *op) {
-      IR_THROW("Can't dyn_cast to T, T should be a Op or Trait or Interface");
+      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
     }
   };
 

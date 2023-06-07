@@ -307,7 +307,7 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   if (abstract_type) {
     return *abstract_type;
   } else {
-    IR_THROW("Abstract type not found in IrContext.");
+    throw("Abstract type not found in IrContext.");
   }
 }
 
@@ -318,7 +318,7 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   if (abstract_attribute) {
     return *abstract_attribute;
   } else {
-    IR_THROW("Abstract attribute not found in IrContext.");
+    throw("Abstract attribute not found in IrContext.");
   }
 }
 

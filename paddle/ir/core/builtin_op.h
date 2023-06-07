@@ -87,10 +87,6 @@ class CombineOp : public ir::Op<CombineOp> {
 
   static constexpr const char **attributes_name = nullptr;
 
-  static void Build(Builder &builder,             // NOLINT
-                    OperationArgument &argument,  // NOLINT
-                    const std::vector<ir::OpResult> &inputs);
-
   static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
