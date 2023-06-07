@@ -16,7 +16,7 @@
 
 #include <type_traits>
 
-#include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -35,11 +35,11 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey = std::tuple<phi::Place, dialect::DenseTensorTypeStorage>;
+  using ParamKey = std::tuple<phi::Place, dialect::DenseTensorType>;
 
   AllocatedDenseTensorTypeStorage(phi::Place place,
-                                  dialect::DenseTensorTypeStorage storage)
-      : place_(place), dense_tensor_storage_(storage) {}
+                                  dialect::DenseTensorType type)
+      : place_(place), dense_tensor_type_(type) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
@@ -59,16 +59,15 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
     hash_value = ir::hash_combine(hash_value, std::get<0>(key).HashValue());
 
     // hash dtype
-    auto type_storage = std::get<1>(key);
-    hash_value = ir::hash_combine(
-        hash_value,
-        dialect::DenseTensorTypeStorage::HashValue(
-            dialect::DenseTensorTypeStorage::ParamKey(type_storage.dtype_,
-                                                      type_storage.dims_,
-                                                      type_storage.layout_,
-                                                      type_storage.lod_,
-                                                      type_storage.offset_)));
-
+    auto dense_tensor_type = std::get<1>(key);
+    hash_value = ir::hash_combine(hash_value,
+                                  dialect::DenseTensorTypeStorage::HashValue(
+                                      dialect::DenseTensorTypeStorage::ParamKey(
+                                          dense_tensor_type.dtype(),
+                                          dense_tensor_type.dims(),
+                                          dense_tensor_type.data_layout(),
+                                          dense_tensor_type.lod(),
+                                          dense_tensor_type.offset())));
     return hash_value;
   }
 
@@ -76,17 +75,17 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey &key) const {
-    return ParamKey(place_, dense_tensor_storage_) == key;
+    return ParamKey(place_, dense_tensor_type_) == key;
   }
 
-  ParamKey GetAsKey() const { return ParamKey(place_, dense_tensor_storage_); }
+  ParamKey GetAsKey() const { return ParamKey(place_, dense_tensor_type_); }
 
   ///
   /// \brief AllocatedDenseTensorTypeStorage include five parameters: place,
-  /// DenseTensorTypeStorage
+  /// DenseTensorType
   ///
   phi::Place place_;
-  dialect::DenseTensorTypeStorage dense_tensor_storage_;
+  dialect::DenseTensorType dense_tensor_type_;
 };
 
 }  // namespace dialect

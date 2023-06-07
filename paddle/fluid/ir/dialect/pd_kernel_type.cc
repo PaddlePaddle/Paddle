@@ -22,23 +22,23 @@ const phi::Place& AllocatedDenseTensorType::place() const {
 }
 
 const ir::Type& AllocatedDenseTensorType::dtype() const {
-  return storage()->dense_tensor_storage_.dtype_;
+  return storage()->dense_tensor_type_.dtype();
 }
 
 const phi::DDim& AllocatedDenseTensorType::dims() const {
-  return storage()->dense_tensor_storage_.dims_;
+  return storage()->dense_tensor_type_.dims();
 }
 
 const phi::DataLayout& AllocatedDenseTensorType::data_layout() const {
-  return storage()->dense_tensor_storage_.layout_;
+  return storage()->dense_tensor_type_.data_layout();
 }
 
 const phi::LoD& AllocatedDenseTensorType::lod() const {
-  return storage()->dense_tensor_storage_.lod_;
+  return storage()->dense_tensor_type_.lod();
 }
 
 const size_t& AllocatedDenseTensorType::offset() const {
-  return storage()->dense_tensor_storage_.offset_;
+  return storage()->dense_tensor_type_.offset();
 }
 
 }  // namespace dialect

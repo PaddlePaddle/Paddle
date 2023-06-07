@@ -75,8 +75,10 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
   VLOG(4) << "Try to get a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << ", param_hash=" << hash_value
           << "].";
-  if (parametric_instance_.find(type_id) == parametric_instance_.end())
+  if (parametric_instance_.find(type_id) == parametric_instance_.end()) {
+    VLOG(4) << "throw here";
     throw("The input data pointer is null.");
+  }
   ParametricStorageManager &parametric_storage = *parametric_instance_[type_id];
   return parametric_storage.GetOrCreate(hash_value, equal_func, constructor);
 }

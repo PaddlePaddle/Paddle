@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_kernel_op.h"
 #include "paddle/fluid/ir/dialect/pd_kernel_type.h"
@@ -34,6 +35,7 @@ TEST(program_test, program) {
   // (1) Init environment.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   // (2) Create an empty program object
   ir::Program program(ctx);
@@ -55,10 +57,7 @@ TEST(program_test, program) {
 
   ir::Type allocated_dense_tensor_dtype =
       paddle::dialect::AllocatedDenseTensorType::get(
-          ctx,
-          place,
-          paddle::dialect::DenseTensorTypeStorage(
-              fp32_dtype, dims, data_layout, lod, offset));
+          ctx, place, fp32_dtype, dims, data_layout, lod, offset);
 
   ir::Operation *op1 = ir::Operation::Create(
       {}, op1_attribute, {allocated_dense_tensor_dtype}, op1_info);
