@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
@@ -62,7 +63,7 @@ class AttributeVisitor {
 
   virtual ir::Attribute operator()(const paddle::experimental::Scalar& scalar) {
     VLOG(10) << "translating scalar";
-    throw(std::invalid_argument("not implemented now"));
+    IR_THROW("not support translating paddle::experimental::Scalar");
   }
 
   virtual ir::Attribute operator()(const std::vector<std::string>& strs) {
@@ -128,7 +129,8 @@ class AttributeVisitor {
   virtual ir::Attribute operator()(
       const std::vector<paddle::experimental::Scalar>& ss) {
     VLOG(10) << "translating vector<scalar>";
-    throw(std::invalid_argument("not implemented now"));
+    IR_THROW(
+        "not support translating std::vector<paddle::experimental::Scalar>");
   }
 
   virtual ir::Attribute operator()(const paddle::blank& blank) {

@@ -21,18 +21,35 @@
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
 
-TEST(ScalarTest, base) {
-  using ScalarAttribute = paddle::dialect::ScalarAttribute;
+using ScalarAttribute = paddle::dialect::ScalarAttribute;
 
+TEST(ScalarTest, base) {
   ir::IrContext *ctx = ir::IrContext::Instance();
 
   ir::Attribute bool_scalar = ir::BoolAttribute::get(ctx, false);
   EXPECT_TRUE(bool_scalar.isa<ScalarAttribute>());
-
   EXPECT_TRUE(bool_scalar.isa<ir::BoolAttribute>());
   ir::BoolAttribute pure_bool = bool_scalar.dyn_cast<ir::BoolAttribute>();
   EXPECT_TRUE(pure_bool.isa<ScalarAttribute>());
   ScalarAttribute scalar_from_bool = bool_scalar.dyn_cast<ScalarAttribute>();
   EXPECT_TRUE(scalar_from_bool.isa<ir::BoolAttribute>());
   EXPECT_NO_THROW(scalar_from_bool.dyn_cast<ir::BoolAttribute>());
+}
+
+TEST(ScalarTest, test_classof) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Attribute bool_scalar = ir::BoolAttribute::get(ctx, false);
+  EXPECT_TRUE(bool_scalar.isa<ScalarAttribute>());
+
+  ir::Attribute float_scalar = ir::FloatAttribute::get(ctx, 1.0f);
+  EXPECT_TRUE(float_scalar.isa<ScalarAttribute>());
+
+  ir::Attribute double_scalar = ir::DoubleAttribute::get(ctx, 1.0);
+  EXPECT_TRUE(double_scalar.isa<ScalarAttribute>());
+
+  ir::Attribute int32_scalar = ir::Int32_tAttribute::get(ctx, 1);
+  EXPECT_TRUE(int32_scalar.isa<ScalarAttribute>());
+
+  ir::Attribute int64_scalar = ir::Int64_tAttribute::get(ctx, 1l);
+  EXPECT_TRUE(int64_scalar.isa<ScalarAttribute>());
 }
