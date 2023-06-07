@@ -90,7 +90,7 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils backward_infermeta sparse_backward_infermeta static_prim_api get_expected_kernel_func)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils static_prim_api get_expected_kernel_func)
 
 register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -104,6 +104,10 @@ op_library(load_combine_op DEPS string_array)
 
 if (WITH_GPU OR WITH_ROCM)
     register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu DEPS ${OP_HEADER_DEPS})
+endif()
+
+if (WITH_MKLDNN)
+    register_mkldnn_kernel(layer_norm_op SRCS layer_norm_mkldnn_op.cc DEPS ${OP_HEADER_DEPS})
 endif()
 
 if (WITH_GPU OR WITH_ROCM)
@@ -121,8 +125,13 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 endif()
 
-op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
-op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
+op_library(lstm_op DEPS ${OP_HEADER_DEPS})
+if (WITH_ROCM)
+    op_library(recurrent_op DEPS executor ${OP_HEADER_DEPS})
+else()
+    op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
+endif()
+
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
 
@@ -132,17 +141,16 @@ if (WITH_DGC)
 endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
-cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute cudnn_workspace_helper)
+cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi)
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
-lod_tensor maxouting unpooling pooling lod_rank_table context_project
-sequence_pooling executor generator static_prim_api)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
+lod_tensor unpooling lod_rank_table context_project executor static_prim_api)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc_functor matrix_inverse matrix_solve)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cos_sim_functor memory concat_and_split sampler sample_prob tree2col)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} beam_search)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} eigen_function)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} processgroup_comm_utils)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} process_group_nccl)
@@ -185,7 +193,7 @@ endif()
 copy_if_different(${pybind_file} ${pybind_file_final})
 
 if (WITH_CUSTOM_DEVICE)
-cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi_api)
+cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi type_info)
 endif()
 
 if(NOT "${OP_LIST}" STREQUAL "")

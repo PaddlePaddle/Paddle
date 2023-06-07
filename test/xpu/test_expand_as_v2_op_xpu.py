@@ -93,7 +93,7 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
         def set_inputs(self):
             x = np.random.rand(1, 1, 7, 16).astype(self.dtype)
             self.inputs = {'X': x}
-            target_tensor = np.random.rand(1, 1, 7, 16).astype(self.dtype)
+            target_tensor = np.random.rand(4, 6, 7, 16).astype(self.dtype)
             self.attrs = {'target_shape': target_tensor.shape}
 
         def set_output(self):
@@ -105,7 +105,7 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
         def set_inputs(self):
             x = np.random.rand(1, 1, 7, 16, 1).astype(self.dtype)
             self.inputs = {'X': x}
-            target_tensor = np.random.rand(1, 1, 7, 16, 1).astype(self.dtype)
+            target_tensor = np.random.rand(4, 6, 7, 16, 1).astype(self.dtype)
             self.attrs = {'target_shape': target_tensor.shape}
 
         def set_output(self):
@@ -117,7 +117,7 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
         def set_inputs(self):
             x = np.random.rand(1, 1, 7, 16, 1, 1).astype(self.dtype)
             self.inputs = {'X': x}
-            target_tensor = np.random.rand(1, 1, 7, 16, 1, 1).astype(self.dtype)
+            target_tensor = np.random.rand(4, 6, 7, 16, 1, 1).astype(self.dtype)
             self.attrs = {'target_shape': target_tensor.shape}
 
         def set_output(self):
@@ -129,8 +129,8 @@ class XPUTestExpandAsV2Op(XPUOpTestWrapper):
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
-        input1 = np.random.random([12, 14]).astype("float32")
-        input2 = np.random.random([2, 12, 14]).astype("float32")
+        x_np = np.random.random([12, 14]).astype("float32")
+        y_np = np.random.random([2, 12, 14]).astype("float32")
         x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
         y = paddle.static.data(
@@ -144,10 +144,10 @@ class TestExpandAsV2API(unittest.TestCase):
         exe = fluid.Executor(place=fluid.XPUPlace(0))
         res_1 = exe.run(
             fluid.default_main_program(),
-            feed={"x": input1, "target_tensor": input2},
+            feed={"x": x_np, "target_tensor": y_np},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+        assert np.array_equal(res_1[0], np.tile(x_np, (2, 1, 1)))
 
 
 support_types = get_xpu_op_support_types('expand_as_v2')

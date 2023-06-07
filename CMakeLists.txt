@@ -264,7 +264,6 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls" OFF)
 option(WITH_PSLIB "Compile with pslib support" OFF)
 option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
-option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
@@ -307,7 +306,7 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" OFF)
+option(WITH_IR "Compile PaddlePaddle with NEWIR" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -343,6 +342,11 @@ endif()
 
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
+   AND NOT WITH_GPU
+   AND NOT WITH_ROCM
+   AND NOT WITH_XPU
+   AND NOT WITH_XPU_KP
+   AND NOT WITH_XPU_XFT
    AND WITH_PYTHON)
   set(WITH_CUSTOM_DEVICE
       ON

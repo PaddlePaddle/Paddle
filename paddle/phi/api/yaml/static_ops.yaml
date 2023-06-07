@@ -26,6 +26,38 @@
     func : all_reduce
     param: [x, reduce_type]
 
+- op : amax
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+    param : [x, axis, keepdim]
+  kernel :
+    func : amax_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : amax_grad
+
+- op : amin
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+    param : [x, axis, keepdim]
+  kernel :
+    func : amin_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : amin_grad
+
+- op : any
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMetaBase
+    param : [x, axis, keepdim, reduce_all]
+  kernel :
+    func : any_raw
+    param : [x, axis, keepdim, reduce_all]
+
 - op : arange
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
@@ -68,6 +100,19 @@
     func : broadcast
     param: [x, root]
 
+- op : conv2d_transpose
+  args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel :
+    func : conv2d_transpose
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+    data_type : x
+  optional : bias
+  backward : conv2d_transpose_grad
+
 - op : decode_jpeg
   args : (Tensor x, str mode = "unchanged")
   output : Tensor(out)
@@ -87,6 +132,19 @@
     func : deformable_conv
     data_type : x
   backward : deformable_conv_grad
+
+- op : depthwise_conv2d_transpose
+  args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Conv2dTransposeInferMeta
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+  kernel :
+    func : depthwise_conv2d_transpose
+    param : [x, filter, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
+    data_type : x
+  optional : bias
+  backward : depthwise_conv2d_transpose_grad
 
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
@@ -180,6 +238,17 @@
     backend : x
     force_backend : force_cpu
 
+- op : hardswish
+  args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardswish
+    param : [x]
+  backward : hardswish_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -229,6 +298,28 @@
            matrix_rank_tol {dense, dense -> dense}
     data_type : x
 
+- op : max
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+    param : [x, axis, keepdim, reduce_all]
+  kernel :
+    func : max_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : max_grad
+
+- op : min
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+    param : [x, axis, keepdim, reduce_all]
+  kernel :
+    func : min_raw
+    param : [x, axis, keepdim, reduce_all]
+  backward : min_grad
+
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
@@ -270,6 +361,28 @@
   kernel :
     func : p_recv_array
     param : [peer, dtype, out_shape]
+
+- op : pool2d
+  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT")
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : pool2d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  backward : pool2d_grad
+
+- op : pool3d
+  args : (Tensor x, int[] kernel_size, int[] strides = {1,1,1}, int[] paddings = {0,0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCDHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT")
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : pool3d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  backward : pool3d_grad
 
 - op : randint
   args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
@@ -313,6 +426,16 @@
     func : reduce_scatter
     param: [x, nranks]
 
+- op : relu6
+  args : (Tensor x, float threshold = 6.0f)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6_raw
+  backward : relu6_grad
+
 - op : rnn
   args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
   output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
@@ -345,6 +468,38 @@
   inplace : (x -> out)
   backward : softmax_grad
 
+- op : strided_slice
+  args : (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={})
+  output : Tensor
+  infer_meta :
+    func : StridedSliceRawInferMeta
+  kernel :
+    func : strided_slice
+    param : [x, axes, starts, ends, strides]
+  backward : strided_slice_grad
+
+- op : sum
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : SumRawInferMeta
+    param : [x, axis, keepdim, reduce_all, out_dtype]
+  kernel :
+    func : sum_raw
+    param : [x, axis, keepdim, reduce_all, out_dtype]
+    data_type : x
+  backward : sum_grad
+
+- op : swish
+  args : (Tensor x, float beta = 1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : swish_raw
+  backward : swish_grad
+
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)
@@ -355,6 +510,15 @@
     func : tril_indices
     param : [rows, cols, offset, dtype]
     data_type : dtype
+
+- op : tril_triu
+  args : (Tensor x, int diagonal = 0, bool lower = false)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilTriuInferMeta
+  kernel :
+    func : tril_triu
+  backward : tril_triu_grad
 
 - op : triu_indices
   args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)
@@ -398,3 +562,15 @@
   kernel :
     func : unique
     data_type : x
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+    param : [x, indices, ksize, strides, paddings,output_size, data_format]
+  kernel:
+    func: unpool
+    data_type: x
+    param : [x, indices, ksize, strides, paddings,output_size, data_format]
+  backward: unpool_grad

@@ -46,7 +46,7 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
         "should be int32, int64, float32, float64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Add two tensors element-wise";
   }
 };
@@ -151,6 +151,44 @@ class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("D_DDX", this->InputGrad("DDX"));
     op->SetOutput("D_DDY", this->InputGrad("DDY"));
+  }
+};
+
+class ElementwiseAddCompositeTripleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor ddx = this->GetSingleForwardInput("DDX");
+    paddle::Tensor ddy = this->GetSingleForwardInput("DDY");
+    paddle::Tensor d_ddout = this->GetSingleOutputGrad("DDOut");
+
+    // get output
+    paddle::Tensor grad_grad_x_t =
+        this->GetSingleInputGrad(framework::GradVarName("DDX"));
+    paddle::Tensor grad_grad_y_t =
+        this->GetSingleInputGrad(framework::GradVarName("DDY"));
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "add_triple_grad but we got: ",
+                                     axis));
+
+    paddle::Tensor* grad_grad_x = this->GetOutputPtr(&grad_grad_x_t);
+    std::string grad_grad_x_name = this->GetOutputName(grad_grad_x_t);
+    paddle::Tensor* grad_grad_y = this->GetOutputPtr(&grad_grad_y_t);
+    std::string grad_grad_y_name = this->GetOutputName(grad_grad_y_t);
+
+    VLOG(6) << "Runing add_triple_grad composite func";
+    prim::add_triple_grad<prim::DescTensor>(
+        ddx, ddy, d_ddout, axis, grad_grad_x, grad_grad_y);
+    this->RecoverOutputName(grad_grad_x_t, grad_grad_x_name);
+    this->RecoverOutputName(grad_grad_y_t, grad_grad_y_name);
   }
 };
 

@@ -18,8 +18,8 @@ import unittest
 
 from test_cluster import cluster_json
 
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost.comp_op_cost import (
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.cost.comp_op_cost import (
     AssignOpCost,
     AssignValueOpCost,
     BeamSearchDecodeOpCost,

@@ -147,7 +147,7 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
-// NOTE: GPU/XPU is compiled seperatly.
+// NOTE: GPU/XPU is compiled separately.
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
@@ -244,7 +244,7 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_custom_place(place)) {
-    // CudaPinndePlace is added for varbase created by dataloader
+    // CudaPinnedPlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
         data_type == paddle::framework::proto::VarType::BF16) {

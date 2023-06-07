@@ -27,11 +27,11 @@ template <typename T, typename Context>
 void UnpoolKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& indices,
-                  const std::vector<int>& ksize,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  const IntArray& output_size,
-                  const std::string& data_format,
+                  const std::vector<int>& ksize UNUSED,
+                  const std::vector<int>& strides UNUSED,
+                  const std::vector<int>& paddings UNUSED,
+                  const IntArray& output_size UNUSED,
+                  const std::string& data_format UNUSED,
                   DenseTensor* out) {
   T* output_data = dev_ctx.template Alloc<T>(out);
   if (output_data) {
@@ -76,11 +76,11 @@ template <typename T, typename Context>
 void Unpool3dKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& indices,
-                    const std::vector<int>& ksize,
-                    const std::vector<int>& strides,
-                    const std::vector<int>& paddings,
-                    const std::vector<int>& output_size,
-                    const std::string& data_format,
+                    const std::vector<int>& ksize UNUSED,
+                    const std::vector<int>& strides UNUSED,
+                    const std::vector<int>& paddings UNUSED,
+                    const std::vector<int>& output_size UNUSED,
+                    const std::string& data_format UNUSED,
                     DenseTensor* out) {
   T* output_data = dev_ctx.template Alloc<T>(out);
   if (output_data) {

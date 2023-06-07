@@ -235,30 +235,6 @@ void subtract_grad(const Tensor& x,
 }
 
 template <typename T>
-void subtract_double_grad(const Tensor& y,
-                          const Tensor& grad_out,
-                          const paddle::optional<Tensor>& grad_x_grad,
-                          const paddle::optional<Tensor>& grad_y_grad,
-                          int axis,
-                          Tensor* grad_out_grad) {
-  if (grad_out_grad) {
-    // ddout = ddx - ddy
-    if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
-    } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
-      if (grad_x_grad) {
-        ddout = ddout + grad_x_grad.get();
-      }
-      if (grad_y_grad) {
-        ddout = ddout - grad_y_grad.get();
-      }
-      set_output<T>(ddout, grad_out_grad);
-    }
-  }
-}
-
-template <typename T>
 void add_grad(const Tensor& x,
               const Tensor& y,
               const Tensor& out_grad,
@@ -296,30 +272,6 @@ void add_grad(const Tensor& x,
       }
     } else {
       by_pass<T>(out_grad, dx);
-    }
-  }
-}
-
-template <typename T>
-void add_double_grad(const Tensor& y,
-                     const Tensor& grad_out,
-                     const paddle::optional<Tensor>& grad_x_grad,
-                     const paddle::optional<Tensor>& grad_y_grad,
-                     int axis,
-                     Tensor* grad_out_grad) {
-  if (grad_out_grad) {
-    // ddout = ddx + ddy
-    if (!grad_x_grad && !grad_y_grad) {
-      grad_out_grad = nullptr;
-    } else {
-      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
-      if (grad_x_grad) {
-        ddout = ddout + grad_x_grad.get();
-      }
-      if (grad_y_grad) {
-        ddout = ddout + grad_y_grad.get();
-      }
-      set_output<T>(ddout, grad_out_grad);
     }
   }
 }
@@ -556,75 +508,6 @@ void multiply_grad(const Tensor& x,
 }
 
 template <typename T>
-void multiply_double_grad(const Tensor& x,
-                          const Tensor& y,
-                          const Tensor& grad_out,
-                          const paddle::optional<Tensor>& grad_x_grad,
-                          const paddle::optional<Tensor>& grad_y_grad,
-                          int axis,
-                          Tensor* x_grad,
-                          Tensor* y_grad,
-                          Tensor* grad_out_grad) {
-  if (x_grad) {
-    if (grad_y_grad) {
-      auto dx = grad_y_grad.get() * grad_out;
-      if (dx.dims() != x.dims()) {
-        auto axes = get_reduce_dims_from_out(dx.dims(), x.dims());
-        if (!axes.size()) {
-          set_output<T>(dx, x_grad);
-        } else {
-          auto dx_reduce = dx.sum(phi::vectorize(axes), dx.dtype(), false);
-          if (dx_reduce.dims().size() != x.dims().size()) {
-            dx_reduce = reshape<T>(dx_reduce, x.shape());
-          }
-          set_output<T>(dx_reduce, x_grad);
-        }
-      } else {
-        set_output<T>(dx, x_grad);
-      }
-
-    } else {
-      x_grad = nullptr;
-    }
-  }
-  if (y_grad) {
-    if (grad_x_grad) {
-      auto dy = grad_x_grad.get() * grad_out;
-      if (dy.dims() != y.dims()) {
-        auto axes = get_reduce_dims_from_out(dy.dims(), y.dims());
-        if (!axes.size()) {
-          set_output<T>(dy, y_grad);
-        } else {
-          auto dy_reduce = dy.sum(phi::vectorize(axes), dy.dtype(), false);
-          if (dy_reduce.dims().size() != y.dims().size()) {
-            dy_reduce = reshape<T>(dy_reduce, y.shape());
-          }
-          set_output<T>(dy_reduce, y_grad);
-        }
-      } else {
-        set_output<T>(dy, y_grad);
-      }
-    } else {
-      y_grad = nullptr;
-    }
-  }
-  if (grad_out_grad) {
-    if (grad_x_grad && grad_y_grad) {
-      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
-    } else if (grad_x_grad) {
-      auto ddout = grad_x_grad.get() * y;
-      set_output<T>(ddout, grad_out_grad);
-    } else if (grad_y_grad) {
-      auto ddout = grad_y_grad.get() * x;
-      set_output<T>(ddout, grad_out_grad);
-    } else {
-      grad_out_grad = nullptr;
-    }
-  }
-}
-
-template <typename T>
 void expand_grad(const Tensor& x,
                  const Tensor& out_grad,
                  const IntArray& shape,
@@ -659,7 +542,15 @@ void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    set_output<T>(out_grad * out, x_grad);
+    if (out.dtype() == phi::DataType::FLOAT16 ||
+        out.dtype() == phi::DataType::BFLOAT16) {
+      Tensor out_promote = cast<T>(out, phi::DataType::FLOAT32);
+      Tensor out_grad_promote = cast<T>(out_grad, phi::DataType::FLOAT32);
+      set_output<T>(cast<T>(out_promote * out_grad_promote, out.dtype()),
+                    x_grad);
+    } else {
+      set_output<T>(out_grad * out, x_grad);
+    }
   }
 }
 
@@ -934,8 +825,9 @@ void layer_norm_grad(const Tensor& x,
     scale_cast = reshape<T>(*scale_ptr, std::vector<int64_t>({1, shape_2}));
   }
 
-  // cast dtype to float32 if dtype =float16
-  if (x.dtype() == phi::DataType::FLOAT16) {
+  // cast dtype to float32 if dtype =float16 or bfloat16
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
     x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
     out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
     if (scale_ptr) {
@@ -967,7 +859,8 @@ void layer_norm_grad(const Tensor& x,
     auto x_grad_tmp = dx_end - d_mean_d_std;
     x_grad_tmp = reshape<T>(x_grad_tmp, phi::vectorize(x.dims()));
 
-    if (x.dtype() == phi::DataType::FLOAT16) {
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
       x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
     }
     set_output<T>(x_grad_tmp, x_grad);
@@ -979,6 +872,10 @@ void layer_norm_grad(const Tensor& x,
           (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
               .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
+      if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
+          scale_ptr->dtype() == phi::DataType::BFLOAT16) {
+        scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
+      }
       set_output<T>(scale_grad_tmp, scale_grad);
     } else {
       scale_grad = nullptr;
@@ -990,6 +887,10 @@ void layer_norm_grad(const Tensor& x,
       auto bias_grad_tmp =
           out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
+      if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
+          bias_ptr->dtype() == phi::DataType::BFLOAT16) {
+        bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
+      }
       set_output<T>(bias_grad_tmp, bias_grad);
     } else {
       bias_grad = nullptr;
@@ -1366,9 +1267,8 @@ void batch_norm_grad(const Tensor& x,
       auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
       auto nhwc_out_grad_sum = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
 
-      auto x_sub_mean = nhwc_x - mean_data;
-      auto sum_dout_mul_diff =
-          sum<T>(nhwc_out_grad * x_sub_mean, reduce_axis, dtype, false);
+      auto sum_dout_mul_diff = sum<T>(
+          nhwc_out_grad * (nhwc_x - mean_data), reduce_axis, dtype, false);
 
       if (x_grad) {
         if (use_global_stats) {
@@ -1382,7 +1282,8 @@ void batch_norm_grad(const Tensor& x,
           auto part1 = scale * rsqrt_var;
           auto mean_temp1 = nhwc_out_grad_sum / nhw;
           auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
-          auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 =
+              nhwc_out_grad - mean_temp1 - (nhwc_x - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
@@ -1403,11 +1304,10 @@ void batch_norm_grad(const Tensor& x,
     }
     case DataLayout::kNHWC: {
       if (x_grad) {
-        auto x_sub_mean = x_data - mean_data;
         auto out_grad_data_sum =
             sum<T>(out_grad_data, reduce_axis, dtype, false);
-        auto nhwc_sum_dout_mul_diff =
-            sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
+        auto nhwc_sum_dout_mul_diff = sum<T>(
+            out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1420,7 +1320,8 @@ void batch_norm_grad(const Tensor& x,
           auto mean_temp1 = out_grad_data_sum / nhw;
           auto mean_temp2 =
               nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
-          auto part2 = out_grad_data - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 =
+              out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1567,6 +1468,51 @@ void gelu_grad(const Tensor& x,
       auto cdf = scale<T>(scale<T>(erf<T>(kAlpha * x), 1., 1.), 0.5);
       auto pdf = kBeta * exp<T>(scale<T>(x * x, -0.5));
       set_output<T>(out_grad * (cdf + x * pdf), x_grad);
+    }
+  }
+}
+
+template <typename T>
+void minimum_grad(const Tensor& x,
+                  const Tensor& y,
+                  const Tensor& out_grad,
+                  Tensor* x_grad,
+                  Tensor* y_grad) {
+  if (x_grad) {
+    auto x_tmp = cast<T>(less_than<T>(x, y), out_grad.dtype());
+    auto dx_res = out_grad * x_tmp;
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dx_res, x_grad);
+      } else {
+        auto dx_reduce_res =
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, x_grad);
+      }
+    } else {
+      set_output<T>(dx_res, x_grad);
+    }
+  }
+
+  if (y_grad) {
+    auto y_tmp = cast<T>(greater_equal<T>(x, y), out_grad.dtype());
+    auto dy_res = out_grad * y_tmp;
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dy_res, y_grad);
+      } else {
+        auto dy_reduce_res =
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, y_grad);
+      }
+    } else {
+      set_output<T>(dy_res, y_grad);
     }
   }
 }

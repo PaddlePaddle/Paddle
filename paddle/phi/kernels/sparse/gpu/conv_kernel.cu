@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
 
@@ -159,7 +159,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   bool mixed_precision = dev_ctx.GetComputeCapability() >= 75 &&
                          dev_ctx.GetComputeCapability() < 80 &&
                          std::is_same<T, float>::value;
@@ -273,7 +273,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                      out_channels,
                                      1,
                                      out_values_ptr);
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
   }
 #endif
 }

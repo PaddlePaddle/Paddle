@@ -24,9 +24,10 @@ from ..fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ..framework import LayerHelper, in_dygraph_mode
+from ..framework import LayerHelper, in_dynamic_mode
 from .creation import full
 from .manipulation import cast
+from .math import _get_reduce_axis
 
 __all__ = []
 
@@ -84,7 +85,7 @@ def transpose(x, perm, name=None):
             # [3L, 2L, 4L]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -198,7 +199,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             y = paddle.rand([10])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # (1,)
+            # ()
 
             # matrix * vector
             x = paddle.rand([10, 5])
@@ -229,7 +230,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             # (10, 3, 5, 5)
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.matmul(x, y, transpose_x, transpose_y)
     else:
         attrs = {
@@ -333,8 +334,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             # compute inf-order  norm
             out_pnorm = paddle.linalg.norm(x, p=float("inf"))
-            # out_pnorm  = Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #                    [12.])
+            # out_pnorm  = Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                    12.)
 
             out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
             # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -344,8 +345,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             # compute -inf-order  norm
             out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
-            # out_pnorm: Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #                  [0.])
+            # out_pnorm: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  0.)
 
             out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
             # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -367,7 +368,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 "The dim of frobenius norm op should be None or two elements list!"
             )
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
@@ -403,7 +404,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
           axis (int, optional): None for last dimension.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         """
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if axis is None:
                 axis = -1
             return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
@@ -442,7 +443,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             out = _C_ops.abs(input)
             if porder == np.float64('inf'):
                 return _C_ops.max(out, axis, keepdim)
@@ -459,12 +460,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             reduce_out = helper.create_variable_for_type_inference(
                 dtype=helper.input_dtype()
             )
-
-            reduce_all = (
-                True if axis is None or axis == [] or asvector else False
-            )
-            axis = axis if axis is not None and axis != [] else [0]
-
+            reduce_all, axis = _get_reduce_axis(axis, x)
             reduce_type = (
                 'reduce_max' if porder == np.float64('inf') else 'reduce_min'
             )
@@ -486,7 +482,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         NOTE:
             This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
         """
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             abs_out = _C_ops.abs(input)
             pow_out = _C_ops.pow(abs_out, porder)
             sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
@@ -516,6 +512,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         sum_out = block.create_variable_for_type_inference(
             dtype=block.input_dtype()
         )
+        reduce_all, axis = _get_reduce_axis(axis, x)
         block.append_op(
             type='reduce_sum',
             inputs={'X': pow_out},
@@ -523,7 +520,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             attrs={
                 'dim': axis,
                 'keep_dim': keepdim,
-                'reduce_all': True if axis is None else False,
+                'reduce_all': reduce_all,
             },
         )
         block.append_op(
@@ -690,18 +687,18 @@ def dist(x, y, p=2, name=None):
             x = paddle.to_tensor([[3, 3],[3, 3]], dtype="float32")
             y = paddle.to_tensor([[3, 3],[3, 1]], dtype="float32")
             out = paddle.dist(x, y, 0)
-            print(out) # out = [1.]
+            print(out) # out = 1.
 
             out = paddle.dist(x, y, 2)
-            print(out) # out = [2.]
+            print(out) # out = 2.
 
             out = paddle.dist(x, y, float("inf"))
-            print(out) # out = [2.]
+            print(out) # out = 2.
 
             out = paddle.dist(x, y, float("-inf"))
-            print(out) # out = [0.]
+            print(out) # out = 0.
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
@@ -745,48 +742,48 @@ def cond(x, p=None, name=None):
 
             # compute conditional number when p is None
             out = paddle.linalg.cond(x)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.41421342])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.41421342)
 
             # compute conditional number when order of the norm is 'fro'
             out_fro = paddle.linalg.cond(x, p='fro')
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [3.16227770])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        3.16227770)
 
             # compute conditional number when order of the norm is 'nuc'
             out_nuc = paddle.linalg.cond(x, p='nuc')
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [9.24263859])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        9.24263859)
 
             # compute conditional number when order of the norm is 1
             out_1 = paddle.linalg.cond(x, p=1)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        2.)
 
             # compute conditional number when order of the norm is -1
             out_minus_1 = paddle.linalg.cond(x, p=-1)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.)
 
             # compute conditional number when order of the norm is 2
             out_2 = paddle.linalg.cond(x, p=2)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.41421342])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.41421342)
 
             # compute conditional number when order of the norm is -1
             out_minus_2 = paddle.linalg.cond(x, p=-2)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.70710683])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.70710683)
 
             # compute conditional number when order of the norm is inf
             out_inf = paddle.linalg.cond(x, p=float("inf"))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        2.)
 
             # compute conditional number when order of the norm is -inf
             out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.)
 
             a = paddle.randn([2, 4, 4])
             # Tensor(shape=[2, 4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
@@ -825,7 +822,7 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             abs_out = _C_ops.abs(input)
             sum_out = _C_ops.sum(abs_out, axis, None, False)
 
@@ -834,8 +831,6 @@ def cond(x, p=None, name=None):
             if porder == -1 or porder == -np.inf:
                 return _C_ops.min(sum_out, [-1], False)
         else:
-            reduce_all = True if axis is None or axis == [] else False
-            axis = axis if axis is not None and axis != [] else [0]
             block = LayerHelper('norm', **locals())
             abs_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -849,6 +844,8 @@ def cond(x, p=None, name=None):
             block.append_op(
                 type='abs', inputs={'X': input}, outputs={'Out': abs_out}
             )
+
+            reduce_all, axis = _get_reduce_axis(axis, x)
             block.append_op(
                 type='reduce_sum',
                 inputs={'X': abs_out},
@@ -888,13 +885,12 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
             return _C_ops.pow(sum_out_2, float(1.0 / porder))
         else:
-            reduce_all = True if axis is None or axis == [] else False
             block = LayerHelper('norm', **locals())
             pow_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -914,6 +910,8 @@ def cond(x, p=None, name=None):
                 outputs={'Out': pow_out},
                 attrs={'factor': porder},
             )
+
+            reduce_all, axis = _get_reduce_axis(axis, x)
             block.append_op(
                 type='reduce_sum',
                 inputs={'X': pow_out},
@@ -950,7 +948,7 @@ def cond(x, p=None, name=None):
         """
         u, s, vh = svd(input, full_matrices=False)
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if porder == "nuc":
                 return _C_ops.sum(s, axis, None, False)
             max_out = _C_ops.max(s, axis, False)
@@ -960,7 +958,7 @@ def cond(x, p=None, name=None):
             if porder == -2:
                 return _C_ops.divide(min_out, max_out)
         else:
-            reduce_all = True if axis is None or axis == [] else False
+            reduce_all, axis = _get_reduce_axis(axis, x)
             block = LayerHelper('norm', **locals())
             out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -1021,7 +1019,7 @@ def cond(x, p=None, name=None):
                 return out
 
     def empty_tensor(input, shape):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -1095,16 +1093,16 @@ def dot(x, y, name=None):
         x = paddle.to_tensor([1, 2, 3])
         y = paddle.to_tensor([4, 5, 6])
         z = paddle.dot(x, y)
-        print(z)  # [32]
+        print(z)  # 32
 
         # 2-D Tensor * 2-D Tensor
         x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
         y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
         z = paddle.dot(x, y)
-        print(z)  # [[32], [64]]
+        print(z)  # [32, 64]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.dot(x, y)
     else:
         op_type = 'dot'
@@ -1163,7 +1161,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
 
         import paddle
 
-        xt = paddle.rand((3,4))
+        xt = paddle.rand((3, 4))
         paddle.linalg.cov(xt)
 
         '''
@@ -1306,7 +1304,7 @@ def t(input, name=None):
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape)
         )
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if len(input.shape) <= 1:
             return input
         # 2-D tensor
@@ -1374,7 +1372,7 @@ def cross(x, y, axis=9, name=None):
             #  [0. 0. 0.]
             #  [0. 0. 0.]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         axis = K_DEFAULT_DIM if axis is None else axis
         return _C_ops.cross(x, y, axis)
     else:
@@ -1440,7 +1438,7 @@ def cholesky(x, upper=False, name=None):
             out = paddle.linalg.cholesky(x, upper=False)
             print(out)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -1485,7 +1483,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             a = paddle.eye(10)
             b = paddle.linalg.matrix_rank(a)
             print(b)
-            # b = [10]
+            # b = 10
 
             c = paddle.ones(shape=[3, 4, 5, 5])
             d = paddle.linalg.matrix_rank(c, tol=0.01, hermitian=True)
@@ -1495,7 +1493,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             #      [1, 1, 1, 1]]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(tol, Variable):
             if tol.dtype != x.dtype:
                 tol_tensor = cast(tol, x.dtype)
@@ -1580,7 +1578,7 @@ def bmm(x, y, name=None):
             #          [60., 60.]]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.bmm(x, y)
     else:
         x_shape = x.shape
@@ -1636,7 +1634,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
             result = paddle.histogram(inputs, bins=4, min=0, max=3)
             print(result) # [0, 2, 1, 0]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.histogram(input, bins, min, max)
     else:
         helper = LayerHelper('histogram', **locals())
@@ -1683,7 +1681,7 @@ def bincount(x, weights=None, minlength=0, name=None):
     if x.dtype not in [paddle.int32, paddle.int64]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.bincount(x, weights, minlength)
     else:
         helper = LayerHelper('bincount', **locals())
@@ -1739,7 +1737,7 @@ def mv(x, vec, name=None):
             # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [14., 10.])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.mv(x, vec)
     else:
 
@@ -1804,7 +1802,7 @@ def det(x, name=None):
 
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.det(x)
     else:
         check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
@@ -1863,7 +1861,7 @@ def slogdet(x, name=None):
             # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.slogdet(x)
     else:
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -1945,7 +1943,7 @@ def svd(x, full_matrices=False, name=None):
             #                  V * VH == I
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.svd(x, full_matrices)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
@@ -2019,7 +2017,7 @@ def matrix_power(x, n, name=None):
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.matrix_power(x, n)
     else:
         check_variable_and_dtype(
@@ -2079,7 +2077,7 @@ def qr(x, mode="reduced", name=None):
 
             # one can verify : X = Q * R ;
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         q, r = _C_ops.qr(x, mode)
         if mode == "r":
             return r
@@ -2182,7 +2180,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
             # one can verify : X = P @ L @ U ;
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
@@ -2277,7 +2275,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
             # one can verify : X = P @ L @ U ;
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
     else:
@@ -2348,7 +2346,7 @@ def eig(x, name=None):
             #         (-0.21026087843552282+0j)])
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.eig(x)
     else:
         check_variable_and_dtype(
@@ -2417,7 +2415,7 @@ def eigvals(x, name=None):
             )
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.eigvals(x)
     else:
         check_variable_and_dtype(
@@ -2488,7 +2486,7 @@ def multi_dot(x, name=None):
         # [10, 7]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.multi_dot(x)
     else:
         check_type(x, 'x', (list, tuple), 'multi_dot')
@@ -2546,7 +2544,7 @@ def eigh(x, UPLO='L', name=None):
             #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.eigh(x, UPLO)
     else:
 
@@ -2653,7 +2651,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, False)
@@ -2876,7 +2874,7 @@ def solve(x, y, name=None):
             print(out)
             # [2., 3.])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -2945,7 +2943,7 @@ def triangular_solve(
             print(out)
             # [7, -2, -5]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3004,7 +3002,7 @@ def cholesky_solve(x, y, upper=False, name=None):
             print(out)
             # [-2.5, -7, 9.5]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.cholesky_solve(x, y, upper)
     else:
         helper = LayerHelper("cholesky_solve", **locals())
@@ -3051,7 +3049,7 @@ def eigvalsh(x, UPLO='L', name=None):
             # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [0.17157286, 5.82842731])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
     else:
@@ -3202,7 +3200,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         solution, residuals, rank, singular_values = _C_ops.lstsq(
             x, y, rcond, driver
         )
@@ -3328,3 +3326,119 @@ def corrcoef(x, rowvar=True, name=None):
         c = paddle.clip(c, -1, 1)
 
     return c
+
+
+def cdist(
+    x, y, p=2.0, compute_mode="use_mm_for_euclid_dist_if_necessary", name=None
+):
+    r"""
+
+    Compute the p-norm distance between each pair of the two collections of inputs.
+
+    This function is equivalent to `scipy.spatial.distance.cdist(input,'minkowski', p=p)`
+    if :math:`p \in (0, \infty)`. When :math:`p = 0` it is equivalent to `scipy.spatial.distance.cdist(input, 'hamming') * M`.
+    When :math:`p = \infty`, the closest scipy function is `scipy.spatial.distance.cdist(xn, lambda x, y: np.abs(x - y).max())`.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`B \times P \times M`.
+        y (Tensor): A tensor with shape :math:`B \times R \times M`.
+        p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
+        compute_mode (str, optional): The mode for compute distance.
+
+            - ``use_mm_for_euclid_dist_if_necessary`` , for p = 2.0 and (P > 25 or R > 25), it will use matrix multiplication to calculate euclid distance if possible.
+            - ``use_mm_for_euclid_dist`` , for p = 2.0, it will use matrix multiplication to calculate euclid distance.
+            - ``donot_use_mm_for_euclid_dist`` , it will not use matrix multiplication to calculate euclid distance.
+
+            Default: ``use_mm_for_euclid_dist_if_necessary``.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the dtype is same as input tensor.
+
+        If x has shape :math:`B \times P \times M` and y has shape :math:`B \times R \times M` then
+        the output will have shape :math:`B \times P \times R`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            x = paddle.to_tensor([[0.9041,  0.0196], [-0.3108, -2.4423], [-0.4821,  1.059]], dtype=paddle.float32)
+            y = paddle.to_tensor([[-2.1763, -0.4713], [-0.6986,  1.3702]], dtype=paddle.float32)
+            distance = paddle.cdist(x, y)
+            print(distance)
+            # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            # [[3.1193, 2.0959], [2.7138, 3.8322], [2.2830, 0.3791]])
+    """
+
+    check_variable_and_dtype(x, 'x', ('float32', 'float64'), 'cdist')
+    check_variable_and_dtype(y, 'y', ('float32', 'float64'), 'cdist')
+    check_type(p, 'p', (float, int), 'cdist')
+
+    if compute_mode not in [
+        'use_mm_for_euclid_dist_if_necessary',
+        'use_mm_for_euclid_dist',
+        'donot_use_mm_for_euclid_dist',
+    ]:
+        raise ValueError(
+            "The compute_mode should be 'use_mm_for_euclid_dist_if_necessary', "
+            "'use_mm_for_euclid_dist' or 'donot_use_mm_for_euclid_dist', "
+            "but received compute_mode is %s." % compute_mode
+        )
+
+    mode = 0
+    if compute_mode == 'use_mm_for_euclid_dist_if_necessary':
+        mode = 0
+    elif compute_mode == 'use_mm_for_euclid_dist':
+        mode = 1
+    elif compute_mode == 'donot_use_mm_for_euclid_dist':
+        mode = 2
+
+    x_shape = list(x.shape)
+    assert len(x_shape) >= 2, (
+        "The x must be at least 2-dimensional, "
+        "But received Input x's dimensional is %s.\n" % len(x_shape)
+    )
+    y_shape = list(y.shape)
+    assert len(y_shape) >= 2, (
+        "The y must be at least 2-dimensional, "
+        "But received Input y's dimensional is %s.\n" % len(y_shape)
+    )
+    assert x_shape[-1] == y_shape[-1], (
+        "The x and y must have same last dimension, "
+        "But received Input x's last dimension is {}, "
+        "Input y's last dimension is {}.\n".format(x_shape[-1], y_shape[-1])
+    )
+    assert p >= 0, (
+        "The p must be greater than or equal to 0, "
+        "But received p is %s.\n" % p
+    )
+
+    r1 = x.shape[-2]
+    r2 = y.shape[-2]
+    c1 = x.shape[-1]
+
+    p = float(p)
+
+    if r1 == 0 or r2 == 0:
+        return paddle.empty((r1, r2), dtype=x.dtype)
+
+    if c1 == 0:
+        return paddle.zeros((r1, r2), dtype=x.dtype)
+
+    if p == 2.0 and (mode == 1 or (mode == 0 and (r1 > 25 or r2 > 25))):
+        x_norm = paddle.sum(x.pow(2), axis=-1, keepdim=True)
+        y_norm = paddle.sum(y.pow(2), axis=-1, keepdim=True)
+        y_transposed = paddle.transpose(
+            y, perm=[*range(y.ndim - 2), y.ndim - 1, y.ndim - 2]
+        )
+        y_norm_transposed = paddle.transpose(
+            y_norm,
+            perm=[*range(y_norm.ndim - 2), y_norm.ndim - 1, y_norm.ndim - 2],
+        )
+        res = paddle.matmul(x, y_transposed) * -2 + y_norm_transposed + x_norm
+        res = paddle.clip(res, min=0.0).sqrt()
+        return res
+
+    return paddle.linalg.norm(
+        x[..., None, :] - y[..., None, :, :], p=p, axis=-1
+    )

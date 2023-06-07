@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -380,6 +380,176 @@ void silu_double_grad(const Tensor& x,
     auto dx =
         sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - x * sigmoid)) * tmp1;
     set_output<T>(dx, grad_x);
+  }
+}
+
+template <typename T>
+void multiply_double_grad(const Tensor& x,
+                          const Tensor& y,
+                          const Tensor& grad_out,
+                          const paddle::optional<Tensor>& grad_x_grad,
+                          const paddle::optional<Tensor>& grad_y_grad,
+                          int axis,
+                          Tensor* x_grad,
+                          Tensor* y_grad,
+                          Tensor* grad_out_grad) {
+  if (x_grad) {
+    if (grad_y_grad) {
+      auto dx = grad_y_grad.get() * grad_out;
+      if (dx.dims() != x.dims()) {
+        auto axes = get_reduce_dims_from_out(dx.dims(), x.dims());
+        if (!axes.size()) {
+          set_output<T>(dx, x_grad);
+        } else {
+          auto dx_reduce = dx.sum(phi::vectorize(axes), dx.dtype(), false);
+          if (dx_reduce.dims().size() != x.dims().size()) {
+            dx_reduce = reshape<T>(dx_reduce, x.shape());
+          }
+          set_output<T>(dx_reduce, x_grad);
+        }
+      } else {
+        set_output<T>(dx, x_grad);
+      }
+
+    } else {
+      x_grad = nullptr;
+    }
+  }
+  if (y_grad) {
+    if (grad_x_grad) {
+      auto dy = grad_x_grad.get() * grad_out;
+      if (dy.dims() != y.dims()) {
+        auto axes = get_reduce_dims_from_out(dy.dims(), y.dims());
+        if (!axes.size()) {
+          set_output<T>(dy, y_grad);
+        } else {
+          auto dy_reduce = dy.sum(phi::vectorize(axes), dy.dtype(), false);
+          if (dy_reduce.dims().size() != y.dims().size()) {
+            dy_reduce = reshape<T>(dy_reduce, y.shape());
+          }
+          set_output<T>(dy_reduce, y_grad);
+        }
+      } else {
+        set_output<T>(dy, y_grad);
+      }
+    } else {
+      y_grad = nullptr;
+    }
+  }
+  if (grad_out_grad) {
+    if (grad_x_grad && grad_y_grad) {
+      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_x_grad) {
+      auto ddout = grad_x_grad.get() * y;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_y_grad) {
+      auto ddout = grad_y_grad.get() * x;
+      set_output<T>(ddout, grad_out_grad);
+    } else {
+      grad_out_grad = nullptr;
+    }
+  }
+}
+
+template <typename T>
+void add_double_grad(const Tensor& y,
+                     const Tensor& grad_out,
+                     const paddle::optional<Tensor>& grad_x_grad,
+                     const paddle::optional<Tensor>& grad_y_grad,
+                     int axis,
+                     Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    // ddout = ddx + ddy
+    if (!grad_x_grad && !grad_y_grad) {
+      grad_out_grad = nullptr;
+    } else {
+      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
+      if (grad_x_grad) {
+        ddout = ddout + grad_x_grad.get();
+      }
+      if (grad_y_grad) {
+        ddout = ddout + grad_y_grad.get();
+      }
+      set_output<T>(ddout, grad_out_grad);
+    }
+  }
+}
+
+template <typename T>
+void add_triple_grad(const paddle::optional<Tensor>& grad_grad_x,
+                     const paddle::optional<Tensor>& grad_grad_y,
+                     const Tensor& grad_grad_out_grad,
+                     int axis,
+                     Tensor* grad_grad_x_grad,
+                     Tensor* grad_grad_y_grad) {
+  if (grad_grad_y_grad) {
+    if (grad_grad_y) {
+      if (grad_grad_y.get().dims() != grad_grad_out_grad.dims()) {
+        // Maybe need reduce here
+        phi::DDim reduce_dim = get_reduce_dims(grad_grad_y.get().dims(),
+                                               grad_grad_out_grad.dims());
+        if (!reduce_dim.size()) {
+          by_pass<T>(grad_grad_out_grad, grad_grad_y_grad);
+        } else {
+          auto dddy_reduce_res = grad_grad_out_grad.sum(
+              phi::vectorize(reduce_dim), grad_grad_y.get().dtype(), false);
+          auto dddy_tmp = reshape<T>(dddy_reduce_res,
+                                     phi::vectorize(grad_grad_y.get().dims()));
+          set_output<T>(dddy_tmp, grad_grad_y_grad);
+        }
+      } else {
+        by_pass<T>(grad_grad_out_grad, grad_grad_y_grad);
+      }
+    } else {
+      grad_grad_y_grad = nullptr;
+    }
+  }
+  if (grad_grad_x_grad) {
+    if (grad_grad_x) {
+      if (grad_grad_x.get().dims() != grad_grad_out_grad.dims()) {
+        // Maybe need reduce here
+        auto reduce_dim = get_reduce_dims(grad_grad_x.get().dims(),
+                                          grad_grad_out_grad.dims());
+        if (!reduce_dim.size()) {
+          by_pass<T>(grad_grad_out_grad, grad_grad_x_grad);
+        } else {
+          auto dddx_reduce_res = grad_grad_out_grad.sum(
+              phi::vectorize(reduce_dim), grad_grad_x.get().dtype(), false);
+          auto dddx_tmp = reshape<T>(dddx_reduce_res,
+                                     phi::vectorize(grad_grad_x.get().dims()));
+          set_output<T>(dddx_tmp, grad_grad_x_grad);
+        }
+      } else {
+        by_pass<T>(grad_grad_out_grad, grad_grad_x_grad);
+      }
+    } else {
+      grad_grad_x_grad = nullptr;
+    }
+  }
+}
+
+template <typename T>
+void subtract_double_grad(const Tensor& y,
+                          const Tensor& grad_out,
+                          const paddle::optional<Tensor>& grad_x_grad,
+                          const paddle::optional<Tensor>& grad_y_grad,
+                          int axis,
+                          Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    // ddout = ddx - ddy
+    if (!grad_x_grad && !grad_y_grad) {
+      grad_out_grad = nullptr;
+    } else {
+      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
+      if (grad_x_grad) {
+        ddout = ddout + grad_x_grad.get();
+      }
+      if (grad_y_grad) {
+        ddout = ddout - grad_y_grad.get();
+      }
+      set_output<T>(ddout, grad_out_grad);
+    }
   }
 }
 

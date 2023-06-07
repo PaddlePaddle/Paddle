@@ -38,6 +38,10 @@ AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} 
 
     .AsDispensable()
   {%- endif %}
+  {%- if "is_extra" in input and input["is_extra"] %}
+
+    .AsExtra()
+  {%- endif %}
 {%- endmacro %}
 
 {# add output, it could be duplicable or intermediate, however, optional output is not supported #}
@@ -472,15 +476,14 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% if not "forward" in op %}{# it is a forward op #}
                   ops::{{name | to_pascal_case}}OpMaker,
 {% endif %}
-{% if "only_backward_composite" in op and op["only_backward_composite"] is true %}{# backward #}
-{% elif "backward" in op and op["backward"] is not none %}
+{% if "backward" in op and op["backward"] is not none and op["only_backward_composite"] is false%}{# backward #}
   {% set backward_name = op["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
-{% elif "forward" in op %}
-{% else %}
+{% elif "forward" not in op %}
                   paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
                   paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+{% else %}
 {% endif %}
 {% if op is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,

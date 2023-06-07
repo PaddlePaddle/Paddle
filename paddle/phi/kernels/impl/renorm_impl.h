@@ -32,14 +32,14 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void RenormFunc(const phi::CPUContext& ctx,
+void RenormFunc(const phi::CPUContext& ctx UNUSED,
                 const T* x_data,
                 T* out_data,
                 float p,
                 int dim,
                 float max_norm,
                 int64_t dimension_each,
-                phi::DDim& input_dims,
+                const phi::DDim& input_dims,
                 int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1;
@@ -83,7 +83,7 @@ void RenormFunc(const phi::CPUContext& ctx,
 }
 
 template <typename T>
-void RenormGradFunc(const phi::CPUContext& ctx,
+void RenormGradFunc(const phi::CPUContext& ctx UNUSED,
                     const T* x_data,
                     const T* dout_data,
                     T* dx_data,
@@ -91,7 +91,7 @@ void RenormGradFunc(const phi::CPUContext& ctx,
                     int dim,
                     float max_norm,
                     int64_t dimension_each,
-                    phi::DDim& input_dims,
+                    const phi::DDim& input_dims,
                     int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1;
@@ -116,8 +116,9 @@ void RenormGradFunc(const phi::CPUContext& ctx,
       dim_power_sum[i] =
           std::pow(dim_value[i], (T)(-1.0 - 1.0 / p)) * -1 * max_norm;
       dim_value[i] = max_norm / temp;
-    } else
+    } else {
       dim_value[i] = 1.0;
+    }
   }
   index = dim_index = 0;
   for (int64_t i = 0; i < numel; i++) {
@@ -271,7 +272,7 @@ void RenormFunc(const phi::GPUContext& ctx,
                 int dim,
                 float max_norm,
                 int64_t dimension_each,
-                phi::DDim& input_dims,
+                const phi::DDim& input_dims,
                 int64_t numel) {
   auto dim_size = input_dims.size();
   DenseTensor pow_value, dim_value;
@@ -307,7 +308,7 @@ void RenormGradFunc(const phi::GPUContext& ctx,
                     int dim,
                     float max_norm,
                     int64_t dimension_each,
-                    phi::DDim& input_dims,
+                    const phi::DDim& input_dims,
                     int64_t numel) {
   auto dim_size = input_dims.size();
   int64_t dim_divisor = 1, pre_mul = 1;
