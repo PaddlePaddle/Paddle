@@ -23,7 +23,7 @@
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+DECLARE_bool(check_nan_inf);
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
                                 const paddle::Tensor& y) {
@@ -134,29 +134,22 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     // Node Construction
     auto grad_node =
         std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
-    // Set for forward trace
-    if (FLAGS_check_nan_inf) {
-      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
-    }
+
     // SetAttributes if needed
     grad_node->SetAttributeaxis(-1);
     // Set TensorWrappers for Forward Inputs if needed
     if (!x_autograd_meta->StopGradient() && !y_autograd_meta->StopGradient()) {
-      std::cout << "0000" << std::endl;
       grad_node->SetTensorWrapperx(x);
       grad_node->SetTensorWrappery(y);
     } else if (x_autograd_meta->StopGradient() &&
                !y_autograd_meta->StopGradient()) {
-      std::cout << "1111" << std::endl;
       grad_node->SetTensorWrapperx(x);
       grad_node->SetTensorWrapperNoNeedBuffery(y);
     } else if (!x_autograd_meta->StopGradient() &&
                y_autograd_meta->StopGradient()) {
-      std::cout << "2222" << std::endl;
       grad_node->SetTensorWrapperNoNeedBufferx(x);
       grad_node->SetTensorWrappery(y);
     } else {
-      std::cout << "3333" << std::endl;
       grad_node->SetTensorWrapperNoNeedBufferx(x);
       grad_node->SetTensorWrapperNoNeedBuffery(y);
     }
@@ -301,10 +294,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
     // Node Construction
     auto grad_node =
         std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
-    // Set for forward trace
-    if (FLAGS_check_nan_inf) {
-      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
-    }
+
     // SetAttributes if needed
     grad_node->SetAttributeaxis(-1);
     // Set TensorWrappers for Forward Inputs if needed
@@ -463,10 +453,6 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     // Node Construction
     auto grad_node =
         std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
-    // Set for forward trace
-    if (FLAGS_check_nan_inf) {
-      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
-    }
     // SetAttributes if needed
 
     // Set TensorWrappers for Forward Inputs if needed

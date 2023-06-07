@@ -30,7 +30,7 @@
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(check_nan_inf);
+DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 MultiplyGradNode::operator()(
@@ -127,8 +127,6 @@ MultiplyGradNode::operator()(
       egr::CheckTensorHasNanOrInf("multiply_grad", returns);
     } catch (...) {
       LOG(WARNING) << "There are nan/inf in (multiply_grad)";
-      auto forward_trace = GetForwardTrace();
-      std::cout << forward_trace << std::endl;
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -349,36 +347,15 @@ MultiplyDoubleGradNode::operator()(
 
   // Call grad_api function
 
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {
-    bool original_global_grad = egr::Controller::Instance().HasGrad();
-    if (!create_graph) {
-      egr::Controller::Instance().SetHasGrad(create_graph);
-    }
-    paddle::prim::multiply_double_grad<paddle::Tensor>(x,
-                                                       y,
-                                                       fwd_grad_out,
-                                                       fwd_grad_grad_x_optional,
-                                                       fwd_grad_grad_y_optional,
-                                                       axis,
-                                                       api_output_0,
-                                                       api_output_1,
-                                                       api_output_2);
-    VLOG(4) << "Composite api multiply_double_grad is called ";
-    if (!create_graph) {
-      egr::Controller::Instance().SetHasGrad(original_global_grad);
-    }
-  } else {
-    paddle::experimental::multiply_double_grad(x,
-                                               y,
-                                               fwd_grad_out,
-                                               fwd_grad_grad_x_optional,
-                                               fwd_grad_grad_y_optional,
-                                               axis,
-                                               api_output_0,
-                                               api_output_1,
-                                               api_output_2);
-    VLOG(4) << "Fused api multiply_double_grad is called ";
-  }
+  paddle::experimental::multiply_double_grad(x,
+                                             y,
+                                             fwd_grad_out,
+                                             fwd_grad_grad_x_optional,
+                                             fwd_grad_grad_y_optional,
+                                             axis,
+                                             api_output_0,
+                                             api_output_1,
+                                             api_output_2);
 
   // Check NaN and Inf id needed
 
@@ -387,8 +364,6 @@ MultiplyDoubleGradNode::operator()(
       egr::CheckTensorHasNanOrInf("multiply_double_grad", returns);
     } catch (...) {
       LOG(WARNING) << "There are nan/inf in (multiply_double_grad)";
-      auto forward_trace = GetForwardTrace();
-      std::cout << forward_trace << std::endl;
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -692,8 +667,6 @@ MultiplyTripleGradNode::operator()(
       egr::CheckTensorHasNanOrInf("multiply_triple_grad", returns);
     } catch (...) {
       LOG(WARNING) << "There are nan/inf in (multiply_triple_grad)";
-      auto forward_trace = GetForwardTrace();
-      std::cout << forward_trace << std::endl;
       std::rethrow_exception(std::current_exception());
     }
   }
@@ -904,8 +877,6 @@ MultiplyGradNode::operator()(
       egr::CheckTensorHasNanOrInf("multiply_grad", returns);
     } catch (...) {
       LOG(WARNING) << "There are nan/inf in (multiply_grad)";
-      auto forward_trace = GetForwardTrace();
-      std::cout << forward_trace << std::endl;
       std::rethrow_exception(std::current_exception());
     }
   }
