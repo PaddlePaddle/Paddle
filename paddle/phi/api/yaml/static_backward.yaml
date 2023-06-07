@@ -98,6 +98,7 @@
     param: [x, y]
   kernel :
     func : fmax_grad
+    data_type : out_grad
 
 - backward_op : frobenius_norm_grad
   forward: frobenius_norm (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
@@ -143,7 +144,7 @@
   kernel :
     func : maximum_grad
     data_type : out_grad
-  composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  composite : maximum_grad(x, y, out_grad, x_grad, y_grad)
 
 - backward_op : min_grad
   forward: min (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
