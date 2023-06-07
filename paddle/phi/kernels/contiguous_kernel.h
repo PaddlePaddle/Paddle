@@ -38,18 +38,4 @@ DenseTensor Contiguous(const Context& dev_ctx, const DenseTensor& input) {
   ContiguousKernel<T, Context>(dev_ctx, input, &dense_out);
   return dense_out;
 }
-
-template <typename Context>
-void Contiguous(const Context& dev_ctx,
-                const DenseTensor& input,
-                DenseTensor* out) {
-  MetaTensor meta_input(input);
-  MetaTensor meta_out(out);
-  UnchangedInferMeta(meta_input, &meta_out);
-  PD_VISIT_ALL_TYPES(input.dtype(), "Contiguous", ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
-                           dev_ctx, input, out);
-                     }));
-}
-
 }  // namespace phi

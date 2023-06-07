@@ -30,14 +30,20 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                                int axis2,
                                DenseTensor* in_grad) {
   dev_ctx.Alloc(in_grad, in_grad->dtype());
-  Fill<Context>(dev_ctx, *in_grad, 0, in_grad);
+  PD_VISIT_ALL_TYPES(in_grad->dtype(), "DiagonalGradStridedKernel", ([&] {
+                       phi::FillKernel<data_t, Context>(
+                           dev_ctx, *in_grad, 0, in_grad);
+                     }));
   DenseTensor tmp;
   DiagonalStridedKernel<Context>(dev_ctx, *in_grad, offset, axis1, axis2, &tmp);
-  StridedCopy<Context>(dev_ctx,
-                       out_grad,
-                       phi::vectorize<int64_t>(tmp.dims()),
-                       phi::vectorize<int64_t>(tmp.stride()),
-                       &tmp);
+  PD_VISIT_ALL_TYPES(out_grad.dtype(), "DiagonalGradStridedKernel", ([&] {
+                       phi::StridedCopyKernel<data_t, Context>(
+                           dev_ctx,
+                           out_grad,
+                           phi::vectorize<int64_t>(tmp.dims()),
+                           phi::vectorize<int64_t>(tmp.stride()),
+                           &tmp);
+                     }));
 }
 
 }  // namespace phi

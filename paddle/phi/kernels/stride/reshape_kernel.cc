@@ -95,7 +95,11 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     out->ResetHolder(x.Holder());
   } else {
     DenseTensor tmp;
-    Contiguous<Context>(dev_ctx, x, &tmp);
+    tmp.set_meta(x.meta());
+    PD_VISIT_ALL_TYPES(x.dtype(), "ReshapeStridedKernel", ([&] {
+                         phi::ContiguousKernel<data_t, Context>(
+                             dev_ctx, x, &tmp);
+                       }));
     out->set_stride(DenseTensorMeta::calc_stride(out->dims()));
     out->ResetHolder(tmp.Holder());
   }
