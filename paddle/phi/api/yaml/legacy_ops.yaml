@@ -19,7 +19,6 @@
     func : ElementwiseInferMeta
   kernel :
     func : add
-    data_type : x
   inplace : (x -> out)
   backward : add_grad
 
