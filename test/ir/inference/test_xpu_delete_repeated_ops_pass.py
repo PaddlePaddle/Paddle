@@ -122,15 +122,6 @@ class TestDeleteRepeatedSlicePass(PassAutoScanTest):
             decrease_axis=[0],
             outputs={"Out": ["slice0_out"]},
         )
-        cast_op0 = OpConfig(
-            "cast",
-            inputs={
-                "X": ["slice0_out"],
-            },
-            in_dtype=5,
-            out_dtype=5,
-            outputs={"Out": ["cast0_out"]},
-        )
         slice_op1 = OpConfig(
             "slice",
             inputs={
@@ -141,15 +132,6 @@ class TestDeleteRepeatedSlicePass(PassAutoScanTest):
             axes=[0],
             decrease_axis=[0],
             outputs={"Out": ["slice1_out"]},
-        )
-        cast_op1 = OpConfig(
-            "cast",
-            inputs={
-                "X": ["slice1_out"],
-            },
-            in_dtype=5,
-            out_dtype=5,
-            outputs={"Out": ["cast1_out"]},
         )
         slice_op2 = OpConfig(
             "slice",
@@ -162,16 +144,7 @@ class TestDeleteRepeatedSlicePass(PassAutoScanTest):
             decrease_axis=[0],
             outputs={"Out": ["slice2_out"]},
         )
-        cast_op2 = OpConfig(
-            "cast",
-            inputs={
-                "X": ["slice2_out"],
-            },
-            in_dtype=5,
-            out_dtype=5,
-            outputs={"Out": ["cast2_out"]},
-        )
-        ops = [slice_op0, cast_op0, slice_op1, cast_op1, slice_op2, cast_op2]
+        ops = [slice_op0, slice_op1, slice_op2]
 
         program_config = ProgramConfig(
             ops=ops,
@@ -179,7 +152,7 @@ class TestDeleteRepeatedSlicePass(PassAutoScanTest):
             inputs={
                 "slice_x": TensorConfig(shape=slice_x),
             },
-            outputs=["cast0_out", "cast1_out", "cast2_out"],
+            outputs=["slice0_out", "slice1_out", "slice2_out"],
         )
         return program_config
 
