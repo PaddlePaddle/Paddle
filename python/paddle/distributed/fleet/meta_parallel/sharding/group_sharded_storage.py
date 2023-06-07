@@ -315,7 +315,14 @@ class GradStorage(InternalStorage):
         assert (
             param._numel() > 0
         ), "Cannot add a gradient to a released InternalStorage, please rebuild"
-        assert param.dtype == self.buffer.dtype
+        assert (
+            param.dtype == self.buffer.dtype
+            or self.buffer.dtype == paddle.float32
+        )
+        use_main_grad = (
+            param.dtype != self.buffer.dtype
+            and self.buffer.dtype == paddle.float32
+        )
 
         grad_end = self._fill + param._numel()
         offset = grad_end + align
@@ -325,7 +332,10 @@ class GradStorage(InternalStorage):
         with device_guard(self.dev_id, self._device):
             tmp_var = self.buffer._slice(self._fill, grad_end)
             tmp_var.get_tensor()._set_dims(param.shape)
-            param._copy_gradient_from(tmp_var)
+            if not use_main_grad:
+                param._copy_gradient_from(tmp_var)
+            else:
+                param.main_grad = tmp_var
             del tmp_var
 
         self._fill = offset
