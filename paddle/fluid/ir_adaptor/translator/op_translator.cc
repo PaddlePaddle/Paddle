@@ -185,7 +185,7 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
     data = static_cast<float>(attr.dyn_cast<ir::BoolAttribute>().data());
   }
   ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program->block());
-  paddle::dialect::FullOp full_op = builder.Create<paddle::dialect::FullOp>(
+  paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, data, phi::DataType::FLOAT32, phi::CPUPlace());
 
   return full_op.operation();
@@ -323,26 +323,6 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
         auto attribute_input = GetAttributeAsInput(ctx, program, op_desc, info);
         op_inputs.push_back(attribute_input);
         continue;
-      }
-    }
-  }
-
-  VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
-           << legacy_input_name << " " << legacy_input_vars.size();
-
-  if (legacy_input_vars.size() == 0 && mutable_attributes != nullptr &&
-      mutable_attributes->count(info.name) != 0) {
-    const auto& candidate_var_names =
-        op_normalizer.GetMutableAttributeInfos(op_desc.Type(), info.name);
-    bool found_candidate_var = false;
-    for (const auto& var_name : candidate_var_names) {
-      VLOG(10) << "[handle mutable attribute][" << info.name << "][" << var_name
-               << "]";
-      if (op_desc.HasInput(var_name)) {
-        legacy_input_vars = op_desc.Input(var_name, true);
-        if (legacy_input_vars.size() == 0) continue;
-        found_candidate_var = true;
-        break;
       }
     }
 
