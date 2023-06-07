@@ -47,10 +47,7 @@ ProgramDesc load_from_file(const std::string &file_name) {
 }
 
 TEST(PaddleDialectTest, Translator) {
-  // auto p = load_from_file("restnet50_main.prog");
-  auto p = load_from_file(
-      "/home/lvyongkang/Paddle/test_program/"
-      "resnet50_main_no_merged_momentum.prog");
+  auto p = load_from_file("restnet50_main.prog");
   EXPECT_EQ(p.Size(), 1u);
 
   ir::IrContext *ctx = ir::IrContext::Instance();
