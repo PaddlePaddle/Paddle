@@ -27,7 +27,7 @@ set(CUSPARSELT_DOWNLOAD_DIR
 set(CUSPARSELT_PROJECT "extern_cusparselt")
 set(CUSPARSELT_P "https://developer.download.nvidia.com/compute")
 set(CUSPARSELT_F "libcusparse_lt-linux-x86_64-0.2.0.1.tar.gz")
-set(CUSPARSELT_URLW
+set(CUSPARSELT_URL
     "${CUSPARSELT_P}/libcusparse-lt/0.2.0/local_installers/${CUSPARSELT_F}"
     CACHE STRING "" FORCE)
 set(CUSPARSELT_PREFIX_DIR ${THIRD_PARTY_PATH}/cusparselt)
