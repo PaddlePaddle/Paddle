@@ -286,13 +286,13 @@ class TestCheckNumericsAPI(TestNanInfBase):
             paddle.device.set_device(device)
             x = paddle.to_tensor(x_np)
             y = paddle.to_tensor(y_np)
-            paddle.tensor.debugging.check_numerics(
+            paddle.amp.debugging.check_numerics(
                 tensor=x,
                 op_type="to_tensor",
                 var_name="x",
                 debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
             )
-            paddle.tensor.debugging.check_numerics(
+            paddle.amp.debugging.check_numerics(
                 tensor=y,
                 op_type="to_tensor",
                 var_name="y",
@@ -310,7 +310,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
             x = paddle.static.data(name='x', shape=[8, 8], dtype="float32")
             y = paddle.static.data(name='y', shape=[8, 8], dtype="float32")
             out = paddle.add(x, y)
-            paddle.tensor.debugging.check_numerics(
+            paddle.amp.debugging.check_numerics(
                 tensor=out,
                 op_type="elementwise_add",
                 var_name=out.name,
