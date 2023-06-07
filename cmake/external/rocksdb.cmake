@@ -22,12 +22,14 @@ set(JEMALLOC_LIBRARIES
 message(STATUS "rocksdb jemalloc:" ${JEMALLOC_LIBRARIES})
 
 set(ROCKSDB_PREFIX_DIR ${THIRD_PARTY_PATH}/rocksdb)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/rocksdb)
+set(ROCKSDB_TAG v6.10.1)
 set(ROCKSDB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/rocksdb)
 set(ROCKSDB_INCLUDE_DIR
-    "${ROCKSDB_INSTALL_DIR}/include"
+    "${SOURCE_DIR}/include"
     CACHE PATH "rocksdb include directory." FORCE)
 set(ROCKSDB_LIBRARIES
-    "${ROCKSDB_INSTALL_DIR}/lib/librocksdb.a"
+    "${SOURCE_DIR}/lib/librocksdb.a"
     CACHE FILEPATH "rocksdb library." FORCE)
 set(ROCKSDB_COMMON_FLAGS
     "-g -pipe -O2 -W -Wall -Wno-unused-parameter -fPIC -fno-builtin-memcmp -fno-omit-frame-pointer"
@@ -41,8 +43,7 @@ set(ROCKSDB_CMAKE_CXX_FLAGS
 set(ROCKSDB_CMAKE_C_FLAGS
     "${ROCKSDB_COMMON_FLAGS} ${ROCKSDB_FLAGS} -DROCKSDB_LIBAIO_PRESENT -fPIC  -I${JEMALLOC_INCLUDE_DIR}"
 )
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/rocksdb)
-set(ROCKSDB_TAG v6.10.1)
+
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(CMAKE_CXX_LINK_EXECUTABLE
@@ -66,10 +67,9 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   INSTALL_COMMAND
-    mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp
+    mkdir -p ${SOURCE_DIR}/lib/ && cp
     ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
-    && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
-    ${ROCKSDB_INSTALL_DIR}/
+    && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include ${SOURCE_DIR}/
   BUILD_IN_SOURCE 1
   BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
 

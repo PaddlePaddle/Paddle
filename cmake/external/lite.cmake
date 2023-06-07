@@ -63,10 +63,8 @@ endif()
 if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
-  set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
-  set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
-  set(LITE_BINARY_DIR ${LITE_PREFIX_DIR}/src/extern_lite-build)
-  set(LITE_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/extern_lite)
+  set(LITE_BINARY_DIR ${LITE_SOURCE_DIR}/src/extern_lite-build)
+  set(LITE_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/lite)
   set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
   set(LITE_SHARED_LIB
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
@@ -105,14 +103,14 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       SOURCE_DIR ${SOURCE_DIR}
-      PREFIX ${LITE_PREFIX_DIR}
+      PREFIX ${LITE_SOURCE_DIR}
       PATCH_COMMAND
-        mkdir -p ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code && touch
-        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
+        mkdir -p ${LITE_SOURCE_DIR}/src/extern_lite-build/lite/gen_code && touch
+        ${LITE_SOURCE_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc
         && sed -i "/aarch64-linux-gnu-gcc/d"
-        ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake && sed -i
+        ${LITE_SOURCE_DIR}/src/extern_lite/cmake/os/armlinux.cmake && sed -i
         "/aarch64-linux-gnu-g++/d"
-        ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
+        ${LITE_SOURCE_DIR}/src/extern_lite/cmake/os/armlinux.cmake
       UPDATE_COMMAND ""
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND ""
@@ -157,12 +155,12 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       SOURCE_DIR ${SOURCE_DIR}
-      PREFIX ${LITE_PREFIX_DIR}
+      PREFIX ${LITE_SOURCE_DIR}
       UPDATE_COMMAND ""
       PATCH_COMMAND
         sed -i
         "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
-        ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
+        ${LITE_SOURCE_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND ""
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
