@@ -9,7 +9,6 @@ set(JEMALLOC_URL
 set(JEMALLOC_SOURCE_DIR ${THIRD_PARTY_PATH}/jemalloc/src/extern_jemalloc)
 set(JEMALLOC_INSTALL ${THIRD_PARTY_PATH}/install/jemalloc)
 set(JEMALLOC_INCLUDE_DIR ${JEMALLOC_INSTALL}/include)
-set(JEMALLOC_DOWNLOAD_DIR "${JEMALLOC_SOURCE_DIR}/src/${JEMALLOC_PROJECT}")
 
 set(JEMALLOC_STATIC_LIBRARIES
     ${THIRD_PARTY_PATH}/install/jemalloc/lib/libjemalloc_pic.a)
