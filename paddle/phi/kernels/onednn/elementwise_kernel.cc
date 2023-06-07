@@ -161,7 +161,9 @@ PD_REGISTER_KERNEL(add_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(add,
                    OneDNN,
@@ -170,7 +172,9 @@ PD_REGISTER_KERNEL(add,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(subtract_raw,
                    OneDNN,
@@ -179,7 +183,9 @@ PD_REGISTER_KERNEL(subtract_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(subtract,
                    OneDNN,
@@ -189,7 +195,7 @@ PD_REGISTER_KERNEL(subtract,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {
-  kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
 }
 
 PD_REGISTER_KERNEL(multiply_raw,
@@ -199,7 +205,9 @@ PD_REGISTER_KERNEL(multiply_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(multiply,
                    OneDNN,
@@ -208,7 +216,9 @@ PD_REGISTER_KERNEL(multiply,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(divide_raw,
                    OneDNN,
@@ -218,4 +228,6 @@ PD_REGISTER_KERNEL(divide_raw,
                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(
-    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
+    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
