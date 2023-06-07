@@ -147,7 +147,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
   const phi::DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
         comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
@@ -164,7 +164,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
     bool sync_op,
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
         comm_context->AllReduce(
             out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
@@ -211,10 +211,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
   // shape check. Its shape check will be done by dynamic checks with
   // FLAGS_enable_nccl_dynamic_check.
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
+        auto comm_context = this->GetCommContext();
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
-              *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm);
+              *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm_context->GetNcclComm());
         }
 
         int64_t in_row_size = in_tensor.numel() / in_dim[0],
@@ -222,7 +223,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
-        auto comm_context = this->GetCommContext();
         comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
@@ -274,7 +274,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     bool sync_op,
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
         auto comm_context = this->GetCommContext();
         comm_context->Broadcast(out_tensor, in_tensor, root, stream);
@@ -292,7 +292,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
     bool sync_op,
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
         comm_context->Reduce(out_tensor,
                              in_tensor,
@@ -313,7 +313,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
     bool sync_op,
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
         comm_context->ReduceScatter(
             out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
@@ -337,16 +337,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       /*cur_rank*/ rank_,
       size_);
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
+        auto comm_context = this->GetCommContext();
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
               *out_tensor,
               /*root_rank*/ opts.root_rank,
               rank_,
-              comm);
+              comm_context->GetNcclComm());
         }
 
-        auto comm_context = this->GetCommContext();
         int64_t numel = in_tensor.numel() / size_;
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
@@ -401,14 +401,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
                         "root world size [%d]  is less than root rank [%d]",
                         size_,
                         opts.root_rank));
-  auto gather_func = [&](ncclComm_t comm, gpuStream_t stream) {
+  auto gather_func = [&](gpuStream_t stream) {
+    auto comm_context = this->GetCommContext();
     // shape check
     if (FLAGS_enable_nccl_dynamic_check) {
       phi::distributed::NCCLDynamicCheck::CheckGatherShape(
-          in_tensor, gather_tensors, opts.root_rank, rank_, size_, comm);
+          in_tensor, gather_tensors, opts.root_rank, rank_, size_, comm_context->GetNcclComm());
     }
 
-    auto comm_context = this->GetCommContext();
     comm_context->GroupStart();
     // root receive from all devices
     if (rank_ == opts.root_rank) {
@@ -440,7 +440,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
   }
 
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
         comm_context->Recv(tensor, tensor->numel(), src_rank, stream);
       },
@@ -462,7 +462,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
   return RunFnInNCCLEnv(
-      [&](ncclComm_t comm, gpuStream_t stream) {
+      [&](gpuStream_t stream) {
         auto comm_context = this->GetCommContext();
         comm_context->Send(tensor_maybe_partial,
                            tensor_maybe_partial.numel(),
@@ -543,7 +543,7 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place) {
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
-    std::function<void(ncclComm_t, gpuStream_t)> fn,
+    std::function<void(gpuStream_t)> fn,
     const phi::DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
@@ -565,9 +565,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
 
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
-  auto nccl_comm = comm_ctx->nccl_comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
-  fn(nccl_comm, nccl_stream);
+  fn(nccl_stream);
 
   if (!use_calc_stream) {
     if (FLAGS_use_stream_safe_cuda_allocator) {
