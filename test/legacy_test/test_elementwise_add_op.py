@@ -849,8 +849,8 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
             os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
-class TestTensorFfloa32Bfloat16OrFloat16Add(unittest.TestCase):
-    def _floa32_bfloat16_add(self, y_dtype):
+class TestTensorFloa32Bfloat16OrFloat16Add(unittest.TestCase):
+    def _floa32_bfloat16_or_float16_add(self, y_dtype):
         paddle.disable_static()
         test_num = 5
         val_range = 10000
@@ -868,15 +868,29 @@ class TestTensorFfloa32Bfloat16OrFloat16Add(unittest.TestCase):
             np.testing.assert_equal(x.numpy(), x_copy.numpy())
             del x, x_copy
 
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
+)
+class TestTensorFloa32Bfloat16Add(TestTensorFloa32Bfloat16OrFloat16Add):
     def test_floa32_bfloat16_add(self):
         place = core.CUDAPlace(0)
         with fluid.dygraph.base.guard(place=place):
-            self._floa32_bfloat16_add(y_dtype=paddle.bfloat16)
+            self._floa32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
 
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0",
+)
+class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
     def test_floa32_float16_add(self):
         place = core.CUDAPlace(0)
         with fluid.dygraph.base.guard(place=place):
-            self._floa32_bfloat16_add(y_dtype=paddle.float16)
+            self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
 
 
 if __name__ == '__main__':
