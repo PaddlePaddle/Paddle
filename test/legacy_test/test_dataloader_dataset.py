@@ -121,7 +121,7 @@ class TestDatasetWithMicroBatch(unittest.TestCase):
             for batch in loader:
                 micro_batch_num = 0
                 for (image, label) in batch:
-                    self.assertTrue(image.place.is_cuda_pinned_place())
+                    self.assertTrue(image.place.is_gpu_place())
                     self.assertTrue(label.place.is_cuda_pinned_place())
                     self.assertEqual(image.shape[0], 4)
                     self.assertEqual(label.shape[0], 4)

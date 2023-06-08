@@ -114,7 +114,7 @@ class _MicroBatchIterator:
             self._cache = None
         if micro_batch is None:
             try:
-                micro_batch = next(self._inner_iter)
+                micro_batch = self._inner_iter.next_element()
             except StopIteration:
                 raise RuntimeError("unexpected end of iterator")
 
@@ -194,6 +194,9 @@ class _DataLoaderIterBase:
             # call self._next_impl() to test the end of iterator
             return _MicroBatchIterator(self._next_impl(), self._acc_step, self)
 
+        return self._next_impl()
+
+    def next_element(self):
         return self._next_impl()
 
     def _exit_thread_expectedly(self):
