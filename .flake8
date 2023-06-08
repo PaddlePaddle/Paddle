@@ -5,6 +5,7 @@ exclude =
     # Exclude fluid directory
     ./python/paddle/fluid/**,
     # Exclude third-party libraries
+    ./third_party/**,
     ./python/paddle/utils/gast/**,
     # Temporarily ignore CINN files, it will fix later
     ./python/cinn/**,

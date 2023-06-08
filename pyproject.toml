@@ -1,13 +1,18 @@
 [tool.black]
-exclude = "build"
 line-length = 80
 skip-string-normalization = true
+extend-exclude = '''
+(
+    third_party/.+      # Exclude third_party directory
+    | build/.+          # Exclude build directory
+)
+'''
 
 [tool.isort]
 profile = "black"
 line_length = 80
 known_first_party = ["paddle"]
-skip = ["build", "__init__.py"]
+skip = ["build", "third_party", "__init__.py"]
 extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
@@ -21,6 +26,7 @@ extend_skip_glob = [
 [tool.ruff]
 exclude = [
     "./build",
+    "third_party",
     "./python/paddle/fluid/**",
     "./python/paddle/utils/gast/**",
     # Temporarily ignore CINN files, it will fix later
