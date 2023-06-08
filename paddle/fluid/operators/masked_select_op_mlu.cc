@@ -42,12 +42,13 @@ class MaskedSelectedMLUKernel : public framework::OpKernel<T> {
     Tensor number(framework::TransToPhiDataType(VT::INT32));
     void* number_ptr = number.mutable_data<int32_t>({1}, ctx.GetPlace());
 
-    out->Resize(mask->dims());
-    out->mutable_data<T>(ctx.GetPlace());
+    Tensor mask_select_out;
+    mask_select_out.mutable_data<T>(mask->dims(), ctx.GetPlace());
 
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc mask_desc(*mask);
     MLUCnnlTensorDesc out_desc(*out);
+    MLUCnnlTensorDesc masked_select_out_desc(mask_select_out);
     MLUCnnl::Mask(ctx,
                   CNNL_MASKED_SELECT,
                   input_desc.get(),
@@ -56,9 +57,23 @@ class MaskedSelectedMLUKernel : public framework::OpKernel<T> {
                   GetBasePtr(mask),
                   nullptr,
                   nullptr,
-                  out_desc.get(),
-                  GetBasePtr(out),
+                  masked_select_out_desc.get(),
+                  GetBasePtr(&mask_select_out),
                   static_cast<uint32_t*>(number_ptr));
+    auto stream = ctx.template device_context<MLUDeviceContext>().stream();
+    Tensor number_cpu;
+    paddle::framework::TensorCopySync(
+        number, platform::CPUPlace(), &number_cpu);
+
+    out->Resize({number_cpu.data<int>()[0]});
+    out->mutable_data<T>(ctx.GetPlace());
+
+    memory::Copy(ctx.GetPlace(),
+                 GetBasePtr(out),
+                 ctx.GetPlace(),
+                 GetBasePtr(&mask_select_out),
+                 number_cpu.data<int>()[0] * sizeof(T),
+                 stream);
   }
 };
 
@@ -154,15 +169,7 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
                  out_size_vec[0] * sizeof(int32_t),
                  stream);
 
-    Tensor y_grad_tmp_out;
-    y_grad_tmp_out.mutable_data<T>({out_size_vec[0]}, ctx.GetPlace());
-    MLUCnnlTensorDesc y_grad_tmp_out_desc(y_grad_tmp_out);
-    memory::Copy(ctx.GetPlace(),
-                 GetBasePtr(&y_grad_tmp_out),
-                 ctx.GetPlace(),
-                 GetBasePtr(y_grad),
-                 out_size_vec[0] * sizeof(T),
-                 stream);
+    MLUCnnlTensorDesc y_grad_desc(*y_grad);
 
     Tensor indices_int32_tmp;
     indices_int32_tmp.ShareDataWith(indices_int32_out);
@@ -177,8 +184,8 @@ class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
                        mode,
                        indices_int32_tmp_desc.get(),
                        GetBasePtr(&indices_int32_tmp),
-                       y_grad_tmp_out_desc.get(),
-                       GetBasePtr(&y_grad_tmp_out),
+                       y_grad_desc.get(),
+                       GetBasePtr(y_grad),
                        nullptr,
                        nullptr,
                        x_grad_desc.get(),
