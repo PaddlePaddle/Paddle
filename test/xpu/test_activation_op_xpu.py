@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import unittest
-
-sys.path.append('../../python/paddle/fluid/tests/unittests')
 
 import os
+import unittest
 
 import numpy as np
 from eager_op_test import OpTest
@@ -373,6 +370,19 @@ class XPUTestGeluOP(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             approximate = False
+            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            out = gelu(x, approximate)
+
+            self.inputs = {'X': x}
+            self.outputs = {'Out': out}
+            self.attrs = {"approximate": approximate, 'use_xpu': True}
+
+    class XPUTestGeluApproximate(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "gelu"
+            self.dtype = self.in_type
+
+            approximate = True
             x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
             out = gelu(x, approximate)
 

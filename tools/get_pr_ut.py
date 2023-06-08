@@ -23,7 +23,7 @@ import sys
 import time
 import urllib.request
 
-import requests
+import httpx
 from github import Github
 
 PADDLE_ROOT = os.getenv('PADDLE_ROOT', '/paddle/')
@@ -217,7 +217,7 @@ class PRChecker:
 
     def get_pr_diff_lines(self):
         file_to_diff_lines = {}
-        r = requests.get(self.pr.diff_url)
+        r = httpx.get(self.pr.diff_url, timeout=None, follow_redirects=True)
         data = r.text
         data = data.split('\n')
         ix = 0

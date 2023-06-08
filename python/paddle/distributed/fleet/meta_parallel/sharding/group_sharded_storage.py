@@ -76,11 +76,16 @@ class InternalStorage:
         ), "Conversion type is not supported now"
 
         if self._device != device:
-            tmp_buffer = (
-                cvt_to_device(self.buffer, self.dev_id)
-                if device in ["gpu", "xpu"]
-                else self.buffer.cpu()
-            )
+            if device in paddle.device.get_all_custom_device_type():
+                tmp_buffer = self.buffer._copy_to(
+                    paddle.CustomPlace(device, self.dev_id), True
+                )
+            else:
+                tmp_buffer = (
+                    cvt_to_device(self.buffer, self.dev_id)
+                    if device in ["gpu", "xpu"]
+                    else self.buffer.cpu()
+                )
             for param in self._params:
                 param.clear_gradient(False)
 
@@ -133,8 +138,13 @@ class ParamStorage(InternalStorage):
             cpu_param_shape.append(p_shape)
 
         if convert_gpu:
-            # buffer convert from cpu to cuda
-            self.buffer = cvt_to_device(self.buffer, self.dev_id)
+            if self._device in paddle.device.get_all_custom_device_type():
+                self.buffer = self.buffer._copy_to(
+                    paddle.CustomPlace(self._device, self.dev_id), True
+                )
+            else:
+                # buffer convert from cpu to cuda
+                self.buffer = cvt_to_device(self.buffer, self.dev_id)
 
         self._fill = 0
 
@@ -315,7 +325,12 @@ class GradStorage(InternalStorage):
         assert (
             param._numel() > 0
         ), "Cannot add a gradient to a released InternalStorage, please rebuild"
-        assert param.dtype == self.buffer.dtype
+
+        use_main_grad = hasattr(param, "main_grad")
+        if use_main_grad:
+            assert self.buffer.dtype == paddle.float32
+        else:
+            assert param.dtype == self.buffer.dtype
 
         grad_end = self._fill + param._numel()
         offset = grad_end + align
@@ -325,7 +340,10 @@ class GradStorage(InternalStorage):
         with device_guard(self.dev_id, self._device):
             tmp_var = self.buffer._slice(self._fill, grad_end)
             tmp_var.get_tensor()._set_dims(param.shape)
-            param._copy_gradient_from(tmp_var)
+            if not use_main_grad:
+                param._copy_gradient_from(tmp_var)
+            else:
+                param.main_grad = tmp_var
             del tmp_var
 
         self._fill = offset

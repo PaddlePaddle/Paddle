@@ -20,12 +20,12 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op import Operator
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):

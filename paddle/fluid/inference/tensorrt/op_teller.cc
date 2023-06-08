@@ -1381,14 +1381,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
       if (slice_inputs.find("StartsTensorList") != slice_inputs.end()) {
-        if (desc.Input("StartsTensorList").size()) {
-          return false;
-        }
+        VLOG(3) << "The Slice has StartsTensorList input.";
       }
       if (slice_inputs.find("EndsTensorList") != slice_inputs.end()) {
-        if (desc.Input("EndsTensorList").size()) {
-          return false;
-        }
+        VLOG(3) << "The Slice has EndsTensorList input.";
       }
     }
 
@@ -1889,13 +1885,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
-
       if (dtype == framework::proto::VarType::INT8 ||
           dtype == framework::proto::VarType::UINT8) {
         VLOG(3) << "INT8 / UINT8 type convert to trt is not supported";
         return false;
       }
-
       if (dtype == framework::proto::VarType::BOOL) {
 #if !IS_TRT_VERSION_GE(8400)
         VLOG(3) << "BOOL type support requires TensorRT 8.4";

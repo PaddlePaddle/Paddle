@@ -37,7 +37,7 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
             if self.dims == 0:
                 self.input_shape = []
                 return np.random.random([]).astype(np.float32)
-            if self.dims == 2:
+            elif self.dims == 2:
                 self.input_shape = [2, 3]
                 return np.random.random([2, 3]).astype(np.int32)
             elif self.dims == 3:

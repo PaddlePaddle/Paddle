@@ -35,7 +35,6 @@ class CumsumOpConverter : public OpConverter {
     auto dims = input_x_tensor->getDimensions();
     auto rank = dims.nbDims;
     if (rank == 0) {
-      LOG(INFO) << "go to rank 0!";
       nvinfer1::IShuffleLayer* layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input_x_tensor);
       nvinfer1::Dims cumsum_dim;
@@ -65,7 +64,7 @@ class CumsumOpConverter : public OpConverter {
               return Add1DConstantLayer(d, "", scalar);
             } else {
               nvinfer1::ITensor* inpShape = Shape(inpTensor);
-              return GetEleTensorOfShape(inpShape, d, scalar);
+              return GetEleTensorOfShape(inpShape, axis, scalar);
             }
           };
 
@@ -106,7 +105,6 @@ class CumsumOpConverter : public OpConverter {
           sizes_tensor = Concat(sizes_itensors);
         }
       }
-
       auto inputSliced = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input_x_tensor, start, size, stride);
       inputSliced->setInput(1, *starts_tensor);
@@ -120,7 +118,6 @@ class CumsumOpConverter : public OpConverter {
       loop->addTripLimit(*tripLimit, nvinfer1::TripLimit::kCOUNT);
       auto iterator = loop->addIterator(*input_x_tensor, axis);
       auto data = iterator->getOutput(0);
-
       // Squeeze inputSliced down to same shape as `data`
       auto sliced_dims = inputSliced_output->getDimensions();
       std::vector<int32_t> subscripts(sliced_dims.nbDims);
@@ -152,7 +149,6 @@ class CumsumOpConverter : public OpConverter {
                                        .c_str()),
                  nvinfer1::ElementWiseOperation::kPROD)
                  ->getOutput(0);
-
       auto runningSum = loop->addRecurrence(*zero);
       auto runningSumTensor = runningSum->getOutput(0);
       auto curSum = TRT_ENGINE_ADD_LAYER(engine_,
