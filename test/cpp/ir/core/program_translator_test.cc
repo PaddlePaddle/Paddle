@@ -53,11 +53,13 @@ TEST(PaddleDialectTest, Translator) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  // auto program = paddle::TranslateLegacyProgramToProgram(p);
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
 
-  // size_t op_size = program->block()->size();
-  // // ops.size() = op size in BlockDesc + get_parameter_op + combine op
-  // EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 21);
+  size_t op_size = program->block()->size();
+  // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
+  // array op + full op
+  EXPECT_EQ(op_size,
+            p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
 
-  // program->Print(std::cout);
+  program->Print(std::cout);
 }

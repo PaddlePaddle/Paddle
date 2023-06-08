@@ -18,6 +18,8 @@
 #include <iostream>
 #include <string>
 
+#include "paddle/utils/string/printf.h"
+
 #if !defined(_WIN32)
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #else
@@ -38,27 +40,35 @@ class IrNotMetException : public std::exception {
   std::string err_str_;
 };
 
-#define IR_THROW(...)                           \
-  do {                                          \
-    try {                                       \
-      throw ir::IrNotMetException(__VA_ARGS__); \
-    } catch (const std::exception& e) {         \
-      std::cout << e.what() << std::endl;       \
-      throw;                                    \
-    }                                           \
+#define IR_THROW(...)                                                     \
+  do {                                                                    \
+    try {                                                                 \
+      throw ir::IrNotMetException(                                        \
+          paddle::string::Sprintf("Error occured at: %s:%d :\n%s",        \
+                                  __FILE__,                               \
+                                  __LINE__,                               \
+                                  paddle::string::Sprintf(__VA_ARGS__))); \
+    } catch (const std::exception& e) {                                   \
+      std::cout << e.what() << std::endl;                                 \
+      throw;                                                              \
+    }                                                                     \
   } while (0)
 
-#define IR_ENFORCE(COND, ...)                     \
-  do {                                            \
-    auto __cond__ = (COND);                       \
-    if (UNLIKELY(is_error(__cond__))) {           \
-      try {                                       \
-        throw ir::IrNotMetException(__VA_ARGS__); \
-      } catch (const std::exception& e) {         \
-        std::cout << e.what() << std::endl;       \
-        throw;                                    \
-      }                                           \
-    }                                             \
+#define IR_ENFORCE(COND, ...)                                               \
+  do {                                                                      \
+    auto __cond__ = (COND);                                                 \
+    if (UNLIKELY(is_error(__cond__))) {                                     \
+      try {                                                                 \
+        throw ir::IrNotMetException(                                        \
+            paddle::string::Sprintf("Error occured at: %s:%d :\n%s",        \
+                                    __FILE__,                               \
+                                    __LINE__,                               \
+                                    paddle::string::Sprintf(__VA_ARGS__))); \
+      } catch (const std::exception& e) {                                   \
+        std::cout << e.what() << std::endl;                                 \
+        throw;                                                              \
+      }                                                                     \
+    }                                                                       \
   } while (0)
 
 }  // namespace ir
