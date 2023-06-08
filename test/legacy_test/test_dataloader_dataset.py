@@ -89,5 +89,65 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                     break
 
 
+class TestDatasetWithMicroBatch(unittest.TestCase):
+    def get_dataloader(self, num_workers, micro_batch_size=4, acc_step=8):
+        dataset = paddle.vision.datasets.MNIST(
+            mode='test',
+            transform=transforms.Compose(
+                [
+                    transforms.CenterCrop(20),
+                    transforms.RandomResizedCrop(14),
+                    transforms.Normalize(),
+                    transforms.ToTensor(),
+                ]
+            ),
+        )
+        loader = paddle.io.DataLoader(
+            dataset,
+            batch_size=32,
+            num_workers=num_workers,
+            shuffle=True,
+            micro_batch_size=micro_batch_size,
+            acc_step=acc_step,
+        )
+        return loader
+
+    def test_single_process(self):
+        if paddle.is_compiled_with_cuda():
+            # Get (image, label) tuple from MNIST dataset
+            # - the image is on CUDAPlace, label is on CPUPlace
+            paddle.set_device('gpu')
+            loader = self.get_dataloader(0, 4, 8)
+            for batch in loader:
+                micro_batch_num = 0
+                for (image, label) in batch:
+                    self.assertTrue(image.place.is_cuda_pinned_place())
+                    self.assertTrue(label.place.is_cuda_pinned_place())
+                    self.assertEqual(image.shape[0], 4)
+                    self.assertEqual(label.shape[0], 4)
+                    micro_batch_num += 1
+                self.assertEqual(micro_batch_num, 8)
+                break
+
+    def test_multi_process(self):
+        # DataLoader with multi-process mode is not supported on MacOs and Windows currently
+        if sys.platform != 'darwin' and sys.platform != 'win32':
+            if paddle.is_compiled_with_cuda():
+                # Get (image, label) tuple from MNIST dataset
+                # - the image and label are on CPUPlace
+                paddle.set_device('gpu')
+                loader = self.get_dataloader(1, 4, 8)
+                for batch in loader:
+                    micro_batch_num = 0
+                    for (image, label) in batch:
+                        self.assertTrue(image.place.is_cuda_pinned_place())
+                        self.assertTrue(label.place.is_cuda_pinned_place())
+                        self.assertEqual(image.shape[0], 4)
+                        self.assertEqual(label.shape[0], 4)
+                        micro_batch_num += 1
+                    self.assertEqual(micro_batch_num, 8)
+                    break
+
+
 if __name__ == '__main__':
     unittest.main()
