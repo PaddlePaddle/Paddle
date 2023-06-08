@@ -498,6 +498,8 @@ def _prepare_fleet_executor():
 
     trainer_endpoints_str = os.getenv("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
+    if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+        trainer_endpoints += os.environ["PADDLE_TRAINER_ENDPOINTS2"].split(",")
     fleet_exe_desc = fleet_executor_desc_pb2.FleetExecutorDesc()
     cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
     fleet_exe_desc.cur_rank = cur_rank
@@ -2215,6 +2217,10 @@ class Executor:
         )
         cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
         trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "").split(',')
+        if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+            trainer_endpoints += os.environ["PADDLE_TRAINER_ENDPOINTS2"].split(
+                ","
+            )
         nrank = len(trainer_endpoints)
 
         assert 'scheduler' in fleet_opt or 'tasks' in fleet_opt, (

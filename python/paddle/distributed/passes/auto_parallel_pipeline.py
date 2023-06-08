@@ -71,6 +71,10 @@ class PipelinePass(PassBase):
 
         self._cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
         trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "").split(',')
+        if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+            trainer_endpoints += os.environ["PADDLE_TRAINER_ENDPOINTS2"].split(
+                ","
+            )
         self._nrank = len(trainer_endpoints)
 
         # compute current pp stage

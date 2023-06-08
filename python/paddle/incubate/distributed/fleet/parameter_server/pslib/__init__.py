@@ -1229,6 +1229,10 @@ class DownpourOptimizer(DistributedOptimizer):
             'PADDLE_CURRENT_ENDPOINT'
         ):
             trainer_endpoints = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+            if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+                trainer_endpoints += (
+                    "," + os.environ["PADDLE_TRAINER_ENDPOINTS2"]
+                )
             current_endpoint = os.getenv('PADDLE_CURRENT_ENDPOINT')
             num_trainers = len(trainer_endpoints.split(','))
 

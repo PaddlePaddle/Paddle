@@ -846,6 +846,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._server_endpoints = self._server_endpoints.split(",")
 
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
+        if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+            self._worker_endpoints += os.environ[
+                "PADDLE_TRAINER_ENDPOINTS2"
+            ].split(",")
         if self._worker_endpoints is not None:
             self._worker_endpoints = self._worker_endpoints.split(",")
         else:
@@ -1068,6 +1072,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         assert self._training_role == "TRAINER"
         self._role = Role.WORKER
         self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+            self._worker_endpoints += os.environ[
+                "PADDLE_TRAINER_ENDPOINTS2"
+            ].split(",")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
         if self._worker_endpoints is None:
             # back to non_distributed execution.

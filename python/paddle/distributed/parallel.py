@@ -707,6 +707,11 @@ class ParallelEnv:
         self._trainer_endpoints = os.getenv(
             "PADDLE_TRAINER_ENDPOINTS", ""
         ).split(",")
+        if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+            self._trainer_endpoints += os.environ[
+                "PADDLE_TRAINER_ENDPOINTS2"
+            ].split(",")
+
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
         self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
         assert (
