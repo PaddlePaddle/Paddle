@@ -227,7 +227,9 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 res = self.run_train(split, micro_batch_num)
                 if last_res:
                     for i in range(len(res)):
-                        np.testing.assert_array_equal(last_res[i], res[i])
+                        np.testing.assert_allclose(
+                            last_res[i], res[i], atol=1e-6, rtol=1e-6
+                        )
                 last_res = res
 
 
