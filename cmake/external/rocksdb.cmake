@@ -87,9 +87,8 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   INSTALL_COMMAND
-    mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp
-    ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
-    && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
+    mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp ${ROCKSDB_SOURCE_DIR}
+    ${ROCKSDB_LIBRARIES} && cp -r ${ROCKSDB_SOURCE_DIR}/include
     ${ROCKSDB_INSTALL_DIR}/
   BUILD_IN_SOURCE 1
   BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
