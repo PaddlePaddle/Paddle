@@ -27,34 +27,33 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
 
   GraphPatternDetector gpd;
 
-  auto* clip_x = 
-        gpd.mutable_pattern()->NewNode("clip_x")
-                             ->assert_is_op_input("clip", "X")
-                             ->assert_var_not_persistable()
-                             ->AsInput();
+  auto* clip_x = gpd.mutable_pattern()
+                     ->NewNode("clip_x")
+                     ->assert_is_op_input("clip", "X")
+                     ->assert_var_not_persistable()
+                     ->AsInput();
   auto clip_op =
-      gpd.mutable_pattern()->NewNode("clip_op")
-                           ->assert_is_op("clip");
+      gpd.mutable_pattern()->NewNode("clip_op")->assert_is_op("clip");
   auto clip_min = gpd.mutable_pattern()
-                         ->NewNode("clip_min")
-                         ->assert_is_op_input("clip", "Min")
+                      ->NewNode("clip_min")
+                      ->assert_is_op_input("clip", "Min")
                       ->assert_is_persistable_var()
                       ->assert_more([](Node* node) {
-                         return node->Var()->GetShape().size() == 1;
-                       })
+                        return node->Var()->GetShape().size() == 1;
+                      })
                       ->AsInput();
   auto clip_max = gpd.mutable_pattern()
-                         ->NewNode("clip_max")
-                         ->assert_is_op_input("clip", "Max")
+                      ->NewNode("clip_max")
+                      ->assert_is_op_input("clip", "Max")
                       ->assert_is_persistable_var()
                       ->assert_more([](Node* node) {
-                         return node->Var()->GetShape().size() == 1;
-                       })
+                        return node->Var()->GetShape().size() == 1;
+                      })
                       ->AsInput();
   auto clip_out = gpd.mutable_pattern()
-                                 ->NewNode("clip_out")
-                                 ->assert_is_op_output("clip")
-                                 ->AsOutput();
+                      ->NewNode("clip_out")
+                      ->assert_is_op_output("clip")
+                      ->AsOutput();
 
   clip_op->LinksFrom({clip_x, clip_min, clip_max}).LinksTo({clip_out});
 
@@ -70,42 +69,42 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
-    
+
     const auto& clip_max_t =
         scope->GetVar(clip_max_node->Name())->Get<phi::DenseTensor>();
     auto clip_max_t_dims = clip_max_t.dims();
-    PADDLE_ENFORCE_EQ(clip_max_t_dims.size(),
-                        1,
-                        platform::errors::InvalidArgument(
-                            "the size(%d) of clip max tensor "
-                            "must equal 1",
-                            clip_max_t_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        clip_max_t_dims.size(),
+        1,
+        platform::errors::InvalidArgument("the size(%d) of clip max tensor "
+                                          "must equal 1",
+                                          clip_max_t_dims.size()));
     const auto& clip_min_t =
         scope->GetVar(clip_min_node->Name())->Get<phi::DenseTensor>();
     auto clip_min_t_dims = clip_min_t.dims();
-    PADDLE_ENFORCE_EQ(clip_min_t_dims.size(),
-                        1,
-                        platform::errors::InvalidArgument(
-                            "the size(%d) of clip max tensor "
-                            "must equal 1",
-                            clip_min_t_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        clip_min_t_dims.size(),
+        1,
+        platform::errors::InvalidArgument("the size(%d) of clip max tensor "
+                                          "must equal 1",
+                                          clip_min_t_dims.size()));
     auto tensor_type = clip_max_t.dtype();
     float max_val_ = 0.f;
     float min_val_ = 1.f;
     if (tensor_type == phi::DataType::FLOAT16) {
-        auto* clip_max_t_fp16_ptr = clip_max_t.data<platform::float16>();
-        auto* clip_min_t_fp16_ptr = clip_min_t.data<platform::float16>();
-        max_val_ = static_cast<float>(clip_max_t_fp16_ptr[0]);
-        min_val_ = static_cast<float>(clip_min_t_fp16_ptr[0]);
+      auto* clip_max_t_fp16_ptr = clip_max_t.data<platform::float16>();
+      auto* clip_min_t_fp16_ptr = clip_min_t.data<platform::float16>();
+      max_val_ = static_cast<float>(clip_max_t_fp16_ptr[0]);
+      min_val_ = static_cast<float>(clip_min_t_fp16_ptr[0]);
     } else if (tensor_type == phi::DataType::FLOAT32) {
-        auto* clip_max_t_fp32_ptr = clip_max_t.data<float>();
-        auto* clip_min_t_fp32_ptr = clip_min_t.data<float>();
-        max_val_ = clip_max_t_fp32_ptr[0];
-        min_val_ = clip_min_t_fp32_ptr[0];
+      auto* clip_max_t_fp32_ptr = clip_max_t.data<float>();
+      auto* clip_min_t_fp32_ptr = clip_min_t.data<float>();
+      max_val_ = clip_max_t_fp32_ptr[0];
+      min_val_ = clip_min_t_fp32_ptr[0];
     } else {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "relu6_fuse_pass do not supported weight dtype. "
-            "we now only support fp32/fp16."));
+      PADDLE_THROW(platform::errors::Unavailable(
+          "relu6_fuse_pass do not supported weight dtype. "
+          "we now only support fp32/fp16."));
     }
     if (max_val_ == 6.f && min_val_ == 0.f) {
       OpDesc new_desc;
@@ -124,7 +123,7 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
       auto fused_node = graph->CreateOpNode(&new_desc);
       IR_NODE_LINK_TO(clip_x_node, fused_node);
       IR_NODE_LINK_TO(fused_node, clip_out_node);
-    } 
+    }
   };
   gpd(graph, handler);
 }
