@@ -70,8 +70,10 @@ def OpNameNormalizerInitialization(
         def insert_new_mutable_attributes(
             op_name: str, mutable_attribute_infos: Dict[str, Dict[str, str]]
         ):
-            op_mutable_attribues[op_name] = set()
-            op_mutable_attribute_infos[op_name] = {}
+            if op_name not in op_mutable_attribues:
+                op_mutable_attribues[op_name] = set()
+            if op_name not in op_mutable_attribute_infos:
+                op_mutable_attribute_infos[op_name] = {}
             for (
                 attribute_name,
                 mutable_attribute_info,
@@ -116,6 +118,14 @@ def OpNameNormalizerInitialization(
         if "scalar" in op_compat_item:
             insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
 
+        if "int_array" in op_compat_item:
+            insert_new_mutable_attributes(
+                legacy_name, op_compat_item["int_array"]
+            )
+
+        if "scalar" in op_compat_item:
+            insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
+
     # special op mappings
     op_name_mappings["fetch_v2"] = "fetch"
 
@@ -124,6 +134,8 @@ def OpNameNormalizerInitialization(
         op_compat_definition = op_name_normailzer_template.render(
             op_name_pairs=op_name_mappings,
             op_arg_name_pairs=op_arg_name_mappings,
+            op_mutable_attributes=op_mutable_attribues,
+            op_mutable_attribute_infos=op_mutable_attribute_infos,
             op_mutable_attributes=op_mutable_attribues,
             op_mutable_attribute_infos=op_mutable_attribute_infos,
         )

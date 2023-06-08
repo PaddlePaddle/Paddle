@@ -42,10 +42,15 @@ cc_test_old(
   gtest)
 
 file(
-  DOWNLOAD
-  https://paddle-ci.gz.bcebos.com/ir_translator_test/restnet50_main.prog
-  ${CMAKE_CURRENT_BINARY_DIR}/restnet50_main.prog
+  DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
+  ${CMAKE_CURRENT_BINARY_DIR}/resnet50_main.prog
   EXPECTED_MD5 b64c0ad3c96d99fc37d12094623ce1ad)
+
+file(
+  DOWNLOAD
+  https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_startup.prog
+  ${CMAKE_CURRENT_BINARY_DIR}/resnet50_startup.prog
+  EXPECTED_MD5 6affc5f40f0f0bb84d956919b95eaf50)
 
 cc_test_old(
   program_translator_test
