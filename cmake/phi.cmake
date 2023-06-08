@@ -108,24 +108,26 @@ function(kernel_declare TARGET_LIST)
           continue()
         endif()
       endif()
-
-      string(
-        REGEX
-          MATCH
-          "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
-          is_all_backend
-          "${first_registry}")
       string(
         REGEX
           MATCH
           "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
           is_all_backend
           "${first_registry}")
-      # parse the registerd kernel message
-      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" "" kernel_msg
-                     "${first_registry}")
-      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
-                     "" kernel_msg "${first_registry}")
+      if(NOT is_all_backend STREQUAL "")
+        string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
+                       "" kernel_msg "${first_registry}")
+      else()
+        string(
+          REGEX
+            MATCH
+            "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+            is_all_backend
+            "${first_registry}")
+        # parse the registerd kernel message
+        string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" ""
+                       kernel_msg "${first_registry}")
+      endif()
       string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
       string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
                      "${kernel_msg}")
