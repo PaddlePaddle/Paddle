@@ -109,6 +109,10 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
     mixed_precision_mode_ = precision_mode;
   } else if (precision_mode == Precision::kHalf ||
              precision_mode == Precision::kBf16) {
+    if (precision_mode == Precision::kBf16) {
+      LOG(WARNING) << "Some op (matmul, conv, etc.) run at bfloat16 precision "
+                      "requires GPU compute capability >= 80.";
+    }
     enable_gpu_mixed_ = true;
     mixed_precision_mode_ = precision_mode;
   } else {
@@ -1244,6 +1248,8 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"use_cutlass", use_cutlass_ ? "true" : "false"});
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
     os.InsertRow({"enable_gpu_mixed", std::to_string(enable_gpu_mixed_)});
+    os.InsertRow({"mixed_precision_mode",
+                  inference::Precision2String(mixed_precision_mode_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});
     os.InsertRow(
@@ -1254,16 +1260,6 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
     if (use_tensorrt_) {
 #ifdef PADDLE_WITH_TENSORRT
-      auto Precision2String = [](Precision prec) -> std::string {
-        if (prec == Precision::kFloat32)
-          return "fp32";
-        else if (prec == Precision::kHalf)
-          return "fp16";
-        else if (prec == Precision::kInt8)
-          return "int8";
-        else
-          return "None";
-      };
       auto version2string =
           [](const std::tuple<int, int, int> &ver) -> std::string {
         std::ostringstream os;
@@ -1280,7 +1276,7 @@ std::string AnalysisConfig::Summary() {
           {"trt_runtime_version",
            version2string(inference::tensorrt::GetTrtRuntimeVersion())});
       os.InsertRow({"tensorrt_precision_mode",
-                    Precision2String(tensorrt_precision_mode_)});
+                    inference::Precision2String(tensorrt_precision_mode_)});
       os.InsertRow({"tensorrt_workspace_size",
                     std::to_string(tensorrt_workspace_size_)});
       os.InsertRow(

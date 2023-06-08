@@ -38,7 +38,7 @@ namespace paddle {
 using PaddleDType = paddle_infer::DataType;
 using PaddlePlace = paddle_infer::PlaceType;
 using PaddleDataLayout = paddle_infer::DataLayout;
-using paddle_infer::Exp_OutputHookFunc;
+using paddle_infer::OutputTensorHookFunc;
 
 /// \brief Memory manager for PaddleTensor.
 ///
@@ -317,11 +317,11 @@ class PD_INFER_DECL PaddlePredictor {
   /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
-  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
+  virtual void RegisterOutputHook(const OutputTensorHookFunc& hookfunc) {}
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,

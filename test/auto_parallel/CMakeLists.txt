@@ -62,6 +62,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pass_generation_pipeline)
   set_tests_properties(test_pass_generation_pipeline
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_1F1B MODULES test_pass_1F1B)
+  set_tests_properties(test_pass_1F1B PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                 TIMEOUT 50)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout

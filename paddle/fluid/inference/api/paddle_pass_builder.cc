@@ -367,6 +367,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "fc_mkldnn_pass",
              "fc_act_mkldnn_fuse_pass",
              "fc_elementwise_add_mkldnn_fuse_pass",   //
+             "self_attention_fuse_pass",              //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_onednn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
@@ -522,6 +523,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",
+      "fold_interp_outsize_fuse_pass",
       "delete_cast_op_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
@@ -529,6 +531,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
+      "yolo_box_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",

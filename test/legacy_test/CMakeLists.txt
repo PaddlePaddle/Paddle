@@ -940,9 +940,11 @@ set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
 if(WIN32)
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 900)
   set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_cdist PROPERTIES TIMEOUT 250)
 else()
   set_tests_properties(test_static_save_load_large PROPERTIES TIMEOUT 600)
   set_tests_properties(test_paddle_save_load PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_cdist PROPERTIES TIMEOUT 120)
 endif()
 if(WITH_NV_JETSON)
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
@@ -1187,7 +1189,20 @@ set(TEST_CINN_OPS
     test_tile_op
     test_roll_op
     test_sum_op
-    test_elementwise_min_op)
+    test_elementwise_min_op
+    test_arg_min_max_op
+    test_reverse_op
+    test_flip
+    test_triangular_solve_op
+    test_scatter_nd_op
+    test_strided_slice_op
+    test_instance_norm_op
+    test_cumsum_op
+    test_pad_op
+    test_split_op
+    test_erf_op
+    test_assign_op
+    test_flatten_contiguous_range_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

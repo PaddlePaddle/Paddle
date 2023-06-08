@@ -949,6 +949,10 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
 #endif
   }
 
+  for (auto& hook : hookfuncs_) {
+    hook(op, local_scope);
+  }
+
   // for debug nan/inf
   if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";

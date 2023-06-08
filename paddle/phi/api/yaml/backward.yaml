@@ -372,6 +372,16 @@
     data_type : input
   backward : conv3d_double_grad
 
+- backward_op : conv3d_transpose_grad
+  forward : conv3d_transpose(Tensor x, Tensor filter, int[] strides={1, 1, 1}, int[] paddings={0, 0, 0}, int[] output_padding={}, int[] output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1, 1}, str data_format="NCHW") -> Tensor(out)
+  args : (Tensor x, Tensor filter, Tensor out_grad, int[] strides, int[] paddings, int[] output_padding, int[] output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
+  output : Tensor(x_grad), Tensor(filter_grad)
+  infer_meta :
+    func : ConvTransposeGradInferMeta
+  kernel :
+    func : conv3d_transpose_grad
+    data_type : x
+
 - backward_op : cos_double_grad
   forward : cos_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad)
@@ -1489,6 +1499,16 @@
     param : [out_grad]
   kernel :
     func : poisson_grad
+
+- backward_op : polygamma_grad
+  forward : polygamma (Tensor x, int n) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int n)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : polygamma_grad
 
 - backward_op : pow_double_grad
   forward : pow_grad(Tensor x, Tensor grad_out, Scalar y) -> Tensor(grad_x)

@@ -310,7 +310,11 @@ void Conv3DKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     conv2d, XPU, ALL_LAYOUT, phi::ConvKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    depthwise_conv2d, XPU, ALL_LAYOUT, phi::DepthwiseConvKernel, float) {}
+PD_REGISTER_KERNEL(depthwise_conv2d,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConvKernel,
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     conv3d, XPU, ALL_LAYOUT, phi::Conv3DKernel, float, phi::dtype::float16) {}

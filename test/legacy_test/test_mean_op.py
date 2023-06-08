@@ -211,7 +211,7 @@ class TestReduceMeanBF16Op(OpTest):
         self.axis = [0]
         self.keepdim = False
         self.set_attrs()
-        self.enable_cinn = False
+        self.if_enable_cinn()
 
         np.random.seed(10)
         x_np = np.random.uniform(-1, 1, self.shape).astype(np.float32)
@@ -226,6 +226,9 @@ class TestReduceMeanBF16Op(OpTest):
             'keep_dim': self.keepdim,
             'reduce_all': self.reduce_all,
         }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
     def set_attrs(self):
         pass
@@ -281,9 +284,6 @@ class TestReduceMeanOpShape6D(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestReduceMeanOpShape6DBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
@@ -294,9 +294,6 @@ class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
         self.dtype = 'float16'
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestReduceMeanOpAxisAll(TestReduceMeanOp):

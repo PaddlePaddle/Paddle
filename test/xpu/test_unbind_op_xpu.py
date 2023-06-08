@@ -97,7 +97,9 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             pass
 
         def outReshape(self):
-            pass
+            self.out[0] = self.out[0].reshape((2, 2))
+            self.out[1] = self.out[1].reshape((2, 2))
+            self.out[2] = self.out[2].reshape((2, 2))
 
         def setAxis(self):
             pass
