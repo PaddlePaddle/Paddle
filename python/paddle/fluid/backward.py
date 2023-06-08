@@ -1361,7 +1361,14 @@ def _append_backward_ops_(
                 for out_name in op.desc.output_arg_names():
                     grad_name_set.add(out_name)
                 continue
+            keep_var_list = []
+            if op.type in core.ops_contain_none.keys():
+                for none_var_name in core.ops_contain_none[op.type]:
+                    keep_var_list.append(op.output(none_var_name)[0])
+
             for var_name in op.desc.output_arg_names():
+                if keep_var_list and (var_name in keep_var_list):
+                    continue
                 grad_var_name = _append_grad_suffix_(var_name)
                 if grad_var_name not in grad_name_set:
                     op_desc = _create_op_desc_(

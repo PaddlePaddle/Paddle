@@ -18,7 +18,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle.fluid import framework
-from paddle.fluid.core import prim_config
+from paddle.fluid.core import ops_contain_none, prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -548,17 +548,6 @@ def _lower(block, reverse, blacklist):
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
     block._sync_with_cpp()
-
-
-# In some case, inputs and outputs of composite op or its replaced composite rule might be None.
-# It means such arg will be no longer required in processed program by composite mechanism.
-# Therefore, such special ops should be recorded in advance and be released in args check.
-ops_contain_none = (
-    "batch_norm",
-    "flatten_contiguous_range",
-    "squeeze2",
-    "unsqueeze2",
-)
 
 
 def _lower_composite(

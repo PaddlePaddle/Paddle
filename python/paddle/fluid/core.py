@@ -460,6 +460,17 @@ def _test_use_sync(value):
 prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
 
 
+# In some case, inputs and outputs of composite op or its replaced composite rule might be None.
+# It means such arg will be no longer required in processed program by composite mechanism.
+# Therefore, such special ops should be recorded in advance and be released in args check.
+ops_contain_none = {
+    "batch_norm": ["ReserveSpace", "SavedMean", "SavedVariance"],
+    "flatten_contiguous_range": ["XShape"],
+    "squeeze2": ["XShape"],
+    "unsqueeze2": ["XShape"],
+}
+
+
 def _set_prim_forward_blacklist(ops=None):
     if ops is None:
         prim_config["forward_blacklist"] = []
