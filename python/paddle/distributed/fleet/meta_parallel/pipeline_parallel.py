@@ -178,6 +178,7 @@ class PipelineParallel(MetaParallelBase):
         self.pp_group = self._hcg.get_pipe_parallel_group()
 
         self.dp_group = self._hcg.get_data_parallel_group()
+        self.sharding_group = self._hcg.get_sharding_parallel_group()
 
         # fused sep and dp
         if self.use_sep_parallel:
@@ -616,6 +617,11 @@ class PipelineParallel(MetaParallelBase):
         self.lr_scheduler = lr_scheduler
         self._layers.train()
         self.register_sharding_comm_overlap_hook(optimizer)
+
+        if self._sharding_comm_overlap and len(self._comm_buffers) == 0:
+            self.register_allreduce_overlap_hook(
+                self._layers, self.sharding_group, self.accumulate_steps, False
+            )
 
         return data
 
