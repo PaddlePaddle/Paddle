@@ -114,7 +114,9 @@ def default_candidates(tuner_cfg):
         candidates["recompute_granularity"] = [None]
 
     if tuner_cfg.get("micro_batch_size", None) == "auto":
-        candidates["micro_batch_size"] = [16, 8, 4, 2, 1]
+        candidates["micro_batch_size"] = list(
+            range(tuner_cfg["model_cfg"]["global_batch_size"], 0, -1)
+        )
     elif tuner_cfg.get("micro_batch_size", None):
         candidates["micro_batch_size"] = tuner_cfg.get("micro_batch_size")
     else:

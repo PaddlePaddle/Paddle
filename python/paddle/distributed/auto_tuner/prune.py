@@ -172,9 +172,6 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
         if sharding_degree not in sharding_degree_candidates:
             return True
 
-    if sharding_degree == 1:
-        return True
-
     if pp_degree and pp_degree != 1 and sharding_stage != 1:
         return True
 
