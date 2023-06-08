@@ -276,8 +276,12 @@ def check_numerics(
         debug_mode(paddle.amp.debugging.DebugMode, optional): The mode of debugging to be used. Default is DebugMode.CHECK_NAN_INF_AND_ABORT.
 
     Returns:
-        stats(Tensor): The output stats tensor stores the number of NaNs, Infs and zeros of input tensor. The shape is [3] and dtype is int64.
-        values(Tensor): The output values tensor stores the maximum, minimum and mean value of input tensor. The shape is [3] and dtype is float.
+        (Tensor, Tensor): A tuple of tensors containing
+
+            - **stats** (Tensor): Returns the number of NaNs, Infs and zeros of input tensor.
+                                  The shape is [3] and dtype is int64.
+            - **values** (Tensor): Returns the maximum, minimum and mean value of input tensor.
+                                   The shape is [3] and dtype is float.
 
     Examples:
 
