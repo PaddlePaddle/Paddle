@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_kernel_type.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 
 namespace paddle {
 namespace dialect {

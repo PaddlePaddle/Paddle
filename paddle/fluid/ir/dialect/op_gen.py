@@ -108,7 +108,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}});
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{"{kernel_key_dtype}"}} );
   return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
@@ -1006,6 +1006,7 @@ def OpGenerator(
         op_info_items.append(
             OpInfoParser(op, op_compat_parser.get_compat(op['name']))
         )
+        # break
 
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
@@ -1259,9 +1260,14 @@ def OpGenerator(
                 infer_meta_param_str = '", "'.join(op_infer_meta_map['param'])
             kernel_func_str = ""
             kernel_param_str = ""
+            kernel_key_dtype = ""
             if op_kernel_map is not None:
                 kernel_func_str = '", "'.join(op_kernel_map['func'])
                 kernel_param_str = '", "'.join(op_kernel_map['param'])
+                if 'data_type' in op_kernel_map and op_kernel_map['data_type']:
+                    kernel_key_dtype = '", "'.join(
+                        op_kernel_map['data_type']['candidates']
+                    )
 
             op_info_func_str = OP_INFO_TEMPLATE.format(
                 op_name=op_class_name,
@@ -1272,6 +1278,7 @@ def OpGenerator(
                 infer_meta_param=infer_meta_param_str,
                 kernel_func=kernel_func_str,
                 kernel_param=kernel_param_str,
+                kernel_key_dtype=kernel_key_dtype,
             )
 
             # generate op verify function: inputs_type_check_str
@@ -1418,6 +1425,8 @@ def OpGenerator(
             ops_defined_list.append(build_func_declare_str)
             ops_defined_list.append(op_verify_str)
             ops_defined_list.append(op_infer_shape_str)
+
+            # break
 
     # (4) Generate head file str
     op_namespaces_prev = ""

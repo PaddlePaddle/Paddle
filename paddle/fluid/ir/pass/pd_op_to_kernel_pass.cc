@@ -12,13 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
+
 #include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace dialect {
 
 std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
+
+  auto block = prog->block();
+  phi::Place cpu_place(phi::AllocationType::CPU);
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    std::cerr << (*it)->name() << std::endl;
+  }
 
   return program;
 }

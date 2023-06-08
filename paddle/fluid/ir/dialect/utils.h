@@ -141,14 +141,17 @@ struct OpRunTimeInfo {
   std::vector<std::string> infer_meta_param;
   std::vector<std::string> kernel_func;
   std::vector<std::string> kernel_param;
+  std::vector<std::string> kernel_key_dtype;
   OpRunTimeInfo(std::string infer_meta_func,
                 std::vector<std::string> infer_meta_param,
                 std::vector<std::string> kernel_func,
-                std::vector<std::string> kernel_param)
+                std::vector<std::string> kernel_param,
+                std::vector<std::string> dtype)
       : infer_meta_func(infer_meta_func),
         infer_meta_param(infer_meta_param),
         kernel_func(kernel_func),
-        kernel_param(kernel_param) {}
+        kernel_param(kernel_param),
+        kernel_key_dtype(dtype) {}
 };
 
 }  // namespace dialect
