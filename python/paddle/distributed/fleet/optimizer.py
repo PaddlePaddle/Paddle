@@ -84,6 +84,11 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
                     not hp_optim._sep_enable
                 ), "sep parallel can not coexist with sharding_comm_overlap"
 
+            if fleet_env._user_defined_strategy.hybrid_configs[
+                "pp_configs"
+            ].sharding_comm_overlap:
+                hp_optim._sharding_enable = False
+
             return hp_optim
         else:
             return HeterParallelOptimizer(
