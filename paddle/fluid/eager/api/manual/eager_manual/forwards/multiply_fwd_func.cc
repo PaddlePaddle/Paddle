@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/core/flags.h"
@@ -302,6 +303,10 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);
+  bool trace_backward = egr::Controller::Instance().HasGrad();
+  bool require_any_grad = egr::EagerUtils::ComputeRequireGrad(
+      trace_backward, x_autograd_meta, y_autograd_meta);
+
   // Check Inplace if needed
 
   egr::EagerUtils::CheckInplace(x, x_autograd_meta, require_any_grad);
@@ -312,7 +317,22 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
 
   // Node Creation
   if (require_any_grad) {
+    paddle::platform::RecordEvent node_creation_record_event(
+        "multiply node_creation",
+        paddle::platform::TracerEventType::OperatorInner,
+        1);
+
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
+
+    // Node Construction
+    auto grad_node =
+        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(1, 2));
+
+    // SetAttributes if needed
+    grad_node->SetAttributeaxis(-1);
+    // Set TensorWrappers for Forward Inputs if needed
+    grad_node->SetTensorWrapperx(x);
+    grad_node->SetTensorWrappery(y);
     // SetGradOutMeta & SetEdges
     grad_node->SetGradOutMeta(x, 0);
     grad_node->SetGradOutMeta(y, 1);
