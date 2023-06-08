@@ -234,6 +234,8 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
@@ -519,6 +521,10 @@ if(WITH_MKLDNN)
 endif()
 
 if(WITH_XPU)
+  cc_test(
+    test_cast_mixed_precision_op_fuse_pass
+    SRCS xpu/cast_mixed_precision_op_fuse_pass_test.cc
+    DEPS cast_mixed_precision_op_fuse_pass)
   cc_test(
     test_delete_isolated_node_pass
     SRCS xpu/delete_isolated_node_pass_test.cc

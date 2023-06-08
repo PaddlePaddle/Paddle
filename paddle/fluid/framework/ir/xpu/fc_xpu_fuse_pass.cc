@@ -309,9 +309,11 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
 
     auto* filter_t =
         scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>();
-    // filter fp16 --> fp32
-    auto tensor_type = filter_t->dtype();
-    if (tensor_type == phi::DataType::FLOAT16) {
+    // weight fp16 --> fp32
+    auto filter_dtype = filter_t->dtype();
+    int kernel_dtype = proto::VarType::Type::VarType_Type_FP32;
+    if (filter_dtype == phi::DataType::FLOAT16) {
+      kernel_dtype = proto::VarType::Type::VarType_Type_FP16;
       CastToFp32(filter_t, nullptr);
     }
     auto filter_dims = filter_t->dims();
@@ -431,6 +433,8 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
+    fc_xpu_op_desc.SetAttr("kernel_dtype", kernel_dtype);
+    fc_xpu_op_desc.SetAttr("out_dtype", kernel_dtype);
     fc_xpu_op_desc.SetOutput("out", {fc_out_name});
     fc_xpu_op_desc.SetOutput("out_max", {fc_out_max_name});
     auto* fc_xpu = graph->CreateOpNode(&fc_xpu_op_desc);
