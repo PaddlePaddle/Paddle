@@ -72,23 +72,23 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
   }
 }
 
-static phi::Scalar TransToPhiScalar(ir::Attribute attr) {
-  if (attr.isa<ir::FloatAttribute>()) {
-    return phi::Scalar(attr.dyn_cast<ir::FloatAttribute>().data());
-  } else if (attr.isa<ir::DoubleAttribute>()) {
-    return phi::Scalar(attr.dyn_cast<ir::DoubleAttribute>().data());
-  } else if (attr.isa<ir::Int32_tAttribute>()) {
-    return phi::Scalar(attr.dyn_cast<ir::Int32_tAttribute>().data());
-  } else if (attr.isa<ir::Int64_tAttribute>()) {
-    return phi::Scalar(attr.dyn_cast<ir::Int64_tAttribute>().data());
-  } else if (attr.isa<ir::BoolAttribute>()) {
-    return phi::Scalar(attr.dyn_cast<ir::BoolAttribute>().data());
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Unsupported ir attribute when casting it into "
-        "phi scalar."));
-  }
-}
+// static phi::Scalar TransToPhiScalar(ir::Attribute attr) {
+//   if (attr.isa<ir::FloatAttribute>()) {
+//     return phi::Scalar(attr.dyn_cast<ir::FloatAttribute>().data());
+//   } else if (attr.isa<ir::DoubleAttribute>()) {
+//     return phi::Scalar(attr.dyn_cast<ir::DoubleAttribute>().data());
+//   } else if (attr.isa<ir::Int32_tAttribute>()) {
+//     return phi::Scalar(attr.dyn_cast<ir::Int32_tAttribute>().data());
+//   } else if (attr.isa<ir::Int64_tAttribute>()) {
+//     return phi::Scalar(attr.dyn_cast<ir::Int64_tAttribute>().data());
+//   } else if (attr.isa<ir::BoolAttribute>()) {
+//     return phi::Scalar(attr.dyn_cast<ir::BoolAttribute>().data());
+//   } else {
+//     PADDLE_THROW(phi::errors::Unimplemented(
+//         "Unsupported ir attribute when casting it into "
+//         "phi scalar."));
+//   }
+// }
 
 static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
                                                ir::IrContext *ctx = nullptr) {

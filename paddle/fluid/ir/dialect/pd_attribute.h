@@ -17,6 +17,8 @@
 #include "paddle/fluid/ir/dialect/pd_attribute_storage.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
@@ -44,6 +46,24 @@ class ScalarAttribute : public ir::Attribute {
            (val.type_id() == ir::DoubleAttribute::type_id()) ||
            (val.type_id() == ir::Int32_tAttribute::type_id()) ||
            (val.type_id() == ir::Int64_tAttribute::type_id());
+  }
+
+  phi::Scalar data() {
+    if (isa<ir::FloatAttribute>()) {
+      return phi::Scalar(dyn_cast<ir::FloatAttribute>().data());
+    } else if (isa<ir::DoubleAttribute>()) {
+      return phi::Scalar(dyn_cast<ir::DoubleAttribute>().data());
+    } else if (isa<ir::Int32_tAttribute>()) {
+      return phi::Scalar(dyn_cast<ir::Int32_tAttribute>().data());
+    } else if (isa<ir::Int64_tAttribute>()) {
+      return phi::Scalar(dyn_cast<ir::Int64_tAttribute>().data());
+    } else if (isa<ir::BoolAttribute>()) {
+      return phi::Scalar(dyn_cast<ir::BoolAttribute>().data());
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported ir attribute when casting it into "
+          "phi scalar."));
+    }
   }
 };
 
