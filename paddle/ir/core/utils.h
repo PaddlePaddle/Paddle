@@ -120,4 +120,18 @@ struct Filter<BaseT, Tuple, true> {
   using Type = std::tuple<>;
 };
 
+template <typename ForwardIterator, typename UnaryFunctor, typename NullFunctor>
+void PrintInterleave(ForwardIterator begin,
+                     ForwardIterator end,
+                     UnaryFunctor print_func,
+                     NullFunctor between_func) {
+  if (begin == end) return;
+  print_func(*begin);
+  begin++;
+  for (; begin != end; begin++) {
+    between_func();
+    print_func(*begin);
+  }
+}
+
 }  // namespace ir

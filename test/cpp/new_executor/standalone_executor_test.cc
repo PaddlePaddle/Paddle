@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
@@ -150,20 +151,20 @@ TEST(StandaloneExecutor, run) {
   ProgramDesc main_prog = GetLmMainProgram();
 
   Scope scope;
-  Job startup_job = Job("startup");
+  std::shared_ptr<Job> startup_job = std::make_shared<Job>(Job("startup"));
   StandaloneExecutor startup_exec(
       place,
-      Plan(std::vector<Job>({startup_job}),
+      Plan(std::vector<std::shared_ptr<Job>>({startup_job}),
            std::unordered_map<std::string, ProgramDesc*>(
-               {{startup_job.Type(), &startup_prog}})),
+               {{startup_job->Type(), &startup_prog}})),
       &scope);
   startup_exec.Run({}, {});
 
-  Job main_job = Job("main");
+  std::shared_ptr<Job> main_job = std::make_shared<Job>(Job("main"));
   StandaloneExecutor exec(place,
-                          Plan(std::vector<Job>({main_job}),
+                          Plan(std::vector<std::shared_ptr<Job>>({main_job}),
                                std::unordered_map<std::string, ProgramDesc*>(
-                                   {{main_job.Type(), &main_prog}})),
+                                   {{main_job->Type(), &main_prog}})),
                           &scope);
   exec.Run({}, {});
   auto start = std::chrono::steady_clock::now();

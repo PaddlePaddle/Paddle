@@ -28,15 +28,15 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     micro_batch_scopes_.emplace_back(&scope->NewScope());
   }
 
-  const std::vector<interpreter::Job>& jobs = plan_.JobList();
+  const auto& jobs = plan_.JobList();
 
-  for (const interpreter::Job& job : jobs) {
-    const std::string& job_type = job.Type();
+  for (const auto& job : jobs) {
+    const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program =
         std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
-    SetColAttrForFetchOps(job, program);
+    SetColAttrForFetchOps(*job, program);
 
-    int64_t micro_batch_id = job.MicroBatchId();
+    int64_t micro_batch_id = job->MicroBatchId();
     PADDLE_ENFORCE(
         micro_batch_id >= 0 && micro_batch_id < micro_batch_num,
         phi::errors::Unavailable("The micro batch id (%lld) out of bound, "
@@ -74,10 +74,10 @@ paddle::framework::FetchList StandaloneExecutor::Run(
                           "please use non-iterative DataLoader for now."));
   }
 
-  const std::vector<interpreter::Job>& jobs = plan_.JobList();
+  const auto& jobs = plan_.JobList();
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
-    const interpreter::Job& job = jobs[job_idx];
-    const std::string& job_type = job.Type();
+    const auto& job = jobs[job_idx];
+    const std::string& job_type = job->Type();
 
     // NOTE(Ruibiao): Since fetch_names are considered as executor Cache key in
     // python side, here aussumes that the feed_names and fetch_names are
@@ -89,7 +89,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       fetch_name_info += fetch_name + ", ";
     }
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
-            << ", micro_batch_id =" << job.MicroBatchId()
+            << ", micro_batch_id =" << job->MicroBatchId()
             << ", fetch_names = " << fetch_name_info;
 
     interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);

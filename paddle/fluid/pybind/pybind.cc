@@ -1857,7 +1857,8 @@ All parameter, weight, gradient are variables in Paddle.
              return py::cast(std::move(ret));
            });
 
-  py::class_<framework::interpreter::Job>(m, "Job")
+  py::class_<framework::interpreter::Job,
+             std::shared_ptr<framework::interpreter::Job>>(m, "Job")
       .def(py::init<const std::string &>(), py::arg("type"))
       .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
       .def("type", &framework::interpreter::Job::Type)
@@ -1866,11 +1867,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId);
 
   py::class_<framework::interpreter::Plan>(m, "Plan")
-      .def(py::init<const std::vector<framework::interpreter::Job> &,
-                    const std::unordered_map<std::string,
-                                             framework::ProgramDesc *> &>(),
-           py::arg("job_list"),
-           py::arg("type_to_program"))
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string, framework::ProgramDesc *>
+                  &>(),
+          py::arg("job_list"),
+          py::arg("type_to_program"))
       .def("fetch_names", &framework::interpreter::Plan::FetchNames)
       .def("job_list", &framework::interpreter::Plan::JobList)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
@@ -2703,12 +2706,6 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

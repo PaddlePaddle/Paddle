@@ -76,8 +76,6 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                     attn_mask = self.attn_mask_data[i][
                         micro_batch_id : micro_batch_id + micro_batch_size
                     ]
-                    print(f"read enc_input: {enc_input}")
-                    print(f"read attn_mask: {attn_mask}")
                     yield enc_input, attn_mask
 
         return __reader__

@@ -846,9 +846,12 @@ class _ExecutorCache:
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
-
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, [new_program], scope)
+        new_exe = _StandaloneExecutor(
+            place,
+            core.Plan([core.Job("default")], {"default": new_program.desc}),
+            scope,
+        )
         return new_program, new_exe
 
 
