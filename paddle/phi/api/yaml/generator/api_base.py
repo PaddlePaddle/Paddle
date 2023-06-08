@@ -1490,9 +1490,26 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         code_indent='',
     ):
         check_acc_code = ""
+#         if kernel_name == "batch_norm":
+#             check_acc_code = (
+#                 check_acc_code
+#                 + f"""
+# {code_indent}    bool test_mode = is_test && (!trainable_statistics);
+# {code_indent}    bool global_stats = test_mode || use_global_stats;"""
+#             )
+
         for i in dev2_kernel_in_out_list:
             tensor_name = i.replace("*", "").replace("dev2_", "")
             dev1_input = i.replace("dev2_", "")
+            if kernel_name == "batch_norm" and tensor_name in ["kernel_out_1", "kernel_out_2", "kernel_out_3", "kernel_out_4"]:
+                check_acc_code = (
+                    check_acc_code
+                    + f"""
+{code_indent}    if (!global_stats) {{
+{code_indent}      debug_str += paddle::experimental::XPUDebugString("{kernel_name}", "{tensor_name}", {dev1_input}, {i});
+{code_indent}    }}"""
+                )
+
             ###########
             #             if kernel_name == "meshgrid" and tensor_name == "kernel_out":
             #                 check_acc_code = (
@@ -1504,11 +1521,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             # {code_indent}    std::cout << "dev2_kernel_out.size() = " << dev2_kernel_out.size() <<std::endl;"""
             #             )
             ###########
-            check_acc_code = (
-                check_acc_code
-                + f"""
+            else:
+                check_acc_code = (
+                    check_acc_code
+                    + f"""
 {code_indent}    debug_str += paddle::experimental::XPUDebugString("{kernel_name}", "{tensor_name}", {dev1_input}, {i});"""
-            )
+                )
         return check_acc_code
 
     # Override by child class
@@ -1619,7 +1637,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         # {code_indent}  }}
         # {code_indent}  }}"""
 
-        dev2_run_kernel = f"""
+        condition_str = f"""
+{code_indent}  bool test_mode = is_test && (!trainable_statistics);
+{code_indent}  bool global_stats = test_mode || use_global_stats;"""
+
+        dev2_run_kernel = f"""{condition_str if kernel_name == "batch_norm" else ""}
 {code_indent}  if (paddle::experimental::DebugOrNot() && ContinueOrNot("{kernel_name}")) {{
 {code_indent}    Backend dev2_kernel_backend = TransToPhiBackend(GetDebugDev2Type());
 {code_indent}    VLOG(6) << "{self.api} API kernel key Dev2: [" << dev2_kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
