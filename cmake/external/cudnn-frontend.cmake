@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,20 +26,56 @@ if(CUDNN_VERSION LESS 8000)
   )
 endif()
 
+if((NOT DEFINED CUDNN_FRONTEND_NAME) OR (NOT DEFINED CUDNN_FRONTEND_URL))
+  set(CUDNN_FRONTEND_VER
+      "1.23.2"
+      CACHE STRING "" FORCE)
+  set(CUDNN_FRONTEND_NAME
+      "cudnn-frontend"
+      CACHE STRING "" FORCE)
+  set(CUDNN_FRONTEND_URL
+      "https://github.com/NVIDIA/cudnn-frontend/archive/refs/tags/v0.7.1.tar.gz"
+      CACHE STRING "" FORCE)
+  set(CUDNN_FRONTEND_CACHE_FILENAME "v0.7.1.tar.gz")
+endif()
+
+message(STATUS "CUDNN_FRONTEND_NAME: ${CUDNN_FRONTEND_NAME}, CUDNN_FRONTEND_URL: ${CUDNN_FRONTEND_URL}")
+set(DIRENT_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/cudnn-frontend")
 # Version: v0.7.1
 set(CUDNN_FRONTEND_PREFIX_DIR ${THIRD_PARTY_PATH}/cudnn-frontend)
 set(CUDNN_FRONTEND_SOURCE_DIR
     ${THIRD_PARTY_PATH}/cudnn-frontend/src/extern_cudnn_frontend/include)
-set(CUDNN_FRONTEND_REPOSITORY https://github.com/NVIDIA/cudnn-frontend.git)
-set(CUDNN_FRONTEND_TAG v0.7.1)
+
 
 set(CUDNN_FRONTEND_INCLUDE_DIR ${CUDNN_FRONTEND_SOURCE_DIR})
 include_directories(${CUDNN_FRONTEND_INCLUDE_DIR})
 
 message(
   STATUS
-    "Adding cudnn-frontend. Version: ${CUDNN_FRONTEND_TAG}. Directory: ${CUDNN_FRONTEND_INCLUDE_DIR}"
+    "Adding cudnn-frontend. Version: ${CUDNN_FRONTEND_VER}. Directory: ${DIRENT_DOWNLOAD_DIR}"
 )
+
+function(download_cudnn-frontend)
+  message(
+    STATUS
+      "Downloading ${CUDNN_FRONTEND_URL} to ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${CUDNN_FRONTEND_URL}
+    ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${CUDNN_FRONTEND_CACHE_FILENAME} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${CUDNN_FRONTEND_CACHE_FILENAME} again"
+    )
+  endif()
+endfunction()
+
+download_dirent()
 
 ExternalProject_Add(
   extern_cudnn_frontend

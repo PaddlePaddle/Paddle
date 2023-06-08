@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,13 +17,47 @@
 
 include(ExternalProject)
 
+if((NOT DEFINED DIRENT_NAME) OR (NOT DEFINED DIRENT_URL))
+  set(DIRENT_VER
+      "1.23.2"
+      CACHE STRING "" FORCE)
+  set(DIRENT_NAME
+      "dirent"
+      CACHE STRING "" FORCE)
+  set(DIRENT_URL
+      "https://github.com/tronkko/dirent/archive/refs/tags/1.23.2.tar.gz"
+      CACHE STRING "" FORCE)
+  set(DIRENT_CACHE_FILENAME "1.23.2.tar.gz")
+endif()
+
+message(STATUS "DIRENT_NAME: ${DIRENT_NAME}, DIRENT_URL: ${DIRENT_URL}")
+set(DIRENT_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/dirent")
 set(DIRENT_PREFIX_DIR ${THIRD_PARTY_PATH}/dirent)
 set(DIRENT_INCLUDE_DIR ${THIRD_PARTY_PATH}/dirent/src/extern_dirent/include)
 
 include_directories(${DIRENT_INCLUDE_DIR})
 
-set(DIRENT_REPOSITORY ${GIT_URL}/tronkko/dirent)
-set(DIRENT_TAG 1.23.2)
+function(download_dirent)
+  message(
+    STATUS
+      "Downloading ${DIRENT_URL} to ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${DIRENT_URL}
+    ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${DIRENT_CACHE_FILENAME} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${DIRENT_CACHE_FILENAME} again"
+    )
+  endif()
+endfunction()
+
+download_dirent()
 
 ExternalProject_Add(
   extern_dirent
