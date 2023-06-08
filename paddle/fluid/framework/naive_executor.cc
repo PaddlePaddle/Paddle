@@ -93,6 +93,10 @@ void NaiveExecutor::Run() {
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
 
+    if (op->Type() == "while") {
+      op->SetOutputHooks(hookfuncs_);
+    }
+
     op->Run(*scope_, place_);
     // std::cout << op->OutputVars(true).front() << std::endl;
     // success = cudaStreamSynchronize(dev_ctx->stream());
@@ -154,8 +158,8 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    for (auto &func : hookfunc_) {
-      func(op.get());
+    for (auto &func : hookfuncs_) {
+      func(op.get(), scope_);
     }
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
@@ -235,7 +239,7 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfunc_.push_back(hookfunc);
+  hookfuncs_.push_back(hookfunc);
 }
 
 void NaiveExecutor::MakeReusePlan(

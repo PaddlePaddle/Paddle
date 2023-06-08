@@ -13,6 +13,16 @@ cc_test_old(
   gtest)
 
 cc_test_old(
+  ir_phi_kernel_op_test
+  SRCS
+  ir_phi_kernel_op_test.cc
+  DEPS
+  new_ir
+  pd_dialect
+  phi
+  gtest)
+
+cc_test_old(
   ir_infershape_test
   SRCS
   ir_infershape_test.cc
@@ -30,6 +40,15 @@ cc_test_old(
   new_ir
   pd_dialect
   phi
+  gtest)
+
+cc_test_old(
+  scalar_attribute_test
+  SRCS
+  scalar_attribute_test.cc
+  DEPS
+  pd_dialect
+  new_ir
   gtest)
 
 file(

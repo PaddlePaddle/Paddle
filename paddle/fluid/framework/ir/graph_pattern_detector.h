@@ -1491,6 +1491,33 @@ struct VitAttention : public PatternBase {
   PATTERN_DECL_NODE(reshape2_out);
 };
 
+// self_attention in vit
+struct SelfAttention : public PatternBase {
+  SelfAttention(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "vit_block") {}
+
+  PDNode* operator()(PDNode* in);
+
+  PATTERN_DECL_NODE(transpose2_0_op);
+  PATTERN_DECL_NODE(transpose2_0_out);
+  PATTERN_DECL_NODE(transpose2_1_op);
+  PATTERN_DECL_NODE(transpose2_1_out);
+  PATTERN_DECL_NODE(transpose2_2_op);
+  PATTERN_DECL_NODE(transpose2_2_out);
+  PATTERN_DECL_NODE(matmul_0_op);
+  PATTERN_DECL_NODE(matmul_0_out);
+  PATTERN_DECL_NODE(matmul_1_op);
+  PATTERN_DECL_NODE(matmul_1_out);
+  PATTERN_DECL_NODE(slice_0_op);
+  PATTERN_DECL_NODE(slice_0_out);
+  PATTERN_DECL_NODE(slice_1_op);
+  PATTERN_DECL_NODE(slice_1_out);
+  PATTERN_DECL_NODE(slice_2_op);
+  PATTERN_DECL_NODE(slice_2_out);
+  PATTERN_DECL_NODE(softmax_op);
+  PATTERN_DECL_NODE(softmax_out);
+};
+
 // Conv + ElementwiseAdd + an activation
 // This pattern can further fuse the conv related ops after the conv+bn fusion.
 struct ConvElementwiseaddAct : public PatternBase {

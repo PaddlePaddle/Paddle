@@ -112,6 +112,15 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
     return ParamKey(dtype_, dims_, layout_, lod_, offset_) == key;
   }
 
+  bool operator==(const DenseTensorTypeStorage &storage) const {
+    return ParamKey(dtype_, dims_, layout_, lod_, offset_) ==
+           ParamKey(storage.dtype_,
+                    storage.dims_,
+                    storage.layout_,
+                    storage.lod_,
+                    storage.offset_);
+  }
+
   ParamKey GetAsKey() const {
     return ParamKey(dtype_, dims_, layout_, lod_, offset_);
   }
