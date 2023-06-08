@@ -12,23 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_kernel_op.h"
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 
 namespace paddle {
 namespace dialect {
 
-const char *PhiKernelOp::attributes_name[attributes_num] = {
-    "base_op", "infermeta_fn", "kernel_fn"};
+std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
+  auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
 
-void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
-                         const std::vector<ir::Type> &outputs,
-                         const ir::AttributeMap &attributes) {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
-  // Verify inputs type:
-
-  // Verify if attributes contain attribute name in attributes_name:
-  //   if (!attributes.at("parameter_name").isa<StrAttribute>()) {
-  //     throw("Type of attribute: parameter_name is not right.");
+  return program;
 }
 
 }  // namespace dialect
