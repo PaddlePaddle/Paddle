@@ -113,6 +113,10 @@ endif()
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
 
+  set(WITH_SHARED_PHI
+      OFF
+      CACHE BOOL "Use static lib of PHI" FORCE)
+  message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 
