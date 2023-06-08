@@ -1267,7 +1267,7 @@ def _write_setup_file(
     ).lstrip()
 
     with_cuda = False
-    if any([is_cuda_file(source) for source in sources]):
+    if any(is_cuda_file(source) for source in sources):
         with_cuda = True
     log_v(f"with_cuda: {with_cuda}", verbose)
 

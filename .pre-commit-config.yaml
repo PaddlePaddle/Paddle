@@ -67,7 +67,7 @@ repos:
     -   id: flake8
         args: ["--config=.flake8"]
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.0.254
+    rev: v0.0.271
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
