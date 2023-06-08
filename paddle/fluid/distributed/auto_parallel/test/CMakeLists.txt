@@ -13,16 +13,6 @@ cc_test(
   SRCS dist_attr_test.cc
   DEPS dist_attr proto_desc)
 
-# cc_test(
-#   dist_mapper_test
-#   SRCS dist_mapper_test.cc
-#   DEPS dist_mapper)
-
 cc_test_old(dist_mapper_test SRCS dist_mapper_test.cc DEPS dist_mapper)
 
-# cc_test(
-#   spmd_rule_test
-#   SRCS spmd_rule_test.cc
-#   DEPS matmul_spmd_rule)
-
-cc_test_old(spmd_rule_test SRCS spmd_rule_test.cc DEPS matmul_spmd_rule)
+cc_test_old(spmd_rule_test SRCS spmd_rule_test.cc DEPS spmd_rule)

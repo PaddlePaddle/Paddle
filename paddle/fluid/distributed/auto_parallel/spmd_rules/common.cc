@@ -159,18 +159,28 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
 }
 
 // SPMDRuleMap
-SPMDRuleMap& SPMDRuleMap::Instance(){
+SPMDRuleMap& SPMDRuleMap::Instance() {
   static SPMDRuleMap g_spmd_rule_map;
   return g_spmd_rule_map;
 }
 
-// TODO enable default replicated spmd rule for op that are NOT registered 
-// which all tensors of inputs and outputs will be replicated in all ranks of the mesh.
+// To enable default replicated spmd rule for op that are NOT registered
+// which all tensors of inputs and outputs will be replicated in all ranks of
+// the mesh.
 SPMDRuleBase& SPMDRuleMap::Get(const std::string& op_type) const {
   auto rule_ptr = GetNullable(op_type);
+  if (rule_ptr == nullptr) {
+    std::string str;
+    for (const auto& item : map_) {
+      str += item.first + ", ";
+    }
+    VLOG(4) << "Size of current map [" << map_.size() << "]";
+    VLOG(4) << "Keys are [" << str << "]";
+  }
   PADDLE_ENFORCE_NOT_NULL(
       rule_ptr,
-      platform::errors::NotFound("NO SPMD Rule has been registered for Operator [%s].", op_type));
+      platform::errors::NotFound(
+          "NO SPMD Rule has been registered for Operator [%s].", op_type));
   return *rule_ptr;
 }
 
@@ -183,15 +193,18 @@ SPMDRuleBase* SPMDRuleMap::GetNullable(const std::string& op_type) const {
   }
 }
 
-void SPMDRuleMap::Insert(const std::string& op_type, std::unique_ptr<SPMDRuleBase> rule){
-  PADDLE_ENFORCE_NE(Has(op_type),
-                    true,
-                    platform::errors::AlreadyExists(
-                        "SPMD Rule for Operator [%s] has been registered.", op_type));
+int SPMDRuleMap::Insert(const std::string& op_type,
+                        std::unique_ptr<SPMDRuleBase> rule) {
+  VLOG(4) << "Call SPMDRuleMap::Insert!";
+  PADDLE_ENFORCE_NE(
+      Has(op_type),
+      true,
+      platform::errors::AlreadyExists(
+          "SPMD Rule for Operator [%s] has been registered.", op_type));
   map_.insert({op_type, std::move(rule)});
+
+  return 1;
 }
-
-
 
 }  // namespace auto_parallel
 }  // namespace distributed

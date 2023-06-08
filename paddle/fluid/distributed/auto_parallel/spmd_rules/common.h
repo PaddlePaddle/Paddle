@@ -19,11 +19,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/utils/flat_hash_map.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 
@@ -126,8 +126,7 @@ class SPMDRuleMap {
   SPMDRuleBase* GetNullable(const std::string& op_type) const;
 
   // Register a spmd for an op_type.
-  void Insert(const std::string& op_type, std::unique_ptr<SPMDRuleBase> rule); 
-
+  int Insert(const std::string& op_type, std::unique_ptr<SPMDRuleBase> rule);
 
   bool Has(const std::string& op_type) const {
     return map_.find(op_type) != map_.end();
@@ -137,17 +136,12 @@ class SPMDRuleMap {
   SPMDRuleMap() = default;
   paddle::flat_hash_map<std::string, std::unique_ptr<SPMDRuleBase>> map_;
   DISABLE_COPY_AND_ASSIGN(SPMDRuleMap);
-
 };
 
-#define REGISTER_SPMDRULE(op_type, rule_class, ...)                                              \
-    STATIC_ASSERT_GLOBAL_NAMESPACE(                                                              \
-      __reg_spmd_rule__##op_type,                                                                \
-      "REGISTER_SPMDRULE must be called in global namespace");                                   \
-    ::paddle::distributed::auto_parallel::SPMDRuleMap::Instance().Insert(                        \
-            op_type,                                                                             \
-            std::make_unique<rule_class>(__VA_ARGS__))
-
+#define REGISTER_SPMD_RULE(op_type, rule_class, ...)                        \
+  static int __spmd_rule_holder_##op_type =                                 \
+      ::paddle::distributed::auto_parallel::SPMDRuleMap::Instance().Insert( \
+          #op_type, std::make_unique<rule_class>(__VA_ARGS__))
 
 }  // namespace auto_parallel
 }  // namespace distributed
