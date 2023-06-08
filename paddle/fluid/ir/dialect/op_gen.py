@@ -434,7 +434,13 @@ class OpInfoParser:
                             ["ir::StrAttribute", "std::string"]
                         )
                     else:
-                        mutable_attribute_name_list.append(scalar_attr)
+                        if (
+                            scalar_attr == "depth"
+                            and self.op_phi_name[0] == "one_hot"
+                        ):
+                            mutable_attribute_name_list.append("num_classes")
+                        else:
+                            mutable_attribute_name_list.append(scalar_attr)
                         mutable_attribute_type_list.append(
                             [
                                 "paddle::dialect::ScalarAttribute",
