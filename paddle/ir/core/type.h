@@ -78,7 +78,7 @@ class Type {
     return ir::dyn_cast<U>(*this);
   }
 
-  void print(std::ostream &os) const;
+  void Print(std::ostream &os) const;
 
   ///
   /// \brief Enable hashing Type.

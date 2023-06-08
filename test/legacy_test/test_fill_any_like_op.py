@@ -88,7 +88,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.check_output_with_place(place, check_prim=False)
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
