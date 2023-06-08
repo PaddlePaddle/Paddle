@@ -28,7 +28,6 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
                                   const std::vector<int>& infer_flags,
                                   const std::vector<int>& decrease_axis,
                                   DenseTensor* out) {
-  std::cout << "StridedSliceRawStridedKernel" << std::endl;
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
   std::vector<int64_t> strides = strides_arr.GetData();
@@ -58,7 +57,6 @@ void StridedSliceStridedKernel(const Context& dev_ctx,
                                const IntArray& ends,
                                const IntArray& strides,
                                DenseTensor* out) {
-  std::cout << "StridedSliceStridedKernel" << std::endl;
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;
   StridedSliceRawStridedKernel<Context>(

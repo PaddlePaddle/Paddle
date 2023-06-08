@@ -108,7 +108,6 @@ void SliceKernel(const Context& ctx,
                  const std::vector<int64_t>& infer_flags,
                  const std::vector<int64_t>& decrease_axis,
                  DenseTensor* out) {
-  std::cout << "SliceKernel" << std::endl;
   int rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();

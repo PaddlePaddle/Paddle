@@ -28,7 +28,6 @@ void StridedSliceRawKernel(const Context& dev_ctx,
                            const std::vector<int>& infer_flags,
                            const std::vector<int>& decrease_axis,
                            DenseTensor* out) {
-  std::cout << "StridedSliceRawKernel" << std::endl;
   int rank = x.dims().size();
 #define SLICE_CASE(Rank)                                        \
   case Rank:                                                    \

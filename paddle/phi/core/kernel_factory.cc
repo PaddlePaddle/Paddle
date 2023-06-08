@@ -179,7 +179,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       kernels_.end(),
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
-  std::cout << "SelectKernelOrThrowError" << std::endl;
   if (FLAGS_use_stride_kernel) {
     auto stride_kernel_iter = iter->second.find(
         {const_kernel_key.backend() == paddle::experimental::Backend::GPUDNN
@@ -189,9 +188,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
          const_kernel_key.dtype()});
     if (stride_kernel_iter != iter->second.end()) {
       return {stride_kernel_iter->second, false, true};
-    } else {
-      std::cout << "find faild kernel_name = " << kernel_name
-                << ", const_kernel_key = " << const_kernel_key << std::endl;
     }
   }
 
