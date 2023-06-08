@@ -91,9 +91,9 @@ class PassManager {
       }
     }
 
-    bool EnablePrintModule() const { return print_module_; }
+    bool print_module() const { return print_module_; }
 
-    bool EnablePrintOnChange() const { return print_on_change_; }
+    bool print_on_change() const { return print_on_change_; }
 
    private:
     // The enable_print_before_ and enable_print_after_ can be used to specify
@@ -102,6 +102,7 @@ class PassManager {
     std::function<bool(Pass *, Operation *)> enable_print_after_;
 
     bool print_module_;
+
     bool print_on_change_;
 
     std::ostream &os;

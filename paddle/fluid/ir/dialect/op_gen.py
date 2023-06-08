@@ -1193,8 +1193,8 @@ def OpGenerator(
 
             # generate get op info funciton: inputs
             inputs_info_str = ""
+            input_info_list = []
             if len(op_input_name_list) > 0:
-                input_info_list = []
                 for idx in range(len(op_input_name_list)):
                     input_info_list.append(
                         CONSTRUCT_INPUT_INFO_TEMPLATE.format(
@@ -1204,7 +1204,19 @@ def OpGenerator(
                             no_need_buffer=op_input_no_need_buffer_list[idx],
                         )
                     )
-                inputs_info_str = ", ".join(input_info_list)
+
+            # add mutable attribute as input
+            if len(op_mutable_attribute_name_list) > 0:
+                for idx in range(len(op_mutable_attribute_name_list)):
+                    input_info_list.append(
+                        CONSTRUCT_INPUT_INFO_TEMPLATE.format(
+                            name=op_mutable_attribute_name_list[idx],
+                            typename=op_mutable_attribute_type_list[idx],
+                            optional='false',
+                            no_need_buffer='false',
+                        )
+                    )
+            inputs_info_str = ", ".join(input_info_list)
 
             # generate get op info funciton: outputs
             outputs_info_str = ""
@@ -1223,12 +1235,16 @@ def OpGenerator(
 
             # generate get op info funciton: attributes
             attribute_info_str = ""
+            op_mutable_attribute_name_set = set(op_mutable_attribute_name_list)
             if len(op_attribute_name_list) > 0:
                 attribute_info_list = []
                 for idx in range(len(op_attribute_name_list)):
+                    attribute_name = op_attribute_name_list[idx]
+                    if attribute_name in op_mutable_attribute_name_set:
+                        continue
                     attribute_info_list.append(
                         CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE.format(
-                            name=op_attribute_name_list[idx],
+                            name=attribute_name,
                             typename=op_attribute_type_list[idx],
                             data_type=op_attribute_data_type_list[idx],
                         )

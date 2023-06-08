@@ -30,14 +30,17 @@ class TestTileOpRank1(OpTest):
         self.op_type = "tile"
         self.python_api = paddle.tile
         self.prim_op_type = "prim"
-        self.test_cinn = True
         self.public_python_api = paddle.tile
         self.init_data()
+        self.if_enable_cinn()
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'repeat_times': self.repeat_times}
         output = np.tile(self.inputs['X'], self.repeat_times)
         self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        pass
 
     def init_data(self):
         self.ori_shape = [100]
@@ -52,23 +55,29 @@ class TestTileOpRank1(OpTest):
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
     def init_data(self):
-        self.test_cinn = False
         self.ori_shape = []
         self.repeat_times = []
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
     def init_data(self):
-        self.test_cinn = False
         self.ori_shape = []
         self.repeat_times = [2]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
     def init_data(self):
-        self.test_cinn = False
         self.ori_shape = []
         self.repeat_times = [2, 3]
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 # with dimension expanding
@@ -249,7 +258,6 @@ class TestTileBF16OP(OpTest):
         self.__class__.op_type = self.op_type
         self.python_api = paddle.tile
         self.prim_op_type = "prim"
-        self.test_cinn = False
         self.public_python_api = paddle.tile
         self.init_data()
         x = np.random.uniform(10, size=self.ori_shape).astype(np.float32)
