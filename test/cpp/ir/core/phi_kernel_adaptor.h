@@ -170,6 +170,8 @@ void build_context(ir::Operation* op,
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
+      } else if (type_name == "paddle::dialect::ScalarAttribute") {
+        ctx->EmplaceBackAttr(paddle::dialect::TransToPhiScalar(attr_map[t]));
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 type_name));
