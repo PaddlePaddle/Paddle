@@ -40,6 +40,26 @@ void StridedSliceKernel(const Context& dev_ctx,
                         const IntArray& strides,
                         DenseTensor* out);
 
+template <typename Context>
+void StridedSliceRawStridedKernel(const Context& dev_ctx,
+                                  const DenseTensor& x,
+                                  const std::vector<int>& axes,
+                                  const IntArray& starts,
+                                  const IntArray& ends,
+                                  const IntArray& strides,
+                                  const std::vector<int>& infer_flags,
+                                  const std::vector<int>& decrease_axis,
+                                  DenseTensor* out);
+
+template <typename Context>
+void StridedSliceStridedKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const std::vector<int>& axes,
+                               const IntArray& starts,
+                               const IntArray& ends,
+                               const IntArray& strides,
+                               DenseTensor* out);
+
 template <typename T, typename Context>
 void StridedSliceArrayKernel(const Context& dev_ctx,
                              const TensorArray& x,
