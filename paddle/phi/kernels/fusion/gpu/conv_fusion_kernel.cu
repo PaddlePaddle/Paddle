@@ -130,9 +130,9 @@ class CudnnConvDescManager {
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
-    if (!cudnn_conv_cache_.count(hash_key)) {
+    if (1 || !cudnn_conv_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(cache_mutex_);
-      if (!cudnn_conv_cache_.count(hash_key)) {
+      if (1 || !cudnn_conv_cache_.count(hash_key)) {
         cudnn_conv_cache_[hash_key] = CudnnCacheInfo();
         cudnn_conv_cache_[hash_key].x_desc =
             GetTensorDescInfo(input_dims, input_dtype, format);
@@ -140,6 +140,11 @@ class CudnnConvDescManager {
             GetFilterDescInfo(filter_dims, input_dtype, format);
         cudnn_conv_cache_[hash_key].o_desc =
             GetTensorDescInfo(output_dims, input_dtype, format);
+        std::cout << "conv_fusion: bias dim ";
+        for (auto& it : bias_dims) {
+          std::cout << it << ", ";
+        }
+        std::cout << std::endl;
         cudnn_conv_cache_[hash_key].b_desc =
             GetTensorDescInfo(bias_dims, input_dtype, format);
         cudnn_conv_cache_[hash_key].conv_desc =
@@ -199,9 +204,9 @@ class CudnnConvDescManager {
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
-    if (!conv_attr_cache_.count(hash_key)) {
+    if (1 || !conv_attr_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(attr_mutex_);
-      if (!conv_attr_cache_.count(hash_key)) {
+      if (1 || !conv_attr_cache_.count(hash_key)) {
         ConvAttrCacheInfo cache;
         auto paddings = paddings_t;
         auto dilations = dilations_t;
@@ -413,15 +418,15 @@ void ConvFusionKernel(const Context& ctx,
       compute_format);
 
   DenseTensor transformed_input;
+  const int input_rank = input.dims().size();
   auto unsys_pad_process = [&](const std::vector<int>& new_input_shape_vec,
                                const std::vector<int>& input_pad) {
     DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     ctx.template Alloc<T>(&transformed_input);
 
-    const int rank = input.dims().size();
     T pad_value(0.0);
-    switch (rank) {
+    switch (input_rank) {
       case 4: {
         funcs::PadFunction<Context, T, 4>(
             ctx, input_pad, input, pad_value, &transformed_input);
@@ -442,11 +447,16 @@ void ConvFusionKernel(const Context& ctx,
                       conv_attr_cache->input_pad);
   }
 
-  std::vector<int> b_dims(input.dims().size(), 1);
+  std::vector<int> b_dims(input_rank, 1);
   if (compute_format == CUDNN_TENSOR_NCHW) {
-    b_dims[1] = static_cast<int>(bias.dims()[0]);
+    auto bias_rank = bias.dims().size();
+    if (input_rank == bias_rank) {
+      b_dims[1] = static_cast<int>(bias.dims()[1]);
+    } else {
+      b_dims[1] = static_cast<int>(bias.dims()[0]);
+    }
   } else {
-    b_dims[input.dims().size() - 1] = static_cast<int>(bias.dims()[0]);
+    b_dims[input_rank - 1] = static_cast<int>(bias.dims()[0]);
   }
 
   auto search_func = [&](cudnnConvolutionFwdAlgo_t* cudnn_algo,
