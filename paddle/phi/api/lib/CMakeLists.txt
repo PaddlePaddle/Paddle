@@ -396,7 +396,7 @@ cc_library(
        api_custom_impl
        api_tensor_utils
        phi_profiler
-       dist_tensor_spec)
+       spmd_rule)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file} ${fused_bw_api_source_file}

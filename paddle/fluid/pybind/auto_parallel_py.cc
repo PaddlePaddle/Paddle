@@ -15,7 +15,9 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
@@ -46,7 +48,6 @@ using phi::distributed::auto_parallel::LinkCapability;
 using phi::distributed::auto_parallel::Machine;
 using phi::distributed::auto_parallel::ProcessMesh;
 using phi::distributed::auto_parallel::TensorDistAttr;
-
 
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
@@ -280,7 +281,7 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &TensorDistAttr::to_string);
-      
+
   py::class_<SPMDRuleBase>(*m, "SPMDRuleBase")
       .def("infer_forward", &SPMDRuleBase::InferForward)
       .def("infer_backward", &SPMDRuleBase::InferBackward);
@@ -422,3 +423,6 @@ void BindAutoParallel(py::module *m) {
 
 }  // namespace pybind
 }  // namespace paddle
+
+namespace ap = paddle::distributed::auto_parallel;
+REGISTER_SPMD_RULE(matmul, ap::MatmulSPMDRule);
