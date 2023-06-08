@@ -58,7 +58,6 @@ def launch():
 
         - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
 
-        - ``auto_tuner_json``: The json file path of auto tuner. e.g., ``--auto_tuner_josn=user_defined.json``
 
     Collective Parameters:
         - ``--ips``: [DEPRECATED] Paddle cluster nodes ips, e.g., ``--ips=192.168.0.16,192.168.0.17``. Default ``--ips=127.0.0.1``.
