@@ -27,7 +27,6 @@ void SliceStridedKernel(const Context& ctx,
                         const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* out) {
-  std::cout << "SliceStridedKernel" << std::endl;
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
   auto in_dims = input.dims();
