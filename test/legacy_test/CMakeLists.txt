@@ -1198,6 +1198,8 @@ set(TEST_CINN_OPS
     test_strided_slice_op
     test_instance_norm_op
     test_cumsum_op
+    test_pad_op
+    test_split_op
     test_erf_op
     test_assign_op
     test_flatten_contiguous_range_op)

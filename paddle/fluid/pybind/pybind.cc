@@ -1857,14 +1857,14 @@ All parameter, weight, gradient are variables in Paddle.
              return py::cast(std::move(ret));
            });
 
-  py::class_<framework::Job>(m, "job")
+  py::class_<framework::Job, std::shared_ptr<framework::Job>>(m, "job")
       .def(py::init<const std::string &>(), py::arg("type"))
       .def("type", &framework::Job::GetJobType)
       .def("micro_batch_id", &framework::Job::GetMicroBatchId)
       .def("set_micro_batch_id", &framework::Job::SetMicroBatchId);
 
   py::class_<framework::Plan>(m, "plan")
-      .def(py::init<const std::vector<Job *> &,
+      .def(py::init<const std::vector<std::shared_ptr<framework::Job>> &,
                     const std::unordered_map<std::string,
                                              framework::ProgramDesc *> &>(),
            py::arg("job_list"),
@@ -2698,12 +2698,6 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

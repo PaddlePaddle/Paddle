@@ -23,69 +23,86 @@
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/core/utils.h"
 #include "paddle/ir/core/value.h"
 
 namespace ir {
 
 namespace {
 constexpr char newline[] = "\n";
-
-template <typename ForwardIterator, typename UnaryFunctor, typename NullFunctor>
-void PrintInterleave(ForwardIterator begin,
-                     ForwardIterator end,
-                     UnaryFunctor print_func,
-                     NullFunctor between_func) {
-  if (begin == end) return;
-  print_func(*begin);
-  begin++;
-  for (; begin != end; begin++) {
-    between_func();
-    print_func(*begin);
-  }
-}
-
 }  // namespace
 
 class BasicIRPrinter {
  public:
   explicit BasicIRPrinter(std::ostream& os) : os(os) {}
 
-  void PrintType(ir::Type type) {
+  void PrintType(Type type) {
     if (!type) {
       os << "<<NULL TYPE>>";
       return;
     }
 
-    if (type.isa<ir::Float16Type>()) {
+    if (type.isa<Float16Type>()) {
       os << "f16";
-    } else if (type.isa<ir::Float32Type>()) {
+    } else if (type.isa<Float32Type>()) {
       os << "f32";
-    } else if (type.isa<ir::Float64Type>()) {
+    } else if (type.isa<Float64Type>()) {
       os << "f64";
-    } else if (type.isa<ir::Int16Type>()) {
+    } else if (type.isa<Int16Type>()) {
       os << "i16";
-    } else if (type.isa<ir::Int32Type>()) {
+    } else if (type.isa<Int32Type>()) {
       os << "i32";
-    } else if (type.isa<ir::Int64Type>()) {
+    } else if (type.isa<Int64Type>()) {
       os << "i64";
-    } else if (type.isa<ir::VectorType>()) {
-      os << "vec<";
-      auto inner_types = type.dyn_cast<ir::VectorType>().data();
+    } else if (type.isa<VectorType>()) {
+      os << "vec[";
+      auto inner_types = type.dyn_cast<VectorType>().data();
       PrintInterleave(
           inner_types.begin(),
           inner_types.end(),
-          [this](ir::Type v) { this->PrintType(v); },
-          [this]() { this->os << ", "; });
-      os << ">";
+          [this](Type v) { this->PrintType(v); },
+          [this]() { this->os << ","; });
+      os << "]";
     } else {
       auto& dialect = type.dialect();
       dialect.PrintType(type, os);
     }
   }
 
-  void PrintAttribute(ir::Operation* op) { os << " { ATTRIBUTE }"; }
+  void PrintAttribute(const Attribute& attr) {
+    if (!attr) {
+      os << "<#AttrNull>";
+      return;
+    }
 
- protected:
+    if (auto s = attr.dyn_cast<StrAttribute>()) {
+      os << s.data();
+    } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
+      os << b.data();
+    } else if (auto f = attr.dyn_cast<FloatAttribute>()) {
+      os << f.data();
+    } else if (auto d = attr.dyn_cast<DoubleAttribute>()) {
+      os << d.data();
+    } else if (auto i = attr.dyn_cast<Int32_tAttribute>()) {
+      os << i.data();
+    } else if (auto i = attr.dyn_cast<Int64_tAttribute>()) {
+      os << i.data();
+    } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
+      const auto& vec = arr.data();
+      os << "array[";
+      PrintInterleave(
+          vec.begin(),
+          vec.end(),
+          [this](Attribute v) { this->PrintAttribute(v); },
+          [this]() { this->os << ","; });
+      os << "]";
+    } else {
+      auto& dialect = attr.dialect();
+      dialect.PrintAttribute(attr, os);
+    }
+  }
+
+ public:
   std::ostream& os;
 };
 
@@ -96,14 +113,12 @@ class IRPrinter : public BasicIRPrinter {
   /// @brief print program
   /// @param program
   /// @example
-  void PrintProgram(ir::Program* program) {
-    PrintOperation(program->module_op());
-  }
+  void PrintProgram(Program* program) { PrintOperation(program->module_op()); }
 
   /// @brief print operation
   /// @param op
   /// @example
-  void PrintOperation(ir::Operation* op) {
+  void PrintOperation(Operation* op) {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->GetRegion(i);
       for (auto it = region.begin(); it != region.end(); ++it) {
@@ -120,7 +135,7 @@ class IRPrinter : public BasicIRPrinter {
           // TODO(lyk): add API to get operands directly
           PrintOpOperands(op);
 
-          PrintAttribute(op);
+          PrintAttributeMap(op);
           os << " :";
 
           // PrintOpSingature
@@ -138,7 +153,7 @@ class IRPrinter : public BasicIRPrinter {
   }
 
  private:
-  void PrintValue(ir::Value v) {
+  void PrintValue(Value v) {
     if (!v) {
       os << "<<NULL VALUE>>";
       return;
@@ -156,10 +171,10 @@ class IRPrinter : public BasicIRPrinter {
     os << new_name;
   }
 
-  void PrintOpResult(ir::Operation* op) {
+  void PrintOpResult(Operation* op) {
     os << " (";
     auto num_op_result = op->num_results();
-    std::vector<ir::OpResult> op_results;
+    std::vector<OpResult> op_results;
     op_results.reserve(num_op_result);
     for (size_t idx = 0; idx < num_op_result; idx++) {
       op_results.push_back(op->GetResultByIndex(idx));
@@ -167,15 +182,31 @@ class IRPrinter : public BasicIRPrinter {
     PrintInterleave(
         op_results.begin(),
         op_results.end(),
-        [this](ir::Value v) { this->PrintValue(v); },
+        [this](Value v) { this->PrintValue(v); },
         [this]() { this->os << ", "; });
     os << ")";
   }
 
-  void PrintOpOperands(ir::Operation* op) {
+  void PrintAttributeMap(Operation* op) {
+    os << " {";
+
+    PrintInterleave(
+        op->attributes().begin(),
+        op->attributes().end(),
+        [this](std::pair<std::string, Attribute> it) {
+          this->os << it.first;
+          this->os << ":";
+          this->PrintAttribute(it.second);
+        },
+        [this]() { this->os << ","; });
+
+    os << "}";
+  }
+
+  void PrintOpOperands(Operation* op) {
     os << " (";
     auto num_op_operands = op->num_operands();
-    std::vector<ir::Value> op_operands;
+    std::vector<Value> op_operands;
     op_operands.reserve(num_op_operands);
     for (size_t idx = 0; idx < num_op_operands; idx++) {
       op_operands.push_back(op->GetOperandByIndex(idx).source());
@@ -183,48 +214,48 @@ class IRPrinter : public BasicIRPrinter {
     PrintInterleave(
         op_operands.begin(),
         op_operands.end(),
-        [this](ir::Value v) { this->PrintValue(v); },
+        [this](Value v) { this->PrintValue(v); },
         [this]() { this->os << ", "; });
     os << ")";
   }
 
-  void PrintOperandsType(ir::Operation* op) {
+  void PrintOperandsType(Operation* op) {
     auto num_op_operands = op->num_operands();
-    std::vector<ir::Type> op_operand_types;
+    std::vector<Type> op_operand_types;
     op_operand_types.reserve(num_op_operands);
     for (size_t idx = 0; idx < num_op_operands; idx++) {
       auto op_operand = op->GetOperandByIndex(idx);
       if (op_operand) {
         op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
       } else {
-        op_operand_types.push_back(ir::Type(nullptr));
+        op_operand_types.push_back(Type(nullptr));
       }
     }
     os << " (";
     PrintInterleave(
         op_operand_types.begin(),
         op_operand_types.end(),
-        [this](ir::Type t) { this->PrintType(t); },
+        [this](Type t) { this->PrintType(t); },
         [this]() { this->os << ", "; });
     os << ")";
   }
 
-  void PrintOpReturnType(ir::Operation* op) {
+  void PrintOpReturnType(Operation* op) {
     auto num_op_result = op->num_results();
-    std::vector<ir::Type> op_result_types;
+    std::vector<Type> op_result_types;
     op_result_types.reserve(num_op_result);
     for (size_t idx = 0; idx < num_op_result; idx++) {
       auto op_result = op->GetResultByIndex(idx);
       if (op_result) {
         op_result_types.push_back(op_result.type());
       } else {
-        op_result_types.push_back(ir::Type(nullptr));
+        op_result_types.push_back(Type(nullptr));
       }
     }
     PrintInterleave(
         op_result_types.begin(),
         op_result_types.end(),
-        [this](ir::Type t) { this->PrintType(t); },
+        [this](Type t) { this->PrintType(t); },
         [this]() { this->os << ", "; });
   }
 
@@ -246,6 +277,21 @@ void Operation::Print(std::ostream& os) {
 void Type::Print(std::ostream& os) const {
   BasicIRPrinter printer(os);
   printer.PrintType(*this);
+}
+
+void Attribute::Print(std::ostream& os) const {
+  BasicIRPrinter printer(os);
+  printer.PrintAttribute(*this);
+}
+
+std::ostream& operator<<(std::ostream& os, Type type) {
+  type.Print(os);
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Attribute attr) {
+  attr.Print(os);
+  return os;
 }
 
 }  // namespace ir
