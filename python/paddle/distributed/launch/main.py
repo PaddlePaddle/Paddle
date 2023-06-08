@@ -331,23 +331,23 @@ def launch():
 
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
-        new_cfg = auto_tuner.search_once()
+        cur_cfg = auto_tuner.search_once()
 
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
 
         job_id = 0
-        while new_cfg:
+        while cur_cfg:
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
-                new_cfg["dp_degree"],
-                new_cfg["pp_degree"],
-                new_cfg["pp_degree"],
-                new_cfg["sharding_degree"],
-                new_cfg["sharding_stage"],
-                new_cfg["micro_batch_size"],
-                new_cfg["use_recompute"],
-                new_cfg["recompute_granularity"],
+                cur_cfg["dp_degree"],
+                cur_cfg["pp_degree"],
+                cur_cfg["pp_degree"],
+                cur_cfg["sharding_degree"],
+                cur_cfg["sharding_stage"],
+                cur_cfg["micro_batch_size"],
+                cur_cfg["use_recompute"],
+                cur_cfg["recompute_granularity"],
             )
 
             ctx.args.log_dir = log_dir
@@ -358,13 +358,13 @@ def launch():
             ctx.args.job_id = task_job_id
 
             # generate script args of task
-            new_args = gen_new_args(raw_args, new_cfg, tuner_cfg)
+            new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
             ctx.args.training_script_args = new_args
 
             # launch task
             ctx.logger.info(
                 "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
-                    task_job_id, log_dir, new_cfg
+                    task_job_id, log_dir, cur_cfg
                 )
             )
 
@@ -384,6 +384,8 @@ def launch():
 
             # per task launch interval
             time.sleep(5)
+
+            cur_cfg = copy.deepcopy(new_cfg)
 
     else:
 
