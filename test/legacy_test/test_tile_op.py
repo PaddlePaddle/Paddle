@@ -30,7 +30,7 @@ class TestTileOpRank1(OpTest):
         self.op_type = "tile"
         self.python_api = paddle.tile
         self.prim_op_type = "prim"
-        self.enable_cinn = True
+        self.test_cinn = True
         self.public_python_api = paddle.tile
         self.init_data()
 
@@ -44,7 +44,7 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=self.test_cinn)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -52,21 +52,21 @@ class TestTileOpRank1(OpTest):
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = False
+        self.test_cinn = False
         self.ori_shape = []
         self.repeat_times = []
 
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = False
+        self.test_cinn = False
         self.ori_shape = []
         self.repeat_times = [2]
 
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = False
+        self.test_cinn = False
         self.ori_shape = []
         self.repeat_times = [2, 3]
 
@@ -74,42 +74,42 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = True
+        self.test_cinn = True
         self.ori_shape = [120]
         self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = True
+        self.test_cinn = True
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
 
 
 class TestTileOpRank3_Corner(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = True
+        self.test_cinn = True
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (1, 1, 1)
 
 
 class TestTileOpRank3_Corner2(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = True
+        self.test_cinn = True
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = True
+        self.test_cinn = True
         self.ori_shape = (2, 4, 15)
         self.repeat_times = (2, 1, 4)
 
 
 class TestTileOpRank4(TestTileOpRank1):
     def init_data(self):
-        self.enable_cinn = True
+        self.test_cinn = True
         self.ori_shape = (2, 4, 5, 7)
         self.repeat_times = (3, 2, 1, 2)
 
@@ -199,7 +199,7 @@ class TestTileOpInteger(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
-        self.enable_cinn = True
+        self.test_cinn = True
         self.inputs = {
             'X': np.random.randint(10, size=(4, 4, 5)).astype("int32")
         }
@@ -208,7 +208,7 @@ class TestTileOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=self.test_cinn)
 
 
 class TestTileFP16OP(OpTest):
@@ -217,7 +217,7 @@ class TestTileFP16OP(OpTest):
         self.dtype = np.float16
         self.python_api = paddle.tile
         self.prim_op_type = "prim"
-        self.enable_cinn = True
+        self.test_cinn = True
         self.public_python_api = paddle.tile
         self.init_data()
         x = np.random.uniform(10, size=self.ori_shape).astype(self.dtype)
@@ -232,7 +232,7 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=self.test_cinn)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -249,7 +249,7 @@ class TestTileBF16OP(OpTest):
         self.__class__.op_type = self.op_type
         self.python_api = paddle.tile
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.test_cinn = False
         self.public_python_api = paddle.tile
         self.init_data()
         x = np.random.uniform(10, size=self.ori_shape).astype(np.float32)
@@ -260,7 +260,7 @@ class TestTileBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.enable_cinn)
+        self.check_output_with_place(place, check_cinn=self.test_cinn)
 
     def init_data(self):
         self.dtype = np.uint16
@@ -277,14 +277,14 @@ class TestTileOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
-        self.enable_cinn = True
+        self.test_cinn = True
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=self.test_cinn)
 
 
 # Situation 56: input x is Integer
@@ -292,7 +292,7 @@ class TestTileOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
-        self.enable_cinn = True
+        self.test_cinn = True
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
@@ -301,7 +301,7 @@ class TestTileOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=self.test_cinn)
 
 
 class TestTileError(unittest.TestCase):
