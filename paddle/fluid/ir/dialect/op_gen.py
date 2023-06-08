@@ -304,6 +304,7 @@ class OpInfoParser:
             self.output_type_list,
             self.output_optional_list,
         )
+
         # parse attributes
         self.attr_types_map = {
             'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
@@ -368,6 +369,14 @@ class OpInfoParser:
             self.mutable_attribute_name_list,
             self.mutable_attribute_type_list,
         ) = self.parse_mutable_attribute()
+
+        (
+            self.non_mutable_attribute_name_list,
+            self.non_mutable_attribute_type_list,
+            self.non_mutable_attribute_data_type_list,
+            self.non_mutable_attribute_build_arg_type_list,
+            self.non_mutable_attribute_default_value_list,
+        ) = self.parse_non_nutable_attribute()
 
         # parse infermeta && kernel
         self.infer_meta_map = self.parse_infer_meta_map()
@@ -474,6 +483,40 @@ class OpInfoParser:
         return (
             sorted_mutable_attribute_name_list,
             sorted_mutable_attribute_type_list,
+        )
+
+    def parse_non_nutable_attribute(self):
+        op_non_mutable_attribute_name_list = []
+        op_non_mutable_attribute_type_list = []
+        op_non_mutable_attribute_data_type_list = []
+        op_non_mutable_attribute_build_arg_type_list = []
+        op_non_mutable_attribute_default_value_list = []
+        for idx in range(len(self.attribute_name_list)):
+            if (
+                self.attribute_name_list[idx]
+                not in self.mutable_attribute_name_list
+            ):
+                op_non_mutable_attribute_name_list.append(
+                    self.attribute_name_list[idx]
+                )
+                op_non_mutable_attribute_type_list.append(
+                    self.attribute_type_list[idx]
+                )
+                op_non_mutable_attribute_data_type_list.append(
+                    self.attribute_data_type_list[idx]
+                )
+                op_non_mutable_attribute_build_arg_type_list.append(
+                    self.attribute_build_arg_type_list[idx]
+                )
+                op_non_mutable_attribute_default_value_list.append(
+                    self.attribute_default_value_list[idx]
+                )
+        return (
+            op_non_mutable_attribute_name_list,
+            op_non_mutable_attribute_type_list,
+            op_non_mutable_attribute_data_type_list,
+            op_non_mutable_attribute_build_arg_type_list,
+            op_non_mutable_attribute_default_value_list,
         )
 
     def parse_input_name_list(self):
@@ -930,10 +973,6 @@ def GenBuildOutputs(
   }}
  """
 
-    # CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE = """  std::vector<int64_t> {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData(); (void){name};\n"""
-    # CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<{ir_type}>().data(); (void){name};\n"""
-    # CREATE_STRING_MUTABLE_ATTRIBUE_TEMPLATE = """  std::string {name} = {name}_.owner()->dyn_cast<ir::ConstantOp>().value().dyn_cast<ir::StrAttribute>().data(); (void){name};\n"""
-
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
   phi::MetaTensor meta_{name}(&dense_{name});
 """
@@ -959,34 +998,6 @@ def GenBuildOutputs(
             build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>(); (void){name};\n".format(
                 name=op_input_name_list[idx]
             )
-
-    # if mutable_attr_is_input:
-    #     # Prepare mutable attributes
-    #     for idx in range(len(op_mutable_attribute_name_list)):
-    #         attr_dtype = op_mutable_attribute_type_list[idx]
-    #         # int_array
-    #         if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
-    #             build_output_str += (
-    #                 CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
-    #                     name=op_mutable_attribute_name_list[idx]
-    #                 )
-    #             )
-    #         # scalar
-    #         elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
-    #             build_output_str += (
-    #                 CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
-    #                     name=op_mutable_attribute_name_list[idx],
-    #                     dtype=attr_dtype[1],
-    #                     ir_type=scalar_type_maps[attr_dtype[1]],
-    #                 )
-    #             )
-    #         # string
-    #         elif attr_dtype[0] == "ir::StrAttribute":
-    #             # unused for infermeta
-    #             continue
-    #         else:
-    #             assert "mutable attribtue type is not right."
-    #     build_output_str += "\n"
 
     # Prepare inputs_meta_tensor & attributes for infer meta
     infer_meta_args = []
@@ -1078,6 +1089,95 @@ def GenBuildOutputs(
     return build_output_str
 
 
+def GenBuild(
+    op_class_name,
+    op_input_name_list,
+    op_input_type_list,
+    op_attribute_name_list,
+    op_attribute_build_arg_type_list,
+    op_attribute_default_value_list,
+    op_mutable_attribute_name_list,
+    op_mutable_attribute_type_list,
+    op_non_mutable_attribute_name_list,
+    op_non_mutable_attribute_type_list,
+    op_non_mutable_attribute_build_arg_type_list,
+    op_non_mutable_attribute_default_value_list,
+    op_output_name_list,
+    op_output_type_list,
+    op_output_size_list,
+    op_infer_meta_map,
+    muta_attr_is_input=False,
+):
+    build_args_for_declare = ""
+    build_func = ""
+
+    build_args_for_declare = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        True,
+        muta_attr_is_input,
+    )
+
+    build_args_for_define = GenBuildInputArgsStr(
+        op_input_name_list,
+        op_attribute_name_list,
+        op_attribute_build_arg_type_list,
+        op_attribute_default_value_list,
+        op_mutable_attribute_name_list,
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_build_arg_type_list,
+        op_non_mutable_attribute_default_value_list,
+        False,
+        muta_attr_is_input,
+    )
+    inset_full_for_mutable_attributes_str = ""
+    if not muta_attr_is_input:
+        inset_full_for_mutable_attributes_str = (
+            GenBuildInserFullForMutableAttribute(
+                op_attribute_name_list,
+                op_attribute_build_arg_type_list,
+                op_mutable_attribute_name_list,
+                op_mutable_attribute_type_list,
+            )
+        )
+
+    build_inputs_str = GenBuildInputs(
+        op_input_name_list, op_mutable_attribute_name_list
+    )
+    build_attributes_str = GenBuildAttributes(
+        op_non_mutable_attribute_name_list,
+        op_non_mutable_attribute_type_list,
+    )
+    build_outputs_str = GenBuildOutputs(
+        op_input_name_list,
+        op_input_type_list,
+        op_mutable_attribute_name_list,
+        op_mutable_attribute_type_list,
+        op_output_name_list,
+        op_output_type_list,
+        op_output_size_list,
+        op_infer_meta_map,
+        False,
+    )
+
+    build_func = OP_BUILD_TEMPLATE.format(
+        op_name=op_class_name,
+        build_args=build_args_for_define,
+        build_mutable_attributes=inset_full_for_mutable_attributes_str,
+        build_inputs=build_inputs_str,
+        build_attributes=build_attributes_str,
+        build_outputs=build_outputs_str,
+    )
+
+    return (build_args_for_declare, build_func)
+
+
 def OpGenerator(
     op_yaml_files,
     op_compat_yaml_file,
@@ -1131,31 +1231,22 @@ def OpGenerator(
         op_attribute_data_type_list = op_info.attribute_data_type_list
         op_attribute_build_arg_type_list = op_info.attribute_build_arg_type_list
         op_attribute_default_value_list = op_info.attribute_default_value_list
-        op_non_mutable_attribute_name_list = []
-        op_non_mutable_attribute_type_list = []
-        op_non_mutable_attribute_data_type_list = []
-        op_non_mutable_attribute_build_arg_type_list = []
-        op_non_mutable_attribute_default_value_list = []
-        for idx in range(len(op_attribute_name_list)):
-            if (
-                op_attribute_name_list[idx]
-                not in op_mutable_attribute_name_list
-            ):
-                op_non_mutable_attribute_name_list.append(
-                    op_attribute_name_list[idx]
-                )
-                op_non_mutable_attribute_type_list.append(
-                    op_attribute_type_list[idx]
-                )
-                op_non_mutable_attribute_data_type_list.append(
-                    op_attribute_data_type_list[idx]
-                )
-                op_non_mutable_attribute_build_arg_type_list.append(
-                    op_attribute_build_arg_type_list[idx]
-                )
-                op_non_mutable_attribute_default_value_list.append(
-                    op_attribute_default_value_list[idx]
-                )
+        op_non_mutable_attribute_name_list = (
+            op_info.non_mutable_attribute_name_list
+        )
+        op_non_mutable_attribute_type_list = (
+            op_info.non_mutable_attribute_type_list
+        )
+        op_non_mutable_attribute_data_type_list = (
+            op_info.non_mutable_attribute_data_type_list
+        )
+        op_non_mutable_attribute_build_arg_type_list = (
+            op_info.non_mutable_attribute_build_arg_type_list
+        )
+        op_non_mutable_attribute_default_value_list = (
+            op_info.non_mutable_attribute_default_value_list
+        )
+
         # others
         op_infer_meta_map = op_info.infer_meta_map
         op_kernel_map = op_info.kernel_map
@@ -1174,7 +1265,9 @@ def OpGenerator(
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
 
-            # gen interface/trait str
+            # =================================== #
+            #    gen interface/trait list str     #
+            # =================================== #
             op_interfaces_str = ""
             if len(op_interfaces) > 0:
                 op_interfaces_str = "," + ",".join(op_interfaces)
@@ -1182,6 +1275,9 @@ def OpGenerator(
             if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
 
+            # =================================== #
+            #  gen get input/output methods str   #
+            # =================================== #
             op_get_inputs_outputs_str = ""
             for idx in range(len(op_input_name_list)):
                 op_get_inputs_outputs_str += OP_GET_INPUT_TEMPLATE.format(
@@ -1199,91 +1295,39 @@ def OpGenerator(
                     output_index=idx,
                 )
 
-            # gen build str with mutable attr is not input
-            build_define_input_args_str_with_mutable_attr = ""
-            build_declare_input_args_str_with_mutable_attr = ""
-            build_func_declare_str_with_mutable_attr = ""
-            if op_infer_meta_map is not None:
-                build_define_input_args_str_with_mutable_attr = (
-                    GenBuildInputArgsStr(
-                        op_input_name_list,
-                        op_attribute_name_list,
-                        op_attribute_build_arg_type_list,
-                        op_attribute_default_value_list,
-                        op_mutable_attribute_name_list,
-                        op_non_mutable_attribute_name_list,
-                        op_non_mutable_attribute_build_arg_type_list,
-                        op_non_mutable_attribute_default_value_list,
-                        True,
-                        False,
-                    )
-                )
-                build_declare_input_args_str_with_mutable_attr = (
-                    GenBuildInputArgsStr(
-                        op_input_name_list,
-                        op_attribute_name_list,
-                        op_attribute_build_arg_type_list,
-                        op_attribute_default_value_list,
-                        op_mutable_attribute_name_list,
-                        op_non_mutable_attribute_name_list,
-                        op_non_mutable_attribute_build_arg_type_list,
-                        op_non_mutable_attribute_default_value_list,
-                        False,
-                        False,
-                    )
-                )
-                build_mutable_attributes_str = (
-                    GenBuildInserFullForMutableAttribute(
-                        op_attribute_name_list,
-                        op_attribute_build_arg_type_list,
-                        op_mutable_attribute_name_list,
-                        op_mutable_attribute_type_list,
-                    )
-                )
+            # =================================== #
+            #         gen Build methods str       #
+            # =================================== #
+            build_args_with_muta_attr_not_input_for_declare = ""
+            build_func_with_muta_attr_not_input = ""
+            build_mutable_attr_is_input = ""
+            build_func_with_muta_attr_is_input = ""
 
-                build_inputs_str = GenBuildInputs(
-                    op_input_name_list, op_mutable_attribute_name_list
-                )
-                build_attributes_str = GenBuildAttributes(
-                    op_non_mutable_attribute_name_list,
-                    op_non_mutable_attribute_type_list,
-                )
-                build_outputs_str = GenBuildOutputs(
+            if op_infer_meta_map is not None:
+                (
+                    build_args_with_muta_attr_not_input_for_declare,
+                    build_func_with_muta_attr_not_input,
+                ) = GenBuild(
+                    op_class_name,
                     op_input_name_list,
                     op_input_type_list,
+                    op_attribute_name_list,
+                    op_attribute_build_arg_type_list,
+                    op_attribute_default_value_list,
                     op_mutable_attribute_name_list,
                     op_mutable_attribute_type_list,
+                    op_non_mutable_attribute_name_list,
+                    op_non_mutable_attribute_type_list,
+                    op_non_mutable_attribute_build_arg_type_list,
+                    op_non_mutable_attribute_default_value_list,
                     op_output_name_list,
                     op_output_type_list,
                     op_output_size_list,
                     op_infer_meta_map,
-                    False,
+                    muta_attr_is_input=False,
                 )
-                build_func_declare_str_with_mutable_attr = OP_BUILD_TEMPLATE.format(
-                    op_name=op_class_name,
-                    build_args=build_declare_input_args_str_with_mutable_attr,
-                    build_mutable_attributes=build_mutable_attributes_str,
-                    build_inputs=build_inputs_str,
-                    build_attributes=build_attributes_str,
-                    build_outputs=build_outputs_str,
-                )
-            else:
-                build_func_declare_str_with_mutable_attr = OP_BUILD_TEMPLATE.format(
-                    op_name=op_class_name,
-                    build_args=build_declare_input_args_str_with_mutable_attr,
-                    build_mutable_attributes="",
-                    build_inputs="",
-                    build_attributes="",
-                    build_outputs="",
-                )
-
-            # gen build str with mutable attr is input (mutable attributes is not infermeta args)
-            build_define_input_args_str_with_mutable_attr_is_input = ""
-            build_declare_input_args_str_with_mutable_attr_is_input = ""
-            build_func_declare_str_with_mutable_attr_is_input = ""
-            if op_infer_meta_map is not None:
                 op_infer_meta_args = op_infer_meta_map['param']
-                if (
+                if (len(op_mutable_attribute_name_list) > 0) and (
                     len(
                         list(
                             set(op_infer_meta_args)
@@ -1292,77 +1336,32 @@ def OpGenerator(
                     )
                     == 0
                 ):
-                    build_define_input_args_str_with_mutable_attr_is_input = (
-                        GenBuildInputArgsStr(
-                            op_input_name_list,
-                            op_attribute_name_list,
-                            op_attribute_build_arg_type_list,
-                            op_attribute_default_value_list,
-                            op_mutable_attribute_name_list,
-                            op_non_mutable_attribute_name_list,
-                            op_non_mutable_attribute_build_arg_type_list,
-                            op_non_mutable_attribute_default_value_list,
-                            True,
-                            True,
-                        )
-                    )
-                    build_declare_input_args_str_with_mutable_attr_is_input = (
-                        GenBuildInputArgsStr(
-                            op_input_name_list,
-                            op_attribute_name_list,
-                            op_attribute_build_arg_type_list,
-                            op_attribute_default_value_list,
-                            op_mutable_attribute_name_list,
-                            op_non_mutable_attribute_name_list,
-                            op_non_mutable_attribute_build_arg_type_list,
-                            op_non_mutable_attribute_default_value_list,
-                            False,
-                            True,
-                        )
-                    )
-                    build_mutable_attributes_str = ""
-
-                    build_inputs_str = GenBuildInputs(
-                        op_input_name_list, op_mutable_attribute_name_list
-                    )
-                    build_attributes_str = GenBuildAttributes(
-                        op_non_mutable_attribute_name_list,
-                        op_non_mutable_attribute_type_list,
-                    )
-                    build_outputs_str = GenBuildOutputs(
+                    (
+                        build_args_with_muta_attr_is_input_for_declare,
+                        build_func_with_muta_attr_is_input,
+                    ) = GenBuild(
+                        op_class_name,
                         op_input_name_list,
                         op_input_type_list,
+                        op_attribute_name_list,
+                        op_attribute_build_arg_type_list,
+                        op_attribute_default_value_list,
                         op_mutable_attribute_name_list,
                         op_mutable_attribute_type_list,
+                        op_non_mutable_attribute_name_list,
+                        op_non_mutable_attribute_type_list,
+                        op_non_mutable_attribute_build_arg_type_list,
+                        op_non_mutable_attribute_default_value_list,
                         op_output_name_list,
                         op_output_type_list,
                         op_output_size_list,
                         op_infer_meta_map,
-                        True,
+                        muta_attr_is_input=True,
                     )
-                    build_func_declare_str_with_mutable_attr_is_input = OP_BUILD_TEMPLATE.format(
-                        op_name=op_class_name,
-                        build_args=build_declare_input_args_str_with_mutable_attr_is_input,
-                        build_mutable_attributes=build_mutable_attributes_str,
-                        build_inputs=build_inputs_str,
-                        build_attributes=build_attributes_str,
-                        build_outputs=build_outputs_str,
-                    )
-            else:
-                build_func_declare_str_with_mutable_attr_is_input = OP_BUILD_TEMPLATE.format(
-                    op_name=op_class_name,
-                    build_args=build_declare_input_args_str_with_mutable_attr_is_input,
-                    build_mutable_attributes="",
-                    build_inputs="",
-                    build_attributes="",
-                    build_outputs="",
-                )
 
-            build_mutable_attr_is_input = ""
-            if len(op_mutable_attribute_name_list) > 0:
-                build_mutable_attr_is_input = "static void Build({build_args});".format(
-                    build_args=build_define_input_args_str_with_mutable_attr_is_input
-                )
+                    build_mutable_attr_is_input = "static void Build({build_args});".format(
+                        build_args=build_args_with_muta_attr_is_input_for_declare
+                    )
 
             # gen op_declare_str/op_defined_str
             if len(op_non_mutable_attribute_name_list) == 0:
@@ -1373,7 +1372,7 @@ def OpGenerator(
                     traits=op_traits_str,
                     attribute_declare=op_0_attribute_declare_str,
                     attribute_num=0,
-                    build_args=build_define_input_args_str_with_mutable_attr,
+                    build_args=build_args_with_muta_attr_not_input_for_declare,
                     build_mutable_attr_is_input=build_mutable_attr_is_input,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
                     exclusive_interface=exclusive_interface_str,
@@ -1389,7 +1388,7 @@ def OpGenerator(
                         attribute_num=len(op_non_mutable_attribute_name_list)
                     ),
                     attribute_num=len(op_non_mutable_attribute_name_list),
-                    build_args=build_define_input_args_str_with_mutable_attr,
+                    build_args=build_args_with_muta_attr_not_input_for_declare,
                     build_mutable_attr_is_input=build_mutable_attr_is_input,
                     get_inputs_and_outputs=op_get_inputs_outputs_str,
                     exclusive_interface=exclusive_interface_str,
@@ -1403,6 +1402,9 @@ def OpGenerator(
                     attribute_names=attribute_names_str,
                 )
 
+            # =================================== #
+            #         gen GetOpInfo func str      #
+            # =================================== #
             # generate get op info funciton: inputs
             input_info_list = []
             for idx in range(len(op_input_name_list)):
@@ -1429,7 +1431,6 @@ def OpGenerator(
                 inputs_info_str = ", ".join(input_info_list)
             else:
                 inputs_info_str = ""
-
             # generate get op info funciton: outputs
             outputs_info_str = ""
             if len(op_output_name_list) > 0:
@@ -1444,7 +1445,6 @@ def OpGenerator(
                         )
                     )
                 outputs_info_str = ", ".join(output_info_list)
-
             # generate get op info funciton: attributes
             attribute_info_str = ""
             if len(op_non_mutable_attribute_name_list) > 0:
@@ -1460,7 +1460,6 @@ def OpGenerator(
                         )
                     )
                 attribute_info_str = ", ".join(attribute_info_list)
-
             # generate runtiem info
             infer_meta_func_str = ""
             infer_meta_param_str = ""
@@ -1484,6 +1483,9 @@ def OpGenerator(
                 kernel_param=kernel_param_str,
             )
 
+            # =================================== #
+            #          gen Verify func str        #
+            # =================================== #
             # generate op verify function: inputs_type_check_str
             if (
                 len(op_input_type_list) + len(op_mutable_attribute_name_list)
@@ -1537,7 +1539,6 @@ def OpGenerator(
                         standard="paddle::dialect::DenseTensorType",
                     )
                 inputs_type_check_str += check_str
-
             # generate op verify function: outputs_type_check_str
             if len(op_output_type_list) == 0:
                 outputs_type_check_str = (
@@ -1574,7 +1575,6 @@ def OpGenerator(
                             index=idx, standard=output_type
                         )
                 outputs_type_check_str += check_str
-
             # generate op verify function: attributes_check_str
             if len(op_non_mutable_attribute_name_list) == 0:
                 attributes_check_str = (
@@ -1597,7 +1597,6 @@ def OpGenerator(
                     attributes_check_str += ATTRIBUTE_CHECK_TEMPLATE.format(
                         attribute_name=attribute_name, standard=attribute_type
                     )
-
             # generate op verify function
             if "GradOp" in op_class_name or "Grad_Op" in op_class_name:
                 op_verify_str = GRAD_OP_VERIFY_TEMPLATE.format(
@@ -1625,11 +1624,9 @@ def OpGenerator(
             ops_declare_list.append(op_declare_str)
             ops_defined_list.append(op_defined_str)
             ops_defined_list.append(op_info_func_str)
-            ops_defined_list.append(build_func_declare_str_with_mutable_attr)
+            ops_defined_list.append(build_func_with_muta_attr_not_input)
             if len(op_mutable_attribute_name_list) > 0:
-                ops_defined_list.append(
-                    build_func_declare_str_with_mutable_attr_is_input
-                )
+                ops_defined_list.append(build_func_with_muta_attr_is_input)
             ops_defined_list.append(op_verify_str)
             ops_defined_list.append(op_infer_shape_str)
 
