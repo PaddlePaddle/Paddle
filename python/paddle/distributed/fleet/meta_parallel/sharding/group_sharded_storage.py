@@ -76,11 +76,16 @@ class InternalStorage:
         ), "Conversion type is not supported now"
 
         if self._device != device:
-            tmp_buffer = (
-                cvt_to_device(self.buffer, self.dev_id)
-                if device in ["gpu", "xpu"]
-                else self.buffer.cpu()
-            )
+            if device in paddle.device.get_all_custom_device_type():
+                tmp_buffer = self.buffer._copy_to(
+                    paddle.CustomPlace(device, self.dev_id), True
+                )
+            else:
+                tmp_buffer = (
+                    cvt_to_device(self.buffer, self.dev_id)
+                    if device in ["gpu", "xpu"]
+                    else self.buffer.cpu()
+                )
             for param in self._params:
                 param.clear_gradient(False)
 
@@ -133,8 +138,13 @@ class ParamStorage(InternalStorage):
             cpu_param_shape.append(p_shape)
 
         if convert_gpu:
-            # buffer convert from cpu to cuda
-            self.buffer = cvt_to_device(self.buffer, self.dev_id)
+            if self._device in paddle.device.get_all_custom_device_type():
+                self.buffer = self.buffer._copy_to(
+                    paddle.CustomPlace(self._device, self.dev_id), True
+                )
+            else:
+                # buffer convert from cpu to cuda
+                self.buffer = cvt_to_device(self.buffer, self.dev_id)
 
         self._fill = 0
 

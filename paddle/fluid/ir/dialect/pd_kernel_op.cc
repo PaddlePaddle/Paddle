@@ -24,6 +24,7 @@ void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
                          const std::vector<ir::Type> &outputs,
                          const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
+
   // Verify inputs type:
 
   // Verify if attributes contain attribute name in attributes_name:

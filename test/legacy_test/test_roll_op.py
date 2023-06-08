@@ -53,9 +53,6 @@ class TestRollOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', check_prim=True)
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
 
 class TestRollOpCase2(TestRollOp):
     def init_dtype_type(self):

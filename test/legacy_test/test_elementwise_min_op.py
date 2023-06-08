@@ -127,17 +127,11 @@ class TestElementwiseMinOp_ZeroDim1(TestElementwiseOp):
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMinFP16Op_ZeroDim1(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
@@ -146,23 +140,16 @@ class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
-        self.if_enable_cinn()
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseMinFP16Op_ZeroDim2(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
         self.y = np.random.uniform(0.1, 1, []).astype("float16")
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseMinOp_ZeroDim3(TestElementwiseOp):
@@ -177,17 +164,11 @@ class TestElementwiseMinOp_ZeroDim3(TestElementwiseOp):
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMinFP16Op_ZeroDim3(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype("float16")
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @skip_check_grad_ci(
@@ -388,7 +369,7 @@ class TestElementwiseBF16Op(OpTest):
     def test_check_grad_ingore_x(self):
         places = self._get_places()
         for place in places:
-            if type(place) is paddle.fluid.libpaddle.CPUPlace:
+            if isinstance(place, paddle.fluid.libpaddle.CPUPlace):
                 check_prim = False
             else:
                 check_prim = True
@@ -413,7 +394,7 @@ class TestElementwiseBF16Op(OpTest):
     def test_check_grad_ingore_y(self):
         places = self._get_places()
         for place in places:
-            if type(place) is paddle.fluid.libpaddle.CPUPlace:
+            if isinstance(place, paddle.fluid.libpaddle.CPUPlace):
                 check_prim = False
             else:
                 check_prim = True
@@ -436,7 +417,7 @@ class TestElementwiseBF16Op(OpTest):
             )
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestElementwiseMinBF16Op_ZeroDim1(TestElementwiseBF16Op):
