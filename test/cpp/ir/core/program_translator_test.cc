@@ -76,7 +76,7 @@ TEST(PaddleDialectTest, StartupProgram) {
   size_t op_size = program->block()->size();
   // ops.size() = op size in BlockDesc + get_parameter_op +
   // consant_op_for_uniform
-  // + consant_op_for_uniform for guassian
+  // + consant_op for guassian
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
 
   program->Print(std::cout);
