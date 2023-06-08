@@ -313,9 +313,9 @@ class DataLoader:
         worker_init_fn(callable, optional): init function which will be called with
             worker id on each subproces starting if not set as None. Default
             None.
-        micro_batch_size(int, optional): if is set, the iter of data loader will yield an iterator of micro batch one by one,
+        micro_batch_size(int, optional): if is specified, the iter of data loader will yield an iterator of micro batch one by one,
             instead of one whole batch; each iterator iterate through micro batches of one whole batch
-        acc_step(int, optional): num of micro batches in a batch, must be set if micro_batch_size is set
+        acc_step(int, optional): num of micro batches in a batch, must be specified if micro_batch_size is specified
             micro_batch_size*acc_step and batch_size must be equal
 
 
@@ -515,6 +515,10 @@ class DataLoader:
             ), "micro_batch_size should be an int"
             assert acc_step is not None, "acc_step should be specified"
             assert isinstance(acc_step, int), "acc_step should be an int"
+            if batch_size is not None:
+                assert (
+                    acc_step * micro_batch_size == batch_size
+                ), f"acc_step({acc_step})*micro_batch_size({micro_batch_size}) != batch_size({batch_size})"
 
         self._micro_batch_size = micro_batch_size
         self._acc_step = acc_step
