@@ -3,6 +3,7 @@ include(ExternalProject)
 set(JEMALLOC_DOWNLOAD_DIR
     ${PADDLE_SOURCE_DIR}/third_party/jemalloc/${CMAKE_SYSTEM_NAME})
 set(JEMALLOC_PROJECT "extern_jemalloc")
+set(JEMALLOC_BUILD ${THIRD_PARTY_PATH}/jemalloc/src/extern_jemalloc)
 set(JEMALLOC_PREFIX_DIR ${THIRD_PARTY_PATH}/jemalloc)
 set(JEMALLOC_URL
     https://github.com/jemalloc/jemalloc/releases/download/5.1.0/jemalloc-5.1.0.tar.bz2
@@ -59,10 +60,10 @@ ExternalProject_Add(
   URL_MD5 ${JEMALLOC_URL_MD5}
   #INSTALL_DIR ${JEMALLOC_INSTALL}
   DOWNLOAD_DIR ${JEMALLOC_DOWNLOAD_DIR}
-  SOURCE_DIR ${JEMALLOC_INSTALL}
+  SOURCE_DIR ${JEMALLOC_BUILD}
   BUILD_COMMAND make
   INSTALL_COMMAND make install
-  CONFIGURE_COMMAND "${JEMALLOC_INSTALL}/configure"
+  CONFIGURE_COMMAND "${JEMALLOC_BUILDL}/configure"
                     --prefix=${JEMALLOC_INSTALL} --disable-initial-exec-tls)
 
 add_library(jemalloc STATIC IMPORTED GLOBAL)
