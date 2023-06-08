@@ -130,9 +130,9 @@ class CudnnConvDescManager {
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
-    if (1 || !cudnn_conv_cache_.count(hash_key)) {
+    if (!cudnn_conv_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(cache_mutex_);
-      if (1 || !cudnn_conv_cache_.count(hash_key)) {
+      if (!cudnn_conv_cache_.count(hash_key)) {
         cudnn_conv_cache_[hash_key] = CudnnCacheInfo();
         cudnn_conv_cache_[hash_key].x_desc =
             GetTensorDescInfo(input_dims, input_dtype, format);
@@ -140,11 +140,6 @@ class CudnnConvDescManager {
             GetFilterDescInfo(filter_dims, input_dtype, format);
         cudnn_conv_cache_[hash_key].o_desc =
             GetTensorDescInfo(output_dims, input_dtype, format);
-        std::cout << "conv_fusion: bias dim ";
-        for (auto& it : bias_dims) {
-          std::cout << it << ", ";
-        }
-        std::cout << std::endl;
         cudnn_conv_cache_[hash_key].b_desc =
             GetTensorDescInfo(bias_dims, input_dtype, format);
         cudnn_conv_cache_[hash_key].conv_desc =
@@ -204,9 +199,9 @@ class CudnnConvDescManager {
     XXH64_hash_t hash_key = XXH64_digest(state);
     XXH64_freeState(state);
 
-    if (1 || !conv_attr_cache_.count(hash_key)) {
+    if (!conv_attr_cache_.count(hash_key)) {
       std::lock_guard<std::mutex> lock(attr_mutex_);
-      if (1 || !conv_attr_cache_.count(hash_key)) {
+      if (!conv_attr_cache_.count(hash_key)) {
         ConvAttrCacheInfo cache;
         auto paddings = paddings_t;
         auto dilations = dilations_t;
