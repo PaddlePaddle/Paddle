@@ -69,7 +69,17 @@ class TestBatchNormOp(OpTest):
         self.initTestCase()
 
     def test_check_output(self):
-        self.check_output(
+        if self.dtype not in ("uint16", "float16"):
+            self.check_output_with_place(
+                core.CPUPlace(),
+                no_check_set=None,
+                atol=self.fw_comp_atol,
+                rtol=self.fw_comp_rtol,
+                check_prim=True,
+                only_check_prim=True,
+            )
+        self.check_output_with_place(
+            core.CUDAPlace(0),
             no_check_set=None,
             atol=self.fw_comp_atol,
             rtol=self.fw_comp_rtol,
@@ -78,18 +88,19 @@ class TestBatchNormOp(OpTest):
         )
 
     def test_check_grad_x(self):
-        if self.data_format == "NCHW":
-            self.check_grad(
+        if self.dtype not in ("uint16", "float16"):
+            self.check_grad_with_place(
+                core.CPUPlace(),
                 ["X"],
                 ['Y'],
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
             )
-        else:
-            # origin batch_norm kernel differ in x_grad whether to calculate scale_grad and bias_grad
+        elif self.data_format == "NCHW":
+            # origin batch_norm cuda kernel differ in x_grad whether to calculate scale_grad and bias_grad
             self.check_grad_with_place(
-                core.CPUPlace(),
+                core.CUDAPlace(0),
                 ["X"],
                 ['Y'],
                 user_defined_grad_outputs=self.out_grad,
@@ -101,7 +112,17 @@ class TestBatchNormOp(OpTest):
         self.enable_cinn = False
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
-        self.check_grad(
+        if self.dtype not in ("uint16", "float16"):
+            self.check_grad_with_place(
+                core.CPUPlace(),
+                ["X", "Scale", "Bias"],
+                ['Y'],
+                user_defined_grad_outputs=self.out_grad,
+                check_prim=True,
+                only_check_prim=True,
+            )
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
             ["X", "Scale", "Bias"],
             ['Y'],
             user_defined_grad_outputs=self.out_grad,
@@ -131,10 +152,13 @@ class TestBatchNormOp(OpTest):
 
         self.C = self.shape[1] if self.data_format == "NCHW" else self.shape[-1]
         x = np.random.random(self.shape).astype(self.dtype)
-        weight = np.random.random(self.C).astype(self.dtype)
-        bias = np.random.random(self.C).astype(self.dtype)
-        running_mean = np.random.random(self.C).astype(self.dtype)
-        running_var = np.random.random(self.C).astype(self.dtype)
+        self.var_dtype = (
+            "float32" if self.dtype in ["float16", "uint16"] else self.dtype
+        )
+        weight = np.random.random(self.C).astype(self.var_dtype)
+        bias = np.random.random(self.C).astype(self.var_dtype)
+        running_mean = np.random.random(self.C).astype(self.var_dtype)
+        running_var = np.random.random(self.C).astype(self.var_dtype)
         self.out_grad = [np.random.random(self.shape).astype(self.dtype)]
         self.inputs = {
             "X": x,
@@ -194,21 +218,6 @@ class TestBatchNormOp(OpTest):
         }
 
 
-class TestBatchNormOpNCHWShape2(TestBatchNormOp):
-    def initConfig(self):
-        self.fw_comp_atol = 1e-5
-        self.fw_comp_rtol = 1e-5
-        self.rev_comp_atol = 1e-5
-        self.rev_comp_rtol = 1e-5
-        self.dtype = "float32"
-        self.shape = [4, 8, 16, 32]
-        self.training = True
-        self.momentum = 0.1
-        self.epsilon = 1e-05
-        self.data_format = "NCHW"
-        self.use_global_stats = None
-
-
 class TestBatchNormOpNCHWTestMode(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-5
@@ -224,7 +233,97 @@ class TestBatchNormOpNCHWTestMode(TestBatchNormOp):
         self.use_global_stats = True
 
 
-class TestBatchNormOpNHWCShape1(TestBatchNormOp):
+class TestBatchNormOpNCHWFp64(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-11
+        self.fw_comp_rtol = 1e-11
+        self.rev_comp_atol = 1e-11
+        self.rev_comp_rtol = 1e-11
+        self.dtype = "float64"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-15
+        self.fw_comp_rtol = 1e-15
+        self.rev_comp_atol = 1e-15
+        self.rev_comp_rtol = 1e-15
+        self.dtype = "float64"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWFp16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "float16"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWTestModeFp16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "float16"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWbf16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "uint16"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "uint16"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNHWC(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-5
         self.fw_comp_rtol = 1e-5
@@ -239,6 +338,96 @@ class TestBatchNormOpNHWCShape1(TestBatchNormOp):
         self.use_global_stats = None
 
 
+class TestBatchNormOpNHWCFp64(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-11
+        self.fw_comp_rtol = 1e-11
+        self.rev_comp_atol = 1e-11
+        self.rev_comp_rtol = 1e-11
+        self.dtype = "float64"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNHWCFp16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "float16"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNHWCbf16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "uint16"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWShape2(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-5
+        self.fw_comp_rtol = 1e-5
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+        self.dtype = "float32"
+        self.shape = [4, 8, 16, 32]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWMomentum2(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-5
+        self.fw_comp_rtol = 1e-5
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+        self.dtype = "float32"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.9
+        self.epsilon = 1e-05
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNCHWEps2(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-5
+        self.fw_comp_rtol = 1e-5
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+        self.dtype = "float32"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-06
+        self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
 class TestBatchNormOpNHWCShape2(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-5
@@ -250,6 +439,36 @@ class TestBatchNormOpNHWCShape2(TestBatchNormOp):
         self.training = True
         self.momentum = 0.1
         self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNHWCMomentum2(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-5
+        self.fw_comp_rtol = 1e-5
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+        self.dtype = "float32"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.9
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNHWCEps2(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-5
+        self.fw_comp_rtol = 1e-5
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+        self.dtype = "float32"
+        self.shape = [16, 16, 16, 8]
+        self.training = True
+        self.momentum = 0.1
+        self.epsilon = 1e-06
         self.data_format = "NHWC"
         self.use_global_stats = None
 
