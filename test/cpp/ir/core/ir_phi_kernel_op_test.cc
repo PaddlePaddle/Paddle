@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_kernel_dialect.h"
@@ -34,7 +35,8 @@
 TEST(program_test, program) {
   // (1) Init environment.
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+  auto kernel_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   // (2) Create an empty program object
@@ -55,9 +57,17 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
 
-  ir::Type allocated_dense_tensor_dtype =
+  auto allocated_dense_tensor_dtype =
       paddle::dialect::AllocatedDenseTensorType::get(
           ctx, place, fp32_dtype, dims, data_layout, lod, offset);
+  std::stringstream ss;
+  kernel_dialect->PrintType(allocated_dense_tensor_dtype, ss);
+  ASSERT_EQ(ss.str() == "cpu_tensor<2x2xf32>", true);
+  ASSERT_EQ(allocated_dense_tensor_dtype.place() == place, true);
+  ASSERT_EQ(allocated_dense_tensor_dtype.dims() == dims, true);
+  ASSERT_EQ(allocated_dense_tensor_dtype.data_layout() == data_layout, true);
+  ASSERT_EQ(allocated_dense_tensor_dtype.lod() == lod, true);
+  ASSERT_EQ(allocated_dense_tensor_dtype.offset() == 0, true);
 
   ir::Operation *op1 = ir::Operation::Create(
       {}, op1_attribute, {allocated_dense_tensor_dtype}, op1_info);
