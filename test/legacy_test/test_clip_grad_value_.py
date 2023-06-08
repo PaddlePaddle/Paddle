@@ -74,13 +74,13 @@ def run_test_equal(
     input_pd.grad = paddle.to_tensor(grad)
 
     output = np.clip(grad, a_min=-clip_value, a_max=clip_value)
-    clip_grad_norm_result = clip_grad_value_(
+    clip_grad_value_(
         input_pd,
         clip_value=clip_value,
     )
 
     np.testing.assert_allclose(
-        clip_grad_norm_result.numpy(),
+        input_pd.grad.numpy(),
         output,
         rtol=1e-05,
         atol=1e-05,
