@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import itertools
 import logging
 import os
@@ -38,6 +39,7 @@ from ..multiprocess_utils import (
 from .batch_sampler import _InfiniteIterableSampler
 from .collate import default_collate_fn, default_convert_fn
 from .flat import _flatten_batch, _restore_batch
+from .split_batch import _split_batch
 from .worker import (
     _DatasetKind,
     _IterableDatasetStopIteration,
@@ -245,7 +247,15 @@ class _DataLoaderIterBase:
         self._enqueue_flat_batch(batch, structure, use_shared_memory)
 
     def _enqueue_flat_batch(self, batch, structure, use_shared_memory):
-        self._enqueue_flat_micro_batch(batch, structure, use_shared_memory)
+        if self._yield_micro_batch_iter():
+            for micro_batch in _split_batch(
+                batch, self._micro_batch_size, self._acc_step
+            ):
+                self._enqueue_batch(
+                    micro_batch, copy.deep_copy(structure), use_shared_memory
+                )
+        else:
+            self._enqueue_flat_micro_batch(batch, structure, use_shared_memory)
 
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):

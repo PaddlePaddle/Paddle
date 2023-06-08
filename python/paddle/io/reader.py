@@ -185,8 +185,15 @@ class AuToTune:
         avg_cost = 0
         start = time.time()
         for i, data in enumerate(reader):
-            costs.append(time.time() - start)
-            start = time.time()
+            # micro batch
+            if hasattr(data, '__iter__'):
+                for micro in data:
+                    costs.append(time.time() - start)
+                    start = time.time()
+            else:
+                costs.append(time.time() - start)
+                start = time.time()
+
         if len(costs) > 2:
             avg_cost = sum(costs[2:]) / len(costs[2:])
         else:
