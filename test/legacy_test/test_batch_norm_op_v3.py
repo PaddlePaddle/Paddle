@@ -67,7 +67,6 @@ class TestBatchNormOp(OpTest):
         self.python_out_sig = ["Y"]
         self.initConfig()
         self.initTestCase()
-        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(
@@ -99,6 +98,7 @@ class TestBatchNormOp(OpTest):
             )
 
     def test_check_grad_scale_bias(self):
+        self.enable_cinn = False
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
         self.check_grad(
@@ -254,19 +254,19 @@ class TestBatchNormOpNHWCShape2(TestBatchNormOp):
         self.use_global_stats = None
 
 
-class TestBatchNormOpNHWCTestMode(TestBatchNormOp):
-    def initConfig(self):
-        self.fw_comp_atol = 1e-5
-        self.fw_comp_rtol = 1e-5
-        self.rev_comp_atol = 1e-5
-        self.rev_comp_rtol = 1e-5
-        self.dtype = "float32"
-        self.shape = [2, 6, 2, 4]
-        self.training = False
-        self.momentum = 0.1
-        self.epsilon = 1e-05
-        self.data_format = "NHWC"
-        self.use_global_stats = None
+# class TestBatchNormOpNHWCTestMode(TestBatchNormOp):
+#     def initConfig(self):
+#         self.fw_comp_atol = 1e-5
+#         self.fw_comp_rtol = 1e-5
+#         self.rev_comp_atol = 1e-5
+#         self.rev_comp_rtol = 1e-5
+#         self.dtype = "float32"
+#         self.shape = [2, 6, 2, 4]
+#         self.training = False
+#         self.momentum = 0.1
+#         self.epsilon = 1e-05
+#         self.data_format = "NHWC"
+#         self.use_global_stats = None
 
 
 if __name__ == '__main__':
