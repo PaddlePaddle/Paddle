@@ -77,6 +77,51 @@ def _clear_loader():
 CleanupFuncRegistrar.register(_clear_loader)
 
 
+class _MicroBatchIterator:
+    """
+    Wrap iterator of DataLoader to a micro batch iterator, will iterate through micro batches of one whole batch
+    Args:
+        cache: micro batch data, the first micro batch of one batch
+        acc_step(int): micro_batch num of one batch
+        inner_iter(_DataLoaderIterBase): iterator of dataloader
+    """
+
+    def __init__(self, cache, acc_step, inner_iter):
+        assert isinstance(
+            inner_iter, _DataLoaderIterBase
+        ), "inner_iter must be a instance of _DataLoaderIterBase"
+        assert (
+            inner_iter._unconsumed_micro_batch_num == 0
+        ), "last batch is not completed yet"
+        self._cache = cache
+        self._acc_step = acc_step
+        self._inner_iter = inner_iter
+        inner_iter._unconsumed_micro_batch_num = acc_step
+        self._index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        if self._index >= self._acc_step:
+            raise StopIteration
+
+        micro_batch = self._cache
+        if self._cache:
+            self._cache = None
+        if micro_batch is None:
+            try:
+                micro_batch = next(self._inner_iter)
+            except StopIteration:
+                raise RuntimeError("unexpected end of iterator")
+
+        self._index += 1
+        self._inner_iter._unconsumed_micro_batch_num -= 1
+
+        return micro_batch
+
+
 class _DataLoaderIterBase:
     """
     Iterator implement of DataLoader, will load and feed mini-batch
@@ -104,6 +149,12 @@ class _DataLoaderIterBase:
         self._worker_init_fn = loader.worker_init_fn
         self._dataset_kind = loader.dataset_kind
         self._pin_memory = loader.pin_memory
+
+        self._micro_batch_size = loader.micro_batch_size
+        self._acc_step = loader.acc_step
+
+        # claimed but no consumed micro batch num by last batch
+        self._unconsumed_micro_batch_num = 0
 
         self._sampler_iter = iter(self._index_sampler)
         if self._auto_collate_batch:
@@ -135,6 +186,13 @@ class _DataLoaderIterBase:
 
     def __len__(self):
         return len(self._batch_sampler)
+
+    def __next__(self):
+        if self._yield_micro_batch_iter():
+            # call self._next_impl() to test the end of iterator
+            return _MicroBatchIterator(self._next_impl(), self._acc_step, self)
+
+        return self._next_impl()
 
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
@@ -177,6 +235,9 @@ class _DataLoaderIterBase:
                 self._blocking_queue.close()
         except:
             self._exit_thread_expectedly()
+
+    def _yield_micro_batch_iter(self):
+        return (self._micro_batch_size is not None) and self._acc_step > 1
 
     def _enqueue_batch(self, batch, use_shared_memory=False):
         # flat batch and record structure infos
@@ -288,9 +349,6 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 raise e
 
         self._exit_thread_expectedly()
-
-    def __next__(self):
-        return self._next_impl()
 
     def _next_impl(self):
         if in_profiler_mode():
@@ -793,9 +851,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
     def _shutdown_on_exit(self):
         self._try_shutdown_all(1)
-
-    def __next__(self):
-        return self._next_impl()
 
     def _next_impl(self):
         if in_profiler_mode():

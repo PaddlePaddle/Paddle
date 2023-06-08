@@ -520,8 +520,8 @@ class DataLoader:
                     acc_step * micro_batch_size == batch_size
                 ), f"acc_step({acc_step})*micro_batch_size({micro_batch_size}) != batch_size({batch_size})"
 
-        self._micro_batch_size = micro_batch_size
-        self._acc_step = acc_step
+        self.micro_batch_size = micro_batch_size
+        self.acc_step = acc_step
 
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:
