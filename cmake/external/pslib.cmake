@@ -27,12 +27,12 @@ if((NOT DEFINED PSLIB_VER) OR (NOT DEFINED PSLIB_URL))
     set(PSLIB_URL
         "https://pslib.bj.bcebos.com/pslib.tar.gz"
         CACHE STRING "" FORCE)
-    set(PS_LIB_SUBDIR "pslib")
+    set(PSLIB_SUBDIR "pslib")
   else()
     set(PSLIB_URL
         "https://pslib.bj.bcebos.com/pslib_3631b2/pslib.tar.gz"
         CACHE STRING "" FORCE)
-    set(PS_LIB_SUBDIR "pslib_3631b2")
+    set(PSLIB_SUBDIR "pslib_3631b2")
   endif()
 endif()
 
@@ -47,7 +47,7 @@ set(PSLIB_INC_DIR ${PSLIB_ROOT}/include)
 set(PSLIB_LIB_DIR ${PSLIB_ROOT}/lib)
 set(PSLIB_LIB ${PSLIB_LIB_DIR}/libps.so)
 set(JVM_LIB ${PSLIB_LIB_DIR}/libjvm.so)
-set(PSLIB_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/${PS_LIB_SUBDIR}")
+set(PSLIB_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/${PSLIB_SUBDIR}")
 set(PSLIB_VERSION_PY ${PSLIB_DOWNLOAD_DIR}/pslib/version.py)
 set(PSLIB_IOMP_LIB ${PSLIB_LIB_DIR}/libiomp5.so) #todo what is this
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${PSLIB_ROOT}/lib")
@@ -66,8 +66,10 @@ ExternalProject_Add(
   PREFIX ${PSLIB_PREFIX_DIR}
   DOWNLOAD_DIR ${PSLIB_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
-    wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz &&
-    tar zxvf ${PSLIB_NAME}.tar.gz -C ${PSLIB_SOURCE_DIR}
+  COMMAND wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
+          && tar zxvf ${PSLIB_NAME}.tar.gz -C ${PSLIB_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy "${PSLIB_DOWNLOAD_DIR}/CMakeLists.txt"
+          "${PSLIB_SOURCE_DIR}"
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}
