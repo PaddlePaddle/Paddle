@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/relu6_fuse_pass.h"
+
+#include <cmath>
 #include <string>
+
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -65,7 +68,6 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
     Node* clip_min_node = subgraph.at(clip_min);
     Node* clip_out_node = subgraph.at(clip_out);
 
-    auto* block = clip_op_node->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
@@ -106,7 +108,7 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
           "relu6_fuse_pass do not supported weight dtype. "
           "we now only support fp32/fp16."));
     }
-    if (max_val_ == 6.f && min_val_ == 0.f) {
+    if (std::abs(max_val_ - 6.0) < 1e-3 && std::abs(min_val_ - 0.0) < 1e-3) {
       OpDesc new_desc;
       new_desc.SetType("relu6");
       new_desc.SetAttr("threshold", 6.f);
