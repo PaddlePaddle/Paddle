@@ -23,30 +23,28 @@ def _split_field(field, micro_batch_size, acc_step):
     # duplicate
     if isinstance(field, (str, bytes, numbers.Number)):
         return (field for _ in range(acc_step))
-    if isinstance(field, (np.ndarray, paddle.Tensor)):
+    if isinstance(
+        field, (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor)
+    ):
         assert micro_batch_size * acc_step == field.shape[0]
         return (
-            field[i * micro_batch_size : (i + 1) : micro_batch_size]
+            field[i * micro_batch_size : (i + 1) * micro_batch_size]
             for i in range(acc_step)
         )
-    if isinstance(field, paddle.fluid.core.eager.Tensor):
+    if isinstance(field, paddle.fluid.libpaddle.Tensor):
+        assert micro_batch_size * acc_step == field.shape()[0]
         return (
-            field[i * micro_batch_size : (i + 1) : micro_batch_size]
+            field[i * micro_batch_size : (i + 1) * micro_batch_size]
             for i in range(acc_step)
         )
-    raise AssertionError("should not get here")
+    raise AssertionError(f"should not get here {type(field)}")
 
 
 def _split_batch(flat_batch, micro_batch_size, acc_step):
     flat_micro_batches = (
         list(e)
-        for e in (
-            zip(
-                [
-                    _split_field(e, micro_batch_size, acc_step)
-                    for e in flat_batch
-                ]
-            )
+        for e in zip(
+            *[_split_field(e, micro_batch_size, acc_step) for e in flat_batch]
         )
     )
     return flat_micro_batches

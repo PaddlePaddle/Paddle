@@ -514,7 +514,6 @@ class DataLoader:
 
         self._persistent_workers = persistent_workers
         self._iterator = None
-        self.num_workers = AuToTune(self).__call__()
 
         if micro_batch_size is not None:
             assert isinstance(
@@ -529,6 +528,8 @@ class DataLoader:
 
         self.micro_batch_size = micro_batch_size
         self.acc_step = acc_step
+
+        self.num_workers = AuToTune(self).__call__()
 
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:

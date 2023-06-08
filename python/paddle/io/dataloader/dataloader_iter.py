@@ -251,8 +251,8 @@ class _DataLoaderIterBase:
             for micro_batch in _split_batch(
                 batch, self._micro_batch_size, self._acc_step
             ):
-                self._enqueue_batch(
-                    micro_batch, copy.deep_copy(structure), use_shared_memory
+                self._enqueue_flat_micro_batch(
+                    micro_batch, copy.deepcopy(structure), use_shared_memory
                 )
         else:
             self._enqueue_flat_micro_batch(batch, structure, use_shared_memory)
