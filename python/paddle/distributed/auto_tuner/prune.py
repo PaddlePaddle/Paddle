@@ -135,7 +135,10 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     cfgs = same_cfgs_beside("micro_batch_size", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
-            if cfg["micro_batch_size"] > micro_batch_size and cfg["time"] > 0:
+            if (
+                cfg["micro_batch_size"] > micro_batch_size
+                and cfg.get("time", -1) > 0
+            ):
                 return True
 
     return False
@@ -178,7 +181,10 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
     cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
-            if cfg["sharding_stage"] < sharding_stage and cfg["time"] > 0:
+            if (
+                cfg["sharding_stage"] < sharding_stage
+                and cfg.get("time", -1) > 0
+            ):
                 return True
     return False
 
@@ -190,10 +196,12 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
     if not use_recompute:
         return False
 
-    recompute_granularity_candidates = tuner_cfg.get(
+    recompute_granularity_candidates = tuner_cfg["candidates"].get(
         "recompute_granularity", None
     )
-    use_recompute_candidates = tuner_cfg.get("use_recompute", None)
+    use_recompute_candidates = tuner_cfg["candidates"].get(
+        "use_recompute", None
+    )
 
     if use_recompute_candidates:
         if use_recompute not in use_recompute_candidates:
@@ -209,7 +217,11 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
     cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
-            if not cfg["use_recompute"] and use_recompute and cfg["time"] > 0:
+            if (
+                not cfg["use_recompute"]
+                and use_recompute
+                and cfg.get("time", -1) > 0
+            ):
                 return True
 
     return False
