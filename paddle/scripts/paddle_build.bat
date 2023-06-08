@@ -58,6 +58,7 @@ if not defined TENSORRT_ROOT set TENSORRT_ROOT=D:/TensorRT
 if not defined WITH_GPU set WITH_GPU=ON
 if not defined WITH_MKL set WITH_MKL=ON
 if not defined WITH_AVX set WITH_AVX=ON
+if not defined WITH_SHARED_PHI set WITH_SHARED_PHI=OFF
 if not defined WITH_TESTING set WITH_TESTING=ON
 if not defined MSVC_STATIC_CRT set MSVC_STATIC_CRT=ON
 if not defined WITH_PYTHON set WITH_PYTHON=ON
