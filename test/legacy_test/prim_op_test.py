@@ -967,9 +967,16 @@ class PrimGradChecker(PrimForwardChecker):
         no_grad_vars = self.gen_no_grad_set(
             var_dict={**inputs_dict, **outputs_dict}
         )
+
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
+        # print("xs===", xs)
+        # print("ys===", ys)
+        # print("no_grad_vars== ", no_grad_vars)
+        # print("x_grad--------- ", ret)
+        # breakpoint()
+        # ret = [x for x in res if x is not None]
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = paddle.utils.map_structure(
@@ -1110,6 +1117,7 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
+            # breakpoint()
             np.testing.assert_allclose(
                 actual_ret[i],
                 self.eager_desire[i],
