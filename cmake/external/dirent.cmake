@@ -43,10 +43,8 @@ function(download_dirent)
       "Downloading ${DIRENT_URL} to ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}"
   )
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(
-    DOWNLOAD ${DIRENT_URL}
-    ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
-    STATUS ERR)
+  file(DOWNLOAD ${DIRENT_URL} ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
+       STATUS ERR)
   if(ERR EQUAL 0)
     message(STATUS "Download ${DIRENT_CACHE_FILENAME} success")
   else()
