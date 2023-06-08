@@ -11,6 +11,7 @@ register_operators(
   fusion_conv_inception_op
   fused_fc_elementwise_layernorm_op
   multihead_matmul_op
+  self_dp_attention_op
   skip_layernorm_op
   yolo_box_head_op
   yolo_box_post_op
@@ -33,6 +34,14 @@ register_operators(
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
 op_library(fusion_lstm_op)
+if(WITH_AVX
+   AND AVX512F_FOUND
+   AND AVX512F_FLAG
+   AND WITH_MKL)
+  op_library(self_dp_attention_op)
+  set_target_properties(self_dp_attention_op PROPERTIES COMPILE_FLAGS
+                                                        "-mfma ${AVX512F_FLAG}")
+endif()
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)
