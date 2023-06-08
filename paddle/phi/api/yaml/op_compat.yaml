@@ -1849,7 +1849,7 @@
   outputs :
     out : Out
   scalar :
-    depth :
+    num_classes :
       data_type : int
       tensor_name : depth_tensor
 

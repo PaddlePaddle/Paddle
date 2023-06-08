@@ -700,7 +700,7 @@
     func : not_equal
 
 - op : one_hot
-  args : (Tensor x, Scalar(int) depth)
+  args : (Tensor x, Scalar(int) num_classes)
   output : Tensor(out)
   infer_meta :
     func : OneHotInferMeta
