@@ -360,8 +360,8 @@ def dyfunc_InverseTimeDecay():
 
 def dyfunc_NaturalExpDecay():
     base_lr = 0.1
-    natural_exp_decay = fluid.dygraph.NaturalExpDecay(
-        learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True
+    natural_exp_decay = paddle.optimizer.lr.NaturalExpDecay(
+        learning_rate=base_lr, gamma=0.5
     )
     lr = natural_exp_decay()
     return lr
@@ -433,6 +433,27 @@ class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
 class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_NaturalExpDecay
+
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            fluid.default_startup_program.random_seed = SEED
+            fluid.default_main_program.random_seed = SEED
+            res = self.dygraph_func()
+            return res
+
+    def get_static_output(self):
+        startup_program = fluid.Program()
+        startup_program.random_seed = SEED
+        main_program = fluid.Program()
+        main_program.random_seed = SEED
+        with fluid.program_guard(main_program, startup_program):
+            static_out = dygraph_to_static_func(self.dygraph_func)()
+            static_out = paddle.to_tensor(static_out)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(startup_program)
+        static_res = exe.run(main_program, fetch_list=static_out)
+        return static_res[0]
 
 
 class TestDygraphBasicApi_NoamDecay(TestDygraphBasicApi_CosineDecay):
