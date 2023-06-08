@@ -207,7 +207,6 @@ class TestBatchNormOp(OpTest):
             self.use_global_stats,
             trainable_statistics,
         )
-        # breakpoint()
         paddle.enable_static()
         self.outputs = {
             "Y": y,
