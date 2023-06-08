@@ -57,6 +57,7 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                   root,
                                   nccl_comm_,
                                   stream));
+  VLOG(3) << "broadcast nccl comm context rank " << GetRank() << ", from root " << root;
 }
 
 void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
@@ -80,6 +81,7 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                   ToNCCLDataType(in_tensor.type()),
                                   nccl_comm_,
                                   stream));
+  VLOG(3) << "allgather nccl comm context rank " << GetRank();
 }
 void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
@@ -104,6 +106,7 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                       reduce_type,
                                       nccl_comm_,
                                       stream));
+  VLOG(3) << "reducescatter nccl comm context rank " << GetRank() << ", reduce_type " << reduce_type;
 }
 
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
@@ -123,7 +126,7 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                              peer,
                              nccl_comm_,
                              stream));
-  VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
+  VLOG(3) << "send nccl comm context rank " << GetRank() << " send " << phi::product(in_tensor.dims())
           << " to " << peer;
 }
 
@@ -143,7 +146,7 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                              peer,
                              nccl_comm_,
                              stream));
-  VLOG(3) << "rank " << GetRank() << " recv "
+  VLOG(3) << "recv nccl comm context rank" << GetRank() << " recv "
           << phi::product(out_tensor->dims()) << " from " << peer;
 }
 
@@ -170,6 +173,7 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                   reduce_type,
                                   nccl_comm_,
                                   stream));
+  VLOG(3) << "allreduce nccl comm context rank" << GetRank() << ", reduce_type " << reduce_type;
 }
 
 void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
@@ -197,6 +201,7 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                root,
                                nccl_comm_,
                                stream));
+  VLOG(3) << "reduce nccl comm context rank" << GetRank() << ", reduce_type " << reduce_type << ", root " << root;
 }
 
 void NCCLCommContext::GroupStart() {

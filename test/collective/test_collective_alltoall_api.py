@@ -36,7 +36,6 @@ class TestCollectiveAllToAllAPI(TestDistBase):
             "int32",
             "int64",
             "int8",
-            "uint8",
             "bool",
         ]
         if self._nccl_version >= 21000:

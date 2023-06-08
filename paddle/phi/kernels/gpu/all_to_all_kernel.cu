@@ -49,8 +49,6 @@ void AllToAllKernel(const Context& dev_ctx,
   int send_numel = x.numel() / nranks;
   size_t offset = 0;
 
-  VLOG(0) << "all to all kernel group start";
-  VLOG(0) << "nranks " << nranks << ", send_numel " << send_numel;
   comm_ctx->GroupStart();
 
   const auto* send_buf = x.data<T>();
