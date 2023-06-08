@@ -62,7 +62,8 @@ PD_REGISTER_KERNEL(swish,
 #endif
 
 #if defined PADDLE_WITH_XPU
-PD_REGISTER_KERNEL(relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float) {}
+PD_REGISTER_KERNEL(
+    relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
 #endif
