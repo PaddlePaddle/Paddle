@@ -28,8 +28,26 @@ set(LIBXSMM_LIBRARY_DIR
 set(LIBXSMM_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmm.a")
 set(LIBXSMMNOBLAS_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmmnoblas.a")
 
-execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${LIBXSMM_TAG}
-                        "https://github.com/hfp/libxsmm" ${LIBXSMM_SOURCE_DIR})
+file(GLOB LIBXSMM_SOURCE_FILE_LIST ${LIBXSMM_SOURCE_DIR})
+list(LENGTH LIBXSMM_SOURCE_FILE_LIST RES_LEN)
+if(RES_LEN EQUAL 0)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} clone -b ${LIBXSMM_TAG}
+            "https://github.com/hfp/libxsmm.git" ${LIBXSMM_SOURCE_DIR})
+else()
+  # check git tag
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
+    OUTPUT_VARIABLE VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
+    WORKING_DIRECTORY ${LIBXSMM_SOURCE_DIR})
+  if(NOT ${VERSION} STREQUAL ${LIBXSMM_TAG})
+    message(
+      WARNING "libxsmm version is not ${VERSION}, checkout to ${LIBXSMM_TAG}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LIBXSMM_TAG}
+                    WORKING_DIRECTORY ${LIBXSMM_SOURCE_DIR})
+  endif()
+endif()
 
 ExternalProject_Add(
   extern_libxsmm

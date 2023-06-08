@@ -42,9 +42,26 @@ if(WITH_LOONGARCH)
   set(CBLAS_TAG v0.3.18)
 endif()
 
-execute_process(
-  COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
-          "https://github.com/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
+file(GLOB CBLAS_SOURCE_FILE_LIST ${CBLAS_SOURCE_DIR})
+list(LENGTH CBLAS_SOURCE_FILE_LIST RES_LEN)
+if(RES_LEN EQUAL 0)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
+            "https://github.com/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
+else()
+  # check git tag
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
+    OUTPUT_VARIABLE VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
+    WORKING_DIRECTORY ${CBLAS_SOURCE_DIR})
+  if(NOT ${VERSION} STREQUAL ${CBLAS_TAG})
+    message(
+      WARNING "openblas version is not ${VERSION}, checkout to ${CBLAS_TAG}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${CBLAS_TAG}
+                    WORKING_DIRECTORY ${CBLAS_SOURCE_DIR})
+  endif()
+endif()
 
 if(NOT WIN32)
   set(CBLAS_LIBRARIES

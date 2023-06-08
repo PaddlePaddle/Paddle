@@ -77,9 +77,27 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     set(CUDA_ARCH_NAME "Auto")
   endif()
 
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${LITE_GIT_TAG}
-            "https://github.com/PaddlePaddle/Paddle-Lite" ${LITE_SOURCE_DIR})
+  file(GLOB LITE_SOURCE_FILE_LIST ${LITE_SOURCE_DIR})
+  list(LENGTH LITE_SOURCE_FILE_LIST RES_LEN)
+  if(RES_LEN EQUAL 0)
+    execute_process(
+      COMMAND
+        ${GIT_EXECUTABLE} clone -b ${LITE_GIT_TAG}
+        "https://github.com/PaddlePaddle/Paddle-Lite.git" ${LITE_SOURCE_DIR})
+  else()
+    # check git tag
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
+      OUTPUT_VARIABLE VERSION
+      OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
+      WORKING_DIRECTORY ${LITE_SOURCE_DIR})
+    if(NOT ${VERSION} STREQUAL ${LITE_TAG})
+      message(WARNING "lite version is not ${VERSION}, checkout to ${LITE_TAG}")
+      execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LITE_TAG}
+                      WORKING_DIRECTORY ${LITE_SOURCE_DIR})
+    endif()
+  endif()
+
   # No quotes, so cmake can resolve it as a command with arguments.
   if(WITH_ARM)
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
