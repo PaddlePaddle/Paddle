@@ -17,7 +17,6 @@
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/enforce.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/string/printf.h"
 
 namespace ir {
 
@@ -112,32 +111,29 @@ void CombineOp::Verify(const std::vector<ir::OpResult> &inputs,
                        const ir::AttributeMap &attributes) {
   // outputs.size() == 1
   IR_ENFORCE(outputs.size() == 1,
-             paddle::string::Sprintf(
-                 "The size %d of outputs must be equal to 1.", outputs.size()));
+             "The size %d of outputs must be equal to 1.",
+             outputs.size());
 
   // outputs[0].type == Vector<Type>
   IR_ENFORCE(outputs[0].isa<ir::VectorType>(),
-             paddle::string::Sprintf(
-                 "The type %s of outputs[0] must be equal to VectorType.",
-                 outputs[0]));
+             "The type %s of outputs[0] must be equal to VectorType.",
+             outputs[0]);
   ir::VectorType output_type = outputs[0].dyn_cast<ir::VectorType>();
   // inputs.size() == outputs[0].size()
-  IR_ENFORCE(
-      output_type.size() == inputs.size(),
-      paddle::string::Sprintf(
-          "The size %d of outputs[0] must be equal to size %d of inputs.",
-          output_type.size(),
-          inputs.size()));
+  IR_ENFORCE(output_type.size() == inputs.size(),
+             "The size %d of outputs[0] must be equal to size %d of inputs.",
+             output_type.size(),
+             inputs.size());
 
   // forall i in inputs.size(): inputs[i].type == outputs[0][i].type
   for (size_t i = 0; i < inputs.size(); i++) {
     IR_ENFORCE(output_type[i] == inputs[i].type(),
-               paddle::string::Sprintf("The type %s of outputs[0][%d] must be "
-                                       "equal to type %s of inputs[%d].",
-                                       output_type[i],
-                                       i,
-                                       inputs[i].type(),
-                                       i));
+               "The type %s of outputs[0][%d] must be "
+               "equal to type %s of inputs[%d].",
+               output_type[i],
+               i,
+               inputs[i].type(),
+               i);
   }
 }
 
@@ -147,48 +143,43 @@ void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
                      const ir::AttributeMap &attributes) {
   // inputs.size() == 1
   IR_ENFORCE(inputs.size() == 1,
-             paddle::string::Sprintf(
-                 "The size %d of inputs must be equal to 1.", inputs.size()));
+             "The size %d of inputs must be equal to 1.",
+             inputs.size());
 
   // inputs[0].type == Vector<Type>
   IR_ENFORCE(inputs[0].type().isa<ir::VectorType>(),
-             paddle::string::Sprintf(
-                 "The type %s of inputs[0] must be equal to VectorType.",
-                 inputs[0].type()));
+             "The type %s of inputs[0] must be equal to VectorType.",
+             inputs[0].type());
   ir::VectorType input_type = inputs[0].type().dyn_cast<ir::VectorType>();
 
   // outputs.size() == 1
   IR_ENFORCE(outputs.size() == 1,
-             paddle::string::Sprintf(
-                 "The size %d of outputs must be equal to 1.", outputs.size()));
+             "The size %d of outputs must be equal to 1.",
+             outputs.size());
 
   // attributes contains index: Int32
   IR_ENFORCE(attributes.count("index") != 0,
-             paddle::string::Sprintf("The attributes must contains index."));
+             "The attributes must contains index.");
   const ir::Attribute &attr = attributes.at("index");
   IR_ENFORCE(attr.isa<ir::Int32_tAttribute>(),
-             paddle::string::Sprintf("The attribute index must be INT32."));
+             "The attribute index must be INT32.");
   auto index = attr.dyn_cast<ir::Int32_tAttribute>().data();
 
   // index >= 0 and < inputs[0].size()
-  IR_ENFORCE(index >= 0,
-             paddle::string::Sprintf(
-                 "The index %d must be greater or equal than 0.", index));
   IR_ENFORCE(
-      static_cast<size_t>(index) < input_type.size(),
-      paddle::string::Sprintf(
-          "The index %d must be less or equal than size %d of inputs[0].",
-          index,
-          input_type.size()));
+      index >= 0, "The index %d must be greater or equal than 0.", index);
+  IR_ENFORCE(static_cast<size_t>(index) < input_type.size(),
+             "The index %d must be less or equal than size %d of inputs[0].",
+             index,
+             input_type.size());
 
   // inputs[index].type == outputs[0].type
   IR_ENFORCE(
       input_type[index] == outputs[0],
-      paddle::string::Sprintf(
-          "The type %s of inputs[%d] must be equal to type %s of outputs[0].",
-          input_type[index],
-          index,
-          outputs[0]));
+      "The type %s of inputs[%d] must be equal to type %s of outputs[0].",
+      input_type[index],
+      index,
+      outputs[0]);
 }
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};

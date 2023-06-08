@@ -15,7 +15,6 @@
 #pragma once
 
 #include <exception>
-#include <iostream>
 #include <string>
 
 #include "paddle/utils/string/printf.h"
