@@ -136,8 +136,6 @@ def OpNameNormalizerInitialization(
             op_arg_name_pairs=op_arg_name_mappings,
             op_mutable_attributes=op_mutable_attribues,
             op_mutable_attribute_infos=op_mutable_attribute_infos,
-            op_mutable_attributes=op_mutable_attribues,
-            op_mutable_attribute_infos=op_mutable_attribute_infos,
         )
         f.write(op_compat_definition)
 

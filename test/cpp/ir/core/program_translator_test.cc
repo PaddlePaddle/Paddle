@@ -46,23 +46,23 @@ ProgramDesc load_from_file(const std::string &file_name) {
   return ProgramDesc(buffer);
 }
 
-// TEST(PaddleDialectTest, MainProgram) {
-//   auto p = load_from_file("resnet50_main.prog");
-//   EXPECT_EQ(p.Size(), 1u);
+TEST(PaddleDialectTest, MainProgram) {
+  auto p = load_from_file("resnet50_main.prog");
+  EXPECT_EQ(p.Size(), 1u);
 
-//   ir::IrContext *ctx = ir::IrContext::Instance();
-//   ctx->GetOrRegisterDialect<PaddleDialect>();
-//   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-//   auto program = paddle::TranslateLegacyProgramToProgram(p);
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
 
-//   size_t op_size = program->block()->size();
-//   // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
-//   // array op + full op
-//   EXPECT_EQ(op_size,
-//             p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
+  size_t op_size = program->block()->size();
+  // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
+  // array op + full op
+  EXPECT_EQ(op_size,
+            p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
 
-//   program->Print(std::cout);
-// }
+  program->Print(std::cout);
+}
 
 TEST(PaddleDialectTest, StartupProgram) {
   auto p = load_from_file("resnet50_startup.prog");
@@ -74,8 +74,10 @@ TEST(PaddleDialectTest, StartupProgram) {
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   size_t op_size = program->block()->size();
-  EXPECT_EQ(op_size,
-            p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
+  // ops.size() = op size in BlockDesc + get_parameter_op +
+  // consant_op_for_uniform
+  // + consant_op_for_uniform for guassian
+  EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
 
   program->Print(std::cout);
 }
