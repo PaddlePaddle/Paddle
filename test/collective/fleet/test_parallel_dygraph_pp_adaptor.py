@@ -44,18 +44,18 @@ class TestPPAdaptor(TestMultipleGpus):
         dir1 = "./pp_transformer"
         p_config1 = ParallelConfig(mp=1, pp=2, vpp=1, sharding=1)
         dir2 = "./pp_transformer_vp"
-        p_config2 = ParallelConfig(mp=1, pp=2, vpp=2, sharding=1)
+        p_config2 = ParallelConfig(mp=1, pp=2, vpp=3, sharding=1)
 
         pp_to_vp = PipeLineModelAdaptor(
             src_parallel_config=p_config1,
             dst_parallel_config=p_config2,
-            transformer_layer_num=8,
+            transformer_layer_num=12,
             segment_method="layer",
         )
         vp_to_pp = PipeLineModelAdaptor(
             src_parallel_config=p_config2,
             dst_parallel_config=p_config1,
-            transformer_layer_num=8,
+            transformer_layer_num=12,
             segment_method="layer",
         )
 
