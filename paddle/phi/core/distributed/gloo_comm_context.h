@@ -47,9 +47,12 @@ class GlooCommContext final : public CommContext {
   void AllGather(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor);
 
+  void next_tag() { _tag++; }
+
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);
 
+  uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> gloo_context_;
 };
 

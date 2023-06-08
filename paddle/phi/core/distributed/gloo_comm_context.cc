@@ -37,6 +37,7 @@ GlooCommContext::GlooCommContext(
     : CommContext(rank, size) {
   gloo_context_ = std::make_shared<gloo::rendezvous::Context>(rank, size);
   gloo_context_->connectFullMesh(*store, device);
+  next_tag();
 }
 
 void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
@@ -56,6 +57,7 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
     GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   }
   opts.setRoot(root);
+  opts.setTag(_tag);
   gloo::broadcast(opts);
 }
 

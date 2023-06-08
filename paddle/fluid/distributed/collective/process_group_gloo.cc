@@ -34,6 +34,7 @@
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace paddle {
 namespace distributed {
@@ -195,38 +196,27 @@ ProcessGroupGloo::ProcessGroupGloo(
 
 class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
  public:
-  BroadcastGlooTask(const std::shared_ptr<gloo::Context>& context,
+  BroadcastGlooTask(phi::distributed::GlooCommContext* comm_context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
                     int rank,
-                    int root,
-                    uint32_t tag)
+                    int root)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::BROADCAST),
-        _context(context),
+        _comm_context(comm_context),
         _root(root),
         _inputs(inputs),
-        _outputs(outputs),
-        _tag(tag) {}
+        _outputs(outputs) {}
 
   void Run() override { _do_broadcast(_inputs[0], _outputs[0]); }
 
  private:
-  std::shared_ptr<gloo::Context> _context;
+  phi::distributed::GlooCommContext* _comm_context;
   const int _root;
   std::vector<phi::DenseTensor> _inputs{};
   std::vector<phi::DenseTensor> _outputs{};
-  const uint32_t _tag;
 
   void _do_broadcast(phi::DenseTensor& in, phi::DenseTensor& out) {  // NOLINT
-    gloo::BroadcastOptions opts(_context);
-    const auto& dtype = in.dtype();
-    if (rank_ == _root) {
-      GENERATE_FUNC(dtype, set_input, opts, in);
-    }
-    GENERATE_FUNC(dtype, set_output, opts, out);
-    opts.setRoot(_root);
-    opts.setTag(_tag);
-    gloo::broadcast(opts);
+    _comm_context->Broadcast(&(out), in, _root);
   }
 };
 
@@ -255,10 +245,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     bool sync_op) {
   auto root = opts.source_rank;
   std::unique_ptr<BroadcastGlooTask> task;
-  auto tag = next_tag();
-  auto context = get_context();
+  auto comm_context = this->GetCommContext();
   task = std::make_unique<BroadcastGlooTask>(
-      context, inputs, outputs, rank_, root, tag);
+      comm_context, inputs, outputs, rank_, root);
   task->Run();
   return task;
 }
@@ -804,10 +793,23 @@ std::shared_ptr<ProcessGroupGloo> ProcessGroupGloo::CreateProcessGroupGloo(
   } else {
     opts->device = ProcessGroupGloo::createDefaultDevice();
   }
+  phi::distributed::CommContextManager::CreateGlooCommContext(
+      store, gid, rank, size);
   auto process_group =
       std::make_shared<ProcessGroupGloo>(store, rank, size, gid, opts);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
+}
+
+phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
+  const auto& comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+  auto comm_context = static_cast<phi::distributed::GlooCommContext*>(
+      comm_context_manager.Get(this->gid_));
+  PADDLE_ENFORCE_NE(comm_context,
+                    nullptr,
+                    phi::errors::Unavailable("GlooCommContext is nullptr"));
+  return comm_context;
 }
 
 }  // namespace distributed
