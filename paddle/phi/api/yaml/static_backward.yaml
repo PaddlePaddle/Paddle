@@ -108,7 +108,7 @@
     func : GeneralQuinaryGradInferMeta
     param : [x, y, grad_out, grad_grad_x, grad_grad_y]
   kernel :
-    func : matmul_double_grad
+    func : matmul_triple_grad
 
 - backward_op : max_grad
   forward: max (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
