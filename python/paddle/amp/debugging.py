@@ -278,10 +278,8 @@ def check_numerics(
     Returns:
         (Tensor, Tensor): A tuple of tensors containing
 
-            - **stats** (Tensor): Returns the number of NaNs, Infs and zeros of input tensor.
-                                  The shape is [3] and dtype is int64.
-            - **values** (Tensor): Returns the maximum, minimum and mean value of input tensor.
-                                   The shape is [3] and dtype is float.
+        - **stats** (Tensor): Returns the number of NaNs, Infs and zeros of input tensor. The shape is [3] and dtype is int64.
+        - **values** (Tensor): Returns the maximum, minimum and mean value of input tensor. The shape is [3] and dtype is float.
 
     Examples:
 
