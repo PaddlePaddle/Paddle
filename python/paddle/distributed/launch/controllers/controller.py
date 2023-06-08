@@ -131,6 +131,11 @@ class ControllerBase:
                 self.ctx.status.is_restarting()
                 and self.master.get_status() != self.ctx.status.COMPLETED
             ):
+                # when peer failure, stop peer
+                if self.ctx.args.elastic_level == -1:
+                    self.pod.stop(timeout=3)
+                    return True
+
                 self.pod.stop(timeout=30)
                 return False
 
@@ -142,12 +147,13 @@ class ControllerBase:
         self.master.stop()
         self.pod.stop(timeout=30)
 
-    def finalize(self):
+    def finalize(self, exit=True):
         self.pod.join()
         self.master.stop()
 
         self.ctx.logger.info(f"Exit code {self.pod.exit_code}")
-        sys.exit(self.pod.exit_code)
+        if exit:
+            sys.exit(self.pod.exit_code)
 
     def signal_handler(self, sigint, frame):
         if hasattr(self, 'sigint'):
@@ -162,6 +168,18 @@ class ControllerBase:
         self.stop(sigint=sigint)
         self.ctx.logger.info(f"Exit with signal {sigint}")
         sys.exit(sigint)
+
+    def not_exit_signal_handler(self, sigint, frame):
+        if hasattr(self, 'sigint'):
+            self.ctx.logger.info("Force quit in 10 seconds...")
+            self.pod.stop(timeout=10)
+
+        self.ctx.logger.info(f"Terminating with signal {sigint}")
+
+        self.sigint = sigint
+        self.ctx.status.done()
+        self.stop(sigint=sigint)
+        self.ctx.logger.info(f"Exit with signal {sigint}")
 
 
 class Controller(ControllerBase):
