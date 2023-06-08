@@ -54,7 +54,7 @@ const ProgramDesc* Plan::Program(const std::string& job_type) const {
 int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
 
 void Plan::SetFetchNames(const std::string& job_type,
-                         const std::vector<std::string>& fetch_names) {
+                         const std::vector<std::string> fetch_names) {
   type_to_fetch_names_[job_type] = fetch_names;
 }
 

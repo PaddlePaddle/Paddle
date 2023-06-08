@@ -36,7 +36,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
         std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
     SetColAttrForFetchOps(job, program);
 
-    const std::vector<std::string> job_fetch_names = plan_.FetchNames(job_type);
     int64_t micro_batch_id = job.MicroBatchId();
     PADDLE_ENFORCE(
         micro_batch_id >= 0 && micro_batch_id < micro_batch_num,
@@ -44,9 +43,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  "which should be in the range of [0, %lld].",
                                  micro_batch_id,
                                  micro_batch_num));
-
-    VLOG(6) << "Create interpretercore for job " << job_type
-            << " with micro batch id " << micro_batch_id;
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
@@ -78,15 +74,34 @@ paddle::framework::FetchList StandaloneExecutor::Run(
                           "please use non-iterative DataLoader for now."));
   }
 
-  FetchList merged_fetch_list;
-  for (auto& core : interpretercores_) {
-    const FetchList& fetch_list = core->Run(feed_names);
-    std::move(fetch_list.begin(),
-              fetch_list.end(),
-              std::back_inserter(merged_fetch_list));
+  const std::vector<interpreter::Job>& jobs = plan_.JobList();
+  for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
+    const interpreter::Job& job = jobs[job_idx];
+    const std::string& job_type = job.Type();
+
+    // NOTE(Ruibiao): Since fetch_names are considered as executor Cache key in
+    // python side, here aussumes that the feed_names and fetch_names are
+    // unchaned for one Standalone Executor.
+    const std::vector<std::string>& job_fetch_names =
+        plan_.FetchNames(job_type);
+    std::string fetch_name_info;
+    for (const std::string& fetch_name : job_fetch_names) {
+      fetch_name_info += fetch_name + ", ";
+    }
+    VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
+            << ", micro_batch_id =" << job.MicroBatchId()
+            << ", fetch_names = " << fetch_name_info;
+
+    interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
   }
 
-  return merged_fetch_list;
+  // return Fetch Tensors
+  auto* fetch_var = scope_->FindVar(interpreter::kFetchVarName);
+  if (fetch_var) {
+    return std::move(*fetch_var->GetMutable<framework::FetchList>());
+  } else {
+    return {};
+  }
 }
 
 }  // namespace framework

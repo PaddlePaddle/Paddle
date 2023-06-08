@@ -38,15 +38,14 @@ class Plan final {
   int64_t MicroBatchNum() const;
 
   void SetFetchNames(const std::string& job_type,
-                     const std::vector<std::string>& fetch_names);
+                     const std::vector<std::string> fetch_names);
 
  private:
   const std::vector<Job> job_list_;
   const std::unordered_map<std::string, ProgramDesc*>
       type_to_program_;  // Not owned.
   int64_t micro_batch_num_;
-  std::unordered_map<std::string, std::vector<std::string>>
-      type_to_fetch_names_;
+  std::map<std::string, std::vector<std::string>> type_to_fetch_names_;
 };
 
 }  // namespace interpreter

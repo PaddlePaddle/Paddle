@@ -25,6 +25,7 @@ from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.nn import TransformerEncoderLayer
 
 paddle.enable_static()
+np.set_printoptions(threshold=np.inf)
 
 
 class TestEncorderMulitMicroBatchRun(unittest.TestCase):
@@ -41,7 +42,8 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         self.src_len = 4
         self.d_model = 128
         self.n_head = 2
-        self.run_step = 1
+        self.run_step = 3
+
         self.enc_input_data, self.attn_mask_data = self.get_random_data(
             self.batch_size,
             self.src_len,
@@ -62,16 +64,20 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
 
         return enc_input_data, attn_mask_data
 
-    def batch_generator_creator(self, micro_batch_num):
+    def batch_generator_creator(self, micro_batch_size):
         def __reader__():
-            for i in self.run_step:
-                for micro_batch_id in range(micro_batch_num):
+            for i in range(self.run_step):
+                for micro_batch_id in range(
+                    self.batch_size // micro_batch_size
+                ):
                     enc_input = self.enc_input_data[i][
-                        micro_batch_id : micro_batch_id + 1
+                        micro_batch_id : micro_batch_id + micro_batch_size
                     ]
                     attn_mask = self.attn_mask_data[i][
-                        micro_batch_id : micro_batch_id + 1
+                        micro_batch_id : micro_batch_id + micro_batch_size
                     ]
+                    print(f"read enc_input: {enc_input}")
+                    print(f"read attn_mask: {attn_mask}")
                     yield enc_input, attn_mask
 
         return __reader__
@@ -96,9 +102,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 feed_list=[enc_input, attn_mask], capacity=16, iterable=False
             )
             loader.set_batch_generator(
-                self.batch_generator_creator(
-                    self.batch_size // micro_batch_size
-                )
+                self.batch_generator_creator(micro_batch_size)
             )
 
             encoder_layer = TransformerEncoderLayer(
@@ -124,23 +128,32 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 fetch_list,
             )
 
+    def avoid_randomness(self, program):
+        for op in program.block(0).ops:
+            if op.type == "dropout":
+                op._set_attr("dropout_prob", 0)
+
     def run_train(self, split=False, micro_batch_num=1):
 
         paddle.seed(2022)
 
-        (
-            startup_program,
-            main_program,
-            split_op_indics,
-            loader,
-            fetch_list,
-        ) = self.build_program(
-            self.batch_size // micro_batch_num,
-            self.src_len,
-            self.d_model,
-            self.n_head,
-        )
         scope = paddle.static.Scope()
+
+        with paddle.static.scope_guard(scope):
+            (
+                startup_program,
+                main_program,
+                split_op_indics,
+                loader,
+                fetch_list,
+            ) = self.build_program(
+                self.batch_size // micro_batch_num,
+                self.src_len,
+                self.d_model,
+                self.n_head,
+            )
+
+        self.avoid_randomness(main_program)
 
         startup_exe = _StandaloneExecutor(
             self.place,
@@ -170,8 +183,8 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         job_list = []
         program_num = len(programs)
 
-        for i in range(program_num):
-            print(f"program_{i} = \n{programs[i]}")
+        # for i in range(program_num):
+        #    print(f"program_{i} = \n{programs[i]}")
 
         for micro_batch_id in range(micro_batch_num):
             for program_id in range(program_num):
@@ -194,25 +207,30 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         plan = Plan(job_list, type_to_program)
         plan.set_fetch_names(f"P{program_num-1}", fetch_list)
 
-        main_exe = _StandaloneExecutor(
-            self.place, Plan(job_list, type_to_program), scope
-        )
+        main_exe = _StandaloneExecutor(self.place, plan, scope)
 
         loader.start()
         res = []
         for i in range(self.run_step):
-            res += main_exe.run(feed_names=[], fetch_list=fetch_list)
+            fetch_res = main_exe.run(feed_names=[], fetch_list=fetch_list)
+            res.append(
+                np.array(fetch_res).reshape(
+                    self.batch_size, self.src_len, self.d_model
+                )
+            )
+
         return res
 
     def test_multi_micro_batch_run(self):
         last_res = None
-        # for split in [True, False]:
-        #    for micro_batch_num in [1, 2]:
-        #        res = self.run_train(split, micro_batch_num)
-        #        if last_res:
-        #            np.testing.assert_array_equal(last_res, res)
-        #        last_res = res
-        res = self.run_train(True, 1)
+
+        for split in [True, False]:
+            for micro_batch_num in [1, 2]:
+                res = self.run_train(split, micro_batch_num)
+                if last_res:
+                    for i in range(len(res)):
+                        np.testing.assert_array_equal(last_res[i], res[i])
+                last_res = res
 
 
 if __name__ == "__main__":
