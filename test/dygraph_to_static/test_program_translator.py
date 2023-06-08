@@ -18,6 +18,7 @@ import unittest
 
 import astor
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -216,6 +217,7 @@ class TestEnableDeclarative(unittest.TestCase):
         self.x = np.random.randn(30, 10, 32).astype('float32')
         self.weight = np.random.randn(32, 64).astype('float32')
 
+    @ast_only_test
     def test_raise_error(self):
         with fluid.dygraph.guard():
             paddle.jit.enable_to_static(True)
@@ -267,6 +269,7 @@ def switch_mode_funciton():
 
 
 class TestFunctionTrainEvalMode(unittest.TestCase):
+    @ast_only_test
     def test_switch_mode(self):
         paddle.disable_static()
         switch_mode_funciton.eval()

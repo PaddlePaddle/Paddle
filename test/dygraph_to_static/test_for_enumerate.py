@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle import fluid
@@ -563,11 +564,13 @@ class TestForZip(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @ast_only_test
     def test_for_zip_error(self):
         with self.assertRaises(RuntimeError):
             model_path = os.path.join(self.temp_dir.name, 'for_zip_error')
             paddle.jit.save(for_zip_error, model_path)
 
+    @ast_only_test
     def test_for_zip(self):
         model_path = os.path.join(self.temp_dir.name, 'for_zip')
         paddle.jit.save(for_zip, model_path)

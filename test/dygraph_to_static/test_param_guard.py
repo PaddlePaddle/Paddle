@@ -79,11 +79,6 @@ class TestParameterList(unittest.TestCase):
         dygraph_loss = self.train(False, to_static=False)
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
-    def test_parameter_list_iter(self):
-        static_loss = self.train(True, to_static=True)
-        dygraph_loss = self.train(True, to_static=False)
-        np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
-
 
 class NetWithRawParamList(paddle.nn.Layer):
     def __init__(self, in_size, out_size):

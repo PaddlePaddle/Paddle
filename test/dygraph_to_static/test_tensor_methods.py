@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 
@@ -53,6 +54,7 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
         y = tensor_numpy(x)
         return y.numpy()
 
+    @ast_only_test
     def test_to_static_numpy_report_error(self):
         paddle.disable_static()
         dygraph_res = self._run(to_static=False)

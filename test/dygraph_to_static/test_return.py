@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
@@ -349,11 +350,19 @@ class TestReturnInWhile2(TestReturnBase):
         self.dygraph_func = test_return_in_while_2
         self.error = "Found return statement in While or For body and loop"
 
+    @ast_only_test
+    def test_transformed_static_result(self):
+        super().test_transformed_static_result()
+
 
 class TestReturnInFor2(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_in_for_2
         self.error = "Found return statement in While or For body and loop"
+
+    @ast_only_test
+    def test_transformed_static_result(self):
+        super().test_transformed_static_result()
 
 
 class TestRecursiveReturn(TestReturnBase):
@@ -367,11 +376,19 @@ class TestReturnDifferentLengthIfBody(TestReturnBase):
         self.dygraph_func = test_return_different_length_if_body
         self.error = "Your if/else have different number of return value."
 
+    @ast_only_test
+    def test_transformed_static_result(self):
+        super().test_transformed_static_result()
+
 
 class TestReturnDifferentLengthElse(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_different_length_else
         self.error = "Your if/else have different number of return value."
+
+    @ast_only_test
+    def test_transformed_static_result(self):
+        super().test_transformed_static_result()
 
 
 class TestNoReturn(TestReturnBase):
@@ -384,11 +401,19 @@ class TestReturnNone(TestReturnBase):
         self.dygraph_func = test_return_none
         self.error = "Your if/else have different number of return value."
 
+    @ast_only_test
+    def test_transformed_static_result(self):
+        super().test_transformed_static_result()
+
 
 class TestReturnNoVariable(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_no_variable
         self.error = "Your if/else have different number of return value."
+
+    @ast_only_test
+    def test_transformed_static_result(self):
+        super().test_transformed_static_result()
 
 
 class TestReturnListOneValue(TestReturnBase):

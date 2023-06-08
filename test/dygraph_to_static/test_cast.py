@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 from paddle import fluid
 from paddle.jit.api import to_static
@@ -37,7 +38,6 @@ def test_int_cast(x):
     return x
 
 
-@to_static
 def test_float_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = float(x)
@@ -88,6 +88,7 @@ class TestCastBase(unittest.TestCase):
             res = self.func(self.input)
             return res
 
+    @ast_only_test  # TODO: add new symbolic only test.
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -134,7 +135,7 @@ class TestFloatCast(TestCastBase):
         self.cast_dtype = 'float32'
 
     def set_func(self):
-        self.func = test_float_cast
+        self.func = to_static(test_float_cast)
 
 
 class TestMixCast(TestCastBase):
@@ -154,6 +155,7 @@ class TestMixCast(TestCastBase):
     def set_func(self):
         self.func = test_mix_cast
 
+    @ast_only_test  # TODO: add new symbolic only test.
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -186,6 +188,7 @@ class TestNotVarCast(TestCastBase):
     def set_func(self):
         self.func = test_not_var_cast
 
+    @ast_only_test  # TODO: add new symbolic only test.
     def test_cast_result(self):
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')

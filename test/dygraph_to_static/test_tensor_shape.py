@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle import fluid
@@ -230,6 +231,7 @@ def dyfunc_dict_assign_shape():
 
 
 # 1. Basic tests without control flow
+@dy2static_unittest
 class TestTensorShapeBasic(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
@@ -287,6 +289,7 @@ class TestTensorShapeBasic(unittest.TestCase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
+    @ast_only_test
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -519,6 +522,7 @@ class TestOpNumBasicWithTensorShape(unittest.TestCase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
+    @ast_only_test
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -609,6 +613,7 @@ def dyfunc_with_static_convert_var_shape(x):
 
 
 class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
+    @ast_only_test
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])

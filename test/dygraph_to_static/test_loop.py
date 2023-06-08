@@ -16,6 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 import paddle.nn.functional as F
@@ -461,8 +462,8 @@ class Net(paddle.nn.Layer):
 
 
 class TestForLoopMeetDict(unittest.TestCase):
+    @ast_only_test
     def test_start(self):
-
         net = Net()
         model = paddle.jit.to_static(
             net,
