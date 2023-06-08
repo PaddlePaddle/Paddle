@@ -146,6 +146,48 @@ class _DataLoaderIterBase:
         if self._blocking_queue:
             self._blocking_queue.kill()
 
+    def _enqueue_flat_micro_batch(
+        self, micro_bach, structure, use_shared_memory
+    ):
+        self._structure_infos.append(structure)
+        if self._thread_done_event.is_set():
+            return
+        # pack as LoDTensorArray
+        array = core.LoDTensorArray()
+
+        if use_shared_memory:
+            for tensor in micro_bach:
+                array.append(tensor)
+        else:
+            for slot in micro_bach:
+                if isinstance(slot, (paddle.Tensor, core.eager.Tensor)):
+                    slot = slot.value().get_tensor()
+                elif not isinstance(slot, core.LoDTensor):
+                    tmp = core.LoDTensor()
+                    tmp.set(slot, core.CPUPlace())
+                    slot = tmp
+
+                array.append(slot)
+
+        if self._thread_done_event.is_set():
+            return
+        try:
+            if not self._blocking_queue.push(array):
+                self._blocking_queue.close()
+        except:
+            self._exit_thread_expectedly()
+
+    def _enqueue_batch(self, batch, use_shared_memory=False):
+        # flat batch and record structure infos
+        batch, structure = _flatten_batch(batch)
+        self._enqueue_flat_batch(
+            batch,
+            structure,
+        )
+
+    def _enqueue_flat_batch(self, batch, structure, use_shared_memory):
+        self._enqueue_flat_micro_batch(batch, structure, use_shared_memory)
+
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     """
@@ -241,35 +283,8 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
             if batch is None or self._thread_done_event.is_set():
                 break
-
-            # flat batch and record structure infos
-            batch, structure = _flatten_batch(batch)
-            self._structure_infos.append(structure)
-
-            if self._thread_done_event.is_set():
-                break
-
             try:
-                # pack as LoDTensorArray
-                array = core.LoDTensorArray()
-                for slot in batch:
-                    if isinstance(slot, (paddle.Tensor, core.eager.Tensor)):
-                        slot = slot.value().get_tensor()
-                    elif not isinstance(slot, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(slot, core.CPUPlace())
-                        slot = tmp
-
-                    array.append(slot)
-
-                if self._thread_done_event.is_set():
-                    break
-
-                try:
-                    self._blocking_queue.push(array)
-                except:
-                    self._exit_thread_expectedly()
-
+                self._enqueue_batch(batch)
             except Exception as e:
                 self._exit_thread_unexpectedly()
                 raise e
@@ -277,6 +292,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         self._exit_thread_expectedly()
 
     def __next__(self):
+        return self._next_impl()
+
+    def _next_impl(self):
         if in_profiler_mode():
             trace_event = profiler.RecordEvent(
                 name="_DataLoaderIterSingleProcess",
@@ -601,7 +619,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():
-            batch = self._get_data()
+            batch, structure = self._get_data()
             if not self._thread_done_event.is_set():
                 if batch is None:
                     self._exit_thread_expectedly()
@@ -611,27 +629,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         self._resume_worker_cnt -= 1
                         continue
                     try:
-                        # pack as LoDTensorArray
-                        array = core.LoDTensorArray()
-                        if self._use_shared_memory:
-                            for tensor in batch:
-                                array.append(tensor)
-                        else:
-                            # LoDTensor not in shared memory is not
-                            # serializable, cannot be create in workers
-                            for slot in batch:
-                                if isinstance(
-                                    slot, (paddle.Tensor, core.eager.Tensor)
-                                ):
-                                    slot = slot.value().get_tensor()
-                                elif not isinstance(slot, core.LoDTensor):
-                                    tmp = core.LoDTensor()
-                                    tmp.set(slot, core.CPUPlace())
-                                    slot = tmp
-                                array.append(slot)
-
-                        if not self._blocking_queue.push(array):
-                            self._blocking_queue.close()
+                        self._enqueue_flat_batch(
+                            batch, structure, self._use_shared_memory
+                        )
                     except Exception as e:
                         self._exit_thread_unexpectedly()
                         raise e
@@ -671,15 +671,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         #       workers, if batches among workers drained, there
                         #       may also be data in blocking queue
                         if self._batches_outstanding < len(self._places):
-                            return None
+                            return None, None
 
             if (
                 self._rcvd_idx in self._task_infos
                 and len(self._task_infos[self._rcvd_idx]) == 3
             ):
                 info = self._task_infos.pop(self._rcvd_idx)
-                self._structure_infos.append(info[2])
-                return info[1]
+                # self._structure_infos.append(info[2])
+                return info[1], info[2]
 
             try:
                 # [ avoid hang ]: main process may blocking at _reader.read_next when
@@ -745,7 +745,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     and batch is None
                     and structure is None
                 ):
-                    return idx
+                    return idx, None
 
                 if isinstance(batch, _WorkerException):
                     self._exit_thread_unexpectedly()
@@ -753,8 +753,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 if idx == self._rcvd_idx:
                     del self._task_infos[idx]
-                    self._structure_infos.append(structure)
-                    return batch
+                    # self._structure_infos.append(structure)
+                    return batch, structure
                 else:
                     self._task_infos[idx] += (batch, structure)
                     continue
@@ -797,6 +797,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._try_shutdown_all(1)
 
     def __next__(self):
+        return self._next_impl()
+
+    def _next_impl(self):
         if in_profiler_mode():
             trace_event = profiler.RecordEvent(
                 name="_DataLoaderIterMultiProcess",
