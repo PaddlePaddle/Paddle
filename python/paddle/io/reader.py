@@ -313,6 +313,11 @@ class DataLoader:
         worker_init_fn(callable, optional): init function which will be called with
             worker id on each subproces starting if not set as None. Default
             None.
+        micro_batch_size(int, optional): if is set, the iter of data loader will yield an iterator of micro batch one by one,
+            instead of one whole batch; each iterator iterate through micro batches of one whole batch
+        acc_step(int, optional): num of micro batches in a batch, must be set if micro_batch_size is set
+            micro_batch_size*acc_step and batch_size must be equal
+
 
     Returns:
         DataLoader: an iterable object for data iterating, each elemnet of the generated data is a Tensor.
@@ -403,6 +408,8 @@ class DataLoader:
         timeout=0,
         worker_init_fn=None,
         persistent_workers=False,
+        micro_batch_size=None,
+        acc_step=None,
     ):
         self.return_list = return_list
         self.collate_fn = collate_fn
@@ -501,6 +508,16 @@ class DataLoader:
         self._persistent_workers = persistent_workers
         self._iterator = None
         self.num_workers = AuToTune(self).__call__()
+
+        if micro_batch_size is not None:
+            assert isinstance(
+                micro_batch_size, int
+            ), "micro_batch_size should be an int"
+            assert acc_step is not None, "acc_step should be specified"
+            assert isinstance(acc_step, int), "acc_step should be an int"
+
+        self._micro_batch_size = micro_batch_size
+        self._acc_step = acc_step
 
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:

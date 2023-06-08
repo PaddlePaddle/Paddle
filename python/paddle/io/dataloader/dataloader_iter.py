@@ -172,6 +172,7 @@ class _DataLoaderIterBase:
         if self._thread_done_event.is_set():
             return
         try:
+            # enqueue cpu placed data, py_reader will read from the queue and make the data gpu placed
             if not self._blocking_queue.push(array):
                 self._blocking_queue.close()
         except:
@@ -180,10 +181,7 @@ class _DataLoaderIterBase:
     def _enqueue_batch(self, batch, use_shared_memory=False):
         # flat batch and record structure infos
         batch, structure = _flatten_batch(batch)
-        self._enqueue_flat_batch(
-            batch,
-            structure,
-        )
+        self._enqueue_flat_batch(batch, structure, use_shared_memory)
 
     def _enqueue_flat_batch(self, batch, structure, use_shared_memory):
         self._enqueue_flat_micro_batch(batch, structure, use_shared_memory)
