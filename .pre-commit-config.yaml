@@ -67,8 +67,8 @@ repos:
     hooks:
     -   id: flake8
         args: ["--config=.flake8"]
--   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.0.271
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.272
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
