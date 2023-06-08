@@ -1692,6 +1692,25 @@
     out : Out
   drop_empty_grad : [inputs_grad]
 
+- op : min (reduce_min)
+  backward : min_grad (reduce_min_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    min : GetReduceExpectedKernelType
+    min_grad : GetReduceGradExpectedKernelType
+  manual_signature : [min]
+
 - op : minimum (elementwise_min)
   backward : minimum_grad (elementwise_min_grad)
   extra :
@@ -1887,17 +1906,38 @@
     out : Out
 
 - op : pool2d
-  backward : pool2d_grad
-  attrs:
-    kernel_size: ksize
+  backward : pool2d_grad, pool2d_double_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  attrs :
+    {kernel_size : ksize}
+  int_array:
+    kernel_size :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    pool2d : GetPoolExpectedKernelType
+    pool2d_grad : GetPoolExpectedKernelType
+    pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false]
+              str mkldnn_data_type = "float32", bool is_test = false, bool use_cudnn = false]
 
 - op : pool3d
   backward : pool3d_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  attrs :
+    {kernel_size : ksize}
+  get_expected_kernel_type :
+    pool3d : GetPoolExpectedKernelType
+    pool3d_grad : GetPoolExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : pow
   backward : pow_grad, pow_double_grad, pow_triple_grad
@@ -1986,11 +2026,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_min
-  backward : reduce_min_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : relu
   backward : relu_grad, relu_double_grad (relu_grad_grad)

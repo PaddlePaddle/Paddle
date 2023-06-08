@@ -17,14 +17,16 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
+#include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace dialect {
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
-inline phi::DataType TransToPhiDataType(ir::Type dtype) {
+static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
   if (dtype.isa<ir::Float16Type>()) {
     return phi::DataType::FLOAT16;
   } else if (dtype.isa<ir::Float32Type>()) {
@@ -44,8 +46,8 @@ inline phi::DataType TransToPhiDataType(ir::Type dtype) {
   }
 }
 
-inline ir::Type TransToIrDataType(phi::DataType dtype,
-                                  ir::IrContext *ctx = nullptr) {
+static inline ir::Type TransToIrDataType(phi::DataType dtype,
+                                         ir::IrContext *ctx = nullptr) {
   if (ctx == nullptr) {
     ctx = ir::IrContext::Instance();
   }
@@ -70,76 +72,29 @@ inline ir::Type TransToIrDataType(phi::DataType dtype,
   }
 }
 
-// inline phi::DataLayout TransToPhiDataLayout(
-//     DenseTensorTypeStorage::DataLayout data_layout) {
-//   switch (data_layout) {
-//     case DenseTensorTypeStorage::DataLayout::NHWC:
-//       return phi::DataLayout::NHWC;
-//     case DenseTensorTypeStorage::DataLayout::NCHW:
-//       return phi::DataLayout::NCHW;
-//     case DenseTensorTypeStorage::DataLayout::NCDHW:
-//       return phi::DataLayout::NCDHW;
-//     case DenseTensorTypeStorage::DataLayout::NDHWC:
-//       return phi::DataLayout::NDHWC;
-//     case DenseTensorTypeStorage::DataLayout::ONEDNN:
-//       return phi::DataLayout::ONEDNN;
-//     case DenseTensorTypeStorage::DataLayout::SPARSE_COO:
-//       return phi::DataLayout::SPARSE_COO;
-//     case DenseTensorTypeStorage::DataLayout::SPARSE_CSR:
-//       return phi::DataLayout::SPARSE_CSR;
-//     case DenseTensorTypeStorage::DataLayout::PSTRING_UNION:
-//       return phi::DataLayout::PSTRING_UNION;
-//     case DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS:
-//       return phi::DataLayout::NUM_DATA_LAYOUTS;
-//     case DenseTensorTypeStorage::DataLayout::ALL_LAYOUT:
-//       return phi::DataLayout::ALL_LAYOUT;
-//     default:
-//       PADDLE_THROW(phi::errors::Unimplemented(
-//           "Unsupported ir data layout `%s` when casting it into "
-//           "phi data type.",
-//           static_cast<int>(data_layout)));
-//   }
-// }
-
-// inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
-//     phi::DataLayout data_layout) {
-//   switch (data_layout) {
-//     case phi::DataLayout::NHWC:
-//       return DenseTensorTypeStorage::DataLayout::NHWC;
-//     case phi::DataLayout::NCHW:
-//       return DenseTensorTypeStorage::DataLayout::NCHW;
-//     case phi::DataLayout::NCDHW:
-//       return DenseTensorTypeStorage::DataLayout::NCDHW;
-//     case phi::DataLayout::NDHWC:
-//       return DenseTensorTypeStorage::DataLayout::NDHWC;
-//     case phi::DataLayout::ONEDNN:
-//       return DenseTensorTypeStorage::DataLayout::ONEDNN;
-//     case phi::DataLayout::SPARSE_COO:
-//       return DenseTensorTypeStorage::DataLayout::SPARSE_COO;
-//     case phi::DataLayout::SPARSE_CSR:
-//       return DenseTensorTypeStorage::DataLayout::SPARSE_CSR;
-//     case phi::DataLayout::PSTRING_UNION:
-//       return DenseTensorTypeStorage::DataLayout::PSTRING_UNION;
-//     case phi::DataLayout::NUM_DATA_LAYOUTS:
-//       return DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS;
-//     case phi::DataLayout::ALL_LAYOUT:
-//       return DenseTensorTypeStorage::DataLayout::ALL_LAYOUT;
-//     default:
-//       PADDLE_THROW(phi::errors::Unimplemented(
-//           "Unsupported phi data layout `%s` when casting it into "
-//           "ir data type.",
-//           static_cast<int>(data_layout)));
-//   }
-// }
-
-// inline phi::DenseTensorMeta TransToDenseTensorMeta(
-//     paddle::dialect::DenseTensorType type) {
-//   return phi::DenseTensorMeta(TransToPhiDataType(type.dtype()),
-//                               type.dim(),
-//                               type.data_layout(),
-//                               type.lod(),
-//                               type.offset());
-// }
+static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
+                                               ir::IrContext *ctx = nullptr) {
+  if (ctx == nullptr) {
+    ctx = ir::IrContext::Instance();
+  }
+  switch (scalar.dtype()) {
+    case phi::DataType::FLOAT32:
+      return ir::FloatAttribute::get(ctx, scalar.to<float>());
+    case phi::DataType::FLOAT64:
+      return ir::DoubleAttribute::get(ctx, scalar.to<double>());
+    case phi::DataType::INT32:
+      return ir::Int32_tAttribute::get(ctx, scalar.to<int32_t>());
+    case phi::DataType::INT64:
+      return ir::Int64_tAttribute::get(ctx, scalar.to<int64_t>());
+    case phi::DataType::BOOL:
+      return ir::BoolAttribute::get(ctx, scalar.to<bool>());
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported phi data type `%s` when casting it into "
+          "ir attribute.",
+          scalar.dtype()));
+  }
+}
 
 struct OpInputInfo {
   std::string name;
