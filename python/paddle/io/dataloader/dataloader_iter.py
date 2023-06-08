@@ -155,7 +155,7 @@ class _DataLoaderIterBase:
         self._micro_batch_size = loader.micro_batch_size
         self._acc_step = loader.acc_step
 
-        # claimed but no consumed micro batch num by last batch
+        # claimed but not consumed micro batch num by last batch
         self._unconsumed_micro_batch_num = 0
 
         self._sampler_iter = iter(self._index_sampler)
