@@ -80,9 +80,6 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
                 "pp_configs"
             ].sharding_comm_overlap:
                 hp_optim._sharding_enable = False
-                assert (
-                    not hp_optim._sep_enable
-                ), "sep parallel can not coexist with sharding_comm_overlap"
 
             return hp_optim
         else:
