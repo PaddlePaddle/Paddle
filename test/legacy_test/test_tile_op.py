@@ -74,36 +74,42 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = True
         self.ori_shape = [120]
         self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = True
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
 
 
 class TestTileOpRank3_Corner(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = True
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (1, 1, 1)
 
 
 class TestTileOpRank3_Corner2(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = True
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = True
         self.ori_shape = (2, 4, 15)
         self.repeat_times = (2, 1, 4)
 
 
 class TestTileOpRank4(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = True
         self.ori_shape = (2, 4, 5, 7)
         self.repeat_times = (3, 2, 1, 2)
 
