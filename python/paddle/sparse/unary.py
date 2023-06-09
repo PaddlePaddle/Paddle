@@ -1111,7 +1111,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
 
     if len(x.shape) != 2:
         raise ValueError('input is expected to be 2-dimensional tensor')
-    # TODO: complement sparse_csr_tensor test 
+    # TODO: complement sparse_csr_tensor test
     # when sparse.sum with axis(-2) is implemented
     s_sum = paddle.sparse.sum(x, axis=-2)
     s_val = s_sum.values() / m
