@@ -2830,6 +2830,16 @@ class Test_Log_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    def test_bfloat16(self):
+        with dynamic_guad():
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.log(x)
+            y_except = np.array(
+                [[16177, 16269, 16305], [16377, 16389, 16397]], dtype=np.uint16
+            )
+            np.testing.assert_equal(y.numpy(), y_except)
+
 
 class TestLog_ZeroDim(TestLog):
     def init_shape(self):
@@ -2902,6 +2912,16 @@ class TestLog2_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    def test_bfloat16(self):
+        with dynamic_guad():
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.log2(x)
+            y_except = np.array(
+                [[16256, 16331, 16384], [16436, 16448, 16459]], dtype=np.uint16
+            )
+            np.testing.assert_equal(y.numpy(), y_except)
+
 
 class TestLog10(TestActivation):
     def setUp(self):
@@ -2938,6 +2958,16 @@ class TestLog10_Op_Int(unittest.TestCase):
             x_expect = np.log10(np_x)
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
+
+    def test_bfloat16(self):
+        with dynamic_guad():
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.log10(x)
+            y_except = np.array(
+                [[16026, 16116, 16154], [16216, 16231, 16244]], dtype=np.uint16
+            )
+            np.testing.assert_equal(y.numpy(), y_except)
 
 
 class TestLog10API(unittest.TestCase):
@@ -3018,6 +3048,16 @@ class TestLog1p_Op_Int(unittest.TestCase):
             x_expect = np.log1p(np_x)
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
+
+    def test_bfloat16(self):
+        with dynamic_guad():
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(np_x, dtype='bfloat16')
+            y = paddle.log1p(x)
+            y_except = np.array(
+                [[16269, 16305, 16334], [16389, 16397, 16403]], dtype=np.uint16
+            )
+            np.testing.assert_equal(y.numpy(), y_except)
 
 
 class TestLog1p_ZeroDim(TestLog1p):
