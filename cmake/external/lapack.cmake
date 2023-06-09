@@ -81,10 +81,6 @@ function(download_lapack)
   endif()
 endfunction()
 
-# clean build file
-file(REMOVE_RECURSE ${LAPACK_PREFIX_DIR})
-file(REMOVE_RECURSE ${LAPACK_INSTALL_DIR})
-
 find_file(
   LOCAL_LAPACK_LIB_ZIP
   NAMES ${LAPACK_FILE}
@@ -95,6 +91,9 @@ find_file(
 if(LOCAL_LAPACK_LIB_ZIP)
   file(MD5 ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE} LAPACK_MD5)
   if(NOT LAPACK_MD5 EQUAL LAPACK_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${LAPACK_PREFIX_DIR})
+    file(REMOVE_RECURSE ${LAPACK_INSTALL_DIR})
     download_lapack()
   endif()
 else()
