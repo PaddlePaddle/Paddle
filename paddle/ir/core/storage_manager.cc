@@ -25,16 +25,15 @@ namespace ir {
 struct ParametricStorageManager {
   using StorageBase = StorageManager::StorageBase;
 
-  explicit ParametricStorageManager(
-      std::function<void(StorageBase *)> destructor)
-      : destructor_(destructor) {}
+  explicit ParametricStorageManager(std::function<void(StorageBase *)> destroy)
+      : destroy_(destroy) {}
 
   ~ParametricStorageManager() {
     IR_ENFORCE(
-        destructor_,
+        destroy_,
         "The desturctor of ParametricStorageManager should not be nullptr.");
     for (const auto &instance : parametric_instances_) {
-      destructor_(instance.second);
+      destroy_(instance.second);
     }
     parametric_instances_.clear();
   }
@@ -67,7 +66,7 @@ struct ParametricStorageManager {
   // In order to prevent hash conflicts, the unordered_multimap data structure
   // is used for storage.
   std::unordered_multimap<size_t, StorageBase *> parametric_instances_;
-  std::function<void(StorageBase *)> destructor_;
+  std::function<void(StorageBase *)> destroy_;
 };
 
 StorageManager::StorageManager() {}
@@ -102,12 +101,12 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageImpl(
 }
 
 void StorageManager::RegisterParametricStorageImpl(
-    TypeId type_id, std::function<void(StorageBase *)> destructor) {
+    TypeId type_id, std::function<void(StorageBase *)> destroy) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
   VLOG(4) << "Register a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   parametric_instance_.emplace(
-      type_id, std::make_unique<ParametricStorageManager>(destructor));
+      type_id, std::make_unique<ParametricStorageManager>(destroy));
 }
 
 void StorageManager::RegisterParameterlessStorageImpl(
