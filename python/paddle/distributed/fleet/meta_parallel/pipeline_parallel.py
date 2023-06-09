@@ -55,14 +55,13 @@ class FakeMicroDataset:
     def _load_micro_batch(self, micro_step):
         inputs = self._data
 
-        if self._is_first_stage:
+        if self._is_first_stage or self._is_last_stage:
             assert len(inputs) == 2, "length of input should be 2"
-            return self._load_micro_batch_impl(inputs[0], micro_step)
-        elif self._is_last_stage:
-            assert len(inputs) == 2, "length of input should be 2"
-            return self._load_micro_batch_impl(inputs[1], micro_step)
+            data = self._load_micro_batch_impl(inputs[0], micro_step)
+            label = self._load_micro_batch_impl(inputs[1], micro_step)
+            return (data, label)
         else:
-            inputs = None
+            return (None, None)
 
     def _load_micro_batch_impl(self, inputs, micro_step):
         begin = micro_step * self._micro_batch_size
@@ -440,7 +439,7 @@ class PipelineParallel(MetaParallelBase):
 
     def _forward_step(self, input_tensor, micro_dataset, chunk_id=None):
         if self.is_pipeline_first_stage():
-            input_tensor = next(micro_dataset)
+            input_tensor = next(micro_dataset)[0]
             self._check_micro_batch_data_valid(input_tensor)
 
         assert chunk_id is None or isinstance(chunk_id, int)
@@ -453,7 +452,7 @@ class PipelineParallel(MetaParallelBase):
                 assert (
                     self._layers._loss_fn is not None
                 ), "loss function should exist to compute loss"
-                labels = next(micro_dataset)
+                labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
@@ -507,13 +506,13 @@ class PipelineParallel(MetaParallelBase):
             return input_tensor_grad
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
-        if isinstance(micro_batch_data, tuple):
+        if isinstance(micro_batch_data, (tuple, list)):
             for data in micro_batch_data:
                 self._check_micro_batch_data_valid(data)
         else:
             micro_batch_size = micro_batch_data.shape[0]
             assert (
-                micro_batch_size == self.micro_batch_size
+                micro_batch_size >= self.micro_batch_size
             ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
 
     def _broadcast_final_loss(self):
