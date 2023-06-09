@@ -30,7 +30,7 @@ struct ParametricStorageManager {
 
   ~ParametricStorageManager() {
     IR_ENFORCE(
-        destroy_,
+        destroy_ != nullptr,
         "The desturctor of ParametricStorageManager should not be nullptr.");
     for (const auto &instance : parametric_instances_) {
       destroy_(instance.second);
