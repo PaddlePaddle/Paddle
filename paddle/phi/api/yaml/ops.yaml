@@ -1077,6 +1077,15 @@
     data_type : x
   backward : index_select_grad
 
+- op : index_select_strided
+  args : (Tensor x, int64_t[] index, int axis = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexSelectStridedInferMeta
+  kernel :
+    func : index_select_strided
+    data_type : x
+
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
