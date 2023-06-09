@@ -44,6 +44,18 @@ DEFAULT_BATCH_SIZE = 2
 DIST_UT_PORT = 0
 
 
+def remove_glog_envs(envs):
+    if not envs:
+        return envs
+
+    glog_envs = ['GLOG_v', 'GLOG_logtostderr', 'GLOG_vmodule']
+    envs = dict(envs)
+    for env in glog_envs:
+        if env in envs:
+            del envs[env]
+    return envs
+
+
 def print_to_out(out_losses):
     sys.stdout.buffer.write(pickle.dumps(out_losses))
 
@@ -1071,14 +1083,14 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps0_pipe,
-            env=required_envs,
+            env=remove_glog_envs(required_envs),
         )
         print_to_err(type(self).__name__, "going to start pserver process 1")
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps1_pipe,
-            env=required_envs,
+            env=remove_glog_envs(required_envs),
         )
 
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
@@ -1149,14 +1161,14 @@ class TestDistBase(unittest.TestCase):
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=err_log,
-                env=env_local,
+                env=remove_glog_envs(env_local),
             )
         else:
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=env_local,
+                env=remove_glog_envs(env_local),
             )
 
         local_out, local_err = local_proc.communicate()
@@ -1259,14 +1271,14 @@ class TestDistBase(unittest.TestCase):
             tr0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr0_pipe,
-            env=env0,
+            env=remove_glog_envs(env0),
         )
         print_to_err(type(self).__name__, "going to start trainer process 1")
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr1_pipe,
-            env=env1,
+            env=remove_glog_envs(env1),
         )
 
         # Wait until trainer process terminate
@@ -1507,7 +1519,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=remove_glog_envs(tr_env),
             )
 
             procs.append(tr_proc)
@@ -1581,7 +1593,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=remove_glog_envs(tr_env),
             )
 
             procs.append(tr_proc)
@@ -1631,7 +1643,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=remove_glog_envs(tr_env),
             )
 
             procs.append(tr_proc)
