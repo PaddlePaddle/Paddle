@@ -78,14 +78,15 @@ class TestBatchNormOp(OpTest):
                 check_prim=True,
                 only_check_prim=True,
             )
-        self.check_output_with_place(
-            core.CUDAPlace(0),
-            no_check_set=None,
-            atol=self.fw_comp_atol,
-            rtol=self.fw_comp_rtol,
-            check_prim=True,
-            only_check_prim=True,
-        )
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0),
+                no_check_set=None,
+                atol=self.fw_comp_atol,
+                rtol=self.fw_comp_rtol,
+                check_prim=True,
+                only_check_prim=True,
+            )
 
     def test_check_grad_x(self):
         if self.dtype not in ("uint16", "float16"):
@@ -97,7 +98,7 @@ class TestBatchNormOp(OpTest):
                 check_prim=True,
                 only_check_prim=True,
             )
-        elif self.data_format == "NCHW":
+        elif self.data_format == "NCHW" and paddle.is_compiled_with_cuda():
             # origin batch_norm cuda kernel differ in x_grad whether to calculate scale_grad and bias_grad
             self.check_grad_with_place(
                 core.CUDAPlace(0),
@@ -121,14 +122,15 @@ class TestBatchNormOp(OpTest):
                 check_prim=True,
                 only_check_prim=True,
             )
-        self.check_grad_with_place(
-            core.CUDAPlace(0),
-            ["X", "Scale", "Bias"],
-            ['Y'],
-            user_defined_grad_outputs=self.out_grad,
-            check_prim=True,
-            only_check_prim=True,
-        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ["X", "Scale", "Bias"],
+                ['Y'],
+                user_defined_grad_outputs=self.out_grad,
+                check_prim=True,
+                only_check_prim=True,
+            )
 
     def initConfig(self):
         self.rev_comp_atol = 1e-5
