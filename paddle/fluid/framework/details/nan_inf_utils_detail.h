@@ -59,20 +59,15 @@ struct TensorCheckerVisitor {
     phi::DenseTensor stats;
     phi::DenseTensor values;
     auto file_path = GetNanPath();
-<<<<<<< HEAD
     phi::CheckNumericsKernel<T, Context>(*dev_ctx,
                                          tensor,
                                          op_type,
                                          var_name,
                                          FLAGS_check_nan_inf_level,
-                                         GetNanInfStackLimit(),
+                                         FLAGS_check_nan_inf_stack_limit,
                                          file_path,
                                          &stats,
                                          &values);
-=======
-    phi::CheckNumericsKernel<T, Context>(
-        *dev_ctx, tensor, op_type, var_name, FLAGS_check_nan_inf_stack_limit, file_path);
->>>>>>> Update nan_inf_utils_detail.h
   }
 
   std::string op_type;
