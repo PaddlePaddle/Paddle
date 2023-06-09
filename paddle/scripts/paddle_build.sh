@@ -3990,6 +3990,7 @@ function main() {
         build_mac
         ;;
       cicheck_py37)
+        export WITH_SHARED_PHI=ON
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
