@@ -55,7 +55,7 @@ class IrNotMetException : public std::exception {
 
 #define IR_ENFORCE(COND, ...)                                               \
   do {                                                                      \
-    auto __cond__ = (COND);                                                 \
+    bool __cond__(COND);                                                    \
     if (UNLIKELY(is_error(__cond__))) {                                     \
       try {                                                                 \
         throw ir::IrNotMetException(                                        \
