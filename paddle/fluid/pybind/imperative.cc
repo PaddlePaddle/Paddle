@@ -807,7 +807,8 @@ void BindImperative(py::module *m_ptr) {
             // copys data to cpu place, which reduces performance.
             if (parse_index) {
               std::vector<int> axes, starts, ends, steps, decrease_axes,
-                  none_axes, infer_flags, list_select_idxs;
+                  none_axes, infer_flags;
+              std::vector<int64_t> list_select_idxs;
               // if index is a list, list_select_flag will be true
               bool list_select_flag = false;
               ParseIndexingSlice(self_tensor,
@@ -1005,8 +1006,8 @@ void BindImperative(py::module *m_ptr) {
            [](std::shared_ptr<imperative::VarBase> &self, py::handle _index) {
              VLOG(4) << "Call _getitem_index_not_tensor";
              std::vector<int> slice_axes, slice_starts, slice_ends,
-                 slice_strides, decrease_axis, none_axes, infer_flags,
-                 list_select_idxs;
+                 slice_strides, decrease_axis, none_axes, infer_flags;
+             std::vector<int64_t> list_select_idxs;
              // if index is a list, list_select_flag will be true
              bool list_select_flag = false;
              auto tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();

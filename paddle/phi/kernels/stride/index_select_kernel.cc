@@ -21,35 +21,28 @@ namespace phi {
 template <typename Context>
 void IndexSelectStridedKernel(const Context& ctx,
                               const DenseTensor& x,
-                              const std::vector<int64_t>& index_arr,
+                              const std::vector<int64_t>& indexs,
                               int dim,
                               DenseTensor* output) {
-  std::vector<int64_t> indexs = index_arr.GetData();
   auto input_dim = x.dims();
-  auto output_dim = output->dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
-  auto size = input_dim[dim];
-
-  if (index < 0) {
-    index += size;
-  }
 
   std::vector<int64_t> shape = phi::vectorize<int64_t>(x.dims());
   std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
-  int64_t offset = input.offset();
+  int64_t offset = x.offset();
 
-  for (int64_t i = 0; i < indexs.size(); ++i) {
-    offset = offset + indexs[i] * stride[dim] * SizeOf(out->dtype());
+  for (size_t i = 0; i < indexs.size(); ++i) {
+    offset = offset + indexs[i] * stride[dim] * SizeOf(output->dtype());
     shape.erase(shape.begin() + dim);
     stride.erase(stride.begin() + dim);
   }
 
-  auto meta = input.meta();
+  auto meta = x.meta();
   meta.offset = offset;
   meta.dims = DDim(shape.data(), shape.size());
   meta.stride = DDim(stride.data(), stride.size());
-  out->set_meta(meta);
-  out->ResetHolder(input.Holder());
+  output->set_meta(meta);
+  output->ResetHolder(x.Holder());
 }
 
 }  // namespace phi
