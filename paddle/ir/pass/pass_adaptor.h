@@ -19,7 +19,6 @@
 namespace ir {
 
 class Operation;
-
 class PassManager;
 
 namespace detail {
@@ -28,26 +27,26 @@ class PassAdaptor final : public Pass {
  public:
   explicit PassAdaptor(PassManager* pm) : Pass("pass_adaptor", 0), pm_(pm) {}
 
-  void Run(ir::Operation*) override {}
+  void Run(Operation*) override {}
 
-  void Run(ir::Operation*, uint8_t opt_level, bool verify);
+  void Run(Operation*, uint8_t opt_level, bool verify);
 
  private:
-  void RunImpl(ir::Operation* op, uint8_t opt_level, bool verify);
+  void RunImpl(Operation* op, uint8_t opt_level, bool verify);
 
   static bool RunPass(Pass* pass,
-                      ir::Operation* op,
+                      Operation* op,
                       AnalysisManager am,
                       uint8_t opt_level,
                       bool verify);
 
   static bool RunPipeline(const PassManager& pm,
-                          ir::Operation* op,
+                          Operation* op,
                           AnalysisManager am,
                           uint8_t opt_level,
                           bool verify);
 
-  // Use for RunImpl later.
+ private:
   PassManager* pm_;
 
   // For accessing RunPipeline.

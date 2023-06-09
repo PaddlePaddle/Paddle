@@ -112,8 +112,7 @@ class FileReader:
 
         if not isinstance(self._args[key], type):
             raise TypeError(
-                "Invalid type of key [%s] in args dict, it should be a %s!"
-                % (key, type)
+                f"Invalid type of key [{key}] in args dict, it should be a {type}!"
             )
 
         exec(f"self._{key} = self._args[\"{key}\"]")
@@ -206,8 +205,9 @@ class FileReader:
             )
         else:
             self._logger.info(
-                "file list in dir [%s] is : %s !"
-                % (self._dataPath, ',  '.join(self._fileList))
+                "file list in dir [{}] is : {} !".format(
+                    self._dataPath, ',  '.join(self._fileList)
+                )
             )
 
         return self._fileList

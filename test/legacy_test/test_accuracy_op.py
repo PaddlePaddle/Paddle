@@ -44,9 +44,9 @@ class TestAccuracyOp(OpTest):
                     num_correct += 1
                     break
         self.outputs = {
-            'Accuracy': np.array([num_correct / float(n)]).astype(self.dtype),
-            'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32"),
+            'Accuracy': np.array(num_correct / float(n)).astype(self.dtype),
+            'Correct': np.array(num_correct).astype("int32"),
+            'Total': np.array(n).astype("int32"),
         }
 
     def init_dtype(self):
@@ -91,10 +91,10 @@ class TestAccuracyOpBf16(OpTest):
                     break
         self.outputs = {
             'Accuracy': convert_float_to_uint16(
-                np.array([num_correct / float(n)]).astype(np.float32)
+                np.array(num_correct / float(n)).astype(np.float32)
             ),
-            'Correct': np.array([num_correct]).astype("int32"),
-            'Total': np.array([n]).astype("int32"),
+            'Correct': np.array(num_correct).astype("int32"),
+            'Total': np.array(n).astype("int32"),
         }
 
     def init_dtype(self):
