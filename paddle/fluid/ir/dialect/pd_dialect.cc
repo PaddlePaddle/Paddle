@@ -23,6 +23,8 @@
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/ir/core/dialect_interface.h"
+#include "paddle/ir/core/utils.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -92,7 +94,6 @@ void PaddleDialect::initialize() {
   RegisterTypes<paddle::dialect::DenseTensorType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
-                     paddle::dialect::ScalarAttribute,
                      paddle::dialect::DataTypeAttribute,
                      paddle::dialect::PlaceAttribute,
                      paddle::dialect::DataLayoutAttribute>();
@@ -108,7 +109,7 @@ void PaddleDialect::initialize() {
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
-void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
+void PaddleDialect::PrintType(ir::Type type, std::ostream &os) const {
   DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
 
   os << "tensor<";
@@ -118,6 +119,28 @@ void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
   }
   tensor_type.dtype().Print(os);
   os << ">";
+}
+
+void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
+  if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
+    phi::IntArray data = int_array_attr.data();
+    os << "IntArray[";
+    const auto &inner_data = data.GetData();
+    ir::PrintInterleave(
+        inner_data.begin(),
+        inner_data.end(),
+        [&os](int64_t i) { os << i; },
+        [&os]() { os << ","; });
+    os << "]";
+  } else if (auto data_type_attr = attr.dyn_cast<DataTypeAttribute>()) {
+    os << data_type_attr.data();
+  } else if (auto place_type_attr = attr.dyn_cast<PlaceAttribute>()) {
+    os << place_type_attr.data();
+  } else if (auto data_layout_attr = attr.dyn_cast<DataLayoutAttribute>()) {
+    os << data_layout_attr.data();
+  } else {
+    os << "<#AttrNotImplemented>";
+  }
 }
 
 }  // namespace dialect

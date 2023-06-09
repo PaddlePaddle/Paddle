@@ -30,6 +30,7 @@ class TestNanInfBase(unittest.TestCase):
             self._python_interp += " -m coverage run --branch -p"
 
         self.env = os.environ.copy()
+        paddle.disable_static()
 
     def run_command(self, cmd):
         print(f"Run command: {cmd}")
@@ -43,6 +44,15 @@ class TestNanInfBase(unittest.TestCase):
         out, err = proc.communicate()
         returncode = proc.returncode
         return returncode, out, err
+
+    def generate_inputs(self, shape, dtype="float32"):
+        data = np.random.random(size=shape).astype(dtype)
+        # [-10, 10)
+        x = (data * 20 - 10) * np.random.randint(
+            low=0, high=2, size=shape
+        ).astype(dtype)
+        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
+        return x, y
 
 
 class TestNanInf(TestNanInfBase):
@@ -172,15 +182,6 @@ class TestNanInfStack(TestNanInfBase):
 
 
 class TestNanInfCheckResult(TestNanInfBase):
-    def generate_inputs(self, shape, dtype="float32"):
-        data = np.random.random(size=shape).astype(dtype)
-        # [-10, 10)
-        x = (data * 20 - 10) * np.random.randint(
-            low=0, high=2, size=shape
-        ).astype(dtype)
-        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
-        return x, y
-
     def get_reference_num_nan_inf(self, x):
         out = np.log(x)
         num_nan = np.sum(np.isnan(out))
@@ -271,17 +272,55 @@ class TestNanInfCheckResult(TestNanInfBase):
                 use_cuda=True, dtype="float16", level=level
             )
 
-    def test_check_numerics(self):
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-        )
 
+class TestCheckNumericsAPI(TestNanInfBase):
+    def test_eager(self):
         shape = [8, 8]
-        x_np, y_np = self.generate_inputs(shape, "float16")
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        paddle.fluid.core.check_numerics("check_tensor", x)
-        paddle.fluid.core.check_numerics("check_tensor", y)
+        x_np, y_np = self.generate_inputs(shape, "float32")
+
+        device_list = ["cpu"]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            device_list.append("gpu:0")
+
+        for device in device_list:
+            paddle.device.set_device(device)
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            paddle.amp.debugging.check_numerics(
+                tensor=x,
+                op_type="to_tensor",
+                var_name="x",
+                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            )
+            paddle.amp.debugging.check_numerics(
+                tensor=y,
+                op_type="to_tensor",
+                var_name="y",
+                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            )
+
+    def test_static(self):
+        paddle.enable_static()
+        shape = [8, 8]
+        x_np, y_np = self.generate_inputs(shape, "float32")
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=[8, 8], dtype="float32")
+            y = paddle.static.data(name='y', shape=[8, 8], dtype="float32")
+            out = paddle.add(x, y)
+            paddle.amp.debugging.check_numerics(
+                tensor=out,
+                op_type="elementwise_add",
+                var_name=out.name,
+                debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            )
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(
+            main_program, feed={"x": x_np, "y": y_np}, fetch_list=[out.name]
+        )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

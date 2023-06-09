@@ -100,7 +100,7 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out')
+            self.check_grad(['X'], 'Out', check_prim=True)
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
@@ -238,9 +238,12 @@ class TestPadBP16Op(OpTest):
         )
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.enable_cinn = False
         self.prim_op_type = "prim"
         self.public_python_api = pad_wrapper
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def initTestCase(self):
         self.shape = (16, 16)
