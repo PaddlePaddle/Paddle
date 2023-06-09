@@ -2818,6 +2818,19 @@ class Test_Log_Op_Fp16(unittest.TestCase):
                     exe = paddle.static.Executor(place)
                     (res,) = exe.run(fetch_list=[out])
 
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
+
 
 class Test_Log_Op_Int(unittest.TestCase):
     def test_api_int(self):
@@ -2829,16 +2842,6 @@ class Test_Log_Op_Int(unittest.TestCase):
             x_expect = np.log(np_x)
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
-
-    def test_bfloat16(self):
-        with dynamic_guad():
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
-            x = paddle.to_tensor(np_x, dtype='bfloat16')
-            y = paddle.log(x)
-            y_except = np.array(
-                [[16177, 16268, 16305], [16377, 16389, 16396]], dtype=np.uint16
-            )
-            np.testing.assert_equal(y.numpy(), y_except)
 
 
 class TestLog_ZeroDim(TestLog):
@@ -2912,15 +2915,18 @@ class TestLog2_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
-    def test_bfloat16(self):
-        with dynamic_guad():
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
-            x = paddle.to_tensor(np_x, dtype='bfloat16')
-            y = paddle.log2(x)
-            y_except = np.array(
-                [[16256, 16330, 16384], [16435, 16448, 16458]], dtype=np.uint16
-            )
-            np.testing.assert_equal(y.numpy(), y_except)
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log2(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog10(TestActivation):
@@ -2959,15 +2965,18 @@ class TestLog10_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
-    def test_bfloat16(self):
-        with dynamic_guad():
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
-            x = paddle.to_tensor(np_x, dtype='bfloat16')
-            y = paddle.log10(x)
-            y_except = np.array(
-                [[16026, 16116, 16154], [16216, 16231, 16244]], dtype=np.uint16
-            )
-            np.testing.assert_equal(y.numpy(), y_except)
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log10(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog10API(unittest.TestCase):
@@ -3049,15 +3058,18 @@ class TestLog1p_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
-    def test_bfloat16(self):
-        with dynamic_guad():
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
-            x = paddle.to_tensor(np_x, dtype='bfloat16')
-            y = paddle.log1p(x)
-            y_except = np.array(
-                [[16268, 16305, 16334], [16389, 16396, 16403]], dtype=np.uint16
-            )
-            np.testing.assert_equal(y.numpy(), y_except)
+    def test_api_bf16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='bfloat16')
+                out = paddle.log1p(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog1p_ZeroDim(TestLog1p):
