@@ -442,7 +442,7 @@ class TestExecutorCache(unittest.TestCase):
             main, build_strategy=build_strategy
         )
         self.executor.run(compiled_prog, feed=feed, fetch_list=[])
-        elewise_add_act_op_num = self.verify_node_count(
+        elewise_add_act_op_num = self.get_node_count(
             compiled_prog._graph, "fused_elemwise_add_activation"
         )
         self.assertGreaterEqual(
