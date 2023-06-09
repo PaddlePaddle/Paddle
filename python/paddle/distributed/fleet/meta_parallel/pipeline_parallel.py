@@ -631,12 +631,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert (
             framework.in_dygraph_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
-        assert (
-            self.num_stages > 2
-        ), "virtual pipeline must run under pp degree > 2"
-        assert (
-            self.accumulate_steps % self.num_stages == 0
-        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
         # setup for interleave scheduler
         self.num_model_chunks = layers.get_num_virtual_stages()
         self.model_chunks = layers.get_model_chunks()
