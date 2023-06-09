@@ -28,9 +28,9 @@
 namespace ir {
 
 class Operation;
-class IRPrinter;
+class IrPrinter;
 // we should make this function uncopyable later
-using OperationPrinterFn = std::function<void(Operation *, IRPrinter &)>;
+using OperationPrinterFn = std::function<void(Operation *, IrPrinter &)>;
 
 class DialectInterface;
 ///
@@ -143,7 +143,7 @@ class Dialect {
     IR_THROW("dialect has no registered type printing hook");
   }
 
-  virtual void PrintAttribute(Attribute type, std::ostream &os) const {
+  virtual void PrintAttribute(Attribute attr, std::ostream &os) const {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 

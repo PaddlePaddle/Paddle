@@ -33,7 +33,7 @@ namespace {
 constexpr char newline[] = "\n";
 }  // namespace
 
-void BasicIRPrinter::PrintType(Type type) {
+void BasicIrPrinter::PrintType(Type type) {
   if (!type) {
     os << "<<NULL TYPE>>";
     return;
@@ -66,7 +66,7 @@ void BasicIRPrinter::PrintType(Type type) {
   }
 }
 
-void BasicIRPrinter::PrintAttribute(const Attribute& attr) {
+void BasicIrPrinter::PrintAttribute(const Attribute& attr) {
   if (!attr) {
     os << "<#AttrNull>";
     return;
@@ -84,6 +84,8 @@ void BasicIRPrinter::PrintAttribute(const Attribute& attr) {
     os << i.data();
   } else if (auto i = attr.dyn_cast<Int64_tAttribute>()) {
     os << i.data();
+  } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
+    os << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.data();
     os << "array[";
@@ -99,7 +101,23 @@ void BasicIRPrinter::PrintAttribute(const Attribute& attr) {
   }
 }
 
-void IRPrinter::PrintOperation(Operation* op) {
+void IrPrinter::PrintProgram(Program* program) {
+  auto top_level_op = program->module_op();
+  for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
+    auto& region = top_level_op->GetRegion(i);
+    for (auto it = region.begin(); it != region.end(); ++it) {
+      auto* block = *it;
+      os << "{\n";
+      for (auto it = block->begin(); it != block->end(); ++it) {
+        PrintOperation(*it);
+        os << newline;
+      }
+      os << "}\n";
+    }
+  }
+}
+
+void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     if (auto print_fn = dialect->OperationPrinter()) {
       print_fn(op, *this);
@@ -110,7 +128,7 @@ void IRPrinter::PrintOperation(Operation* op) {
   PrintGeneralOperation(op);
 }
 
-void IRPrinter::PrintGeneralOperation(Operation* op) {
+void IrPrinter::PrintGeneralOperation(Operation* op) {
   // TODO(lyk): add API to get opresults directly
   PrintOpResult(op);
   os << " =";
@@ -131,7 +149,9 @@ void IRPrinter::PrintGeneralOperation(Operation* op) {
   PrintOpReturnType(op);
 }
 
-void IRPrinter::PrintFullOperation(Operation* op) {
+void IrPrinter::PrintFullOperation(Operation* op) {
+  PrintOperation(op);
+  os << newline;
   for (size_t i = 0; i < op->num_regions(); ++i) {
     auto& region = op->GetRegion(i);
     for (auto it = region.begin(); it != region.end(); ++it) {
@@ -146,7 +166,7 @@ void IRPrinter::PrintFullOperation(Operation* op) {
   }
 }
 
-void IRPrinter::PrintValue(Value v) {
+void IrPrinter::PrintValue(Value v) {
   if (!v) {
     os << "<<NULL VALUE>>";
     return;
@@ -164,7 +184,7 @@ void IRPrinter::PrintValue(Value v) {
   os << new_name;
 }
 
-void IRPrinter::PrintOpResult(Operation* op) {
+void IrPrinter::PrintOpResult(Operation* op) {
   os << " (";
   auto num_op_result = op->num_results();
   std::vector<OpResult> op_results;
@@ -180,7 +200,7 @@ void IRPrinter::PrintOpResult(Operation* op) {
   os << ")";
 }
 
-void IRPrinter::PrintAttributeMap(Operation* op) {
+void IrPrinter::PrintAttributeMap(Operation* op) {
   os << " {";
 
   PrintInterleave(
@@ -196,7 +216,7 @@ void IRPrinter::PrintAttributeMap(Operation* op) {
   os << "}";
 }
 
-void IRPrinter::PrintOpOperands(Operation* op) {
+void IrPrinter::PrintOpOperands(Operation* op) {
   os << " (";
   auto num_op_operands = op->num_operands();
   std::vector<Value> op_operands;
@@ -212,7 +232,7 @@ void IRPrinter::PrintOpOperands(Operation* op) {
   os << ")";
 }
 
-void IRPrinter::PrintOperandsType(Operation* op) {
+void IrPrinter::PrintOperandsType(Operation* op) {
   auto num_op_operands = op->num_operands();
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
@@ -233,7 +253,7 @@ void IRPrinter::PrintOperandsType(Operation* op) {
   os << ")";
 }
 
-void IRPrinter::PrintOpReturnType(Operation* op) {
+void IrPrinter::PrintOpReturnType(Operation* op) {
   auto num_op_result = op->num_results();
   std::vector<Type> op_result_types;
   op_result_types.reserve(num_op_result);
@@ -253,22 +273,22 @@ void IRPrinter::PrintOpReturnType(Operation* op) {
 }
 
 void Program::Print(std::ostream& os) {
-  IRPrinter printer(os);
+  IrPrinter printer(os);
   printer.PrintProgram(this);
 }
 
 void Operation::Print(std::ostream& os) {
-  IRPrinter printer(os);
-  printer.PrintOperation(this);
+  IrPrinter printer(os);
+  printer.PrintFullOperation(this);
 }
 
 void Type::Print(std::ostream& os) const {
-  BasicIRPrinter printer(os);
+  BasicIrPrinter printer(os);
   printer.PrintType(*this);
 }
 
 void Attribute::Print(std::ostream& os) const {
-  BasicIRPrinter printer(os);
+  BasicIrPrinter printer(os);
   printer.PrintAttribute(*this);
 }
 

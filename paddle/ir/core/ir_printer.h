@@ -26,9 +26,9 @@
 
 namespace ir {
 
-class BasicIRPrinter {
+class BasicIrPrinter {
  public:
-  explicit BasicIRPrinter(std::ostream& os) : os(os) {}
+  explicit BasicIrPrinter(std::ostream& os) : os(os) {}
 
   void PrintType(Type type);
 
@@ -38,26 +38,23 @@ class BasicIRPrinter {
   std::ostream& os;
 };
 
-class IRPrinter : public BasicIRPrinter {
+class IrPrinter : public BasicIrPrinter {
  public:
-  explicit IRPrinter(std::ostream& os) : BasicIRPrinter(os) {}
+  explicit IrPrinter(std::ostream& os) : BasicIrPrinter(os) {}
 
   /// @brief print program
   /// @param program
   /// @example
-  void PrintProgram(Program* program) {
-    PrintFullOperation(program->module_op());
-  }
+  void PrintProgram(Program* program);
 
   /// @brief print operation
   /// @param op
   /// @example
   void PrintOperation(Operation* op);
-
-  void PrintValue(Value v);
-
   void PrintGeneralOperation(Operation* op);
   void PrintFullOperation(Operation* op);
+
+  void PrintValue(Value v);
 
   void PrintOpResult(Operation* op);
 
