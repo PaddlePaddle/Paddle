@@ -123,11 +123,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             linear = paddle.nn.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
-            Exponential_scheduler = fluid.dygraph.ExponentialDecay(
+            Exponential_scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             )
             Step_scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
             Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
@@ -161,11 +159,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
             paddle.save(linear.state_dict(), "save_path.pdparams")
 
-            Exponential_scheduler_test = fluid.dygraph.ExponentialDecay(
+            Exponential_scheduler_test = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.1,
-                decay_steps=10000,
-                decay_rate=0.5,
-                staircase=True,
+                gamma=0.5,
             )
             Step_scheduler_test = fluid.dygraph.StepDecay(0.5, step_size=3)
             Reducelr_scheduler_test = fluid.dygraph.ReduceLROnPlateau(
@@ -180,9 +176,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.step_num,
-                adam1._learning_rate.step_num,
-                "epoch_num is different before and after set_dict",
+                adam_test._learning_rate.last_epoch,
+                adam1._learning_rate.last_epoch,
+                "last_epoch is different before and after set_dict",
             )
 
             paddle.save(adam2.state_dict(), "save_path.pdopt")
@@ -441,6 +437,8 @@ class TestLearningRateDecay(unittest.TestCase):
         decay_fns = [
             (exponential_decay, layers.exponential_decay, common_kwargs_true),
             (exponential_decay, layers.exponential_decay, common_kwargs_false),
+            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_true),
+            (natural_exp_decay, layers.natural_exp_decay, common_kwargs_false),
             (inverse_time_decay, layers.inverse_time_decay, common_kwargs_true),
             (
                 inverse_time_decay,

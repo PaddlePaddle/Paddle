@@ -118,11 +118,9 @@ class TestDistCTR2x2(TestDistRunnerBase):
         use_lr_decay = bool(os.getenv('LR_DECAY', 0))
         lr = 0.0001
         if use_lr_decay:
-            lr = fluid.layers.exponential_decay(
+            lr = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=0.0001,
-                decay_steps=10000,
-                decay_rate=0.999,
-                staircase=True,
+                gamma=0.999,
             )
 
         sgd_optimizer = fluid.optimizer.SGD(

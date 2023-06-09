@@ -276,9 +276,11 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
 class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = SGDOptimizer(
-            learning_rate=paddle.optimizer.lr.NaturalExpDecay(
+            learning_rate=fluid.layers.natural_exp_decay(
                 learning_rate=0.1,
-                gamma=0.5,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True,
             ),
             parameter_list=parameter_list,
         )
@@ -286,9 +288,11 @@ class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
 
     def get_optimizer(self):
         optimizer = SGDOptimizer(
-            learning_rate=paddle.optimizer.lr.NaturalExpDecay(
+            learning_rate=fluid.layers.natural_exp_decay(
                 learning_rate=0.1,
-                gamma=0.5,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True,
             )
         )
         return optimizer
@@ -496,17 +500,15 @@ class TestOptimizerLearningRate(unittest.TestCase):
             base_lr = 1.0
 
             scheduler = paddle.optimizer.lr.NaturalExpDecay(
-                    learning_rate=base_lr,
-                    gamma=0.5,
-                )
+                learning_rate=base_lr,
+                gamma=0.5,
+            )
             adam = paddle.optimizer.Adam(
-                learning_rate= scheduler,
+                learning_rate=scheduler,
                 parameters=linear.parameters(),
             )
 
-            np.testing.assert_allclose(
-                adam.get_lr(), 1.0, rtol=1e-06, atol=0.0
-            )
+            np.testing.assert_allclose(adam.get_lr(), 1.0, rtol=1e-06, atol=0.0)
 
             ret = [1.0, 1.0, 1.0, np.exp(-0.5), np.exp(-0.5)]
             counter = 0
@@ -514,7 +516,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 adam.minimize(loss)
                 lr = adam.get_lr()
                 counter += 1
-                if (counter % 3 == 0):
+                if counter % 3 == 0:
                     adam.step()
                     scheduler.step()
                 np.testing.assert_allclose(lr, ret[i], rtol=1e-06, atol=0.0)

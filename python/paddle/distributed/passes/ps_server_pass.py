@@ -113,7 +113,7 @@ class AddLrDecayTablePass(PassBase):
             ):
                 lr = paddle.optimizer.lr.NaturalExpDecay(
                     1.0, lr_scheduler.gamma
-                )
+                ).get_lr()
                 lr_name = lr.name
                 logging.warn(
                     "NaturalExpDecay is set, staircase = True, global learning rate decay step is [ %d ], Change decay steps as follow: \n"

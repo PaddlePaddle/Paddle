@@ -40,6 +40,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 
 __all__ = [
     'exponential_decay',
+    'natural_exp_decay',
     'inverse_time_decay',
     'polynomial_decay',
     'piecewise_decay',
@@ -165,8 +166,8 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.ExponentialDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -176,6 +177,68 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
             if staircase:
                 div_res = paddle.floor(div_res)
             decayed_lr = learning_rate * (decay_rate**div_res)
+
+            return decayed_lr
+
+
+def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
+    """
+
+    Applies natural exponential decay to the initial learning rate.
+
+        When training a model, it is often recommended to lower the learning rate as the
+        training progresses. By using this function, the learning rate will be decayed by
+        natural exponential power 'decay_rate' every 'decay_steps' steps.
+
+        Decayed learning rate calculates as follows:
+
+        >>> if not staircase:
+        >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+        >>> else:
+        >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
+
+        Args:
+            learning_rate(Variable|float): The initial learning rate. It should be a Variable
+                                           or a float
+            decay_steps(int): The learning rate decay steps. See the decay computation above.
+            decay_rate(float): The learning rate decay rate. See the decay computation above.
+            staircase(bool): If True, decay the learning rate at discrete intervals, which
+                             means the learning rate will be decayed by natural exponential power
+                             `decay_rate` every `decay_steps`. If False, learning rate will be
+                             decayed continuously and following the formula above. Default: False
+
+        Returns:
+            The decayed learning rate. The data type is float32.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              import paddle
+
+              paddle.enable_static()
+              base_lr = 0.1
+              sgd_optimizer = fluid.optimizer.SGD(
+                  learning_rate=fluid.layers.natural_exp_decay(
+                        learning_rate=base_lr,
+                        decay_steps=10000,
+                        decay_rate=0.5,
+                        staircase=True))
+
+    """
+    with default_main_program()._lr_schedule_guard():
+        if in_dygraph_mode():
+            decay = paddle.optimizer.lr.NaturalExpDecay(
+                learning_rate, decay_rate
+            )
+            return decay
+        else:
+            global_step = _decay_step_counter()
+
+            div_res = global_step / decay_steps
+            if staircase:
+                div_res = paddle.floor(div_res)
+            decayed_lr = learning_rate * paddle.exp(-1 * decay_rate * div_res)
 
             return decayed_lr
 
