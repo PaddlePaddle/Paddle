@@ -511,9 +511,11 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
-def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
-    return program.desc.cached_hash_str() + _get_program_cache_key(
-        feed, fetch_list
+def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
+    return (
+        program.desc.cached_hash_str()
+        + str(scope.raw_address)
+        + _get_program_cache_key(feed, fetch_list)
     )
 
 
@@ -712,13 +714,16 @@ class _ExecutorCache:
                     ).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program._program, feed, fetch_list
+                        self.program._program,
+                        self.scope,
+                        self.feed,
+                        self.fetch_list,
                     )
                 )
             else:
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program, feed, fetch_list
+                        self.program, self.scope, self.feed, self.fetch_list
                     )
                 )
 

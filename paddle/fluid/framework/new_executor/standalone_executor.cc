@@ -28,8 +28,15 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     micro_batch_scopes_.emplace_back(&scope->NewScope());
   }
 
-  const auto& jobs = plan_.JobList();
+  std::stringstream ss;
+  ss << "Create " << micro_batch_num << " micro_batch_scopes for scope "
+     << scope_ << " : ";
+  for (Scope* scope : micro_batch_scopes_) {
+    ss << scope << ", ";
+  }
+  VLOG(6) << ss.str();
 
+  const auto& jobs = plan_.JobList();
   for (const auto& job : jobs) {
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program =
@@ -46,9 +53,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
-    // TODO(Ruibiao): hack skip gc for all vars, improve it later
-    for (VarDesc* var : program->Block(0).AllVars()) {
-      execution_config.skip_gc_vars.insert(var->Name());
+    // TODO(Ruibiao): hack skip gc all vars for multiple jobs, improve it later
+    if (jobs.size() > 1) {
+      for (VarDesc* var : program->Block(0).AllVars()) {
+        execution_config.skip_gc_vars.insert(var->Name());
+      }
     }
 
     interpretercores_.emplace_back(

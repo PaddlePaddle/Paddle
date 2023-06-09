@@ -1147,6 +1147,8 @@ All parameter, weight, gradient are variables in Paddle.
   _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
+      .def("raw_address",
+           [](Scope &self) { return reinterpret_cast<uint64_t>(&self); })
       .def(
           "var",
           [](Scope &self, const std::string &name) -> Variable * {
