@@ -246,6 +246,24 @@ PyObject* tensor_properties_get_stride(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    RETURN_PY_NONE;
+  }
+
+  auto dense_tensor =
+      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+
+  if (dense_tensor == nullptr) {
+    RETURN_PY_NONE;
+  } else {
+    return ToPyObject(dense_tensor->offset());
+  }
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
   EAGER_TRY
   std::string layout = "";
@@ -326,8 +344,13 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
     {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
-    {"stride", (getter)tensor_properties_get_stride, nullptr, nullptr, nullptr},
+    {"stride_value",
+     (getter)tensor_properties_get_stride,
+     nullptr,
+     nullptr,
+     nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
+    {"offset", (getter)tensor_properties_get_offset, nullptr, nullptr, nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
      nullptr,
