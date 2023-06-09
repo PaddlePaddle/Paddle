@@ -28,24 +28,36 @@ class DistTensor final
     : public phi::TensorBase,
       public phi::TypeInfoTraits<phi::TensorBase, DistTensor> {
  public:
-  DistTensor() = default;
   /// \brief Construct a dist tensor and allocate space.
   /// \param a The allocator used to allocate space.
   /// \param meta The meta data of dense tensor.
   DistTensor(Allocator* a,
              const DenseTensorMeta& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr);
+             const std::shared_ptr<TensorDistAttr>& dist_attr)
+      : meta_(meta), dist_attr_(dist_attr) {
+    value_ = std::make_unique<DenseTensor>(a, meta);
+  }
 
   DistTensor(Allocator* a,
              DenseTensorMeta&& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr);
+             const std::shared_ptr<TensorDistAttr>& dist_attr)
+      : meta_(std::move(meta)), dist_attr_(dist_attr) {
+    value_ = std::make_unique<DenseTensor>(a, meta);
+  }
 
   DistTensor(const std::shared_ptr<phi::Allocation>& holder,
              const DenseTensorMeta& meta,
-             const std::shared_ptr<TensorDistAttr>& dist_attr);
+             const std::shared_ptr<TensorDistAttr>& dist_attr)
+      : meta_(meta), dist_attr_(dist_attr) {
+    value_ = std::make_unique<DenseTensor>(holder, meta);
+  }
 
   DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor,
-             const std::shared_ptr<TensorDistAttr>& dist_attr);
+             const std::shared_ptr<TensorDistAttr>& dist_attr)
+      : dist_attr_(dist_attr) {
+    value_ = std::make_unique<DenseTensor>(*dense_tensor);
+    set_meta(dense_tensor->meta());
+  }
 
   ~DistTensor() = default;
 

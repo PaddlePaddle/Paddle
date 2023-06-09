@@ -18,36 +18,6 @@ namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
-DistTensor::DistTensor(Allocator* a,
-                       const DenseTensorMeta& meta,
-                       const std::shared_ptr<TensorDistAttr>& dist_attr)
-    : meta_(meta), dist_attr_(dist_attr) {
-  // TODO(dev): value_ should only contain local tensor
-  // after we have reshard.
-  value_ = std::make_unique<DenseTensor>(a, meta);
-}
-
-DistTensor::DistTensor(Allocator* a,
-                       DenseTensorMeta&& meta,
-                       const std::shared_ptr<TensorDistAttr>& dist_attr)
-    : meta_(std::move(meta)), dist_attr_(dist_attr) {
-  value_ = std::make_unique<DenseTensor>(a, meta);
-}
-
-DistTensor::DistTensor(const std::shared_ptr<phi::Allocation>& holder,
-                       const DenseTensorMeta& meta,
-                       const std::shared_ptr<TensorDistAttr>& dist_attr)
-    : meta_(meta), dist_attr_(dist_attr) {
-  value_ = std::make_unique<DenseTensor>(holder, meta);
-}
-
-DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& dense_tensor,
-                       const std::shared_ptr<TensorDistAttr>& dist_attr)
-    : dist_attr_(dist_attr) {
-  value_ = std::make_unique<DenseTensor>(*dense_tensor);
-  set_meta(dense_tensor->meta());
-}
-
 void* DistTensor::AllocateFrom(Allocator* allocator,
                                DataType dtype,
                                size_t requested_size,
