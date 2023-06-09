@@ -65,6 +65,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 PHI_DECLARE_bool(set_to_1d);
+DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace pybind {
@@ -872,7 +873,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   VLOG(4) << "Call _getitem_index_not_tensor";
   std::vector<int> slice_axes, slice_starts, slice_ends, slice_strides,
-      decrease_axis, none_axes, infer_flags, list_select_idxs;
+      decrease_axis, none_axes, infer_flags;
+  std::vector<int64_t> list_select_idxs;
   // if index is a list, list_select_flag will be true
   bool list_select_flag = false;
   // Note(0x45f): Using defined() instead of initialized()
@@ -993,16 +995,19 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // the index is a list
   if (list_select_flag) {
     eager_gil_scoped_release guard;
-    auto select_index =
-        paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
-    auto idx_tensor = std::make_shared<phi::DenseTensor>();
-    select_index.set_impl(idx_tensor);
-    auto* dev_ctx = platform::DeviceContextPool::Instance().Get(
-        egr::Controller::Instance().GetExpectedPlace());
-    paddle::framework::TensorFromVector(
-        list_select_idxs, *dev_ctx, idx_tensor.get());
-    framework::AttributeMap attrs = {{"dim", 0}};
-    out = index_select_ad_func(self->tensor, select_index, 0);
+    if (FLAGS_use_stride_kernel) {
+      out = index_select_strided_ad_func(self->tensor, list_select_idxs, 0);
+    } else {
+      auto select_index =
+          paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+      auto idx_tensor = std::make_shared<phi::DenseTensor>();
+      select_index.set_impl(idx_tensor);
+      auto* dev_ctx = platform::DeviceContextPool::Instance().Get(
+          egr::Controller::Instance().GetExpectedPlace());
+      paddle::framework::TensorFromVector(
+          list_select_idxs, *dev_ctx, idx_tensor.get());
+      out = index_select_ad_func(self->tensor, select_index, 0);
+    }
   }
 
   return ToPyObject(out);
@@ -1164,7 +1169,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   // copys data to cpu place, which reduces performance.
   if (parse_index) {
     std::vector<int> axes, starts, ends, steps, decrease_axes, none_axes,
-        infer_flags, list_select_idxs;
+        infer_flags;
+    std::vector<int64_t> list_select_idxs;
     // if index is a list, list_select_flag will be true
     bool list_select_flag = false;
     ParseIndexingSlice(self_tensor,
