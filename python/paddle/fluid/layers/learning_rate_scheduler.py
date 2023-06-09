@@ -288,8 +288,8 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.InverseTimeDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.InverseTimeDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
