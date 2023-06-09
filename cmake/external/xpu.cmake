@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 if(NOT WITH_XPU)
   return()
 endif()
@@ -8,7 +22,7 @@ set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 
-set(XPU_BASE_DATE "20230529")
+set(XPU_BASE_DATE "20230602")
 set(XPU_XCCL_BASE_VERSION "1.0.49.2")
 set(XPU_XFT_BASE_VERSION "latest")
 
@@ -86,7 +100,8 @@ set(XPU_XFT_GET_DEPENCE_URL
     CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
-set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
+set(XPU_DOWNLOAD_DIR "${PADDLE_DOWLOAD_DIR}/third_party/xpu")
+set(XPU_SOURCE_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
 set(XPU_INSTALL_DIR "${THIRD_PARTY_PATH}/install/xpu")
 set(XPU_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
 set(XPU_LIB_DIR "${THIRD_PARTY_PATH}/install/xpu/lib")
@@ -119,11 +134,11 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
     bash ${CMAKE_SOURCE_DIR}/tools/xpu/check_xpu_dependence.sh ${XPU_BASE_URL}
-    ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
-    pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
-    ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
-    ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME}
+    ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} -P ${XPU_SOURCE_DIR} &&
+    bash pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME}
+    ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} &&
+    wget ${XPU_XFT_GET_DEPENCE_URL} -P ${XPU_SOURCE_DIR} && bash
+    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
