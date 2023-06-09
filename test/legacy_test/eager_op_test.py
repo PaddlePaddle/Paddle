@@ -2228,9 +2228,8 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
-                    )
-                    % (
+                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
+                    ).format(
                         self.op_type,
                         msg_prefix,
                         name,

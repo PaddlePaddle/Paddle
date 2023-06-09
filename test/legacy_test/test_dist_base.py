@@ -1337,7 +1337,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": f"{trainer_id}",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
-                "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_DISTRI_BACKEND": "gloo",
                 "GLOG_v": "2",
             }

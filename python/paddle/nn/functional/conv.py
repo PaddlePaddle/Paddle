@@ -102,7 +102,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
     else:
         padding_algorithm = "EXPLICIT"
         padding = convert_to_list(padding, num_dims, 'padding')
-    if not all([p >= 0 for p in padding]):
+    if not all(p >= 0 for p in padding):
         raise ValueError(
             "Invalid padding, all value should be larger than or equal to 0, but received: {}".format(
                 padding

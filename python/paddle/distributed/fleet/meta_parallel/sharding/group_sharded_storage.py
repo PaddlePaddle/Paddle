@@ -124,7 +124,7 @@ class ParamStorage(InternalStorage):
         """
 
         assert all(
-            [id(param) not in self._param_ids for param in trainable_params]
+            id(param) not in self._param_ids for param in trainable_params
         ), "The same param cannot be checked in twice"
         assert self.buffer is not None
 

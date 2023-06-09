@@ -86,3 +86,21 @@ TEST(PaddleDialectTest, StartupProgram) {
   program->Print(ss);
   EXPECT_GE(ss.str().size(), 0u);
 }
+
+TEST(PaddleDialectTest, StartupProgram) {
+  auto p = load_from_file("resnet50_startup.prog");
+  EXPECT_EQ(p.Size(), 1u);
+
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
+
+  size_t op_size = program->block()->size();
+  // ops.size() = op size in BlockDesc + get_parameter_op +
+  // consant_op_for_uniform
+  // + consant_op for guassian
+  EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
+
+  program->Print(std::cout);
+}
