@@ -114,10 +114,11 @@ class StorageManager {
   template <typename Storage>
   void RegisterParametricStorage(TypeId type_id) {
     if (IsTriviallyDestructible<Storage>::call()) {
-      return RegisterParametricStorageImpl(type_id, nullptr);
+      return RegisterParametricStorageImpl(
+          type_id, [](StorageBase *storage) { delete storage; });
     }
     return RegisterParametricStorageImpl(type_id, [](StorageBase *storage) {
-      static_cast<Storage *>(storage)->~Storage();
+      delete static_cast<Storage *>(storage);
     });
   }
 
