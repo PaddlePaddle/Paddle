@@ -862,6 +862,16 @@
   inplace : (x -> out)
   backward : floor_grad
 
+- op : fmax
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    param: [x, y]
+    func : ElementwiseInferMeta
+  kernel :
+    func : fmax
+  backward : fmax_grad
+
 - op : fold
   args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
   output: Tensor(out)
