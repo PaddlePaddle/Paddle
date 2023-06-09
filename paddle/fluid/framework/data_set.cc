@@ -484,13 +484,17 @@ void DatasetImpl<T>::LoadIntoMemory() {
       auto host_vec = readers_[i]->GetHostVec();
       node_num += host_vec->size();
     }
-    gpu_graph_total_keys_.reserve(node_num);
+    gpu_graph_total_keys_.resize(node_num + 1);
     for (int i = 0; i < thread_num_; i++) {
       auto host_vec = readers_[i]->GetHostVec();
       for (size_t j = 0; j < host_vec->size(); j++) {
         gpu_graph_total_keys_.push_back((*host_vec)[j]);
       }
     }
+
+    uint64_t zerokey = 0;
+    gpu_graph_total_keys_.emplace_back(zerokey);
+    VLOG(0) << "add zero key in multi node";
 
     if (GetEpochFinish() == true) {
       VLOG(0) << "epoch finish, set stat and clear sample stat!";
