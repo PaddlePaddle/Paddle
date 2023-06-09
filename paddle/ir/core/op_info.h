@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include <unordered_map>
+
 #include "paddle/ir/core/type_id.h"
 
 namespace ir {
@@ -23,6 +24,7 @@ class IrContext;
 class OpResult;
 class Type;
 class Attribute;
+class Dialect;
 
 class OpInfo {
  public:
@@ -43,6 +45,7 @@ class OpInfo {
   bool operator!() const { return impl_ == nullptr; }
 
   IrContext *ir_context() const;
+  Dialect *dialect() const;
 
   const char *name() const;
 

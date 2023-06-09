@@ -165,6 +165,8 @@ void Operation::Destroy() {
 
 IrContext *Operation::ir_context() const { return info_.ir_context(); }
 
+Dialect *Operation::dialect() const { return info_.dialect(); }
+
 Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
                      uint32_t num_results,

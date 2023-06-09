@@ -47,7 +47,7 @@ class alignas(8) Operation final {
   void Destroy();
 
   IrContext *ir_context() const;
-
+  Dialect *dialect() const;
   OpResult GetResultByIndex(uint32_t index) const;
 
   OpOperand GetOperandByIndex(uint32_t index) const;

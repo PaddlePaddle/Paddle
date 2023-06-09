@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builder.h"
@@ -21,6 +22,7 @@
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/region.h"
@@ -140,6 +142,14 @@ class Operation2
 const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
 
+void CustomOpPrint(ir::Operation *op, ir::IRPrinter &printer) {  // NOLINT
+  printer.PrintOpResult(op);
+  printer.os << " =";
+
+  printer.os << " \"" << op->name() << "\"";
+  printer.PrintOpOperands(op);
+}
+
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {
  public:
@@ -148,6 +158,10 @@ class TestDialect : public ir::Dialect {
     initialize();
   }
   static const char *name() { return "test"; }
+
+  ir::OperationPrinterFn OperationPrinter() const override {
+    return CustomOpPrint;
+  }
 
  private:
   void initialize() { RegisterOps<Operation1, Operation2>(); }
@@ -221,6 +235,11 @@ TEST(op_test, region_test) {
   ir::Region *region = argument.regions.back().get();
   EXPECT_EQ(region->empty(), true);
 
+  // (3) Test custom operation printer
+  std::stringstream ss;
+  op1->Print(ss);
+  EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
+
   region->push_back(new ir::Block());
   region->push_front(new ir::Block());
   region->insert(region->begin(), new ir::Block());
@@ -235,7 +254,6 @@ TEST(op_test, module_op_death) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(ir::ModuleOp::name());
 
-  // (3) Test uses for op.
   std::vector<ir::OpResult> inputs{ir::OpResult()};
   ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
