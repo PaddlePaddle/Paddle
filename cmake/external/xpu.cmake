@@ -134,10 +134,11 @@ ExternalProject_Add(
   DOWNLOAD_COMMAND
     bash ${CMAKE_SOURCE_DIR}/tools/xpu/check_xpu_dependence.sh ${XPU_BASE_URL}
     ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} -P ${XPU_DOWNLOAD_DIR}
-    && bash pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME}
-    ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} &&
-    wget ${XPU_XFT_GET_DEPENCE_URL} -P ${XPU_DOWNLOAD_DIR} && bash
-    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME}
+    && bash ${XPU_DOWNLOAD_DIR}/pack_paddle_depence.sh ${XPU_XRE_URL}
+    ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
+    ${XPU_XCCL_DIR_NAME} && wget ${XPU_XFT_GET_DEPENCE_URL} -P
+    ${XPU_DOWNLOAD_DIR} && bash ${XPU_DOWNLOAD_DIR}/get_xft_dependence.sh
+    ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
