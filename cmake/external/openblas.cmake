@@ -17,6 +17,7 @@ include(ExternalProject)
 set(CBLAS_PREFIX_DIR ${THIRD_PARTY_PATH}/openblas)
 set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
+set(CBLAS_TAG v0.3.7)
 
 # Why use v0.3.18?  The IDG business line encountered a random openblas error,
 # which can be resolved after upgrading openblas.
