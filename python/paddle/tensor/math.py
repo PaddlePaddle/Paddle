@@ -3385,7 +3385,8 @@ def cummax(x, axis=None, dtype='int64', name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (tuple), Return the result of cummax operation and the corresponding index results. The dtype of cummax result is same with input x.
+        out (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
+        indices (Tensor), The corresponding index results of cummax operation.
 
     Examples:
         .. code-block:: python
@@ -3458,7 +3459,8 @@ def cummin(x, axis=None, dtype='int64', name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (tuple), Return the result of cummin operation and the corresponding index results. The dtype of cummin result is same with input x.
+        out (Tensor), The result of cummin operation. The dtype of cummin result is same with input x.
+        indices (Tensor), The corresponding index results of cummin operation.
 
     Examples:
         .. code-block:: python
