@@ -33,7 +33,6 @@ struct KernelAttributeStorage : public ir::AttributeStorage {
 
   static std::size_t HashValue(const ParamKey &key) {
     auto t = phi::KernelKey::Hash()(key);
-    std::cerr << "hash value " << t << std::endl;
     return t;
   }
 

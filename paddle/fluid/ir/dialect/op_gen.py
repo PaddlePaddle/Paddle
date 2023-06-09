@@ -1211,7 +1211,6 @@ def OpGenerator(
         op_info_items.append(
             OpInfoParser(op, op_compat_parser.get_compat(op['name']))
         )
-        # break
 
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
@@ -1642,8 +1641,6 @@ def OpGenerator(
                 ops_defined_list.append(build_func_with_muta_attr_is_input)
             ops_defined_list.append(op_verify_str)
             ops_defined_list.append(op_infer_shape_str)
-
-            # break
 
     # (4) Generate head file str
     op_namespaces_prev = ""

@@ -108,10 +108,7 @@ TEST(program_test, program) {
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
   bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.56764);
   bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.85063);
-  std::cerr << out_tensor.data<float>()[0] << "\t"
-            << out_tensor.data<float>()[1] << "\t"
-            << out_tensor.data<float>()[2] << "\t"
-            << out_tensor.data<float>()[3] << std::endl;
+
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);

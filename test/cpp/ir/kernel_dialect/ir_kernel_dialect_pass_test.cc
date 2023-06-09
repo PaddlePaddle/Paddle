@@ -51,6 +51,8 @@ PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
+bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
+
 TEST(program_test, program) {
   // (1) Init environment.
   ir::IrContext* ctx = ir::IrContext::Instance();
@@ -58,22 +60,16 @@ TEST(program_test, program) {
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  ir::Block* block = program.block();
-
   ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
 
   paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  block->push_back(op1);
-
   paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
-  block->push_back(op2);
 
-  paddle::dialect::AddOp add = builder.Build<paddle::dialect::AddOp>(
-      op1->GetResultByIndex(0), op2->GetResultByIndex(0));
-  block->push_back(add);
+  builder.Build<paddle::dialect::AddOp>(op1->GetResultByIndex(0),
+                                        op2->GetResultByIndex(0));
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -84,5 +80,13 @@ TEST(program_test, program) {
   auto out_tensor =
       scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
 
-  std::cerr << "op result" << out_tensor << std::endl;
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
+
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
 }

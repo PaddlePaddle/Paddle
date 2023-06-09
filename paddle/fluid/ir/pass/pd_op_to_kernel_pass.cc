@@ -156,7 +156,6 @@ phi::KernelKey GetKernelKey(
 std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   auto program = std::make_unique<ir::Program>(ir::IrContext::Instance());
 
-  prog->Print(std::cout);
   auto block = prog->block();
   phi::Place cpu_place(phi::AllocationType::CPU);
 
@@ -171,8 +170,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
 
   for (auto it = block->begin(); it != block->end(); ++it) {
-    std::cerr << (*it)->name() << std::endl;
-
     auto kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
 
     // create new Op
@@ -225,7 +222,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     program->block()->push_back(op1);
   }
 
-  program->Print(std::cout);
   return program;
 }
 
