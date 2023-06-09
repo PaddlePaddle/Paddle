@@ -102,8 +102,11 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
                 },
                 fetch_list=fetch_list,
             )
-
-        sys.stdout.buffer.write(pickle.dumps(out))
+        file_path = os.getenv("DUMP_FILE")
+        with open(os.getenv("DUMP_FILE"), "wb") as f:
+            print("DUMP_FILE: ", os.getenv("DUMP_FILE"), "****" * 40)
+            pickle.dump(out, f)
+   
 
 
 if __name__ == "__main__":

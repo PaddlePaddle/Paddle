@@ -123,8 +123,10 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
                 },
                 fetch_list=fetch_list,
             )
+        file_path = os.getenv("DUMP_FILE")    
+        with open(os.getenv("DUMP_FILE"), "wb") as f:
+            pickle.dump(out, f)
 
-        sys.stdout.buffer.write(pickle.dumps(out))
 
 
 if __name__ == "__main__":
