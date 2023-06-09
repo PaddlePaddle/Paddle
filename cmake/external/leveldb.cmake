@@ -38,6 +38,8 @@ if(RES_LEN EQUAL 0)
             https://github.com/google/leveldb.git ${LEVELDB_SOURCE_DIR})
 else()
   # check git tag
+  file(REMOVE_RECURSE ${LEVELDB_PREFIX_DIR})
+  file(REMOVE_RECURSE ${LEVELDB_INSTALL_DIR})
   execute_process(
     COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
     OUTPUT_VARIABLE VERSION
