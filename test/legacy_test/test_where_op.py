@@ -27,16 +27,16 @@ class TestWhereOp(OpTest):
     def setUp(self):
         self.op_type = 'where'
         self.python_api = paddle.where
-        self.enable_cinn = True
+        self.check_cinn = True
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.enable_cinn)
+        self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_cinn=self.enable_cinn)
+        self.check_grad(['X', 'Y'], 'Out', check_cinn=self.check_cinn)
 
     def init_config(self):
         self.x = np.random.uniform((-3), 5, 100).astype('float64')
@@ -69,7 +69,7 @@ class TestWhereBF16OP(OpTest):
         self.op_type = 'where'
         self.dtype = np.uint16
         self.python_api = paddle.where
-        self.enable_cinn = True
+        self.check_cinn = True
         self.init_config()
         self.inputs = {
             'Condition': self.cond,
@@ -82,7 +82,7 @@ class TestWhereBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.enable_cinn)
+        self.check_output_with_place(place, check_cinn=self.check_cinn)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -91,7 +91,7 @@ class TestWhereBF16OP(OpTest):
             ['X', 'Y'],
             'Out',
             numeric_grad_delta=0.05,
-            check_cinn=self.enable_cinn,
+            check_cinn=self.check_cinn,
         )
 
     def init_config(self):
