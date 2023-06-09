@@ -101,7 +101,6 @@ set(XPU_XFT_GET_DEPENCE_URL
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${PADDLE_DOWLOAD_DIR}/third_party/xpu")
-set(XPU_SOURCE_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
 set(XPU_INSTALL_DIR "${THIRD_PARTY_PATH}/install/xpu")
 set(XPU_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
 set(XPU_LIB_DIR "${THIRD_PARTY_PATH}/install/xpu/lib")
@@ -134,10 +133,10 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
     bash ${CMAKE_SOURCE_DIR}/tools/xpu/check_xpu_dependence.sh ${XPU_BASE_URL}
-    ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} -P ${XPU_SOURCE_DIR} &&
-    bash pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME}
+    ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} -P ${XPU_DOWNLOAD_DIR}
+    && bash pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME}
     ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} &&
-    wget ${XPU_XFT_GET_DEPENCE_URL} -P ${XPU_SOURCE_DIR} && bash
+    wget ${XPU_XFT_GET_DEPENCE_URL} -P ${XPU_DOWNLOAD_DIR} && bash
     get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
