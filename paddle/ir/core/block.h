@@ -23,9 +23,10 @@ class Operation;
 
 class Block {
  public:
-  using iterator = std::list<Operation *>::iterator;
-  using reverse_iterator = std::list<Operation *>::reverse_iterator;
-  using const_iterator = std::list<Operation *>::const_iterator;
+  using OpListType = std::list<Operation *>;
+  using iterator = OpListType::iterator;
+  using reverse_iterator = OpListType::reverse_iterator;
+  using const_iterator = OpListType::const_iterator;
 
   Block() = default;
   ~Block();
@@ -56,7 +57,7 @@ class Block {
   void SetParent(Region *parent) { parent_ = parent; }
 
  private:
-  Region *parent_;              // not owned
-  std::list<Operation *> ops_;  // owned
+  Region *parent_;  // not owned
+  OpListType ops_;  // owned
 };
 }  // namespace ir

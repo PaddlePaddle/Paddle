@@ -68,8 +68,8 @@ class OpInfo {
   typename Interface::Concept *GetInterfaceImpl() const;
 
   void *AsOpaquePointer() const { return impl_; }
-  static OpInfo RecoverFromOpaquePointer(void *impl) {
-    return static_cast<OpInfoImpl *>(impl);
+  static OpInfo RecoverFromOpaquePointer(void *pointer) {
+    return OpInfo(reinterpret_cast<OpInfoImpl *>(pointer));
   }
 
   friend class OpInfoImpl;

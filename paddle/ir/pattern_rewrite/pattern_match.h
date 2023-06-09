@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// The design is mainly from MLIR, very thanks to the greate project.
+
 #pragma once
 
 #include <functional>
@@ -19,46 +21,78 @@
 #include <memory>
 #include <string>
 #include <type_traits>
-#include <utility>
 #include <vector>
+
+#include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/type_id.h"
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/value.h"
+#include "paddle/utils/optional.h"
+
 namespace ir {
 
-/// The design is mainly from MLIR, very thanks to the greate project.
-
-/// This class reprensents the benefit of a pattern. The most common
-/// unit to use is the `numver of operations` in the pattern.
+// This class reprensents the benefit of a pattern. The most common
+// unit to use is the `numver of operations` in the pattern.
 class PatternBenefit {
  public:
-  PatternBenefit(unsigned val) : val_(val) {}  // NOLINT
+  PatternBenefit() = default;
+  PatternBenefit(uint32_t val) : val_(val) {}  // NOLINT
 
-  unsigned benefit() { return val_; }
+  uint32_t benefit() { return val_; }
 
   bool operator==(const PatternBenefit& rhs) const { return val_ == rhs.val_; }
   bool operator!=(const PatternBenefit& rhs) const { return !(*this == rhs); }
   bool operator<(const PatternBenefit& rhs) const { return val_ < rhs.val_; }
   bool operator>(const PatternBenefit& rhs) const { return rhs < *this; }
   bool operator<=(const PatternBenefit& rhs) const { return !(*this > rhs); }
-  bool operator>=(const PatternBenefit& rhs) const { return !(*this <= rhs); }
+  bool operator>=(const PatternBenefit& rhs) const { return !(*this < rhs); }
 
  private:
-  unsigned int val_{0};
+  uint32_t val_{0};
 };
 
-/// This class contains all of the data related to a Pattern, but not contains
-/// any methods for the matching. This class is used to interface with the
-/// metadata of a pattern, such as benefit or root operation.
+// This class contains all of the data related to a Pattern, but not contains
+// any methods for the matching. This class is used to interface with the
+// metadata of a pattern, such as benefit or root operation.
 class Pattern {
-  enum class RootKind { Any, OperationName, InterfaceId, TraitId };
+  enum class RootKind {
+    // The pattern root matches "any" operation.
+    Any,
+    // The pattern root is matched using a concrete operation.
+    OperationInfo,
+    // The pattern root is matched using an interface id.
+    InterfaceId,
+    // The patter root is matched using a trait id.
+    TraitId
+  };
 
  public:
+  const std::vector<OpInfo>& generated_ops() const { return generated_ops_; }
+
+  paddle::optional<OpInfo> root_kind() const {
+    if (root_kind_ == RootKind::OperationInfo)
+      return OpInfo::RecoverFromOpaquePointer(root_val_);
+    return paddle::none;
+  }
+
+  paddle::optional<TypeId> GetRootInterfaceID() const {
+    if (root_kind_ == RootKind::InterfaceId)
+      return TypeId::RecoverFromOpaquePointer(root_val_);
+    return paddle::none;
+  }
+
+  paddle::optional<TypeId> GetRootTraitID() const {
+    if (root_kind_ == RootKind::TraitId)
+      return TypeId::RecoverFromOpaquePointer(root_val_);
+    return paddle::none;
+  }
+
   PatternBenefit benefit() const { return benefit_; }
 
-  IrContext* context() const { return context_; }
+  IrContext* ir_context() const { return context_; }
 
   std::string debug_name() const { return debug_name_; }
 
@@ -81,41 +115,39 @@ class Pattern {
 
   Pattern(const std::string& root_name,
           PatternBenefit benefit,
-          ir::IrContext* context,
+          IrContext* context,
           const std::vector<std::string>& generated_names = {});
 
   Pattern(MatchAnyOpTypeTag tag,
           PatternBenefit benefit,
-          ir::IrContext* context,
+          IrContext* context,
           const std::vector<std::string>& generated_names = {});
 
   Pattern(MatchInterfaceOpTypeTag tag,
-          ir::TypeId interface_id,
+          TypeId interface_id,
           PatternBenefit benefit,
-          ir::IrContext* context,
+          IrContext* context,
           const std::vector<std::string>& generated_names = {});
 
   Pattern(MatchTraitOpTypeTag tag,
-          ir::TypeId trait_id,
+          TypeId trait_id,
           PatternBenefit benefit,
-          ir::IrContext* context,
+          IrContext* context,
           const std::vector<std::string>& generated_names = {});
 
  private:
-  // TODO(wilber): How to uniform variables and constructor.
-  // Pattern(const void* root_val,
-  //         RootKind root_kind,
-  //         const std::vector<std::string>& generated_names,
-  //         PatternBenefit benefit,
-  //         ir::IrContext* context);
-  std::string op_name_;
-  ir::TypeId interface_id_;
-  ir::TypeId trait_id_;
+  Pattern(void* root_val,
+          RootKind root_kind,
+          const std::vector<std::string>& generated_names,
+          PatternBenefit benefit,
+          IrContext* context);
+
+  void* root_val_;
   RootKind root_kind_;
 
   const PatternBenefit benefit_;
-  ir::IrContext* context_;
-  std::vector<std::string> generated_names_;
+  IrContext* context_;
+  std::vector<OpInfo> generated_ops_;
 
   std::string debug_name_;
   std::vector<std::string> debug_labels_;
@@ -127,19 +159,19 @@ class RewritePattern : public Pattern {
  public:
   virtual ~RewritePattern();
 
-  virtual void Rewrite(ir::Operation* op,
+  virtual void Rewrite(Operation* op,
                        PatternRewriter& rewriter) const {  // NOLINT
     throw(
         "need to implement either MatchAndRewrite or one of the rewrite "
         "functions.");
   }
 
-  virtual bool Match(ir::Operation* op) const {
+  virtual bool Match(Operation* op) const {
     throw("need to implement either MatchAndRewrite or Match.");
     return false;
   }
 
-  virtual bool MatchAndRewrite(ir::Operation* op,
+  virtual bool MatchAndRewrite(Operation* op,
                                PatternRewriter& rewriter) const {  // NOLINT
     if (Match(op)) {
       Rewrite(op, rewriter);
@@ -157,7 +189,7 @@ class RewritePattern : public Pattern {
     pattern->Initialize();
 
     if (pattern->debug_name().empty())
-      pattern->SetDebugName(get_type_name<T>());
+      pattern->SetDebugName(ir::get_type_name<T>());
     return pattern;
   }
 
@@ -166,8 +198,8 @@ class RewritePattern : public Pattern {
 };
 
 namespace detail {
-/// A wrapper around PatternWrite that allows for matching and rewriting
-/// against an instance of a derived operation class or Interface.
+// A wrapper around PatternWrite that allows for matching and rewriting
+// against an instance of a derived operation class or Interface.
 template <typename SourceOp>
 struct OpOrInterfaceRewritePatternBase : public RewritePattern {
   using RewritePattern::RewritePattern;
@@ -203,30 +235,25 @@ struct OpOrInterfaceRewritePatternBase : public RewritePattern {
 };
 }  // namespace detail
 
-/// OpRewritePattern is a wrapper around RewritePattern that allows for
-/// matching and rewriting against an instance of a derived operation
-/// class as opposed to a raw Operation.
+// OpRewritePattern is a wrapper around RewritePattern that allows for
+// matching and rewriting against an instance of a derived operation
+// class as opposed to a raw Operation.
 template <typename SourceOp>
 struct OpRewritePattern
     : public detail::OpOrInterfaceRewritePatternBase<SourceOp> {
-  OpRewritePattern(ir::IrContext* context,
+  OpRewritePattern(IrContext* context,
                    PatternBenefit benefit = 1,
                    const std::vector<std::string>& generated_names = {})
       : detail::OpOrInterfaceRewritePatternBase<SourceOp>(
-            "NeedToFix",  // TODO(wilber): Need to fix. SourceOp maybe should
-                          // have a getOperationName static method.
-            benefit,
-            context,
-            generated_names) {}
+            SourceOp::name(), benefit, context, generated_names) {}
 };
 
 // TODO(wilber): Support OpInterfaceRewritePattern and OpTraitRewritePattern.
 // ...
 
-/// This class provides a series of interfaces for modifying IR and tracking IR
-/// changes. This class provides a unified API for IR modification.
-///
-class RewriterBase {  // maybe should inherit OpBuilder.
+// This class provides a series of interfaces for modifying IR and tracking IR
+// changes. This class provides a unified API for IR modification.
+class RewriterBase : public Builder {
  public:
   // TODO(wilber): Supplementary methods of block and region.
 
@@ -262,7 +289,7 @@ class RewriterBase {  // maybe should inherit OpBuilder.
                     std::function<bool(OpOperand&)> functor);
 
  protected:
-  explicit RewriterBase(IrContext* ctx) : ctx_(ctx) {}
+  explicit RewriterBase(IrContext* ctx) : Builder(ctx) {}
 
   virtual ~RewriterBase();
 
@@ -277,9 +304,6 @@ class RewriterBase {  // maybe should inherit OpBuilder.
   RewriterBase(const RewriterBase&) = delete;
 
   void ReplaceOpWithResultsOfAnotherOp(Operation* op, Operation* new_op);
-
- private:
-  IrContext* ctx_;
 };
 
 class PatternRewriter : public RewriterBase {
@@ -287,7 +311,7 @@ class PatternRewriter : public RewriterBase {
   using RewriterBase::RewriterBase;
 };
 
-/// A pattern collection, easy to add patterns.
+// A pattern collection, easy to add patterns.
 class RewritePatternSet {
   using NativePatternListT = std::vector<std::unique_ptr<RewritePattern>>;
 
@@ -351,6 +375,8 @@ class RewritePatternSet {
 
  private:
   IrContext* const context_;
+
   NativePatternListT native_patterns_;
 };
+
 }  // namespace ir

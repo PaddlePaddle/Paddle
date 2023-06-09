@@ -100,7 +100,7 @@ class Operation1 : public ir::Op<Operation1> {
                     ir::OperationArgument &argument) {  // NOLINT
     std::vector<ir::OpResult> inputs = {};
     std::vector<ir::Type> output_types = {
-        ir::Float32Type::get(builder.context())};
+        ir::Float32Type::get(builder.ir_context())};
     std::unordered_map<std::string, ir::Attribute> attributes =
         CreateAttributeMap({"op1_attr1", "op1_attr2"},
                            {"op1_attr1", "op1_attr2"});
