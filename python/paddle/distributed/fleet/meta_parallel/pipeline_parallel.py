@@ -78,9 +78,11 @@ class FakeMicroDataset:
                         len(data),
                     )
                     output.append(data[micro_step].detach())
-                else:
+                elif data is not None:
                     self._check_data_vaild(data)
                     output.append(data[begin:end, :].detach())
+                else:
+                    output.append(None)
             return tuple(output)
 
         elif isinstance(inputs, list):
@@ -91,9 +93,11 @@ class FakeMicroDataset:
                 len(inputs),
             )
             return inputs[micro_step].detach()
-        else:
+        elif inputs is not None:
             self._check_data_vaild(inputs)
             return inputs[begin:end, :].detach()
+        else:
+            return None
 
     def _check_data_vaild(self, data):
         batch_size = data.shape[0]
