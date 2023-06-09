@@ -93,6 +93,25 @@ struct Argument {
  private:                                                                \
   type__ field__##_;
 
+#define DECL_POINTER_ARGUMENT_FIELD(field__, Field, type__)              \
+ public:                                                                 \
+  type__& field__() {                                                    \
+    PADDLE_ENFORCE_EQ(                                                   \
+        Has(#field__),                                                   \
+        true,                                                            \
+        platform::errors::PreconditionNotMet("There is no such field")); \
+    return field__##_;                                                   \
+  }                                                                      \
+  void Set##Field(type__ x) {                                            \
+    field__##_ = x;                                                      \
+    valid_fields_.insert(#field__);                                      \
+  }                                                                      \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                    \
+  type__* field__##_ptr() { return &field__##_; }                        \
+                                                                         \
+ private:                                                                \
+  type__ field__##_;
+
 #define DECL_ARGUMENT_FIELD_VALID(field__) \
   bool field__##_valid() { return Has(#field__); }
 
@@ -276,20 +295,48 @@ struct Argument {
   DECL_ARGUMENT_FIELD(lite_zero_copy, LiteZeroCopy, bool);
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
-  DECL_ARGUMENT_FIELD(xpu_l3_workspace_size, XpuL3WorkspaceSize, int);
   DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
-  DECL_ARGUMENT_FIELD(xpu_autotune, XpuAutotune, bool);
-  DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
-  DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
-  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
   DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
-  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_bits,
-                      XpuQuantPostDynamicWeightBits,
+  // XpuConfig
+  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+  DECL_ARGUMENT_FIELD(xpu_l3_size, XpuL3Size, size_t);
+  DECL_POINTER_ARGUMENT_FIELD(xpu_l3_ptr, XpuL3Ptr, void*);
+  DECL_ARGUMENT_FIELD(xpu_l3_autotune_size, XpuL3AutotuneSize, size_t);
+  DECL_POINTER_ARGUMENT_FIELD(xpu_stream, XpuStream, void*);
+  DECL_ARGUMENT_FIELD(xpu_conv_autotune_level, XpuConvAutotuneLevel, int);
+  DECL_ARGUMENT_FIELD(xpu_conv_autotune_file, XpuConvAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_conv_autotune_file_writeback,
+                      XpuConvAutotuneFileWriteback,
+                      bool);
+  DECL_ARGUMENT_FIELD(xpu_fc_autotune_level, XpuFcAutotuneLevel, int);
+  DECL_ARGUMENT_FIELD(xpu_fc_autotune_file, XpuFcAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_fc_autotune_file_writeback,
+                      XpuFcAutotuneFileWriteback,
+                      bool);
+  DECL_ARGUMENT_FIELD(xpu_gemm_compute_precision, XpuGemmComputePrecision, int);
+  DECL_ARGUMENT_FIELD(xpu_transformer_softmax_optimize_level,
+                      XpuTransformerSoftmaxOptimizeLevel,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_transformer_encoder_adaptive_seqlen,
+                      XpuTransformerEncoderAdaptiveSeqlen,
+                      bool);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_static_gelu_out_threshold,
+                      XpuQuantPostStaticGeluOutThreshold,
+                      float);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_activation_method,
+                      XpuQuantPostDynamicActivationMethod,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_precision,
+                      XpuQuantPostDynamicWeightPrecision,
                       int);
   DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
                       XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(xpu_lite_l3_locked, XpuLiteL3Locked, bool);
+  DECL_ARGUMENT_FIELD(xpu_lite_enable_multi_stream,
+                      XpuLiteEnableMultiStream,
+                      bool);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 

@@ -23,7 +23,10 @@ void CheckNumericsKernel(const Context& ctx,
                          const DenseTensor& tensor,
                          const std::string& op_type,
                          const std::string& var_name,
+                         const int check_nan_inf_level,
                          const int stack_height_limit,
-                         const std::string& output_dir);
+                         const std::string& output_dir,
+                         DenseTensor* stats,
+                         DenseTensor* values);
 
 }  // namespace phi
