@@ -108,7 +108,7 @@ class PaddedSeqLenInfo(SeqLenInfo):
 
     @classmethod
     def from_seqlens_padded(cls, seqlens, padding):
-        assert all([seqlen <= padding for seqlen in seqlens])
+        assert all(seqlen <= padding for seqlen in seqlens)
         seqstart_py = list(range(0, len(seqlens) * padding + 1, padding))
         return cls(
             seqlen=paddle.to_tensor(seqlens, dtype=paddle.int32),

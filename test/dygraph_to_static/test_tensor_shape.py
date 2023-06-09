@@ -613,7 +613,7 @@ class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])
         # Call this function to trigger program translation.
-        func.concrete_program
+        func.concrete_program  # noqa: B018
 
 
 if __name__ == '__main__':

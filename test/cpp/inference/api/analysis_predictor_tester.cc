@@ -667,10 +667,12 @@ TEST(Predictor, Streams) {
 }
 #endif
 
-TEST(AnalysisPredictor, OutputHookFunc) {
+TEST(AnalysisPredictor, OutputTensorHookFunc) {
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
-                     const Tensor& tensor) { LOG(INFO) << "in hook function"; };
+                     const paddle::Tensor& tensor) {
+    LOG(INFO) << "in hook function";
+  };
 
   {
     Config config;

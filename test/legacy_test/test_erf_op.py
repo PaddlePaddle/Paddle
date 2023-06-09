@@ -57,15 +57,17 @@ class TestErfLayer(unittest.TestCase):
         np.testing.assert_allclose(y_ref, y_test, rtol=1e-05)
 
     def test_case(self):
-        self._test_case(fluid.CPUPlace())
-        if fluid.is_compiled_with_cuda():
-            self._test_case(fluid.CUDAPlace(0))
+        with paddle.fluid.framework._static_guard():
+            self._test_case(fluid.CPUPlace())
+            if fluid.is_compiled_with_cuda():
+                self._test_case(fluid.CUDAPlace(0))
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
-            x = paddle.static.data('x', [3, 4])
-            y = paddle.erf(x, name='erf')
-            self.assertTrue('erf' in y.name)
+        with paddle.fluid.framework._static_guard():
+            with fluid.program_guard(fluid.Program()):
+                x = paddle.static.data('x', [3, 4])
+                y = paddle.erf(x, name='erf')
+                self.assertTrue('erf' in y.name)
 
 
 class TestErfFP16OP(OpTest):

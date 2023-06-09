@@ -18,11 +18,11 @@
 #include <map>
 #include <string>
 
-#include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/translator/translate.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
@@ -47,17 +47,19 @@ ProgramDesc load_from_file(const std::string &file_name) {
 }
 
 TEST(PaddleDialectTest, Translator) {
-  LOG(WARNING) << "TODO";
-  // auto p = load_from_file("restnet50_main.prog");
-  // EXPECT_EQ(p.Size(), 1u);
+  auto p = load_from_file("restnet50_main.prog");
+  EXPECT_EQ(p.Size(), 1u);
 
-  // ir::IrContext *ctx = ir::IrContext::Instance();
-  // ctx->GetOrRegisterDialect<PaddleDialect>();
-  // ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  // auto program = paddle::TranslateLegacyProgramToProgram(p);
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<PaddleDialect>();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
 
-  // size_t op_size = program->block()->size();
-  // // ops.size() = op size in BlockDesc + get_parameter_op + combine op
-  // EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 20);
-  // VLOG(0) << *program;
+  size_t op_size = program->block()->size();
+  // ops.size() = op size in BlockDesc + get_parameter_op + combine op + int
+  // array op + full op
+  EXPECT_EQ(op_size,
+            p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
+
+  program->Print(std::cout);
 }

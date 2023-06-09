@@ -1894,7 +1894,7 @@ class Model:
         assert train_data is not None, "train_data must be given!"
 
         if isinstance(batch_size, (tuple, list)) and all(
-            [isinstance(x, int) for x in batch_size]
+            isinstance(x, int) for x in batch_size
         ):
             assert (
                 len(batch_size) == 2

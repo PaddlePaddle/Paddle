@@ -1412,11 +1412,11 @@ def ifftshift(x, axes=None, name=None):
         # shift all axes
         rank = len(x.shape)
         axes = list(range(0, rank))
-        shifts = -shape // 2
+        shifts = (shape + 1) // 2
     elif isinstance(axes, int):
-        shifts = -shape[axes] // 2
+        shifts = (shape[axes] + 1) // 2
     else:
-        shifts = paddle.concat([-shape[ax : ax + 1] // 2 for ax in axes])
+        shifts = paddle.concat([(shape[ax : ax + 1] + 1) // 2 for ax in axes])
     return paddle.roll(x, shifts, axes, name=name)
 
 

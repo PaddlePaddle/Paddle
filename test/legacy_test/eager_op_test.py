@@ -2228,9 +2228,8 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
-                    )
-                    % (
+                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
+                    ).format(
                         self.op_type,
                         msg_prefix,
                         name,
@@ -2422,6 +2421,14 @@ class OpTest(unittest.TestCase):
         ):
             numeric_grad_delta = 1e-5
             max_relative_error = 1e-7
+
+        if (
+            self.dtype == np.complex128
+            and self.op_type
+            not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+        ):
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-6
 
         cache_list = None
         if hasattr(self, "cache_name_list"):

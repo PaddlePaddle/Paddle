@@ -1301,16 +1301,18 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if isinstance(val, Variable) and not val.is_integer():
-                dtype = paddle.get_default_dtype()
-                break
-            elif not isinstance(val, (int, np.integer)) and not isinstance(
-                val, Variable
-            ):
-                dtype = paddle.get_default_dtype()
-                break
+            if isinstance(val, Variable):
+                if not val.is_integer():
+                    dtype = paddle.get_default_dtype()
+                    break
+                else:
+                    dtype = 'int64'
             else:
-                dtype = 'int64'
+                if not isinstance(val, np.integer) and not isinstance(val, int):
+                    dtype = paddle.get_default_dtype()
+                    break
+                else:
+                    dtype = 'int64'
 
     out_shape = None
     if not in_dynamic_mode() and (
@@ -2106,11 +2108,9 @@ def assign(x, output=None):
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
-                [
-                    x.shape == (1,)
-                    for x in input
-                    if isinstance(x, (Variable, core.eager.Tensor))
-                ]
+                x.shape == (1,)
+                for x in input
+                if isinstance(x, (Variable, core.eager.Tensor))
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
