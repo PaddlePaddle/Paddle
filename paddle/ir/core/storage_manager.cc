@@ -17,6 +17,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include "paddle/ir/core/enforce.h"
+
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of
 // parametric types.
@@ -76,7 +78,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
           << std::hash<ir::TypeId>()(type_id) << ", param_hash=" << hash_value
           << "].";
   if (parametric_instance_.find(type_id) == parametric_instance_.end()) {
-    throw("The input data pointer is null.");
+    IR_THROW("The input data pointer is null.");
   }
   ParametricStorageManager &parametric_storage = *parametric_instance_[type_id];
   return parametric_storage.GetOrCreate(hash_value, equal_func, constructor);
@@ -88,7 +90,7 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageImpl(
   VLOG(4) << "Try to get a parameterless storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   if (parameterless_instance_.find(type_id) == parameterless_instance_.end())
-    throw("TypeId not found in IrContext.");
+    IR_THROW("TypeId not found in IrContext.");
   StorageBase *parameterless_instance = parameterless_instance_[type_id];
   return parameterless_instance;
 }
@@ -107,7 +109,7 @@ void StorageManager::RegisterParameterlessStorageImpl(
   VLOG(4) << "Register a parameterless storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   if (parameterless_instance_.find(type_id) != parameterless_instance_.end())
-    throw("storage class already registered");
+    IR_THROW("storage class already registered");
   parameterless_instance_.emplace(type_id, constructor());
 }
 

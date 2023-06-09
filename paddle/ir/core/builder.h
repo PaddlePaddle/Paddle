@@ -56,7 +56,7 @@ class Builder {
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
-    OpTy::Build(argument, std::forward<Args>(args)...);
+    OpTy::Build(*this, argument, std::forward<Args>(args)...);
     Operation *op = Build(std::move(argument));
     return op->dyn_cast<OpTy>();
   }
