@@ -98,7 +98,7 @@ TEST(program_test, program) {
   ir::Block *block = program.block();
   block->push_back(op1);
 
-  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParentRegion());
+  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParent());
 
   EXPECT_EQ(program.module_op(), block->GetParentOp());
 
@@ -299,7 +299,7 @@ TEST(program_test, builder) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
+  ir::Builder builder = ir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());

@@ -71,3 +71,5 @@ cc_test_old(
   gtest
   new_ir
   pd_dialect)
+
+cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest new_ir)
