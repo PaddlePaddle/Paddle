@@ -2836,7 +2836,7 @@ class Test_Log_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype='bfloat16')
             y = paddle.log(x)
             y_except = np.array(
-                [[16177, 16269, 16305], [16377, 16389, 16397]], dtype=np.uint16
+                [[16177, 16268, 16305], [16377, 16389, 16396]], dtype=np.uint16
             )
             np.testing.assert_equal(y.numpy(), y_except)
 
@@ -2918,7 +2918,7 @@ class TestLog2_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype='bfloat16')
             y = paddle.log2(x)
             y_except = np.array(
-                [[16256, 16331, 16384], [16436, 16448, 16459]], dtype=np.uint16
+                [[16256, 16330, 16384], [16435, 16448, 16458]], dtype=np.uint16
             )
             np.testing.assert_equal(y.numpy(), y_except)
 
@@ -3055,7 +3055,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype='bfloat16')
             y = paddle.log1p(x)
             y_except = np.array(
-                [[16269, 16305, 16334], [16389, 16397, 16403]], dtype=np.uint16
+                [[16268, 16305, 16334], [16389, 16396, 16403]], dtype=np.uint16
             )
             np.testing.assert_equal(y.numpy(), y_except)
 
