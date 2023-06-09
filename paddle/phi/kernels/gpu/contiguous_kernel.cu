@@ -21,13 +21,12 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename T>
+template <typename T, size_t N>
 __global__ void ContiguousFunc(
     const T* input_data,
     T* out_data,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> dims,
-    const int rank,
     const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
 #pragma unroll
@@ -35,7 +34,7 @@ __global__ void ContiguousFunc(
     int64_t input_offset = 0;
     int64_t index_tmp = i;
 #pragma unroll
-    for (int dim = rank - 1; dim >= 0; --dim) {
+    for (int dim = N - 1; dim >= 0; --dim) {
       input_offset += index_tmp % dims[dim] * input_stride[dim];
       index_tmp = index_tmp / dims[dim];
     }
@@ -123,8 +122,47 @@ void ContiguousKernel(const Context& dev_ctx,
     input_stride[i] = input.stride()[i];
   }
 
-  ContiguousFunc<<<grid, block, 0, dev_ctx.stream()>>>(
-      input_data, output_data, input_stride, input_dims, rank, numel);
+  switch (rank) {
+    case 1:
+      ContiguousFunc<T, 1><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 2:
+      ContiguousFunc<T, 2><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 3:
+      ContiguousFunc<T, 3><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 4:
+      ContiguousFunc<T, 4><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 5:
+      ContiguousFunc<T, 5><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 6:
+      ContiguousFunc<T, 6><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 7:
+      ContiguousFunc<T, 7><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 8:
+      ContiguousFunc<T, 8><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    case 9:
+      ContiguousFunc<T, 9><<<grid, block, 0, dev_ctx.stream()>>>(
+          input_data, output_data, input_stride, input_dims, numel);
+      break;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The rank of input should be less than 9, but received %d.", rank));
+  }
 }
 
 }  // namespace phi

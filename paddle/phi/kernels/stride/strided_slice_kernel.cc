@@ -35,10 +35,10 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   DDim output_dims = input.dims();
   DDim output_stride = input.stride();
   int64_t output_offset = input.offset();
-
   for (size_t i = 0; i < axis.size(); ++i) {
-    output_offset = output_offset + starts[i] * output_stride[axis[i]];
-    output_dims[axis[i]] = ends[i] - starts[i];
+    output_offset = output_offset +
+                    starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
+    output_dims[axis[i]] = (ends[i] - starts[i] + strides[i] - 1) / strides[i];
     output_stride[axis[i]] *= strides[i];
   }
   auto meta = input.meta();

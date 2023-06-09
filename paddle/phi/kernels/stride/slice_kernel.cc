@@ -46,7 +46,8 @@ void SliceStridedKernel(const Context& ctx,
   int64_t output_offset = input.offset();
 
   for (size_t i = 0; i < axis.size(); ++i) {
-    output_offset = output_offset + starts[i] * output_stride[axis[i]];
+    output_offset = output_offset +
+                    starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
     output_dims[axis[i]] = ends[i] - starts[i];
   }
   auto meta = input.meta();
