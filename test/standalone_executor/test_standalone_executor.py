@@ -22,10 +22,31 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.static
 from paddle.fluid import core
+from paddle.nn import CrossEntropyLoss
 from paddle.profiler import profiler
+from paddle.vision.models import resnet50
 
 paddle.enable_static()
+
+
+def get_resnet50_model():
+    main = paddle.static.Program()
+    startup = paddle.static.Program()
+    with paddle.static.program_guard(main, startup):
+        image = paddle.static.data(
+            name="image", shape=[None, 3, 224, 224], dtype="float32"
+        )
+        label = paddle.static.data(name="label", shape=[None, 1], dtype="int64")
+        model = resnet50()
+        loss_fn = CrossEntropyLoss()
+        pred = model(image)
+        loss = loss_fn(pred, label)
+        optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
+        optimizer.minimize(loss)
+
+    return main, startup, image, label, loss
 
 
 def build_program():
@@ -368,6 +389,67 @@ class TestInplaceApiWithDataTransform(unittest.TestCase):
                     paddle.static.default_main_program(), fetch_list=[x]
                 )
                 self.assertEqual(a[0], 1)
+
+
+class TestExecutorCache(unittest.TestCase):
+    def get_node_count(self, graph, node_name):
+        count = 0
+        for node in graph.nodes():
+            if node.name() == node_name:
+                count += 1
+        return count
+
+    def setUp(self):
+        paddle.enable_static()
+        if paddle.is_compiled_with_cuda():
+            self.place = paddle.CUDAPlace(0)
+        else:
+            self.place = paddle.CPUPlace()
+        self.use_cuda = isinstance(self.place, paddle.CUDAPlace)
+        self.executor = paddle.static.Executor(self.place)
+        self.num_classes = 1000
+
+    def get_strategy(self):
+        return {
+            'fuse_all_optimizer_ops': True,
+            'fuse_elewise_add_act_ops': True,
+            'fuse_relu_depthwise_conv': True,
+            'fuse_bn_act_ops': True,
+        }
+
+    def test_cache(self):
+        main, startup, image, label, loss = get_resnet50_model()
+        self.executor.run(startup)
+
+        image_shape = [64] + list(image.shape)[1:]
+        label_shape = [64] + list(label.shape)[1:]
+
+        feed = {
+            image.name: np.random.rand(*image_shape).astype('float32'),
+            label.name: np.random.randint(
+                low=0,
+                high=self.num_classes,
+                size=label_shape,
+                dtype='int64',
+            ),
+        }
+        self.executor.run(main, feed=feed, fetch_list=[])
+
+        build_strategy = paddle.static.BuildStrategy()
+        for k, v in self.get_strategy().items():
+            setattr(build_strategy, k, v)
+        compiled_prog = paddle.static.CompiledProgram(
+            main, build_strategy=build_strategy
+        )
+        self.executor.run(compiled_prog, feed=feed, fetch_list=[])
+        elewise_add_act_op_num = self.verify_node_count(
+            compiled_prog._graph, "fused_elemwise_add_activation"
+        )
+        self.assertGreaterEqual(
+            elewise_add_act_op_num,
+            1,
+            msg="should have more than 1 elemwise add op",
+        )
 
 
 if __name__ == "__main__":

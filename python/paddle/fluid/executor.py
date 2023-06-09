@@ -718,6 +718,7 @@ class _ExecutorCache:
                     _get_strong_program_cache_key_for_new_exe(
                         self.program._program, feed, fetch_list
                     )
+                    + str(self.program._build_strategy)
                 )
             else:
                 self.key = hash(
