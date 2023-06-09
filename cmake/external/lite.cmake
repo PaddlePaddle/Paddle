@@ -63,7 +63,6 @@ endif()
 if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/lite)
-  set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
   set(LITE_PROJECT extern_lite)
   set(LITE_PREFIX_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
@@ -72,6 +71,10 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_SHARED_LIB
       ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_full_api_shared.so
   )
+
+  if(NOT LITE_GIT_TAG)
+    set(LITE_GIT_TAG 81ef66554099800c143a0feff6e0a491b3b0d12e)
+  endif()
 
   if(NOT CUDA_ARCH_NAME)
     set(CUDA_ARCH_NAME "Auto")
@@ -91,9 +94,10 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       OUTPUT_VARIABLE VERSION
       OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
       WORKING_DIRECTORY ${LITE_SOURCE_DIR})
-    if(NOT ${VERSION} STREQUAL ${LITE_TAG})
-      message(WARNING "lite version is not ${VERSION}, checkout to ${LITE_TAG}")
-      execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LITE_TAG}
+    if(NOT ${VERSION} STREQUAL ${LITE_GIT_TAG})
+      message(
+        WARNING "lite version is not ${VERSION}, checkout to ${LITE_GIT_TAG}")
+      execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${LITE_GIT_TAG}
                       WORKING_DIRECTORY ${LITE_SOURCE_DIR})
     endif()
   endif()
