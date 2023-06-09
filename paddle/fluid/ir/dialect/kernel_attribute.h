@@ -14,25 +14,24 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/parameter.h"
+#include "paddle/fluid/ir/dialect/kernel_attribute_storage.h"
+#include "paddle/ir/core/attribute.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
 
-class PaddleKernelDialect : public ir::Dialect {
+class KernelAttribute : public ir::Attribute {
  public:
-  explicit PaddleKernelDialect(ir::IrContext* context);
+  using Attribute::Attribute;
 
-  static const char* name() { return "pd_kernel"; }
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(KernelAttribute, KernelAttributeStorage);
 
-  void PrintType(ir::Type type, std::ostream& os) const override;
+  bool operator<(const KernelAttribute &right) const {
+    return storage() < right.storage();
+  }
 
-  void PrintAttribute(ir::Attribute attr, std::ostream& os) const override;
-
- private:
-  void initialize();
+  phi::KernelKey data() const { return storage()->GetAsKey(); }
 };
 
 }  // namespace dialect

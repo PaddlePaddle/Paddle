@@ -19,6 +19,7 @@
 // paddle/fluid/ir/dialect/CMakeLists.txt.
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/kernel_type_storage.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
@@ -38,13 +39,10 @@ void PaddleKernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType>();
   RegisterOps<dialect::PhiKernelOp>();
 
-  // RegisterAttributes<paddle::dialect::IntArrayAttribute,
-  //                    paddle::dialect::DataTypeAttribute,
-  //                    paddle::dialect::PlaceAttribute,
-  //                    paddle::dialect::DataLayoutAttribute>();
+  RegisterAttributes<paddle::dialect::KernelAttribute>();
 }
 
-void PaddleKernelDialect::PrintType(ir::Type type, std::ostream &os) {
+void PaddleKernelDialect::PrintType(ir::Type type, std::ostream &os) const {
   AllocatedDenseTensorType tensor_type =
       type.dyn_cast<AllocatedDenseTensorType>();
 
@@ -56,6 +54,14 @@ void PaddleKernelDialect::PrintType(ir::Type type, std::ostream &os) {
   }
   tensor_type.dtype().Print(os);
   os << ">";
+}
+
+void PaddleKernelDialect::PrintAttribute(ir::Attribute attr,
+                                         std::ostream &os) const {
+  phi::KernelKey kernel = attr.dyn_cast<KernelAttribute>().data();
+
+  os << "<backend:" << kernel.backend() << "|layout:" << kernel.layout()
+     << "|dtype:" << kernel.dtype() << ">";
 }
 
 }  // namespace dialect

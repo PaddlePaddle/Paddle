@@ -14,6 +14,7 @@
 
 #include <iostream>
 
+#include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/kernel_op.h"
 #include "paddle/fluid/ir/dialect/kernel_type.h"
@@ -25,7 +26,6 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
-
 namespace paddle {
 namespace dialect {
 
@@ -63,7 +63,6 @@ phi::KernelKey GetKernelKey(
     input_map[t.name] = index++;
   }
 
-  std::cerr << "11" << std::endl;
   std::map<std::string, std::string> attr_type_map;
   auto attr_info = std::get<1>(op_info_res);
   for (auto& t : attr_info) {
@@ -72,7 +71,6 @@ phi::KernelKey GetKernelKey(
   }
   auto runtime_info = std::get<3>(op_info_res);
 
-  std::cerr << "12" << std::endl;
   // get dtype infomation
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
@@ -104,45 +102,38 @@ phi::KernelKey GetKernelKey(
     }
   }
 
-  std::cerr << "13" << std::endl;
   // parse all the input tensor
 
-  std::cerr << "input size " << input_map.size() << std::endl;
   if (input_map.size() == 0 || op->name() == "pd.full_") {
     // all the information have to get from attribute and context
     kernel_backend = paddle::experimental::ParseBackend(place);
 
   } else {
-    std::cerr << "1.1" << std::endl;
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
     for (size_t i = 0; i < input_info.size(); ++i) {
       // todo filter attribute tensor
-      std::cerr << "1.1.0.1" << std::endl;
       auto input_tmp = op->GetOperandByIndex(i).source();
       auto new_input_tmp = map_value_pair.at(input_tmp);
       dialect::AllocatedDenseTensorType type =
           new_input_tmp.type().dyn_cast<dialect::AllocatedDenseTensorType>();
-      std::cerr << "1.1.0.2" << std::endl;
+
       // fake tensor here
       phi::Place cpu_place(phi::AllocationType::CPU);
       auto ptr = new phi::Allocation(nullptr, 0, cpu_place);
-      std::cerr << "1.1.0.3" << std::endl;
+
       std::shared_ptr<phi::Allocation> holder(ptr);
-      std::cerr << "1.1.0" << std::endl;
 
       auto dtype = convetIrType2DataType(type.dtype());
-      std::cerr << "dtype " << dtype << std::endl;
+
       phi::DenseTensorMeta meta(
           dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-      std::cerr << "1.1.2" << std::endl;
+
       phi::DenseTensor fake_tensor(holder, meta);
 
-      std::cerr << "1.1.1" << std::endl;
       kernel_key_parser.AssignKernelKeySet(fake_tensor);
     }
 
-    std::cerr << "1.2" << std::endl;
     auto kernel_key_set = kernel_key_parser.key_set;
 
     auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
@@ -158,8 +149,6 @@ phi::KernelKey GetKernelKey(
     }
   }
 
-  std::cerr << "find res " << kernel_backend << "\t" << kernel_layout << "\t"
-            << kernel_data_type << std::endl;
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
   return res;
 }
@@ -181,9 +170,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
 
-  std::unordered_map<std::string, ir::Attribute> op1_attribute{
-      {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
-
   for (auto it = block->begin(); it != block->end(); ++it) {
     std::cerr << (*it)->name() << std::endl;
 
@@ -192,6 +178,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     // create new Op
 
     // only for single output
+    // need update new kernel key layout and data tyep
     auto allocated_dense_tensor_dtype =
         paddle::dialect::AllocatedDenseTensorType::get(
             ctx,
@@ -210,6 +197,23 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
         vec_inputs.push_back(new_in);
       }
+    }
+
+    paddle::dialect::OpYamlInfoInterface op_info_interface =
+        (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+    auto op_info_res = op_info_interface.GetOpInfo();
+    auto runtime_info = std::get<3>(op_info_res);
+
+    std::unordered_map<std::string, ir::Attribute> op1_attribute{
+        {"op_name", ir::StrAttribute::get(ctx, (*it)->name())},
+        {"kernel_name",
+         ir::StrAttribute::get(ctx, runtime_info.kernel_func[0])},
+        {"kernel_key", dialect::KernelAttribute::get(ctx, kernel_key)}};
+
+    auto op_attr_map = (*it)->attributes();
+
+    for (auto it1 = op_attr_map.begin(); it1 != op_attr_map.end(); ++it1) {
+      op1_attribute.emplace(it1->first, it1->second);
     }
 
     ir::Operation* op1 = ir::Operation::Create(
