@@ -77,9 +77,11 @@ ExternalProject_Add(
   CONFIGURE_COMMAND ""
   BUILD_COMMAND make -j${NPROC}
   DOWNLOAD_DIR ${DGC_DOWNLOAD_DIR}
-  SOURCE_DIR ${DGC_INSTALL_DIR}
-  INSTALL_COMMAND cp ${DGC_SOURCES_DIR}/build/include/dgc.h
-                  ${DGC_INCLUDE_DIR}/dgc/
+  SOURCE_DIR ${DGC_SOURCES_DIR}
+  INSTALL_COMMAND
+    mkdir -p ${DGC_INSTALL_DIR}/lib/ ${DGC_INCLUDE_DIR}/dgc && cp
+    ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES} && cp
+    ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
   BUILD_IN_SOURCE 1
   BUILD_BYPRODUCTS ${DGC_LIBRARIES})
 
