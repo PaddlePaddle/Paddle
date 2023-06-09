@@ -38,7 +38,7 @@ if(WITH_XPU)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op.cu)
-  detection_library(prior_box_op SRCS prior_box_op.cc)
+  # detection_library(prior_box_op SRCS prior_box_op.cc)
 endif()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
