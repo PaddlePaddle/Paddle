@@ -1,13 +1,13 @@
-cc_test_old(type_test SRCS type_test.cc DEPS new_ir gtest)
-cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS new_ir gtest)
-cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS new_ir gtest)
-cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS new_ir gtest)
+cc_test_old(type_test SRCS type_test.cc DEPS ir_shared gtest)
+cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS ir_shared gtest)
+cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS ir_shared gtest)
+cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS ir_shared gtest)
 cc_test_old(
   ir_program_test
   SRCS
   ir_program_test.cc
   DEPS
-  new_ir
+  ir_shared
   pd_dialect
   phi
   gtest)
@@ -17,7 +17,7 @@ cc_test_old(
   SRCS
   ir_phi_kernel_op_test.cc
   DEPS
-  new_ir
+  ir_shared
   pd_dialect
   phi
   gtest)
@@ -27,7 +27,7 @@ cc_test_old(
   SRCS
   ir_infershape_test.cc
   DEPS
-  new_ir
+  ir_shared
   pd_dialect
   phi
   gtest)
@@ -37,7 +37,7 @@ cc_test_old(
   SRCS
   ir_exe_test.cc
   DEPS
-  new_ir
+  ir_shared
   pd_dialect
   phi
   gtest)
@@ -48,7 +48,7 @@ cc_test_old(
   scalar_attribute_test.cc
   DEPS
   pd_dialect
-  new_ir
+  ir_shared
   gtest)
 
 file(
@@ -64,5 +64,5 @@ cc_test_old(
   DEPS
   program_translator
   gtest
-  new_ir
+  ir_shared
   pd_dialect)

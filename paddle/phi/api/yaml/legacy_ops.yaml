@@ -427,18 +427,6 @@
     data_type : dtype
     backend : place
 
-- op : full_int_array
-  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor(out)
-  infer_meta :
-    func : CreateIntArrayInferMeta
-    param : [value, dtype]
-  kernel :
-    func : full_int_array
-    param : [value, dtype]
-    data_type : dtype
-    backend : place
-
 - op : full_like
   args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor(out)
