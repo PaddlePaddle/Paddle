@@ -98,9 +98,27 @@ class StorageManager {
   ///
   /// \param type_id The type id of the AbstractType.
   ///
+  template <typename Storage, typename Enabler = void>
+  struct IsTriviallyDestructible {
+    static bool call() { return false; }
+  };
+
+  template <typename Storage>
+  struct IsTriviallyDestructible<
+      Storage,
+      typename std::enable_if<
+          std::is_trivially_destructible<Storage>::value>::type> {
+    static bool call() { return true; }
+  };
+
   template <typename Storage>
   void RegisterParametricStorage(TypeId type_id) {
-    return RegisterParametricStorageImpl(type_id);
+    if (IsTriviallyDestructible<Storage>::call()) {
+      return RegisterParametricStorageImpl(type_id, nullptr);
+    }
+    return RegisterParametricStorageImpl(type_id, [](StorageBase *storage) {
+      static_cast<Storage *>(storage)->~Storage();
+    });
   }
 
   ///
@@ -129,7 +147,8 @@ class StorageManager {
 
   StorageBase *GetParameterlessStorageImpl(TypeId type_id);
 
-  void RegisterParametricStorageImpl(TypeId type_id);
+  void RegisterParametricStorageImpl(
+      TypeId type_id, std::function<void(StorageBase *)> destructor);
 
   void RegisterParameterlessStorageImpl(
       TypeId type_id, std::function<StorageBase *()> constructor);
