@@ -69,9 +69,8 @@ def initialize_p2p_groups(
     ) = _hcg.get_p2p_groups()
 
     debug_str = (
-        "P2pInfo: send_next_group: %s, send_prev_group: %s, "
-        "recv_next_group: %s, recv_prev_group: %s"
-        % (
+        "P2pInfo: send_next_group: {}, send_prev_group: {}, "
+        "recv_next_group: {}, recv_prev_group: {}".format(
             repr(send_next_group),
             repr(send_prev_group),
             repr(recv_next_group),

@@ -23,8 +23,7 @@ from paddle import fluid
 class VersionTest(unittest.TestCase):
     def test_check_output(self):
         warnings.warn(
-            "paddle.__version__: %s, fluid_version.full_version: %s, fluid_version.major: %s, fluid_version.minor: %s, fluid_version.patch: %s, fluid_version.rc: %s."
-            % (
+            "paddle.__version__: {}, fluid_version.full_version: {}, fluid_version.major: {}, fluid_version.minor: {}, fluid_version.patch: {}, fluid_version.rc: {}.".format(
                 paddle.__version__,
                 fluid_version.full_version,
                 fluid_version.major,

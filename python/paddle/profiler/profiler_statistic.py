@@ -452,10 +452,8 @@ class DistributedSummary:
 
                 # case 2: TracerEventType is Operator but is communication op
                 elif hostnode.type == TracerEventType.Operator and any(
-                    [
-                        name in hostnode.name.lower()
-                        for name in _CommunicationOpName
-                    ]
+                    name in hostnode.name.lower()
+                    for name in _CommunicationOpName
                 ):
                     self.cpu_communication_range.append(
                         (hostnode.start_ns, hostnode.end_ns)
