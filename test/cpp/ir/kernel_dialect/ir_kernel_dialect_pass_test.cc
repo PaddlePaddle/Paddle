@@ -46,6 +46,8 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/fluid/ir/dialect/kernel_dialect.h"
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
@@ -89,4 +91,24 @@ TEST(program_test, program) {
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);
   EXPECT_EQ(res3, true);
+}
+
+TEST(dialect_attr, attr) {
+  // (1) Init environment.
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  auto kernel_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+
+  phi::KernelKey kernel_key(
+      phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
+  auto attr = paddle::dialect::KernelAttribute::get(ctx, kernel_key);
+
+  std::stringstream ss;
+
+  kernel_dialect->PrintAttribute(attr, ss);
+
+  std::cerr << ss.str() << std::endl;
 }
