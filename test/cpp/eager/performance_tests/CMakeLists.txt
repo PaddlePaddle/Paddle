@@ -39,14 +39,15 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     conditional_block_op
     performance_benchmark_utils
     ${eager_deps}
-    ${fluid_deps})
+    ${fluid_deps}
+    fleet_executor)
   cc_test_old(
     test_egr_performance_benchmark_fluid_cuda
     SRCS
     benchmark_fluid_cuda.cc
     DEPS
+    fleet_executor
     conditional_block_op
-    standalone_executor
     performance_benchmark_utils
     dygraph_function
     ${eager_deps}

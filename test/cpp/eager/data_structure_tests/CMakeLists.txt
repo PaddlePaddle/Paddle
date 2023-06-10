@@ -9,6 +9,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     grad_tensor_holder_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
@@ -17,6 +18,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     grad_node_info_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
@@ -25,6 +27,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     accumulation_node_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
@@ -33,6 +36,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     tensor_wrapper_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
