@@ -669,7 +669,7 @@ int GraphGpuWrapper::set_node_iter_from_graph(bool training) {
           shuffle_seed = dice_distribution(rng);
           thrust::random::default_random_engine engine(shuffle_seed);
           uint64_t *cur_node_iter_ptr =
-                  reinterpret_cast<uint64_t *>(d_node_iter_graph_all_type_keys_[i][j]->ptr());
+              reinterpret_cast<uint64_t *>(d_node_iter_graph_all_type_keys_[i][j]->ptr());
           VLOG(2) << "node type: " << i << ", card num: " << j << ", len: " << h_node_iter_graph_all_type_keys_len_[i][j];
 
           thrust::shuffle(exec_policy,
