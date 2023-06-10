@@ -204,7 +204,6 @@ class InstallHeaders(Command):
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
-
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
         print("install_lib:", self.install_platlib)
@@ -1545,7 +1544,6 @@ def get_setup_parameters():
 
 
 def check_build_dependency():
-
     missing_modules = '''Missing build dependency: {dependency}
 Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
 '''.strip()

@@ -186,7 +186,6 @@ class TestImperativeQatLSQ(unittest.TestCase):
             eval_acc_top1_list = []
             with paddle.no_grad():
                 for batch_id, data in enumerate(test_reader()):
-
                     x_data = np.array(
                         [x[0].reshape(1, 28, 28) for x in data]
                     ).astype('float32')

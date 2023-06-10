@@ -448,7 +448,6 @@ class TestGroupNormException(unittest.TestCase):
 
 class TestGroupNormEager(unittest.TestCase):
     def test_dygraph_api(self):
-
         # not supported float64
         # only support float32
         self.dtype = np.float32
@@ -495,7 +494,6 @@ class TestGroupNormEager(unittest.TestCase):
 
 class TestGroupNormEager_fp16(unittest.TestCase):
     def test_dygraph_api(self):
-
         # not supported float16
         # only support float32
         self.dtype = np.float32

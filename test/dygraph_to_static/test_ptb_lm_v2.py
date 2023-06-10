@@ -181,7 +181,6 @@ class PtbModel(paddle.nn.Layer):
 
     @paddle.jit.to_static
     def forward(self, input, label, init_hidden, init_cell):
-
         init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
         )
@@ -218,12 +217,10 @@ class PtbModel(paddle.nn.Layer):
         return loss, last_hidden, last_cell
 
     def debug_emb(self):
-
         np.save("emb_grad", self.x_emb.gradient())
 
 
 def train(place):
-
     num_layers = 1
     batch_size = 4
     hidden_size = 10
@@ -251,7 +248,6 @@ def train(place):
     )
 
     for epoch_id in range(max_epoch):
-
         total_loss = 0.0
         iters = 0.0
         total_sample = 0

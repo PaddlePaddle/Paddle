@@ -123,7 +123,6 @@ class LauncherInterface:
 
 class ElasticManager:
     def __init__(self, args, etcd_client):
-
         self.args = args
         server = args.elastic_server or os.getenv('PADDLE_ELASTIC_SERVER')
         name = args.job_id or os.getenv('PADDLE_ELASTIC_JOB_ID')
@@ -603,7 +602,6 @@ class ElasticManager:
         self.launcher.launch()
 
     def watch(self):
-
         if self.need_sync:
             self.need_sync = False
 

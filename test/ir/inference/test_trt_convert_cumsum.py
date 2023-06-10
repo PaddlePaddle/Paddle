@@ -105,7 +105,6 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape():
-
             if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [2, 3],
