@@ -97,6 +97,8 @@ inline std::string Optional(const std::string& t_name) {
   return result;
 }
 
+std::vector<std::string> ParseAttrStr(const std::string& attr);
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
@@ -110,28 +112,23 @@ class PADDLE_API CustomOpKernelContext {
   void EmplaceBackOutput(Tensor&& output);
   void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
   void EmplaceBackAttr(paddle::any attr);
-  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs) {
-    attrs_ = std::move(attrs);
-  }
+  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs);
   const std::pair<size_t, size_t>& InputRangeAt(size_t idx) const;
   const std::pair<size_t, size_t>& OutputRangeAt(size_t idx) const;
 
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
   Tensor& MutableInputAt(size_t idx);
+  std::vector<Tensor>* AllMutableInput();
   paddle::optional<Tensor> OptionalInputAt(size_t idx);
   paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
                                                               size_t end);
-  const std::vector<paddle::any>& Attrs() const { return attrs_; }
-  const std::vector<std::pair<size_t, size_t>>& InputRange() {
-    return input_range_;
-  }
-  const std::vector<std::pair<size_t, size_t>>& OutputRange() {
-    return output_range_;
-  }
+  const std::vector<paddle::any>& Attrs() const;
+  const std::vector<std::pair<size_t, size_t>>& InputRange();
+  const std::vector<std::pair<size_t, size_t>>& OutputRange();
   Tensor* MutableOutputAt(size_t idx);
-  std::vector<Tensor*> MutableOutputBetweeen(size_t start, size_t end);
-  std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
+  std::vector<Tensor*> MutableOutputBetween(size_t start, size_t end);
+  std::vector<Tensor> OutputsBetween(size_t start, size_t end);
   std::vector<Tensor>* AllMutableOutput();
 
   template <typename AttrType>
@@ -144,13 +141,18 @@ class PADDLE_API CustomOpKernelContext {
   }
 
   // handle inplace map
-  void MapPlainOutputs(
+  void ConstructInplaceIndex(
+      const std::vector<std::string>& inputs,
+      const std::vector<std::string>& outputs,
+      const std::unordered_map<std::string, std::string>& inplace_map);
+  void UpdatePlainOutputs(
       const std::vector<std::string>& inputs,
       const std::vector<std::string>& outputs,
       const std::unordered_map<std::string, std::string>& inplace_map);
   void AssignInplaceOutputs();
   std::vector<Tensor*>* AllMutablePlainOutput();
-  std::unordered_map<size_t, size_t> GetInplaceTensorMap();
+  std::unordered_map<size_t, size_t> GetInplaceIndexMap();
+  std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap();
 
  private:
   // TODO(chenweihang): replaced be SmallVector
@@ -159,7 +161,10 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<paddle::any> attrs_;
   // handle inplace map
   std::vector<Tensor*> plain_outputs_;
-  std::unordered_map<size_t, size_t> inplace_tensor_map_;
+  // {input: output}
+  std::unordered_map<size_t, size_t> inplace_idx_map_;
+  // {output: input}
+  std::unordered_map<size_t, size_t> inplace_reverse_idx_map_;
 
   std::vector<std::pair<size_t, size_t>> input_range_;
   std::vector<std::pair<size_t, size_t>> output_range_;
@@ -380,7 +385,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->OutputRangeAt(out_idx);
-      auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
+      auto arg = ctx->MutableOutputBetween(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                     pargs...,
@@ -800,38 +805,20 @@ class PADDLE_API OpMetaInfo {
 //////////////// Op Meta Info Helper /////////////////
 class OpMetaInfoHelper {
  public:
-  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
-    return info.name_;
-  }
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetInputs(
-      const paddle::OpMetaInfo& info) {
-    return info.inputs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetOutputs(
-      const paddle::OpMetaInfo& info) {
-    return info.outputs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetAttrs(
-      const paddle::OpMetaInfo& info) {
-    return info.attrs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::unordered_map<std::string, std::string>& GetInplaceMap(
-      const paddle::OpMetaInfo& info) {
-    return info.inplace_map_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::unordered_map<std::string, std::string>&
-  GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
-    return info.inplace_reverse_map_;
-  }
-  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
-    return info.kernel_fn_;
-  }
-  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
-    return info.infer_shape_fn_;
-  }
-  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
-    return info.infer_dtype_fn_;
-  }
+  GetInplaceReverseMap(const paddle::OpMetaInfo& info);
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info);
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info);
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
 };
 
 //////////////// Op Meta Info Map /////////////////

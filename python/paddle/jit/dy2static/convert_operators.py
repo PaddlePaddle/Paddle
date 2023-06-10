@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.base import (
     in_declarative_mode,
 )
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, control_flow
+from paddle.fluid.layers import control_flow
 from paddle.fluid.layers.control_flow import while_loop
 
 from .utils import (
@@ -517,7 +517,7 @@ def convert_len(var):
           `shape_op` in var.block.
     """
     if isinstance(var, Variable):
-        assert var.ndim > 0, "len() of a 0D tensor is wrong"
+        assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type in [
             core.VarDesc.VarType.LOD_TENSOR,
             core.VarDesc.VarType.SELECTED_ROWS,
@@ -599,7 +599,7 @@ def convert_shape(x):
     """
 
     def has_negative(list_shape):
-        return any([x < 0 for x in list_shape])
+        return any(x < 0 for x in list_shape)
 
     # When `x` is Variable:
     #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
@@ -749,7 +749,7 @@ def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
     for obj in objects:
         if isinstance(obj, Variable):
-            Print(obj)
+            paddle.static.Print(obj)
     print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 

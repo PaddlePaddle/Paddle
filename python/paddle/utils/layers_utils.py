@@ -21,13 +21,13 @@ from weakref import WeakKeyDictionary
 import paddle
 
 from ..fluid.data_feeder import check_dtype, convert_dtype
-from ..fluid.framework import Block, Variable, _non_static_mode
+from ..fluid.framework import Block, Variable, in_dygraph_mode
 
 
 def convert_to_list(value, n, name, dtype=int):
     """
     Converts a single numerical type or iterable of numerical
-    types into an numerical type list.
+    types into a numerical type list.
 
     Arguments:
       value: The value to validate and convert. Could an int, or any iterable
@@ -300,8 +300,9 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         if type_nest1 != type_nest2:
             raise TypeError(
                 "The two structures don't have the same sequence type. First "
-                "structure has type %s, while second structure has type %s."
-                % (type_nest1, type_nest2)
+                "structure has type {}, while second structure has type {}.".format(
+                    type_nest1, type_nest2
+                )
             )
         if isinstance(nest1, dict):
             keys1 = set(nest1.keys())
@@ -493,7 +494,7 @@ def try_set_static_shape_tensor(tensor, shape):
     # (-1, 2)
 
     """
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         # static graph mode, and shape is not all inferred (contains -1)
         if -1 in tensor.shape:
             if isinstance(shape, Variable):
@@ -516,7 +517,7 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     # (-1, 2)
 
     """
-    if not _non_static_mode():
+    if not in_dygraph_mode():
         try:
             if shape_tensor.op is not None:
                 generate_op = shape_tensor.op

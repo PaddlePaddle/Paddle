@@ -70,10 +70,10 @@ bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
-      PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
-      (PyObject_IsInstance(*obj, (PyObject*)p_tensor_type) &&    // NOLINT
-       (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
+      PyObject_TypeCheck(*obj, g_vartype_pytype) ||        // NOLINT
+      PyObject_TypeCheck(*obj, g_varbase_pytype) ||        // NOLINT
+      (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
+       (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
   }
 
@@ -92,9 +92,9 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
   if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
-      (PyObject_IsInstance(*obj, (PyObject*)p_tensor_type) &&    // NOLINT
-       (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
+      PyObject_TypeCheck(*obj, g_varbase_pytype) ||        // NOLINT
+      (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
+       (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
   }
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
@@ -110,9 +110,9 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
 
 bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
   if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
-      PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
+      PyObject_TypeCheck(*obj, g_vartype_pytype) ||  // NOLINT
+      PyObject_TypeCheck(*obj, g_varbase_pytype) ||  // NOLINT
+      PyObject_TypeCheck(*obj, p_tensor_type)) {     // NOLINT
     return true;
   }
   // consider numpy cfloat & numpy cdouble?
@@ -464,7 +464,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_CheckLongOrToLong(&item)) {
-        value.emplace_back(PyLong_AsLong(item));
+        value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -481,7 +481,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_CheckLongOrToLong(&item)) {
-        value.emplace_back(PyLong_AsLong(item));
+        value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -498,7 +498,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PySequence_GetItem(obj, i);
       if (PyObject_CheckLongOrToLong(&item)) {
-        value.emplace_back(PyLong_AsLong(item));
+        value.emplace_back((int64_t)PyLong_AsLongLong(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument (position %d) must be "
@@ -512,7 +512,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+    return {(int64_t)PyLong_AsLongLong(obj)};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -821,8 +821,7 @@ void CastPyArg2AttrBlock(PyObject* obj,
   ::pybind11::detail::instance* inst =
       (::pybind11::detail::instance*)obj;  // NOLINT
 
-  if (!PyObject_IsInstance((PyObject*)inst,                   // NOLINT
-                           (PyObject*)g_blockdesc_pytype)) {  // NOLINT
+  if (!PyObject_TypeCheck((PyObject*)inst, g_blockdesc_pytype)) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "BlockDesc, but got %s",
@@ -951,8 +950,7 @@ std::shared_ptr<imperative::VarBase> GetVarBaseFromArgs(
     return nullptr;
   }
 
-  if (!PyObject_IsInstance((PyObject*)inst,                 // NOLINT
-                           (PyObject*)g_varbase_pytype)) {  // NOLINT
+  if (!PyObject_TypeCheck((PyObject*)inst, g_varbase_pytype)) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument '%s' (position %d) must be Tensor, but got "
         "%s",
@@ -1002,8 +1000,7 @@ std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
     ::pybind11::detail::instance* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyList_GetItem(list, i);
-      if (!PyObject_IsInstance((PyObject*)item,                 // NOLINT
-                               (PyObject*)g_varbase_pytype)) {  // NOLINT
+      if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {  // NOLINT
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument '%s' (position %d) must be list of Tensors, but "
             "got list of "
@@ -1032,8 +1029,7 @@ std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseListFromArgs(
     ::pybind11::detail::instance* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = (::pybind11::detail::instance*)PyTuple_GetItem(list, i);  // NOLINT
-      if (!PyObject_IsInstance((PyObject*)item,                        // NOLINT
-                               (PyObject*)g_varbase_pytype)) {         // NOLINT
+      if (!PyObject_TypeCheck((PyObject*)item, g_varbase_pytype)) {    // NOLINT
         PADDLE_THROW(platform::errors::InvalidArgument(
             "%s(): argument '%s' (position %d) must be list of Tensors, but "
             "got list of "

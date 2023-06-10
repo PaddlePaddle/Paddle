@@ -154,31 +154,26 @@ void PD_ConfigEnableORTOptimization(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
-                        int32_t l3_workspace_size,
-                        PD_Bool locked,
-                        PD_Bool autotune,
-                        const char* autotune_file,
-                        const char* precision,
-                        PD_Bool adaptive_seqlen,
+                        int32_t l3_size,
+                        PD_Bool l3_locked,
+                        PD_Bool conv_autotune,
+                        const char* conv_autotune_file,
+                        const char* transformer_encoder_precision,
+                        PD_Bool transformer_encoder_adaptive_seqlen,
                         PD_Bool enable_multi_stream) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableXpu(l3_workspace_size,
-                    locked,
-                    autotune,
-                    autotune_file,
-                    precision,
-                    adaptive_seqlen,
+  config->EnableXpu(l3_size,
+                    l3_locked,
+                    conv_autotune,
+                    conv_autotune_file,
+                    transformer_encoder_precision,
+                    transformer_encoder_adaptive_seqlen,
                     enable_multi_stream);
 }
 
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
-}
-
-PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_npu();
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -188,10 +183,6 @@ int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
-}
-int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->npu_device_id();
 }
 
 void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,

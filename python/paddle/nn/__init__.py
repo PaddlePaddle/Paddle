@@ -70,6 +70,7 @@ from .layer.common import Dropout3D  # noqa: F401
 from .layer.common import AlphaDropout  # noqa: F401
 from .layer.common import Unfold  # noqa: F401
 from .layer.common import Fold  # noqa: F401
+from .layer.common import Unflatten  # noqa: F401
 
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
@@ -100,6 +101,7 @@ from .layer.loss import HSigmoidLoss  # noqa: F401
 from .layer.loss import MSELoss  # noqa: F401
 from .layer.loss import L1Loss  # noqa: F401
 from .layer.loss import NLLLoss  # noqa: F401
+from .layer.loss import PoissonNLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
 from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
@@ -113,6 +115,8 @@ from .layer.loss import MultiMarginLoss
 from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import TripletMarginLoss
 from .layer.loss import SoftMarginLoss
+from .layer.loss import GaussianNLLLoss
+
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -153,7 +157,7 @@ from .layer.layers import Layer  # noqa: F401
 
 from .utils.spectral_norm_hook import spectral_norm
 
-# TODO: remove loss, keep it for too many used in unitests
+# TODO: remove loss, keep it for too many used in unittests
 from .layer import loss  # noqa: F401
 
 from . import utils  # noqa: F401
@@ -167,7 +171,7 @@ from paddle.utils import deprecated
 
 @deprecated(
     since="2.0.0",
-    update_to="paddle.nn.funcitional.diag_embed",
+    update_to="paddle.nn.functional.diag_embed",
     level=1,
     reason="diag_embed in paddle.nn will be removed in future",
 )
@@ -268,6 +272,7 @@ __all__ = [  # noqa
     'AdaptiveAvgPool3D',
     'AdaptiveMaxPool3D',
     'NLLLoss',
+    'PoissonNLLLoss',
     'Conv1D',
     'Sequential',
     'Hardswish',
@@ -333,4 +338,6 @@ __all__ = [  # noqa
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
     'SoftMarginLoss',
+    'GaussianNLLLoss',
+    'Unflatten',
 ]

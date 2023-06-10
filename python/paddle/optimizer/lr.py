@@ -1014,10 +1014,8 @@ class MultiStepDecay(LRScheduler):
             )
 
         if not all(
-            [
-                milestones[i] < milestones[i + 1]
-                for i in range(len(milestones) - 1)
-            ]
+            milestones[i] < milestones[i + 1]
+            for i in range(len(milestones) - 1)
         ):
             raise ValueError('The elements of milestones must be incremented')
         if gamma >= 1.0:
@@ -1138,7 +1136,7 @@ class StepDecay(LRScheduler):
 
 class LambdaDecay(LRScheduler):
     """
-    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is function which receives ``epoch`` .
 
     The algorithm can be described as the code below.
 

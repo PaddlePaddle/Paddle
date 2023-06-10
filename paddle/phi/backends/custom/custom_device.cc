@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/profiler/trace_event_collector.h"
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/backends/context_pool.h"

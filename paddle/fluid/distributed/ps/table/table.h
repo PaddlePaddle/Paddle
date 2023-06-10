@@ -32,6 +32,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace distributed {
@@ -77,22 +78,22 @@ class Table {
   virtual int32_t Push(TableContext &context) = 0;  // NOLINT
 
   // only for barrier
-  virtual int32_t Barrier(const uint32_t trainer_id,
-                          const std::string barrier_type) {
+  virtual int32_t Barrier(const uint32_t trainer_id UNUSED,
+                          const std::string barrier_type UNUSED) {
     return 0;
   }
 
   // only for barrier table
   virtual int32_t SetTableMap(
-      std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map) {
+      std::unordered_map<uint32_t, std::shared_ptr<Table>> *table_map UNUSED) {
     return 0;
   }
 
   // only for tensor table
   virtual int32_t SetProgramEnv(
-      framework::Scope *scope,
-      platform::Place place,
-      const std::vector<framework::ProgramDesc> *sub_program) {
+      framework::Scope *scope UNUSED,
+      platform::Place place UNUSED,
+      const std::vector<framework::ProgramDesc> *sub_program UNUSED) {
     return 0;
   }
 
@@ -115,23 +116,23 @@ class Table {
                        const std::string &converter) = 0;
   // for cache
   virtual int32_t SaveCache(
-      const std::string &path,
-      const std::string &param,
+      const std::string &path UNUSED,
+      const std::string &param UNUSED,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>
-          &shuffled_channel) {
+          &shuffled_channel UNUSED) {
     return 0;
   }
 
   virtual int64_t CacheShuffle(
-      const std::string &path,
-      const std::string &param,
-      double cache_threshold,
+      const std::string &path UNUSED,
+      const std::string &param UNUSED,
+      double cache_threshold UNUSED,
       std::function<std::future<int32_t>(
           int msg_type, int to_pserver_id, std::string &msg)>  // NOLINT
-          send_msg_func,
+          send_msg_func UNUSED,
       paddle::framework::Channel<std::pair<uint64_t, std::string>>
-          &shuffled_channel,
-      const std::vector<Table *> &table_ptrs) {
+          &shuffled_channel UNUSED,
+      const std::vector<Table *> &table_ptrs UNUSED) {
     return 0;
   }
 
@@ -149,7 +150,7 @@ class Table {
 
   virtual void *GetShard(size_t shard_idx) = 0;
   virtual std::pair<int64_t, int64_t> PrintTableStat() { return {0, 0}; }
-  virtual int32_t CacheTable(uint16_t pass_id) { return 0; }
+  virtual int32_t CacheTable(uint16_t pass_id UNUSED) { return 0; }
 
   // for patch model
   virtual void Revert() {}

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/pstring.h"
 
@@ -89,8 +91,9 @@ dtype::pstring* StringTensor::data() {
 }
 
 void StringTensor::set_meta(const StringTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
@@ -141,8 +144,9 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
   if (fake_alloc) {
     bytes = 0;
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         valid(),
+        true,
         errors::PreconditionNotMet("The meta data must be valid when call the "
                                    "mutable data function."));
     if (requested_size) {

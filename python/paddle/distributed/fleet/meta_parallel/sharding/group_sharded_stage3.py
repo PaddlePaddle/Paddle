@@ -38,7 +38,7 @@ def _all_gather(tensor, buffer_size, group):
     """
 
     assert group is not None
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         out = paddle.zeros([buffer_size], dtype=tensor.dtype)
         task = group.process_group.all_gather(tensor, out)
         return out, task
@@ -89,7 +89,10 @@ class GroupShardedStage3(nn.Layer):
         super().__init__()
 
         # Default configs
-        assert core.is_compiled_with_cuda(), "Only support CUDA."
+        assert core.is_compiled_with_cuda() or (
+            device in core.get_all_custom_device_type()
+        ), "Only support CUDA / CustomDevice."
+
         self._layer = layer
         self._default_device = device
         self.__sync_buffers = sync_buffers
@@ -243,7 +246,15 @@ class GroupShardedStage3(nn.Layer):
         else:
             for param in list(self._unslice_params):
                 param.clear_gradient(False)
-                tmp_var = param.cuda(DEV_ID)
+                if (
+                    self._default_device
+                    in paddle.device.get_all_custom_device_type()
+                ):
+                    tmp_var = param._copy_to(
+                        paddle.CustomPlace(self._default_device, DEV_ID), True
+                    )
+                else:
+                    tmp_var = param.cuda(DEV_ID)
 
                 if (
                     tmp_var.dtype == Type.fp32.value
@@ -584,7 +595,7 @@ class GroupShardedStage3(nn.Layer):
                 param, "fw_storage"
             ), f"Find {param.name} don't have fw_storage attribute"
 
-            param.fw_storage = _VarBaseWrapper(param)
+            param.fw_storage = _TensorWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
@@ -718,10 +729,14 @@ class GroupShardedStage3(nn.Layer):
     def _param2align(self, param):
         # CUDA alignment 256 bytes
         size = param._numel() * align[param.dtype]
-        remaining = size % alignment[self._default_device]
-        ali = (
-            0 if remaining == 0 else alignment[self._default_device] - remaining
-        )
+        if self._default_device in core.get_all_custom_device_type():
+            device_alignment = core.libpaddle._get_device_min_chunk_size(
+                self._default_device
+            )
+        else:
+            device_alignment = alignment[self._default_device]
+        remaining = size % device_alignment
+        ali = 0 if remaining == 0 else device_alignment - remaining
         align_ = ali // align[param.dtype]
         return align_
 
@@ -1062,17 +1077,17 @@ def _UnsliceParam(param):
     return param
 
 
-def _VarBaseWrapper(param):
-    varbase = param.fw_storage
+def _TensorWrapper(param):
+    var = param.fw_storage
     tmp_param = EagerParamBase(
-        shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name
+        shape=var.shape, dtype=var.dtype, name="slice@" + param.name
     )
-    varbase._share_buffer_to(tmp_param)
+    var._share_buffer_to(tmp_param)
     tmp_param.regularizer = param.regularizer
     tmp_param.optimize_attr['learning_rate'] = param.optimize_attr[
         'learning_rate'
     ]
-    varbase._clear()
+    var._clear()
     return tmp_param
 
 
@@ -1095,7 +1110,10 @@ def _device2cpu(trans_param, convert_dtype=False):
 
 
 def _cpu2device(param):
-    tmp_p = param.fw_storage.cuda(DEV_ID)
+    if DEV in paddle.device.get_all_custom_device_type():
+        tmp_p = param.fw_storage._copy_to(paddle.CustomPlace(DEV, DEV_ID), True)
+    else:
+        tmp_p = param.fw_storage.cuda(DEV_ID)
     if (
         tmp_p.dtype == Type.fp32.value
         and param2dtype[param.name] == Type.fp16.value

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -62,9 +63,9 @@ DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sqrt)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Log1p)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Abs)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Expm1)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Relu6)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
-DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(Relu6, threshold)
 
 template <typename T, typename Context>
 void CastCooGradKernel(const Context& dev_ctx,
@@ -93,6 +94,22 @@ void TransposeCsrGradKernel(const Context& dev_ctx,
                             SparseCsrTensor* dx);
 
 template <typename T, typename Context>
+void SumCooGradKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      const SparseCooTensor& dout,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      SparseCooTensor* dx);
+
+template <typename T, typename Context>
+void SumCsrGradKernel(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      const SparseCsrTensor& dout,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      SparseCsrTensor* dx);
+
+template <typename T, typename Context>
 void ReshapeCooGradKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const SparseCooTensor& dout,
@@ -104,5 +121,22 @@ void ReshapeCsrGradKernel(const Context& dev_ctx,
                           const SparseCsrTensor& dout,
                           SparseCsrTensor* dx);
 
+template <typename T, typename Context>
+void SliceCooGradKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& out_grad,
+                        const phi::IntArray& axes,
+                        const phi::IntArray& starts,
+                        const phi::IntArray& ends,
+                        SparseCooTensor* x_grad);
+
+template <typename T, typename Context>
+void SliceCsrGradKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& out_grad,
+                        const phi::IntArray& axes,
+                        const phi::IntArray& starts,
+                        const phi::IntArray& ends,
+                        SparseCsrTensor* x_grad);
 }  // namespace sparse
 }  // namespace phi

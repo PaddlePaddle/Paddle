@@ -286,7 +286,8 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : softmax_csr{sparse_csr -> sparse_csr}
+    func : softmax_coo{sparse_coo -> sparse_coo},
+           softmax_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : softmax_grad
 
@@ -333,6 +334,17 @@
            subtract_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
     layout : x
   backward : subtract_grad
+
+- op : sum
+  args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : SumInferMeta
+  kernel :
+    func : sum_coo{sparse_coo -> sparse_coo},
+           sum_csr{sparse_csr -> sparse_csr}
+    data_type : x
+  backward : sum_grad
 
 - op : sync_batch_norm_
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
@@ -514,3 +526,15 @@
            mv_csr{sparse_csr, dense -> dense}
     layout : x
   backward: mv_grad
+
+- op: slice
+  args : (Tensor x, IntArray axes, IntArray starts, IntArray ends)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : slice_coo{sparse_coo -> sparse_coo},
+           slice_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : slice_grad

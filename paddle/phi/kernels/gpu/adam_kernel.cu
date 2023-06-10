@@ -18,6 +18,8 @@
 
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -28,7 +30,7 @@
 
 namespace phi {
 
-template <typename T, typename MT>
+template <typename T, typename TG, typename MT>
 __global__ void AdamKernelREG(MT beta1,
                               MT beta2,
                               MT epsilon,
@@ -39,7 +41,7 @@ __global__ void AdamKernelREG(MT beta1,
                               const MT* moment2,
                               MT* moment2_out,
                               const MT* lr_,
-                              const T* grad,
+                              const TG* grad,
                               const T* param,
                               T* param_out,
                               const MT* master_param,
@@ -71,7 +73,7 @@ __global__ void AdamKernelREG(MT beta1,
   }
 }
 
-template <typename T, typename MT>
+template <typename T, typename TG, typename MT>
 __global__ void AdamKernelMEM(MT beta1,
                               MT beta2,
                               MT epsilon,
@@ -82,7 +84,7 @@ __global__ void AdamKernelMEM(MT beta1,
                               const MT* moment2,
                               MT* moment2_out,
                               const MT* lr_,
-                              const T* grad,
+                              const TG* grad,
                               const T* param,
                               T* param_out,
                               const MT* master_param,
@@ -150,6 +152,7 @@ void AdamDenseKernel(const Context& dev_ctx,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
+  const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
@@ -210,23 +213,44 @@ void AdamDenseKernel(const Context& dev_ctx,
 
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
-    AdamKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        *beta1_pow.data<MPDType>(),
-        *beta2_pow.data<MPDType>(),
-        moment1.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment1_out),
-        moment2.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_out),
-        learning_rate.data<MPDType>(),
-        grad.data<T>(),
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        param.numel());
+    if (grad_type == phi::DataType::FLOAT32) {
+      AdamKernelREG<T, float, MPDType>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              beta1_,
+              beta2_,
+              epsilon_,
+              *beta1_pow.data<MPDType>(),
+              *beta2_pow.data<MPDType>(),
+              moment1.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment1_out),
+              moment2.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment2_out),
+              learning_rate.data<MPDType>(),
+              grad.data<float>(),
+              param.data<T>(),
+              dev_ctx.template Alloc<T>(param_out),
+              master_in_data,
+              master_out_data,
+              param.numel());
+    } else {
+      AdamKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          epsilon_,
+          *beta1_pow.data<MPDType>(),
+          *beta2_pow.data<MPDType>(),
+          moment1.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out),
+          moment2.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out),
+          learning_rate.data<MPDType>(),
+          grad.data<T>(),
+          param.data<T>(),
+          dev_ctx.template Alloc<T>(param_out),
+          master_in_data,
+          master_out_data,
+          param.numel());
+    }
     if (!use_global_beta_pow) {
       // Cpu update
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
@@ -235,23 +259,44 @@ void AdamDenseKernel(const Context& dev_ctx,
           beta2_ * beta2_pow.data<MPDType>()[0];
     }
   } else {
-    AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
-        epsilon_,
-        beta1_pow.data<MPDType>(),
-        beta2_pow.data<MPDType>(),
-        moment1.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment1_out),
-        moment2.data<MPDType>(),
-        dev_ctx.template Alloc<MPDType>(moment2_out),
-        learning_rate.data<MPDType>(),
-        grad.data<T>(),
-        param.data<T>(),
-        dev_ctx.template Alloc<T>(param_out),
-        master_in_data,
-        master_out_data,
-        param.numel());
+    if (grad_type == phi::DataType::FLOAT32) {
+      AdamKernelMEM<T, float, MPDType>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              beta1_,
+              beta2_,
+              epsilon_,
+              beta1_pow.data<MPDType>(),
+              beta2_pow.data<MPDType>(),
+              moment1.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment1_out),
+              moment2.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment2_out),
+              learning_rate.data<MPDType>(),
+              grad.data<float>(),
+              param.data<T>(),
+              dev_ctx.template Alloc<T>(param_out),
+              master_in_data,
+              master_out_data,
+              param.numel());
+    } else {
+      AdamKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          epsilon_,
+          beta1_pow.data<MPDType>(),
+          beta2_pow.data<MPDType>(),
+          moment1.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out),
+          moment2.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out),
+          learning_rate.data<MPDType>(),
+          grad.data<T>(),
+          param.data<T>(),
+          dev_ctx.template Alloc<T>(param_out),
+          master_in_data,
+          master_out_data,
+          param.numel());
+    }
     if (!use_global_beta_pow) {
       // Update with gpu
       UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
@@ -306,26 +351,48 @@ void MergedAdamKernel(
     int threads = 512;
     int blocks = (param[idx]->numel() + threads - 1) / threads;
 
+    const auto grad_type = grad[idx]->dtype();
     if (beta1_pow[idx]->place() == CPUPlace() &&
         beta2_pow[idx]->place() == CPUPlace()) {
       // Compute with betapow in REG
-      AdamKernelREG<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          beta1_,
-          beta2_,
-          epsilon_,
-          *beta1_pow[idx]->data<MPDType>(),
-          *beta2_pow[idx]->data<MPDType>(),
-          moment1[idx]->data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
-          moment2[idx]->data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
-          learning_rate[idx]->data<MPDType>(),
-          grad[idx]->data<T>(),
-          param[idx]->data<T>(),
-          dev_ctx.template Alloc<T>(param_out[idx]),
-          master_in_data,
-          master_out_data,
-          param[idx]->numel());
+      if (grad_type == phi::DataType::FLOAT32) {
+        AdamKernelREG<T, float, MPDType>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(
+                beta1_,
+                beta2_,
+                epsilon_,
+                *beta1_pow[idx]->data<MPDType>(),
+                *beta2_pow[idx]->data<MPDType>(),
+                moment1[idx]->data<MPDType>(),
+                dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+                moment2[idx]->data<MPDType>(),
+                dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+                learning_rate[idx]->data<MPDType>(),
+                grad[idx]->data<float>(),
+                param[idx]->data<T>(),
+                dev_ctx.template Alloc<T>(param_out[idx]),
+                master_in_data,
+                master_out_data,
+                param[idx]->numel());
+      } else {
+        AdamKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            epsilon_,
+            *beta1_pow[idx]->data<MPDType>(),
+            *beta2_pow[idx]->data<MPDType>(),
+            moment1[idx]->data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+            moment2[idx]->data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+            learning_rate[idx]->data<MPDType>(),
+            grad[idx]->data<T>(),
+            param[idx]->data<T>(),
+            dev_ctx.template Alloc<T>(param_out[idx]),
+            master_in_data,
+            master_out_data,
+            param[idx]->numel());
+      }
       if (!use_global_beta_pow) {
         // Cpu update
         dev_ctx.template HostAlloc<MPDType>(beta1_pow_out[idx])[0] =
@@ -334,23 +401,44 @@ void MergedAdamKernel(
             beta2_ * beta2_pow[idx]->data<MPDType>()[0];
       }
     } else {
-      AdamKernelMEM<T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          beta1_,
-          beta2_,
-          epsilon_,
-          beta1_pow[idx]->data<MPDType>(),
-          beta2_pow[idx]->data<MPDType>(),
-          moment1[idx]->data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
-          moment2[idx]->data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
-          learning_rate[idx]->data<MPDType>(),
-          grad[idx]->data<T>(),
-          param[idx]->data<T>(),
-          dev_ctx.template Alloc<T>(param_out[idx]),
-          master_in_data,
-          master_out_data,
-          param[idx]->numel());
+      if (grad_type == phi::DataType::FLOAT32) {
+        AdamKernelMEM<T, float, MPDType>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(
+                beta1_,
+                beta2_,
+                epsilon_,
+                beta1_pow[idx]->data<MPDType>(),
+                beta2_pow[idx]->data<MPDType>(),
+                moment1[idx]->data<MPDType>(),
+                dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+                moment2[idx]->data<MPDType>(),
+                dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+                learning_rate[idx]->data<MPDType>(),
+                grad[idx]->data<float>(),
+                param[idx]->data<T>(),
+                dev_ctx.template Alloc<T>(param_out[idx]),
+                master_in_data,
+                master_out_data,
+                param[idx]->numel());
+      } else {
+        AdamKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1_,
+            beta2_,
+            epsilon_,
+            beta1_pow[idx]->data<MPDType>(),
+            beta2_pow[idx]->data<MPDType>(),
+            moment1[idx]->data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment1_out[idx]),
+            moment2[idx]->data<MPDType>(),
+            dev_ctx.template Alloc<MPDType>(moment2_out[idx]),
+            learning_rate[idx]->data<MPDType>(),
+            grad[idx]->data<T>(),
+            param[idx]->data<T>(),
+            dev_ctx.template Alloc<T>(param_out[idx]),
+            master_in_data,
+            master_out_data,
+            param[idx]->numel());
+      }
       if (!use_global_beta_pow) {
         // Update with gpu
         UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(

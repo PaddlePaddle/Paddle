@@ -52,7 +52,7 @@ static ncclRedOp_t str_to_nccl_red_type(std::string reduction) {
   return it->second;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class NCCLAllReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -87,7 +87,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class NCCLReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -128,7 +128,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class NCCLBcastKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -172,6 +172,9 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(ncclAllReduce, ops::NCCLAllReduceKernel<float>);
-REGISTER_OP_CUDA_KERNEL(ncclBcast, ops::NCCLBcastKernel<float>);
-REGISTER_OP_CUDA_KERNEL(ncclReduce, ops::NCCLReduceKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    ncclAllReduce, GPU, ALL_LAYOUT, ops::NCCLAllReduceKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    ncclBcast, GPU, ALL_LAYOUT, ops::NCCLBcastKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    ncclReduce, GPU, ALL_LAYOUT, ops::NCCLReduceKernel, float) {}

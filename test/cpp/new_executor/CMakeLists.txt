@@ -25,20 +25,18 @@ if(WITH_GPU
       elementwise_mul_op
       softmax_with_cross_entropy_op
       reduce_mean_op
-      reduce_sum_op
       activation_op
       sum_op
-      elementwise_max_op
       elementwise_div_op
       generated_op
+      generated_static_op
       squared_l2_norm_op
       memcpy_h2d_op
       memcpy_d2h_op
       fetch_v2_op)
 
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
-  set(OP_DEPS generator softmax selected_rows_functor jit_kernel_helper
-              concat_and_split cross_entropy)
+  set(OP_DEPS phi concat_and_split cross_entropy)
   cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
 
   # add_dependencies(standalone_executor_test download_program)

@@ -139,13 +139,17 @@ class SelectedRows : public TensorBase,
   /// \return The data type of the tensor.
   DataType dtype() const noexcept override { return impl_->dtype(); }
 
-  void set_type(const DataType dtype) { impl_->set_type(dtype); }
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_type(const DataType dtype);
+#endif
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
   DataLayout layout() const noexcept override { return impl_->layout(); }
 
-  void set_layout(const DataLayout layout) { impl_->set_layout(layout); }
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_layout(const DataLayout layout);
+#endif
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.

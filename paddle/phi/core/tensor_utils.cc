@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -62,7 +64,6 @@ void Copy(const Context& dev_ctx,
     dst_ptr = dev_ctx.Alloc(
         dst, src.dtype(), 0, dst_place.GetType() == AllocationType::GPUPINNED);
 #endif
-
 #ifdef PADDLE_WITH_XPU
   } else if (dst_place.GetType() == AllocationType::XPU) {
     dst_ptr = dev_ctx.Alloc(dst, src.dtype());
@@ -317,11 +318,11 @@ void Copy(const Context& dev_ctx,
 }
 
 template <typename Context>
-void Copy(const Context& dev_ctx,
-          const TensorArray& src,
-          Place dst_place,
-          bool blocking,
-          TensorArray* dst) {
+void Copy(const Context& dev_ctx UNUSED,
+          const TensorArray& src UNUSED,
+          Place dst_place UNUSED,
+          bool blocking UNUSED,
+          TensorArray* dst UNUSED) {
   // NOTE(Ruibiao): implements Copy() for TensorArray when needed.
   PADDLE_THROW(errors::Unimplemented("Copy for TensorArray is unimplemented."));
 }

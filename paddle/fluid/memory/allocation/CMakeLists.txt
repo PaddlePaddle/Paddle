@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(ALLOCATOR_DEPS place stats profiler phi_backends device_context)
+set(ALLOCATOR_DEPS place stats profiler phi device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
@@ -32,7 +32,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_GPU)
-  list(APPEND ALLOCATOR_DEPS phi_backends)
+  list(APPEND ALLOCATOR_DEPS phi)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
@@ -56,6 +56,7 @@ endif()
 
 if(WITH_XPU)
   list(APPEND ALLOCATOR_DEPS xpu_info)
+  list(APPEND ALLOCATOR_SRCS xpu_allocator.cc stream_safe_xpu_allocator.cc)
 endif()
 
 if(WITH_IPU)

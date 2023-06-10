@@ -158,6 +158,22 @@ SparseCsrTensor TransposeCsr(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SumCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SumCsrKernel(const Context& dev_ctx,
+                  const SparseCsrTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCsrTensor* out);
+
+template <typename T, typename Context>
 SparseCooTensor ReluCoo(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor coo;
   ReluCooKernel<T, Context>(dev_ctx, x, &coo);
@@ -208,6 +224,22 @@ SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
   ReshapeCsrKernel<T, Context>(dev_ctx, x, shape, &csr);
   return csr;
 }
+
+template <typename T, typename Context>
+void SliceCooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes,
+                    const phi::IntArray& starts,
+                    const phi::IntArray& ends,
+                    SparseCsrTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

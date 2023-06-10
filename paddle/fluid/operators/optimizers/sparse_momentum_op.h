@@ -286,7 +286,7 @@ class IndexMomentumFunctor {
     MT velocity_out = velocity * mu_ + grad;
     MT velocity_tmp = update_method_(grad, velocity_out, mu_);
     MT param_out = param - velocity_tmp * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -295,7 +295,7 @@ class IndexMomentumFunctor {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SparseMomentumOpKernel : public framework::OpKernel<T> {
   using MPDType = MultiPrecisionType<T>;
 

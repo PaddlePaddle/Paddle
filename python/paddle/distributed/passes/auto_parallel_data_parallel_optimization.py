@@ -15,16 +15,16 @@
 from collections import OrderedDict
 
 import paddle
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,
 )
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
     is_data_parallel_scale_op,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     find_higher_order_backward_op,
     get_var_numel,
     insert_dependencies_for_vars,
@@ -34,7 +34,6 @@ from paddle.distributed.auto_parallel.utils import (
     ring_id_to_process_group,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.executor import _is_enable_standalone_executor
 from paddle.static import default_main_program
 from paddle.utils import unique_name
 
@@ -97,8 +96,7 @@ class DataParallelOptimizationPass(PassBase):
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
         self.coalesce_prefix = 'coalesce_grad'
-        if _is_enable_standalone_executor():
-            self.gradient_sync_stream = "gradient_sync_stream"
+        self.gradient_sync_stream = "gradient_sync_stream"
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
@@ -316,8 +314,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def _calc_wait_comms(self):
 
-        if _is_enable_standalone_executor():
-            return
+        return
 
         block = default_main_program().global_block()
 
@@ -602,7 +599,7 @@ class DataParallelOptimizationPass(PassBase):
         # multiple stream executor(standalone exe). This function just for standalone exe. Refactor here
         # in future when only one executor stay.
 
-        if not _is_enable_standalone_executor() or len(grad_groups) == 0:
+        if len(grad_groups) == 0:
             return
         block = default_main_program().global_block()
 

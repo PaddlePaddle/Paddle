@@ -98,8 +98,8 @@ class BCEWithLogitsLoss(Layer):
             bce_logit_loss = paddle.nn.BCEWithLogitsLoss()
             output = bce_logit_loss(logit, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.45618814])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.45618814)
 
     """
 
@@ -319,8 +319,8 @@ class CrossEntropyLoss(Layer):
                                         input,
                                         label)
             print(dy_ret)
-            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [5.34043430])
+            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        5.34043430)
 
         .. code-block:: python
 
@@ -345,8 +345,8 @@ class CrossEntropyLoss(Layer):
                                                                     weight=weight,
                                                                     reduction=reduction)
             print(paddle_loss_mean)
-            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-            #        [1.11043464])
+            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        1.11043464)
 
     """
 
@@ -564,7 +564,7 @@ class MSELoss(Layer):
             label = paddle.to_tensor([1.7])
             output = mse_loss(input, label)
             print(output)
-            # [0.04000002]
+            # 0.04000002
 
     """
 
@@ -637,7 +637,7 @@ class L1Loss(Layer):
         - label (Tensor): label. The shapes is ``[N, *]``, same shape as ``input`` . It's data type should be float32, float64, int32, int64.
         - output (Tensor): The L1 Loss of ``input`` and ``label``.
           If `reduction` is ``'none'``, the shape of output loss is ``[N, *]``, the same as ``input`` .
-          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+          If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [].
 
     Examples:
         .. code-block:: python
@@ -650,14 +650,14 @@ class L1Loss(Layer):
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.34999999])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.34999999)
 
             l1_loss = paddle.nn.L1Loss(reduction='sum')
             output = l1_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.39999998])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.39999998)
 
             l1_loss = paddle.nn.L1Loss(reduction='none')
             output = l1_loss(input, label)
@@ -730,8 +730,8 @@ class BCELoss(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means number of additional dimensions. The input ``input`` should always be the output of sigmod. Available dtype is float32, float64.
-        - label (Tensor): 2-D tensor with the same shape as ``input``. The target labels which values should be numbers between 0 and 1. Available dtype is float32, float64.
+        - input (Tensor): 2-D tensor with shape: ``[N, *]``, N is batch_size, `*` means number of additional dimensions. The input ``input`` should always be the output of sigmod. Available dtype is float16, float32, float64.
+        - label (Tensor): 2-D tensor with the same shape as ``input``. The target labels which values should be numbers between 0 and 1. Available dtype is float16, float32, float64.
         - output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is scalar.
 
     Returns:
@@ -747,8 +747,8 @@ class BCELoss(Layer):
             bce_loss = paddle.nn.BCELoss()
             output = bce_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.65537101])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.65537101)
 
     """
 
@@ -835,7 +835,7 @@ class NLLLoss(Layer):
             The data type is int64.
         - output (Tensor): the `negative log likelihood loss` between input `x` and `label`.
             If `reduction` is `'none'`, the shape is `[N, *]`.
-            If `reduction` is `'sum'` or `'mean'`, the shape is `[1]`.
+            If `reduction` is `'sum'` or `'mean'`, the shape is `[]`.
 
     Examples:
         .. code-block:: python
@@ -853,7 +853,7 @@ class NLLLoss(Layer):
                 log_out = log_softmax(input)
                 label = paddle.to_tensor([0, 2, 1, 1, 0], "int64")
                 result = nll_loss(log_out, label)
-                print(result) # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True, [1.07202101])
+                print(result) # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True, 1.07202101)
 
     """
 
@@ -882,6 +882,99 @@ class NLLLoss(Layer):
         )
 
 
+class PoissonNLLLoss(Layer):
+    r"""Generate a callable object of 'PoissonNLLLoss' to calculate the
+    Poisson negative log likelihood loss between Input(input) and
+    Input(label). Notes that Input(input) is the expectation of underlying
+    Poisson distribution and Input(label) is the random samples from the
+    Poisson distribution
+
+
+    Poisson negative log likelihood loss is calculated as follows:
+
+    .. math::
+        \text{loss}(\text{input}, \text{label}) = \text{input} - \text{label} * \log(\text{label}) + \log(\text{label!})
+
+    The last term can be approximated with Stirling formula. This approximation term is used when :attr:`full` is ``True``.
+    The approximation is added when label values are more than 1 and omitted when the labels are less than or equal to 1.
+
+    Parameters:
+         log_input (bool, optional):
+            Whether to the treat input tensor as log input.
+            If ``True`` the loss is computed as, :math:`\exp(\text{input}) - \text{label} * \text{input}` .
+            If ``False`` then loss is :math:`\text{input} - \text{label} * \log(\text{input}+\text{epsilon})` .
+            Default: ``True``.
+         full (bool, optional):
+            Whether to compute full loss.
+            If ``True``, the Stirling approximation term is added.
+            If ``False``, the Stirling approximation is dropped.
+            Default: ``False``.
+         epsilon (float, optional):
+            A small value to avoid evaluation of :math:`\log(0)` when ``log_input`` = ``False``. ``epsilon > 0``.
+            Default: 1e-8.
+         reduction (str, optional):
+            Indicate how to reduce the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
+         name (str, optional):
+            Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input (Tensor): The shape of input tensor should be `(N, *)` or `(*)` where `(*)` denotes any number of extra dimensions.
+        - label (Tensor): The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
+        - output (Tensor): scalar if :attr:`reduction` is ``'mean'`` (default) or ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same shape as the input
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            poisson_nll_loss = paddle.nn.loss.PoissonNLLLoss()
+            input = paddle.randn([5, 2], dtype=paddle.float32)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
+            loss = poisson_nll_loss(input, label)
+
+    """
+
+    def __init__(
+        self,
+        log_input=True,
+        full=False,
+        epsilon=1e-8,
+        reduction="mean",
+        name=None,
+    ):
+        if epsilon <= 0:
+            raise ValueError(
+                "The value of `epsilon` in PoissonNLLLoss should be positve, but received %f, which is not allowed"
+                % epsilon
+            )
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in PoissonNLLLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction
+            )
+        super().__init__()
+        self._log_input = log_input
+        self._full = full
+        self._epsilon = epsilon
+        self._reduction = reduction
+        self._name = name
+
+    def forward(self, input, label):
+        return F.poisson_nll_loss(
+            input,
+            label,
+            log_input=self._log_input,
+            full=self._full,
+            epsilon=self._epsilon,
+            reduction=self._reduction,
+            name=self._name,
+        )
+
+
 class KLDivLoss(Layer):
     r"""
 
@@ -898,9 +991,9 @@ class KLDivLoss(Layer):
 
     If `reduction` is ``'none'``, the output loss is the same shape as the input, and the loss at each point is calculated separately. There is no reduction to the result.
 
-    If `reduction` is ``'mean'``, the output loss is the shape of [1], and the output is the average of all losses.
+    If `reduction` is ``'mean'``, the output loss is the shape of [], and the output is the average of all losses.
 
-    If `reduction` is ``'sum'``, the output loss is the shape of [1], and the output is the sum of all losses.
+    If `reduction` is ``'sum'``, the output loss is the shape of [], and the output is the sum of all losses.
 
     If `reduction` is ``'batchmean'``, the output loss is the shape of [N], N is the batch size, and the output is the sum of all losses divided by the batch size.
 
@@ -919,7 +1012,7 @@ class KLDivLoss(Layer):
 
         label (Tensor): ``(N, *)``, same shape as input.
 
-        output (Tensor): tensor with shape: [1] by default.
+        output (Tensor): tensor with shape: [] by default.
 
     Examples:
         .. code-block:: python
@@ -931,20 +1024,20 @@ class KLDivLoss(Layer):
             x = paddle.uniform(shape, min=-10, max=10).astype('float32')
             target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
-            # 'batchmean' reduction, loss shape will be [1]
+            # 'batchmean' reduction, loss shape will be []
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
             pred_loss = kldiv_criterion(x, target)
-            # shape=[1]
+            # shape=[]
 
-            # 'mean' reduction, loss shape will be [1]
+            # 'mean' reduction, loss shape will be []
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
             pred_loss = kldiv_criterion(x, target)
-            # shape=[1]
+            # shape=[]
 
-            # 'sum' reduction, loss shape will be [1]
+            # 'sum' reduction, loss shape will be []
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
             pred_loss = kldiv_criterion(x, target)
-            # shape=[1]
+            # shape=[]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
@@ -997,7 +1090,7 @@ class MarginRankingLoss(Layer):
 
         label: N-D Tensor, label have the same shape and dtype as `input`.
 
-        output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[1]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
+        output: If :attr:`reduction` is ``'mean'`` or ``'sum'`` , the out shape is :math:`[]`, otherwise the shape is the same as `input` .The same dtype as input tensor.
 
     Returns:
         A callable object of MarginRankingLoss.
@@ -1015,7 +1108,7 @@ class MarginRankingLoss(Layer):
             loss = margin_rank_loss(input, other, label)
 
             print(loss)
-            # [0.75]
+            # 0.75
     """
 
     def __init__(self, margin=0.0, reduction='mean', name=None):
@@ -1056,7 +1149,7 @@ class CTCLoss(Layer):
         - norm_by_times (bool, optional): Whether to normalize the gradients by the number of time-step, which is also the sequence's length. There is no need to normalize the gradients if reduction mode is 'mean'. Default: False.
 
     Returns:
-        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
+        Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``log_probs``.
 
     Examples:
 
@@ -1104,8 +1197,8 @@ class CTCLoss(Layer):
                 input_lengths,
                 label_lengths)
             print(loss)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.13760614])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.13760614)
     """
 
     def __init__(self, blank=0, reduction='mean'):
@@ -1149,7 +1242,7 @@ class RNNTLoss(Layer):
         label_lengths: Tensor of (batch) containing label length of each example
 
     Returns:
-     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``logprobs``.
+     Tensor, The RNN-T loss between ``logprobs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is []. Data type is the same as ``logprobs``.
 
     Examples:
         .. code-block:: python
@@ -1179,8 +1272,8 @@ class RNNTLoss(Layer):
 
             costs = fn(acts, labels, lengths, label_lengths)
             print(costs)
-            # Tensor(shape=[1], dtype=float64, place=Place(gpu:0), stop_gradient=False,
-            #        [4.49566677])
+            # Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            #        4.49566677)
     """
 
     def __init__(
@@ -1259,7 +1352,7 @@ class SmoothL1Loss(Layer):
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
-            # [0.049606]
+            # 0.049606
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
@@ -1335,7 +1428,7 @@ class MultiLabelSoftMarginLoss(Layer):
                 multi_label_soft_margin_loss = nn.MultiLabelSoftMarginLoss(reduction='mean')
                 loss = multi_label_soft_margin_loss(input, label)
                 print(loss)
-                # Tensor([1.54908717])
+                # Tensor(1.54908717)
         """
 
     def __init__(self, weight=None, reduction="mean", name=None):
@@ -1436,7 +1529,7 @@ class HingeEmbeddingLoss(Layer):
             hinge_embedding_loss = nn.HingeEmbeddingLoss(margin=1.0, reduction='mean')
             loss = hinge_embedding_loss(input, label)
             print(loss)
-            # Tensor([0.22222222])
+            # Tensor(0.22222222)
     """
 
     def __init__(self, margin=1.0, reduction="mean", name=None):
@@ -1497,7 +1590,7 @@ class CosineEmbeddingLoss(Layer):
                          Available dtypes are int32, int64, float32, float64.
         output (Tensor): Tensor, the cosine embedding Loss of Tensor ``input1`` ``input2`` and ``label``.
                          If `reduction` is ``'none'``, the shape of output loss is [N], the same as ``input`` .
-                         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1].
+                         If `reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [].
 
     Examples:
         .. code-block:: python
@@ -1510,11 +1603,11 @@ class CosineEmbeddingLoss(Layer):
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='mean')
             output = cosine_embedding_loss(input1, input2, label)
-            print(output) # [0.21155193]
+            print(output) # 0.21155193
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='sum')
             output = cosine_embedding_loss(input1, input2, label)
-            print(output) # [0.42310387]
+            print(output) # 0.42310387
 
             cosine_embedding_loss = paddle.nn.CosineEmbeddingLoss(margin=0.5, reduction='none')
             output = cosine_embedding_loss(input1, input2, label)
@@ -1624,7 +1717,7 @@ class TripletMarginWithDistanceLoss(Layer):
             triplet_margin_with_distance_loss = TripletMarginWithDistanceLoss(reduction='mean')
             loss = triplet_margin_with_distance_loss(input, positive, negative,)
             print(loss)
-            # Tensor([0.19165580])
+            # Tensor(0.19165580)
 
     """
 
@@ -1732,7 +1825,7 @@ class TripletMarginLoss(Layer):
             triplet_margin_loss = paddle.nn.TripletMarginLoss(margin=1.0, swap=True, reduction='mean', )
             loss = triplet_margin_loss(input, positive, negative,)
             print(loss)
-            # Tensor([0.19165580])
+            # Tensor(0.19165580)
 
     """
 
@@ -1902,7 +1995,7 @@ class SoftMarginLoss(Layer):
           ``input``. The target labels which values should be numbers -1 or 1.
           Available dtype is int32, int64, float32, float64.
         - Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is
-          same as ``input`` , else the shape of output is [1].
+          same as ``input`` , else the shape of output is [].
 
     Returns:
         A callable object of SoftMarginLoss.
@@ -1917,8 +2010,8 @@ class SoftMarginLoss(Layer):
             soft_margin_loss = paddle.nn.SoftMarginLoss()
             output = soft_margin_loss(input, label)
             print(output)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.64022040])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.64022040)
 
             input_np = paddle.uniform(shape=(5, 5), min=0.1, max=0.8, dtype="float64")
             label_np = paddle.randint(high=2, shape=(5, 5), dtype="int64")
@@ -1951,5 +2044,99 @@ class SoftMarginLoss(Layer):
     def forward(self, input, label):
         out = paddle.nn.functional.soft_margin_loss(
             input, label, self.reduction, self.name
+        )
+        return out
+
+
+class GaussianNLLLoss(Layer):
+    r"""Create a callable object of 'GaussianNLLLoss' to calculate Gaussian negative log likelihood loss.
+
+    This class create a callable object of Gaussian negative log likelihood loss among ``input``, ``variance`` and
+    ``label``. Note that the ``label`` is treated as samples from Gaussian distributions.
+    This class is used to train a neural network predicts
+    the ``input`` and ``variance`` of a gaussian distribution that ``label`` are supposed to
+    be coming from. This means ``input`` and ``variance`` should be functions(the neural network) of some inputs.
+
+    For a ``label`` having Gaussian distribution with ``input`` and ``variance`` predicted by neural network
+    the loss is calculated as follows:
+
+    .. math::
+        \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
+        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{label}\right)^2}
+        {\text{max}\left(\text{var}, \ \text{eps}\right)}\right) + \text{const.}
+
+    where :attr:`epsilon` is used for stability. By default, the constant term of
+    the loss function is omitted unless :attr:`full` is ``True``. If ``variance`` is not the same
+    size as ``input`` (due to a homoscedastic assumption), it must either have a final dimension
+    of 1 or have one fewer dimension (with all other sizes being the same) for correct broadcasting.
+
+    Args:
+        full (bool, optional): include the constant term in the loss
+            calculation. Default: ``False``, means omit the constant term.
+        epsilon (float, optional): value used to clamp ``variance`` (see note below), for
+            stability. Default: 1e-6.
+        reduction (str, optional): specifies the reduction to apply to the
+            output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
+            will be applied, ``'mean'``: the output is the average of all batch
+            member losses, ``'sum'``: the output is the sum of all batch member
+            losses. Default: ``'mean'``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - Input(Tensor): :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
+          dimensions. Available dtype is float32, float64.
+        - Label(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
+          but with one dimension equal to 1 (to allow for broadcasting). Available dtype is float32, float64.
+        - Variance(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
+          with one dimension equal to 1, or same shape as the input but with one fewer
+          dimension (to allow for broadcasting). Available dtype is float32, float64.
+        - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
+          ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same
+          shape as the input
+
+    Returns:
+        A callable object of GaussianNLLLoss.
+
+    Examples::
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn as nn
+
+            input = paddle.randn([5, 2], dtype=paddle.float32)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
+            variance = paddle.ones([5, 2], dtype=paddle.float32)
+
+            gs_nll_loss = nn.GaussianNLLLoss(full=False, epsilon=1e-6, reduction='none')
+            loss = gs_nll_loss(input, label, variance)
+            print(loss)
+
+    Note:
+        The clamping of ``variance`` is ignored with respect to autograd, and so the
+        gradients are unaffected by it.
+    """
+
+    def __init__(self, full=False, epsilon=1e-6, reduction='mean', name=None):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in GaussianNLLLoss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction
+            )
+
+        super().__init__()
+        self.full = full
+        self.epsilon = epsilon
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label, variance):
+        out = F.gaussian_nll_loss(
+            input,
+            label,
+            variance,
+            self.full,
+            self.epsilon,
+            self.reduction,
+            self.name,
         )
         return out

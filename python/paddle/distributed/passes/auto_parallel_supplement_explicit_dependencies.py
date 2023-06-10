@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     is_amp_flag_sync_op,
     is_data_parallel_reduce_op,
     is_global_norm_sync_op,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     OpRole,
     insert_dependencies_for_vars,
 )
-from paddle.fluid.executor import _is_enable_standalone_executor
 
 from .auto_parallel_sharding import ShardingPass, _supported_optimizer_type
 from .pass_base import PassBase, register_pass
@@ -70,9 +69,7 @@ class AutoParalSupplementDepPass(PassBase):
     def _apply_single_impl(self, main_program, startup_program, context):
 
         # TODO general this pass for all case.
-        if not _is_enable_standalone_executor or not _sharding_pass_applied(
-            context
-        ):
+        if not _sharding_pass_applied(context):
             return
 
         self._dist_context = self.get_attr("dist_context", None)

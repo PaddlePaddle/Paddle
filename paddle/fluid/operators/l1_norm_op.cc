@@ -27,7 +27,7 @@ class L1NormOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "L1NormOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "L1NormOp");
 
-    ctx->SetOutputDim("Out", {1});
+    ctx->SetOutputDim("Out", phi::make_ddim({}));
   }
 };
 
@@ -91,10 +91,13 @@ REGISTER_OPERATOR(l1_norm,
                   ops::L1NormGradMaker<paddle::framework::OpDesc>,
                   ops::L1NormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);
-REGISTER_OP_CPU_KERNEL(l1_norm, ops::L1NormKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(l1_norm_grad,
-                       ops::L1NormGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(l1_norm, ops::L1NormKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(l1_norm_grad,
-                        ops::L1NormGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(l1_norm, CPU, ALL_LAYOUT, ops::L1NormKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    l1_norm_grad, CPU, ALL_LAYOUT, ops::L1NormGradKernel, float) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(l1_norm, GPU, ALL_LAYOUT, ops::L1NormKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    l1_norm_grad, GPU, ALL_LAYOUT, ops::L1NormGradKernel, float) {}
+#endif

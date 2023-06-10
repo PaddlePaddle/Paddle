@@ -129,9 +129,12 @@ REGISTER_OP_WITHOUT_GRADIENT(partial_recv,
                              ops::PartialRecvOp,
                              ops::PartialRecvOpMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_recv,
-                       ops::PartialRecvOpCPUKernel<float>,
-                       ops::PartialRecvOpCPUKernel<double>,
-                       ops::PartialRecvOpCPUKernel<int>,
-                       ops::PartialRecvOpCPUKernel<int64_t>,
-                       ops::PartialRecvOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_recv,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialRecvOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

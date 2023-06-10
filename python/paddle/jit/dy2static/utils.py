@@ -32,9 +32,10 @@ import numpy as np
 
 import paddle
 from paddle import fluid  # noqa: F401
-from paddle.fluid import core, unique_name
+from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
@@ -85,6 +86,16 @@ WHILE_CONDITION_PREFIX = 'while_condition'
 WHILE_BODY_PREFIX = 'while_body'
 FOR_CONDITION_PREFIX = 'for_loop_condition'
 FOR_BODY_PREFIX = 'for_loop_body'
+
+GRAD_PREFIX = 'grad/'
+GRAD_SUFFIX = '@GRAD'
+
+NO_SHAPE_VAR_TYPE = [
+    core.VarDesc.VarType.READER,
+    core.VarDesc.VarType.STEP_SCOPES,
+    core.VarDesc.VarType.FEED_MINIBATCH,
+    core.VarDesc.VarType.FETCH_LIST,
+]
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -632,6 +643,7 @@ def func_to_source_code(function, dedent=True):
                 type(function).__name__
             )
         )
+
     source_code_list, _ = inspect.getsourcelines(function)
     # Replace comments with blank lines so that error messages are not misplaced
     source_code_list = [
@@ -639,6 +651,7 @@ def func_to_source_code(function, dedent=True):
         for line in source_code_list
     ]
     source_code = ''.join(source_code_list)
+
     if dedent:
         source_code = textwrap.dedent(source_code)
 
@@ -1446,52 +1459,10 @@ def create_name_str(name_ids):
     return "(%s, )" % ','.join(names_str)
 
 
-def _param_grad_names(program_desc, params):
-    """
-    Parse PARAM@GARD name from original train and infer program.
-    """
-    names = []
-    # NOTE: `names` and `params` must be in the same order so that
-    # the param grad name can be set correctly in the run_program.
-    for param in params:
-        candidate = []
-        suffix = param.name + '@GRAD'
-        for var in program_desc.block(0).all_vars():
-            var_name = var.name()
-            if var_name.endswith(suffix):
-                prefix_count = var_name.count('grad/')
-                if 'grad/' * prefix_count + suffix == var_name:
-                    candidate.append(var_name)
+def prim_or_cinn_is_enabled(build_strategy, backend):
+    if backend == 'CINN':
+        return True
 
-        if candidate:
-            names.append(max(candidate, key=lambda name: name.count('grad/')))
-        else:
-            names.append(suffix)
-    return names
-
-
-def _out_grad_names(program_desc, fwd_end_op_index, out_size):
-    """
-    Parse Out@GARD name from original train and infer program.
-    """
-    names = []
-    for i in range(
-        fwd_end_op_index,
-        min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
-    ):
-        op = program_desc.block(0).op(i)
-        # If prim forward op, fill_any_like will be decomposite as fill_constant.
-        if core._is_fwd_prim_enabled():
-            target = ('fill_any_like', 'fill_constant')
-        else:
-            target = 'fill_any_like'
-        if op.type() in target:
-            var_name = op.output('Out')[0]
-            names.append(var_name)
-    return names
-
-
-def prim_or_cinn_is_enabled(build_strategy):
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
 
@@ -1527,3 +1498,34 @@ def is_builtin(func, name=None):
         return True
     else:
         return False
+
+
+@signature_safe_contextmanager
+def backend_guard(backend):
+    core.check_and_set_prim_all_enabled()
+    orign_fwd = core._is_fwd_prim_enabled()
+    orign_bwd = core._is_bwd_prim_enabled()
+
+    if backend == 'CINN':
+        core._set_prim_all_enabled(True)
+    try:
+        yield
+    finally:
+        core._set_prim_forward_enabled(orign_fwd)
+        core._set_prim_backward_enabled(orign_bwd)
+
+
+def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
+    grad_var_names = {}
+    fn = (
+        lambda grad_var: grad_var.name
+        if isinstance(grad_var, framework.Variable)
+        else framework.EMPTY_VAR_NAME
+    )
+    x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
+    grad_var_names['x'] = list(map(fn, x_grad_vars))
+    param_grad_vars = backward._get_grad_vars(grad_info_map, param_vars)
+    grad_var_names['param'] = list(map(fn, param_grad_vars))
+    out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
+    grad_var_names['out'] = list(map(fn, out_grad_vars))
+    return grad_var_names

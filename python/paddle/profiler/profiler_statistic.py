@@ -452,10 +452,8 @@ class DistributedSummary:
 
                 # case 2: TracerEventType is Operator but is communication op
                 elif hostnode.type == TracerEventType.Operator and any(
-                    [
-                        name in hostnode.name.lower()
-                        for name in _CommunicationOpName
-                    ]
+                    name in hostnode.name.lower()
+                    for name in _CommunicationOpName
                 ):
                     self.cpu_communication_range.append(
                         (hostnode.start_ns, hostnode.end_ns)
@@ -472,7 +470,11 @@ class DistributedSummary:
                     for runtimenode in hostnode.runtime_node:
                         for devicenode in runtimenode.device_node:
                             if devicenode.type == TracerEventType.Kernel:
-                                if 'nccl' in devicenode.name.lower():
+                                kernel_name = devicenode.name.lower()
+                                if (
+                                    'nccl' in kernel_name
+                                    or 'xccl' in kernel_name
+                                ):
                                     self.gpu_communication_range.append(
                                         (devicenode.start_ns, devicenode.end_ns)
                                     )

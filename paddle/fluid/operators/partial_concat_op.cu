@@ -65,7 +65,7 @@ __global__ void ConcatPartialGradCUDAKernel(T **in,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -146,7 +146,7 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -231,16 +231,22 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(partial_concat,
-                        ops::PartialConcatOpCUDAKernel<float>,
-                        ops::PartialConcatOpCUDAKernel<double>,
-                        ops::PartialConcatOpCUDAKernel<int>,
-                        ops::PartialConcatOpCUDAKernel<int64_t>,
-                        ops::PartialConcatOpCUDAKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(partial_concat_grad,
-                        ops::PartialConcatGradOpCUDAKernel<float>,
-                        ops::PartialConcatGradOpCUDAKernel<double>,
-                        ops::PartialConcatGradOpCUDAKernel<int>,
-                        ops::PartialConcatGradOpCUDAKernel<int64_t>,
-                        ops::PartialConcatGradOpCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_concat,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialConcatOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialConcatGradOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

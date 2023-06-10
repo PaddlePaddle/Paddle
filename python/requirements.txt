@@ -1,4 +1,4 @@
-requests>=2.20.0
+httpx
 numpy>=1.13
 protobuf>=3.20.2 ; platform_system != "Windows"
 protobuf==4.21.12 ; platform_system == "Windows"

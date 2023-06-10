@@ -24,7 +24,7 @@ from .base_transformer import (
     ForNodeVisitor,
 )
 from .ifelse_transformer import ARGS_NAME
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .static_analysis import NodeVarType, StaticAnalysisVisitor
 from .utils import (
     FOR_BODY_PREFIX,
     FOR_CONDITION_PREFIX,
@@ -507,16 +507,12 @@ class LoopTransformer(BaseTransformer):
     This class transforms python while/for statement into Static Graph Ast
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):
-        ForLoopTuplePreTransformer(self.wrapper_root).transform()
+        ForLoopTuplePreTransformer(self.root).transform()
         self.visit(self.root)
 
     def visit_While(self, node):

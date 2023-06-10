@@ -17,8 +17,7 @@
 #include "paddle/extension.h"
 #include "paddle/phi/backends/context_pool.h"
 
-#define CHECK_INPUT(x) \
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, #x " must be a CPU Tensor.")
+#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 
 std::vector<paddle::Tensor> ContextPoolTest(const paddle::Tensor& x) {
   // 1. test cpu context

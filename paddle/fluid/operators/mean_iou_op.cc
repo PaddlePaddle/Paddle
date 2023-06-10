@@ -34,7 +34,7 @@ class MeanIoUOp : public framework::OperatorWithKernel {
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
 
-    ctx->SetOutputDim("OutMeanIou", {1});
+    ctx->SetOutputDim("OutMeanIou", phi::make_ddim({}));
     ctx->SetOutputDim("OutWrong", {num_classes});
     ctx->SetOutputDim("OutCorrect", {num_classes});
   }
@@ -78,7 +78,7 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("OutMeanIou",
               "(vector<Tensor>), A Tensor representing the"
-              " mean intersection-over-union with shape [1].");
+              " mean intersection-over-union with shape [].");
     AddOutput("OutWrong", "(Tensor), A Tensor with shape [num_classes]. ");
     AddOutput("OutCorrect", "(Tensor), A Tensor with shape [num_classes]. ");
     AddAttr<int>("num_classes", "(int), The possible number of labels.");
@@ -107,7 +107,6 @@ REGISTER_OPERATOR(
     ops::MeanIoUOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(mean_iou,
-                       ops::MeanIoUKernel<int>,
-                       ops::MeanIoUKernel<int32_t>,
-                       ops::MeanIoUKernel<int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    mean_iou, CPU, ALL_LAYOUT, ops::MeanIoUKernel, int, int64_t) {}

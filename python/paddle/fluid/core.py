@@ -271,7 +271,7 @@ try:
     if avx_supported() and not libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
-            "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
+            "Hence, no-avx core with worse performance will be imported.\nIf you like, you could "
             "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
             "to get better performance.\n"
         )
@@ -298,6 +298,7 @@ try:
     from .libpaddle import _set_paddle_lib_path
     from .libpaddle import _create_loaded_parameter
     from .libpaddle import _cuda_synchronize
+    from .libpaddle import _test_enforce_gpu_success
     from .libpaddle import _is_compiled_with_heterps
     from .libpaddle import _promote_types_if_complex_exists
     from .libpaddle import _set_cached_executor_build_strategy
@@ -337,6 +338,10 @@ try:
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
         from .libpaddle import _set_max_memory_map_allocation_pool_size
+
+    # CINN
+    from .libpaddle import is_run_with_cinn
+
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(
@@ -378,7 +383,7 @@ def set_paddle_lib_path():
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
             set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins'])
+                os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
             )
             return
     if hasattr(site, 'USER_SITE'):
@@ -386,7 +391,7 @@ def set_paddle_lib_path():
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
             set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins'])
+                os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
             )
 
 
@@ -450,7 +455,7 @@ def _is_all_prim_enabled():
     return _is_fwd_prim_enabled() and _is_bwd_prim_enabled()
 
 
-# Alert!!! This method is only for test coveraget, user should never use it directly, this may cause serious system errors.
+# Alert!!! This method is only for test coverage, user should never use it directly, this may cause serious system errors.
 def _test_use_sync(value):
     __sync_stat_with_flag(value)
 

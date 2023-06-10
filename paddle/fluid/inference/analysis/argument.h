@@ -34,7 +34,6 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 
 #include "paddle/phi/common/data_type.h"
 
@@ -94,6 +93,25 @@ struct Argument {
  private:                                                                \
   type__ field__##_;
 
+#define DECL_POINTER_ARGUMENT_FIELD(field__, Field, type__)              \
+ public:                                                                 \
+  type__& field__() {                                                    \
+    PADDLE_ENFORCE_EQ(                                                   \
+        Has(#field__),                                                   \
+        true,                                                            \
+        platform::errors::PreconditionNotMet("There is no such field")); \
+    return field__##_;                                                   \
+  }                                                                      \
+  void Set##Field(type__ x) {                                            \
+    field__##_ = x;                                                      \
+    valid_fields_.insert(#field__);                                      \
+  }                                                                      \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                    \
+  type__* field__##_ptr() { return &field__##_; }                        \
+                                                                         \
+ private:                                                                \
+  type__ field__##_;
+
 #define DECL_ARGUMENT_FIELD_VALID(field__) \
   bool field__##_valid() { return Has(#field__); }
 
@@ -116,7 +134,7 @@ struct Argument {
   }                                                                         \
   void Set##Field##NotOwned(type__* x) {                                    \
     valid_fields_.insert(#field__);                                         \
-    field__##_ = unique_ptr_t(x, [](void* x) {});                           \
+    field__##_ = unique_ptr_t(x, [](void* x UNUSED) {});                    \
   }                                                                         \
   DECL_ARGUMENT_FIELD_VALID(field__);                                       \
   type__* field__##_ptr() {                                                 \
@@ -146,6 +164,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
+  DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -224,13 +243,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
                       std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(tensorrt_precision_mode,
-                      TensorRtPrecisionMode,
-                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode, int);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,
                       TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_cuda_graph, TensorRtUseCudaGraph, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_varseqlen, TensorRtUseOSS, bool);
   DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);
   DECL_ARGUMENT_FIELD(tensorrt_transformer_posid,
@@ -261,9 +279,7 @@ struct Argument {
                       DlnneDisableNodesByOutputs,
                       std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(dlnne_use_calib_mode, DlnneUseCalibMode, bool);
-  DECL_ARGUMENT_FIELD(dlnne_precision_mode,
-                      DlnnePrecisionMode,
-                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(dlnne_precision_mode, DlnnePrecisionMode, int);
 
   using dlnne_input_shape_type = std::map<std::string, std::vector<int64_t>>;
   DECL_ARGUMENT_FIELD(dlnne_input_shape_dict,
@@ -275,20 +291,52 @@ struct Argument {
                       LitePassesFilter,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(lite_precision_mode,
-                      LitePrecisionMode,
-                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode, int);
   DECL_ARGUMENT_FIELD(lite_zero_copy, LiteZeroCopy, bool);
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
-  DECL_ARGUMENT_FIELD(xpu_l3_workspace_size, XpuL3WorkspaceSize, int);
   DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
-  DECL_ARGUMENT_FIELD(xpu_autotune, XpuAutotune, bool);
-  DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
-  DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
-  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
   DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
+  // XpuConfig
+  DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+  DECL_ARGUMENT_FIELD(xpu_l3_size, XpuL3Size, size_t);
+  DECL_POINTER_ARGUMENT_FIELD(xpu_l3_ptr, XpuL3Ptr, void*);
+  DECL_ARGUMENT_FIELD(xpu_l3_autotune_size, XpuL3AutotuneSize, size_t);
+  DECL_POINTER_ARGUMENT_FIELD(xpu_stream, XpuStream, void*);
+  DECL_ARGUMENT_FIELD(xpu_conv_autotune_level, XpuConvAutotuneLevel, int);
+  DECL_ARGUMENT_FIELD(xpu_conv_autotune_file, XpuConvAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_conv_autotune_file_writeback,
+                      XpuConvAutotuneFileWriteback,
+                      bool);
+  DECL_ARGUMENT_FIELD(xpu_fc_autotune_level, XpuFcAutotuneLevel, int);
+  DECL_ARGUMENT_FIELD(xpu_fc_autotune_file, XpuFcAutotuneFile, std::string);
+  DECL_ARGUMENT_FIELD(xpu_fc_autotune_file_writeback,
+                      XpuFcAutotuneFileWriteback,
+                      bool);
+  DECL_ARGUMENT_FIELD(xpu_gemm_compute_precision, XpuGemmComputePrecision, int);
+  DECL_ARGUMENT_FIELD(xpu_transformer_softmax_optimize_level,
+                      XpuTransformerSoftmaxOptimizeLevel,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_transformer_encoder_adaptive_seqlen,
+                      XpuTransformerEncoderAdaptiveSeqlen,
+                      bool);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_static_gelu_out_threshold,
+                      XpuQuantPostStaticGeluOutThreshold,
+                      float);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_activation_method,
+                      XpuQuantPostDynamicActivationMethod,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_precision,
+                      XpuQuantPostDynamicWeightPrecision,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
+                      XpuQuantPostDynamicOpTypes,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(xpu_lite_l3_locked, XpuLiteL3Locked, bool);
+  DECL_ARGUMENT_FIELD(xpu_lite_enable_multi_stream,
+                      XpuLiteEnableMultiStream,
+                      bool);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 
@@ -357,10 +405,6 @@ struct Argument {
                       IpuEnableModelRuntimeExecutor,
                       bool);
 
-  // npu related
-  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
-  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
-
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
   DECL_ARGUMENT_FIELD(mixed_black_list,
@@ -368,6 +412,7 @@ struct Argument {
                       std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
+  DECL_ARGUMENT_FIELD(enable_low_precision_io, EnableLowPrecisionIO, bool);
 
   // cinn compiler related
   DECL_ARGUMENT_FIELD(use_cinn_compiler, UseCinnCompiler, bool);

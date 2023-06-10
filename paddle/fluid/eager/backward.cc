@@ -113,7 +113,6 @@ std::vector<paddle::Tensor> RunBackward(
 
   std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
-  egr::Controller::Instance().ClearForceSequentialNodes();
   std::deque<GradNodeBase*> force_sequential_nodes_queue;
   std::set<GradNodeBase*> force_sequential_nodes_set;
   std::set<GradNodeBase*> ready_force_sequential_nodes;
@@ -142,6 +141,7 @@ std::vector<paddle::Tensor> RunBackward(
   std::deque<GradNodeBase*> orig_queue;
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
+  std::unordered_set<GradNodeBase*> visited;
   for (size_t i = 0; i < tensors.size(); i++) {
     const paddle::Tensor& tensor = tensors[i];
 
@@ -216,6 +216,10 @@ std::vector<paddle::Tensor> RunBackward(
     }
 
     // Prepare queue, potential startup_nodes
+    if (visited.count(grad_node)) {
+      continue;
+    }
+    visited.insert(grad_node);
     queue.push_back(grad_node);
   }
 
@@ -373,32 +377,31 @@ std::vector<paddle::Tensor> RunBackward(
 
         auto add_next_node_func = [&node_in_degree_map,
                                    &queue](GradNodeBase* next_node) {
-          if (node_in_degree_map[next_node] == 0) {
-            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-              queue.push_front(std::move(next_node));
-            } else {
-              queue.push_back(std::move(next_node));
-            }
+          if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+            queue.push_front(std::move(next_node));
+          } else {
+            queue.push_back(std::move(next_node));
           }
         };
-
-        if (force_sequential_nodes_set.count(next_node)) {
-          if (force_sequential_nodes_queue.front() == next_node) {
-            force_sequential_nodes_queue.pop_front();
-            add_next_node_func(next_node);
-            while (ready_force_sequential_nodes.count(
-                force_sequential_nodes_queue.front())) {
-              ready_force_sequential_nodes.erase(
-                  force_sequential_nodes_queue.front());
-              add_next_node_func(force_sequential_nodes_queue.front());
+        if (node_in_degree_map[next_node] == 0) {
+          if (force_sequential_nodes_set.count(next_node)) {
+            if (force_sequential_nodes_queue.front() == next_node) {
               force_sequential_nodes_queue.pop_front();
+              add_next_node_func(next_node);
+              while (ready_force_sequential_nodes.count(
+                  force_sequential_nodes_queue.front())) {
+                ready_force_sequential_nodes.erase(
+                    force_sequential_nodes_queue.front());
+                add_next_node_func(force_sequential_nodes_queue.front());
+                force_sequential_nodes_queue.pop_front();
+              }
+            } else {
+              ready_force_sequential_nodes.insert(next_node);
+              continue;
             }
           } else {
-            ready_force_sequential_nodes.insert(next_node);
-            continue;
+            add_next_node_func(next_node);
           }
-        } else {
-          add_next_node_func(next_node);
         }
       }
     }
@@ -421,6 +424,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
   VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::UserDefined, 1);
+  egr::Controller::Instance().ClearForceSequentialNodes();
   RunBackward(tensors, grad_tensors, retain_graph);
   phi::autotune::AutoTuneStatus::Instance().Update();
 }

@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"

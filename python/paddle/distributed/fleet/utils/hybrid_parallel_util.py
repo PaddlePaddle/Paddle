@@ -17,7 +17,7 @@ from paddle import framework
 from paddle.distributed.parallel import (
     _split_tensors,
     build_groups,
-    in_dygraph_mode,
+    in_dynamic_mode,
     sync_params_buffers,
 )
 
@@ -131,7 +131,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     )
 
     if mp_rank != 0:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             data._clear_data()
             input_data._share_buffer_to(data)
         else:
@@ -154,21 +154,27 @@ def _broadcast_object_list_help(object_list, hcg):
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     dev = cur_device.split(":")[0]
-    assert dev in [
-        "xpu",
-        "gpu",
-        "npu",
-    ], f"Only support xpu, gpu and npu now, but this is {dev}"
+    assert (
+        dev
+        in [
+            "xpu",
+            "gpu",
+        ]
+        or dev in paddle.device.get_all_custom_device_type()
+    ), f"Only support xpu, gpu and custom_device now, but this is {dev}"
     dev_idx = int(cur_device.split(':')[1])
     if dev == "gpu":
         place = paddle.CUDAPlace(dev_idx)
+    elif dev in paddle.device.get_all_custom_device_type():
+        place = paddle.CustomPlace(dev, dev_idx)
+        dev = 'custom'
     else:
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 
     for v in inputs:
         if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
@@ -179,7 +185,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
@@ -211,7 +217,7 @@ def fused_allreduce_gradients_with_group(
 ):
     apply_func = (
         _apply_collective_grads_eager
-        if in_dygraph_mode()
+        if in_dynamic_mode()
         else _apply_collective_grads
     )
     with framework.no_grad():
@@ -232,10 +238,18 @@ def sharding_reduce_gradients(parameter_list, hcg):
 
         sharding_nrank = hcg.get_sharding_parallel_group().nranks
         for param in parameter_list:
+            g_var = None
             if param.trainable and (param._grad_ivar() is not None):
-                param.grad.scale_(1.0 / sharding_nrank)
+                g_var = param._grad_ivar()
+            if param.trainable and hasattr(param, "main_grad"):
+                assert (
+                    param._grad_ivar() is None
+                ), "param.grad should be None when using main_grad"
+                g_var = param.main_grad
+            if g_var is not None:
+                g_var.scale_(1.0 / sharding_nrank)
                 paddle.distributed.all_reduce(
-                    param.grad,
+                    g_var,
                     group=hcg.get_sharding_parallel_group(),
                     sync_op=True,
                 )

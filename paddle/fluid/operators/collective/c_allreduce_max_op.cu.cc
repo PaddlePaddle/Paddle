@@ -28,7 +28,11 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_max,
                           ALL_LAYOUT,
                           ops::CAllReduceMaxCUDAKernel,
                           float,
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+                          plat::bfloat16,
+#endif
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          plat::float16) {
+}

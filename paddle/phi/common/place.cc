@@ -35,14 +35,8 @@ const char *AllocationTypeStr(AllocationType type) {
       return "gpu_pinned";
     case AllocationType::XPU:
       return "xpu";
-    case AllocationType::NPU:
-      return "npu";
-    case AllocationType::NPUPINNED:
-      return "npu_pinned";
     case AllocationType::IPU:
       return "ipu";
-    case AllocationType::MLU:
-      return "mlu";
     default:
       PD_THROW("Invalid phi device type.");
       return {};
@@ -59,7 +53,6 @@ std::string Place::DebugString() const {
     os << AllocationTypeStr(alloc_type_);
   }
   if (alloc_type_ == AllocationType::GPUPINNED ||
-      alloc_type_ == AllocationType::NPUPINNED ||
       alloc_type_ == AllocationType::CPU) {
     os << ")";
   } else {
@@ -78,8 +71,6 @@ Place GetPinnedPlace(const Place &place) {
     case AllocationType::GPU:
       return phi::GPUPinnedPlace();
       break;
-    case AllocationType::NPU:
-      return phi::NPUPinnedPlace();
     default:
       return place;
   }

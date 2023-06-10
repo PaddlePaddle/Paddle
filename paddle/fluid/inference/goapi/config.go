@@ -193,23 +193,22 @@ func (config *Config) EnableORTOptimization() {
 ///
 /// \brief Turn on XPU.
 ///
-/// \param l3_workspace_size The size of the video memory allocated by the l3 cache, the maximum is 16M.
-/// \param locked Whether the allocated L3 cache can be locked. If false, it means that the L3 cache is not locked, and the allocated L3 cache can be shared by multiple models, and multiple models sharing the L3 cache will be executed sequentially on the card.
-/// \param autotune Whether to autotune the conv operator in the model. If true, when the conv operator of a certain dimension is executed for the first time, it will automatically search for a better algorithm to improve the performance of subsequent conv operators of the same dimension.
-/// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
-/// \param precision Calculation accuracy of multi_encoder
-/// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param l3Size The size of the video memory allocated by the l3 cache, the maximum is 16M.
+/// \param l3Locked Whether the allocated L3 cache can be locked. If false, it means that the L3 cache is not locked, and the allocated L3 cache can be shared by multiple models, and multiple models sharing the L3 cache will be executed sequentially on the card.
+/// \param convAutotune Whether to autotune the conv operator in the model. If true, when the conv operator of a certain dimension is executed for the first time, it will automatically search for a better algorithm to improve the performance of subsequent conv operators of the same dimension.
+/// \param convAutotuneFile Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
+/// \param transformerEencoderPrecision Calculation accuracy of multi_encoder
+/// \param transformerEncoderAdaptiveSeqlen Is the input of multi_encoder variable length
 /// \param enable_multi_stream Whether to enable the multi stream of xpu
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, enableMultiStream bool) {
-	cAutotuneFile := C.CString(autotuneFile)
-	cPrecision := C.CString(precision)
+func (config *Config) EnableXpu(l3Size int32, l3Locked bool, convAutotune bool, convAutotuneFile string, transformerEencoderPrecision string, transformerEncoderAdaptiveSeqlen bool, enableMultiStream bool) {
+	cConvAutotuneFile := C.CString(convAutotuneFile)
+	cTransformerEencoderPrecision := C.CString(transformerEencoderPrecision)
 	defer func() {
-		C.free(unsafe.Pointer(cAutotuneFile))
-		C.free(unsafe.Pointer(cPrecision))
+		C.free(unsafe.Pointer(cConvAutotuneFile))
+		C.free(unsafe.Pointer(cTransformerEencoderPrecision))
 	}()
-	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
+	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3Size), cvtGoBoolToPD(l3Locked), cvtGoBoolToPD(convAutotune), cConvAutotuneFile, cTransformerEencoderPrecision, cvtGoBoolToPD(transformerEncoderAdaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
 }
 
 ///
@@ -231,15 +230,6 @@ func (config *Config) UseXpu() bool {
 }
 
 ///
-/// \brief A boolean state telling whether the NPU is turned on.
-///
-/// \return bool Whether the NPU is turned on.
-///
-func (config *Config) UseNpu() bool {
-	return cvtPDBoolToGo(C.PD_ConfigUseNpu(config.c))
-}
-
-///
 /// \brief Get the GPU device id.
 ///
 /// \return int32 The GPU device id.
@@ -255,15 +245,6 @@ func (config *Config) GpuDeviceId() int32 {
 ///
 func (config *Config) XpuDeviceId() int32 {
 	return int32(C.PD_ConfigXpuDeviceId(config.c))
-}
-
-///
-/// \brief Get the NPU device id.
-///
-/// \return int32 The NPU device id.
-///
-func (config *Config) NpuDeviceId() int32 {
-	return int32(C.PD_ConfigNpuDeviceId(config.c))
 }
 
 ///

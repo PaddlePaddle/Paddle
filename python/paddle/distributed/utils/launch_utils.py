@@ -82,8 +82,9 @@ def get_gpus(selected_gpus):
             for x in selected_gpus.split(','):
                 assert x in cuda_visible_devices_list, (
                     "Can't find "
-                    "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."
-                    % (x, cuda_visible_devices)
+                    "your selected_gpus {} in CUDA_VISIBLE_DEVICES[{}].".format(
+                        x, cuda_visible_devices
+                    )
                 )
             gpus = [
                 cuda_visible_devices_list.index(x.strip())
@@ -421,15 +422,6 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
     elif backend == 'nccl':
         proc_env = {
             "FLAGS_selected_gpus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-        }
-    elif backend == 'cncl':
-        proc_env = {
-            "FLAGS_selected_mlus": "%s"
             % ",".join([str(g) for g in trainer.gpus]),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,

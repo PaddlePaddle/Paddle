@@ -14,17 +14,19 @@
 
 #include "paddle/phi/kernels/share_buffer_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 
 namespace phi {
 
 template <typename Context>
-void ShareBufferKernel(const Context &dev_ctx,
+void ShareBufferKernel(const Context &dev_ctx UNUSED,
                        const std::vector<const DenseTensor *> &x,
-                       const std::vector<bool> &share_dims_and_dtype,
+                       const std::vector<bool> &share_dims_and_dtype UNUSED,
                        std::vector<DenseTensor *> out,
-                       std::vector<DenseTensor *> xout) {
+                       std::vector<DenseTensor *> xout UNUSED) {
   PADDLE_ENFORCE_EQ(
       x.size(),
       out.size(),
@@ -44,24 +46,6 @@ void ShareBufferKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(share_buffer,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::ShareBufferKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(share_buffer,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::ShareBufferKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(share_buffer,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::ShareBufferKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(share_buffer,
+                                         ALL_LAYOUT,
+                                         phi::ShareBufferKernel) {}

@@ -59,10 +59,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(set_to_1d);
+PHI_DECLARE_bool(set_to_1d);
 
 namespace paddle {
 namespace pybind {
@@ -75,7 +76,7 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
 extern PyTypeObject* p_tensor_type;
 
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
     paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
@@ -135,17 +136,18 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       }
     }
     if (set_to_1d) {
-      // 0D Tensor hack process to 1D numpy, will remove in future
+      // 0D Tensor hack process to 1D numpy, will remove in release 2.6
       VLOG(0)
           << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
              "order to avoid this problem, "
              "0D Tensor will be changed to 1D numpy currently, but it's not "
              "correct and will be "
-             "removed in future. For Tensor contain only one element, Please "
+             "removed in release 2.6. For Tensor contain only one element, "
+             "Please "
              "modify "
              " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
              "possible, "
-             "otherwise 'Tensor.numpy()[0]' will raise error in future.";
+             "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
       py_rank = 1;
       py_dims[0] = 1;
       py_strides[0] = sizeof_dtype * numel;
@@ -293,7 +295,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      // TODO(qili93): temporary for ascned npu performance to be removed along
+      // TODO(qili93): temporary for ascend npu performance to be removed along
       // with npu_identity op
       paddle::Tensor temp_tensor(std::make_shared<phi::DenseTensor>());
       if (dense_tensor->storage_properties_initialized()) {
@@ -420,7 +422,7 @@ static void IncreaseTensorReferenceCountUntilCopyComplete(
   // Note(dev): This is an empty callback, the only way is to "reference"
   // inner memory Holder, so it will not be destructed until the kernels
   // launched at current stream of given place is finished, such as
-  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  // CUDAPinned Mem -> CUDA by cudaMemcpyAsync.
   auto callback = [tensor, place_]() {
     VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
             << place_;
@@ -573,7 +575,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   }
 
   paddle::Tensor* grad;
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
@@ -629,7 +631,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->tensor.name();
 
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -922,39 +924,50 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     }
   }
 
-  if (!none_axes.empty()) {
-    // Deal with cases when all axes are decreased.
-    // After slice, the shape of out is [1], which should have been
-    // [], but Paddle doesn't support scalar.
-    // In order to ensure the correctness of the final shape of out,
-    // one dimension of out needs to be decreased.
-    // For example:
-    // # x.shape: (2,3,4)
-    // out = x[0, 1, 1, None] # out.shape : (1)
+  bool set_to_1d = FLAGS_set_to_1d;
+
+  if (set_to_1d) {
+    // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+    // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+    // otherwise the output shape will be not correct.
     if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
-      none_axes.pop_back();
-    }
-    if (!none_axes.empty()) {
-      paddle::Tensor new_out;
-      {
-        eager_gil_scoped_release guard;
-        // Deal with cases that decrease_axes is not empty
-        // For example:
-        // # x.shape: (2,3,4)
-        // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-        for (auto& axis : none_axes) {
-          int len = 0;
-          for (int da : decrease_axis) {
-            if (da < axis) {
-              len++;
-            }
-          }
-          axis -= len;
-        }
-        new_out = unsqueeze_ad_func(out, none_axes);
+      VLOG(1)
+          << "Warning: In Tensor '__getitem__', if the number of scalar "
+             "elements "
+             "in the index is equal to the rank of the Tensor, the output "
+             "should "
+             "be 0-D. In order to be consistent with the behavior of previous "
+             "versions, it will be processed to 1-D. But it is not correct and "
+             "will be "
+             "removed in release 2.6. "
+             "If 1-D is still wanted, please modify the index element from "
+             "scalar to slice "
+             "(e.g. 'x[i]' => 'x[i:i+1]'). ";
+      if (!none_axes.empty()) {
+        none_axes.pop_back();
       }
-      return ToPyObject(new_out);
     }
+  }
+  if (!none_axes.empty()) {
+    paddle::Tensor new_out;
+    {
+      eager_gil_scoped_release guard;
+      // Deal with cases that decrease_axes is not empty
+      // For example:
+      // # x.shape: (2,3,4)
+      // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+      for (auto& axis : none_axes) {
+        int len = 0;
+        for (int da : decrease_axis) {
+          if (da < axis) {
+            len++;
+          }
+        }
+        axis -= len;
+      }
+      new_out = unsqueeze_ad_func(out, none_axes);
+    }
+    return ToPyObject(new_out);
   }
 
   // the index is a list
@@ -1066,13 +1079,11 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
     Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
     Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
-    py_dims[0] = 1;                                                          \
-    py_strides[0] = 1;                                                       \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
         api.PyArray_DescrFromType_(numpy_dtype),                             \
-        1,                                                                   \
+        0,                                                                   \
         py_dims,                                                             \
         py_strides,                                                          \
         nullptr,                                                             \
@@ -1158,7 +1169,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
 
     if (egr::Controller::Instance().HasGrad()) {
       PADDLE_ENFORCE_EQ(
-          egr::egr_utils_api::IsLeafTensor(self->tensor) &&
+          egr::EagerUtils::IsLeafTensor(self->tensor) &&
               !egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient(),
           false,
           platform::errors::InvalidArgument(
@@ -1197,11 +1208,21 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
         }
+      } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
+        if (!py::isinstance<py::array_t<std::complex<float>>>(value_obj_tmp)) {
+          value = pybind11::detail::CastNumpyArray<std::complex<float>>(
+              value_obj_tmp);
+        }
+      } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
+        if (!py::isinstance<py::array_t<std::complex<double>>>(value_obj_tmp)) {
+          value = pybind11::detail::CastNumpyArray<std::complex<double>>(
+              value_obj_tmp);
+        }
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "When assign a numpy.np value to a paddle.Tensor, "
             "the data type of the paddle.Tensor must be bool, "
-            "float32, int32 or int64, "
+            "float32, float64, complex64, complex128, int32 or int64, "
             "please check the type of tensor."));
       }
 
@@ -1217,29 +1238,38 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // convert the value to self data type
       if (py::isinstance<py::float_>(value_obj_tmp) ||
           py::isinstance<py::int_>(value_obj_tmp) ||
-          py::isinstance<py::bool_>(value_obj_tmp)) {
+          py::isinstance<py::bool_>(value_obj_tmp) ||
+          PyComplex_Check(value_obj)) {
         if (self->tensor.dtype() == phi::DataType::FLOAT32) {
-          attrs["fp32_values"] =
-              std::vector<float>{value_obj_tmp.cast<float>()};
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
-          attrs["fp64_values"] =
-              std::vector<double>{value_obj_tmp.cast<double>()};
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<double>()};
         } else if (self->tensor.dtype() == phi::DataType::INT32) {
-          attrs["int32_values"] =
-              std::vector<int32_t>{value_obj_tmp.cast<int32_t>()};
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<int32_t>()};
         } else if (self->tensor.dtype() == phi::DataType::INT64) {
-          attrs["int64_values"] =
-              std::vector<int64_t>{value_obj_tmp.cast<int64_t>()};
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<int64_t>()};
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
-          attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<bool>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
-          attrs["fp16_values"] =
-              std::vector<float>{value_obj_tmp.cast<float>()};
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<float>()};
+        } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<std::complex<float>>()};
+        } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<std::complex<double>>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When assign a value to a paddle.Tensor, "
               "the data type of the paddle.Tensor must be bool, "
-              "float32, int32, int64 or float16, "
+              "float32, float64, complex64, complex128, int32, int64 or "
+              "float16, "
               "please check the type of tensor."));
         }
         attrs["shape"] = std::vector<int64_t>{1};
@@ -1247,7 +1277,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Value type error. The assign value allows "
-            "numpy.ndarray, integer, float or bool, "
+            "numpy.ndarray, integer, float, complex  or bool, "
             "but received %s.",
             Py_TYPE(value_obj)));
       }
@@ -1283,7 +1313,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
-    auto self_numpy = TensorToPyArray(*self_tensor);
+    auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {
       VLOG(4) << "index is tensor";
@@ -1322,7 +1352,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* kwargs) {
   EAGER_TRY
   int64_t hook_id;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
     auto autograd_meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -1389,7 +1419,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
 
   std::shared_ptr<egr::GradNodeBase> grad_node =
       egr::EagerUtils::grad_node(self->tensor);
-  PADDLE_ENFORCE_EQ(egr::egr_utils_api::IsLeafTensor(self->tensor),
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::IsLeafTensor(self->tensor),
                     true,
                     platform::errors::InvalidArgument(
                         "Only can register backward hook for leaf Tensor."));
@@ -1893,7 +1923,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
                         "Detected NULL grad. Please check if you have manually "
                         "cleared the grad inside autograd_meta"));
 
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     std::static_pointer_cast<egr::GradNodeAccumulation>(
         egr::EagerUtils::grad_node(self->tensor))

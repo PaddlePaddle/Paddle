@@ -169,11 +169,12 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/parallel_executor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -187,39 +188,7 @@ using namespace paddle::framework;                // NOLINT
 void BindParallelExecutor(pybind11::module &m) {  // NOLINT
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
-    ExecutionStrategy allows the user to more preciously control how to run
-    the program in ParallelExecutor by setting the property.
-
-    Returns:
-        ExecutionStrategy: An ExecutionStrategy object.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          import paddle.static as static
-          import paddle.nn.functional as F
-
-          paddle.enable_static()
-
-          x = static.data(name='x', shape=[None, 13], dtype='float32')
-          y = static.data(name='y', shape=[None, 1], dtype='float32')
-          y_predict = static.nn.fc(input=x, size=1, act=None)
-
-          cost = F.square_error_cost(input=y_predict, label=y)
-          avg_loss = paddle.mean(cost)
-
-          sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-          sgd_optimizer.minimize(avg_loss)
-
-          exec_strategy = static.ExecutionStrategy()
-          exec_strategy.num_threads = 4
-
-          train_exe = static.ParallelExecutor(use_cuda=False,
-                                              loss_name=avg_loss.name,
-                                              exec_strategy=exec_strategy)
-        )DOC");
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy");
 
   py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
       .value("CPU", paddle::platform::DeviceType::CPU)
@@ -232,29 +201,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](const ExecutionStrategy &self) { return self.num_threads_; },
           [](ExecutionStrategy &self, size_t num_threads) {
             self.num_threads_ = num_threads;
-          },
-          R"DOC(
-            The type is INT, num_threads represents the size of thread pool that
-            used to run the operators of the current program in ParallelExecutor.
-            If :math:`num\_threads=1`, all the operators will execute one by one,
-            but the order maybe difference between iterations.
-            If it is not set, it will be set in ParallelExecutor according to the
-            device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
-            :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
-            if it is not set, ParallelExecutor will get the cpu count by calling
-            `multiprocessing.cpu_count()`. Default 0.
-
-            Examples:
-                .. code-block:: python
-
-                    import paddle
-                    import paddle.static as static
-
-                    paddle.enable_static()
-
-                    exec_strategy = static.ExecutionStrategy()
-                    exec_strategy.num_threads = 4
-            )DOC")
+          })
       .def_property(
           "_use_device",
           [](const ExecutionStrategy &self) { return self.use_device_; },
@@ -267,11 +214,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
-          },
-          R"DOC(The type is BOOL, allow_op_delay represents whether to delay the
-                communication operators to run, it may make the execution faster.
-                Note that this option is invalid now, and it will be removed in
-                next version. Default False.)DOC")
+          })
       .def_property(
           "num_iteration_per_drop_scope",
           [](const ExecutionStrategy &self) {
@@ -279,30 +222,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
-          },
-          R"DOC(The type is INT, num_iteration_per_drop_scope indicates how
-                many iterations to clean up the temp variables which
-                is generated during execution. It may make the execution faster,
-                because the temp variable's shape maybe the same between two iterations.
-                Default 100.
-
-                .. note::
-                    1. If you fetch data when calling the 'run', the ParallelExecutor
-                    will clean up the temp variables at the end of the current iteration.
-                    2. In some NLP model, it may cause the GPU memory is insufficient,
-                    in this case, you should reduce `num_iteration_per_drop_scope`.
-
-                Examples:
-                    .. code-block:: python
-
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        exec_strategy = static.ExecutionStrategy()
-                        exec_strategy.num_iteration_per_drop_scope = 10
-              )DOC")
+          })
       .def_property(
           "num_iteration_per_run",
           [](const ExecutionStrategy &self) {
@@ -310,29 +230,13 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_run) {
             self.num_iteration_per_run_ = num_iteration_per_run;
-          },
-          R"DOC(This config that how many iteration the executor will run when
-                user call exe.run() in python。Default: 1.
-
-                Examples:
-                    .. code-block:: python
-
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        exec_strategy = static.ExecutionStrategy()
-                        exec_strategy.num_iteration_per_run = 10
-              )DOC")
+          })
       .def_property(
           "use_thread_barrier",
           [](const ExecutionStrategy &self) { return self.thread_barrier_; },
           [](ExecutionStrategy &self, bool use_thread_barrier) {
             self.thread_barrier_ = use_thread_barrier;
-          },
-          R"DOC(This config that the this is distributed training with parameter server
-              )DOC")
+          })
       .def_property(
           "_dry_run",
           [](const ExecutionStrategy &self) { return self.dry_run_; },
@@ -397,7 +301,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.reduce_ = strategy;
           },
@@ -428,7 +332,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.gradient_scale_ = strategy;
           },
@@ -480,7 +384,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.debug_graphviz_path_ = path;
           },
@@ -508,7 +412,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.enable_sequential_execution_ = b;
           },
@@ -535,7 +439,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.remove_unnecessary_lock_ = b;
           },
@@ -611,7 +515,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, "
+                                  "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.build_cinn_pass_ = b;
           },
@@ -640,7 +544,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_elewise_add_act_ops_ = b;
           },
@@ -666,7 +570,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_gemm_epilogue_ = b;
           },
@@ -692,7 +596,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_adamw_ = b;
           },
@@ -714,7 +618,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fused_attention_ = b;
           },
@@ -740,7 +644,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fused_feedforward_ = b;
           },
@@ -760,13 +664,38 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fused_feedforward = True
                      )DOC")
       .def_property(
+          "sequential_run",
+          [](const BuildStrategy &self) { return self.sequential_run_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finalized, cannot be "
+                                  "configured again."));
+            self.sequential_run_ = b;
+          },
+          R"DOC((bool, optional): sequential_run is used to let the `StandaloneExecutor` run ops by the
+          order of `ProgramDesc`. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.sequential_run = True
+                     )DOC")
+      .def_property(
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_bn_act_ops_ = b;
           },
@@ -792,7 +721,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_bn_add_act_ops_ = b;
           },
@@ -818,7 +747,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.enable_auto_fusion_ = b;
           },
@@ -847,7 +776,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_relu_depthwise_conv_ = b;
           },
@@ -878,7 +807,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, "
+                                  "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.fuse_broadcast_ops_ = b;
           },
@@ -910,7 +839,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, "
+                                  "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.fuse_all_optimizer_ops_ = b;
           })
@@ -921,7 +850,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.sync_batch_norm_ = b;
           },

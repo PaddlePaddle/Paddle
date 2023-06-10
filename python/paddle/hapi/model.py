@@ -33,7 +33,8 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
-from paddle.fluid.framework import _get_paddle_place, _non_static_mode
+from paddle.fluid.framework import _get_paddle_place
+from paddle.framework import in_dynamic_mode
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -184,6 +185,37 @@ def init_communicator(
                 'ring_id': 0,
             },
         )
+    elif (
+        paddle.distributed.ParallelEnv().device_type
+        in paddle.device.get_all_custom_device_type()
+    ):
+        xccl_id_var = block.create_var(
+            name=fluid.unique_name.generate('xccl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_xccl_id',
+            inputs={},
+            outputs={'Out': xccl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': xccl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):
@@ -225,7 +257,7 @@ def prepare_distributed_context(place=None):
             exe = fluid.Executor(place)
             exe.run(communicator_prog)
 
-        if fluid._non_static_mode():
+        if in_dynamic_mode():
             fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
@@ -1139,7 +1171,7 @@ class Model:
         self._test_dataloader = None
         self.stop_training = False
 
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             if not isinstance(inputs, (list, tuple, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or tuple or dict, and couldn't be None."
@@ -1151,7 +1183,7 @@ class Model:
         self._labels = self._verify_spec(labels)
 
         # init backend
-        if fluid._non_static_mode():
+        if in_dynamic_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -1207,7 +1239,7 @@ class Model:
 
         """
         loss = self._adapter.train_batch(inputs, labels, update)
-        if fluid._non_static_mode() and self._input_info is None:
+        if in_dynamic_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1261,7 +1293,7 @@ class Model:
 
         """
         loss = self._adapter.eval_batch(inputs, labels)
-        if fluid._non_static_mode() and self._input_info is None:
+        if in_dynamic_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1310,7 +1342,7 @@ class Model:
 
         """
         loss = self._adapter.predict_batch(inputs)
-        if fluid._non_static_mode() and self._input_info is None:
+        if in_dynamic_mode() and self._input_info is None:
             self._update_inputs()
         return loss
 
@@ -1496,7 +1528,7 @@ class Model:
         )
 
         # TODO: support save/load scaler state in static graph
-        if _non_static_mode():
+        if in_dynamic_mode():
             scaler_state = None
             if hasattr(self, '_scaler') and self._scaler is not None:
                 if os.path.exists(path + '.pdscaler'):
@@ -1613,7 +1645,7 @@ class Model:
                 )
 
             if 'use_fp16_guard' in amp_config_key_set:
-                if _non_static_mode():
+                if in_dynamic_mode():
                     raise ValueError(
                         "'use_fp16_guard' is supported in static graph mode only."
                     )
@@ -1671,7 +1703,7 @@ class Model:
                 paddle.distributed.ParallelEnv().nranks > 1
                 and not _parallel_context_initialized
             ):
-                if fluid._non_static_mode():
+                if in_dynamic_mode():
                     main_prog_seed = fluid.default_main_program().random_seed
                     startup_prog_seed = (
                         fluid.default_startup_program().random_seed
@@ -1862,7 +1894,7 @@ class Model:
         assert train_data is not None, "train_data must be given!"
 
         if isinstance(batch_size, (tuple, list)) and all(
-            [isinstance(x, int) for x in batch_size]
+            isinstance(x, int) for x in batch_size
         ):
             assert (
                 len(batch_size) == 2
@@ -2197,7 +2229,7 @@ class Model:
             None
         """
 
-        if fluid._non_static_mode():
+        if in_dynamic_mode():
             with fluid.framework._dygraph_guard(None):
                 layer = self.network
                 if self._input_info is None:  # No provided or inferred
@@ -2397,7 +2429,7 @@ class Model:
                 if (
                     shapes is not None
                     and dtypes is not None
-                    and fluid._non_static_mode()
+                    and in_dynamic_mode()
                 ):
                     out_specs = [
                         Input(name=n, dtype=dtypes[i], shape=shapes[i])

@@ -61,6 +61,30 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
   return true;
 }
 
+// only poolop
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // oneDNN is supporting only unchangable in size pool window
+  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
+  if (!ctx.HasAttr("ksize")) {
+    return false;
+  }
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+          (src_tz[src_tz.size() - 2] % ksize[0] == 0));
+}
+
+phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto dtype = framework::proto::VarType::FP32;
+  if (ctx.MultiInputVar("X").size() >= 1) {
+    dtype = op_ptr->IndicateVarDataType(ctx, "X");
+  }
+  return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -75,13 +99,11 @@ phi::KernelKey GetReduceExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_npu_place(ctx.GetPlace()) ||
-            platform::is_mlu_place(ctx.GetPlace()) ||
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument(
-            "float16 can only be used on GPU or NPU or MLU or XPU place"));
+            "float16 can only be used on GPU or NPU or XPU place"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -101,6 +123,15 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
+  kt.set_backend(
+      phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+  return kt;
+}
+
 phi::KernelKey GetAssignExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -117,6 +148,31 @@ phi::KernelKey GetAssignExpectedKernelType(
   return phi::KernelKey(
       op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.device_context().GetPlace());
+}
+
+phi::KernelKey GetPoolExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "grad_x@GRAD");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetSgdExpectedKernelType(
@@ -141,6 +197,86 @@ phi::KernelKey GetSgdExpectedKernelType(
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetSoftmaxExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  // choose cudnn kernel if the runtime supported.
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()) ||
+            platform::is_xpu_place(ctx.GetPlace()) ||
+            platform::is_custom_place(ctx.GetPlace()),
+        true,
+        platform::errors::InvalidArgument(
+            "float16 can only be used on GPU/XPU and custom place"));
+  }
+  return phi::KernelKey(
+      ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+}
+
+phi::KernelKey GetSoftmaxGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  // choose cudnn kernel if the runtime supported.
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  auto input_data_type =
+      op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out"));
+  if (input_data_type == framework::proto::VarType::FP16) {
+    if (!(platform::is_gpu_place(ctx.GetPlace()) ||
+          platform::is_xpu_place(ctx.GetPlace()) ||
+          platform::is_custom_place(ctx.GetPlace())))
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "float16 can only be used on GPU/XPU and custom place"));
+  }
+  return phi::KernelKey(
+      ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+}
+
+phi::KernelKey GetStridedSliceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto* in_var = ctx.InputVar("Input");
+  auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
+  if (is_in_var_array) {
+    auto& tensor_array = in_var->Get<framework::LoDTensorArray>();
+    for (auto& tensor : tensor_array) {
+      if (!platform::is_cuda_pinned_place(tensor.place())) {
+        PADDLE_ENFORCE_EQ(
+            platform::is_same_place(tensor.place(),
+                                    ctx.device_context().GetPlace()),
+            true,
+            platform::errors::InvalidArgument(
+                "Place of context is %s. Place of input tensor is %s. They "
+                "are should be same, but reveived different place.",
+                string::to_string(ctx.device_context().GetPlace()),
+                string::to_string(tensor.place())));
+      }
+    }
+    return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Input"),
+                          ctx.GetPlace());
+  }
+  // NOTE: cuda pinned tensor need to copy its data to target place
+  auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
+  if (platform::is_cuda_pinned_place(in_tensor->place())) {
+    return phi::KernelKey(framework::TransToProtoVarType(in_tensor->dtype()),
+                          ctx.GetPlace());
+  }
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Input"),
+                        in_tensor->place());
+}
+
+phi::KernelKey GetStridedSliceGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(
+      op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out")),
+      ctx.GetPlace());
+}
+
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -149,6 +285,129 @@ phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     dtype = op_ptr->IndicateVarDataType(ctx, "X");
   }
   return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
+phi::KernelKey GetMatrixNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        platform::CPUPlace());
+}
+
+phi::KernelKey GetPad3dExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+  // only constant mode and non-blocked layouts are supported for oneDNN
+  if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      ctx.Attr<std::string>("mode") == "constant" &&
+      ctx.Input<phi::DenseTensor>("X")
+              ->mem_desc()
+              .data.format_desc.blocking.inner_nblks == 0) {
+    return phi::KernelKey(phi::Backend::ONEDNN,
+                          phi::DataLayout::ONEDNN,
+                          phi::TransToPhiDataType(input_data_type));
+  }
+#endif
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetYoloLossExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"),
+                        platform::CPUPlace());
+}
+
+phi::KernelKey GetUniqueExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)ctx;
+  // Return CPUPlace when Attr("is_sorted") is false. Because it means
+  // that fluid.layers.unique is called, but there is no cuda kernel.
+  if (!ctx.Attr<bool>("is_sorted")) {
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  } else {
+    // new version paddle.unique is called.
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace());
+  }
+}
+
+phi::KernelKey GetInstanceNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  // By default, the type of the scale, bias, mean,
+  // and var tensors should both be float. (For float or float16 input tensor)
+  // or double (For double input tensor).
+  auto in_param_type = framework::proto::VarType::FP32;
+  if (input_data_type == framework::proto::VarType::FP64) {
+    in_param_type = framework::proto::VarType::FP64;
+  }
+  if (ctx.HasInput("Scale")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+  }
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetLayerNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
+  if (begin_norm_axis != ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+    op_ptr->SetDnnFallback(true);
+  }
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetConvExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "Input");
+  // todo enable data layout when it's ready
+  // (https://github.com/PaddlePaddle/Paddle/pull/20042)
+
+  if (input_data_type != framework::proto::VarType::INT8 &&
+      input_data_type != framework::proto::VarType::UINT8 &&
+      input_data_type != framework::proto::VarType::BF16) {
+    auto filter_data_type = framework::TransToProtoVarType(
+        ctx.Input<phi::DenseTensor>("Filter")->dtype());
+    PADDLE_ENFORCE_EQ(
+        input_data_type,
+        filter_data_type,
+        platform::errors::InvalidArgument(
+            "input and filter data type should be consistent, "
+            "but received input data type is %s and filter type "
+            "is %s",
+            paddle::framework::DataTypeToString(input_data_type),
+            paddle::framework::DataTypeToString(filter_data_type)));
+  }
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
 }  // namespace operators

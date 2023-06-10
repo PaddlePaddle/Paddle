@@ -64,6 +64,11 @@ function(generate_unify_header DIR_NAME)
       endif()
     endif()
   endforeach()
+  if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+    if(${kernel_name} MATCHES ".*_grad")
+      continue()
+    endif()
+  endif()
   # append header into extension.h
   string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header_file "${header_file}")
   file(APPEND ${phi_extension_header_file} "#include \"${header_file}\"\n")
@@ -78,13 +83,20 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
       # some gpu kernel can run on cuda, but not support jetson, so we add this branch
       if(WITH_NV_JETSON)
         string(FIND "${first_registry}" "decode_jpeg" pos)
+        if(pos GREATER 1)
+          continue()
+        endif()
+      endif()
+      # fusion group kernel is not supported in windows and mac
+      if(WIN32 OR APPLE)
+        string(FIND "${first_registry}" "fusion_group" pos)
         if(pos GREATER 1)
           continue()
         endif()
@@ -108,7 +120,7 @@ function(kernel_declare TARGET_LIST)
       string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" "" kernel_msg
                      "${first_registry}")
       string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
-      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
+      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
                      "${kernel_msg}")
       string(REPLACE "," ";" kernel_msg "${kernel_msg}")
       string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
@@ -209,5 +221,29 @@ function(prune_declaration_h)
     if(NOT ${kernel_registry} EQUAL "")
       file(APPEND ${kernel_declare_file} "${kernel_registry}\n")
     endif()
+  endforeach()
+endfunction()
+
+function(collect_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${CMAKE_CURRENT_SOURCE_DIR}/${src}"
+        CACHE INTERNAL "")
+  endforeach()
+endfunction()
+
+function(collect_generated_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${src}"
+        CACHE INTERNAL "")
   endforeach()
 endfunction()

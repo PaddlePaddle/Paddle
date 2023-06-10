@@ -84,6 +84,12 @@ int64_t SparseCooTensor::nnz() const {
   }
 }
 
+void SparseCooTensor::set_type(const DataType dtype) { meta_.dtype = dtype; }
+
+void SparseCooTensor::set_layout(const DataLayout layout) {
+  meta_.layout = layout;
+}
+
 void SparseCooTensor::Resize(const DDim& dense_dims,
                              const int64_t sparse_dim,
                              const int64_t non_zero_num) {
@@ -149,16 +155,18 @@ int32_t SparseCooTensor::dense_dim() const {
 }
 
 void SparseCooTensor::set_meta(SparseTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 phi::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
+  PADDLE_ENFORCE_EQ(meta_.valid(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "Only when the original attribute of Tensor is "
+                        "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
 
 void SparseCooTensor::set_meta(const SparseTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;

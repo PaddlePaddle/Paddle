@@ -24,12 +24,6 @@ from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
-protobuf_version = google.protobuf.__version__
-if protobuf_version >= "4.21.0":
-    from google._upb import _message
-else:
-    from google.protobuf.pyext import _message
-
 __all__ = []
 
 non_auto_func_called = True
@@ -51,7 +45,15 @@ def get_msg_dict(msg):
     res_dict = {}
     fields = msg.DESCRIPTOR.fields
     for f in fields:
-        res_dict[f.name] = getattr(msg, f.name)
+        v = getattr(msg, f.name)
+        # NOTE(zhiqiu): convert repeated filed to list to
+        # avoid segment fault when the process exit?
+        # WHY?
+        # I guess the type or value of protobuf item is NULL when
+        # dealloc.
+        if f.label == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED:
+            v = list(v)
+        res_dict[f.name] = v
     return res_dict
 
 
@@ -152,6 +154,8 @@ class DistributedStrategy:
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.sync_param_name = ["embedding", "layer_norm", ".b_"]
+
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
@@ -1702,6 +1706,22 @@ class DistributedStrategy:
         check_configs_key(
             self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
+
+        if "mp_configs" in configs:
+            if "sync_param_name" in configs["mp_configs"]:
+                self.sync_param_name = configs["mp_configs"]["sync_param_name"]
+                configs["mp_configs"].pop("sync_param_name")
+
+            assign_configs_value(
+                self.strategy.hybrid_configs.mp_configs, configs["mp_configs"]
+            )
+            configs.pop("mp_configs")
+        if "pp_configs" in configs:
+            assign_configs_value(
+                self.strategy.hybrid_configs.pp_configs, configs["pp_configs"]
+            )
+            configs.pop("pp_configs")
+
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
@@ -2376,7 +2396,7 @@ class DistributedStrategy:
         """
 
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
-        The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
+        The inner function of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
         Usually, large workspace size may lead to choose faster algorithms,
         but significant increasing memory workspace. Users need to trade-off between memory and speed.
         Default Value: 4000
@@ -2512,10 +2532,19 @@ class DistributedStrategy:
                                 self.strategy, f.name + "_configs"
                             )
                             config_fields = my_configs.DESCRIPTOR.fields
+                            protobuf_version = google.protobuf.__version__
+                            if protobuf_version >= "4.21.0":
+                                RepeatedScalarContainer = (
+                                    google._upb._message.RepeatedScalarContainer
+                                )
+                            else:
+                                RepeatedScalarContainer = (
+                                    google.protobuf.pyext._message.RepeatedScalarContainer
+                                )
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    _message.RepeatedScalarContainer,
+                                    RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):

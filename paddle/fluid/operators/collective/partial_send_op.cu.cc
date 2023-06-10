@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSendCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -117,9 +117,16 @@ class PartialSendCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(partial_send,
-                        ops::PartialSendCUDAKernel<float>,
-                        ops::PartialSendCUDAKernel<double>,
-                        ops::PartialSendCUDAKernel<int>,
-                        ops::PartialSendCUDAKernel<int64_t>,
-                        ops::PartialSendCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_send,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PartialSendCUDAKernel,
+                          float,
+                          double,
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+                          plat::bfloat16,
+#endif
+                          int,
+                          int64_t,
+                          plat::float16) {
+}

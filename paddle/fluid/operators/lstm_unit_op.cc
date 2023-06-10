@@ -142,10 +142,8 @@ REGISTER_OPERATOR(lstm_unit,
                   ops::LstmUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::LstmUnitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
-REGISTER_OP_CPU_KERNEL(lstm_unit,
-                       ops::LstmUnitKernel<paddle::platform::CPUPlace, float>,
-                       ops::LstmUnitKernel<paddle::platform::CPUPlace, double>);
-REGISTER_OP_CPU_KERNEL(
-    lstm_unit_grad,
-    ops::LstmUnitGradKernel<paddle::platform::CPUPlace, float>,
-    ops::LstmUnitGradKernel<paddle::platform::CPUPlace, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    lstm_unit, CPU, ALL_LAYOUT, ops::LstmUnitKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lstm_unit_grad, CPU, ALL_LAYOUT, ops::LstmUnitGradKernel, float, double) {}

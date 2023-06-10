@@ -28,12 +28,9 @@ from ..fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
     convert_dtype,
+    convert_float_to_uint16,
 )
-from ..fluid.framework import (
-    Variable,
-    _in_eager_without_dygraph_check,
-    device_guard,
-)
+from ..fluid.framework import Variable, device_guard
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
@@ -41,7 +38,7 @@ from ..framework import (
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 
 __all__ = []
@@ -200,6 +197,7 @@ def create_parameter(
         [
             'bool',
             'float16',
+            'uint16',
             'float32',
             'float64',
             'int8',
@@ -314,7 +312,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -332,7 +330,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 start.dtype,
                 'start',
-                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
         else:
@@ -342,7 +340,7 @@ def linspace(start, stop, num, dtype=None, name=None):
             check_dtype(
                 stop.dtype,
                 'stop',
-                ['float32', 'float64', 'int32', 'int64', 'float16', 'bfloat16'],
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
                 'linspace',
             )
         else:
@@ -352,7 +350,7 @@ def linspace(start, stop, num, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['int32', 'int64', 'float32', 'float64', 'float16', 'bfloat16'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'linspace',
         )
         if (
@@ -447,7 +445,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     if not isinstance(base, Variable):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
@@ -540,20 +538,30 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
+    def _handle_tensor_dtype(tensor, dtype):
+        if dtype:
+            if convert_dtype(dtype) != convert_dtype(tensor.dtype):
+                return tensor.astype(convert_dtype(dtype))
+        return tensor
+
+    def _handle_np_dtype(ndarray, dtype):
+        if dtype:
+            if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
+                # should not ndarray.astype('uint16') directly, data bits is wrong
+                if convert_dtype(dtype) in ['uint16']:
+                    return convert_float_to_uint16(ndarray.astype('float32'))
+                else:
+                    return ndarray.astype(convert_dtype(dtype))
+
+        return ndarray
 
     if isinstance(data, np.number):  # Special case for numpy scalars
         data = np.array(data)
 
     if not isinstance(data, np.ndarray):
 
-        def _handle_dtype(data, dtype):
-            if dtype:
-                if convert_dtype(dtype) != convert_dtype(data.dtype):
-                    return data.astype(convert_dtype(dtype))
-            return data
-
         if np.isscalar(data) and not isinstance(data, str):
-            data = np.array([data])
+            data = np.array(data)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -561,27 +569,27 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
+        elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
             data = data._copy_to(place, False)
-            data = _handle_dtype(data, dtype)
+            data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
+        elif isinstance(data, core.eager.Tensor) and in_dynamic_mode():
             data = data._copy_to(place, False)
-            data = _handle_dtype(data, dtype)
+            data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currenly, there is no copy when places are same
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.Tensor(data)
             else:
                 data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
-            data = _handle_dtype(data, dtype)
+            data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
         else:
@@ -605,16 +613,15 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                         if default_type in ['float16', 'float32']
                         else 'complex128'
                     )
-                data = data.astype(default_type)
+                data = _handle_np_dtype(data, default_type)
             # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
             if data.dtype in ['int32']:
-                default_type = "int64"
-                data = data.astype(default_type)
+                data = data.astype("int64")
 
-    if dtype and convert_dtype(dtype) != data.dtype:
-        data = data.astype(convert_dtype(dtype))
+    if dtype:
+        data = _handle_np_dtype(data, dtype)
 
-    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+    if isinstance(data, np.ndarray):
         return core.eager.Tensor(
             value=data,
             place=place,
@@ -635,27 +642,49 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
-    if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
+    if isinstance(data, Variable):
         output = data
+        if dtype is not None and dtype != data.dtype:
+            output = paddle.cast(output, dtype)
     else:
         if isinstance(data, np.number):  # Special case for numpy scalars
             data = np.array(data)
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
-                data = np.array([data])
-            elif isinstance(data, (list, tuple)):
                 data = np.array(data)
+            elif isinstance(data, (list, tuple)):
+                try:
+                    '''
+                    In numpy version >= 1.24.0, case like:
+                        np.array([Variable, 1, 2])
+                    is not supported, it will raise error (numpy returns an numpy array with dtype='object' in version <= 1.23.5)
 
-            if (
-                isinstance(data, np.ndarray)
-                and not dtype
-                and data.dtype != 'object'
-            ):
-                if data.dtype in ['float16', 'float32', 'float64']:
-                    data = data.astype(paddle.get_default_dtype())
-                elif data.dtype in ['int32']:
-                    data = data.astype('int64')
+                    Thus, process nested structure in except block
+                    '''
+                    data = np.array(data)
+
+                    # for numpy version <= 1.23.5
+                    if data.dtype == 'object':
+                        raise RuntimeError("Numpy get dtype `object`.")
+
+                except:
+                    to_stack_list = [None] * len(data)
+                    for idx, d in enumerate(data):
+                        to_stack_list[idx] = _to_tensor_static(
+                            d, dtype, stop_gradient
+                        )
+                    data = paddle.stack(to_stack_list)
+                    data = paddle.squeeze(data, -1)
+
+            else:
+                raise RuntimeError(
+                    f"Do not support transform type `{type(data)}` to tensor"
+                )
+
+            # fix numpy default dtype
+            if data.dtype in ['float16', 'float32', 'float64']:
+                data = data.astype(paddle.get_default_dtype())
 
         if dtype:
             target_dtype = dtype
@@ -663,30 +692,10 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             target_dtype = data.dtype
         else:
             target_dtype = paddle.get_default_dtype()
-
         target_dtype = convert_dtype(target_dtype)
 
-        if (
-            isinstance(data, np.ndarray)
-            and len(data.shape) > 0
-            and any(isinstance(x, Variable) for x in data)
-        ):
-            if not all(
-                [x.shape == (1,) for x in data if isinstance(x, Variable)]
-            ):
-                raise TypeError(
-                    "Unsupport paddle.to_tensor([Variable, Variable...]) with non-scalar variable."
-                )
-            to_stack_list = [None] * data.shape[0]
-            for idx, d in enumerate(data):
-                to_stack_list[idx] = _to_tensor_static(d, dtype, stop_gradient)
-            data = paddle.stack(to_stack_list)
-            data = paddle.squeeze(data, -1)
+        output = assign(data)
 
-        if not isinstance(data, Variable):
-            output = assign(data)
-        else:
-            output = data
         if convert_dtype(output.dtype) != target_dtype:
             output = paddle.cast(output, target_dtype)
 
@@ -708,10 +717,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         We use the dtype conversion rules following this:
                 Keep dtype
         np.number ───────────► paddle.Tensor
-                                (0D-Tensor)
+                                (0-D Tensor)
                     default_dtype
         Python Number ───────────────► paddle.Tensor
-                                        (1D-Tensor)
+                                        (0-D Tensor)
                     Keep dtype
         np.ndarray ───────────► paddle.Tensor
 
@@ -740,17 +749,16 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        1)
 
         x = paddle.to_tensor(1, stop_gradient=False)
-        print(x)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
+        #        1)
 
         paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        1)
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
         # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
@@ -769,7 +777,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
 
-    if paddle.fluid.framework._non_static_mode():
+    if in_dynamic_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
@@ -813,7 +821,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     else:
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
     else:
         helper = LayerHelper("full_like", **locals())
@@ -860,7 +868,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
@@ -1146,7 +1154,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )
@@ -1287,11 +1295,32 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             # [3, 4, 5, 6]
 
     """
-    if dtype is None:
-        dtype = 'int64'
     if end is None:
         end = start
         start = 0
+
+    if dtype is None:
+        for val in [start, end, step]:
+            if isinstance(val, Variable):
+                if not val.is_integer():
+                    dtype = paddle.get_default_dtype()
+                    break
+                else:
+                    dtype = 'int64'
+            else:
+                if not isinstance(val, np.integer) and not isinstance(val, int):
+                    dtype = paddle.get_default_dtype()
+                    break
+                else:
+                    dtype = 'int64'
+
+    out_shape = None
+    if not in_dynamic_mode() and (
+        not isinstance(start, Variable)
+        and not isinstance(end, Variable)
+        and not isinstance(step, Variable)
+    ):
+        out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1314,7 +1343,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
     else:
         check_dtype(
@@ -1324,13 +1353,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
-        out_shape = None
-        if (
-            not isinstance(start, Variable)
-            and not isinstance(end, Variable)
-            and not isinstance(step, Variable)
-        ):
-            out_shape = [int(math.ceil((end - start) / step))]
         out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
         helper.append_op(
             type='range',
@@ -1352,7 +1374,7 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1436,7 +1458,7 @@ def tril(x, diagonal=0, name=None):
             #         [5 , 0 , 0 , 0 ],
             #         [9 , 10, 0 , 0 ]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1498,7 +1520,7 @@ def triu(x, diagonal=0, name=None):
             #         [0 , 10, 11, 12]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1511,7 +1533,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float16``, ``float32``, ``int32``, ``int64``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1539,7 +1561,7 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.meshgrid(list(args))
     else:
         name = kwargs.get("name", None)
@@ -1554,7 +1576,7 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'meshgrid',
             )
 
@@ -1655,7 +1677,7 @@ def diagflat(x, offset=0, name=None):
             #         [0, 0, 3, 0, 0],
             #         [0, 0, 0, 4, 0]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, 0)
         else:
@@ -1778,14 +1800,14 @@ def diag(x, offset=0, padding_value=0, name=None):
             # Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             #        [4])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
         check_type(x, 'x', (Variable), 'diag_v2')
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
@@ -1860,7 +1882,7 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
@@ -1941,7 +1963,7 @@ def empty_like(x, dtype=None, name=None):
         dtype = x.dtype
     dtype = convert_dtype(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.empty(
             x.shape,
             convert_np_dtype_to_dtype_(dtype),
@@ -1954,13 +1976,29 @@ def empty_like(x, dtype=None, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint16',
+            ],
             'empty_like',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2012,6 +2050,10 @@ def assign(x, output=None):
             result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
             result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
+    # speed up
+    if x is output and isinstance(x, Variable):
+        return x
+
     input = x
     helper = LayerHelper('assign', **locals())
     check_type(
@@ -2020,7 +2062,6 @@ def assign(x, output=None):
         (Variable, np.ndarray, list, tuple, float, int, bool),
         'assign',
     )
-    is_inplace = True if output is not None else False
 
     if np.isscalar(input) and not isinstance(input, str):
         input = np.array([input])
@@ -2028,11 +2069,11 @@ def assign(x, output=None):
         input = np.array(input)
     # NOTE(Aurelius84): Why we judge core.Tensor?
     # In case of @to_static, a Tensor can be as input of `assign`,
-    # but _non_static_mode()==False under @to_static, which means
+    # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor)):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
@@ -2067,11 +2108,9 @@ def assign(x, output=None):
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
-                [
-                    x.shape == (1,)
-                    for x in input
-                    if isinstance(x, (Variable, core.eager.Tensor))
-                ]
+                x.shape == (1,)
+                for x in input
+                if isinstance(x, (Variable, core.eager.Tensor))
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."
@@ -2126,7 +2165,7 @@ def assign(x, output=None):
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
             )
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
             _C_ops.assign_value_(
@@ -2189,7 +2228,7 @@ def _memcpy(input, place=None, output=None):
     """
 
     The OP copies the :attr:`input` to the :attr:`output`.
-    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace or NPUPlace <-> CPUPlace.
+    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace.
 
     Parameters:
         input (Tensor): A tensor. Its data type supports float16, float32, float64, int32, int64, and bool.
@@ -2285,7 +2324,7 @@ def complex(real, imag, name=None):
             #        [[0j    , 1j    , 2j    ],
             #         [(1+0j), (1+1j), (1+2j)]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.complex(real, imag)
     else:
         check_variable_and_dtype(
@@ -2357,7 +2396,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if col is None:
             col = row
         out = _C_ops.tril_indices(
@@ -2436,7 +2475,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if col is None:
             col = row
         out = _C_ops.triu_indices(

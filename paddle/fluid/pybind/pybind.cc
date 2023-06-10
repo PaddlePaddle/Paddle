@@ -53,6 +53,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
+#include "paddle/fluid/framework/new_executor/interpreter/job.h"
+#include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -158,6 +160,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -193,11 +196,12 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -305,6 +309,15 @@ bool IsCompiledWithCINN() {
   return false;
 #else
   return true;
+#endif
+}
+
+bool IsRunWithCINN() {
+#ifndef PADDLE_WITH_CINN
+  return false;
+#else
+  return framework::paddle2cinn::CinnCompiler::GetInstance()
+             ->real_compiled_num() > 0;
 #endif
 }
 
@@ -674,6 +687,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindEvalFrame(&m);
   BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -989,6 +1003,7 @@ PYBIND11_MODULE(libpaddle, m) {
         []() { phi::KernelFactory::Instance().kernels().clear(); });
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    platform::XCCLCommContext::Release();
     phi::DeviceManager::Clear();
 #endif
   });
@@ -1012,70 +1027,6 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
-
-  py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
-      m, "CustomOpKernelContext", R"DOC()DOC");
-  g_custom_op_kernel_ctx_pytype =
-      reinterpret_cast<PyTypeObject *>(custom_op_kernel_ctx.ptr());
-  custom_op_kernel_ctx.def(py::init<>())
-      .def("add_inputs",
-           [](paddle::CustomOpKernelContext &self, const py::handle &input) {
-             PyObject *obj = input.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackInputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else if (obj == Py_None) {
-               // Check optional Tensor, use one un-initialized tensor to
-               // indicate both Tensor and vector<Tensor> inputs
-               self.EmplaceBackInput(std::move(paddle::Tensor()));
-             } else {
-               self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_outputs",
-           [](paddle::CustomOpKernelContext &self, py::handle &outputs) {
-             PyObject *obj = outputs.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackOutputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else {
-               self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, bool attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, float attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int64_t attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, const std::string &attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<std::string> &attr) {
-             self.EmplaceBackAttr(attr);
-           });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
@@ -1270,7 +1221,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
-      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
+      .def_property("_can_reused", &Scope::CanReused, &Scope::SetCanReused);
 
   m.def(
       "Scope",
@@ -1388,8 +1339,7 @@ All parameter, weight, gradient are variables in Paddle.
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
             // Normally, proto_ should not be null, except some special
             // operators, such as LeaklyReluDoubleGrad op.
-            std::string type =
-                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            std::string type = op_desc.Type();
             PADDLE_THROW(platform::errors::NotFound(
                 "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
@@ -1411,7 +1361,8 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(3) << "need skip: " << need_skip << std::endl;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
-              VLOG(3) << "Runing composite fun for " << op_desc.Type();
+              VLOG(3) << "Prim Flag Open: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1423,9 +1374,13 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
+              VLOG(6) << "Prim Flag Close: Runing origin grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
+              VLOG(6) << "Prim Flag Close: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1452,6 +1407,9 @@ All parameter, weight, gradient are variables in Paddle.
     return framework::OpInfoMap::Instance()
         .Get(op_type)
         .HasNonEmptyGradOpMaker();
+  });
+  m.def("has_empty_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasEmptyGradOpMaker();
   });
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
@@ -1893,7 +1851,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const platform::Place &, const ProgramDesc &>())
+      .def(
+          py::init<const platform::Place &, const std::vector<ProgramDesc> &>())
       .def("run",
            [](StandaloneExecutor &self,
               Scope *scope,
@@ -1905,29 +1864,22 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(scope, feed_names, fetch_names);
              }
              return py::cast(std::move(ret));
-           })
-      .def("dry_run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<phi::DenseTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               phi::DenseTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             framework::interpreter::CostInfo cost_info;
-             {
-               pybind11::gil_scoped_release release;
-               cost_info = self.DryRun(scope, feed_names, feed_tensors);
-             }
-             return cost_info;
            });
+
+  py::class_<framework::Job, std::shared_ptr<framework::Job>>(m, "job")
+      .def(py::init<const std::string &>(), py::arg("type"))
+      .def("type", &framework::Job::GetJobType)
+      .def("micro_batch_id", &framework::Job::GetMicroBatchId)
+      .def("set_micro_batch_id", &framework::Job::SetMicroBatchId);
+
+  py::class_<framework::Plan>(m, "plan")
+      .def(py::init<const std::vector<std::shared_ptr<framework::Job>> &,
+                    const std::unordered_map<std::string,
+                                             framework::ProgramDesc *> &>(),
+           py::arg("job_list"),
+           py::arg("type_to_program"))
+      .def("job_list", &framework::Plan::GetJobList)
+      .def("type_to_program", &framework::Plan::GetTypeToProgram);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -1966,6 +1918,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -1976,6 +1929,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
+  m.def("_test_enforce_gpu_success", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaErrorInsufficientDriver);
+#endif
   });
 
   m.def("get_float_stats", []() {
@@ -1999,6 +1957,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("device_memory_stat_current_value",
         memory::DeviceMemoryStatCurrentValue);
   m.def("device_memory_stat_peak_value", memory::DeviceMemoryStatPeakValue);
+  m.def("host_memory_stat_current_value", memory::HostMemoryStatCurrentValue);
+  m.def("host_memory_stat_peak_value", memory::HostMemoryStatPeakValue);
   m.def(
       "run_cmd",
       [](const std::string &cmd,
@@ -2023,17 +1983,6 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetGPUComputeCapability(place.device) >= 53;
-  });
-  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 80 support bfloat16
-    return platform::GetGPUComputeCapability(place.device) >= 80;
-  });
-#endif
 
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
@@ -2337,8 +2286,8 @@ All parameter, weight, gradient are variables in Paddle.
         pass_type, [pass_type, callable]() {
           py::gil_scoped_acquire guard;
           std::unique_ptr<framework::ir::Pass> pass(
-              new framework::ir::GeneratePass(
-                  py::cast<std::string>(callable())));
+              new framework::ir::GeneratePass(py::cast<std::string>(callable()),
+                                              pass_type));
           return pass;
         });
   });
@@ -2745,14 +2694,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
   // Add the api for nan op debug
+  m.def("set_nan_inf_stack_limit",
+        &paddle::framework::details::SetNanInfStackLimit);
+
+  // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
 
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
+  // Add check op lost
+  m.def("set_checked_op_list",
+        [](const std::string &op_list) { egr::SetCheckOpList(op_list); });
+
+  // Add skipped op list
+  m.def("set_skipped_op_list",
+        [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
 
   BindFleetWrapper(&m);
   BindIO(&m);

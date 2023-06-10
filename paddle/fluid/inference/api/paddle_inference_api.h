@@ -47,6 +47,7 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 using DistConfig = paddle::DistConfig;
+using XpuConfig = paddle::XpuConfig;
 
 ///
 /// \class Predictor
@@ -129,6 +130,17 @@ class PD_INFER_DECL Predictor {
   bool Run();
 
   ///
+  /// \brief Run the prediction engine (Recommended)
+  ///
+  /// \param[in] inputs An list of Tensor as the input to the network.
+  /// \param[out] outputs Pointer to the tensor list, which holds the output
+  /// Tensor
+  ///
+  /// \return Whether the run is successful
+  bool Run(const std::vector<paddle::Tensor>& inputs,
+           std::vector<paddle::Tensor>* outputs);
+
+  ///
   /// \brief Get the output names
   ///
   /// \return output names
@@ -186,7 +198,7 @@ class PD_INFER_DECL Predictor {
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
+  void RegisterOutputHook(const OutputTensorHookFunc& hookfunc);
 
   ///
   /// \brief Get the execution stream on devices with a concept of stream,

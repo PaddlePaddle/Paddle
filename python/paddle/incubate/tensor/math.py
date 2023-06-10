@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 from paddle.utils import deprecated
 
 __all__ = []
@@ -63,8 +63,8 @@ def segment_sum(data, segment_ids, name=None):
             #Outputs: [[4., 4., 4.], [4., 5., 6.]]
 
     """
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
+    if in_dynamic_mode():
+        return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
             data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
@@ -129,13 +129,8 @@ def segment_mean(data, segment_ids, name=None):
 
     """
 
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
-    if _non_static_mode():
-        out, tmp = _legacy_C_ops.segment_pool(
-            data, segment_ids, 'pooltype', "MEAN"
-        )
-        return out
+    if in_dynamic_mode():
+        return _C_ops.segment_pool(data, segment_ids, "MEAN")
 
     check_variable_and_dtype(
         data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
@@ -199,14 +194,8 @@ def segment_min(data, segment_ids, name=None):
 
     """
 
-    if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
-
-    if _non_static_mode():
-        out, tmp = _legacy_C_ops.segment_pool(
-            data, segment_ids, 'pooltype', "MIN"
-        )
-        return out
+    if in_dynamic_mode():
+        return _C_ops.segment_pool(data, segment_ids, "MIN")
 
     check_variable_and_dtype(
         data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
@@ -270,14 +259,8 @@ def segment_max(data, segment_ids, name=None):
 
     """
 
-    if in_dygraph_mode():
-        out, tmp = _C_ops.segment_pool(data, segment_ids, "MAX")
-        return out
-
-    if _non_static_mode():
-        out, tmp = _legacy_C_ops.segment_pool(
-            data, segment_ids, 'pooltype', "MAX"
-        )
+    if in_dynamic_mode():
+        out = _C_ops.segment_pool(data, segment_ids, "MAX")
         return out
 
     check_variable_and_dtype(

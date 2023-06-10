@@ -18,7 +18,7 @@ from paddle import _C_ops
 
 from ..fluid import framework
 from ..fluid.dygraph import no_grad
-from ..framework import in_dygraph_mode
+from ..framework import in_dynamic_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -190,13 +190,14 @@ class Adadelta(Optimizer):
             else None
         )
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             with no_grad():
                 _C_ops.adadelta_(
                     param_and_grad[0],
                     param_and_grad[1],
                     avg_squared_grad_acc,
                     avg_squared_update_acc,
+                    self._create_param_lr(param_and_grad),
                     master_weight,
                     self._rho,
                     self._epsilon,
@@ -213,6 +214,7 @@ class Adadelta(Optimizer):
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
                 "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
             }
             outputs = {
                 "ParamOut": param_and_grad[0],

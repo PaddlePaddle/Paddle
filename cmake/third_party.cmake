@@ -29,7 +29,9 @@ set(third_party_deps)
 
 include(ProcessorCount)
 ProcessorCount(NPROC)
-
+if(NOT WITH_SETUP_INSTALL)
+  execute_process(COMMAND git submodule update --init --recursive)
+endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -303,7 +305,7 @@ endif()
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
-  include(external/pybind11) # download pybind11
+  include(external/pybind11) # prepare submodule pybind11
   list(APPEND third_party_deps extern_pybind)
 endif()
 
@@ -331,23 +333,21 @@ if(WITH_GPU)
     ${URL} "externalError" MD5 a712a49384e77ca216ad866712f7cafa
   )# download file externalErrorMsg.tar.gz
   if(WITH_TESTING)
-    # copy externalErrorMsg.pb, just for unittest can get error message correctly.
+    # copy externalErrorMsg.pb for UnitTest
     set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)
-    if(WIN32 AND (NOT "${CMAKE_GENERATOR}" STREQUAL "Ninja"))
-      set(DST_DIR1
-          ${CMAKE_BINARY_DIR}/paddle/fluid/third_party/externalError/data)
-    else()
-      set(DST_DIR1 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
-    endif()
-    set(DST_DIR2
+    # for python UT 'test_exception.py'
+    set(DST_DIR1
         ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/externalError/data
     )
+    # for C++ UT 'enforce_test'
+    set(DST_DIR2 ${CMAKE_BINARY_DIR}/paddle/third_party/externalError/data)
     add_custom_command(
       TARGET download_externalError
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
+      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR1}"
+      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR2}")
   endif()
 endif()
 
@@ -441,7 +441,7 @@ if(WITH_DISTRIBUTE
 endif()
 
 if(WITH_XBYAK)
-  include(external/xbyak) # download, build, install xbyak
+  include(external/xbyak) # prepare submodule xbyak
   list(APPEND third_party_deps extern_xbyak)
 endif()
 
@@ -491,11 +491,6 @@ endif()
 if(WIN32)
   include(external/dirent)
   list(APPEND third_party_deps extern_dirent)
-endif()
-
-if(WITH_INFRT)
-  include(external/llvm)
-  list(APPEND third_party_deps ${llvm_libs})
 endif()
 
 if(WITH_IPU)

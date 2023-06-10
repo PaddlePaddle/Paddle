@@ -69,9 +69,10 @@ from paddle.fluid.framework import (
     _dygraph_guard,
     _dygraph_tracer,
 )
-from paddle.fluid.framework import dygraph_only, _non_static_mode
+from paddle.fluid.framework import dygraph_only
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.io import save_inference_model
+from paddle.framework import in_dynamic_mode
 
 
 def create_program_from_desc(program_desc):
@@ -154,7 +155,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if _non_static_mode() or not program_translator.enable_to_static:
+        if in_dynamic_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
@@ -218,8 +219,23 @@ def ignore_module(modules: list[Any]):
     add_ignore_module(modules)
 
 
+def _check_and_set_backend(backend, build_strategy):
+    if backend not in ['CINN', None]:
+        raise ValueError(
+            "The backend of to_static should be 'CINN' or None, but received {}.".format(
+                backend
+            )
+        )
+    if backend == 'CINN':
+        build_strategy.build_cinn_pass = True
+
+
 def to_static(
-    function=None, input_spec=None, build_strategy=None, property=False
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    backend=None,
+    **kwargs,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -228,7 +244,6 @@ def to_static(
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be
     converted into declarative function as well.
-
     Args:
         function (callable): callable imperative function.
         input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
@@ -238,7 +253,8 @@ def to_static(
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        property(bool, Optional): whether the fucntion is python property. The default is False.
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
+        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
 
 
     Returns:
@@ -263,6 +279,7 @@ def to_static(
             print(x_v) # [[2. 2.]]
 
     """
+    property = kwargs.get("property", False)
 
     def decorated(python_func):
         """
@@ -279,6 +296,7 @@ def to_static(
                 input_spec=input_spec,
                 build_strategy=build_strategy,
                 property=property,
+                backend=backend,
             ),
         )
 
@@ -291,6 +309,7 @@ def to_static(
                 type(build_strategy).__name__
             )
         )
+    _check_and_set_backend(backend, build_strategy)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:
@@ -1693,7 +1712,7 @@ class TracedLayer:
         ), "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
-        if _non_static_mode():
+        if in_dynamic_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
         else:
@@ -1734,7 +1753,9 @@ class TracedLayer:
                 saved inference model. If None, all output variables of the
                 TracedLayer object would be the outputs of the saved inference
                 model. Default None.
-            kwargs: Supported keys including 'clip_extra'.set to True if you want to clip extra information for every operator.
+            kwargs: Supported keys including
+                - clip_extra(bool): whether to clip extra information for every operator. Defaults to True.
+                - legacy_format(bool): whether to save program in legacy format. Default to False.
 
         Returns:
             None
@@ -1836,6 +1857,7 @@ class TracedLayer:
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
+            legacy_format = kwargs.get('legacy_format', False)
             save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
@@ -1845,4 +1867,5 @@ class TracedLayer:
                 model_filename=model_filename,
                 params_filename=params_filename,
                 clip_extra=clip_extra,
+                legacy_format=legacy_format,
             )

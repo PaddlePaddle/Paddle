@@ -33,6 +33,7 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -50,15 +51,13 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
-PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
-                            true,
-                            "Use new executor in control flow op");
 
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
-DECLARE_bool(new_executor_use_cuda_graph);
+DECLARE_uint64(executor_log_deps_every_microseconds);
+PHI_DECLARE_bool(new_executor_use_cuda_graph);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
@@ -157,38 +156,6 @@ InterpreterCore::~InterpreterCore() {
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);
 #endif
-}
-
-interpreter::CostInfo InterpreterCore::DryRun(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
-  SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
-
-  Prepare(feed_names, feed_tensors, true);
-  interpreter::CostInfo cost_info;
-  {
-    interpreter::ProfilerGuard(place_, &cost_info);
-
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
-
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
-
-    ExecuteInstructionList(vec_instruction_);
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-
-  if (HasLocalScope()) {
-    ClearLoDTensorArrayInLocalScope();
-  }
-
-  return cost_info;
 }
 
 void InterpreterCore::RunImpl() {
@@ -982,13 +949,41 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
 #endif
   }
 
+  for (auto& hook : hookfuncs_) {
+    hook(op, local_scope);
+  }
+
   // for debug nan/inf
   if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
-    framework::details::CheckOpHasNanOrInf(
-        *op,
-        *local_scope,
-        place);  // TODO(xiongkun03) change it to inner scope.
+    try {
+      framework::details::CheckOpHasNanOrInf(
+          *op,
+          *local_scope,
+          place);  // TODO(xiongkun03) change it to inner scope.
+    } catch (...) {
+      const std::vector<std::string>* callstack = nullptr;
+      auto attrs = op->Attrs();
+      auto iter =
+          attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != attrs.end()) {
+        callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        if (callstack->empty()) callstack = nullptr;
+      }
+      std::ostringstream sout;
+      if (callstack) {
+        if (FLAGS_call_stack_level > 1) {
+          sout << "\n\n  Compile Traceback (most recent call last):";
+        } else {
+          sout << "In user code:\n";
+        }
+        for (auto& line : *callstack) {
+          sout << "\n  " << line;
+        }
+      }
+      std::cout << sout.str() << std::endl;
+      std::rethrow_exception(std::current_exception());
+    }
   }
 }
 
@@ -1033,6 +1028,25 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   }
 }
 
+std::string InterpreterCore::GetDepsString() const {
+  std::stringstream ss;
+  auto downstream_map = dependency_builder_.OpDownstreamMap();
+  ss << "Note: when static_dep is 1, it is ok that the dynamic_dep will not "
+        "be decreased to 0."
+     << std::endl;
+  ss << "unfinished_op_number_:" << unfinished_op_number_ << std::endl;
+  for (size_t i = 0; i < deps_.size(); ++i) {
+    ss << "op:" << i << ", type: " << vec_instruction_[i].OpBase()->Type()
+       << ", static_dep:" << deps_[i]->StaticDep()
+       << ", dynamic_dep:" << deps_[i]->DynamicDep() << ", downstream op: ";
+    for (auto id : downstream_map[i]) {
+      ss << id << ", ";
+    }
+    ss << std::endl;
+  }
+  return ss.str();
+}
+
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
@@ -1056,9 +1070,44 @@ void InterpreterCore::ExecuteInstructionList(
     }
   }
 
+  // For debug hang in main_thread_blocker_.WaitEvent(),
+  // launch async task to log deps every
+  // FLAGS_executor_log_deps_every_microseconds, then cancel the std::async when
+  // main_thread_blocker_.WaitEvent() executed. Why not use std::async instead
+  // of workqueue? To make sure that the logging thread itself will not affect
+  // the workqueue
+  //  used in interpretercore.
+
+  std::future<int> logged_times;
+  std::atomic_bool cancel_log = ATOMIC_VAR_INIT(false);
+  if (FLAGS_executor_log_deps_every_microseconds) {
+    logged_times = std::async(
+        std::launch::async,
+        [this](const std::atomic_bool& cancel) {
+          int times = 0;
+          while (!cancel) {
+            std::this_thread::sleep_for(std::chrono::microseconds(
+                FLAGS_executor_log_deps_every_microseconds));
+            // check again, since cancel may be changed during sleep
+            if (cancel) {
+              break;
+            }
+            VLOG(0) << "deps:\n" << GetDepsString();
+            times++;
+          }
+          return times;
+        },
+        std::ref(cancel_log));
+  }
+
   auto event_name = main_thread_blocker_.WaitEvent();
   VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
           << ") got event_name: " << event_name;
+
+  cancel_log = true;
+  if (logged_times.valid()) {
+    VLOG(1) << "Logged deps for " << logged_times.get() << " times";
+  }
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
@@ -1461,25 +1510,6 @@ void InterpreterCore::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
-}
-
-std::shared_ptr<InterpreterCore> CreateInterpreterCore(
-    const platform::Place& place,
-    const ProgramDesc& prog,
-    Scope* scope,
-    const std::vector<std::string>& fetch_names,
-    const interpreter::ExecutionConfig& execution_config) {
-  std::shared_ptr<InterpreterCore> core = nullptr;
-  // NOTE(Aurelius84): `AddFetch` will modify BlockDesc, so we should copy
-  // a new program.
-  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
-  auto* block = new_prog->MutableBlock(0);
-  interpreter::AddFetch(fetch_names, block);
-
-  core =
-      std::make_shared<InterpreterCore>(place, *block, scope, execution_config);
-  core->SetCopyProgram(new_prog);
-  return core;
 }
 
 }  // namespace framework

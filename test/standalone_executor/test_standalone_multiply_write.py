@@ -39,6 +39,14 @@ class TestMultiplyWrite(TestCompatibility):
             paddle.assign(inp2, out)
         return main_program, startup_program, out
 
+    def run_dygraph_once(self, feed):
+        out = paddle.full((1,), 1)
+        inp1 = paddle.full((1,), 2)
+        inp2 = paddle.full((1,), 3)
+        paddle.assign(inp1, out)
+        paddle.assign(inp2, out)
+        return [out.numpy()]
+
     def setUp(self):
         self.place = paddle.CPUPlace()
         self.iter_run = 5

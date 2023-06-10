@@ -18,6 +18,8 @@
 
 #include "paddle/extension.h"
 
+#define CHECK_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
+
 template <typename data_t>
 void add_data_pointer(const data_t* x_data, data_t* out_data, int64_t numel) {
   for (size_t i = 0; i < numel; ++i) {
@@ -52,7 +54,7 @@ void relu_backward_kernel(const data_t* out_data,
 }
 
 void AddForward(paddle::Tensor& x, const paddle::Tensor& y) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  CHECK_INPUT(x);
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "AddForward", ([&] {
@@ -63,8 +65,8 @@ void AddForward(paddle::Tensor& x, const paddle::Tensor& y) {  // NOLINT
 std::vector<paddle::Tensor> AddBackward(const paddle::Tensor& x,
                                         const paddle::Tensor& y,
                                         paddle::Tensor& out_grad) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
-  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
+  CHECK_INPUT(x);
+  CHECK_INPUT(y);
 
   paddle::Tensor y_grad = paddle::empty(x.shape(), x.dtype(), x.place());
 
@@ -92,7 +94,7 @@ PD_BUILD_GRAD_OP(custom_add)
 // out[i] = x[i] + y
 void AddVectorForward(std::vector<paddle::Tensor>& x,  // NOLINT
                       const paddle::Tensor& y) {
-  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
+  CHECK_INPUT(y);
 
   PD_DISPATCH_FLOATING_TYPES(y.type(), "AddVectorForward", ([&] {
                                for (size_t i = 0; i < x.size(); ++i) {
@@ -109,9 +111,8 @@ std::vector<paddle::Tensor> AddVectorBackward(
     const std::vector<paddle::Tensor>& x,
     const paddle::Tensor& y,
     std::vector<paddle::Tensor>& out_grad) {  // NOLINT
-  PD_CHECK(x[0].place() == paddle::PlaceType::kCPU,
-           "x[0] must be a CPU Tensor.");
-  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
+  CHECK_INPUT(x[0]);
+  CHECK_INPUT(y);
   PD_CHECK(x.size() == out_grad.size(),
            "x must have the same size as out_grad.");
 
@@ -145,8 +146,8 @@ void MultiInplaceForward(paddle::Tensor& x,  // NOLINT
                          const paddle::Tensor& y,
                          paddle::Tensor& a,  // NOLINT
                          const paddle::Tensor& b) {
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
-  PD_CHECK(a.place() == paddle::PlaceType::kCPU, "a must be a CPU Tensor.");
+  CHECK_INPUT(x);
+  CHECK_INPUT(a);
 
   PD_DISPATCH_FLOATING_TYPES(
       x.type(), "MultiInplaceForward", ([&] {
@@ -162,10 +163,10 @@ std::vector<paddle::Tensor> MultiInplaceBackward(
     const paddle::Tensor& a,
     const paddle::Tensor& b,
     paddle::Tensor& outab_grad) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
-  PD_CHECK(y.place() == paddle::PlaceType::kCPU, "y must be a CPU Tensor.");
-  PD_CHECK(a.place() == paddle::PlaceType::kCPU, "a must be a CPU Tensor.");
-  PD_CHECK(b.place() == paddle::PlaceType::kCPU, "b must be a CPU Tensor.");
+  CHECK_INPUT(x);
+  CHECK_INPUT(y);
+  CHECK_INPUT(a);
+  CHECK_INPUT(b);
 
   paddle::Tensor y_grad = paddle::empty(x.shape(), x.dtype(), x.place());
   paddle::Tensor b_grad = paddle::empty(a.shape(), a.dtype(), a.place());
@@ -200,7 +201,7 @@ PD_BUILD_GRAD_OP(custom_multi_inplace)
     .SetKernelFn(PD_KERNEL(MultiInplaceBackward));
 
 void ReluForwardInplace(paddle::Tensor& x) {  // NOLINT
-  PD_CHECK(x.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  CHECK_INPUT(x);
 
   PD_DISPATCH_FLOATING_TYPES(x.type(), "ReluForward", ([&] {
                                relu_forward_kernel<data_t>(x.data<data_t>(),
@@ -211,7 +212,7 @@ void ReluForwardInplace(paddle::Tensor& x) {  // NOLINT
 void ReluBackwardInplace(const paddle::Tensor& x,
                          const paddle::Tensor& out,
                          paddle::Tensor& grad_out) {  // NOLINT
-  PD_CHECK(out.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+  CHECK_INPUT(out);
 
   PD_DISPATCH_FLOATING_TYPES(
       grad_out.type(), "ReluBackward", ([&] {

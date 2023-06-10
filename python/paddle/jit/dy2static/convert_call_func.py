@@ -17,6 +17,7 @@ import copy
 import functools
 import inspect
 import logging
+import os
 import pdb
 import re
 from typing import Any, List
@@ -79,13 +80,14 @@ def builtin_modules():
     Return builtin modules.
     """
     modules = [
-        collections,
-        pdb,
         copy,
+        collections,
         inspect,
-        re,
-        numpy,
         logging,
+        numpy,
+        os,
+        pdb,
+        re,
     ]
     try:
         import six

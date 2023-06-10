@@ -17,11 +17,12 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
+PHI_DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {
@@ -313,11 +314,10 @@ class GRUGradOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GRUCPUKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
-    using DeviceContext = phi::CPUContext;
     using LodTensorPtr = phi::DenseTensor*;
     bool is_test = context.Attr<bool>("is_test");
 
@@ -585,9 +585,8 @@ REGISTER_OPERATOR(gru,
 REGISTER_OPERATOR(gru_grad,
                   ops::GRUGradOp,
                   ops::GRUGradOpNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(gru,
-                       ops::GRUCPUKernel<float>,
-                       ops::GRUCPUKernel<double>);
-REGISTER_OP_CPU_KERNEL(gru_grad,
-                       ops::GRUGradKernel<phi::CPUContext, float>,
-                       ops::GRUGradKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    gru, CPU, ALL_LAYOUT, ops::GRUCPUKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    gru_grad, CPU, ALL_LAYOUT, ops::GRUGradKernel, float, double) {}

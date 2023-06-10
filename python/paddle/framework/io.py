@@ -31,10 +31,10 @@ from paddle.fluid.framework import (
     EagerParamBase,
     Program,
     Variable,
+    _create_tensor,
     _current_expected_place,
     _dygraph_tracer,
-    _non_static_mode,
-    _varbase_creator,
+    in_dygraph_mode,
 )
 
 from .io_utils import (
@@ -133,7 +133,7 @@ def _load_state_dict_from_save_params(model_path):
     # 2. create and load Tensor
     with fluid.dygraph.guard():
         for name in var_name_list:
-            new_var = _varbase_creator(name=name, persistable=True)
+            new_var = _create_tensor(name=name, persistable=True)
             _dygraph_tracer().trace_op(
                 type='load',
                 inputs={},
@@ -438,7 +438,7 @@ def _to_LodTensor(ndarray):
 def _tuple_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj[1]
-    if _non_static_mode():
+    if in_dygraph_mode():
         t = paddle.to_tensor(obj[1])
         # This function does modify the name of return value.
         # Loading the same variable multiple times may cause the same name.
@@ -451,14 +451,14 @@ def _tuple_to_tensor(obj, return_numpy):
 def _ndarray_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj
-    if _non_static_mode():
+    if in_dygraph_mode():
         return paddle.to_tensor(obj)
     else:
         return _to_LodTensor(obj)
 
 
 def _lod_tensor2varbase(tensor):
-    return_var = _varbase_creator()
+    return_var = _create_tensor()
     return_var.value().get_tensor().set(tensor, _current_expected_place())
     return return_var
 
@@ -508,7 +508,7 @@ def _parse_load_result(obj, return_numpy):
         return obj
 
     if _contain_x(obj, is_layer):
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             raise ValueError(
                 "Layer can only be loaded in dynamic graph mode, but now in static graph mode."
             )
@@ -819,7 +819,7 @@ def save(obj, path, protocol=4, **configs):
                 f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
-            if _non_static_mode():
+            if in_dygraph_mode():
                 _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
@@ -1071,11 +1071,18 @@ def load(path, **configs):
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
 
-                        for key in load_result["StructuredToParameterName@@"]:
+                        for (key, name) in load_result[
+                            "StructuredToParameterName@@"
+                        ].items():
                             if isinstance(load_result[key], np.ndarray):
                                 load_result[key] = _ndarray_to_tensor(
                                     load_result[key], config.return_numpy
                                 )
+                                # default name is "generatedxxx" which is set in Tensor init, if not set
+                                if not config.return_numpy and getattr(
+                                    load_result[key], "name", ""
+                                ):
+                                    load_result[key].name = name
 
                         if (
                             not config.keep_name_table
@@ -1103,7 +1110,7 @@ def load(path, **configs):
                     if config.return_numpy:
                         return np.array(tensor)
                     else:
-                        if _non_static_mode():
+                        if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
                 except:

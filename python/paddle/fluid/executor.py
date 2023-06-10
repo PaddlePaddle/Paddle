@@ -493,34 +493,6 @@ def _to_name_str(var):
         return _to_str(var)
 
 
-def _is_enable_standalone_executor():
-    return (
-        framework._enable_standalone_executor_ is None
-        or framework._enable_standalone_executor_
-        in [1, '1', True, 'True', 'true']
-    )
-
-
-def _is_dy2st_enable_standalone_executor():
-    return framework._dy2st_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
-def _is_cuda_graph_enable_standalone_executor():
-    return framework._cuda_graph_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -608,7 +580,7 @@ def _as_lodtensor(data, place, dtype=None):
             else dtype
         )
         if np.isscalar(data):
-            data = np.array([data]).astype(dtype)
+            data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -660,10 +632,10 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor:
-    def __init__(self, place, main_program, scope):
+    def __init__(self, place, programs, scope):
         self._place = core.Place()
         self._place.set_place(place)
-        self._main_program = main_program
+        self._programs = programs
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
@@ -688,45 +660,11 @@ class _StandaloneExecutor:
             return tensors
 
     def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
+        new_exe = core.StandaloneExecutor(
+            self._place, [program.desc for program in self._programs]
+        )
 
         return new_exe
-
-    def _update_feed(self, feed):
-        """
-        Update the feed dict, remove the feed item which is pruned in program.
-
-        Notes: This is a very low level API. Users should not use this API
-        directly.
-
-        Args:
-            feed(list|dict): feed dict or list.
-
-        Returns:
-            feed:(list|dict)  updated feed.
-        """
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        global_block = self._main_program.global_block()
-        for feed_name in list(feed.keys()):
-            if not global_block.has_var(feed_name):
-                feed.pop(feed_name)
-                warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % feed_name
-                )
-
-        return feed
 
     def _check_fetch(self, fetch_list):
         if fetch_list is None:
@@ -914,7 +852,7 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, new_program, scope)
+        new_exe = _StandaloneExecutor(place, [new_program], scope)
         return new_program, new_exe
 
 
@@ -991,6 +929,7 @@ class Executor:
         self.ctx_caches = dict()
         self.trainer_caches = dict()
         self.scope_caches = dict()
+        self.micro_scope_cache = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
         p = core.Place()
@@ -1004,8 +943,6 @@ class Executor:
             "__auto_checkpoint_executor__"
         )
 
-        # NOTE: Whether to use experimental executor `StandaloneExecutor`.
-        self._enable_interpreter_core = _is_enable_standalone_executor()
         self._executor_cache = _ExecutorCache()
 
         self._fleet_executor = None
@@ -1061,6 +998,12 @@ class Executor:
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
+
+    def _add_micro_scopes_cache(self, program_cache_key, micro_scopes: list):
+        self.micro_scope_cache[program_cache_key] = micro_scopes
+
+    def _get_micro_scopes_cache(self, program_cache_key):
+        return self.micro_scope_cache.get(program_cache_key, None)
 
     # just for testing, will be removed later
     @lru_cache()
@@ -1485,18 +1428,13 @@ class Executor:
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
-                    # Temporary manual enable standalone executor for fleet executor,
-                    # delete this code after the FLAGS is removed.
-                    if 'tasks' in program._pipeline_opt["fleet_opt"]:
-                        set_flags(
-                            {"FLAGS_fleet_executor_with_standalone": True}
-                        )
                     self._fleet_executor = _prepare_fleet_executor()
                 return self._run_using_fleet_executor(
                     program=program,
                     feed=feed,
                     fetch_list=fetch_list,
                     with_standalone_executor=self._fleet_executor_with_standalone,
+                    return_numpy=return_numpy,
                 )
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
@@ -1605,9 +1543,7 @@ class Executor:
 
             return True
 
-        if self._enable_interpreter_core and _can_use_interpreter_core(
-            program, self.place
-        ):
+        if _can_use_interpreter_core(program, self.place):
 
             if feed is None:
                 feed = {}
@@ -1620,6 +1556,29 @@ class Executor:
                     % (type(feed))
                 )
             feed = self._update_feed(program, feed)
+
+            stored_flag = {}
+            if isinstance(program, compiler.CompiledProgram) or isinstance(
+                program._graph, compiler.CompiledProgram
+            ):
+                compiled_program = (
+                    program
+                    if isinstance(program, compiler.CompiledProgram)
+                    else program._graph
+                )
+                build_strategy = compiled_program._build_strategy
+                if build_strategy is not None and build_strategy.sequential_run:
+                    schedule_flag = [
+                        'FLAGS_new_executor_serial_run',
+                        'FLAGS_new_executor_sequential_run',
+                    ]
+                    for flag in schedule_flag:
+                        value = os.getenv(flag, False)
+                        if isinstance(value, str):
+                            value = value.lower()
+                            value = True if value == 'true' else False
+                        stored_flag[flag] = bool(value)
+                    set_flags({f: True for f in schedule_flag})
 
             program, new_exe = self._executor_cache.get_program_and_executor(
                 program,
@@ -1656,9 +1615,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            return new_exe.run(
+            ret = new_exe.run(
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
+            set_flags(stored_flag)
+            return ret
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -1685,131 +1646,11 @@ class Executor:
 
         acp._auto_checkpoint(self, program)
 
-        # For backward compatibility, run directly.
-        if not compiled:
-
-            return self._run_program(
-                program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-            )
-
         program._compile(scope, self.place)
         assert (
             program._is_inference
         ), f"Program must have _is_inference = True, but get {program._is_inference}"
         return self._run_inference(program._executor, feed)
-
-    def _run_program(
-        self,
-        program,
-        feed,
-        fetch_list,
-        feed_var_name,
-        fetch_var_name,
-        scope,
-        return_numpy,
-        use_program_cache,
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        assert program is not None, "The program should not be Empty"
-        if not isinstance(program, Program):
-            raise TypeError(
-                "Executor requires Program as its Parameter. But you passed in %s"
-                % (type(program))
-            )
-
-        if not isinstance(fetch_var_name, str):
-            raise TypeError(
-                "The name of fetch variable requires string as its Parameter. But you passed in %s"
-                % (type(fetch_var_name))
-            )
-
-        if use_program_cache:
-            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
-            cached_program = self._get_program_cache(cache_key)
-            cached_ctx = self._get_ctx_cache(cache_key)
-            cached_scope = self._get_scope_cache(cache_key)
-            if cached_program is None:
-                cached_program = _add_feed_fetch_ops(
-                    program=program,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name,
-                )
-                self._add_program_cache(cache_key, cached_program)
-                fetch_list_str = list(map(_to_name_str, fetch_list))
-                cached_ctx = self._default_executor.prepare(
-                    cached_program.desc, 0, fetch_list_str, False
-                )
-                # currently, we cache program, vars, sub_scope here
-                # we suppose that in a life cycle of training, a user
-                # will not create many programs. So, here the basic
-                # rule of caching is to cache all unseen (program, var, scope)
-                # when a user use use_program_cache.
-                cached_scope = scope.new_scope()
-                self._default_executor.create_variables(
-                    cached_program.desc, cached_scope, 0
-                )
-                self._add_ctx_cache(cache_key, cached_ctx)
-                self._add_scope_cache(cache_key, cached_scope)
-            program = cached_program
-            ctx = cached_ctx
-            scope = cached_scope
-        else:
-            program = _add_feed_fetch_ops(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-            )
-
-        self._feed_data(program, feed, feed_var_name, scope)
-        if hasattr(program, 'lr_schedulerr'):
-            assert isinstance(
-                program.lr_scheduler, LRScheduler
-            ), "must be LRScheduler"
-            lr_scheduler = program.lr_scheduler
-            lr_value = lr_scheduler()
-            lr_var = program.global_block().vars[lr_scheduler._var_name]
-            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
-            tensor.set(data, self.place)
-
-        if not use_program_cache:
-            self._default_executor.run(
-                program.desc, scope, 0, True, True, [fetch_var_name]
-            )
-        else:
-            self._default_executor.run_prepared_ctx(
-                ctx, scope, False, False, False
-            )
-        arr = scope.find_var(fetch_var_name).get_fetch_list()
-        tensors = arr._move_to_list()
-        if return_numpy:
-            return as_numpy(tensors)
-        else:
-            return tensors
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
@@ -2107,14 +1948,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2284,14 +2120,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2467,13 +2298,25 @@ class Executor:
         fetch_var_name="fetch",
         fetch_list=None,
         with_standalone_executor=False,
+        return_numpy=True,
     ):
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_program = self._get_program_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
+        micro_cached_scopes = self._get_micro_scopes_cache(cache_key)
+        fleet_opt = program._pipeline_opt["fleet_opt"]
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
+        if micro_cached_scopes is None:
+            micro_cached_scopes = []
+            if (
+                "inference_generation" in fleet_opt
+                and fleet_opt["inference_generation"]
+            ):
+                for _ in range(int(fleet_opt["num_micro_batches"])):
+                    micro_cached_scopes.append(cached_scope.new_scope())
+                self._add_micro_scopes_cache(cache_key, micro_cached_scopes)
         if cached_program is None:
             assert (
                 program._pipeline_opt
@@ -2551,7 +2394,7 @@ class Executor:
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
-                micro_scope_list=micro_scope_list,
+                micro_scope_list=micro_cached_scopes,
                 with_standalone_executor=with_standalone_executor,
             )
 
@@ -2575,17 +2418,33 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
-
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
             # not mix up. It indicate that final result will in multiple scopes and need to
             # fetch each.
             result_list = []
-            for scope in micro_scope_list:
-                for var in fleet_opt["fetch_var"]:
-                    tensor = core.get_variable_tensor(scope, var)
-                result_list.append(as_numpy(tensor))
+            for scope in micro_cached_scopes:
+                scope_result_list = []
+                for varname in fleet_opt["fetch_var"]:
+                    tensor = None
+                    try:
+                        tensor = core.get_variable_tensor(scope, varname)
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                    except:
+                        var = scope.find_var(varname)
+                        tensor = var.get_lod_tensor_array()
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                        else:
+                            tensor = [t for t in tensor]
+
+                    if tensor:
+                        scope_result_list.append(tensor)
+
+                if scope_result_list:
+                    result_list.append(scope_result_list)
             return result_list
 
         if fetch_list:

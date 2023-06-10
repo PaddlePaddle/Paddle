@@ -52,7 +52,6 @@ __all__ = [
     'cpu_places',
     'xpu_places',
     'cuda_pinned_places',
-    '_non_static_mode',
     'in_dygraph_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
@@ -83,7 +82,6 @@ class GlobalThreadLocal(threading.local):
         self._in_declarative_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        self._in_eager_mode_ = True
 
     def __str__(self):
         strings = []
@@ -95,7 +93,6 @@ class GlobalThreadLocal(threading.local):
             + str(self._functional_dygraph_context_manager)
         )
         strings.append("_dygraph_tracer_:" + str(self._dygraph_tracer_))
-        strings.append("_in_eager_mode_:" + str(self._in_eager_mode_))
         return "\n".join(strings)
 
     def __setattr__(self, name, val):
@@ -112,19 +109,9 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
-_already_patch_eager_tensor = False
-_already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
-_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_USE_STANDALONE_EXECUTOR', None
-)
-_dy2st_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 1
-)
-_cuda_graph_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
-)
+
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
@@ -168,61 +155,6 @@ extra_op_attrs = {
     "unique": ["is_sorted"],
 }
 
-# Some explanation of our execution system 2022.03
-# For now we have 3 kinds of execution system, since we refactored dygraph mode to
-# build a fast execution system for dynamic mode. But we can't just remove all legacy
-# code once we present the new system for some historical reason. That's why we have
-# these flags.
-#
-# 1. _non_static_mode():
-# _non_static_mode means  we are now running in legacy dygraph mode or dygraph mode.
-# 2. dygraph_mode():
-# This flags inidicates we are now running in dygraph mode which called eager mode before.
-# 3. _in_legacy_dygraph():
-# This flags has been deprecated
-#
-# They have a relation ship as below:
-# Since _in_legacy_graph is deprecated, so dygraph_mode is _non_static_mode
-#
-# Why we have to make different of _in_legacy_dygraph and dygraph_mode?
-# In some performance issue, we find that python if statement cause server performance problem
-# and we need our new dygraph mode becomes as fast as it could be. That's why we make these flags
-# to make sure in most case, we find new dygraph mode first with only one if statement.
-
-
-def _update_monkey_methods():
-    """
-    Update monkey methods of Tensor or eager.Tensor while
-    switching eager mode and legacy mode.
-    """
-    from paddle import _C_ops, _legacy_C_ops
-    from .dygraph.varbase_patch_methods import monkey_patch_varbase
-    from .dygraph import monkey_patch_math_varbase
-
-    global _already_patch_eager_tensor
-    global _already_patch_varbase
-
-    if not _already_patch_eager_tensor:
-        monkey_patch_varbase()
-        monkey_patch_math_varbase()
-
-        _already_patch_eager_tensor = True
-
-    # switch Paddle.Tensor bind type
-    _switch_tensor_bind_type()
-
-
-def _switch_tensor_bind_type():
-    import paddle
-
-    paddle.Tensor = core.eager.Tensor
-    paddle.Tensor.__qualname__ = 'Tensor'
-
-
-def _in_eager_without_dygraph_check():
-    return global_var._in_eager_mode_
-
-
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
@@ -255,12 +187,6 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return (
-        global_var._dygraph_tracer_ is not None
-    ) and global_var._in_eager_mode_
-
-
-def _non_static_mode():
     return global_var._dygraph_tracer_ is not None
 
 
@@ -268,17 +194,6 @@ global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
-
-
-@signature_safe_contextmanager
-def _enable_standalone_executor(enable=True):
-    global _enable_standalone_executor_
-    original_ = _enable_standalone_executor_
-    _enable_standalone_executor_ = enable
-    try:
-        yield
-    finally:
-        _enable_standalone_executor_ = original_
 
 
 @signature_safe_contextmanager
@@ -517,7 +432,7 @@ def require_version(min_version, max_version=None):
 
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
-        assert not _non_static_mode(), (
+        assert not in_dygraph_mode(), (
             "We don't support %s in dynamic graph mode" % func.__name__
         )
         return func(*args, **kwargs)
@@ -527,7 +442,7 @@ def _dygraph_not_support_(func):
 
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
-        assert _non_static_mode(), (
+        assert in_dygraph_mode(), (
             "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
             % func.__name__
         )
@@ -540,7 +455,7 @@ def _non_static_only_(func):
     def __impl__(*args, **kwargs):
         from .dygraph.base import in_declarative_mode
 
-        assert _non_static_mode() or in_declarative_mode(), (
+        assert in_dygraph_mode() or in_declarative_mode(), (
             "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
             % func.__name__
         )
@@ -551,7 +466,7 @@ def _non_static_only_(func):
 
 def _static_only_(func):
     def __impl__(*args, **kwargs):
-        assert not _non_static_mode(), (
+        assert not in_dygraph_mode(), (
             "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
             % func.__name__
         )
@@ -647,19 +562,19 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif core.is_compiled_with_custom_device("npu"):
-            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
+        elif len(core.get_all_custom_device_type()) > 0:
+            dev_type = core.get_all_custom_device_type()[0]
             try:
-                device_count = core.get_custom_device_count("npu")
+                device_count = core.get_custom_device_count(dev_type)
             except Exception as e:
                 device_count = 0
             if device_count > 0:
                 _global_expected_place_ = core.CustomPlace(
-                    "npu", _custom_device_ids("npu")[0]
+                    dev_type, _custom_device_ids(dev_type)[0]
                 )
             else:
                 warnings.warn(
-                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
+                    "You are using CUSTOM_DEVICE version Paddle, but your custom device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
         else:
@@ -768,7 +683,8 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -783,7 +699,8 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -798,7 +715,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -1041,7 +959,7 @@ def name_scope(prefix=None):
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
-    if _non_static_mode():
+    if in_dygraph_mode():
         yield
     else:
         assert prefix, "namescope prefix can not be empty."
@@ -1167,7 +1085,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-def _varbase_creator(
+def _create_tensor(
     type=core.VarDesc.VarType.LOD_TENSOR,
     name=None,
     shape=None,
@@ -1687,9 +1605,24 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
     def register_hook(self, hook):
-        pass
+        import paddle
+
+        def backward_hook_wrapper(dy):
+            """call the backward hook in ."""
+            return hook(np.array(dy))
+
+        def forward_hook_wrapper(x):
+            """do nothing but return a new variable."""
+            return x
+
+        paddle.static.py_func(
+            func=forward_hook_wrapper,
+            x=self,
+            out=self,
+            backward_func=backward_hook_wrapper,
+            skip_vars_in_backward_input=[self],
+        )
 
     def __str__(self):
         return self._to_readable_code()
@@ -1748,7 +1681,7 @@ class Variable(metaclass=VariableMetaClass):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             get_default_distributed_context,
         )
 
@@ -2531,7 +2464,7 @@ class Variable(metaclass=VariableMetaClass):
     def size(self):
         """
 
-        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [] .
 
         Returns:
             Variable, the number of elements for current Variable
@@ -2777,10 +2710,7 @@ class Operator:
         'heter_listen_and_serv',
         'c_wait_comm',
         'c_wait_compute',
-        'c_gen_hccl_id',
-        'c_comm_init_hccl',
         'copy_cross_scope',
-        'c_gen_cncl_id',
     }
 
     def __init__(
@@ -2796,7 +2726,7 @@ class Operator:
         except ValueError:
             pass
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None."
@@ -2935,14 +2865,35 @@ class Operator:
                 for m in proto.outputs:
                     if (m.name not in outputs) and m.dispensable:
                         continue
-                    if not ((m.name in outputs) or m.dispensable):
-                        raise ValueError(
-                            (
-                                "Incorrect setting for output(s) of "
-                                "operator \"%s\", should set: [%s]."
+
+                    # FIXME: The outputs of primitive operator currently
+                    # doesn't include intermediate output as it will be dropped
+                    # in operator codegen, such as xshape output of reshape2.
+                    # It will fixed when the operator codegen support
+                    # intermediate output.
+                    if core._is_bwd_prim_enabled():
+                        if not (
+                            (m.name in outputs)
+                            or m.dispensable
+                            or m.intermediate
+                        ):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
                             )
-                            % (type, m.name)
-                        )
+                    else:
+                        if not ((m.name in outputs) or m.dispensable):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
+                            )
+
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
                         continue
@@ -2961,7 +2912,7 @@ class Operator:
                         else:
                             out_arg_names.append(arg.name)
                         # TODO(minqiyang): could we remove variable's op in static graph mode?
-                        if not _non_static_mode():
+                        if not in_dygraph_mode():
                             if isinstance(arg, str):
                                 block.var(arg).op = self
                             else:
@@ -3186,7 +3137,7 @@ class Operator:
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             get_default_distributed_context,
         )
 
@@ -3836,8 +3787,8 @@ class Block:
         )
 
     def create_var(self, *args, **kwargs):
-        if _non_static_mode():
-            var = _varbase_creator(*args, **kwargs)
+        if in_dygraph_mode():
+            var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
@@ -3993,7 +3944,7 @@ class Block:
             Operator: the append Operator.
         """
         op_type = kwargs.get("type", None)
-        if _non_static_mode():
+        if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
             warnings.warn(
@@ -4130,7 +4081,7 @@ class Block:
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        if _non_static_mode():
+        if in_dygraph_mode():
             type = kwargs.get("type", None)
             attrs = kwargs.get("attrs", {})
             op = Operator(
@@ -5336,6 +5287,8 @@ class Program:
         self._fleet_opt = None
         self._program_config = None
 
+        self._pass_applied = None
+
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 
@@ -5735,6 +5688,22 @@ class Program:
             res_str = ""
             for block in self.blocks:
                 res_str += block.to_string(throw_on_error, with_details)
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
+            res_str += (
+                "version {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.version, throw_on_error), "  "
+                )
+                + "}\n"
+            )
+            res_str += (
+                "op_version_map {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.op_version_map, throw_on_error), "  "
+                )
+                + "}\n"
+            )
         else:
             protostr = self.desc.serialize_to_string()
             proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
@@ -7450,9 +7419,12 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', '', None]:
+    if (
+        device not in ['cpu', 'gpu', 'xpu', '', None]
+        and device not in core.get_all_custom_device_type()
+    ):
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:
@@ -7485,7 +7457,7 @@ def _cuda_graph_guard(cuda_graph_attr=None):
                                    cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "cuda_graph_guard only works under static graph mode"
     assert (
         core.is_compiled_with_cuda()
