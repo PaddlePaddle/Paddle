@@ -16,5 +16,5 @@ autograd==1.4
 librosa==0.8.1
 parameterized
 wandb>=0.13
-protobuf==4.21.12
 xlsxwriter==3.0.9
+protobuf==4.21.12
