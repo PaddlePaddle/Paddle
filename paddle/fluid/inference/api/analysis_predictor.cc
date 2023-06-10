@@ -2154,7 +2154,7 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 
   auto hook = [&](const std::string &op_type,
                   const std::string &input_name,
-                  const paddle_infer::Tensor &var) -> void {
+                  const paddle::Tensor &var) -> void {
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     if (config_.use_gpu()) {
