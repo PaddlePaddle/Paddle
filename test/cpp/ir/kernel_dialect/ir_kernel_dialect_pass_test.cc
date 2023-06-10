@@ -110,5 +110,7 @@ TEST(dialect_attr, attr) {
 
   kernel_dialect->PrintAttribute(attr, ss);
 
-  std::cerr << ss.str() << std::endl;
+  EXPECT_EQ(
+      ss.str() == "<backend:CPU|layout:Undefined(AnyLayout)|dtype:float32>",
+      true);
 }

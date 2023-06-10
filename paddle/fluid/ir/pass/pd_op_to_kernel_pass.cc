@@ -119,8 +119,7 @@ phi::KernelKey GetKernelKey(
           new_input_tmp.type().dyn_cast<dialect::AllocatedDenseTensorType>();
 
       // fake tensor here
-      phi::Place cpu_place(phi::AllocationType::CPU);
-      auto ptr = new phi::Allocation(nullptr, 0, cpu_place);
+      auto ptr = new phi::Allocation(nullptr, 0, type.place());
 
       std::shared_ptr<phi::Allocation> holder(ptr);
 
