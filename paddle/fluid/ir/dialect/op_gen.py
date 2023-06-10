@@ -251,8 +251,8 @@ def to_phi_and_fluid_op_name(op_item):
 
 
 scalar_type_maps = {
-    'int': 'ir::Int32_tAttribute',
-    'int64_t': 'ir::Int64_tAttribute',
+    'int': 'ir::Int32Attribute',
+    'int64_t': 'ir::Int64Attribute',
     'float': 'ir::FloatAttribute',
     'dobule': 'ir::DoubleAttribute',
     'bool': 'ir::BoolAttribute',
@@ -309,17 +309,17 @@ class OpInfoParser:
         self.attr_types_map = {
             'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
             'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-            'Scalar(int)': ['ir::Int32_tAttribute', 'int'],
-            'Scalar(int64_t)': ['ir::Int64_tAttribute', 'int64_t'],
+            'Scalar(int)': ['ir::Int32Attribute', 'int'],
+            'Scalar(int64_t)': ['ir::Int64Attribute', 'int64_t'],
             'Scalar(float)': ['ir::FloatAttribute', 'float'],
             'Scalar(dobule)': ['ir::DoubleAttribute', 'dobule'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
                 'const std::vector<Scalar>&',
             ],
-            'int': ['ir::Int32_tAttribute', 'int'],
-            'int32_t': ['ir::Int32_tAttribute', 'int32_t'],
-            'int64_t': ['ir::Int64_tAttribute', 'int64_t'],
+            'int': ['ir::Int32Attribute', 'int'],
+            'int32_t': ['ir::Int32Attribute', 'int32_t'],
+            'int64_t': ['ir::Int64Attribute', 'int64_t'],
             'long': ['ir::LongAttribute', 'long'],
             'size_t': ['ir::Size_tAttribute', 'size_t'],
             'float': ['ir::FloatAttribute', 'float'],
@@ -345,11 +345,11 @@ class OpInfoParser:
             ],
             'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
             'int64_t[]': [
-                'ir::ArrayAttribute<ir::Int64_tAttribute>',
+                'ir::ArrayAttribute<ir::Int64Attribute>',
                 'const std::vector<int64_t>&',
             ],
             'int[]': [
-                'ir::ArrayAttribute<ir::Int32_tAttribute>',
+                'ir::ArrayAttribute<ir::Int32Attribute>',
                 'const std::vector<int>&',
             ],
         }
