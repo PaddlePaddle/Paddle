@@ -37,6 +37,42 @@ set(BRPC_LIBRARIES
 
 include_directories(${BRPC_INCLUDE_DIR})
 
+# download brpc
+set(BRPC_FILE
+    1.4.0.tar.gz
+    CACHE STRING "" FORCE)
+set(BRPC_URL
+    https://github.com/apache/brpc/archive/refs/tags/${BRPC_FILE}
+    CACHE STRING "" FORCE)
+set(BRPC_DOWNLOAD_DIR
+    ${PADDLE_SOURCE_DIR}/third_party/brpc/${CMAKE_SYSTEM_NAME})
+set(BRPC_URL_MD5 6af9d50822c33a3abc56a1ec0af0e0bc)
+
+function(download_brpc)
+  message(STATUS "Downloading ${BRPC_URL} to ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE}")
+  file(
+    DOWNLOAD ${BRPC_URL} ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE}
+    EXPECTED_MD5 ${BRPC_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${BRPC_FILE} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${BRPC_FILE} again"
+    )
+  endif()
+endfunction()
+
+if(EXISTS ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE})
+  file(MD5 ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE} BRPC_MD5)
+  if(NOT BRPC_MD5 EQUAL BRPC_URL_MD5)
+    download_brpc()
+  endif()
+else()
+  download_brpc()
+endif()
+
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
 set(prefix_path
     "${THIRD_PARTY_PATH}/install/gflags|${THIRD_PARTY_PATH}/install/leveldb|${THIRD_PARTY_PATH}/install/snappy|${THIRD_PARTY_PATH}/install/gtest|${THIRD_PARTY_PATH}/install/protobuf|${THIRD_PARTY_PATH}/install/zlib|${THIRD_PARTY_PATH}/install/glog"
@@ -46,8 +82,8 @@ set(prefix_path
 ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
-  GIT_TAG 1.4.0
+  URL ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE}
+  URL_MD5 ${BRPC_URL_MD5}
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
