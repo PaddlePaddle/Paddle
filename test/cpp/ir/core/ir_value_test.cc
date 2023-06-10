@@ -42,7 +42,7 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op1_inputs,
                             CreateAttributeMap("op1_name", "op1_attr"),
                             op1_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op1->Print(std::cout);
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
@@ -51,7 +51,7 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op2_inputs,
                             CreateAttributeMap("op2_name", "op2_attr"),
                             op2_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op2->Print(std::cout);
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
@@ -61,7 +61,7 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op3_inputs,
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op3->Print(std::cout);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
@@ -74,7 +74,7 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op4_inputs,
                             CreateAttributeMap("op4_name", "op4_attr"),
                             op4_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op4->Print(std::cout);
 
   // Test 1:

@@ -25,11 +25,12 @@ namespace ir {
 struct ParametricStorageManager {
   using StorageBase = StorageManager::StorageBase;
 
-  ParametricStorageManager() {}
+  explicit ParametricStorageManager(std::function<void(StorageBase *)> destroy)
+      : destroy_(destroy) {}
 
   ~ParametricStorageManager() {
     for (const auto &instance : parametric_instances_) {
-      delete instance.second;
+      destroy_(instance.second);
     }
     parametric_instances_.clear();
   }
@@ -37,7 +38,7 @@ struct ParametricStorageManager {
   // Get the storage of parametric type, if not in the cache, create and
   // insert the cache.
   StorageBase *GetOrCreate(std::size_t hash_value,
-                           std::function<bool(const StorageBase *)> equal_func,
+                           std::function<bool(StorageBase *)> equal_func,
                            std::function<StorageBase *()> constructor) {
     if (parametric_instances_.count(hash_value) != 0) {
       auto pr = parametric_instances_.equal_range(hash_value);
@@ -62,6 +63,7 @@ struct ParametricStorageManager {
   // In order to prevent hash conflicts, the unordered_multimap data structure
   // is used for storage.
   std::unordered_multimap<size_t, StorageBase *> parametric_instances_;
+  std::function<void(StorageBase *)> destroy_;
 };
 
 StorageManager::StorageManager() {}
@@ -95,12 +97,13 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageImpl(
   return parameterless_instance;
 }
 
-void StorageManager::RegisterParametricStorageImpl(TypeId type_id) {
+void StorageManager::RegisterParametricStorageImpl(
+    TypeId type_id, std::function<void(StorageBase *)> destroy) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
   VLOG(4) << "Register a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
-  parametric_instance_.emplace(type_id,
-                               std::make_unique<ParametricStorageManager>());
+  parametric_instance_.emplace(
+      type_id, std::make_unique<ParametricStorageManager>(destroy));
 }
 
 void StorageManager::RegisterParameterlessStorageImpl(
