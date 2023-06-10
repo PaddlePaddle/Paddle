@@ -136,7 +136,7 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
             "_matmul_y": self.matmul_y_arr,
             "_ele_y": self.ele_y_arr,
         }
-        self.reference =  paddle.static.Executor(self.place).run(
+        self.reference = paddle.static.Executor(self.place).run(
             self.main_prog, feed=self.feed, fetch_list=[self.loss.name]
         )
 

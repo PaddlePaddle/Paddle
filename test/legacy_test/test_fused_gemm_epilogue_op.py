@@ -89,7 +89,9 @@ class TestFuseGemmEpilogueOpReluMMFP16(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -146,7 +148,9 @@ class TestFuseGemmEpilogueOpReluMTMFP16(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -203,7 +207,9 @@ class TestFuseGemmEpilogueOpReluMMTFP16(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -260,7 +266,9 @@ class TestFuseGemmEpilogueOpReluMTMTFP16(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -317,7 +325,9 @@ class TestFuseGemmEpilogueOpReluMMFP16MultiDimX(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -378,7 +388,9 @@ class TestFuseGemmEpilogueOpReluMTMFP16MultiDimX(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -438,7 +450,9 @@ class TestFuseGemmEpilogueOpGeluMMFP16(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
@@ -494,7 +508,9 @@ class TestFuseGemmEpilogueOpNoneMMFP16(TestFuseGemmBase):
             self.place
         ):
             return
-        self.check_output_with_place(self.place, atol=self.atol, check_dygraph=False)
+        self.check_output_with_place(
+            self.place, atol=self.atol, check_dygraph=False
+        )
 
 
 @skip_check_grad_ci(reason="no grap op")
