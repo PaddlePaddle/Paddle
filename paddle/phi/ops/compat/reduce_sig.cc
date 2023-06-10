@@ -159,34 +159,10 @@ KernelSignature ReduceAllOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("unregistered", {}, {}, {});
 }
 
-KernelSignature ReduceSumGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("sum_grad",
-                         {"X", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
 KernelSignature ReduceMeanGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("mean_grad",
                          {"X", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
-KernelSignature ReduceMaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("max_grad",
-                         {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
-KernelSignature ReduceMinGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("min_grad",
-                         {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
                          {"X@GRAD"});
 }
@@ -211,11 +187,8 @@ PD_REGISTER_BASE_KERNEL_NAME(reduce_prod, prod);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_all, all);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_any, any);
 
-PD_REGISTER_BASE_KERNEL_NAME(reduce_sum_grad, sum_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_mean_grad, mean_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_prod_grad, prod_grad);
-PD_REGISTER_BASE_KERNEL_NAME(reduce_max_grad, max_grad);
-PD_REGISTER_BASE_KERNEL_NAME(reduce_min_grad, min_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
@@ -227,13 +200,7 @@ PD_REGISTER_ARG_MAPPING_FN(reduce_amin, phi::ReduceAMinOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_all, phi::ReduceAllOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_any, phi::ReduceAnyOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(reduce_sum_grad,
-                           phi::ReduceSumGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean_grad,
                            phi::ReduceMeanGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_prod_grad,
                            phi::ReduceProdGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(reduce_max_grad,
-                           phi::ReduceMaxGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(reduce_min_grad,
-                           phi::ReduceMinGradOpArgumentMapping);

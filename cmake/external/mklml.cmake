@@ -17,13 +17,15 @@ set(MKLML_INSTALL_DIR ${THIRD_PARTY_PATH}/install/mklml)
 set(MKLML_INC_DIR ${MKLML_INSTALL_DIR}/include)
 set(MKLML_LIB_DIR ${MKLML_INSTALL_DIR}/lib)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_LIB_DIR}")
+set(MKLML_DOWNLOAD_DIR
+    ${PADDLE_SOURCE_DIR}/third_party/mklml/${CMAKE_SYSTEM_NAME})
 
 if(WIN32)
-  set(MKLML_VER
-      "mklml_win_2019.0.5.20190502"
+  set(MKLML_FILE
+      "mklml_win_2019.0.5.20190502.zip"
       CACHE STRING "" FORCE)
   set(MKLML_URL
-      "https://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.zip"
+      "https://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
       CACHE STRING "" FORCE)
   set(MKLML_URL_MD5 ff8c5237570f03eea37377ccfc95a08a)
   set(MKLML_LIB ${MKLML_LIB_DIR}/mklml.lib)
@@ -34,11 +36,11 @@ else()
   #TODO(intel-huying):
   #  Now enable csrmm function in mklml library temporarily,
   #  it will be updated as offical version later.
-  set(MKLML_VER
-      "csrmm_mklml_lnx_2019.0.5"
+  set(MKLML_FILE
+      "csrmm_mklml_lnx_2019.0.5.tgz"
       CACHE STRING "" FORCE)
   set(MKLML_URL
-      "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz"
+      "http://paddlepaddledeps.bj.bcebos.com/${MKLML_FILE}"
       CACHE STRING "" FORCE)
   set(MKLML_URL_MD5 bc6a7faea6a2a9ad31752386f3ae87da)
   set(MKLML_LIB ${MKLML_LIB_DIR}/libmklml_intel.so)
@@ -48,9 +50,42 @@ else()
 endif()
 
 set(MKLML_PROJECT "extern_mklml")
-message(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
+message(STATUS "MKLML_FILE: ${MKLML_FILE}, MKLML_URL: ${MKLML_URL}")
 set(MKLML_PREFIX_DIR ${THIRD_PARTY_PATH}/mklml)
-set(MKLML_SOURCE_DIR ${THIRD_PARTY_PATH}/mklml/src/extern_mklml)
+
+function(download_mklml)
+  message(
+    STATUS "Downloading ${MKLML_URL} to ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}")
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${MKLML_URL} ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
+    EXPECTED_MD5 ${MKLML_URL_MD5}
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${MKLML_FILE} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${MKLML_FILE} again"
+    )
+  endif()
+endfunction()
+
+find_file(
+  LOCAL_MKLML_LIB_ZIP
+  NAMES ${MKLML_FILE}
+  PATHS ${MKLML_DOWNLOAD_DIR}
+  NO_DEFAULT_PATH)
+
+# Download and check mklml.
+if(LOCAL_MKLML_LIB_ZIP)
+  file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
+  if(NOT MKLML_MD5 EQUAL MKLML_URL_MD5)
+    download_mklml()
+  endif()
+else()
+  download_mklml()
+endif()
 
 # Ninja Generator can not establish the correct dependency relationship
 # between the imported library with target, the product file
@@ -60,17 +95,15 @@ set(MKLML_SOURCE_DIR ${THIRD_PARTY_PATH}/mklml/src/extern_mklml)
 ExternalProject_Add(
   ${MKLML_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${MKLML_URL}
+  URL ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE}
   URL_MD5 ${MKLML_URL_MD5}
+  DOWNLOAD_DIR ${MKLML_DOWNLOAD_DIR}
+  SOURCE_DIR ${MKLML_INSTALL_DIR}
   PREFIX ${MKLML_PREFIX_DIR}
-  DOWNLOAD_NO_PROGRESS 1
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   UPDATE_COMMAND ""
-  INSTALL_COMMAND
-    ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/include
-    ${MKLML_INC_DIR} && ${CMAKE_COMMAND} -E copy_directory
-    ${MKLML_SOURCE_DIR}/lib ${MKLML_LIB_DIR}
+  INSTALL_COMMAND ""
   BUILD_BYPRODUCTS ${MKLML_LIB}
   BUILD_BYPRODUCTS ${MKLML_IOMP_LIB})
 

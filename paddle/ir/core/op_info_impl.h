@@ -38,39 +38,38 @@ class OpInfoImpl {
   /// \brief Construct and Deconstruct OpInfoImpl. The memory layout of
   /// OpInfoImpl is: std::pair<TypeId, void *>... | TypeId... | OpInfoImpl
   ///
-  static OpInfoImpl *create(Dialect *dialect,
-                            TypeId op_id,
-                            const char *op_name,
-                            std::vector<InterfaceValue> &&interface_map,
-                            const std::vector<TypeId> &trait_set,
-                            size_t attributes_num,
-                            const char *attributes_name[],
-                            VerifyPtr verify);
+  static OpInfo Create(Dialect *dialect,
+                       TypeId op_id,
+                       const char *op_name,
+                       std::vector<InterfaceValue> &&interface_map,
+                       const std::vector<TypeId> &trait_set,
+                       size_t attributes_num,
+                       const char *attributes_name[],
+                       VerifyPtr verify);
+  static void Destroy(OpInfo info);
 
-  void destroy();
+  TypeId id() const { return op_id_; }
 
-  ir::IrContext *ir_context() const;
+  Dialect *dialect() const { return dialect_; }
+
+  VerifyPtr verify() const { return verify_; }
+
+  IrContext *ir_context() const;
 
   /// \brief Search methods for Trait or Interface.
   bool HasTrait(TypeId trait_id) const;
 
   bool HasInterface(TypeId interface_id) const;
 
-  ir::TypeId id() const { return op_id_; }
-
-  void *interface_impl(TypeId interface_id) const;
+  void *GetInterfaceImpl(TypeId interface_id) const;
 
   const char *name() const { return op_name_; }
-
-  ir::Dialect *dialect() const { return dialect_; }
 
   uint32_t AttributeNum() const { return num_attributes_; }
 
   const char *GetAttributeByIndex(size_t idx) const {
     return idx < num_attributes_ ? p_attributes_[idx] : nullptr;
   }
-
-  VerifyPtr verify() const { return verify_; }
 
  private:
   OpInfoImpl(ir::Dialect *dialect,
@@ -89,9 +88,10 @@ class OpInfoImpl {
         num_attributes_(num_attributes),
         p_attributes_(p_attributes),
         verify_(verify) {}
+  void Destroy();
 
   /// The dialect of this Op belong to.
-  ir::Dialect *dialect_;
+  Dialect *dialect_;
 
   /// The TypeId of this Op.
   TypeId op_id_;

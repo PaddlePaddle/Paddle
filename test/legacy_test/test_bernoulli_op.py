@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 def output_hist(out):
@@ -31,9 +32,18 @@ def output_hist(out):
 class TestBernoulliOp(OpTest):
     def setUp(self):
         self.op_type = "bernoulli"
-        self.inputs = {"X": np.random.uniform(size=(1000, 784))}
+        self.init_dtype()
+        self.init_test_case()
+        self.inputs = {"X": self.x}
         self.attrs = {}
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+        self.outputs = {"Out": self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_test_case(self):
+        self.x = np.random.uniform(size=(1000, 784)).astype(self.dtype)
+        self.out = np.zeros((1000, 784)).astype(self.dtype)
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -96,6 +106,37 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_array_equal(y[16, 500, 500:510], expect)
 
         paddle.enable_static()
+
+
+class TestBernoulliFP16Op(TestBernoulliOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestBernoulliBF16Op(TestBernoulliOp):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(self.verify_output, place)
+
+    def init_test_case(self):
+        self.x = convert_float_to_uint16(
+            np.random.uniform(size=(1000, 784)).astype("float32")
+        )
+        self.out = convert_float_to_uint16(
+            np.zeros((1000, 784)).astype("float32")
+        )
+
+    def verify_output(self, outs):
+        hist, prob = output_hist(np.array(outs[0]))
+        np.testing.assert_allclose(hist, prob, atol=0.01)
 
 
 if __name__ == "__main__":

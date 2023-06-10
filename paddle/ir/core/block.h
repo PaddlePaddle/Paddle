@@ -16,10 +16,10 @@
 
 #include <cstddef>
 #include <list>
-#include "paddle/ir/core/operation.h"
 
 namespace ir {
 class Region;
+class Operation;
 
 class Block {
  public:
@@ -30,7 +30,9 @@ class Block {
   Block() = default;
   ~Block();
 
-  Region *parent() const { return parent_; }
+  Region *GetParent() const { return parent_; }
+  Operation *GetParentOp() const;
+
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
@@ -46,18 +48,12 @@ class Block {
   iterator insert(const_iterator iterator, Operation *op);
   void clear();
 
-  Region *GetParentRegion() const { return parent_; }
-
-  Operation *GetParentOp() const {
-    return parent_ ? parent_->GetParentOp() : nullptr;
-  }
-
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
 
   friend class Region;
-  void set_parent(Region *parent) { parent_ = parent; }
+  void SetParent(Region *parent) { parent_ = parent; }
 
  private:
   Region *parent_;              // not owned

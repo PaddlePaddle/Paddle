@@ -19,26 +19,26 @@ namespace ir {
 Region::~Region() { clear(); }
 
 void Region::push_back(Block *block) {
-  block->set_parent(this);
+  block->SetParent(this);
   blocks_.push_back(block);
 }
 
 void Region::emplace_back() { push_back(new Block); }
 
 void Region::push_front(Block *block) {
-  block->set_parent(this);
+  block->SetParent(this);
   blocks_.push_front(block);
 }
 
 Region::iterator Region::insert(const_iterator position, Block *block) {
-  block->set_parent(this);
+  block->SetParent(this);
   return blocks_.insert(position, block);
 }
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
   for (auto &block : blocks_) {
-    block->set_parent(this);
+    block->SetParent(this);
   }
 }
 
