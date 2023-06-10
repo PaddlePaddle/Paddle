@@ -77,9 +77,13 @@ class PipelineParallel(MetaParallelBase):
         self._dp_comm_overlap = self._strategy.hybrid_configs[
             "pp_configs"
         ].dp_comm_overlap
+        assert not self._dp_comm_overlap, "dp_comm_overlap is not supported"
         self._sharding_comm_overlap = self._strategy.hybrid_configs[
             "pp_configs"
         ].sharding_comm_overlap
+        assert (
+            not self._sharding_comm_overlap
+        ), "sharding_comm_overlap is not supported"
         self._enable_timer = self._strategy.hybrid_configs[
             "pp_configs"
         ].enable_timer
