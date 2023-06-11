@@ -1,9 +1,11 @@
-op_library(tensorrt_engine_op DEPS tensorrt_engine tensorrt_converter
-           infer_io_utils analysis_helper)
+set(tensorrt_engine_op_deps tensorrt_engine tensorrt_converter infer_io_utils
+                            analysis_helper)
+
+op_library(tensorrt_engine_op DEPS ${tensorrt_engine_op_deps})
 nv_test(
   test_tensorrt_engine_op
   SRCS tensorrt_engine_op_test.cc
-  DEPS tensorrt_engine_op analysis)
+  DEPS tensorrt_engine_op analysis fleet_executor)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
