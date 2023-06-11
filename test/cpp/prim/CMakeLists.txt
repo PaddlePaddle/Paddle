@@ -20,6 +20,7 @@ cc_test_old(
   SRCS
   test_static_prim.cc
   DEPS
+  fleet_executor
   static_utils
   static_prim_api
   generated_op
