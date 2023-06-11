@@ -93,9 +93,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
           input_persis = false;
         }
       }
-      // if (out_node->Name() == "full_like_44.tmp_0") {
-      //   input_persis = false;
-      // }
       
       map[out_node->Name()] = 0;
     }
@@ -105,7 +102,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         if (node->IsVar() && node->Name() == iter.first) {
           map[node->Name()]++;
           if (map[node->Name()] > 1) {
-          //  input_persis = false;
+          // 如果想更多的折叠，就把下面的语句注释掉
+            input_persis = false;
           }
         }
       }
