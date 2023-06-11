@@ -180,7 +180,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
                 'swish',
                 inputs={'X': ['conv2d_out']},
                 outputs={'Out': ['swish_out']},
-                beta=draw(st.floats(min_value=0.1, max_value=1.0)),
+                beta=1.0,
             )
         elif act_type == 'clip':
             act_op = OpConfig(

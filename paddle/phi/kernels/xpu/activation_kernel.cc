@@ -403,10 +403,9 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, typename Context>
-void SwishRawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    float beta,
-                    DenseTensor* out) {
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::swish(dev_ctx.x_context(),
@@ -542,10 +541,10 @@ PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(swish_raw,
+PD_REGISTER_KERNEL(swish,
                    XPU,
                    ALL_LAYOUT,
-                   phi::SwishRawKernel,
+                   phi::SwishKernel,
                    float,
                    phi::dtype::float16) {}
 PD_REGISTER_KERNEL(hard_sigmoid,
