@@ -1,5 +1,5 @@
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
-  if(WTIH_CINN)
+  if(WITH_CINN)
     set(eager_deps ${eager_deps} cinn_compiler python)
   endif()
   cc_library(

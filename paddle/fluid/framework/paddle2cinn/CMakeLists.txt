@@ -57,6 +57,7 @@ if(WITH_TESTING)
     SRCS
     build_cinn_pass_test.cc
     DEPS
+    fleet_executor
     build_cinn_pass
     cinn_compiler
     op_registry
@@ -73,6 +74,7 @@ if(WITH_TESTING)
     SRCS
     cinn_zero_tensor_trick_pass_test.cc
     DEPS
+    fleet_executor
     build_cinn_pass
     cinn_compiler
     op_registry
