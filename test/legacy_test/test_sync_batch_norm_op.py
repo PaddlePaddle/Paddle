@@ -55,6 +55,21 @@ def enable_static():
     return cleanup
 
 
+def convert_numpy_array(array):
+    if array.dtype != np.uint16:
+        return array
+
+    cleanup = None
+    if not in_dygraph_mode():
+        paddle.disable_static()
+        cleanup = lambda: paddle.enable_static()
+
+    out = paddle.to_tensor(array).astype(paddle.float32).numpy()
+    if cleanup is not None:
+        cleanup()
+    return out
+
+
 def create_or_get_tensor(scope, var_name, var, place):
     """Get tensor, if not found, create a new one."""
     tensor = scope.var(var_name).get_tensor()
@@ -279,8 +294,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             if sync_bn_val.shape != bn_val.shape:
                 bn_val = bn_val[:stride]
             np.testing.assert_allclose(
-                bn_val,
-                sync_bn_val,
+                convert_numpy_array(bn_val),
+                convert_numpy_array(sync_bn_val),
                 rtol=1e-05,
                 atol=self.atol,
                 err_msg='Output ('

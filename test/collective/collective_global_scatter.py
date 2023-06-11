@@ -14,7 +14,6 @@
 
 import os
 import pickle
-import sys
 
 import numpy as np
 from legacy_test.test_collective_api_base import (
@@ -103,7 +102,8 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
                 fetch_list=fetch_list,
             )
 
-        sys.stdout.buffer.write(pickle.dumps(out))
+        with open(os.environ['DUMP_FILE'], "wb") as f:
+            pickle.dump(out, f)
 
 
 if __name__ == "__main__":
