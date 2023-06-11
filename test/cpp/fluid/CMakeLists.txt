@@ -109,7 +109,6 @@ cc_test_old(
   op_debug_string_test.cc
   DEPS
   executor
-  fleet_executor
   recurrent_op_helper
   recurrent_op
   elementwise_add_op
