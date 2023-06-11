@@ -888,7 +888,7 @@ def conv2d(
     """
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'conv2d'
+        input, 'input', ['uint16', 'float16', 'float32', 'float64'], 'conv2d'
     )
     if len(input.shape) != 4:
         raise ValueError(
@@ -2743,12 +2743,15 @@ def batch_norm(
     helper = LayerHelper('batch_norm', **locals())
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'batch_norm'
+        input,
+        'input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'batch_norm',
     )
     dtype = helper.input_dtype()
 
     # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16:
+    if dtype == core.VarDesc.VarType.FP16 or dtype == core.VarDesc.VarType.BF16:
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
