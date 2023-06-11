@@ -18,8 +18,8 @@ import random
 import numpy as np
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
-    print_to_err,
     dump_output,
+    print_to_err,
     runtime_main,
 )
 
