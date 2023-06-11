@@ -40,6 +40,7 @@ cc_library(
        cinn_graph_symbolization
        cinn
        cinn_launch_context
+       parallel_executor
        python
        pybind)
 

@@ -46,9 +46,11 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     test_eager_prim.cc
     DEPS
+    fleet_executor
     ${prim_eager_deps}
     ${prim_generated_deps}
     prim_utils
     static_global_utils
-    init_env_utils)
+    init_env_utils
+    python)
 endif()

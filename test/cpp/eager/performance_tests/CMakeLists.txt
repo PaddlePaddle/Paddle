@@ -1,4 +1,7 @@
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
+  if(WTIH_CINN)
+    set(eager_deps ${eager_deps} cinn_compiler python)
+  endif()
   cc_library(
     performance_benchmark_utils
     SRCS benchmark_utils.cc
@@ -17,6 +20,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_eager_cpu.cc
     DEPS
+    fleet_executor
     conditional_block_op
     performance_benchmark_utils
     ${eager_deps}
@@ -26,6 +30,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_fluid_cpu.cc
     DEPS
+    fleet_executor
     dygraph_function
     performance_benchmark_utils
     ${eager_deps}
@@ -36,6 +41,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_eager_cuda.cc
     DEPS
+    fleet_executor
     conditional_block_op
     performance_benchmark_utils
     ${eager_deps}

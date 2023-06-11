@@ -103,17 +103,32 @@ cc_test(
   SRCS share_buffer_op_test.cc
   DEPS lod_tensor device_context generated_static_op)
 
-cc_test_old(
-  op_debug_string_test
-  SRCS
-  op_debug_string_test.cc
-  DEPS
-  executor
-  fleet_executor
-  recurrent_op_helper
-  recurrent_op
-  elementwise_add_op
-  ${COMMON_OP_DEPS})
+if(WITH_CINN)
+  cc_test_old(
+    op_debug_string_test
+    SRCS
+    op_debug_string_test.cc
+    DEPS
+    executor
+    fleet_executor
+    cinn_compiler
+    recurrent_op_helper
+    recurrent_op
+    elementwise_add_op
+    ${COMMON_OP_DEPS})
+else()
+  cc_test_old(
+    op_debug_string_test
+    SRCS
+    op_debug_string_test.cc
+    DEPS
+    executor
+    fleet_executor
+    recurrent_op_helper
+    recurrent_op
+    elementwise_add_op
+    ${COMMON_OP_DEPS})
+endif()
 
 if(WITH_GPU)
   cc_test(
