@@ -56,14 +56,13 @@ class FakeMicroDataset:
     def _load_micro_batch(self, micro_step):
         inputs = self._data
 
-        if self._is_first_stage:
+        if self._is_first_stage or self._is_last_stage:
             assert len(inputs) == 2, "length of input should be 2"
-            return self._load_micro_batch_impl(inputs[0], micro_step)
-        elif self._is_last_stage:
-            assert len(inputs) == 2, "length of input should be 2"
-            return self._load_micro_batch_impl(inputs[1], micro_step)
+            data = self._load_micro_batch_impl(inputs[0], micro_step)
+            label = self._load_micro_batch_impl(inputs[1], micro_step)
+            return (data, label)
         else:
-            inputs = None
+            return (None, None)
 
     def _load_micro_batch_impl(self, inputs, micro_step):
         begin = micro_step * self._micro_batch_size
@@ -80,9 +79,11 @@ class FakeMicroDataset:
                         len(data),
                     )
                     output.append(data[micro_step].detach())
-                else:
+                elif data is not None:
                     self._check_data_vaild(data)
                     output.append(data[begin:end, :].detach())
+                else:
+                    output.append(None)
             return tuple(output)
 
         elif isinstance(inputs, list):
@@ -93,9 +94,11 @@ class FakeMicroDataset:
                 len(inputs),
             )
             return inputs[micro_step].detach()
-        else:
+        elif inputs is not None:
             self._check_data_vaild(inputs)
             return inputs[begin:end, :].detach()
+        else:
+            return None
 
     def _check_data_vaild(self, data):
         batch_size = data.shape[0]
@@ -588,10 +591,10 @@ class PipelineParallel(MetaParallelBase):
             return input_tensor_grad
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
-        if isinstance(micro_batch_data, tuple):
+        if isinstance(micro_batch_data, (tuple, list)):
             for data in micro_batch_data:
                 self._check_micro_batch_data_valid(data)
-        else:
+        elif micro_batch_data is not None:
             micro_batch_size = micro_batch_data.shape[0]
             assert (
                 micro_batch_size == self.micro_batch_size
