@@ -57,14 +57,17 @@ def remove_glog_envs(envs):
 
 
 def get_dump_file(rank):
-    return f"./out_dump_{os.getpid()}_{rank}.pickled" 
+    return f"./out_dump_{os.getpid()}_{rank}.pickled"
 
 
 def modify_envs(envs, rank=0):
     if not envs:
         envs = {}
     envs = remove_glog_envs(envs)
-    envs['DUMP_FILE'] = get_dump_file(rank) 
+    dump_file = get_dump_file(rank)
+    envs['DUMP_FILE'] = dump_file
+    if os.path.exists(dump_file):
+        os.remove(dump_file)
     return envs
 
 
@@ -80,7 +83,6 @@ def load_and_remove_dump_file(rank=0):
         out = pickle.load(f)
     os.remove(path)
     return out
-
 
 
 def print_to_err(class_name, log_str):
@@ -1201,7 +1203,7 @@ class TestDistBase(unittest.TestCase):
 
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        return load_and_remove_dump_file() 
+        return load_and_remove_dump_file()
 
     def _run_local_gloo(
         self,
