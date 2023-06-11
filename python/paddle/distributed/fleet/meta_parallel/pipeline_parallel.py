@@ -524,6 +524,7 @@ class PipelineParallel(MetaParallelBase):
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
             input_tensor = next(micro_dataset)[0]
+            self._check_micro_batch_data_valid(input_tensor)
 
         assert chunk_id is None or isinstance(chunk_id, int)
 
@@ -536,6 +537,7 @@ class PipelineParallel(MetaParallelBase):
                     self._layers._loss_fn is not None
                 ), "loss function should exist to compute loss"
                 labels = next(micro_dataset)[1]
+                self._check_micro_batch_data_valid(labels)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
                     output_tensor, (paddle.Tensor, framework.core.eager.Tensor)
@@ -556,6 +558,16 @@ class PipelineParallel(MetaParallelBase):
         if self._enable_timer:
             self.timers("forward_step").stop()
         return output_tensor
+
+    def _check_micro_batch_data_valid(self, micro_batch_data):
+        if isinstance(micro_batch_data, (tuple, list)):
+            for data in micro_batch_data:
+                self._check_micro_batch_data_valid(data)
+        elif micro_batch_data is not None:
+            micro_batch_size = micro_batch_data.shape[0]
+            assert (
+                micro_batch_size == self.micro_batch_size
+            ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
         if self._enable_timer:
