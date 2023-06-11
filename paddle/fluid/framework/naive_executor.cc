@@ -93,9 +93,9 @@ void NaiveExecutor::Run() {
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
 
-    if (op->Type() == "while") {
-      op->SetOutputHooks(hookfuncs_);
-    }
+    // if (op->Type() == "while") {
+    //   op->SetOutputHooks(hookfuncs_);
+    // }
 
     op->Run(*scope_, place_);
     // std::cout << op->OutputVars(true).front() << std::endl;
@@ -104,30 +104,33 @@ void NaiveExecutor::Run() {
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
 
-    // if ("tensorrt_engine" == op->Type() && 0) {
-    //   for (auto name : op->OutputVars(true)) {
-    //     std::cout << name << ": ";
-    //     auto tensor = FindTensor(name);
-    //     auto dims = tensor->dims();
-    //     if (tensor->dtype() == paddle::experimental::DataType::FLOAT32) {
-    //       float *cpu_data = new float[tensor->numel()];
-    //       float *tensor_data = tensor->data<float>();
-    //       if (tensor->place() == platform::CPUPlace()) {
-    //         memcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel());
-    //       } else {
-    //         cudaMemcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel(),
-    //                    cudaMemcpyDeviceToHost);
-    //       }
-    //       if(0)print(cpu_data, 100, name);
-    //       for (int64_t i = 0; i < dims.size(); i++) {
-    //         std::cout << dims[i] << " ";
-    //       }
-    //       delete[] cpu_data;
-    //     } else if (tensor->dtype() == paddle::experimental::DataType::INT32) {
-    //     }
-    //   }
-    // }
-
+    if (0 && "tensorrt_engine" == op->Type() || "slice" == op->Type() && 0) {
+      for (auto name : op->OutputVars(true)) {
+        std::cout << name << ": ";
+        auto var = scope_->FindVar(name);
+        if (!var->IsType<phi::DenseTensor>()) continue;
+        auto tensor = FindTensor(name);
+        auto dims = tensor->dims();
+        if (tensor->dtype() == paddle::DataType::FLOAT32) {
+          float *cpu_data = new float[tensor->numel()];
+          float *tensor_data = tensor->data<float>();
+          if (tensor->place() == platform::CPUPlace()) {
+            memcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel());
+          } else {
+            cudaMemcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel(),
+                       cudaMemcpyDeviceToHost);
+          }
+          for (int64_t i = 0; i < dims.size(); i++) {
+            std::cout << dims[i] << " ";
+          }
+          
+          for(int i = 0; i < std::min(10, (int)(tensor->numel())); i++) {
+            std::cout << cpu_data[i] << std::endl;
+          }
+          delete[] cpu_data;
+        }
+      }
+    }
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {

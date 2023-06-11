@@ -96,11 +96,12 @@ Graph *Pass::Apply(Graph *graph) const {
       false,
       platform::errors::InvalidArgument(
           "Illegal pass %s. Generated graph shouldn't contain cycle.", Type()));
-  // PADDLE_ENFORCE_EQ(
-  //     VarDescIsConsistency(*graph),
-  //     true,
-  //     platform::errors::InvalidArgument(
-  //         "The VarDescs of persistable variable are not consistency."));
+  // 有的时候需要注释掉他
+  PADDLE_ENFORCE_EQ(
+      VarDescIsConsistency(*graph),
+      true,
+      platform::errors::InvalidArgument(
+          "The VarDescs of persistable variable are not consistency."));
   if (!graph->Has(kPassRecorder)) {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
