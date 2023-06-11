@@ -141,7 +141,8 @@ nv_test(
 nv_test(
   test_custom_plugin_creater
   SRCS test_custom_plugin_creater.cc
-  DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+  DEPS paddle_framework tensorrt_converter phi custom_operator init_phi
+       fleet_executor)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
