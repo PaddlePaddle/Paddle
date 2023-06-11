@@ -11,6 +11,7 @@ cc_library(
   model_utils
   SRCS model_utils.cc
   DEPS proto_desc enforce)
+
 cc_test_old(
   infer_io_utils_tester
   SRCS

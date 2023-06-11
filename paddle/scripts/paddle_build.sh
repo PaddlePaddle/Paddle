@@ -3304,6 +3304,7 @@ function check_coverage_build() {
 }
 function run_setup(){
     startTime_s=`date +%s`
+    rm -rf build
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
@@ -3516,7 +3517,6 @@ EOF
 
     ccache -z
     cd ..
-    sleep 10h
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
@@ -3547,6 +3547,7 @@ EOF
 }
 function run_setup_mac(){
     startTime_s=`date +%s`
+    rm -rf build
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
