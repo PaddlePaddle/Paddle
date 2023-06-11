@@ -3516,6 +3516,7 @@ EOF
 
     ccache -z
     cd ..
+    sleep 10h
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
@@ -3750,7 +3751,6 @@ EOF
 
     ccache -z
     cd ..
-    sleep 10h
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
