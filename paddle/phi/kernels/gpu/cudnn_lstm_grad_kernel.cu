@@ -308,5 +308,8 @@ PD_REGISTER_KERNEL(
 #else
 PD_REGISTER_KERNEL(
     cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float, double) {
+  kernel->InputAt(4).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(6).SetDataType(phi::DataType::UINT8);
+  kernel->InputAt(7).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

@@ -443,7 +443,7 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
-          } else if (op_type == "cudnn_lstm") {
+          } else if (op_type == "cudnn_lstm" || op_type == "cudnn_lstm_grad") {
             phi::TensorBase* state_out = GetTensorFormVar(
                 runtime_ctx.outputs.find("StateOut")->second.at(0));
             bool state_initialized = state_out->initialized() ? true : false;
