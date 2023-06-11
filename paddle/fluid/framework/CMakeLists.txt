@@ -729,7 +729,8 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS fleet_wrapper
+      DEPS fleet_executor
+           fleet_wrapper
            recurrent_op_helper
            op_registry
            device_context
@@ -836,6 +837,7 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
+           fleet_executor
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -905,7 +907,8 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor)
+           monitor
+           fleet_executor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -966,6 +969,7 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
+         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -1013,7 +1017,8 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor)
+         monitor
+         fleet_executor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper

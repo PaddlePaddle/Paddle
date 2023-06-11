@@ -11,8 +11,7 @@ cc_library(
   model_utils
   SRCS model_utils.cc
   DEPS proto_desc enforce)
-cc_test_old(infer_io_utils_tester SRCS io_utils_tester.cc DEPS infer_io_utils
-            fleet_executor)
+cc_test_old(infer_io_utils_tester SRCS io_utils_tester.cc DEPS infer_io_utils)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
