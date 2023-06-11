@@ -71,6 +71,11 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
             ].dp_comm_overlap:
                 hp_optim._dp_enable = False
 
+            if fleet_env._user_defined_strategy.hybrid_configs[
+                "pp_configs"
+            ].sharding_comm_overlap:
+                hp_optim._sharding_enable = False
+
             return hp_optim
         else:
             return HeterParallelOptimizer(

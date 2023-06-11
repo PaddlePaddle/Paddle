@@ -25,22 +25,24 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 
+from ...utils import timer_helper as timer
 from .utils import number_2_dtype, paddle_2_number
 
 _hcg = None
 _use_cache = False
 _enable_partial_send_recv = True
+_timers = None
 
 
 def initialize_p2p_groups(
-    hcg,
-    use_cache=True,
-    enable_partial_send_recv=True,
+    hcg, use_cache=True, enable_partial_send_recv=True, enable_timer=False
 ):
-    global _hcg, _use_cache, _enable_partial_send_recv
+    global _hcg, _use_cache, _enable_partial_send_recv, _timers
     _hcg = hcg
     _use_cache = use_cache
     _enable_partial_send_recv = enable_partial_send_recv
+    if enable_timer:
+        _timers = timer.get_timers()
 
 
 class SendRecvMeta:
@@ -537,6 +539,9 @@ def _p2p_helper(
 
 
 def recv_forward(pp_first_stage, sync_recv=True):
+    global _timers
+    if _timers is not None:
+        _timers("recv_forward").start()
     if pp_first_stage:
         input_tensor = None
     else:
@@ -551,10 +556,15 @@ def recv_forward(pp_first_stage, sync_recv=True):
             recv_next=False,
             sync_recv=sync_recv,
         )
+    if _timers is not None:
+        _timers("recv_forward").stop()
     return input_tensor
 
 
 def recv_backward(pp_last_stage, sync_recv=True):
+    global _timers
+    if _timers is not None:
+        _timers("recv_backward").start()
     if pp_last_stage:
         output_tensor_grad = None
     else:
@@ -565,10 +575,15 @@ def recv_backward(pp_last_stage, sync_recv=True):
             recv_next=True,
             sync_recv=sync_recv,
         )
+    if _timers is not None:
+        _timers("recv_backward").stop()
     return output_tensor_grad
 
 
 def send_forward(output_tensor, pp_last_stage):
+    global _timers
+    if _timers is not None:
+        _timers("send_forward").start()
     if not pp_last_stage:
         if not _send_recv_meta.has_send_meta:
             _send_recv_meta.set_send_message(output_tensor)
@@ -583,9 +598,14 @@ def send_forward(output_tensor, pp_last_stage):
             recv_prev=False,
             recv_next=False,
         )
+    if _timers is not None:
+        _timers("send_forward").stop()
 
 
 def send_backward(input_tensor_grad, pp_first_stage):
+    global _timers
+    if _timers is not None:
+        _timers("send_backward").start()
     if not pp_first_stage:
         _p2p_helper(
             tensor_send_next=None,
@@ -593,9 +613,14 @@ def send_backward(input_tensor_grad, pp_first_stage):
             recv_prev=False,
             recv_next=False,
         )
+    if _timers is not None:
+        _timers("send_backward").stop()
 
 
 def send_forward_recv_backward(output_tensor, pp_last_stage):
+    global _timers
+    if _timers is not None:
+        _timers("send_forward_recv_backward").start()
     if pp_last_stage:
         output_tensor_grad = None
     else:
@@ -605,10 +630,15 @@ def send_forward_recv_backward(output_tensor, pp_last_stage):
             recv_prev=False,
             recv_next=True,
         )
+    if _timers is not None:
+        _timers("send_forward_recv_backward").stop()
     return output_tensor_grad
 
 
 def send_backward_recv_forward(input_tensor_grad, pp_first_stage):
+    global _timers
+    if _timers is not None:
+        _timers("send_backward_recv_forward").start()
     if pp_first_stage:
         input_tensor = None
     else:
@@ -618,6 +648,8 @@ def send_backward_recv_forward(input_tensor_grad, pp_first_stage):
             recv_prev=True,
             recv_next=False,
         )
+    if _timers is not None:
+        _timers("send_backward_recv_forward").stop()
     return input_tensor
 
 
@@ -625,6 +657,9 @@ def send_forward_backward_recv_forward_backward(
     output_tensor, input_tensor_grad, recv_prev, recv_next
 ):
     # always have to send dytpe info to downstream
+    global _timers
+    if _timers is not None:
+        _timers("send_forward_backward_recv_forward_backward").start()
     if not _send_recv_meta.has_send_meta:
         _send_recv_meta.set_send_message(output_tensor)
         _send_recv_meta.send_meta(output_tensor, _hcg.get_pipe_parallel_group())
@@ -639,11 +674,16 @@ def send_forward_backward_recv_forward_backward(
         recv_next=recv_next,
         sync_recv=False,
     )
+    if _timers is not None:
+        _timers("send_forward_backward_recv_forward_backward").stop()
     return input_tensor, output_tensor_grad
 
 
 def send_forward_recv_forward(output_tensor, recv_prev):
     # always have to send dytpe info to downstream
+    global _timers
+    if _timers is not None:
+        _timers("send_forward_recv_forward").start()
     if not _send_recv_meta.has_send_meta:
         _send_recv_meta.set_send_message(output_tensor)
         _send_recv_meta.send_meta(output_tensor, _hcg.get_pipe_parallel_group())
@@ -659,10 +699,15 @@ def send_forward_recv_forward(output_tensor, recv_prev):
         recv_next=False,
         sync_recv=False,
     )
+    if _timers is not None:
+        _timers("send_forward_recv_forward").stop()
     return input_tensor
 
 
 def send_backward_recv_backward(input_tensor_grad, recv_next):
+    global _timers
+    if _timers is not None:
+        _timers("send_backward_recv_backward").start()
     _, output_tensor_grad = _p2p_helper(
         tensor_send_next=None,
         tensor_send_prev=input_tensor_grad,
@@ -670,4 +715,6 @@ def send_backward_recv_backward(input_tensor_grad, recv_next):
         recv_next=recv_next,
         sync_recv=False,
     )
+    if _timers is not None:
+        _timers("send_backward_recv_backward").stop()
     return output_tensor_grad
