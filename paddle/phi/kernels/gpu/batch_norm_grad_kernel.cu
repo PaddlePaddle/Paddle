@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA)
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -1403,4 +1404,5 @@ PD_REGISTER_KERNEL(batch_norm_double_grad,
                    phi::BatchNormDoubleGradKernel,
                    float,
                    double) {}
+#endif
 #endif
