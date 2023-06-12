@@ -995,11 +995,6 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             return dtype
         return paddle.float32
 
-    def matmul(x, B):
-        if x.is_sparse():
-            return paddle.sparse.matmul(x, B)
-        return paddle.matmul(x, B)
-
     def conjugate(x):
         if x.is_complex():
             return x.conj()
@@ -1026,16 +1021,16 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         A_t = transpose(x)
         A_H = conjugate(A_t)
         if M is None:
-            Q = qr(matmul(x, R))[0]
+            Q = qr(paddle.sparse.matmul(x, R))[0]
             for i in range(niter):
-                Q = qr(matmul(A_H, Q))[0]
-                Q = qr(matmul(x, Q))[0]
+                Q = qr(paddle.sparse.matmul(A_H, Q))[0]
+                Q = qr(paddle.sparse.matmul(x, Q))[0]
         else:
             M_H = transjugate(M)
-            Q = qr(matmul(x, R) - matmul(M, R))[0]
+            Q = qr(paddle.sparse.matmul(x, R) - paddle.matmul(M, R))[0]
             for i in range(niter):
-                Q = qr(matmul(A_H, Q) - matmul(M_H, Q))[0]
-                Q = qr(matmul(x, Q) - matmul(M, Q))[0]
+                Q = qr(paddle.sparse.matmul(A_H, Q) - paddle.matmul(M_H, Q))[0]
+                Q = qr(paddle.sparse.matmul(x, Q) - paddle.matmul(M, Q))[0]
 
         return Q
 
@@ -1052,9 +1047,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             Q = get_approximate_basis(A_t, q, niter=niter, M=M_t)
             Q_c = conjugate(Q)
             if M is None:
-                B_t = matmul(x, Q_c)
+                B_t = paddle.sparse.matmul(x, Q_c)
             else:
-                B_t = matmul(x, Q_c) - matmul(M, Q_c)
+                B_t = paddle.sparse.matmul(x, Q_c) - paddle.matmul(M, Q_c)
             assert B_t.shape[-2] == m, (B_t.shape, m)
             assert B_t.shape[-1] == q, (B_t.shape, q)
             assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
@@ -1065,9 +1060,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             Q = get_approximate_basis(x, q, niter=niter, M=M)
             Q_c = conjugate(Q)
             if M is None:
-                B = matmul(A_t, Q_c)
+                B = paddle.sparse.matmul(A_t, Q_c)
             else:
-                B = matmul(A_t, Q_c) - matmul(M_t, Q_c)
+                B = paddle.sparse.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
             B_t = transpose(B)
             assert B_t.shape[-2] == q, (B_t.shape, q)
             assert B_t.shape[-1] == n, (B_t.shape, n)
