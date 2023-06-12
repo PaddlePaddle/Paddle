@@ -82,17 +82,18 @@ class TestFakeMicroDataSet(unittest.TestCase):
 
         data3 = None
 
-        batch = [(data1, data2, data3), data1]
+        batch = [(data1, data2, data3), None]
 
         for micro_batch in FakeMicroDataset(
             batch, True, False, acc_step, micro_batch_size
         ):
             x, y = micro_batch
             self.assertEqual(len(x), 3)
-            for e in [x[0], x[1], y]:
+            for e in [x[0], x[1]]:
                 self.assertEqual(e.shape[0], micro_batch_size)
                 self.assertEqual(e.shape[1], length)
             self.assertTrue(x[2] is None)
+            self.assertTrue(y is None)
 
 
 if __name__ == "__main__":
