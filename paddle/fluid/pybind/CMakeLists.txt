@@ -3,9 +3,9 @@ set(PYBIND_DEPS
     init_phi
     pybind
     python
+    pd_dialect
     proto_desc
     memory
-    pd_dialect
     executor
     fleet_wrapper
     box_wrapper
@@ -474,11 +474,11 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
+    list(APPEND PYBIND_DEPS pd_dialect)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
-    list(APPEND PYBIND_DEPS pd_dialect)
     list(APPEND PYBIND_DEPS new_ir)
     list(APPEND PYBIND_DEPS program_translator)
     list(APPEND PYBIND_DEPS phi_kernel_adaptor)
