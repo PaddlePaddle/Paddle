@@ -91,7 +91,6 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             adaptive,
             ceil_mode,
         ) in itertools.product(*configurations):
-
             attrs = [
                 {
                     "strides": strides,

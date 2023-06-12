@@ -31,6 +31,8 @@ class Type;
 class OpResult;
 class Attribute;
 
+using OpInfoMap = std::unordered_map<std::string, OpInfo>;
+
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
 /// Type, Attribute and other related data structures.
@@ -115,6 +117,11 @@ class IrContext {
   /// \brief Get registered operaiton infomation.
   ///
   OpInfo GetRegisteredOpInfo(const std::string &name);
+
+  ///
+  /// \brief Get registered operaiton infomation map.
+  ///
+  const OpInfoMap &registered_op_info_map();
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,

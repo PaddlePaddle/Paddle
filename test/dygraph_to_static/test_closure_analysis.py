@@ -220,7 +220,6 @@ def TestClosureAnalysis_Attribute_func():
 
 class TestClosureAnalysis_Attribute(TestClosureAnalysis):
     def init_dygraph_func(self):
-
         self.all_dygraph_funcs = [TestClosureAnalysis_Attribute_func]
         self.answer = [{"TestClosureAnalysis_Attribute_func": set({'i'})}]
         self.modified_var = [

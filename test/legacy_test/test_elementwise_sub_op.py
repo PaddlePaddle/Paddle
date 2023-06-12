@@ -1024,7 +1024,6 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
 
 class TestTensorSubAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
 

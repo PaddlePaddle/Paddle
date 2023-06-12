@@ -161,9 +161,9 @@ void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
   IR_ENFORCE(attributes.count("index") != 0,
              "The attributes must contains index.");
   const ir::Attribute &attr = attributes.at("index");
-  IR_ENFORCE(attr.isa<ir::Int32_tAttribute>(),
+  IR_ENFORCE(attr.isa<ir::Int32Attribute>(),
              "The attribute index must be INT32.");
-  auto index = attr.dyn_cast<ir::Int32_tAttribute>().data();
+  auto index = attr.dyn_cast<ir::Int32Attribute>().data();
 
   // index >= 0 and < inputs[0].size()
   IR_ENFORCE(

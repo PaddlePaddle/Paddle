@@ -83,7 +83,6 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
                             ]
 
                         for op_type in reduce_type_list:
-
                             dics = [
                                 {
                                     "keep_dim": keep_dim,

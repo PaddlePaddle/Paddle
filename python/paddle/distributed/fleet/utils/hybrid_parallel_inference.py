@@ -195,7 +195,6 @@ class HybridParallelInferenceHelper:
         init_comm=True,
         role_maker=None,
     ):
-
         assert isinstance(startup_program, Program)
         assert isinstance(main_program, Program)
 
