@@ -236,6 +236,10 @@ if(WIN32)
 
 endif()
 
+if(NOT WITH_DISTRIBUTED)
+  list(REMOVE_ITEM TEST_OPS test_fleet_with_qat)
+endif()
+
 if(LINUX AND WITH_MKLDNN)
 
   #### Image classification dataset: ImageNet (small)
@@ -490,12 +494,12 @@ if(NOT WIN32)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 120)
   set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
                                                                        120)
-  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_quant_aware_config PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 900)
-  set_tests_properties(test_fleet_with_qat PROPERTIES TIMEOUT 900)
+  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_aware_config PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_fleet_with_qat PROPERTIES TIMEOUT 200)
 endif()
 
 set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
