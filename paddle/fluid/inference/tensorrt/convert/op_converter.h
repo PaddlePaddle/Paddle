@@ -461,6 +461,17 @@ class OpConverter {
     return shuffle->getOutput(0);
   }
 
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::Dims shape,
+                             const std::string& name = "") {
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setReshapeDimensions(shape);
+    if (name != "") {
+      shuffle->setName(name.c_str());
+    }
+    return shuffle->getOutput(0);
+  }
+
   nvinfer1::ITensor* BroadcastTensor(nvinfer1::ITensor* input,
                                      const int nbDims,
                                      const std::string& name = "") {
