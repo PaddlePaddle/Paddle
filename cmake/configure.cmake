@@ -236,9 +236,18 @@ if(WITH_CUDNN_FRONTEND)
   add_definitions(-DPADDLE_WITH_CUDNN_FRONTEND)
 endif()
 
-set(WITH_PHI_SHARED
-    OFF
-    CACHE BOOL "" FORCE)
+# FIXME(zengjinle): do not know why MAC does not support to compile
+# libphi.a
+if(APPLE)
+  set(WITH_PHI_SHARED
+      ON
+      CACHE BOOL "" FORCE)
+else()
+  set(WITH_PHI_SHARED
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
+
 if(WIN32
    OR WITH_ROCM
    OR WITH_XPU_KP
