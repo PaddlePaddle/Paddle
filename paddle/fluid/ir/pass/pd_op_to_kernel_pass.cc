@@ -14,6 +14,8 @@
 
 #include <iostream>
 
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_dialect.h"
 #include "paddle/fluid/ir/dialect/kernel_op.h"
@@ -21,29 +23,12 @@
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 namespace paddle {
 namespace dialect {
-
-phi::DataType convetIrType2DataType(ir::Type type) {
-  if (type.isa<ir::Float32Type>()) {
-    return phi::DataType::FLOAT32;
-  } else if (type.isa<ir::Float16Type>()) {
-    return phi::DataType::FLOAT16;
-  } else if (type.isa<ir::Float64Type>()) {
-    return phi::DataType::FLOAT64;
-  } else if (type.isa<ir::BFloat16Type>()) {
-    return phi::DataType::BFLOAT16;
-  } else if (type.isa<ir::Int32Type>()) {
-    return phi::DataType::INT32;
-  } else {
-    PADDLE_THROW("not shupport type for now", type);
-  }
-}
 
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
@@ -92,10 +77,10 @@ phi::KernelKey GetKernelKey(
               .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
       kernel_data_type = type.dyn_cast<dialect::DataTypeAttribute>().data();
     } else {
-      PADDLE_ENFORCE_EQ(attr_type_map.count(slot_name),
-                        true,
-                        "[%s] MUST in attr map",
-                        slot_name);
+      PADDLE_ENFORCE_EQ(
+          attr_type_map.count(slot_name),
+          true,
+          phi::errors::PreconditionNotMet("[%s] MUST in attr map", slot_name));
       kernel_data_type = attr_map.at(slot_name)
                              .dyn_cast<paddle::dialect::DataTypeAttribute>()
                              .data();
@@ -123,7 +108,7 @@ phi::KernelKey GetKernelKey(
 
       std::shared_ptr<phi::Allocation> holder(ptr);
 
-      auto dtype = convetIrType2DataType(type.dtype());
+      auto dtype = TransToPhiDataType(type.dtype());
 
       phi::DenseTensorMeta meta(
           dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
