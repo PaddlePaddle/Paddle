@@ -299,6 +299,11 @@ class TestBatchNormOpNCHWTestModeFp16(TestBatchNormOp):
         self.use_global_stats = None
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestBatchNormOpNCHWbf16(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-3
@@ -314,6 +319,11 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.use_global_stats = None
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-3
@@ -374,6 +384,11 @@ class TestBatchNormOpNHWCFp16(TestBatchNormOp):
         self.use_global_stats = None
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestBatchNormOpNHWCbf16(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-3
