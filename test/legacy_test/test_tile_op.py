@@ -33,7 +33,6 @@ class TestTileOpRank1(OpTest):
         self.public_python_api = paddle.tile
         self.init_data()
         self.if_enable_cinn()
-        self.if_check_prim()
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'repeat_times': self.repeat_times}
@@ -43,9 +42,6 @@ class TestTileOpRank1(OpTest):
     def if_enable_cinn(self):
         self.check_cinn = True
 
-    def if_check_prim(self):
-        self.check_prim = True
-
     def init_data(self):
         self.ori_shape = [100]
         self.repeat_times = [2]
@@ -54,7 +50,7 @@ class TestTileOpRank1(OpTest):
         self.check_output(check_cinn=self.check_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=self.check_prim)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
@@ -64,9 +60,7 @@ class TestTileOpRank_ZeroDim1(TestTileOpRank1):
 
     def if_enable_cinn(self):
         self.check_cinn = False
-
-    def if_check_prim(self):
-        self.check_prim = False
+        self.enable_cinn = False
 
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
@@ -76,9 +70,7 @@ class TestTileOpRank_ZeroDim2(TestTileOpRank1):
 
     def if_enable_cinn(self):
         self.check_cinn = False
-
-    def if_check_prim(self):
-        self.check_prim = False
+        self.enable_cinn = False
 
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
@@ -88,9 +80,7 @@ class TestTileOpRank_ZeroDim3(TestTileOpRank1):
 
     def if_enable_cinn(self):
         self.check_cinn = False
-
-    def if_check_prim(self):
-        self.check_prim = False
+        self.enable_cinn = False
 
 
 # with dimension expanding
