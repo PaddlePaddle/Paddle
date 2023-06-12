@@ -41,6 +41,7 @@ class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
         self._clip = clip
         self._hcg = hcg
+        self.not_sharding_stage1 = True
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
@@ -161,8 +162,15 @@ class HybridParallelClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
+            sharding_flag = False
+            if (
+                self._hcg.get_sharding_parallel_world_size() > 1
+                and self._hcg.get_data_parallel_world_size() == 1
+            ):
+                sharding_flag = True
             paddle.distributed.all_reduce(
-                global_norm_var_dist, group=self._hcg.get_check_parallel_group()
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group(sharding_flag),
             )
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
@@ -174,7 +182,11 @@ class HybridParallelClipGrad:
 
         # In Sharding mode, param and grad is mapping different rank in optimizer.
         # ClipGradByGlobalNorm need allreduce to get globol norm
-        if self._hcg.get_sharding_parallel_world_size() > 1:
+        # TODO(pangengzheng): remove the self.not_sharding_stage1 flag when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+        if (
+            self._hcg.get_sharding_parallel_world_size() > 1
+            and self.not_sharding_stage1
+        ):
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),

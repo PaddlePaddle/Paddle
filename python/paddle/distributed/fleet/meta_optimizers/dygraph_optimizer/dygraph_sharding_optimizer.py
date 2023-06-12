@@ -157,12 +157,18 @@ class DygraphShardingOptimizer:
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
                     param_rank = self._param2rank[param.name]
-                    paddle.distributed.reduce(
+                    paddle.distributed.all_reduce(
                         g_var,
-                        dst=hcg.get_sharding_parallel_group().ranks[param_rank],
                         group=hcg.get_sharding_parallel_group(),
                         sync_op=True,
                     )
+                    # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+                    # paddle.distributed.reduce(
+                    #     g_var,
+                    #     dst=hcg.get_sharding_parallel_group().ranks[param_rank],
+                    #     group=hcg.get_sharding_parallel_group(),
+                    #     sync_op=True,
+                    # )
 
     def _sharding_sync_parameters(self):
         """
@@ -217,8 +223,63 @@ class DygraphShardingOptimizer:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
-        # actually updating
-        self._inner_opt.step()
+        # hack to grad_clip all parameters,
+        # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
+        # TODO(pangengzheng): remove the hacked grad_clip codes here when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+        origin_clip = self._inner_opt._grad_clip
+        if not isinstance(self._parameter_list[0], dict):
+            params_grads = []
+            for param in self._parameter_list:
+                if (
+                    hasattr(param, "regularizer")
+                    and param.regularizer is not None
+                ):
+                    raise ValueError(
+                        "param {} should not has the regularizer attribute".format(
+                            param.name
+                        )
+                    )
+                if param.stop_gradient:
+                    continue
+                grad_var = param._grad_ivar()
+                if hasattr(param, "main_grad") and param.main_grad is not None:
+                    grad_var = param.main_grad
+                params_grads.append((param, grad_var))
+            print(
+                "dygraph_sharding inner_opt:{}, grad_clip:{}".format(
+                    self._inner_opt, self._inner_opt._grad_clip
+                )
+            )
+            print(f"clip grad params_grads len:{len(params_grads)}")
+            if hasattr(self._inner_opt._grad_clip, 'not_sharding_stage1'):
+                self._inner_opt._grad_clip.not_sharding_stage1 = False
+            params_grads = self._inner_opt._grad_clip(params_grads)
+            print(f"after grad clip, params_grads len:{len(params_grads)}")
+            # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
+            self._set_inner_opt_attr('_grad_clip', None)
+            update_param_names = [
+                p.name for p in self._rank2params[self._sharding_rank]
+            ]
+            update_params_grads = [
+                (p, g) for p, g in params_grads if p.name in update_param_names
+            ]
+            print(
+                "update_params_grads len:{}, non update params len:{}".format(
+                    len(update_params_grads), len(params_grads)
+                )
+            )
+            self._apply_optimize(
+                loss=None,
+                startup_program=None,
+                params_grads=update_params_grads,
+            )
+            print(
+                "after clip, dygraph_sharding inner_opt:{}, grad_clip:{}".format(
+                    self._inner_opt, self._inner_opt._grad_clip
+                )
+            )
+            # restore the grad clip
+            self._set_inner_opt_attr('_grad_clip', origin_clip)
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
