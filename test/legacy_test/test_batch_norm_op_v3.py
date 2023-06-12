@@ -99,7 +99,7 @@ class TestBatchNormOp(OpTest):
                 only_check_prim=True,
             )
         elif self.data_format == "NCHW" and paddle.is_compiled_with_cuda():
-            # origin batch_norm cuda kernel differ in x_grad whether to calculate scale_grad and bias_grad
+            # origin batch_norm cuda kernel differ in nhwc x_grad whether to calculate scale_grad and bias_grad
             self.check_grad_with_place(
                 core.CUDAPlace(0),
                 ["X"],
@@ -150,6 +150,13 @@ class TestBatchNormOp(OpTest):
         self.use_global_stats = None
 
     def initTestCase(self):
+        if (
+            self.dtype in ("uint16", "float16")
+            and not paddle.is_compiled_with_cuda()
+        ):
+            self.__class__.op_type = self.op_type
+            self.__class__.no_need_check_grad = True
+            return
         np.random.seed(123)
 
         self.C = self.shape[1] if self.data_format == "NCHW" else self.shape[-1]
@@ -184,9 +191,7 @@ class TestBatchNormOp(OpTest):
             "use_global_stats": self.use_global_stats,
             "trainable_statistics": trainable_statistics,
         }
-        # y, mean, variance = _reference_batch_norm_naive(
-        #     x, scale, bias, self.epsilon, self.begin_norm_axis
-        # )
+
         paddle.disable_static()
 
         (
@@ -472,21 +477,6 @@ class TestBatchNormOpNHWCEps2(TestBatchNormOp):
         self.epsilon = 1e-06
         self.data_format = "NHWC"
         self.use_global_stats = None
-
-
-# class TestBatchNormOpNHWCTestMode(TestBatchNormOp):
-#     def initConfig(self):
-#         self.fw_comp_atol = 1e-5
-#         self.fw_comp_rtol = 1e-5
-#         self.rev_comp_atol = 1e-5
-#         self.rev_comp_rtol = 1e-5
-#         self.dtype = "float32"
-#         self.shape = [2, 6, 2, 4]
-#         self.training = False
-#         self.momentum = 0.1
-#         self.epsilon = 1e-05
-#         self.data_format = "NHWC"
-#         self.use_global_stats = None
 
 
 if __name__ == '__main__':
