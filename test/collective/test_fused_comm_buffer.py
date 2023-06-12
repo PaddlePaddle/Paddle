@@ -14,10 +14,34 @@
 
 import unittest
 
+import paddle
+from paddle.distributed.fleet.meta_parallel.pp_utils.utils import (
+    HOOK_ACTION,
+    FusedCommBuffer,
+)
+
 
 class TestFusedCommBufferGradChecker(unittest.TestCase):
     def test_fused_comm_buffer_grad_checker(self):
-        raise AssertionError()
+        linear = paddle.nn.Linear(10, 10)
+        w = linear.weight
+        w.main_grad = None
+        buffer = FusedCommBuffer(
+            id=0,
+            params=[w],
+            comm_group=None,
+            acc_steps=10,
+            act=HOOK_ACTION.ALL_REDUCE,
+        )
+        buffer.add_grad(w)
+        w.main_grad = paddle.to_tensor([1], stop_gradient=True, dtype="float32")
+        try:
+            buffer.add_grad(w)
+            raise AssertionError(
+                "Above add_grad should raise value error, this assertion should be unreachable."
+            )
+        except ValueError:
+            pass
 
 
 if __name__ == "__main__":
