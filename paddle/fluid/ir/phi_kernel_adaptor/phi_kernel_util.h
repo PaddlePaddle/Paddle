@@ -124,9 +124,8 @@ void build_context(
       } else if (type_name == "paddle::dialect::DataTypeAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "ir::Int32_tAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<ir::Int32_tAttribute>().data());
+      } else if (type_name == "ir::Int32Attribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());

@@ -1109,7 +1109,7 @@ cc_test(
 cc_test(
   op_kernel_type_test
   SRCS op_kernel_type_test.cc
-  DEPS place device_context framework_proto op_kernel_type)
+  DEPS place device_context framework_proto op_kernel_type kernel_dialect)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 
 cc_test(tuple_test SRCS tuple_test.cc)

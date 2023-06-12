@@ -50,6 +50,6 @@ file(GLOB PD_DIALECT_SRCS "*.cc")
 cc_library(
   pd_dialect
   SRCS ${PD_DIALECT_SRCS} ${op_source_file} kernel_dialect.cc kernel_type.cc
-       kernel_op.cc kernel_attribute.cc
+       kernel_op.cc
   DEPS new_ir framework_proto phi phi_utils)
 target_include_directories(pd_dialect PRIVATE ${PD_DIALECT_BINARY_DIR})
