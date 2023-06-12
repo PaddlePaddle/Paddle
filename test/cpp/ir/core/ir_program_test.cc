@@ -98,7 +98,7 @@ TEST(program_test, program) {
   ir::Block *block = program.block();
   block->push_back(op1);
 
-  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParentRegion());
+  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParent());
 
   EXPECT_EQ(program.module_op(), block->GetParentOp());
 
@@ -283,7 +283,7 @@ TEST(program_test, slice_combine_test) {
   // (7) Def slice_op = SliceOp(combine_op, 0)
   std::string slice_op_name = std::string(ir::SliceOp::name());
   ir::OpInfo slice_op_info = ctx->GetRegisteredOpInfo(slice_op_name);
-  ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
+  ir::Attribute index_attr = ir::Int32Attribute::get(ctx, 0);
   ir::Operation *slice_op =
       ir::Operation::Create({combine_op->GetResultByIndex(0)},
                             {{"index", index_attr}},
@@ -299,7 +299,7 @@ TEST(program_test, builder) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
+  ir::Builder builder = ir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -319,8 +319,7 @@ TEST(program_test, builder) {
   }
 
   ir::ConstantOp constant = builder.Build<ir::ConstantOp>(
-      ir::Int32_tAttribute::get(ctx, 2), ir::Int32Type::get(ctx));
+      ir::Int32Attribute::get(ctx, 2), ir::Int32Type::get(ctx));
   EXPECT_EQ(program.block()->size() == 2, true);
-  EXPECT_EQ(constant.value().dyn_cast<ir::Int32_tAttribute>().data() == 2,
-            true);
+  EXPECT_EQ(constant.value().dyn_cast<ir::Int32Attribute>().data() == 2, true);
 }

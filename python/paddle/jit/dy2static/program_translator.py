@@ -974,7 +974,6 @@ class HookHelper:
 
 
 class ConcreteProgram:
-
     __slots__ = [
         'inputs',
         'outputs',
@@ -1708,7 +1707,6 @@ class ProgramTranslator:
 
 
 def enable_to_static(enable_to_static_bool):
-
     """
     Enable or disable the converting from imperative to static graph by
     ProgramTranslator globally.

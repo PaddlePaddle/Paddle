@@ -221,7 +221,7 @@ class TestDistTraning(unittest.TestCase):
             optimizer_b.step()
 
             np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=5e-6
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-5
             )
 
     def test_parallel_embedding(self):

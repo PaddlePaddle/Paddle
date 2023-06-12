@@ -896,7 +896,6 @@ def _valid_vars(vars):
 
 
 def _run_dygraph(instance, input, program_holder):
-
     # 1. prepare inputs, outputs, attrs
     input_vars = []
     for i, value in enumerate(input):

@@ -1555,7 +1555,6 @@ def load(program, model_path, executor=None, var_list=None):
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
-
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)

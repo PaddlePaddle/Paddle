@@ -46,7 +46,6 @@ def _check_input(x, dimension):
 
 
 def _check_instance(x, x_name, types=(int, float)):
-
     if not isinstance(x, types):
         raise ValueError(
             "Excepted {} type for {} but received type: {}. ".format(

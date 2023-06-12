@@ -26,10 +26,10 @@ namespace ir {
 ///
 class Builder {
  public:
-  explicit Builder(IrContext *context,
-                   Block *block,
-                   Block::iterator insert_point)
+  Builder(IrContext *context, Block *block, Block::iterator insert_point)
       : context_(context), block_(block), insert_point_(insert_point) {}
+  Builder(IrContext *context, Block *block)
+      : Builder(context, block, block->end()) {}
 
   static Builder AtBlockBegin(IrContext *context, Block *block) {
     return Builder(context, block, block->begin());
