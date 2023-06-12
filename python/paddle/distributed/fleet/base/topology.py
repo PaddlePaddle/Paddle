@@ -356,6 +356,9 @@ class HybridCommunicateGroup:
     def get_pipe_parallel_group(self):
         return self._pp_comm_group
 
+    def get_p2p_groups(self):
+        return None
+
     # sharding parallel message:
     def _get_sharding_parallel_id(self):
         return self._topo.get_coord(self.global_rank).sharding
