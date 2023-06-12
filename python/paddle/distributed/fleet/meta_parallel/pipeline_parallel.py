@@ -518,7 +518,7 @@ class PipelineParallel(MetaParallelBase):
         if self._enable_timer:
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
-            input_tensor = next(micro_dataset)
+            input_tensor = next(micro_dataset)[0]
             self._check_micro_batch_data_valid(input_tensor)
 
         assert chunk_id is None or isinstance(chunk_id, int)
@@ -531,7 +531,7 @@ class PipelineParallel(MetaParallelBase):
                 assert (
                     self._layers._loss_fn is not None
                 ), "loss function should exist to compute loss"
-                labels = next(micro_dataset)
+                labels = next(micro_dataset)[1]
                 self._check_micro_batch_data_valid(labels)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
