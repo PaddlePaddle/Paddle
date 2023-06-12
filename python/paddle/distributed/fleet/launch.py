@@ -529,6 +529,7 @@ def which_distributed_mode(args):
     elif framework.core.is_compiled_with_xpu():
         accelerators = framework.core.get_xpu_device_count()
     else:
+        args.backend = 'gloo'
         accelerators = 0
 
     if len(has_ps_args) > 0:
