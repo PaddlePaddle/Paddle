@@ -361,16 +361,6 @@
   kernel :
     func : floor_divide
 
-- op : fmax
-  args : (Tensor x, Tensor y)
-  output : Tensor(out)
-  infer_meta :
-    param: [x, y]
-    func : ElementwiseInferMeta
-  kernel :
-    func : fmax
-  backward : fmax_grad
-
 - op : fmin
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -424,6 +414,18 @@
   kernel :
     func : full_batch_size_like
     param : [input, shape, value, dtype, input_dim_idx, output_dim_idx]
+    data_type : dtype
+    backend : place
+
+- op : full_int_array
+  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output: Tensor(out)
+  infer_meta :
+    func : CreateIntArrayInferMeta
+    param : [value, dtype]
+  kernel :
+    func : full_int_array
+    param : [value, dtype]
     data_type : dtype
     backend : place
 

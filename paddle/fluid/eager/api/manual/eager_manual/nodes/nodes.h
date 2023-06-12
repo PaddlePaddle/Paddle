@@ -204,6 +204,176 @@ class AddNGradNodeFinal : public egr::GradNodeBase {
 
   // Attributes
 };
+class MultiplyGradNode : public egr::GradNodeBase {
+ public:
+  MultiplyGradNode() : egr::GradNodeBase() {}
+  MultiplyGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~MultiplyGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "MultiplyGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+    y_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+  void SetTensorWrappery(const paddle::Tensor& y) {
+    y_ = egr::TensorWrapper(y, false);
+  }
+
+  void SetTensorWrapperNoNeedBufferx(const paddle::Tensor& x) {
+    x_ = egr::TensorWrapper(x, true);
+  }
+  void SetTensorWrapperNoNeedBuffery(const paddle::Tensor& y) {
+    y_ = egr::TensorWrapper(y, true);
+  }
+
+  // SetAttributes
+  void SetAttributeaxis(const int& axis) { axis_ = axis; }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+  egr::TensorWrapper y_;
+
+  // Attributes
+  int axis_ = -1;
+};
+
+class MultiplyDoubleGradNode : public egr::GradNodeBase {
+ public:
+  MultiplyDoubleGradNode() : egr::GradNodeBase() {}
+  MultiplyDoubleGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~MultiplyDoubleGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "MultiplyDoubleGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+    y_.clear();
+    grad_out_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::shared_ptr<MultiplyDoubleGradNode>(
+        new MultiplyDoubleGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+  void SetTensorWrappery(const paddle::Tensor& y) {
+    y_ = egr::TensorWrapper(y, false);
+  }
+  void SetTensorWrappergrad_out(const paddle::Tensor& grad_out) {
+    grad_out_ = egr::TensorWrapper(grad_out, false);
+  }
+
+  // SetAttributes
+  void SetAttributeaxis(const int& axis) { axis_ = axis; }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+  egr::TensorWrapper y_;
+  egr::TensorWrapper grad_out_;
+
+  // Attributes
+  int axis_ = -1;
+};
+
+class MultiplyTripleGradNode : public egr::GradNodeBase {
+ public:
+  MultiplyTripleGradNode() : egr::GradNodeBase() {}
+  MultiplyTripleGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~MultiplyTripleGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "MultiplyTripleGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+    y_.clear();
+    fwd_grad_out_.clear();
+    fwd_grad_grad_x_.clear();
+    fwd_grad_grad_y_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node = std::shared_ptr<MultiplyTripleGradNode>(
+        new MultiplyTripleGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+  void SetTensorWrappery(const paddle::Tensor& y) {
+    y_ = egr::TensorWrapper(y, false);
+  }
+  void SetTensorWrapperfwd_grad_out(const paddle::Tensor& fwd_grad_out) {
+    fwd_grad_out_ = egr::TensorWrapper(fwd_grad_out, false);
+  }
+  void SetTensorWrapperfwd_grad_grad_x(const paddle::Tensor& fwd_grad_grad_x) {
+    fwd_grad_grad_x_ = egr::TensorWrapper(fwd_grad_grad_x, false);
+  }
+  void SetTensorWrapperfwd_grad_grad_y(const paddle::Tensor& fwd_grad_grad_y) {
+    fwd_grad_grad_y_ = egr::TensorWrapper(fwd_grad_grad_y, false);
+  }
+
+  // SetAttributes
+  void SetAttributeaxis(const int& axis) { axis_ = axis; }
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+  egr::TensorWrapper y_;
+  egr::TensorWrapper fwd_grad_out_;
+  egr::TensorWrapper fwd_grad_grad_x_;
+  egr::TensorWrapper fwd_grad_grad_y_;
+
+  // Attributes
+  int axis_ = -1;
+};
 
 class SyncBatchNormGradNode : public egr::GradNodeBase {
  public:
@@ -372,6 +542,52 @@ class SyncBatchNormGradNode : public egr::GradNodeBase {
   bool is_test_;
   bool use_global_stats_;
   bool trainable_statistics_;
+};
+
+class MultiplyGradNode : public egr::GradNodeBase {
+ public:
+  MultiplyGradNode() : egr::GradNodeBase() {}
+  MultiplyGradNode(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
+  ~MultiplyGradNode() override = default;
+
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
+  std::string name() override { return "MultiplyGradNode"; }
+
+  void ClearTensorWrappers() override {
+    x_.clear();
+    y_.clear();
+
+    SetIsTensorWrappersCleared(true);
+  }
+
+  std::shared_ptr<GradNodeBase> Copy() const override {
+    auto copied_node =
+        std::shared_ptr<MultiplyGradNode>(new MultiplyGradNode(*this));
+    return copied_node;
+  }
+
+  // SetTensorWrapperX, SetTensorWrapperY, ...
+  void SetTensorWrapperx(const paddle::Tensor& x) {
+    x_ = egr::TensorWrapper(x, false);
+  }
+  void SetTensorWrappery(const paddle::Tensor& y) {
+    y_ = egr::TensorWrapper(y, false);
+  }
+
+  // SetAttributes
+
+ private:
+  // TensorWrappers
+  egr::TensorWrapper x_;
+  egr::TensorWrapper y_;
+
+  // Attributes
 };
 
 }  // namespace sparse

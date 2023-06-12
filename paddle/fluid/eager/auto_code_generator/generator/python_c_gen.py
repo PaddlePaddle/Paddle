@@ -168,6 +168,7 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/pybind/eager_custom_python_api.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/eager/amp_utils.h"
@@ -603,7 +604,6 @@ def GenerateCoreOpsInfoMap():
 
 
 def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
-
     (
         core_ops_infos_definition,
         core_ops_infos_registry,

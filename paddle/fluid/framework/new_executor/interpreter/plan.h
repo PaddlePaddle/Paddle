@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,18 +27,18 @@ class Job;
 
 class Plan final {
  public:
-  Plan(const std::vector<Job*>& job_list,
+  Plan(const std::vector<std::shared_ptr<Job>>& job_list,
        const std::unordered_map<std::string, ProgramDesc*>& type_to_program)
       : job_list_(job_list), type_to_program_(type_to_program) {}
   ~Plan() = default;
 
-  const std::vector<Job*>& GetJobList() const;
+  const std::vector<std::shared_ptr<Job>>& GetJobList() const;
   const std::unordered_map<std::string, ProgramDesc*>& GetTypeToProgram() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(Plan);
 
-  std::vector<Job*> job_list_;
+  std::vector<std::shared_ptr<Job>> job_list_;
   std::unordered_map<std::string, ProgramDesc*> type_to_program_;
 };
 

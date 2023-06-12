@@ -57,7 +57,6 @@ def parallelizer(program_func, rank):
 
 class TestDistScale(unittest.TestCase):
     def test_dist_scale(self):
-
         dist_main_prog, dist_context = parallelizer(make_program, 0)
         ops = dist_main_prog.global_block().ops
         scale_op = ops[0]

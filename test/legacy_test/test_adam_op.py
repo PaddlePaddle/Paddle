@@ -697,7 +697,6 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.enable_static()
 
     def test_adam_op_with_state_dict(self):
-
         paddle.disable_static()
         emb = paddle.nn.Embedding(10, 10)
 
@@ -779,7 +778,6 @@ class TestAdamOpV2(unittest.TestCase):
         paddle.enable_static()
 
     def test_adam_op_with_sparse_input_and_weight_decay(self):
-
         paddle.disable_static()
         x_data = np.arange(0, 10).reshape((10, 1)).astype(np.int64)
         x = paddle.to_tensor(x_data, stop_gradient=False)

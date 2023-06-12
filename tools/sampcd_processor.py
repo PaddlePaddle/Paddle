@@ -264,11 +264,9 @@ def is_required_match(requirestr, cbtitle='not-specified'):
         return None
 
     if all(
-        [
-            k in SAMPLE_CODE_TEST_CAPACITY
-            for k in requires
-            if k not in ['skip', 'skiptest']
-        ]
+        k in SAMPLE_CODE_TEST_CAPACITY
+        for k in requires
+        if k not in ['skip', 'skiptest']
     ):
         return True
 

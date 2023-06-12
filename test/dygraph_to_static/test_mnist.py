@@ -187,7 +187,6 @@ class TestMNISTWithToStatic(TestMNIST):
         )
 
     def train(self, to_static=False):
-
         loss_data = []
         with fluid.dygraph.guard(self.place):
             fluid.default_main_program().random_seed = SEED

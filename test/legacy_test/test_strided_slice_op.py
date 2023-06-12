@@ -718,7 +718,6 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
     def is_grads_equal(self, g1, g2):
         for i, g in enumerate(g1):
-
             self.assertTrue(
                 self.grad_equal(g, g2[i]),
                 msg=f"gradient_1:\n{g} \ngradient_2:\n{g2}",

@@ -956,8 +956,7 @@ def multiply(x, y, name=None):
     else:
         if x.dtype != y.dtype:
             raise TypeError(
-                'Input tensors must be same type, but received type of x: %s, type of y: %s '
-                % (x.dtype, y.dtype)
+                f'Input tensors must be same type, but received type of x: {x.dtype}, type of y: {y.dtype} '
             )
 
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
@@ -1891,8 +1890,9 @@ def mm(input, mat2, name=None):
                     raise ValueError(
                         "After performing an optional transpose, Input X's width should be "
                         "equal to Y's width for multiplication "
-                        "prerequisites. But received X's shape: %s, Y's shape: %s\n"
-                        % (x_shape, y_shape)
+                        "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
+                            x_shape, y_shape
+                        )
                     )
 
             if len(y_shape) > 2 and len(x_shape) > 2:
@@ -2156,8 +2156,9 @@ def inner(x, y, name=None):
                         raise ValueError(
                             "After performing an optional transpose, Input X's last dim should be "
                             "equal to Y's last dim for multiplication "
-                            "prerequisites. But received X's shape: %s, Y's shape: %s\n"
-                            % (x_shape, y_shape)
+                            "prerequisites. But received X's shape: {}, Y's shape: {}\n".format(
+                                x_shape, y_shape
+                            )
                         )
 
             __check_input(nx, ny)

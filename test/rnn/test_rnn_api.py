@@ -350,7 +350,6 @@ class TestGRUBackward(unittest.TestCase):
         np.testing.assert_allclose(h1_grad, g1, atol=1e-8, rtol=1e-5)
 
     def runTest(self):
-
         self.test_base(True)
         self.test_base()
         self.test_base()

@@ -31,7 +31,6 @@ _logger = get_logger(
 
 
 def _default_pruning(weight_nparray, m, n, func_name, param_name):
-
     # if the to-be-pruned dimension's size is smaller than m, we don't prune it. This strong assertion is required by the inference from cuSparseLT.
     shape = weight_nparray.shape
     weight_pruned_nparray = copy.deepcopy(weight_nparray)
