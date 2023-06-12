@@ -227,6 +227,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
 }
 
 void MetaTensor::share_stride(const MetaTensor& meta_tensor) {
+  ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
     set_stride(meta_tensor.stride());
   }
