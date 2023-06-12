@@ -232,12 +232,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_user_defined)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_config)
   list(REMOVE_ITEM TEST_OPS test_quant_amp)
-  list(REMOVE_ITEM TEST_OPS test_fleet_with_qat)
 
-endif()
-
-if(NOT WITH_DISTRIBUTED)
-  list(REMOVE_ITEM TEST_OPS test_fleet_with_qat)
 endif()
 
 if(LINUX AND WITH_MKLDNN)
@@ -499,7 +494,6 @@ if(NOT WIN32)
   set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_aware_config PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_fleet_with_qat PROPERTIES TIMEOUT 200)
 endif()
 
 set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
