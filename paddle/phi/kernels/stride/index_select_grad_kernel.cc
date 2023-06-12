@@ -15,12 +15,13 @@
 #include "paddle/phi/kernels/index_select_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fill_kernel.h"
 #include "paddle/phi/kernels/index_select_kernel.h"
-
+#include "paddle/phi/kernels/strided_copy_kernel.h"
 namespace phi {
 
 template <typename Context>
-void IndexSelectGradStridedKernel(const Context& ctx,
+void IndexSelectGradStridedKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& out_grad,
                                   const std::vector<int64_t>& index,
@@ -32,7 +33,7 @@ void IndexSelectGradStridedKernel(const Context& ctx,
                            dev_ctx, *x_grad, 0, x_grad);
                      }));
   DenseTensor tmp;
-  IndexSelectGradKernel<Context>(dev_ctx, *x_grad, index, dim, &tmp);
+  IndexSelectStridedKernel<Context>(dev_ctx, *x_grad, index, dim, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "IndexSelectGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
