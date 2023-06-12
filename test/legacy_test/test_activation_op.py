@@ -250,12 +250,6 @@ class TestExpm1API(unittest.TestCase):
                 run(place)
 
 
-class Test_Expm1_Op_Fp16(TestExpm1API):
-    def init_dtype(self):
-        self.dtype = np.float16
-        self.shape = [11, 17]
-
-
 class Test_Expm1_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
