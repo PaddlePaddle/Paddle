@@ -262,9 +262,12 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        cur_pid = os.getpid()
-        dump_file_0 = f'./out_data_0_{cur_pid}.pickled'
-        dump_file_1 = f'./out_data_1_{cur_pid}.pickled'
+        dump_file_0 = os.path.join(
+            self.temp_dir.name, '/out_data_0_%d.pickled' % os.getpid()
+        )
+        dump_file_1 = os.path.join(
+            self.temp_dir.name, '/out_data_1_%d.pickled' % os.getpid()
+        )
         env0['DUMP_FILE'] = dump_file_0
         env1['DUMP_FILE'] = dump_file_1
 
