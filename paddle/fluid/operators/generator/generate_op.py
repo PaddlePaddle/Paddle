@@ -500,7 +500,7 @@ def parse_get_expected_kerneltype(
             fw_name = op_comp_map['op'].split('(')[0].strip()
             # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
             new_get_expected_kernel_type_func_map = {}
-            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+            for key, value in op_comp_map['get_expected_kernel_type'].items():
                 new_get_expected_kernel_type_func_map[
                     delete_last_underline(key)
                 ] = value

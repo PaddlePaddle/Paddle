@@ -103,7 +103,6 @@ class TestLambda(unittest.TestCase):
         return self.run_dygraph(func, to_static=True)
 
     def run_dygraph(self, func, to_static=False):
-
         with fluid.dygraph.guard(self.place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:

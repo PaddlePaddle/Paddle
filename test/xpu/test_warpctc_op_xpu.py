@@ -401,7 +401,6 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
 
         def test_dygraph_errors(self):
             def test_dygraph_with_lod():
-
                 self.dtype = self.in_type
                 self.place = paddle.XPUPlace(0)
 

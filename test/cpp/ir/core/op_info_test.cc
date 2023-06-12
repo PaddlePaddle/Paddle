@@ -28,7 +28,7 @@ TEST(ir_op_info_test, op_op_info_test) {
 
   ir::Block* block = program.block();
   ir::Builder builder(context, block);
-  builder.Build<ir::ConstantOp>(ir::Int32_tAttribute::get(context, 5),
+  builder.Build<ir::ConstantOp>(ir::Int32Attribute::get(context, 5),
                                 ir::Int32Type::get(context));
 
   ir::Operation* op = block->back();

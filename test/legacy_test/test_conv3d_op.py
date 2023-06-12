@@ -35,7 +35,6 @@ def conv3d_forward_naive(
     padding_algorithm='EXPLICIT',
     data_format="NCDHW",
 ):
-
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
             "Unknown Attr(padding_algorithm): '%s'. "
@@ -464,7 +463,6 @@ class TestConv3DOp(OpTest):
         )
 
     def test_check_grad_no_filter(self):
-
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
@@ -477,7 +475,6 @@ class TestConv3DOp(OpTest):
         )
 
     def test_check_grad_no_input(self):
-
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
@@ -1213,5 +1210,4 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
     unittest.main()

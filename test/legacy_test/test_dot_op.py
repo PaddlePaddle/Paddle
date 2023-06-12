@@ -141,7 +141,6 @@ class DotOpBatch(DotOp):
 class TestDotOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-
             # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
             # float16 only can be set on GPU place
             x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")

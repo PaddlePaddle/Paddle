@@ -238,7 +238,7 @@ TEST(op_test, module_op_death) {
 
   // (3) Test uses for op.
   std::vector<ir::OpResult> inputs{ir::OpResult()};
-  ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
+  ir::AttributeMap attrs{{"program", ir::Int32Attribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
 
   EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info),
