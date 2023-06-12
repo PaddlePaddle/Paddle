@@ -89,6 +89,7 @@ def run_check(args):
     paddle.set_flags(
         {
             "FLAGS_check_nan_inf": 1,
+            "FLAGS_check_nan_inf_stack_limit": 1,
             "FLAGS_check_nan_inf_level": args.check_nan_inf_level,
         }
     )

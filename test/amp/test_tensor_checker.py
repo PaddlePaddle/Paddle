@@ -70,6 +70,7 @@ class TestTensorChecker(unittest.TestCase):
             checked_op_list=["elementwise_pow_grad"],
             skipped_op_list=["elementwise_div"],
             debug_step=[0, 3],
+            stack_height_limit=1,
         )
         places = ['cpu']
         if paddle.is_compiled_with_cuda():

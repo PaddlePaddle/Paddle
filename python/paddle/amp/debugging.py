@@ -236,7 +236,7 @@ class TensorCheckerConfig:
             # set stack_height_limit
             if isinstance(self.stack_height_limit, (int)):
                 paddle.set_flags(
-                    {"FLAGS_check_nan_inf_stack_limit": self.debug_mode.value}
+                    {"FLAGS_check_nan_inf_stack_limit": self.stack_height_limit}
                 )
             else:
                 raise ValueError("stack_height_limit must be int")
