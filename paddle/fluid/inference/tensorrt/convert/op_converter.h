@@ -393,19 +393,24 @@ class OpConverter {
 
   nvinfer1::ITensor* Unsqueeze(nvinfer1::ITensor* input,
                                const std::vector<int32_t> axis) {
-    const auto dims = Shape(input);
+    const auto dims = input->getDimensions();
     const std::unordered_set<int32_t> axis_data(axis.begin(), axis.end());
-    std::vector<int32_t> subscripts(dims->getDimensions().nbDims);
+    std::vector<int32_t> subscripts(dims.nbDims);
     std::iota(subscripts.begin(), subscripts.end(), 0);
     for (const auto& axis_value : axis_data) {
-      subscripts.insert(subscripts.begin() + axis_value,
-                        dims->getDimensions().nbDims);
+      subscripts.insert(subscripts.begin() + axis_value, dims.nbDims);
+    }
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
     }
     auto* new_dim =
         TRT_ENGINE_ADD_LAYER(engine_,
                              Gather,
                              *Concat(std::vector<nvinfer1::ITensor*>{
-                                 dims, Add1DConstantLayer(1)}),
+                                 input_shape, Add1DConstantLayer(1)}),
                              *Add1DConstantLayer(subscripts),
                              0)
             ->getOutput(0);
@@ -415,8 +420,8 @@ class OpConverter {
 
   nvinfer1::ITensor* Squeeze(nvinfer1::ITensor* input,
                              const std::vector<int32_t> axis) {
-    const auto dims = Shape(input);
-    std::vector<int32_t> subscripts(dims->getDimensions().nbDims);
+    const auto dims = input->getDimensions();
+    std::vector<int32_t> subscripts(dims.nbDims);
     std::iota(subscripts.begin(), subscripts.end(), 0);
     auto p =
         std::remove_if(subscripts.begin(), subscripts.end(), [axis](int x) {
@@ -424,9 +429,16 @@ class OpConverter {
         });
     subscripts.resize(p - subscripts.begin());
 
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+
     auto* new_dim =
         TRT_ENGINE_ADD_LAYER(
-            engine_, Gather, *dims, *Add1DConstantLayer(subscripts), 0)
+            engine_, Gather, *input_shape, *Add1DConstantLayer(subscripts), 0)
             ->getOutput(0);
     auto result = Reshape(input, new_dim);
     return result;

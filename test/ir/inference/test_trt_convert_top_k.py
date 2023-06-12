@@ -107,6 +107,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape and self.dims == 1:
+                return 0, 4
             return 1, 3
 
         attrs = [
