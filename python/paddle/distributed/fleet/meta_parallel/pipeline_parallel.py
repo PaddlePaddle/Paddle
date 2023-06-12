@@ -47,7 +47,8 @@ class FakeMicroDataset:
         return self
 
     def __next__(self):
-        assert self._index < self._acc_steps
+        if self._index >= self._acc_steps:
+            raise StopIteration
         assert self._is_first_stage or self._is_last_stage
         micro_batch_data = self._load_micro_batch(self._index)
         self._index += 1
