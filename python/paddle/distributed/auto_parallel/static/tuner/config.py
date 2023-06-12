@@ -33,7 +33,6 @@ class TuningConfig:
     """
 
     def __init__(self, strategy):
-
         if not isinstance(strategy, Strategy):
             raise TypeError("'strategy' must be object of class `Strategy`.")
 

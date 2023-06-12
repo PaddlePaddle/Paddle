@@ -126,7 +126,6 @@ class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-
         is_not_valid = True
         program_config = None
         while is_not_valid:

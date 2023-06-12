@@ -570,7 +570,6 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block

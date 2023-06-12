@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
@@ -85,7 +86,7 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
-    throw("The address of OpOperandImpl must be divisible by 8.");
+    IR_THROW("The address of OpOperandImpl must be divisible by 8.");
   }
   for (size_t idx = 0; idx < num_operands; idx++) {
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
@@ -147,7 +148,7 @@ void Operation::Destroy() {
   // 2.2. Deconstruct Operation.
   if (reinterpret_cast<uintptr_t>(base_ptr) !=
       reinterpret_cast<uintptr_t>(this)) {
-    throw("Operation address error");
+    IR_THROW("Operation address error");
   }
   reinterpret_cast<Operation *>(base_ptr)->~Operation();
   base_ptr += sizeof(Operation);
@@ -165,6 +166,8 @@ void Operation::Destroy() {
 
 IrContext *Operation::ir_context() const { return info_.ir_context(); }
 
+Dialect *Operation::dialect() const { return info_.dialect(); }
+
 Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
                      uint32_t num_results,
@@ -178,7 +181,7 @@ Operation::Operation(const AttributeMap &attributes,
 
 ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
   if (index >= num_results_) {
-    throw("index exceeds OP output range.");
+    IR_THROW("index exceeds OP output range.");
   }
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
   const char *ptr =
@@ -199,7 +202,7 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
 
 ir::OpOperand Operation::GetOperandByIndex(uint32_t index) const {
   if (index >= num_operands_) {
-    throw("index exceeds OP input range.");
+    IR_THROW("index exceeds OP input range.");
   }
   const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
                     (index) * sizeof(detail::OpOperandImpl);
@@ -212,7 +215,7 @@ std::string Operation::name() const {
 }
 
 Region *Operation::GetParentRegion() const {
-  return parent_ ? parent_->GetParentRegion() : nullptr;
+  return parent_ ? parent_->GetParent() : nullptr;
 }
 
 Operation *Operation::GetParentOp() const {
@@ -231,6 +234,11 @@ Program *Operation::GetParentProgram() {
 Region &Operation::GetRegion(unsigned index) {
   assert(index < num_regions_ && "invalid region index");
   return regions_[index];
+}
+
+void Operation::SetParent(Block *parent, const Block::iterator &position) {
+  parent_ = parent;
+  position_ = position;
 }
 
 }  // namespace ir

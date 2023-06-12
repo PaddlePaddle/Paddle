@@ -77,9 +77,7 @@ class TestBeta(unittest.TestCase):
             )
 
     def test_prob(self):
-
         with paddle.static.program_guard(self.program):
-
             value = paddle.static.data(
                 'value',
                 self._paddle_beta.alpha.shape,

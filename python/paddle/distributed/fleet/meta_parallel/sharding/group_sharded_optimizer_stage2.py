@@ -79,7 +79,6 @@ class GroupShardedOptimizerStage2(Optimizer):
         dp_group=None,
         **kw
     ):
-
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
         assert (
             core.is_compiled_with_cuda()
@@ -418,7 +417,6 @@ class GroupShardedOptimizerStage2(Optimizer):
 
             for dst_rank, params in enumerate(per_rank_params):
                 if len(params) > 0:
-
                     # Merge all the trainable params in a single InternalStorage
                     trainable_params = list(
                         filter(lambda x: x.trainable, params)

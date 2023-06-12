@@ -30,7 +30,6 @@ class TestRoIPool(unittest.TestCase):
         self.boxes_num = np.array([3], dtype=np.int32)
 
     def roi_pool_functional(self, output_size):
-
         if isinstance(output_size, int):
             output_shape = (3, 256, output_size, output_size)
         else:

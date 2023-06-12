@@ -1123,7 +1123,7 @@ class MaxUnPool1D(Layer):
 
     `max_unpool1d` accepts the output of `max_pool1d` as input,
     including the indices of the maximum value and calculate the partial inverse.
-    All non-maximum values ​​are set to zero.
+    All non-maximum values are set to zero.
 
     - Input: :math:`(N, C, L_{in})`
     - Output: :math:`(N, C, L_{out})`, where
@@ -1207,7 +1207,7 @@ class MaxUnPool2D(Layer):
 
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
     Including the indices of the maximum value and calculating the partial inverse
-    All non-maximum values ​​are set to zero.
+    All non-maximum values are set to zero.
 
 
     Parameters:
@@ -1295,7 +1295,7 @@ class MaxUnPool3D(Layer):
 
     `max_unpool3d` accepts the output of `max_pool3d` as input,
     including the indices of the maximum value and calculate the partial inverse.
-    All non-maximum values ​​are set to zero.
+    All non-maximum values are set to zero.
 
     - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
     - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where

@@ -44,7 +44,6 @@ class ShuffleChannelFuseTRTPassTest(InferencePassTest):
         self.fetch_list = [out]
 
     def test_check_output(self):
-
         self.check_output()
 
         self.assertTrue(

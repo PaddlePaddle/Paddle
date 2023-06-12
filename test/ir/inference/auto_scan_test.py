@@ -726,7 +726,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
             return True
 
         for prog_config in self.sample_program_configs(*args, **kwargs):
-
             if random_to_skip():
                 continue
 

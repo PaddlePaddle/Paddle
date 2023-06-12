@@ -312,6 +312,15 @@ bool IsCompiledWithCINN() {
 #endif
 }
 
+bool IsRunWithCINN() {
+#ifndef PADDLE_WITH_CINN
+  return false;
+#else
+  return framework::paddle2cinn::CinnCompiler::GetInstance()
+             ->real_compiled_num() > 0;
+#endif
+}
+
 bool IsCompiledWithHETERPS() {
 #ifndef PADDLE_WITH_HETERPS
   return false;
@@ -1909,6 +1918,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -2698,12 +2708,6 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

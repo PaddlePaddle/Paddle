@@ -69,9 +69,8 @@ def initialize_p2p_groups(
     ) = _hcg.get_p2p_groups()
 
     debug_str = (
-        "P2pInfo: send_next_group: %s, send_prev_group: %s, "
-        "recv_next_group: %s, recv_prev_group: %s"
-        % (
+        "P2pInfo: send_next_group: {}, send_prev_group: {}, "
+        "recv_next_group: {}, recv_prev_group: {}".format(
             repr(send_next_group),
             repr(send_prev_group),
             repr(recv_next_group),
@@ -358,7 +357,6 @@ def _p2p_helper(
                 tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
         else:
-
             tensor_recv_prev = paddle.empty(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg)
             )

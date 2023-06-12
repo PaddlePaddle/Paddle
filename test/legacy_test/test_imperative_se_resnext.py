@@ -97,7 +97,6 @@ class ConvBNLayer(paddle.nn.Layer):
 
 class SqueezeExcitation(paddle.nn.Layer):
     def __init__(self, num_channels, reduction_ratio):
-
         super().__init__()
         self._num_channels = num_channels
         self._pool = paddle.nn.AdaptiveAvgPool2D(1)
@@ -357,7 +356,6 @@ class TestImperativeResneXt(unittest.TestCase):
                 dy_param_init_value[param.name] = param.numpy()
             for epoch_id in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
-
                     if batch_id >= batch_num and batch_num != -1:
                         break
 

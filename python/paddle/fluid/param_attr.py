@@ -81,7 +81,6 @@ class ParamAttr:
         do_model_average=True,
         need_clip=True,
     ):
-
         check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")

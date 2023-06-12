@@ -154,7 +154,6 @@ def pool2D_forward_naive(
     pool_type="max",
     padding_algorithm="EXPLICIT",
 ):
-
     # update paddings
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []

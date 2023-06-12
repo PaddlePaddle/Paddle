@@ -277,7 +277,6 @@ class TestPixelShuffleAPI(unittest.TestCase):
             assert np.allclose(res_2, out_2_np)
 
     def run_dygraph(self, up_factor, data_format):
-
         n, c, h, w = 2, 9, 4, 4
 
         if data_format == "NCHW":
