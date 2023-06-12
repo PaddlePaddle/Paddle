@@ -72,11 +72,11 @@ Reshape2MatmulV2Pattern::Reshape2MatmulV2Pattern(PDPattern* pattern,
                          return matmul_y_rank == 2;
                        });
   auto* matmul_v2 = pattern->NewNode(matmul_v2_repr())
-                        ->assert_is_op("matmul")
+                        ->assert_is_op("matmul_v2")
                         ->assert_op_attr<bool>("trans_x", false)
                         ->assert_op_attr<bool>("trans_y", true);
   auto* matmul_out = pattern->NewNode(matmul_out_repr())
-                         ->assert_is_op_output("matmul", "Out")
+                         ->assert_is_op_output("matmul_v2", "Out")
                          ->AsOutput();
   reshape2->LinksFrom({reshape2_in}).LinksTo({matmul_x});
   matmul_v2->LinksFrom({matmul_x, matmul_y}).LinksTo({matmul_out});
@@ -90,7 +90,7 @@ void MatmulWeightTransPass::TransMatmulV2Weight(ir::Graph* graph) const {
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle DetectorFuse";
+    VLOG(4) << "handle TransMatmulV2Weight";
     /* declare operator node's name */
     GET_IR_NODE(reshape2);
     GET_IR_NODE(matmul_v2);
@@ -107,7 +107,10 @@ void MatmulWeightTransPass::TransMatmulV2Weight(ir::Graph* graph) const {
     auto* matmul_y_t =
         scope->GetVar(matmul_y->Name())->GetMutable<phi::DenseTensor>();
     Transpose2D(matmul_y_t);
+    auto from_shape = matmul_y->Var()->GetShape();
+    matmul_y->Var()->SetShape({from_shape[1], from_shape[0]});
     matmul_v2->Op()->SetAttr("trans_y", false);
+    matmul_v2->Op()->Flush();
     // delete useless node
     found_subgraph_count++;
   };
@@ -134,5 +137,5 @@ REGISTER_PASS(matmul_weight_trans_pass,
 REGISTER_PASS_CAPABILITY(matmul_weight_trans_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul_v2", 0)
-            .EQ("reshape2", 0));
+            .EQ("reshape2", 0)
+            .EQ("matmul_v2", 0));

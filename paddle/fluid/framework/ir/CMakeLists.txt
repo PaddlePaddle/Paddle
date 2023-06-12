@@ -548,4 +548,8 @@ if(WITH_XPU)
     test_fold_interp_outsize_fuse_pass
     SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
     DEPS fold_interp_outsize_fuse_pass)
+  cc_test(
+    test_matmul_weight_trans_pass
+    SRCS xpu/matmul_weight_trans_pass_test.cc
+    DEPS matmul_weight_trans_pass)
 endif()
