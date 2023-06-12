@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/ir/pattern_rewrite/pattern_match.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
 
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
 

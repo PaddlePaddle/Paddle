@@ -22,8 +22,9 @@ class Region;
 class Operation;
 
 class Block {
- public:
   using OpListType = std::list<Operation *>;
+
+ public:
   using iterator = OpListType::iterator;
   using reverse_iterator = OpListType::reverse_iterator;
   using const_iterator = OpListType::const_iterator;

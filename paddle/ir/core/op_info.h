@@ -69,14 +69,14 @@ class OpInfo {
 
   void *AsOpaquePointer() const { return impl_; }
   static OpInfo RecoverFromOpaquePointer(void *pointer) {
-    return OpInfo(reinterpret_cast<OpInfoImpl *>(pointer));
+    return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
 
   friend class OpInfoImpl;
   friend struct std::hash<OpInfo>;
 
  private:
-  OpInfo(OpInfoImpl *impl) : impl_(impl) {}  // NOLINT
+  explicit OpInfo(OpInfoImpl *impl) : impl_(impl) {}
   void *GetInterfaceImpl(TypeId interface_id) const;
 
  private:

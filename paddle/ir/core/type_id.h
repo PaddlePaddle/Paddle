@@ -53,7 +53,7 @@ class TypeId {
 
   void *AsOpaquePointer() const { return storage_; }
   static TypeId RecoverFromOpaquePointer(void *pointer) {
-    return TypeId(reinterpret_cast<Storage *>(pointer));
+    return TypeId(static_cast<Storage *>(pointer));
   }
 
   ///
@@ -80,7 +80,7 @@ class TypeId {
   ///
   /// \param storage The storage of this TypeId.
   ///
-  TypeId(Storage *storage) : storage_(storage) {}  // NOLINT
+  explicit TypeId(Storage *storage) : storage_(storage) {}
 
   Storage *storage_{nullptr};
 };

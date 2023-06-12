@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/ir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
 
 #include "paddle/ir/core/op_info.h"
-#include "paddle/ir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/utils/optional.h"
 
 namespace ir {

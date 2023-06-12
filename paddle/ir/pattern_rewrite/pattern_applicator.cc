@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "paddle/ir/pattern_rewrite/pattern_applicator.h"
+
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
