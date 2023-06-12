@@ -236,4 +236,9 @@ Region &Operation::GetRegion(unsigned index) {
   return regions_[index];
 }
 
+void Operation::SetParent(Block *parent, const Block::iterator &position) {
+  parent_ = parent;
+  position_ = position;
+}
+
 }  // namespace ir
