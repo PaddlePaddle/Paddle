@@ -327,7 +327,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         distribution, with ``shape`` and ``dtype``.
     """
     op_type_for_check = 'gaussian/standard_normal/randn/normal'
-    supported_dtypes = ['float32', 'float64', 'float16', 'uint16']
+    supported_dtypes = ['float32', 'float64', 'float16', 'uint16', 'bfloat16']
 
     if dtype is None:
         dtype = paddle.framework.get_default_dtype()
