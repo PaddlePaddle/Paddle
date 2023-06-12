@@ -958,10 +958,19 @@ else()
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
+    test_conv3d_transpose_op
+    MODULES
+    test_conv3d_transpose_op
+    ENVS
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
