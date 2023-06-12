@@ -306,10 +306,22 @@ class PipelineParallel(MetaParallelBase):
         all_flag_names = self.timers.timers.keys()
         self.timers.log(all_flag_names)
 
-    def forward_backward_pipeline(self, data, scaler=None):
+    def forward_backward_pipeline(
+        self, data, scaler=None, static_scheduler=False
+    ):
         # use the 1f1b scheduling strategy.
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
+
+        if static_scheduler:
+            if data is not None:
+                warnings.warn(
+                    "Static scheduler run won't real run the model, but data has been provided"
+                )
+            logger.log(
+                "enable static_scheduler will return the pp schedule instead of the loss"
+            )
+            schedule = ""
 
         self.scaler = scaler
 
@@ -329,6 +341,10 @@ class PipelineParallel(MetaParallelBase):
         micro_dataset = self._wrap_data(data)
 
         for step_id in range(startup_steps):
+            if static_scheduler:
+                schedule += f"f{step_id};"
+                logger.log(f"forward step for micro step {step_id}")
+                continue
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
             output_tensor = self._forward_step(input_tensor, micro_dataset)
@@ -344,6 +360,12 @@ class PipelineParallel(MetaParallelBase):
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
         for i in range(steady_steps):
+            if static_scheduler:
+                schedule += f"f{startup_steps + i};"
+                schedule += f"b{i};"
+                logger.log(f"forward step for micro step {startup_steps + i}")
+                logger.log(f"backward step for micro step {i}")
+                continue
             last_iter = i == (steady_steps - 1)
 
             output_tensor = self._forward_step(input_tensor, micro_dataset)
@@ -377,6 +399,10 @@ class PipelineParallel(MetaParallelBase):
                 )
 
         for i in range(startup_steps):
+            if static_scheduler:
+                schedule += f"b{steady_steps + i};"
+                logger.log(f"backward step for micro step {steady_steps + i}")
+                continue
             input_tensor = input_buffers.pop(0)
             output_tensor = output_buffers.pop(0)
 
@@ -388,6 +414,9 @@ class PipelineParallel(MetaParallelBase):
                 input_tensor, output_tensor, output_tensor_grad
             )
             p2p.send_backward(input_tensor_grad, self.is_pipeline_first_stage())
+
+        if static_scheduler:
+            return schedule
 
         if self._comm_overlap:
             assert len(self._comm_buffers) > 0
@@ -678,6 +707,9 @@ class PipelineParallel(MetaParallelBase):
         elif output is not None and isinstance(output, paddle.Tensor):
             output._clear_dataptr()
 
+    def get_static_scheduler(self):
+        self.forward_backward_pipeline(data=None, static_scheduler=True)
+
 
 class PipelineParallelWithInterleave(PipelineParallel):
     # pipeline parallel with interleave scheduler
@@ -762,7 +794,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
         return input_tensor_grad
 
     def forward_backward_pipeline(
-        self, data, scaler, forward_only=False, compute_loss=True
+        self,
+        data,
+        scaler,
+        forward_only=False,
+        compute_loss=True,
+        static_scheduler=False,
     ):
         # use interleave scheduling strategy.
         # this strategy is inspired by:
@@ -771,6 +808,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
             assert (
                 not forward_only
             ), "compute_loss can only be set to False when forward_only is set to True"
+
+        if static_scheduler:
+            if data is not None:
+                warnings.warn(
+                    "Static scheduler run won't real run the model, but data has been provided"
+                )
+            logger.log(
+                "enable static_scheduler will return the pp schedule instead of the loss"
+            )
+            schedule = ""
 
         # init some attributes for this batch run
         self.scaler = scaler
@@ -807,6 +854,15 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # run startup steps
         for micro_step in range(startup_steps):
+            if static_scheduler:
+                virtual_pp_rank = self._get_virtual_pp_rank(
+                    micro_step, forward=True
+                )
+                schedule += f"f{micro_step}_vp{virtual_pp_rank};"
+                logger.log(
+                    f"forward step for {micro_step} with virtual pp rank {virtual_pp_rank}"
+                )
+                continue
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
 
             # determine whether recv forward tensor or not
@@ -858,6 +914,28 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # run 1f1b steady steps
         for micro_step in range(steady_steps):
+            if static_scheduler:
+                forward_micro_step_id = micro_step + startup_steps
+                forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    forward_micro_step_id, forward=True
+                )
+                backward_micro_step_id = micro_step
+                backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    backward_micro_step_id, forward=False
+                )
+                schedule += (
+                    f"f{forward_micro_step_id}_vp{forward_virtual_pp_rank};"
+                )
+                schedule += (
+                    f"b{backward_micro_step_id}_vp{backward_virtual_pp_rank};"
+                )
+                logger.log(
+                    f"forward step for {forward_micro_step_id} with virtual pp rank {forward_virtual_pp_rank}"
+                )
+                logger.log(
+                    f"backward step for {backward_micro_step_id} with virtual pp rank {backward_virtual_pp_rank}"
+                )
+                continue
             # forward
             forward_micro_step_id = micro_step + startup_steps
             output_tensor = self._forward_step_helper(
@@ -942,6 +1020,15 @@ class PipelineParallelWithInterleave(PipelineParallel):
         # remaining backward steps
         if not forward_only:
             for micro_step in range(steady_steps, num_steps):
+                if static_scheduler:
+                    virtual_pp_rank = self._get_virtual_pp_rank(
+                        micro_step, forward=False
+                    )
+                    schedule += f"b{micro_step}_vp{virtual_pp_rank};"
+                    logger.log(
+                        f"backward step for {micro_step} with virtual pp rank {virtual_pp_rank}"
+                    )
+                    continue
                 # cooldown loop
                 input_tensor_grad = self._backward_step_helper(micro_step)
                 next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -974,6 +1061,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._layers.allreduce_shared_weight_gradients()
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").stop()
+
+        if static_scheduler:
+            return schedule
 
         if compute_loss:
             # return loss if compute loss
@@ -1009,3 +1099,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._compute_loss = compute_loss
 
         return self.forward_backward_pipeline(data, None, forward_only=True)
+
+    def get_static_scheduler(self):
+        self.forward_backward_pipeline(
+            data=None, scaler=None, static_scheduler=True
+        )

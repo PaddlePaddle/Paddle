@@ -177,6 +177,8 @@ class TestDistPPTraning(unittest.TestCase):
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
 
+        schedule = model.get_static_scheduler()
+
         for step_id in range(5):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
