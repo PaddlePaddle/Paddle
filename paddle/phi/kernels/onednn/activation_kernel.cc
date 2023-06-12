@@ -178,6 +178,15 @@ void GeluKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void Relu6RawKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    float threshold,
+                    DenseTensor* out) {
+  Relu6OneDNNFunctor<T> functor;
+  functor(dev_ctx, x, 0, threshold, out);
+}
+
+template <typename T, typename Context>
 void SwishKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
