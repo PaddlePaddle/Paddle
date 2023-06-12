@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, sparse
+from paddle import sparse
 from paddle.fluid import core
 
 logging.basicConfig(
@@ -312,8 +312,8 @@ class TestSparseConv(unittest.TestCase):
 class TestStatic(unittest.TestCase):
     def test(self):
         paddle.enable_static()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
             indices = paddle.static.data(
                 name='indices', shape=[4, 4], dtype='int32'
             )
@@ -380,8 +380,8 @@ class TestStatic(unittest.TestCase):
 
     def test2D(self):
         paddle.enable_static()
-        main = fluid.Program()
-        with fluid.program_guard(main):
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
             indices = paddle.static.data(
                 name='indices', shape=[3, 4], dtype='int32'
             )
