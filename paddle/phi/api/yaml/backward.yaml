@@ -994,8 +994,8 @@
   no_need_buffer : x
 
 - backward_op : index_select_strided_grad
-  forward : index_select_strided(Tensor x, Tensor index, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor index, Tensor out_grad, int axis)
+  forward : index_select_strided(Tensor x, int64_t[] index, int axis = 0) -> Tensor(out)
+  args : (Tensor x, int64_t[] index, Tensor out_grad, int axis)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
