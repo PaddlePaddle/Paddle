@@ -431,5 +431,4 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=21958;http_proxy=;https_proxy=")
   set_tests_properties(test_orthogonal_strategy PROPERTIES TIMEOUT "120")
 endif()
-
 add_subdirectory(fleet)
