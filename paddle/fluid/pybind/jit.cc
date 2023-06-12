@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/jit.h"
 
 #include <Python.h>
+#if PY_VERSION_HEX < 0x030b0000
 #include <code.h>
+#endif
 #include <frameobject.h>
 
 #if PY_VERSION_HEX >= 0x030b0000
