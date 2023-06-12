@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import os
-import pickle
 
 import numpy as np
 from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,
+    dump_output,
     runtime_main,
 )
 
@@ -102,8 +102,7 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
                 fetch_list=fetch_list,
             )
 
-        with open(os.environ['DUMP_FILE'], "wb") as f:
-            pickle.dump(out, f)
+        dump_output(out)
 
 
 if __name__ == "__main__":

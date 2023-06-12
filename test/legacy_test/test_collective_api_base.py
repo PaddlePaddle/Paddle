@@ -80,6 +80,12 @@ def create_pyobject_test_data(shape=None, seed=None):
     return [list_data, dict_data]
 
 
+def dump_output(x):
+    dump_file = os.environ['DUMP_FILE']
+    with open(dump_file, 'wb') as f:
+        pickle.dump(x, f)
+
+
 def create_test_data(shape=None, dtype=None, seed=None):
     assert shape, "Shape should be specified"
     if dtype == "float32" or dtype == "float16" or dtype == "float64":
@@ -160,9 +166,7 @@ class TestCollectiveAPIRunnerBase:
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
             # print(out, sys.stderr)
-        dump_file = os.environ['DUMP_FILE']
-        with open(dump_file, 'wb') as f:
-            pickle.dump(out, f)
+        dump_output(out)
 
 
 def runtime_main(test_class, col_type):
