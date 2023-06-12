@@ -48,7 +48,7 @@ namespace distributed {
       func<double>(__VA_ARGS__);             \
       break;                                 \
     case phi::DataType::FLOAT16:             \
-      func<gloo::float16>(__VA_ARGS__);      \
+      func<float16>(__VA_ARGS__);            \
       break;                                 \
     case phi::DataType::INT32:               \
       func<int32_t>(__VA_ARGS__);            \
@@ -73,7 +73,7 @@ namespace distributed {
       func<double>(args);                    \
       break;                                 \
     case phi::DataType::FLOAT16:             \
-      func<gloo::float16>(args);             \
+      func<float16>(args);                   \
       break;                                 \
     case phi::DataType::INT32:               \
       func<int32_t>(args);                   \
