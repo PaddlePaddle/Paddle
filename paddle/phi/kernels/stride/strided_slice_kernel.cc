@@ -36,10 +36,33 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   DDim output_stride = input.stride();
   int64_t output_offset = input.offset();
   for (size_t i = 0; i < axis.size(); ++i) {
-    output_offset = output_offset +
-                    starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
-    output_dims[axis[i]] = (ends[i] - starts[i] + strides[i] - 1) / strides[i];
-    output_stride[axis[i]] *= strides[i];
+    if (starts[i] < 0) {
+      starts[i] = starts[i] + axis.size();
+      starts[i] = std::max<int64_t>(starts[i], 0);
+    }
+    if (ends[i] < 0) {
+      if (!(ends[i] == -1 && strides[i] < 0)) {  // skip None stop condition
+        ends[i] = ends[i] + axis.size();
+        if (ends[i] < 0) {
+          ends[i] = 0;
+        }
+      }
+    }
+
+    if (strides[i] < 0) {
+      starts[i] = starts[i] + 1;
+      ends[i] = ends[i] + 1;
+    }
+
+    int64_t left =
+        std::max(static_cast<int64_t>(0), std::min(starts[i], ends[i]));
+    int64_t right = std::min(axis.size(), std::max(starts[i], ends[i]));
+    int64_t step = std::abs(strides[i]);
+
+    output_offset =
+        output_offset + left * output_stride[axis[i]] * SizeOf(out->dtype());
+    output_dims[axis[i]] = (std::abs(right - left) + step - 1) / step;
+    output_stride[axis[i]] *= step;
   }
   auto meta = input.meta();
   meta.offset = output_offset;
