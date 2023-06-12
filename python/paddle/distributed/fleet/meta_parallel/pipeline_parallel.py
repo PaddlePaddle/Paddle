@@ -10,6 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+import time
 
 import paddle
 from paddle import framework
@@ -140,6 +141,7 @@ class PipelineParallel(MetaParallelBase):
 
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
         self.stage_id = self._hcg.get_stage_id()
+        self.global_rank = self._hcg.get_global_rank()
         self.pp_group = self._hcg.get_pipe_parallel_group()
         self.dp_group = self._hcg.get_data_parallel_group()
         self.sharding_group = self._hcg.get_sharding_parallel_group()
@@ -163,6 +165,15 @@ class PipelineParallel(MetaParallelBase):
         self._enable_timer = self._strategy.hybrid_configs[
             "pp_configs"
         ].enable_timer
+        self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling
+        self._records = []
+        self._record_format = (
+            '"name": "{}_{}", "cat": "forward", "ph": {}, "pid": 0, "tid": '
+            + str(self.stage_id + 1)
+            + ', "ts": {}, "cname": "{}"'
+        )
+        self._forward_color = "thread_state_running"  # RGB: 126, 200, 148
+        self._backward_color = "rail_idle"  # RGB: 238, 142, 0
 
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
@@ -347,7 +358,31 @@ class PipelineParallel(MetaParallelBase):
                 continue
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "forward",
+                        step_id,
+                        '"B"',
+                        int(time.time() * 1000),
+                        self._forward_color,
+                    )
+                    + '}'
+                )
             output_tensor = self._forward_step(input_tensor, micro_dataset)
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "forward",
+                        step_id,
+                        '"E"',
+                        int(time.time() * 1000),
+                        self._forward_color,
+                    )
+                    + '}'
+                )
             p2p.send_forward(output_tensor, self.is_pipeline_last_stage())
 
             input_buffers.append(input_tensor)
@@ -368,7 +403,31 @@ class PipelineParallel(MetaParallelBase):
                 continue
             last_iter = i == (steady_steps - 1)
 
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "forward",
+                        startup_steps + i,
+                        '"B"',
+                        int(time.time() * 1000),
+                        self._forward_color,
+                    )
+                    + '}'
+                )
             output_tensor = self._forward_step(input_tensor, micro_dataset)
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "forward",
+                        startup_steps + i,
+                        '"E"',
+                        int(time.time() * 1000),
+                        self._forward_color,
+                    )
+                    + '}'
+                )
 
             output_tensor_grad = p2p.send_forward_recv_backward(
                 output_tensor, self.is_pipeline_last_stage()
@@ -384,9 +443,33 @@ class PipelineParallel(MetaParallelBase):
                 0
             ), output_buffers.pop(0)
 
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "backward",
+                        i,
+                        '"B"',
+                        int(time.time() * 1000),
+                        self._backward_color,
+                    )
+                    + '}'
+                )
             input_tensor_grad = self._backward_step(
                 input_tensor, output_tensor, output_tensor_grad
             )
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "backward",
+                        i,
+                        '"E"',
+                        int(time.time() * 1000),
+                        self._backward_color,
+                    )
+                    + '}'
+                )
 
             if last_iter:
                 input_tensor = None
@@ -410,13 +493,46 @@ class PipelineParallel(MetaParallelBase):
                 self.is_pipeline_last_stage()
             )
 
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "backward",
+                        steady_steps + i,
+                        '"B"',
+                        int(time.time() * 1000),
+                        self._backward_color,
+                    )
+                    + '}'
+                )
             input_tensor_grad = self._backward_step(
                 input_tensor, output_tensor, output_tensor_grad
             )
+            if self._profiling:
+                self._records.append(
+                    '{'
+                    + self._record_format.format(
+                        "backward",
+                        steady_steps + i,
+                        '"E"',
+                        int(time.time() * 1000),
+                        self._backward_color,
+                    )
+                    + '}'
+                )
             p2p.send_backward(input_tensor_grad, self.is_pipeline_first_stage())
 
         if static_scheduler:
             return schedule
+
+        if self._profiling:
+            with open(
+                f'./profile_record_tmp_file_for_rank_{self.global_rank}',
+                'a+',
+            ) as f:
+                for record in self._records:
+                    f.write(record + '\n')
+            self._records = []
 
         if self._comm_overlap:
             assert len(self._comm_buffers) > 0
