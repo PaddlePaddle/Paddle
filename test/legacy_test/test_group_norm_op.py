@@ -19,6 +19,7 @@ import parameterized as param
 from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
+    convert_uint16_to_float,
     paddle_static_guard,
     skip_check_grad_ci,
 )
@@ -812,6 +813,96 @@ def apply_to_static(net, use_cinn):
             [[1e-3, 1e-3, 1e-3]],  # gpu thresholds for static, jit, jit_cinn
             None,
         ),
+        (
+            'test0_bfp16',
+            (2, 100, 3, 5),
+            1e-5,
+            2,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'test1_bfp16',
+            (2, 100, 3, 5),
+            1e-5,
+            1,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'test2_bfp16',
+            (2, 100, 3, 5),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'bigeps3_bfp16',
+            (2, 100, 3, 5),
+            0.5,
+            2,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
+        (
+            'largedata_bfp16',
+            (2, 32, 64, 64),
+            1e-5,
+            4,
+            'NCHW',
+            places,
+            'bfloat16',
+            [
+                [
+                    1e-2,
+                    1e-2,
+                    1e-2,
+                ],  # cpu thresholds for static, jit, jit_cinn
+                [1e-2, 1e-2, 1e-2],
+            ],  # gpu thresholds for static, jit, jit_cinn
+            None,
+        ),
     ),
 )
 class TestCompositeGroupNorm(unittest.TestCase):
@@ -827,12 +918,23 @@ class TestCompositeGroupNorm(unittest.TestCase):
         np.random.seed(1234)
         self.fwd_desire = []
         self.rev_desire = []
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
-        self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        if self.dtype != "bfloat16":
+            self.x = np.random.random(self.shape).astype(self.dtype)
+            self.scale = np.random.random([self.shape[1]]).astype(self.dtype)
+            self.bias = np.random.random([self.shape[1]]).astype(self.dtype)
+        else:
+            self.x = convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")
+            )
+            self.scale = convert_float_to_uint16(
+                np.random.random([self.shape[1]]).astype("float32")
+            )
+            self.bias = convert_float_to_uint16(
+                np.random.random([self.shape[1]]).astype("float32")
+            )
         self.num_channels = self.shape[1]
 
-        if self.dtype == 'float16':
+        if self.dtype in ['float16', 'bfloat16']:
             self.places = []
             if paddle.is_compiled_with_cuda():
                 self.places.append(paddle.CUDAPlace(0))
@@ -881,7 +983,11 @@ class TestCompositeGroupNorm(unittest.TestCase):
         paddle.assign(bias_, group_norm.bias)
         output = group_norm(input_)
         grad = paddle.grad(output, input_)
-
+        if self.dtype == "bfloat16":
+            output = paddle.cast(output, "float32")
+            grad = paddle.utils.map_structure(
+                lambda x: paddle.cast(x, "float32"), grad
+            )
         return output, grad[0]
 
     def get_static_desire(self, place):
@@ -925,7 +1031,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
             output = group_norm(input_)
 
             blocks = mp.blocks
-
             names = dict(
                 zip(
                     blocks[0].ops[2].output_names,
@@ -966,7 +1071,11 @@ class TestCompositeGroupNorm(unittest.TestCase):
         )
         paddle.disable_static()
         core._set_prim_all_enabled(True)
-
+        if self.dtype == "bfloat16":
+            out_list[0] = convert_uint16_to_float(out_list[0])
+            i = 3
+            for i in range(3, len(out_list)):
+                out_list[i] = convert_uint16_to_float(out_list[i])
         return out_list[:3], out_list[3:]
 
     def test_static_comp(self):
@@ -1053,6 +1162,11 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     },
                     fetch_list=vars_list + [grads],
                 )
+                if self.dtype == "bfloat16":
+                    out_list[0] = convert_uint16_to_float(out_list[0])
+                    i = 3
+                    for i in range(3, len(out_list)):
+                        out_list[i] = convert_uint16_to_float(out_list[i])
                 fwd_actual[-1].append(out_list[0])
                 fwd_actual[-1].append(out_list[1])
                 fwd_actual[-1].append(out_list[2])
@@ -1077,12 +1191,14 @@ class TestCompositeGroupNorm(unittest.TestCase):
             atol = self.threshold_list[i][0]
             rtol = self.threshold_list[i][0]
             for j in range(len(self.static_fwd_desire[i])):
-                # in float16 type, Y is float16, mean and var are float16
+                # in float16 type, Y is float16, mean and var are float32
                 # so check mean and var with float32 gpu threshold
-                if self.dtype == 'float16' and j > 0:
+                if self.dtype == "float16" and j > 0:
                     atol = 1e-5
                     rtol = 1e-5
-
+                elif self.dtype == "bfloat16" and j > 0:
+                    atol = 5e-3
+                    rtol = 5e-3
                 np.testing.assert_allclose(
                     self.static_fwd_desire[i][j],
                     fwd_actual[i][j],
@@ -1092,13 +1208,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 )
                 max_abs_diff = np.max(
                     np.abs(self.static_fwd_desire[i][j] - fwd_actual[i][j])
-                )
-                print(
-                    self.shape,
-                    self.dtype,
-                    self.places[i],
-                    vars_name[j],
-                    max_abs_diff,
                 )
             # compare with eager_desire
             np.testing.assert_allclose(
@@ -1121,14 +1230,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
 
                 max_abs_diff = np.max(
                     np.abs(self.static_rev_desire[i][j] - rev_actual[i][j])
-                )
-
-                print(
-                    self.shape,
-                    self.dtype,
-                    self.places[i],
-                    vars_name[j + 3],
-                    max_abs_diff,
                 )
 
                 np.testing.assert_allclose(
@@ -1185,8 +1286,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
             net = apply_to_static(net, False)
             output = net(input_)
             grad = paddle.grad(output, input_)
-            fwd_actual.append(output.numpy())
-            rev_actual.append(grad[0].numpy())
+            fwd_actual.append(
+                convert_uint16_to_float(output.numpy())
+                if self.dtype == "bfloat16"
+                else output.numpy()
+            )
+            rev_actual.append(
+                convert_uint16_to_float(grad[0].numpy())
+                if self.dtype == "bfloat16"
+                else grad[0].numpy()
+            )
 
         for i in range(len(self.places)):
             atol = self.threshold_list[i][1]
@@ -1246,8 +1355,16 @@ class TestCompositeGroupNorm(unittest.TestCase):
             net = apply_to_static(net, True)
             output = net(input_)
             grad = paddle.grad(output, input_)
-            fwd_actual.append(output.numpy())
-            rev_actual.append(grad[0].numpy())
+            fwd_actual.append(
+                convert_uint16_to_float(output.numpy())
+                if self.dtype == "bfloat16"
+                else output.numpy()
+            )
+            rev_actual.append(
+                convert_uint16_to_float(grad[0].numpy())
+                if self.dtype == "bfloat16"
+                else grad[0].numpy()
+            )
 
         i = 0
         for place in self.places:
