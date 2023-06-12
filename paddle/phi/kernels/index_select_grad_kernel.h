@@ -26,4 +26,12 @@ void IndexSelectGradKernel(const Context& ctx,
                            int dim,
                            DenseTensor* x_grad);
 
+template <typename Context>
+void IndexSelectGradStridedKernel(const Context& ctx,
+                                  const DenseTensor& x,
+                                  const DenseTensor& index,
+                                  const DenseTensor& out_grad,
+                                  int dim,
+                                  DenseTensor* x_grad);
+
 }  // namespace phi
