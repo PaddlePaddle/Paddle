@@ -168,7 +168,7 @@ class PipelineParallel(MetaParallelBase):
         self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling
         self._records = []
         self._record_format = (
-            '"name": "{}_{}", "cat": "forward", "ph": {}, "pid": 0, "tid": '
+            '"name": "{}{}", "cat": "pipeline timeline", "ph": {}, "pid": 0, "tid": '
             + str(self.stage_id + 1)
             + ', "ts": {}, "cname": "{}"'
         )
@@ -317,6 +317,31 @@ class PipelineParallel(MetaParallelBase):
         all_flag_names = self.timers.timers.keys()
         self.timers.log(all_flag_names)
 
+    def _record_stamp(self, name, step, phase, color):
+        if self._profiling:
+            paddle.device.synchronize()
+            self._records.append(
+                '{'
+                + self._record_format.format(
+                    name,
+                    step,
+                    phase,
+                    int(time.time() * 1000),
+                    color,
+                )
+                + '}'
+            )
+
+    def _flush_records(self):
+        if self._profiling:
+            with open(
+                f'./profile_record_tmp_file_for_rank_{self.global_rank}',
+                'a+',
+            ) as f:
+                for record in self._records:
+                    f.write(record + '\n')
+            self._records = []
+
     def forward_backward_pipeline(
         self, data, scaler=None, static_scheduler=False
     ):
@@ -325,6 +350,9 @@ class PipelineParallel(MetaParallelBase):
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
 
         if static_scheduler:
+            assert (
+                not self._profiling
+            ), "While _profiling, static scheduler is not available"
             if data is not None:
                 warnings.warn(
                     "Static scheduler run won't real run the model, but data has been provided"
@@ -358,31 +386,9 @@ class PipelineParallel(MetaParallelBase):
                 continue
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "forward",
-                        step_id,
-                        '"B"',
-                        int(time.time() * 1000),
-                        self._forward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp("F", step_id, '"B"', self._forward_color)
             output_tensor = self._forward_step(input_tensor, micro_dataset)
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "forward",
-                        step_id,
-                        '"E"',
-                        int(time.time() * 1000),
-                        self._forward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp("F", step_id, '"E"', self._forward_color)
             p2p.send_forward(output_tensor, self.is_pipeline_last_stage())
 
             input_buffers.append(input_tensor)
@@ -403,31 +409,13 @@ class PipelineParallel(MetaParallelBase):
                 continue
             last_iter = i == (steady_steps - 1)
 
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "forward",
-                        startup_steps + i,
-                        '"B"',
-                        int(time.time() * 1000),
-                        self._forward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp(
+                "F", startup_steps + i, '"B"', self._forward_color
+            )
             output_tensor = self._forward_step(input_tensor, micro_dataset)
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "forward",
-                        startup_steps + i,
-                        '"E"',
-                        int(time.time() * 1000),
-                        self._forward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp(
+                "F", startup_steps + i, '"E"', self._forward_color
+            )
 
             output_tensor_grad = p2p.send_forward_recv_backward(
                 output_tensor, self.is_pipeline_last_stage()
@@ -443,33 +431,11 @@ class PipelineParallel(MetaParallelBase):
                 0
             ), output_buffers.pop(0)
 
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "backward",
-                        i,
-                        '"B"',
-                        int(time.time() * 1000),
-                        self._backward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp("B", i, '"B"', self._backward_color)
             input_tensor_grad = self._backward_step(
                 input_tensor, output_tensor, output_tensor_grad
             )
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "backward",
-                        i,
-                        '"E"',
-                        int(time.time() * 1000),
-                        self._backward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp("B", i, '"E"', self._backward_color)
 
             if last_iter:
                 input_tensor = None
@@ -493,46 +459,21 @@ class PipelineParallel(MetaParallelBase):
                 self.is_pipeline_last_stage()
             )
 
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "backward",
-                        steady_steps + i,
-                        '"B"',
-                        int(time.time() * 1000),
-                        self._backward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp(
+                "B", steady_steps + i, '"B"', self._backward_color
+            )
             input_tensor_grad = self._backward_step(
                 input_tensor, output_tensor, output_tensor_grad
             )
-            if self._profiling:
-                self._records.append(
-                    '{'
-                    + self._record_format.format(
-                        "backward",
-                        steady_steps + i,
-                        '"E"',
-                        int(time.time() * 1000),
-                        self._backward_color,
-                    )
-                    + '}'
-                )
+            self._record_stamp(
+                "B", steady_steps + i, '"E"', self._backward_color
+            )
             p2p.send_backward(input_tensor_grad, self.is_pipeline_first_stage())
 
         if static_scheduler:
             return schedule
 
-        if self._profiling:
-            with open(
-                f'./profile_record_tmp_file_for_rank_{self.global_rank}',
-                'a+',
-            ) as f:
-                for record in self._records:
-                    f.write(record + '\n')
-            self._records = []
+        self._flush_records()
 
         if self._comm_overlap:
             assert len(self._comm_buffers) > 0
@@ -832,6 +773,23 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
     def __init__(self, layers, hcg, strategy):
         super().__init__(layers=layers, hcg=hcg, strategy=strategy)
+        self._record_format = (
+            '"name": "{}{}_VP{}", "cat": "virtual pipeline timeline", "ph": {}, "pid": 0, "tid": '
+            + str(self.stage_id + 1)
+            + ', "ts": {}, "cname": "{}"'
+        )
+        self._forward_colors = [
+            "thread_state_running",  # RGB: 126, 200, 148
+            "thread_state_unknown",  # RGB: 199, 155, 125
+        ]
+        self._backward_colors = [
+            "rail_idle",  # RGB: 238, 142, 0
+            "rail_load",  # RGB: 13, 168, 97
+        ]
+        # Structures to record the micro step for each layer chunk
+        self._forward_micro_step_counter = {}
+        self._backward_micro_step_counter = {}
+
         assert layers.get_num_virtual_stages() > 1
         assert (
             self.num_stages > 2
@@ -849,6 +807,52 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert len(self.model_chunks) == self.num_model_chunks
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
+        self._reset_counter()
+
+    def _reset_counter(self):
+        for i in range(self.num_model_chunks):
+            self._forward_micro_step_counter[i] = 0
+            self._backward_micro_step_counter[i] = 0
+
+    def _record_stamp(self, name, step, phase, forward=True):
+        if self._profiling:
+            paddle.device.synchronize()
+            virtual_pp_rank = self._get_virtual_pp_rank(step, forward=forward)
+            color_idx = virtual_pp_rank % 2
+            # Get the profile color and micro step for current layer chunk
+            if forward:
+                color = self._forward_colors[color_idx]
+                micro_step = self._forward_micro_step_counter[virtual_pp_rank]
+                if phase == '"E"':
+                    self._forward_micro_step_counter[virtual_pp_rank] += 1
+            else:
+                color = self._backward_colors[color_idx]
+                micro_step = self._backward_micro_step_counter[virtual_pp_rank]
+                if phase == '"E"':
+                    self._backward_micro_step_counter[virtual_pp_rank] += 1
+            self._records.append(
+                '{'
+                + self._record_format.format(
+                    name,
+                    micro_step,
+                    virtual_pp_rank,
+                    phase,
+                    int(time.time() * 1000),
+                    color,
+                )
+                + '}'
+            )
+
+    def _flush_records(self):
+        if self._profiling:
+            with open(
+                f'./profile_record_tmp_file_for_rank_{self.global_rank}',
+                'a+',
+            ) as f:
+                for record in self._records:
+                    f.write(record + '\n')
+            self._records = []
+            self._reset_counter()
 
     def _get_virtual_pp_rank(self, micro_step, forward):
         virtual_pp_stage = micro_step % (
@@ -926,6 +930,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             ), "compute_loss can only be set to False when forward_only is set to True"
 
         if static_scheduler:
+            assert (
+                not self._profiling
+            ), "While _profiling, static scheduler is not available"
             if data is not None:
                 warnings.warn(
                     "Static scheduler run won't real run the model, but data has been provided"
@@ -974,12 +981,19 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 virtual_pp_rank = self._get_virtual_pp_rank(
                     micro_step, forward=True
                 )
-                schedule += f"f{micro_step}_vp{virtual_pp_rank};"
+                real_micro_step = self._forward_micro_step_counter[
+                    virtual_pp_rank
+                ]
+                self._forward_micro_step_counter[virtual_pp_rank] += 1
+                schedule += f"f{real_micro_step}_vp{virtual_pp_rank};"
                 logger.log(
-                    f"forward step for {micro_step} with virtual pp rank {virtual_pp_rank}"
+                    f"forward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
                 )
                 continue
+
+            self._record_stamp("F", micro_step, '"B"', forward=True)
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
+            self._record_stamp("F", micro_step, '"E"', forward=True)
 
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -1039,29 +1053,45 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 backward_virtual_pp_rank = self._get_virtual_pp_rank(
                     backward_micro_step_id, forward=False
                 )
+                real_forward_micro_step = self._forward_micro_step_counter[
+                    forward_virtual_pp_rank
+                ]
+                self._forward_micro_step_counter[forward_virtual_pp_rank] += 1
+                real_backward_micro_step = self._backward_micro_step_counter[
+                    backward_virtual_pp_rank
+                ]
+                self._backward_micro_step_counter[backward_virtual_pp_rank] += 1
                 schedule += (
-                    f"f{forward_micro_step_id}_vp{forward_virtual_pp_rank};"
+                    f"f{real_forward_micro_step}_vp{forward_virtual_pp_rank};"
                 )
                 schedule += (
-                    f"b{backward_micro_step_id}_vp{backward_virtual_pp_rank};"
+                    f"b{real_backward_micro_step}_vp{backward_virtual_pp_rank};"
                 )
                 logger.log(
-                    f"forward step for {forward_micro_step_id} with virtual pp rank {forward_virtual_pp_rank}"
+                    f"forward step for {real_forward_micro_step} with virtual pp rank {forward_virtual_pp_rank}"
                 )
                 logger.log(
-                    f"backward step for {backward_micro_step_id} with virtual pp rank {backward_virtual_pp_rank}"
+                    f"backward step for {real_backward_micro_step} with virtual pp rank {backward_virtual_pp_rank}"
                 )
                 continue
             # forward
             forward_micro_step_id = micro_step + startup_steps
+            self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
             output_tensor = self._forward_step_helper(
                 micro_dataset, forward_micro_step_id
             )
+            self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
             # backward
             backward_micro_step_id = micro_step
+            self._record_stamp(
+                "B", backward_micro_step_id, '"B"', forward=False
+            )
             input_tensor_grad = self._backward_step_helper(
                 backward_micro_step_id
+            )
+            self._record_stamp(
+                "B", backward_micro_step_id, '"E"', forward=False
             )
 
             # four directions comm
@@ -1140,13 +1170,19 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     virtual_pp_rank = self._get_virtual_pp_rank(
                         micro_step, forward=False
                     )
-                    schedule += f"b{micro_step}_vp{virtual_pp_rank};"
+                    real_micro_step = self._backward_micro_step_counter[
+                        virtual_pp_rank
+                    ]
+                    self._backward_micro_step_counter[virtual_pp_rank] += 1
+                    schedule += f"b{real_micro_step}_vp{virtual_pp_rank};"
                     logger.log(
-                        f"backward step for {micro_step} with virtual pp rank {virtual_pp_rank}"
+                        f"backward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
                     )
                     continue
                 # cooldown loop
+                self._record_stamp("B", micro_step, '"B"', forward=False)
                 input_tensor_grad = self._backward_step_helper(micro_step)
+                self._record_stamp("B", micro_step, '"E"', forward=False)
                 next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
                     micro_step + 1, forward=False
                 )
@@ -1179,7 +1215,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 self.timers("allreduce_shared_weight_gradients").stop()
 
         if static_scheduler:
+            self._reset_counter()
             return schedule
+
+        self._flush_records()
 
         if compute_loss:
             # return loss if compute loss
