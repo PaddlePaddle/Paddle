@@ -28,10 +28,17 @@ nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
   DEPS dynload_cuda device_context dynamic_loader)
-nv_test(
-  test_tensorrt_engine
-  SRCS test_engine.cc test_dynamic_engine.cc
-  DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
+if(WIN32)
+  nv_test(
+    test_tensorrt_engine
+    SRCS test_engine.cc test_dynamic_engine.cc
+    DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
+else()
+  nv_test(
+    test_tensorrt_engine
+    SRCS test_engine.cc test_dynamic_engine.cc
+    DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
+endif()
 nv_test(
   test_arg_mapping_context
   SRCS test_arg_mapping_context.cc
