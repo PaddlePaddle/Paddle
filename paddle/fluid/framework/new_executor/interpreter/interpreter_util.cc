@@ -22,6 +22,9 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
@@ -138,6 +141,9 @@ bool IsCommunicationOp(const std::string& op_name) {
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
+  if (!instr.OpBaseValid()) {
+    return false;
+  }
   return IsCommunicationOp(instr.OpBase()->Type());
 }
 
@@ -922,6 +928,79 @@ void BuildOpFuncList(const platform::Place& place,
     }
   }
   delete garbages;
+}
+
+void BuildOpFuncList(
+    const platform::Place& place,
+    ::ir::Block* block,
+    std::vector<OpFuncNode>* vec_func_list,
+    framework::Scope* scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const ExecutionConfig& execution_config) {
+  std::cerr << "begin to build op func" << std::endl;
+  vec_func_list->reserve(block->size());
+  ::ir::IrContext* ctx = ir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    OpFuncNode op_func_node;
+    std::cerr << "name 1 " << (*it)->name() << std::endl;
+
+    auto attr_map = (*it)->attributes();
+
+    auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+
+    std::cerr << "op name " << op_name << std::endl;
+    op_func_node.phi_op_name_ = op_name;
+
+    ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+
+    auto impl =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    auto yaml_info = impl->get_op_info_();
+
+    auto attr_info = std::get<1>(yaml_info);
+
+    std::cerr << "11" << std::endl;
+    op_func_node.infer_shape_interface_ =
+        op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
+
+    ::ir::build_context<phi::InferMetaContext>(
+        (*it),
+        value_2_name_map,
+        scope,
+        yaml_info,
+        &(op_func_node.infer_meta_context_));
+
+    auto kernel_name =
+        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+    auto kernel_key = attr_map.at("kernel_key")
+                          .dyn_cast<paddle::dialect::KernelAttribute>()
+                          .data();
+
+    std::cerr << "22" << std::endl;
+    op_func_node.phi_kernel_ = new phi::Kernel(
+        phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key));
+
+    ::ir::build_context<phi::KernelContext>((*it),
+                                            value_2_name_map,
+                                            scope,
+                                            yaml_info,
+                                            &(op_func_node.kernel_context_),
+                                            false,
+                                            &(op_func_node.input_index),
+                                            &(op_func_node.output_index));
+
+    std::cerr << "33" << std::endl;
+
+    op_func_node.kernel_context_.SetDeviceContext(
+        phi::DeviceContextPool::Instance().Get(
+            phi::TransToPhiPlace(kernel_key.backend())));
+    op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
+        phi::TransToPhiPlace(kernel_key.backend()));
+    vec_func_list->emplace_back(op_func_node);
+  }
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,

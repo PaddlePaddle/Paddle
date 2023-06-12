@@ -45,146 +45,7 @@
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
 #include "glog/logging.h"
-
-void build_scope(ir::Block* block,
-                 paddle::framework::Scope* scope,
-                 std::unordered_map<ir::Value, std::string>* name_map) {
-  std::unordered_map<ir::Value, int> map_test;
-
-  int count = 0;
-  for (auto it = block->begin(); it != block->end(); ++it) {
-    int input = (*it)->num_operands();
-    if (input > 0) {
-      for (int i = 0; i < input; ++i) {
-        auto ptr = (*it)->GetOperandByIndex(i).source();
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          name = "var_" + std::to_string(count++);
-          name_map->emplace(ptr, name);
-        }
-        auto var = scope->Var(name);
-        // need to update here, only support DenseTensor
-        var->GetMutable<phi::DenseTensor>();
-      }
-    }
-
-    int out_num = (*it)->num_results();
-
-    if (out_num > 0) {
-      for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = (*it)->GetResultByIndex(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          name = "var_" + std::to_string(count++);
-          name_map->emplace(ptr, name);
-        }
-        auto var = scope->Var(name);
-
-        var->GetMutable<phi::DenseTensor>();
-      }
-    }
-  }
-}
-
-template <typename T>
-void build_context(ir::Operation* op,
-                   const std::unordered_map<ir::Value, std::string>& name_map,
-                   paddle::framework::Scope* scope,
-                   const OpInfoTuple& op_yaml_info,
-                   T* ctx,
-                   bool is_infer_meta = true) {
-  // inputs include input and mutable attributes
-  auto input_info = std::get<0>(op_yaml_info);
-  std::map<std::string, size_t> input_index_map;
-  std::map<std::string, std::string> mutable_attr_type_map;
-  int input_index = 0;
-  for (auto& t : input_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    input_index_map[t.name] = input_index++;
-    if (t.is_mutable_attribute) {
-      mutable_attr_type_map[t.name] = t.type_name;
-    }
-  }
-
-  auto attr_info = std::get<1>(op_yaml_info);
-  std::map<std::string, std::string> attr_type_map;
-  for (auto& t : attr_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    attr_type_map[t.name] = t.type_name;
-  }
-
-  auto attr_map = op->attributes();
-  auto runtime_info = std::get<3>(op_yaml_info);
-
-  // int input_index = 0;
-  std::vector<std::string> vec_param_list;
-  if (is_infer_meta) {
-    vec_param_list = runtime_info.infer_meta_param;
-  } else {
-    vec_param_list = runtime_info.kernel_param;
-  }
-  for (auto& t : vec_param_list) {
-    if (input_index_map.count(t)) {
-      // get information from input
-      ir::Value ptr = op->GetOperandByIndex(input_index_map[t]).source();
-      auto in_var_name = name_map.at(ptr);
-
-      if (mutable_attr_type_map.count(t)) {
-        VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
-                << in_var_name;
-        if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          ctx->EmplaceBackAttr(phi::IntArray(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
-        } else if (mutable_attr_type_map[t] ==
-                   "paddle::dialect::ScalarAttribute") {
-          ctx->EmplaceBackAttr(phi::Scalar(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                  mutable_attr_type_map[t]));
-        }
-
-      } else {
-        VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
-        ctx->EmplaceBackInput(
-            scope->Var(in_var_name)->GetMutable<phi::DenseTensor>());
-      }
-    }
-
-    if (attr_type_map.count(t)) {
-      auto type_name = attr_type_map[t];
-      if (type_name == "paddle::dialect::IntArrayAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::IntArrayAttribute>().data());
-      } else if (type_name == "paddle::dialect::DataTypeAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "ir::Int32_tAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<ir::Int32_tAttribute>().data());
-      } else if (type_name == "paddle::dialect::PlaceAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
-      } else if (type_name == "paddle::dialect::ScalarAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                type_name));
-      }
-      VLOG(6) << "ctx->EmplaceBackAttr: " << t;
-    }
-  }
-
-  ir::Value out_ptr = op->GetResultByIndex(0);
-  auto name = name_map.at(out_ptr);
-
-  ctx->EmplaceBackOutput(scope->Var(name)->GetMutable<phi::DenseTensor>());
-}
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 
 class PhiKernelAdaptor {
  public:
@@ -193,7 +54,7 @@ class PhiKernelAdaptor {
   void run(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    build_scope(block, scope_, &name_map);
+    ir::build_scope(block, scope_, &name_map);
 
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
@@ -206,10 +67,11 @@ class PhiKernelAdaptor {
           (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
       auto op_info_res = op_info_interface.GetOpInfo();
 
-      InferShapeInterface interface = (*it)->dyn_cast<InferShapeInterface>();
+      paddle::dialect::InferShapeInterface interface =
+          (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
       phi::InferMetaContext ctx;
 
-      build_context<phi::InferMetaContext>(
+      ir::build_context<phi::InferMetaContext>(
           (*it), name_map, scope_, op_info_res, &ctx);
 
       interface.InferShape(&ctx);
@@ -236,7 +98,7 @@ class PhiKernelAdaptor {
       } else {
         phi::KernelContext kernel_ctx(dev_ctx);
 
-        build_context<phi::KernelContext>(
+        ir::build_context<phi::KernelContext>(
             (*it), name_map, scope_, op_info_res, &kernel_ctx, false);
         found_it->second(&kernel_ctx);
 
@@ -269,11 +131,12 @@ class PhiKernelAdaptor {
 
       auto attr_info = std::get<1>(yaml_info);
 
-      auto infer_shape_impl = op1_info.GetInterfaceImpl<InferShapeInterface>();
+      auto infer_shape_impl =
+          op1_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
 
       phi::InferMetaContext ctx;
 
-      build_context<phi::InferMetaContext>(
+      ir::build_context<phi::InferMetaContext>(
           (*it), name_map, scope_, yaml_info, &ctx);
 
       infer_shape_impl->infer_shape_(&ctx);
@@ -289,7 +152,7 @@ class PhiKernelAdaptor {
 
       phi::KernelContext kernel_ctx(dev_ctx);
 
-      build_context<phi::KernelContext>(
+      ir::build_context<phi::KernelContext>(
           (*it), name_map, scope_, yaml_info, &kernel_ctx, false);
       kernel_fn(&kernel_ctx);
 

@@ -5,6 +5,7 @@ set(PYBIND_DEPS
     python
     proto_desc
     memory
+    pd_dialect
     executor
     fleet_wrapper
     box_wrapper
@@ -38,6 +39,8 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
+    new_ir
+    phi_kernel_adaptor
     new_profiler
     jit_layer
     jit_property
@@ -457,7 +460,8 @@ if(WITH_PYTHON)
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
+  list(APPEND PYBIND_DEPS standalone_executor pd_dialect new_ir
+       staticgraph_executor_statistics)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
@@ -474,6 +478,10 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
+    list(APPEND PYBIND_DEPS pd_dialect)
+    list(APPEND PYBIND_DEPS new_ir)
+    list(APPEND PYBIND_DEPS program_translator)
+    list(APPEND PYBIND_DEPS phi_kernel_adaptor)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)

@@ -16,11 +16,27 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        const std::vector<ProgramDesc>& programs)
-    : place_(place), programs_(programs) {}
+    : place_(place), programs_(programs) {
+  if (FLAGS_enable_new_ir_in_executor) {
+    for (size_t i = 0; i < programs_.size(); ++i) {
+      auto base_progrm = paddle::TranslateLegacyProgramToProgram(programs_[i]);
+      auto kernel_program =
+          paddle::dialect::PdOpLowerToKernelPass(base_progrm.get());
+
+      ir_programs_.emplace_back(std::move(kernel_program));
+    }
+  }
+}
 
 paddle::framework::FetchList StandaloneExecutor::Run(
     Scope* scope,
@@ -39,6 +55,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
                                    0,
                                    interpreter::ExecutionConfig());
     VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
+
     return core->Run(feed_names);
   } else {  // run multiple programs
     VLOG(6) << "Run multiple program, programs_.size() " << programs_.size();
@@ -97,8 +114,17 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
             << place_;
-    std::shared_ptr<InterpreterCore> core = std::make_shared<InterpreterCore>(
-        place_, program.Block(0), scope, execution_config);
+    std::shared_ptr<InterpreterCore> core = nullptr;
+    if (FLAGS_enable_new_ir_in_executor) {
+      core = std::make_shared<InterpreterCore>(place_,
+                                               program.Block(0),
+                                               scope,
+                                               ir_programs_[program_idx].get(),
+                                               execution_config);
+    } else {
+      core = std::make_shared<InterpreterCore>(
+          place_, program.Block(0), scope, execution_config);
+    }
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {

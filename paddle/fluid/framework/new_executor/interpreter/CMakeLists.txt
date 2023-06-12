@@ -30,6 +30,7 @@ set(INTERPRETER_DEPS
     enforce
     scope
     glog
+    phi_kernel_adaptor
     phi
     ${DEVICE_EVENT_LIBS}
     glog)
