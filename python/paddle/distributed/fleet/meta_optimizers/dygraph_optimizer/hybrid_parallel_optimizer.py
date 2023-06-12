@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -38,12 +39,87 @@ __all__ = []
 
 
 class HybridParallelClipGrad:
-    def __init__(self, clip, hcg):
+    def __init__(
+        self,
+        clip,
+        hcg,
+        params_in_sharding_rank=[],
+        param_rank_in_sharding_rank=[],
+    ):
         self._clip = clip
         self._hcg = hcg
+        # params_in_sharding_rank: [[rank0_param_list], [rank1_param_list], ...]
+        self._params_in_sharding_rank = params_in_sharding_rank
+        # param_rank_in_sharding_rank: [[rank0_param_global_rank], [rank1_param_global_rank], ...]
+        self._param_rank_in_sharding_rank = param_rank_in_sharding_rank
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
+        #
+        global_sum_square_dist_fp16 = []
+        global_sum_square_dist_bf16 = []
+        global_sum_square_dist_fp32 = []
+        global_sum_square_not_dist_fp16 = []
+        global_sum_square_not_dist_bf16 = []
+        global_sum_square_not_dist_fp32 = []
+        assert len(self._param_rank_in_sharding_rank) == len(
+            self._params_in_sharding_rank
+        )
+        for sharding_rank, params in enumerate(self._params_in_sharding_rank):
+            assert len(params) == len(
+                self._param_rank_in_sharding_rank[sharding_rank]
+            )
+            for i, p in enumerate(params):
+                g = p._grad_ivar()
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    g = p.main_grad
+                if g is None or getattr(p, 'need_clip', True) is False:
+                    print(f"skip p:{p.name}")
+                    continue
+                not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
+                    hasattr(p, 'is_firstly_shared')
+                    and getattr(p, 'is_firstly_shared', True)
+                )
+                if not_shared_enable:
+                    if p.is_distributed:
+                        if g.dtype == paddle.float16:
+                            global_sum_square_dist_fp16.append(
+                                self._param_rank_in_sharding_rank[
+                                    sharding_rank
+                                ][i]
+                            )
+                        elif g.dtype == paddle.bfloat16:
+                            global_sum_square_dist_bf16.append(
+                                self._param_rank_in_sharding_rank[
+                                    sharding_rank
+                                ][i]
+                            )
+                        elif g.dtype == paddle.float32:
+                            global_sum_square_dist_fp32.append(
+                                self._param_rank_in_sharding_rank[
+                                    sharding_rank
+                                ][i]
+                            )
+                    else:
+                        if g.dtype == paddle.float16:
+                            global_sum_square_not_dist_fp16.append(
+                                self._param_rank_in_sharding_rank[
+                                    sharding_rank
+                                ][i]
+                            )
+                        if g.dtype == paddle.bfloat16:
+                            global_sum_square_not_dist_bf16.append(
+                                self._param_rank_in_sharding_rank[
+                                    sharding_rank
+                                ][i]
+                            )
+                        elif g.dtype == paddle.float32:
+                            global_sum_square_not_dist_fp32.append(
+                                self._param_rank_in_sharding_rank[
+                                    sharding_rank
+                                ][i]
+                            )
+        #
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -51,7 +127,7 @@ class HybridParallelClipGrad:
         sum_square_not_dist_bf16 = []
         sum_square_not_dist_fp32 = []
 
-        for p, g in params_grads:
+        for i, (p, g) in enumerate(params_grads):
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
@@ -84,6 +160,39 @@ class HybridParallelClipGrad:
                     elif g.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
 
+        def _sum_global_norm(concat_global_norm, global_ranks):
+            print(f"concat_global_norm:{concat_global_norm}")
+            if self._hcg.get_sharding_parallel_world_size() > 1:
+                # tensor_list = []
+                numpy_list = []
+                paddle.distributed.all_gather_object(
+                    numpy_list,
+                    concat_global_norm.numpy(),
+                    group=self._hcg.get_sharding_parallel_group(),
+                )
+                tensor_list = [paddle.to_tensor(v) for v in numpy_list]
+                all_concat_tensor = paddle.concat(tensor_list)
+                if int(all_concat_tensor.numel()) != len(global_ranks):
+                    raise ValueError(
+                        "all_concat_tensor.numel().numpy()[0]:{}, len(global_ranks):{}".format(
+                            all_concat_tensor.numel().numpy()[0],
+                            len(global_ranks),
+                        )
+                    )
+                indexes = list(
+                    np.array(global_ranks).argsort().astype(np.int32)
+                )
+                print(f"global_ranks:{global_ranks}, indexes:{indexes}")
+                sorted_tensor = all_concat_tensor[indexes]
+                print(
+                    "all_concat_tensor:{}, sorted_tensor:{}".format(
+                        all_concat_tensor, sorted_tensor
+                    )
+                )
+                return paddle.sum(sorted_tensor)
+            else:
+                return paddle.sum(concat_global_norm)
+
         # global norm of distributed FP16 params_and_grads
         if len(sum_square_dist_fp16) == 0:
             global_norm_dist_fp16 = paddle.to_tensor(
@@ -91,7 +200,10 @@ class HybridParallelClipGrad:
             )
         else:
             global_norm_dist_fp16 = paddle.concat(sum_square_dist_fp16)
-            global_norm_dist_fp16 = paddle.sum(global_norm_dist_fp16)
+            # global_norm_dist_fp16 = paddle.sum(global_norm_dist_fp16)
+            global_norm_dist_fp16 = _sum_global_norm(
+                global_norm_dist_fp16, global_sum_square_dist_fp16
+            )
             global_norm_dist_fp16 = paddle.cast(
                 global_norm_dist_fp16, dtype=paddle.float32
             )
@@ -103,7 +215,10 @@ class HybridParallelClipGrad:
             )
         else:
             global_norm_not_dist_fp16 = paddle.concat(sum_square_not_dist_fp16)
-            global_norm_not_dist_fp16 = paddle.sum(global_norm_not_dist_fp16)
+            # global_norm_not_dist_fp16 = paddle.sum(global_norm_not_dist_fp16)
+            global_norm_not_dist_fp16 = _sum_global_norm(
+                global_norm_not_dist_fp16, global_sum_square_not_dist_fp16
+            )
             global_norm_not_dist_fp16 = paddle.cast(
                 global_norm_not_dist_fp16, dtype=paddle.float32
             )
@@ -115,7 +230,10 @@ class HybridParallelClipGrad:
             )
         else:
             global_norm_dist_bf16 = paddle.concat(sum_square_dist_bf16)
-            global_norm_dist_bf16 = paddle.sum(global_norm_dist_bf16)
+            # global_norm_dist_bf16 = paddle.sum(global_norm_dist_bf16)
+            global_norm_dist_bf16 = _sum_global_norm(
+                global_norm_dist_bf16, global_sum_square_dist_bf16
+            )
             global_norm_dist_bf16 = paddle.cast(
                 global_norm_dist_bf16, dtype=paddle.float32
             )
@@ -127,7 +245,10 @@ class HybridParallelClipGrad:
             )
         else:
             global_norm_not_dist_bf16 = paddle.concat(sum_square_not_dist_bf16)
-            global_norm_not_dist_bf16 = paddle.sum(global_norm_not_dist_bf16)
+            # global_norm_not_dist_bf16 = paddle.sum(global_norm_not_dist_bf16)
+            global_norm_not_dist_bf16 = _sum_global_norm(
+                global_norm_not_dist_bf16, global_sum_square_not_dist_bf16
+            )
             global_norm_not_dist_bf16 = paddle.cast(
                 global_norm_not_dist_bf16, dtype=paddle.float32
             )
@@ -138,7 +259,15 @@ class HybridParallelClipGrad:
             if len(sum_square_dist_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_norm_dist_fp32 = paddle.sum(global_norm_dist_fp32)
+        # global_norm_dist_fp32 = paddle.sum(global_norm_dist_fp32)
+        global_norm_dist_fp32 = _sum_global_norm(
+            global_norm_dist_fp32, global_sum_square_dist_fp32
+        )
+        print(
+            "global_norm_dist_fp32 value:{}".format(
+                float(global_norm_dist_fp32)
+            )
+        )
 
         # global norm of non-distributed FP32 params_and_grads
         global_norm_not_dist_fp32 = (
@@ -146,7 +275,15 @@ class HybridParallelClipGrad:
             if len(sum_square_not_dist_fp32) != 0
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
-        global_norm_not_dist_fp32 = paddle.sum(global_norm_not_dist_fp32)
+        # global_norm_not_dist_fp32 = paddle.sum(global_norm_not_dist_fp32)
+        global_norm_not_dist_fp32 = _sum_global_norm(
+            global_norm_not_dist_fp32, global_sum_square_not_dist_fp32
+        )
+        print(
+            "global_norm_not_dist_fp32 value:{}".format(
+                float(global_norm_not_dist_fp32)
+            )
+        )
 
         global_norm_var_dist = (
             global_norm_dist_fp16
@@ -161,8 +298,15 @@ class HybridParallelClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
+            is_sharidng = False
+            if (
+                self._hcg.get_sharding_parallel_world_size() > 1
+                and self._hcg.get_data_parallel_world_size() == 1
+            ):
+                is_sharidng = True
             paddle.distributed.all_reduce(
-                global_norm_var_dist, group=self._hcg.get_check_parallel_group()
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group(is_sharidng),
             )
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
@@ -174,11 +318,17 @@ class HybridParallelClipGrad:
 
         # In Sharding mode, param and grad is mapping different rank in optimizer.
         # ClipGradByGlobalNorm need allreduce to get globol norm
-        if self._hcg.get_sharding_parallel_world_size() > 1:
+        if self._hcg.get_sharding_parallel_world_size() > 1 and False:
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),
             )
+        print(f"global_norm_var_dist value:{float(global_norm_var_dist)}")
+        print(
+            "global_norm_var_not_dist value:{}".format(
+                float(global_norm_var_not_dist)
+            )
+        )
 
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
@@ -260,6 +410,15 @@ class HybridParallelOptimizer:
                 self._inner_opt,
                 (MixPrecisionOptimizer, DygraphShardingOptimizer),
             )
+            #
+            params_in_sharding_rank = []
+            param_rank_in_sharding_rank = []
+            if isinstance(self._inner_opt, DygraphShardingOptimizer):
+                params_in_sharding_rank = self._inner_opt._rank2params
+                param_rank_in_sharding_rank = self._inner_opt._rank2params_index
+                print(
+                    "param_rank_in_sharding_rank:", param_rank_in_sharding_rank
+                )
 
             if (
                 inner_opt._parameter_list
@@ -274,11 +433,17 @@ class HybridParallelOptimizer:
                 > 0
             ):
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg
+                    inner_opt._grad_clip,
+                    hcg,
+                    params_in_sharding_rank,
+                    param_rank_in_sharding_rank,
                 )
             else:
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg
+                    inner_opt._grad_clip,
+                    hcg,
+                    params_in_sharding_rank,
+                    param_rank_in_sharding_rank,
                 )
                 if inner_opt._parameter_list and isinstance(
                     inner_opt._parameter_list[0], dict
@@ -286,7 +451,10 @@ class HybridParallelOptimizer:
                     for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                inner_opt._grad_clip, hcg
+                                inner_opt._grad_clip,
+                                hcg,
+                                params_in_sharding_rank,
+                                param_rank_in_sharding_rank,
                             )
 
     def _insert_sync(self, sync_var, src, mp_group, sync_mode):

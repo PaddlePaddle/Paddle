@@ -64,7 +64,25 @@ class DygraphShardingOptimizer:
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
-        self._rank2params = self._partition_parameters()
+        (
+            self._rank2params,
+            self._rank2params_index,
+        ) = self._partition_parameters()
+        param_names = [p.name for p in self._parameter_list]
+        print("all param_names:", param_names)
+        for sharding_rank, param_indexes in enumerate(self._rank2params_index):
+            sharding_rank_param_names = [
+                p.name for p in self._rank2params[sharding_rank]
+            ]
+            print(
+                "sharding rank:{}, params:{}, len:{}, param indexes:{}, len:{}".format(
+                    sharding_rank,
+                    sharding_rank_param_names,
+                    len(sharding_rank_param_names),
+                    param_indexes,
+                    len(param_indexes),
+                )
+            )
         self._param2rank = self._map_param_to_rank()
 
         print(
@@ -110,13 +128,16 @@ class DygraphShardingOptimizer:
         # method1: greedy even but unorder
         # method2: roughly even with oreder
 
-        mapping = {}
-        for rank_ in range(self._sharding_world_size):
-            mapping[rank_] = []
+        mapping = [[] for _ in range(self._sharding_world_size)]
+        rank2params_index = [[] for _ in range(self._sharding_world_size)]
+        # mapping = {}
+        # for rank_ in range(self._sharding_world_size):
+        #     mapping[rank_] = []
         sizes = [0] * self._sharding_world_size
-        for param in self._parameter_list:
+        for i, param in enumerate(self._parameter_list):
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
+            rank2params_index[rank].append(i)
             numel = reduce(lambda x, y: x * y, param.shape)
             assert (
                 numel > 0
@@ -125,7 +146,7 @@ class DygraphShardingOptimizer:
             )
             sizes[rank] += numel
 
-        return mapping
+        return mapping, rank2params_index
 
     def _map_param_to_rank(self):
         """
@@ -135,7 +156,7 @@ class DygraphShardingOptimizer:
         Dict[str, int]
         """
         mapping = {}
-        for rank, params in self._rank2params.items():
+        for rank, params in enumerate(self._rank2params):
             for param in params:
                 mapping[param.name] = rank
         return mapping
@@ -173,7 +194,7 @@ class DygraphShardingOptimizer:
         print("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
-            for rank, params in self._rank2params.items():
+            for rank, params in enumerate(self._rank2params):
                 for param in params:
                     paddle.distributed.broadcast(
                         param,
