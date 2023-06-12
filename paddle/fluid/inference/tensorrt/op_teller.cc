@@ -104,7 +104,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       for (auto iter : inputs) {
         for (auto var_name : iter.second) {
           auto* block = desc.Block();
-
           if (block) {
             auto* var_desc = block->FindVar(var_name);
             auto dtype = var_desc->GetDataType();
