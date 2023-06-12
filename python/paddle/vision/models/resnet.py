@@ -99,11 +99,24 @@ class BasicBlock(nn.Layer):
             )
 
         self.conv1 = nn.Conv2D(
-            inplanes, planes, 3, padding=1, stride=stride, bias_attr=False, data_format=data_format
+            inplanes,
+            planes,
+            3,
+            padding=1,
+            stride=stride,
+            bias_attr=False,
+            data_format=data_format,
         )
         self.bn1 = norm_layer(planes, data_format=data_format)
         self.relu = nn.ReLU()
-        self.conv2 = nn.Conv2D(planes, planes, 3, padding=1, bias_attr=False, data_format=data_format)
+        self.conv2 = nn.Conv2D(
+            planes,
+            planes,
+            3,
+            padding=1,
+            bias_attr=False,
+            data_format=data_format,
+        )
         self.bn2 = norm_layer(planes, data_format=data_format)
         self.downsample = downsample
         self.stride = stride
@@ -148,7 +161,9 @@ class BottleneckBlock(nn.Layer):
             norm_layer = nn.BatchNorm2D
         width = int(planes * (base_width / 64.0)) * groups
 
-        self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False, data_format=data_format)
+        self.conv1 = nn.Conv2D(
+            inplanes, width, 1, bias_attr=False, data_format=data_format
+        )
         self.bn1 = norm_layer(width, data_format=data_format)
 
         self.conv2 = nn.Conv2D(
@@ -165,7 +180,11 @@ class BottleneckBlock(nn.Layer):
         self.bn2 = norm_layer(width, data_format=data_format)
 
         self.conv3 = nn.Conv2D(
-            width, planes * self.expansion, 1, bias_attr=False, data_format=data_format
+            width,
+            planes * self.expansion,
+            1,
+            bias_attr=False,
+            data_format=data_format,
         )
         self.bn3 = norm_layer(planes * self.expansion, data_format=data_format)
         self.relu = nn.ReLU()
@@ -276,18 +295,30 @@ class ResNet(nn.Layer):
         )
         self.bn1 = self._norm_layer(self.inplanes, data_format=data_format)
         self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2D(kernel_size=3, stride=2, padding=1, data_format=data_format)
-        self.layer1 = self._make_layer(block, 64, layers[0], data_format=data_format)
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, data_format=data_format)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, data_format=data_format)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, data_format=data_format)
+        self.maxpool = nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1, data_format=data_format
+        )
+        self.layer1 = self._make_layer(
+            block, 64, layers[0], data_format=data_format
+        )
+        self.layer2 = self._make_layer(
+            block, 128, layers[1], stride=2, data_format=data_format
+        )
+        self.layer3 = self._make_layer(
+            block, 256, layers[2], stride=2, data_format=data_format
+        )
+        self.layer4 = self._make_layer(
+            block, 512, layers[3], stride=2, data_format=data_format
+        )
         if with_pool:
             self.avgpool = nn.AdaptiveAvgPool2D((1, 1), data_format=data_format)
 
         if num_classes > 0:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
-    def _make_layer(self, block, planes, blocks, stride=1, dilate=False, data_format='NCHW'):
+    def _make_layer(
+        self, block, planes, blocks, stride=1, dilate=False, data_format='NCHW'
+    ):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
