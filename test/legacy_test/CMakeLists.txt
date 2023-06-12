@@ -968,7 +968,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     MODULES
     test_conv3d_transpose_op
     ENVS
-    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    NVIDIA_TF32_OVERRIDE=0
   )
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
 endif()
