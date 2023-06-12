@@ -50,7 +50,7 @@ class Region {
 
   void TakeBody(Region &&other);
 
-  Operation *GetParentOp() const { return parent_; }
+  Operation *GetParent() const { return parent_; }
 
  private:
   Region(Region &) = delete;

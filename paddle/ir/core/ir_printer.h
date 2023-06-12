@@ -46,14 +46,13 @@ class IrPrinter : public BasicIrPrinter {
 
   /// @brief print program
   /// @param program
-  /// @example
   void PrintProgram(Program* program);
 
-  /// @brief print operation
-  /// @param op
-  /// @example
+  /// @brief dispatch to custom printer function or PrintGeneralOperation
   void PrintOperation(Operation* op);
+  /// @brief print operation itself without its regions
   void PrintGeneralOperation(Operation* op);
+  /// @brief print operation and its regions
   void PrintFullOperation(Operation* op);
 
   void PrintRegion(const Region& Region);

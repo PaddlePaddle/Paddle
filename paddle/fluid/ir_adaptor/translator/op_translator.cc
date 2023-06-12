@@ -132,7 +132,7 @@ inline ir::Operation* InsertSliceOperationForTarget(
   std::string slice_op_name(ir::SliceOp::name());
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(slice_op_name);
   std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-      {"index", ir::Int32_tAttribute::get(ctx, defining_info.idx_in_vector)},
+      {"index", ir::Int32Attribute::get(ctx, defining_info.idx_in_vector)},
   };
   ir::VectorType src_vec_type =
       defining_info.value.type().dyn_cast<ir::VectorType>();
@@ -180,11 +180,11 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
   } else if (attr.isa<ir::DoubleAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::DoubleAttribute>().data());
     dtype = phi::DataType::FLOAT64;
-  } else if (attr.isa<ir::Int32_tAttribute>()) {
-    data = static_cast<float>(attr.dyn_cast<ir::Int32_tAttribute>().data());
+  } else if (attr.isa<ir::Int32Attribute>()) {
+    data = static_cast<float>(attr.dyn_cast<ir::Int32Attribute>().data());
     dtype = phi::DataType::INT32;
-  } else if (attr.isa<ir::Int64_tAttribute>()) {
-    data = static_cast<float>(attr.dyn_cast<ir::Int64_tAttribute>().data());
+  } else if (attr.isa<ir::Int64Attribute>()) {
+    data = static_cast<float>(attr.dyn_cast<ir::Int64Attribute>().data());
     dtype = phi::DataType::INT64;
   } else if (attr.isa<ir::BoolAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::BoolAttribute>().data());

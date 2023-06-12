@@ -921,9 +921,7 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
             if spec not in desired_input_specs:
                 return False
     else:
-        for (src_spec, desired_spec) in zip(
-            src_input_specs, desired_input_specs
-        ):
+        for src_spec, desired_spec in zip(src_input_specs, desired_input_specs):
             if isinstance(src_spec, paddle.static.InputSpec) or isinstance(
                 desired_spec, paddle.static.InputSpec
             ):

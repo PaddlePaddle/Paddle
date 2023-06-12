@@ -127,5 +127,4 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
-
     runtime_main(TestDistMnist2x2)

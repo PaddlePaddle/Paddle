@@ -105,7 +105,6 @@ class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
         self.supported_layer_count_ref = 3
 
     def test_inference_pruning(self):
-
         sparsity.prune_model(self.layer, mask_algo="mask_1d", with_mask=False)
 
         supported_layer_count = 0
@@ -146,7 +145,6 @@ class TestASPDynamicCustomerizedPruneFunc(unittest.TestCase):
             if sparsity.asp.ASPHelper._is_supported_layer(
                 paddle.static.default_main_program(), param.name
             ):
-
                 mat_mask = (
                     sparsity.asp.ASPHelper._get_program_asp_info(
                         paddle.static.default_main_program()

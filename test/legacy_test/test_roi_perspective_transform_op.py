@@ -141,7 +141,6 @@ def get_source_coords(matrix, out_w, out_h):
 
 
 def bilinear_interpolate(in_data, in_n, in_c, in_w, in_h):
-
     batch_size = in_data.shape[0]
     channels = in_data.shape[1]
     height = in_data.shape[2]

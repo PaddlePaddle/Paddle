@@ -215,7 +215,7 @@ std::string Operation::name() const {
 }
 
 Region *Operation::GetParentRegion() const {
-  return parent_ ? parent_->GetParentRegion() : nullptr;
+  return parent_ ? parent_->GetParent() : nullptr;
 }
 
 Operation *Operation::GetParentOp() const {

@@ -67,7 +67,6 @@ class AutoParalSupplementDepPass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         # TODO general this pass for all case.
         if not _sharding_pass_applied(context):
             return

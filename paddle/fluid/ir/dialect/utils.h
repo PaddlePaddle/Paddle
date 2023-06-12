@@ -83,9 +83,9 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
     case phi::DataType::FLOAT64:
       return ir::DoubleAttribute::get(ctx, scalar.to<double>());
     case phi::DataType::INT32:
-      return ir::Int32_tAttribute::get(ctx, scalar.to<int32_t>());
+      return ir::Int32Attribute::get(ctx, scalar.to<int32_t>());
     case phi::DataType::INT64:
-      return ir::Int64_tAttribute::get(ctx, scalar.to<int64_t>());
+      return ir::Int64Attribute::get(ctx, scalar.to<int64_t>());
     case phi::DataType::BOOL:
       return ir::BoolAttribute::get(ctx, scalar.to<bool>());
     default:

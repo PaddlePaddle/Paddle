@@ -1028,9 +1028,15 @@
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [fmax]
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
@@ -1628,9 +1634,15 @@
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [maximum]
 
 - op : maxout
   inputs :

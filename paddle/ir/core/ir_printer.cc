@@ -80,9 +80,9 @@ void BasicIrPrinter::PrintAttribute(const Attribute& attr) {
     os << f.data();
   } else if (auto d = attr.dyn_cast<DoubleAttribute>()) {
     os << d.data();
-  } else if (auto i = attr.dyn_cast<Int32_tAttribute>()) {
+  } else if (auto i = attr.dyn_cast<Int32Attribute>()) {
     os << i.data();
-  } else if (auto i = attr.dyn_cast<Int64_tAttribute>()) {
+  } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
     os << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << p.data();

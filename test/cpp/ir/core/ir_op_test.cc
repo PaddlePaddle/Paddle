@@ -153,7 +153,7 @@ class TestDialect : public ir::Dialect {
   static const char *name() { return "test"; }
 
   void PrintOperation(ir::Operation *op,
-                      ir::IrPrinter &printer) const override {  // NOLINT
+                      ir::IrPrinter &printer) const override {
     printer.PrintOpResult(op);
     printer.os << " =";
 
@@ -174,10 +174,10 @@ TEST(op_test, op_test) {
   // (2) Get registered operations.
   std::string op1_name = Operation1::name();
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
-  EXPECT_EQ(op1_info != nullptr, true);
+  EXPECT_TRUE(op1_info);
   std::string op2_name = Operation2::name();
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  EXPECT_EQ(op2_info != nullptr, true);
+  EXPECT_TRUE(op2_info);
   EXPECT_EQ(op1_info.HasTrait<ReadOnlyTrait>(), false);
   EXPECT_EQ(op1_info.HasInterface<InferShapeInterface>(), false);
   EXPECT_EQ(op2_info.HasTrait<ReadOnlyTrait>(), true);
@@ -253,7 +253,7 @@ TEST(op_test, module_op_death) {
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(ir::ModuleOp::name());
 
   std::vector<ir::OpResult> inputs{ir::OpResult()};
-  ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
+  ir::AttributeMap attrs{{"program", ir::Int32Attribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
 
   EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info),

@@ -771,7 +771,6 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     helper = LayerHelper('switch_case', **locals())
 
     def _check_args(branch_index, branch_fns, default):
-
         check_variable_and_dtype(
             branch_index,
             'branch_index',

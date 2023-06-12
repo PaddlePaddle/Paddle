@@ -30,8 +30,6 @@ class OpInfo {
  public:
   constexpr OpInfo() = default;
 
-  OpInfo(const OpInfoImpl *impl) : impl_(impl) {}  // NOLINT
-
   OpInfo(const OpInfo &other) = default;
 
   OpInfo &operator=(const OpInfo &other) = default;
@@ -55,8 +53,6 @@ class OpInfo {
               const std::vector<Type> &outputs,
               const std::unordered_map<std::string, Attribute> &attributes);
 
-  const OpInfoImpl *impl() const;
-
   template <typename Trait>
   bool HasTrait() const {
     return HasTrait(TypeId::get<Trait>());
@@ -74,13 +70,20 @@ class OpInfo {
   template <typename Interface>
   typename Interface::Concept *GetInterfaceImpl() const;
 
+  void *AsOpaquePointer() const { return impl_; }
+  static OpInfo RecoverFromOpaquePointer(void *impl) {
+    return static_cast<OpInfoImpl *>(impl);
+  }
+
+  friend class OpInfoImpl;
   friend struct std::hash<OpInfo>;
 
  private:
+  OpInfo(OpInfoImpl *impl) : impl_(impl) {}  // NOLINT
   void *GetInterfaceImpl(TypeId interface_id) const;
 
  private:
-  const OpInfoImpl *impl_{nullptr};  // not owned
+  OpInfoImpl *impl_{nullptr};  // not owned
 };
 
 template <typename Interface>

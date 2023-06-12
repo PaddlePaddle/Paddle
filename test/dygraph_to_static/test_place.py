@@ -19,7 +19,6 @@ import paddle
 
 class TestPlace(unittest.TestCase):
     def test_place(self):
-
         paddle.enable_static()
         x = paddle.to_tensor([1, 2, 3, 4])
         self.assertIsNone(x.place())

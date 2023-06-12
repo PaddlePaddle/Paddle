@@ -109,7 +109,6 @@ class SegmentLayers:
         ), "layer number should be greater than number of segments"
 
     def do_segment(self):
-
         if isinstance(self.method, list):
             seg_method = self.method[:]
             source_num_parts = len(seg_method) - 1
