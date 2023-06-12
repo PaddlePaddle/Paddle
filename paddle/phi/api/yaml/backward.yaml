@@ -993,6 +993,18 @@
     data_type : out_grad
   no_need_buffer : x
 
+- backward_op : index_select_strided_grad
+  forward : index_select_strided(Tensor x, Tensor index, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : index_select_strided_grad
+    data_type : out_grad
+  no_need_buffer : x
+
 - backward_op : instance_norm_double_grad
   forward : instance_norm_grad(Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
   args : (Tensor x, Tensor fwd_scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float epsilon)
