@@ -63,7 +63,8 @@ TEST(PaddleDialectTest, MainProgram) {
             p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
 
   std::stringstream ss;
-  program->Print(std::cout);
+  program->Print(ss);
+  EXPECT_GT(ss.str().size(), 0u);
 }
 
 TEST(PaddleDialectTest, StartupProgram) {
@@ -82,5 +83,6 @@ TEST(PaddleDialectTest, StartupProgram) {
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
 
   std::stringstream ss;
-  program->Print(std::cout);
+  program->Print(ss);
+  EXPECT_GT(ss.str().size(), 0u);
 }

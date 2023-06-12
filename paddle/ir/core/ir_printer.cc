@@ -119,10 +119,7 @@ void IrPrinter::PrintProgram(Program* program) {
 
 void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
-    if (auto print_fn = dialect->OperationPrinter()) {
-      print_fn(op, *this);
-      return;
-    }
+    dialect->PrintOperation(op, *this);
   }
 
   PrintGeneralOperation(op);
@@ -151,19 +148,29 @@ void IrPrinter::PrintGeneralOperation(Operation* op) {
 
 void IrPrinter::PrintFullOperation(Operation* op) {
   PrintOperation(op);
-  os << newline;
+  if (op->num_regions() > 0) {
+    os << newline;
+  }
   for (size_t i = 0; i < op->num_regions(); ++i) {
     auto& region = op->GetRegion(i);
-    for (auto it = region.begin(); it != region.end(); ++it) {
-      auto* block = *it;
-      os << "{\n";
-      for (auto it = block->begin(); it != block->end(); ++it) {
-        PrintOperation(*it);
-        os << newline;
-      }
-      os << "}\n";
-    }
+    PrintRegion(region);
   }
+}
+
+void IrPrinter::PrintRegion(const Region& region) {
+  for (auto it = region.begin(); it != region.end(); ++it) {
+    auto* block = *it;
+    PrintBlock(block);
+  }
+}
+
+void IrPrinter::PrintBlock(Block* block) {
+  os << "{\n";
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    PrintOperation(*it);
+    os << newline;
+  }
+  os << "}\n";
 }
 
 void IrPrinter::PrintValue(Value v) {
@@ -270,6 +277,10 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
       op_result_types.end(),
       [this](Type t) { this->PrintType(t); },
       [this]() { this->os << ", "; });
+}
+
+void Dialect::PrintOperation(Operation* op, IrPrinter& printer) const {
+  printer.PrintGeneralOperation(op);
 }
 
 void Program::Print(std::ostream& os) {

@@ -19,8 +19,10 @@
 #include <unordered_map>
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/core/region.h"
 #include "paddle/ir/core/type.h"
 #include "paddle/ir/core/value.h"
 
@@ -53,6 +55,9 @@ class IrPrinter : public BasicIrPrinter {
   void PrintOperation(Operation* op);
   void PrintGeneralOperation(Operation* op);
   void PrintFullOperation(Operation* op);
+
+  void PrintRegion(const Region& Region);
+  void PrintBlock(Block* block);
 
   void PrintValue(Value v);
 

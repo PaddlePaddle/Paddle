@@ -29,8 +29,6 @@ namespace ir {
 
 class Operation;
 class IrPrinter;
-// we should make this function uncopyable later
-using OperationPrinterFn = std::function<void(Operation *, IrPrinter &)>;
 
 class DialectInterface;
 ///
@@ -147,7 +145,8 @@ class Dialect {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 
-  virtual OperationPrinterFn OperationPrinter() const { return nullptr; }
+  virtual void PrintOperation(Operation *op,
+                              IrPrinter &printer) const;  // NOLINT
 
  private:
   Dialect(const Dialect &) = delete;

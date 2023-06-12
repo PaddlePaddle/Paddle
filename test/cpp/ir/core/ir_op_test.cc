@@ -143,14 +143,6 @@ class Operation2
 const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
 
-void CustomOpPrint(ir::Operation *op, ir::IRPrinter &printer) {  // NOLINT
-  printer.PrintOpResult(op);
-  printer.os << " =";
-
-  printer.os << " \"" << op->name() << "\"";
-  printer.PrintOpOperands(op);
-}
-
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {
  public:
@@ -160,8 +152,13 @@ class TestDialect : public ir::Dialect {
   }
   static const char *name() { return "test"; }
 
-  ir::OperationPrinterFn OperationPrinter() const override {
-    return CustomOpPrint;
+  void PrintOperation(ir::Operation *op,
+                      ir::IrPrinter &printer) const override {  // NOLINT
+    printer.PrintOpResult(op);
+    printer.os << " =";
+
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
   }
 
  private:
