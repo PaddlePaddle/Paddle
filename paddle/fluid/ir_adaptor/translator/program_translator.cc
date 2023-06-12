@@ -77,7 +77,7 @@ inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
                                            const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();
   std::string get_parameter_op_name(ir::GetParameterOp::name());
-  ir::OpInfo op_info = ctx_->GetRegisteredOpInfo(get_parameter_op_name);
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
   std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
       {"parameter_name", ir::StrAttribute::get(ctx, var->Name())},
   };
@@ -92,7 +92,7 @@ inline ir::Operation* InsertSetParamaterOp(ir::IrContext* ctx,
                                            ir::OpResult defining_op_result,
                                            const VarDesc* var) {
   std::string set_parameter_op_name(ir::SetParameterOp::name());
-  ir::OpInfo op_info = ctx_->GetRegisteredOpInfo(set_parameter_op_name);
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(set_parameter_op_name);
   std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
       {"parameter_name", ir::StrAttribute::get(ctx, var->Name())},
   };
@@ -120,7 +120,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
         need_get_parameter_op &= (parameter_visited_.count(var_name) == 0);
         if (need_get_parameter_op) {
           ir::Operation* op =
-              InsertGetParamaterOp(ctx, parameter_name_mappings_[var_name]);
+              InsertGetParamaterOp(ctx_, parameter_name_mappings_[var_name]);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->GetResultByIndex(0));
           VLOG(10) << "[op translated][get parameter]" << op;
@@ -154,7 +154,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
           ir::Operation* op = InsertSetParamaterOp(
-              ctx, defining_op_result, parameter_name_mappings_[var_name]);
+              ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
           ir::Block* block = program_->block();
           ir::Block::iterator insert_pos = std::find(
