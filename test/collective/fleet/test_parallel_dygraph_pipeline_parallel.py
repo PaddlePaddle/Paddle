@@ -95,6 +95,14 @@ class TestFakeMicroDataSet(unittest.TestCase):
             self.assertTrue(x[2] is None)
             self.assertTrue(y is None)
 
+        # not first stage or last stage
+        micro_batches = FakeMicroDataset(
+            batch, False, False, acc_step, micro_batch_size
+        )
+        x, y = micro_batches._load_micro_batch(0)
+        self.assertTrue(x is None)
+        self.assertTrue(y is None)
+
 
 if __name__ == "__main__":
     unittest.main()
