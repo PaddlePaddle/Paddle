@@ -34,7 +34,8 @@ cc_test_old(
   phi
   static_global_utils
   static_tensor_operants
-  generated_static_op)
+  generated_static_op
+  python)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   if(WITH_CINN)

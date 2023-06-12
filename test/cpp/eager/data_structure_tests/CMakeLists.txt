@@ -5,7 +5,8 @@ cc_test_old(
   DEPS
   fleet_executor
   final_dygraph_function
-  ${eager_deps})
+  ${eager_deps}
+  python)
 cc_test_old(
   test_egr_ds_auotgrad_meta
   SRCS
@@ -13,7 +14,8 @@ cc_test_old(
   DEPS
   fleet_executor
   final_dygraph_function
-  ${eager_deps})
+  ${eager_deps}
+  python)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   if(WITH_CINN)

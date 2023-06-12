@@ -31,7 +31,7 @@ nv_test(
 nv_test(
   test_tensorrt_engine
   SRCS test_engine.cc test_dynamic_engine.cc
-  DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin)
+  DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
 nv_test(
   test_arg_mapping_context
   SRCS test_arg_mapping_context.cc

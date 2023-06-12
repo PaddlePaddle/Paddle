@@ -81,7 +81,7 @@ if(WITH_GPU)
   nv_test(
     feed_forward_test
     SRCS feed_forward_test.cu
-    DEPS elementwise_add_op matmul_op tensor phi)
+    DEPS fleet_executor elementwise_add_op matmul_op tensor phi)
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test
@@ -115,7 +115,8 @@ if(WITH_CINN)
     recurrent_op_helper
     recurrent_op
     elementwise_add_op
-    ${COMMON_OP_DEPS})
+    ${COMMON_OP_DEPS}
+    python)
 else()
   cc_test_old(
     op_debug_string_test

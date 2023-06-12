@@ -43,4 +43,5 @@ cc_test_old(
   ${PRIM_OP_SRCS}
   DEPS
   fleet_executor
-  op_registry)
+  op_registry
+  python)

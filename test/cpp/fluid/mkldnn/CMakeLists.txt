@@ -53,7 +53,8 @@ if(WITH_CINN)
     fused_transpose_op
     scope
     device_context
-    enforce)
+    enforce
+    python)
 else()
   cc_test_old(
     test_mkldnn_op_nhwc
