@@ -1233,6 +1233,13 @@ class ProgramCache:
                 partial_program.set_hooker(
                     PrimHooker(concrete_program.main_program, backend)
                 )
+
+        print('----------------[lyk][concrete_prog]----------------')
+        print(concrete_program.main_program)
+        print('----------------[lyk][startup_prog]----------------')
+        print(concrete_program.startup_program)
+        print('----------------[lyk]----------------')
+
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1629,6 +1636,12 @@ class ProgramTranslator:
             for var in concrete_program.outputs
             if isinstance(var, framework.Variable)
         ]
+
+        print('----------------[lyk][main_prog]----------------')
+        print(concrete_program.main_program)
+        print('----------------[lyk][startup_prog]----------------')
+        print(concrete_program.startup_program)
+        print('----------------[lyk]----------------')
 
         return (
             concrete_program.main_program,

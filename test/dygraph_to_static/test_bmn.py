@@ -739,7 +739,9 @@ class TestTrain(unittest.TestCase):
 
                     if batch_id == args.train_batch_num:
                         if to_static:
-                            paddle.jit.save(bmn, self.model_save_prefix)
+                            paddle.jit.save(
+                                bmn, self.model_save_prefix, clip_extra=False
+                            )
                         else:
                             paddle.save(
                                 bmn.state_dict(),

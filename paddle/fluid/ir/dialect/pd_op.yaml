@@ -22,3 +22,19 @@
   data_transform: null
   inplace: null
   backward: null
+- name: share_buffer_
+  inputs:
+  - typename: Tensor[]
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'bool[]', name: share_dims_and_dtype, default_value: '{}'}
+  outputs:
+  - {typename: 'Tensor[]', name: out, size: x.size(), optional: false, intermediate: false}
+  - {typename: 'Tensor[]', name: xout, size: x.size(), optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null

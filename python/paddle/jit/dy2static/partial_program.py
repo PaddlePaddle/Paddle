@@ -800,6 +800,11 @@ class PartialProgramLayer:
         self._apply_inplace_pass(
             forward_builded_program, backward_builded_program
         )
+        print('----------------[lyk][partial forward]----------------')
+        print(forward_builded_program)
+        print('----------------[lyk][partial backward]----------------')
+        print(backward_builded_program)
+        print('----------------[lyk]----------------')
         return [forward_builded_program, backward_builded_program]
 
     def _apply_inplace_pass(self, forward_program, backward_program):

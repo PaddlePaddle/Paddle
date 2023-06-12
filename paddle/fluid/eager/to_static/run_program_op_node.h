@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <fstream>
+#include <ostream>
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
@@ -21,6 +24,8 @@
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -364,6 +369,19 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(x, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
+    VLOG(0) << "------------------------------------";
+    std::ofstream out_file(
+        "/home/lvyongkang/Paddle/log_dy2static/dy2st_forward.prog",
+        std::ios::out | std::ios::ate);
+    for (size_t i = 0; i < 10; i++) {
+      out_file << '\n';
+    }
+
+    std::unique_ptr<ir::Program> ir_program =
+        paddle::TranslateLegacyProgramToProgram(*forward_program);
+    ir_program->Print(out_file);
+    VLOG(0) << "------------------------------------";
+
     interpreter_core =
         paddle::framework::CreateInterpreterCoreInfoToCache(*forward_program,
                                                             place,
@@ -500,6 +518,20 @@ inline void RunProgramGradAPI(
         paddle::platform::TracerEventType::UserDefined,
         1);
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+
+    VLOG(0) << "------------------------------------";
+    std::ofstream out_file(
+        "/home/lvyongkang/Paddle/log_dy2static/dy2st_backward.prog",
+        std::ios::out | std::ios::ate);
+    for (size_t i = 0; i < 10; i++) {
+      out_file << '\n';
+    }
+
+    std::unique_ptr<ir::Program> ir_program =
+        paddle::TranslateLegacyProgramToProgram(*backward_program);
+    ir_program->Print(out_file);
+    VLOG(0) << "------------------------------------";
+
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
     interpreter_core =
         paddle::framework::CreateInterpreterCoreInfoToCache(*backward_program,

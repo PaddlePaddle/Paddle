@@ -111,16 +111,29 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
     parameter_name_mappings[var->Name()] = var;
   }
 
+  std::unordered_set<std::string> inner_defining_variables;
+
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
-        bool need_get_parameter_op = (parameter_name_mappings.find(var_name) !=
-                                      parameter_name_mappings.end());
-        need_get_parameter_op &= (parameter_visited.count(var_name) == 0);
+        VarDesc* var_desc = nullptr;
+
+        bool is_parameter = (parameter_name_mappings.find(var_name) !=
+                             parameter_name_mappings.end());
+        is_parameter &= (parameter_visited.count(var_name) == 0);
+        if (is_parameter) {
+          var_desc = parameter_name_mappings[var_name];
+        }
+        bool is_unseen_variable =
+            (inner_defining_variables.count(var_name) == 0);
+        if (is_unseen_variable) {
+          var_desc = block.FindVarRecursive(var_name);
+        }
+
+        bool need_get_parameter_op = is_parameter || is_unseen_variable;
         if (need_get_parameter_op) {
-          ir::Operation* op =
-              InsertGetParamaterOp(ctx, parameter_name_mappings[var_name]);
+          ir::Operation* op = InsertGetParamaterOp(ctx, var_desc);
           program->block()->push_back(op);
           param_map[var_name] = VariableDefiningInfo(op->GetResultByIndex(0));
           VLOG(10) << "[op translated][get parameter]" << op;
@@ -128,6 +141,12 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           program->SetParameter(var_name, nullptr);
           parameter_visited.insert(var_name);
         }
+      }
+    }
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_defining_variables.insert(var_name);
       }
     }
   }

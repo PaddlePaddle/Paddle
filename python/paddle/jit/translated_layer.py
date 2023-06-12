@@ -426,6 +426,8 @@ class _ProgramHolder:
         return self._grad_var_names
 
     def _preprocess(self, program_desc):
+        print("[lyk][preprocess]")
+        print(program_desc.serialize_to_string(), flush=True)
         # rename persistable variables of 'program_desc'
         list_persistable_var = _get_persistable_var_names(program_desc)
         rename_new_old_dict, _ = _rename_var_program_desc(
@@ -480,6 +482,8 @@ class _ProgramHolder:
 
         # 3. Output processing, add scale for outputs
         tmp_program = _build_program_by_desc(program_desc)
+        print("[lyk][preprocess done]")
+        print(tmp_program, flush=True)
         # NOTE: [why need append scale for outputs]
         # When dealing with some more complex pre-training models, there
         # will be situations where the pre-training model has multiple

@@ -1174,8 +1174,10 @@ def save(layer, path, input_spec=None, **configs):
         # the rule is like [ Get input variables name ]. For output var,
         # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
-        # print(concrete_program.main_program)
-        # print(concrete_program.outputs, configs.output_spec)
+        print('[save output]', flush=True)
+        print(concrete_program.main_program)
+        print(concrete_program.outputs, configs.output_spec)
+        print('[save output]', flush=True)
         output_vars = _get_output_vars(
             concrete_program.outputs, configs.output_spec, with_hook
         )

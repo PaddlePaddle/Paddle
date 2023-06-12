@@ -342,6 +342,10 @@ def save_inference_model(
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
+    print('[before paddle.distributed.io.save_persistables]', flush=True)
+    print(main_program)
+    print('[before paddle.distributed.io.save_persistables]', flush=True)
+
     paddle.distributed.io.save_persistables(
         executor, save_dirname, main_program, params_filename
     )

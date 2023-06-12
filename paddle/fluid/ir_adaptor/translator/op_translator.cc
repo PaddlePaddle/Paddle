@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cctype>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -366,6 +367,11 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
 
     // return empty type if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasOutput doesnot consider variadic attribute
+    std::stringstream ss;
+    for (auto name : op_desc.OutputNames()) {
+      ss << name << " ";
+    }
+    VLOG(10) << ss.str();
     if (!op_desc.HasOutput(legacy_output_name)) {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "] optional " << info.name << " :"

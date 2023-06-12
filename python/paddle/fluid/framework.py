@@ -6176,6 +6176,12 @@ class Program:
                     if not find:
                         remove_output_list.append(name)
                 # The extra output of op will be removed in the future
+                print(
+                    '[remove output] {} {}'.format(
+                        op.type(), remove_output_list
+                    ),
+                    flush=True,
+                )
                 for name in remove_output_list:
                     op.remove_output(name)
 
