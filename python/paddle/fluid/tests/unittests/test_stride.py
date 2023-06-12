@@ -19,6 +19,15 @@ import numpy as np
 import paddle
 
 
+def ref_view_as_real(x):
+    return np.stack([x.real, x.imag], -1)
+
+
+def ref_view_as_complex(x):
+    real, imag = np.take(x, 0, axis=-1), np.take(x, 1, axis=-1)
+    return real + 1j * imag
+
+
 class TestStride(unittest.TestCase):
     def call_transpose(self):
         x_np = np.random.random(size=[2, 3, 4]).astype('float32')
@@ -154,12 +163,180 @@ class TestStride(unittest.TestCase):
 
         self.assertFalse(out_c._is_shared_buffer_with(out))
 
+    def call_reshape(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.reshape(x, [10, 100, 20])
+        np_out = x_np.reshape(10, 100, 20)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_real(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('complex64')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.real(x)
+        np_out = np.real(x_np)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertFalse(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertFalse(out_c._is_shared_buffer_with(out))
+
+    def call_imag(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('complex128')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.imag(x)
+        np_out = np.imag(x_np)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertFalse(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertFalse(out_c._is_shared_buffer_with(out))
+
+    def call_as_real(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('complex128')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.as_real(x)
+        np_out = ref_view_as_real(x_np)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_as_complex(self):
+        x_np = np.random.random(size=[10, 10, 10, 2]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.as_complex(x)
+        np_out = ref_view_as_complex(x_np)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_flatten(self):
+        x_np = np.random.random(size=[2, 3, 4, 4]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.flatten(x, start_axis=1, stop_axis=2)
+        np_out = x_np.reshape(2, 12, 4)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_squeeze(self):
+        x_np = np.random.random(size=[5, 1, 10]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.squeeze(x, axis=1)
+        np_out = x_np.reshape(5, 10)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_unsqueeze(self):
+        x_np = np.random.random(size=[5, 10]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.unsqueeze(x, axis=0)
+        np_out = x_np.reshape(1, 5, 10)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
     def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
         self.call_slice()
         self.call_strided_slice()
         self.call_index_select()
+        self.call_reshape()
+        self.call_real()
+        self.call_imag()
+        self.call_as_real()
+        self.call_as_complex()
+        self.call_flatten()
+        self.call_squeeze()
+        self.call_unsqueeze()
 
 
 class TestStrideCPU(TestStride):
