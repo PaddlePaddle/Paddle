@@ -64,8 +64,8 @@ ExternalProject_Add(
   BUILD_IN_SOURCE 1
   BUILD_COMMAND make
   INSTALL_COMMAND make install
-  CONFIGURE_COMMAND "${JEMALLOC_BUILD}/configure"
-                    --prefix=${JEMALLOC_INSTALL} --disable-initial-exec-tls)
+  CONFIGURE_COMMAND "${JEMALLOC_BUILD}/configure" --prefix=${JEMALLOC_INSTALL}
+                    --disable-initial-exec-tls)
 
 add_library(jemalloc STATIC IMPORTED GLOBAL)
 set_property(TARGET jemalloc PROPERTY IMPORTED_LOCATION
