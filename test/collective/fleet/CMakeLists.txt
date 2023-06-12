@@ -332,7 +332,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21234;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "NVIDIA_TF32_OVERRIDE=0;PADDLE_DIST_UT_PORT=21234;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT
                                                                         "120")
@@ -922,9 +922,12 @@ if((WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
-    test_dygraph_save_for_auto_infer MODULES test_dygraph_save_for_auto_infer
+    test_dygraph_save_for_auto_infer
+    MODULES
+    test_dygraph_save_for_auto_infer
     ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
