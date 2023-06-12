@@ -15,12 +15,14 @@
 #include "paddle/phi/kernels/slice_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fill_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+#include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
 
 template <typename Context>
-void SliceGradStridedKernel(const Context& ctx,
+void SliceGradStridedKernel(const Context& dev_ctx,
                             const DenseTensor& input,
                             const DenseTensor& out_grad,
                             const std::vector<int64_t>& axes,
@@ -35,14 +37,14 @@ void SliceGradStridedKernel(const Context& ctx,
                            dev_ctx, *input_grad, 0, input_grad);
                      }));
   DenseTensor tmp;
-  IndexSelectGradKernel<Context>(dev_ctx,
-                                 *input_grad,
-                                 axes,
-                                 starts,
-                                 ends,
-                                 infer_flags,
-                                 decrease_axis,
-                                 &tmp);
+  SliceStridedKernel<Context>(dev_ctx,
+                              *input_grad,
+                              axes,
+                              starts,
+                              ends,
+                              infer_flags,
+                              decrease_axis,
+                              &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "SliceGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
