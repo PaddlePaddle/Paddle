@@ -163,10 +163,10 @@ TEST(op_test, op_test) {
   // (2) Get registered operations.
   std::string op1_name = Operation1::name();
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
-  EXPECT_EQ(op1_info != nullptr, true);
+  EXPECT_TRUE(op1_info);
   std::string op2_name = Operation2::name();
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  EXPECT_EQ(op2_info != nullptr, true);
+  EXPECT_TRUE(op2_info);
   EXPECT_EQ(op1_info.HasTrait<ReadOnlyTrait>(), false);
   EXPECT_EQ(op1_info.HasInterface<InferShapeInterface>(), false);
   EXPECT_EQ(op2_info.HasTrait<ReadOnlyTrait>(), true);

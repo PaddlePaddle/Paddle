@@ -66,6 +66,9 @@ KernelSignature ElementwiseDivOpArgumentMapping(
 
 KernelSignature ElementwiseMaxOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("maximum_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  }
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("maximum", {"X", "Y"}, {}, {"Out"});
@@ -184,12 +187,6 @@ KernelSignature ElementwiseFMinOpArgumentMapping(
   return KernelSignature("fmin", {"X", "Y"}, {}, {"Out"});
 }
 
-KernelSignature ElementwiseFMaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "fmax_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
-}
-
 KernelSignature ElementwiseMulDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("multiply_double_grad",
@@ -205,12 +202,6 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
       {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},
       {"axis"},
       {"D_X", "D_Y", "D_DOut", "D_DDX", "D_DDY"});
-}
-
-KernelSignature ElementwiseMaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "maximum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
@@ -253,9 +244,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul_grad_grad, multiply_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul_triple_grad, multiply_triple_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmax, fmax);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmin, fmin);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmax_grad, fmax_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_fmin_grad, fmin_grad);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_max_grad, maximum_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min_grad, minimum_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_heaviside_grad, heaviside_grad);
 
@@ -303,12 +292,8 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_fmax,
                            phi::ElementwiseFMaxOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin,
                            phi::ElementwiseFMinOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(elementwise_fmax_grad,
-                           phi::ElementwiseFMaxGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_fmin_grad,
                            phi::ElementwiseFMinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(elementwise_max_grad,
-                           phi::ElementwiseMaxGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_min_grad,
                            phi::ElementwiseMinGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
