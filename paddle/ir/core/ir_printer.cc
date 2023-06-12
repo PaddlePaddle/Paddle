@@ -120,6 +120,7 @@ void IrPrinter::PrintProgram(Program* program) {
 void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
+    return;
   }
 
   PrintGeneralOperation(op);
