@@ -527,6 +527,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
       "sigmoid_elementmul_fuse_pass",
+      "matmul_weight_trans_pass",
       "gpu_cpu_map_matmul_v2_to_matmul_pass",
       "gpu_cpu_reshape2_matmul_fuse_pass",
       "fc_xpu_fuse_pass",

@@ -260,6 +260,7 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
