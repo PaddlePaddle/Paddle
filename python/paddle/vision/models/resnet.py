@@ -87,6 +87,7 @@ class BasicBlock(nn.Layer):
         base_width=64,
         dilation=1,
         norm_layer=None,
+        data_format='NCHW',
     ):
         super().__init__()
         if norm_layer is None:
@@ -98,12 +99,12 @@ class BasicBlock(nn.Layer):
             )
 
         self.conv1 = nn.Conv2D(
-            inplanes, planes, 3, padding=1, stride=stride, bias_attr=False
+            inplanes, planes, 3, padding=1, stride=stride, bias_attr=False, data_format=data_format
         )
-        self.bn1 = norm_layer(planes)
+        self.bn1 = norm_layer(planes, data_format=data_format)
         self.relu = nn.ReLU()
-        self.conv2 = nn.Conv2D(planes, planes, 3, padding=1, bias_attr=False)
-        self.bn2 = norm_layer(planes)
+        self.conv2 = nn.Conv2D(planes, planes, 3, padding=1, bias_attr=False, data_format=data_format)
+        self.bn2 = norm_layer(planes, data_format=data_format)
         self.downsample = downsample
         self.stride = stride
 
