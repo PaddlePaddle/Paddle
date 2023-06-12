@@ -87,12 +87,48 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool with_dynamic_shape = false) override {
     const std::string op_type = desc.Type();
 
-    std::unordered_set<std::string> control_set = {"conditional_block", "while"};
-
+    std::unordered_set<std::string> control_set = {"conditional_block",
+                                                   "while"};
+    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
     if (control_set.find(op_type) != control_set.end()) {
       return false;
     }
-    
+
+    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
+      return false;
+    }
+
+    // Dont.t allow fp64!
+    {
+      auto inputs = desc.Inputs();
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            auto dtype = var_desc->GetDataType();
+            if (dtype == framework::proto::VarType::FP64) {
+              return false;
+            }
+          }
+        }
+      }
+
+      auto outputs = desc.Outputs();
+      for (auto iter : outputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            auto dtype = var_desc->GetDataType();
+            if (dtype == framework::proto::VarType::FP64) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+
     std::cout <<op_type << std::endl;
 
     // do not support the op which is labeled the `skip_quant`
@@ -167,42 +203,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #endif
     }
-
-
-
-    // Dont.t allow fp64!
-    {
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-
-          if (block && op_type != "feed" && op_type != "fetch") {
-            auto* var_desc = block->FindVar(var_name);
-            auto dtype = var_desc->GetDataType();
-            if (dtype == framework::proto::VarType::FP64) {
-              return false;
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block && op_type != "feed" && op_type != "fetch") {
-            auto* var_desc = block->FindVar(var_name);
-            auto dtype = var_desc->GetDataType();
-            if (dtype == framework::proto::VarType::FP64) {
-              return false;
-            }
-          }
-        }
-      }
-    }
-
-
 
     if (op_type == "dropout") {
       /*
