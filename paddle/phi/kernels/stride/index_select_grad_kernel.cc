@@ -22,8 +22,8 @@ namespace phi {
 template <typename Context>
 void IndexSelectGradStridedKernel(const Context& ctx,
                                   const DenseTensor& x,
-                                  const DenseTensor& index,
                                   const DenseTensor& out_grad,
+                                  const std::vector<int64_t>& index,
                                   int dim,
                                   DenseTensor* x_grad) {
   dev_ctx.Alloc(x_grad, x_grad->dtype());
