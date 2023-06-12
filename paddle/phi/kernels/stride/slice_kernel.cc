@@ -41,8 +41,8 @@ void SliceStridedKernel(const Context& ctx,
     }
   }
 
-  DDim output_dims = input.dims();
-  DDim output_stride = input.stride();
+  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
   int64_t output_offset = input.offset();
 
   for (size_t i = 0; i < axis.size(); ++i) {
@@ -50,10 +50,23 @@ void SliceStridedKernel(const Context& ctx,
                     starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
     output_dims[axis[i]] = ends[i] - starts[i];
   }
+
+  auto iter_dims = output_dims.begin();
+  auto iter_stride = output_stride.begin();
+  while (iter_dims != output_dims.end()) {
+    if (*iter_dims == 1) {
+      iter_dims = output_dims.erase(iter_dims);
+      iter_stride = output_stride.erase(iter_stride);
+    } else {
+      iter_dims++;
+      iter_stride++;
+    }
+  }
+
   auto meta = input.meta();
   meta.offset = output_offset;
-  meta.dims = output_dims;
-  meta.stride = output_stride;
+  meta.dims = DDim(output_dims.data(), output_dims.size());
+  meta.stride = DDim(output_stride.data(), output_stride.size());
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }

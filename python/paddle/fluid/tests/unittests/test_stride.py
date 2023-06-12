@@ -92,9 +92,74 @@ class TestStride(unittest.TestCase):
         self.assertFalse(out3_c._is_shared_buffer_with(out3))
         self.assertFalse(out4_c._is_shared_buffer_with(out4))
 
+    def call_slice(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = x[1:10, 0:10, 0:10, 0:20]
+
+        np_out = x_np[1:10, 0:10, 0:10, 0:20]
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_strided_slice(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = x[1:10:2, 0:10:2, 0:10:2, 0:20:2]
+
+        np_out = x_np[1:10:2, 0:10:2, 0:10:2, 0:20:2]
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertFalse(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertFalse(out_c._is_shared_buffer_with(out))
+
+    def call_index_select(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = x[:, :, :, 5]
+        np_out = x_np[:, :, :, 5]
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertFalse(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertFalse(out_c._is_shared_buffer_with(out))
+
     def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
+        self.call_slice()
+        self.call_strided_slice()
+        self.call_index_select()
 
 
 class TestStrideCPU(TestStride):
