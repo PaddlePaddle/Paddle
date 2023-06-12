@@ -206,7 +206,6 @@ class TestLogcumsumexp(unittest.TestCase):
 
     def test_type_error(self):
         with fluid.program_guard(fluid.Program()):
-
             with self.assertRaises(TypeError):
                 data_np = np.random.random((100, 100), dtype=np.int32)
                 x = paddle.static.data('X', [100, 100], dtype='int32')

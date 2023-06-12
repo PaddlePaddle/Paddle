@@ -129,7 +129,6 @@ class TestFp16Assign(unittest.TestCase):
                 assert block.vars[name].dtype == paddle.float16
 
     def test_fp16_assign(self):
-
         dist_main_prog, dist_context = parallelizer(make_program, 0)
         block = dist_main_prog.global_block()
         for op in block.ops:

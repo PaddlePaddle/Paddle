@@ -559,7 +559,6 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         data = np.array(data)
 
     if not isinstance(data, np.ndarray):
-
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array(data)
         elif isinstance(data, (list, tuple)):
@@ -641,7 +640,6 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
-
     if isinstance(data, Variable):
         output = data
         if dtype is not None and dtype != data.dtype:

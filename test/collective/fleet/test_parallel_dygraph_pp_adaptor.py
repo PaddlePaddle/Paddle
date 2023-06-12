@@ -78,7 +78,7 @@ class TestPPAdaptor(TestMultipleGpus):
                 )
 
                 def check_names(dict_1, dict_2):
-                    for (k, v) in dict_2.items():
+                    for k, v in dict_2.items():
                         self.assertTrue(k in dict_1)
                         self.assertEqual(
                             getattr(v, "name", ""),

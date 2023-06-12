@@ -333,7 +333,7 @@ if(WITH_PYTHON)
       ")\n"
       "exit /b 0")
 
-    if(WITH_PHI_SHARED)
+    if(WITH_SHARED_PHI)
       add_custom_command(
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}

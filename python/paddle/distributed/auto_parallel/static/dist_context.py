@@ -1154,7 +1154,6 @@ class DistributedOperatorContext:
         return self._exceed_backward_init_op
 
     def prepare_context(self, src_op):
-
         self._cur_src_op = src_op
 
         if is_loss_grad_op(src_op):
@@ -1189,14 +1188,12 @@ class BlockState:
         self.backward_to_forward_index_map = {}
 
     def parse_forward_blocks(self, program):
-
         while program.current_block_idx != 0:
             program._rollback()
 
         assert program.current_block_idx == 0
 
         for idx, block in enumerate(program.blocks):
-
             assert idx == block.idx, "index doesn't match"
             assert (
                 block.forward_block_idx == -1
@@ -1209,14 +1206,12 @@ class BlockState:
         assert self.nblock >= 1
 
     def parse_backward_blocks(self, program):
-
         assert 0 in self.forward_indices, "forward block idx are{}".format(
             self.forward_indices
         )
         self.backward_to_forward_index_map[0] = 0
 
         for idx, block in enumerate(program.blocks):
-
             if idx < len(self.forward_indices):
                 continue
 

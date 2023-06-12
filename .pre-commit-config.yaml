@@ -53,7 +53,7 @@ repos:
             )$
 # For Python files
 -   repo: https://github.com/psf/black.git
-    rev: 22.8.0
+    rev: 23.3.0
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
