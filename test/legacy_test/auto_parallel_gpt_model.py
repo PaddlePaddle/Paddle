@@ -352,7 +352,6 @@ class TransformerDecoder(nn.Layer):
         self.checkpoints = []
 
         for i, mod in enumerate(self.layers):
-
             if _global_parallel_strategy == "pp":
                 mod = auto.shard_op(mod, PP_MESH_LIST[mod.mesh_idx])
             elif _global_parallel_strategy == "dp_pp":

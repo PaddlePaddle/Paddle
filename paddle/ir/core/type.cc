@@ -17,10 +17,4 @@
 
 namespace ir {
 IrContext* Type::ir_context() const { return dialect().ir_context(); }
-
-std::ostream& operator<<(std::ostream& os, Type type) {
-  type.Print(os);
-  return os;
-}
-
 }  // namespace ir

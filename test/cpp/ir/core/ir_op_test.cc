@@ -20,6 +20,7 @@
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/program.h"
@@ -162,10 +163,10 @@ TEST(op_test, op_test) {
   // (2) Get registered operations.
   std::string op1_name = Operation1::name();
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
-  EXPECT_EQ(op1_info != nullptr, true);
+  EXPECT_TRUE(op1_info);
   std::string op2_name = Operation2::name();
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  EXPECT_EQ(op2_info != nullptr, true);
+  EXPECT_TRUE(op2_info);
   EXPECT_EQ(op1_info.HasTrait<ReadOnlyTrait>(), false);
   EXPECT_EQ(op1_info.HasInterface<InferShapeInterface>(), false);
   EXPECT_EQ(op2_info.HasTrait<ReadOnlyTrait>(), true);
@@ -237,13 +238,15 @@ TEST(op_test, module_op_death) {
 
   // (3) Test uses for op.
   std::vector<ir::OpResult> inputs{ir::OpResult()};
-  ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
+  ir::AttributeMap attrs{{"program", ir::Int32Attribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
 
-  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info), const char *);
-  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info), const char *);
+  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info),
+               ir::IrNotMetException);
+  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info),
+               ir::IrNotMetException);
   EXPECT_THROW(ir::Operation::Create({}, {}, output_types, op_info),
-               const char *);
+               ir::IrNotMetException);
 
   ir::Program program(ctx);
 

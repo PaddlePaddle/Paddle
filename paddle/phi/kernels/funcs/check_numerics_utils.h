@@ -61,6 +61,27 @@ HOSTDEVICE bool NeedPrint(MT max_value UNUSED,
   return false;
 }
 
+template <typename T>
+HOSTDEVICE static void SaveStatsAndValues(int64_t num_nan,
+                                          int64_t num_inf,
+                                          int64_t num_zero,
+                                          T max_value,
+                                          T min_value,
+                                          T mean_value,
+                                          int64_t* stats_ptr,
+                                          float* values_ptr) {
+  if (stats_ptr) {
+    stats_ptr[0] = num_nan;
+    stats_ptr[1] = num_inf;
+    stats_ptr[2] = num_zero;
+  }
+  if (values_ptr) {
+    values_ptr[0] = static_cast<float>(max_value);
+    values_ptr[1] = static_cast<float>(min_value);
+    values_ptr[2] = static_cast<float>(mean_value);
+  }
+}
+
 HOSTDEVICE static void PrintAndThrowError(const char* debug_info,
                                           int64_t num_nan,
                                           int64_t num_inf,
@@ -197,8 +218,10 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                  const int64_t numel,
                                  const std::string& cpu_hint_str,
                                  const int check_nan_inf_level,
-                                 const std::string log_name = "cpu",
-                                 const std::string output_dir = "") {
+                                 const std::string log_name,
+                                 const std::string output_dir,
+                                 int64_t* stats_ptr,
+                                 float* values_ptr) {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
 #ifdef _OPENMP
@@ -263,6 +286,15 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
     mean_value += thread_mean_value[i];
   }
 
+  SaveStatsAndValues<MT>(num_nan,
+                         num_inf,
+                         num_zero,
+                         max_value,
+                         min_value,
+                         mean_value,
+                         stats_ptr,
+                         values_ptr);
+
   // Write log to file
   if (output_dir.size() > 0) {
     WriteToFileForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
@@ -298,8 +330,10 @@ void CheckNumericsCpuImpl(const T* value_ptr,
                           const int64_t numel,
                           const std::string& cpu_hint_str,
                           const int check_nan_inf_level,
-                          const std::string log_name = "cpu",
-                          const std::string output_dir = "") {
+                          const std::string log_name,
+                          const std::string output_dir,
+                          int64_t* stats_ptr,
+                          float* values_ptr) {
   using RealType = typename T::value_type;
 
   RealType real_sum = 0.0f, imag_sum = 0.0f;

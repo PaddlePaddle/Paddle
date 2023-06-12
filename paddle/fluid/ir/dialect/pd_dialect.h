@@ -39,7 +39,8 @@ class PaddleDialect : public ir::Dialect {
 
   static const char* name() { return "pd"; }
 
-  void PrintType(ir::Type type, std::ostream& os);
+  void PrintType(ir::Type type, std::ostream& os) const;
+  void PrintAttribute(ir::Attribute type, std::ostream& os) const;
 
  private:
   void initialize();

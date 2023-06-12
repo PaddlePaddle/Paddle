@@ -112,7 +112,7 @@ TEST(pass_manager_test, pass_manager) {
   ir::Block *block = program.block();
   block->push_back(op1);
 
-  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParentRegion());
+  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParent());
 
   EXPECT_EQ(program.module_op(), block->GetParentOp());
 

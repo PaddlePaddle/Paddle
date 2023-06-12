@@ -400,7 +400,6 @@ def istft(
     center=True,
     length=None,
 ):
-
     stft_matrix = x
     input_rank = len(stft_matrix.shape)
     if input_rank == 3:
@@ -618,7 +617,6 @@ def rand_x(
     shape=None,
     complex=False,
 ):
-
     if shape is None:
         shape = [
             np.random.randint(min_dim_len, max_dim_len) for i in range(dims)
@@ -632,7 +630,6 @@ def rand_x(
 
 
 def parameterize(attrs, input_values=None):
-
     if isinstance(attrs, str):
         attrs = [attrs]
     input_dicts = (

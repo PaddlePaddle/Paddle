@@ -11,36 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 include(ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
 
-set(SNAPPY_TAG 1.1.7)
 set(SNAPPY_PREFIX_DIR ${THIRD_PARTY_PATH}/snappy)
-set(SNAPPY_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/snappy)
+set(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
 set(SNAPPY_INCLUDE_DIR
-    "${SNAPPY_SOURCE_DIR}/include"
+    "${SNAPPY_INSTALL_DIR}/include"
     CACHE PATH "snappy include directory." FORCE)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/snappy)
 if(WIN32)
   set(SNAPPY_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
-  if(NOT EXISTS "${SNAPPY_SOURCE_DIR}/lib/libsnappy.lib")
+  if(NOT EXISTS "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
     add_custom_command(
       TARGET extern_snappy
       POST_BUILD
-      COMMAND cmake -E copy ${SNAPPY_SOURCE_DIR}/lib/snappy.lib
-              ${SNAPPY_SOURCE_DIR}/lib/libsnappy.lib)
+      COMMAND cmake -E copy ${SNAPPY_INSTALL_DIR}/lib/snappy.lib
+              ${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib)
   endif()
-  set(SNAPPY_LIBRARIES "${SNAPPY_SOURCE_DIR}/lib/libsnappy.lib")
+  set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
 else()
   set(SNAPPY_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-  set(SNAPPY_LIBRARIES "${SNAPPY_SOURCE_DIR}/lib/libsnappy.a")
+  set(SNAPPY_LIBRARIES "${SNAPPY_INSTALL_DIR}/lib/libsnappy.a")
 endif()
 
 ExternalProject_Add(
   extern_snappy
-  SOURCE_DIR ${SNAPPY_SOURCE_DIR}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${SNAPPY_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -51,22 +49,20 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS=${SNAPPY_CMAKE_CXX_FLAGS}
              -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
              -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-             -DCMAKE_INSTALL_PREFIX=${SNAPPY_SOURCE_DIR}
-             -DCMAKE_INSTALL_LIBDIR=${SNAPPY_SOURCE_DIR}/lib
+             -DCMAKE_INSTALL_PREFIX=${SNAPPY_INSTALL_DIR}
+             -DCMAKE_INSTALL_LIBDIR=${SNAPPY_INSTALL_DIR}/lib
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
              -DBUILD_TESTING=OFF
              -DSNAPPY_BUILD_TESTS:BOOL=OFF
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              ${EXTERNAL_OPTIONAL_ARGS}
   CMAKE_CACHE_ARGS
-    -DCMAKE_INSTALL_PREFIX:PATH=${SNAPPY_SOURCE_DIR}
-    -DCMAKE_INSTALL_LIBDIR:PATH=${SNAPPY_SOURCE_DIR}/lib
+    -DCMAKE_INSTALL_PREFIX:PATH=${SNAPPY_INSTALL_DIR}
+    -DCMAKE_INSTALL_LIBDIR:PATH=${SNAPPY_INSTALL_DIR}/lib
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${SNAPPY_LIBRARIES})
-
 add_library(snappy STATIC IMPORTED GLOBAL)
 set_property(TARGET snappy PROPERTY IMPORTED_LOCATION ${SNAPPY_LIBRARIES})
-
 include_directories(${SNAPPY_INCLUDE_DIR})
 add_dependencies(snappy extern_snappy)

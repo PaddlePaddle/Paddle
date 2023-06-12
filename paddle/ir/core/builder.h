@@ -26,10 +26,10 @@ namespace ir {
 ///
 class Builder {
  public:
-  explicit Builder(IrContext *context,
-                   Block *block,
-                   Block::iterator insert_point)
+  Builder(IrContext *context, Block *block, Block::iterator insert_point)
       : context_(context), block_(block), insert_point_(insert_point) {}
+  Builder(IrContext *context, Block *block)
+      : Builder(context, block, block->end()) {}
 
   static Builder AtBlockBegin(IrContext *context, Block *block) {
     return Builder(context, block, block->begin());
@@ -56,7 +56,7 @@ class Builder {
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
-    OpTy::Build(argument, std::forward<Args>(args)...);
+    OpTy::Build(*this, argument, std::forward<Args>(args)...);
     Operation *op = Build(std::move(argument));
     return op->dyn_cast<OpTy>();
   }
