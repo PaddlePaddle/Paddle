@@ -154,6 +154,33 @@ class TestExpPrim_ZeroDim(TestExpFp32_Prim):
         self.shape = []
 
 
+class Test_Exp_Op_Fp16(unittest.TestCase):
+    def test_api_fp16(self):
+        with paddle.fluid.framework._static_guard():
+            with static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = [[2, 3, 4], [7, 8, 9]]
+                x = paddle.to_tensor(x, dtype='float16')
+                out = paddle.exp(x)
+                if core.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(fetch_list=[out])
+
+
+class Test_Exp_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ('int32', 'int64', 'float16'):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.exp(x)
+            x_expect = np.exp(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
@@ -222,12 +249,22 @@ class TestExpm1API(unittest.TestCase):
             for place in self.place:
                 run(place)
 
-    def test_errors(self):
-        with paddle.fluid.framework._static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                X = paddle.static.data('X', self.shape, dtype='int32')
-                self.assertRaises(TypeError, paddle.expm1, X)
-        # The input dtype must be float16, float32, float64.
+
+class Test_Expm1_Op_Fp16(TestExpm1API):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class Test_Expm1_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ('int32', 'int64', 'float16'):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
+            x = paddle.to_tensor(np_x, dtype=dtype)
+            y = paddle.expm1(x)
+            x_expect = np.expm1(np_x)
+            np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
 
 
 class TestParameter:

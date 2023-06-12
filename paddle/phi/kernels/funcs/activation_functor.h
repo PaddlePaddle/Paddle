@@ -1074,9 +1074,11 @@ struct AtanhGradFunctor : public BaseActivationFunctor<T> {
 // exp(x) = e^x
 template <typename T>
 struct ExpFunctor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.exp();
+    out.device(d) = x.template cast<U>().exp();
   }
 };
 
@@ -1099,9 +1101,11 @@ struct ExpGradFunctor : public BaseActivationFunctor<T> {
 // expm1(x) = e^x - 1
 template <typename T>
 struct Expm1Functor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.expm1();
+    out.device(d) = x.template cast<U>().expm1();
   }
 };
 
@@ -2668,8 +2672,10 @@ struct CudaCosGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaExpFunctor : public BaseActivationFunctor<T> {
   // exp(x) = expf(x)
-  __device__ __forceinline__ T operator()(const T x) const {
-    return static_cast<T>(expf(static_cast<float>(x)));
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
+  __device__ __forceinline__ U operator()(const T x) const {
+    return static_cast<U>(expf(static_cast<float>(x)));
   }
 };
 
@@ -2781,12 +2787,19 @@ struct CudaReciprocalGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaExpm1Functor : public BaseActivationFunctor<T> {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
+  // expm1(x) = expm1f(x)
+  __device__ __forceinline__ U operator()(const T x) const {
+    return static_cast<U>(::expm1f(static_cast<float>(x)));
+  }
+};
+
+template <>
+struct CudaExpm1Functor<double> : public BaseActivationFunctor<double> {
   // expm1(x) = expm1(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
-    MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(expm1(x));
+  __device__ __forceinline__ double operator()(const double x) const {
+    return ::expm1(x);
   }
 };
 
