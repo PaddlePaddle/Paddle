@@ -31,14 +31,6 @@ class Builder {
   Builder(IrContext *context, Block *block)
       : Builder(context, block, block->end()) {}
 
-  static Builder AtBlockBegin(IrContext *context, Block *block) {
-    return Builder(context, block, block->begin());
-  }
-
-  static Builder AtBlockEnd(IrContext *context, Block *block) {
-    return Builder(context, block, block->end());
-  }
-
   IrContext *context() const { return context_; }
 
   Block *block() const { return block_; }
