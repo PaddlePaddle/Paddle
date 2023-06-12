@@ -36,6 +36,9 @@ set(PRIM_OP_SRCS
     ${PRIM_OP_PATH}cast_p_op.cc
     ${PRIM_OP_PATH}rsqrt_p_op.cc
     ${PRIM_OP_PATH}uniform_random_p_op.cc)
+if(WITH_CINN)
+  set(CINN_DEPS cinn_compiler)
+endif()
 cc_test_old(
   prim_op_test
   SRCS
@@ -43,5 +46,6 @@ cc_test_old(
   ${PRIM_OP_SRCS}
   DEPS
   fleet_executor
+  ${CINN_DEPS}
   op_registry
   python)

@@ -1,3 +1,6 @@
+if(WITH_CINN)
+  set(CINN_DEPS cinn_compiler python)
+endif()
 if(WITH_GPU OR WITH_ROCM)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
@@ -37,7 +40,8 @@ if(WITH_GPU OR WITH_ROCM)
            generated_op
            device_context
            phi
-           memory)
+           memory
+           ${CINN_DEPS})
   endif()
   # resnet_unit needs cudnn 8.0 above
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))

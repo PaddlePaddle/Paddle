@@ -67,7 +67,9 @@ cc_test(
   save_load_combine_op_test
   SRCS save_load_combine_op_test.cc
   DEPS save_combine_op load_combine_op)
-
+if(WITH_CINN)
+  set(CINN_DEPS cinn_compiler python)
+endif()
 if(WITH_GPU)
   nv_test(
     dropout_op_test
@@ -81,7 +83,7 @@ if(WITH_GPU)
   nv_test(
     feed_forward_test
     SRCS feed_forward_test.cu
-    DEPS fleet_executor elementwise_add_op matmul_op tensor phi)
+    DEPS fleet_executor elementwise_add_op matmul_op tensor phi ${CINN_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test

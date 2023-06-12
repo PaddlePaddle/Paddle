@@ -14,7 +14,9 @@ set(prim_eager_deps
 
 set(prim_generated_deps final_dygraph_function final_dygraph_node
                         dygraph_function dygraph_node)
-
+if(WITH_CINN)
+  set(CINN_DEPS cinn_compiler)
+endif()
 cc_test_old(
   test_comp_static
   SRCS
@@ -35,6 +37,7 @@ cc_test_old(
   static_global_utils
   static_tensor_operants
   generated_static_op
+  ${CINN_DEPS}
   python)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))

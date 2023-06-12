@@ -19,7 +19,7 @@ cc_test_old(
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   if(WITH_CINN)
-    set(eager_deps ${eager_deps} cinn_compiler)
+    set(eager_deps ${eager_deps} cinn_compiler python)
   endif()
   cc_test_old(
     test_egr_ds_grad_tensor_holder

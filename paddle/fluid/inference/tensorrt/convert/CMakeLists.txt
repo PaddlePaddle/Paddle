@@ -142,6 +142,18 @@ if(WIN32)
     test_custom_plugin_creater
     SRCS test_custom_plugin_creater.cc
     DEPS paddle_framework tensorrt_converter phi custom_operator init_phi)
+elseif(WITH_CINN)
+  nv_test(
+    test_custom_plugin_creater
+    SRCS test_custom_plugin_creater.cc
+    DEPS paddle_framework
+         tensorrt_converter
+         phi
+         custom_operator
+         init_phi
+         fleet_executor
+         cinn_compiler
+         python)
 else()
   nv_test(
     test_custom_plugin_creater

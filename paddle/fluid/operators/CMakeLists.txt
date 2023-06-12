@@ -121,7 +121,7 @@ endif()
 if (WITH_GPU OR WITH_ROCM)
     op_library(sync_batch_norm_op DEPS processgroup_comm_utils)
     if ((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.3) )
-        op_library(sparse_attention_op)
+        op_library(sparse_attention_op DEPS processgroup_comm_utils)
     endif()
 endif()
 
