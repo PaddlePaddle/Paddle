@@ -253,6 +253,7 @@ class TestExpm1API(unittest.TestCase):
 class Test_Expm1_Op_Fp16(TestExpm1API):
     def init_dtype(self):
         self.dtype = np.float16
+        self.shape = [11, 17]
 
 
 class Test_Expm1_Op_Int(unittest.TestCase):
