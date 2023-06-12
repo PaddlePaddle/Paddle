@@ -77,7 +77,6 @@ class TrtConvertConv2dTransposeTest(TrtLayerAutoScanTest):
                             ]:
                                 for dilations in [[2, 2], [1, 2]]:
                                     for data_format in ['NCHW']:
-
                                         self.num_channels = num_channels
                                         dics = [
                                             {

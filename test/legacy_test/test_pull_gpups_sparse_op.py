@@ -31,7 +31,6 @@ class TestPullGpupsSparse(unittest.TestCase):
         train_program = fluid.Program()
         slots = []
         with fluid.program_guard(train_program, startup_program):
-
             l = paddle.static.data(
                 name='input', shape=[-1, 1], dtype="int64", lod_level=1
             )

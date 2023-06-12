@@ -107,7 +107,6 @@ class TestSelectInputOpError(unittest.TestCase):
 class TestSelectOutput_Error(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-
             in1 = paddle.static.data(name='in1', shape=[-1, 1], dtype='int32')
             mask_int32 = paddle.static.data(
                 name='mask_int32', shape=[-1, 1], dtype='int32'

@@ -780,7 +780,6 @@ def ForwardPreHooks(
     offload,
     task_flow,
 ):
-
     # Record layer's id
     layer_id = id(layer)
     use_calc, sync_wait = False, False
@@ -837,7 +836,6 @@ class ForwardPostHooks(PyLayer):
         offload,
         task_flow,
     ):
-
         layer_id = id(layer)
         # release current layer full params
         _release_param(
@@ -970,7 +968,6 @@ def _wait_layer(
     use_calc_stream,
     offload=False,
 ):
-
     for param in trainable_params:
         if param.status == "all":
             param.use_count += 1
@@ -1007,7 +1004,6 @@ def _allgather_buffer(
     offload=False,
     convert2cpu=False,
 ):
-
     for param in trainable_params:
         if param.status == "all":
             param.use_count += 1

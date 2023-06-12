@@ -245,7 +245,6 @@ class FusedCommBuffer:
 
 
 def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
-
     group_idx = 0
     memory_counter = 0
     var_groups = OrderedDict()

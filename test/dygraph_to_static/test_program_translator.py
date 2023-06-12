@@ -224,7 +224,6 @@ class TestEnableDeclarative(unittest.TestCase):
                 net(fluid.dygraph.to_variable(self.x))
 
     def test_enable_disable_declarative(self):
-
         paddle.jit.enable_to_static(True)
         with fluid.dygraph.guard():
             static_output = decorated_simple_func(self.x, self.weight)

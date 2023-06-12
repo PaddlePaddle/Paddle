@@ -356,7 +356,6 @@ class TestPool3D_API(unittest.TestCase):
     def test_pool3d(self):
         paddle.enable_static()
         for place in self.places:
-
             self.check_max_dygraph_results(place)
             self.check_avg_dygraph_results(place)
             self.check_max_static_results(place)

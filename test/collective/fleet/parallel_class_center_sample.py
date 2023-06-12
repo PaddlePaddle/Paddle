@@ -72,7 +72,6 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_class_center_sample(self):
-
         rank_id = dist.get_rank()
         nranks = dist.get_world_size()
 

@@ -151,7 +151,6 @@ def reader_creator(
 ):
     def reader():
         for sentence, predicate, labels in corpus_reader():
-
             sen_len = len(sentence)
 
             verb_index = labels.index('B-V')

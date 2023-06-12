@@ -1093,7 +1093,6 @@ class TestDistBase(unittest.TestCase):
         log_name="",
         devices="1",
     ):
-
         cmd = self._python_interp
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -1788,7 +1787,6 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         log_name="",
     ):
-
         # need open p2p or shm otherwise multi cards mode will hang
         need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
 

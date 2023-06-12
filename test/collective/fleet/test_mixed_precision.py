@@ -32,7 +32,6 @@ class SimpleNet(nn.Layer):
         self.linear3 = nn.Linear(input_size, output_size)
 
     def forward(self, x):
-
         x = self.linear1(x)
         # currently, paddle's relu may hide nan/inf, relu(nan) = 0, relu(inf)= inf
         # so, do not use it here.
