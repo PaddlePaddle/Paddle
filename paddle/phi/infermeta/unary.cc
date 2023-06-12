@@ -1246,7 +1246,6 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
   }
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
-  xshape->share_stride(x);
 }
 
 void FlipInferMeta(const MetaTensor& x,
@@ -3240,7 +3239,6 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   }
   xshape->set_dims(phi::make_ddim(xshape_dims));
   xshape->share_lod(x);
-  xshape->share_stride(x);
   ReshapeInferMeta(x, shape, out, config);
 }
 
@@ -3803,7 +3801,6 @@ void SqueezeWithXShapeInferMeta(const MetaTensor& x,
   if (xshape) {
     xshape->set_dims(phi::make_ddim(xshape_dims));
     xshape->share_lod(x);
-    xshape->share_stride(x);
     xshape->set_dtype(x.dtype());
   }
 }
