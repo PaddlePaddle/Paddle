@@ -45,7 +45,16 @@ def get_msg_dict(msg):
     res_dict = {}
     fields = msg.DESCRIPTOR.fields
     for f in fields:
-        res_dict[f.name] = getattr(msg, f.name)
+        # res_dict[f.name] = getattr(msg, f.name)
+        v = getattr(msg, f.name)
+        # NOTE(zhiqiu): convert repeated filed to list to
+        # avoid segment fault when the process exit?
+        # WHY?
+        # I guess the type or value of protobuf item is NULL when
+        # dealloc.
+        if f.label == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED:
+            v = list(v)
+        res_dict[f.name] = v
     return res_dict
 
 
