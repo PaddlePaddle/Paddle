@@ -3386,6 +3386,7 @@ def cummax(x, axis=None, dtype='int64', name=None):
 
     Returns:
         out (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
+
         indices (Tensor), The corresponding index results of cummax operation.
 
     Examples:
@@ -3460,6 +3461,7 @@ def cummin(x, axis=None, dtype='int64', name=None):
 
     Returns:
         out (Tensor), The result of cummin operation. The dtype of cummin result is same with input x.
+
         indices (Tensor), The corresponding index results of cummin operation.
 
     Examples:
