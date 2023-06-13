@@ -192,6 +192,10 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].enable_timer
 
+        assert (
+            not self._dp_comm_overlap and not self._sharding_comm_overlap
+        ), "Comm overlap is not supported now."
+
         self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling
         self._records = []
         self._record_format = (
