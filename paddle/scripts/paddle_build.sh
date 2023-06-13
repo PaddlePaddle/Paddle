@@ -3304,7 +3304,6 @@ function check_coverage_build() {
 }
 function run_setup(){
     startTime_s=`date +%s`
-    rm -rf build
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
@@ -3547,7 +3546,6 @@ EOF
 }
 function run_setup_mac(){
     startTime_s=`date +%s`
-    rm -rf build
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
