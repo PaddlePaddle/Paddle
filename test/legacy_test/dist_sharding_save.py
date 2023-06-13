@@ -13,10 +13,9 @@
 # limitations under the License.
 
 import os
-import pickle
-import sys
 
 from dist_mnist import cnn_model  # noqa: F401
+from test_dist_base import dump_output
 
 import paddle
 from paddle import fluid
@@ -83,7 +82,7 @@ def runtime_main():
     )
 
     out_losses = []
-    sys.stdout.buffer.write(pickle.dumps(out_losses))
+    dump_output(out_losses)
 
 
 if __name__ == "__main__":
