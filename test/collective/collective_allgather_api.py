@@ -14,7 +14,6 @@
 
 import os
 import pickle
-import sys
 
 import test_collective_api_base as test_base
 
@@ -148,7 +147,9 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=fetch_list
         )
-        sys.stdout.buffer.write(pickle.dumps(out))
+        file_path = os.getenv("DUMP_FILE")
+        with open(os.getenv("DUMP_FILE"), "wb") as f:
+            pickle.dump(out, f)
 
 
 if __name__ == "__main__":

@@ -159,8 +159,9 @@ class TestCollectiveAPIRunnerBase:
             )
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
-            # print(out, sys.stderr)
-        sys.stdout.buffer.write(pickle.dumps(out))
+        file_path = os.getenv("DUMP_FILE")
+        with open(os.getenv("DUMP_FILE"), "wb") as f:
+            pickle.dump(out, f)
 
 
 def runtime_main(test_class, col_type):
@@ -218,6 +219,12 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+        out_path0 = os.path.join(
+            self.temp_dir.name, "/tmp/tr0_out_%d.log" % os.getpid()
+        )
+        out_path1 = os.path.join(
+            self.temp_dir.name, "/tmp/tr1_out_%d.log" % os.getpid()
+        )
         if core.is_compiled_with_cuda():
             env0 = {
                 "FLAGS_selected_gpus": "0",
@@ -226,6 +233,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
                 "PADDLE_MASTER": self._master_endpoints,
+                "DUMP_FILE": out_path0,
             }
 
             env1 = {
@@ -235,6 +243,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
                 "PADDLE_MASTER": self._master_endpoints,
+                "DUMP_FILE": out_path1,
             }
         elif core.is_compiled_with_xpu():
             env0 = {
@@ -269,7 +278,6 @@ class TestDistBase(unittest.TestCase):
         )
         tr0_pipe = open(path0, "w")
         tr1_pipe = open(path1, "w")
-        # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -295,9 +303,15 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
+        tr0_file = open(out_path0, "rb")
+        tr1_file = open(out_path1, "rb")
+        tr0_result = pickle.load(tr0_file)
+        tr1_result = pickle.load(tr1_file)
+        tr0_file.close()
+        tr1_file.close()
         return (
-            pickle.loads(tr0_out),
-            pickle.loads(tr1_out),
+            tr0_result,
+            tr1_result,
             tr0_proc.pid,
             tr1_proc.pid,
         )
@@ -332,6 +346,8 @@ class TestDistBase(unittest.TestCase):
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
         }
+        if paddle.version.cuda() >= '12.0':
+            additional_envs.pop("NCCL_P2P_DISABLE")
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
         if check_error_log:
