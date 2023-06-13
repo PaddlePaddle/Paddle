@@ -71,7 +71,7 @@ phi::KernelKey GetKernelKey(
       int in_index = input_map.at(slot_name);
 
       dialect::AllocatedDenseTensorType type =
-          op->GetOperandByIndex(in_index)
+          op->operand(in_index)
               .source()
               .type()
               .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -98,7 +98,7 @@ phi::KernelKey GetKernelKey(
 
     for (size_t i = 0; i < input_info.size(); ++i) {
       // todo filter attribute tensor
-      auto input_tmp = op->GetOperandByIndex(i).source();
+      auto input_tmp = op->operand(i).source();
       auto new_input_tmp = map_value_pair.at(input_tmp);
       dialect::AllocatedDenseTensorType type =
           new_input_tmp.type().dyn_cast<dialect::AllocatedDenseTensorType>();
@@ -164,16 +164,13 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
         paddle::dialect::AllocatedDenseTensorType::get(
             ctx,
             phi::TransToPhiPlace(kernel_key.backend()),
-            (*it)
-                ->GetResultByIndex(0)
-                .type()
-                .dyn_cast<dialect::DenseTensorType>());
+            (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
 
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
     if ((*it)->name() != "pd.full_" && (*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        auto cur_in = (*it)->GetOperandByIndex(i).source();
+        auto cur_in = (*it)->operand(i).source();
         auto new_in = map_value_pair.at(cur_in);
 
         vec_inputs.push_back(new_in);
@@ -201,7 +198,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
         vec_inputs, op1_attribute, {allocated_dense_tensor_dtype}, op1_info);
 
     map_op_pair[*it] = op1;
-    map_value_pair[(*it)->GetResultByIndex(0)] = op1->GetResultByIndex(0);
+    map_value_pair[(*it)->result(0)] = op1->result(0);
 
     program->block()->push_back(op1);
   }
