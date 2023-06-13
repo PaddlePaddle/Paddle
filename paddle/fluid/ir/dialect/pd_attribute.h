@@ -94,3 +94,9 @@ class DataLayoutAttribute : public ir::Attribute {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IntArrayAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ScalarAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DataTypeAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PlaceAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::DataLayoutAttribute)

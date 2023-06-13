@@ -104,3 +104,12 @@ class PointerAttribute : public Attribute {
 };
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::StrAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::BoolAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::FloatAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::DoubleAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int32_tAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int64_tAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::ArrayAttribute)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::PointerAttribute)

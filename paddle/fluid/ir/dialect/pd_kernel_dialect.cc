@@ -60,3 +60,5 @@ void PaddleKernelDialect::PrintType(ir::Type type, std::ostream &os) {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)

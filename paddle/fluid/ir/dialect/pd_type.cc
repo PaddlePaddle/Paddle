@@ -30,3 +30,5 @@ const size_t& DenseTensorType::offset() const { return storage()->offset_; }
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DenseTensorType)

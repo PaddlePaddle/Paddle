@@ -204,3 +204,11 @@ void ConstantOp::Verify(const std::vector<ir::OpResult> &inputs,
 Attribute ConstantOp::value() { return operation()->attributes().at("value"); }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ModuleOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::GetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::CombineOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::SliceOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ConstantLikeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ConstantOp)

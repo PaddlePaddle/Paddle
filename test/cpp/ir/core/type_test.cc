@@ -24,11 +24,15 @@
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/utils.h"
 
-TEST(type_test, type_id) {
-  // Define two empty classes, just for testing.
-  class TypeA {};
-  class TypeB {};
+class TypeA {};
+IR_DECLARE_EXPLICIT_TYPE_ID(TypeA)
+IR_DEFINE_EXPLICIT_TYPE_ID(TypeA)
 
+class TypeB {};
+IR_DECLARE_EXPLICIT_TYPE_ID(TypeB)
+IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
+
+TEST(type_test, type_id) {
   // Test 1: Test construct TypeId by TypeId::get<T>() and overloaded operator==
   // method.
   ir::TypeId a_id = ir::TypeId::get<TypeA>();
@@ -46,17 +50,16 @@ TEST(type_test, type_id) {
   }
 }
 
+// Define a FakeDialect without registering any types.
+struct FakeDialect : ir::Dialect {
+  explicit FakeDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
+  static const char *name() { return "fake"; }
+};
+IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
+
 TEST(type_test, type_base) {
-  // Define two empty classes, just for testing.
-  class TypeA {};
-
-  // Define a FakeDialect without registering any types.
-  struct FakeDialect : ir::Dialect {
-    explicit FakeDialect(ir::IrContext *context)
-        : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
-    static const char *name() { return "fake"; }
-  };
-
   // Test 1: Test the function of IrContext to register Dialect.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
@@ -181,6 +184,8 @@ class IntegerType : public ir::Type {
   using Type::Type;
   DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(IntegerType)
+IR_DEFINE_EXPLICIT_TYPE_ID(IntegerType)
 
 // Customize a Dialect IntegerDialect, registration type of IntegerType.
 struct IntegerDialect : ir::Dialect {
@@ -190,6 +195,8 @@ struct IntegerDialect : ir::Dialect {
   }
   static const char *name() { return "integer"; }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(IntegerDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)
 
 TEST(type_test, custom_type_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();

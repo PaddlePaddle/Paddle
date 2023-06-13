@@ -47,8 +47,8 @@ cc_test_old(
   SRCS
   scalar_attribute_test.cc
   DEPS
-  pd_dialect
   ir_shared
+  pd_dialect
   gtest)
 
 file(

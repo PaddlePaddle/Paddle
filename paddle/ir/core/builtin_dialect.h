@@ -38,3 +38,5 @@ class BuiltinDialect : public ir::Dialect {
 };
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::BuiltinDialect)

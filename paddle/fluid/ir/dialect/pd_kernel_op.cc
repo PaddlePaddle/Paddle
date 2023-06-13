@@ -33,3 +33,5 @@ void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)

@@ -52,6 +52,8 @@ class OperationTest : public ir::Op<OperationTest, InferShapeInterface> {
     fn(infer_meta);
   }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(OperationTest)
+IR_DEFINE_EXPLICIT_TYPE_ID(OperationTest)
 
 const char *OperationTest::attributes_name[attributes_num] = {"op2_attr1",
                                                               "op2_attr2"};
@@ -68,6 +70,8 @@ class TestDialect : public ir::Dialect {
  private:
   void initialize() { RegisterOps<OperationTest>(); }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 TEST(infershape_test, infershape_test) {
   ir::IrContext *ctx = ir::IrContext::Instance();

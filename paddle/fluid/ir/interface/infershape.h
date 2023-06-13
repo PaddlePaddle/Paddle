@@ -47,3 +47,5 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  private:
   Concept *impl_;
 };
+
+IR_DECLARE_EXPLICIT_TYPE_ID(InferShapeInterface)

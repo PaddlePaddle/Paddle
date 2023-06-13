@@ -17,6 +17,8 @@
 #include <glog/logging.h>
 #include <functional>
 
+#include "paddle/ir/core/enforce.h"
+
 namespace ir {
 
 ///
@@ -40,10 +42,7 @@ class TypeId {
   /// \return The unique TypeId of Type T.
   ///
   template <typename T>
-  static TypeId get() {
-    static Storage instance;
-    return TypeId(&instance);
-  }
+  static TypeId get();
 
   TypeId() = default;
 
@@ -52,6 +51,12 @@ class TypeId {
   TypeId &operator=(const TypeId &other) = default;
 
   const Storage *storage() const { return storage_; }
+
+  void *AsOpaquePointer() const { return storage_; }
+
+  static TypeId RecoverFromOpaquePointer(const void *pointer) {
+    return TypeId(static_cast<Storage *>(const_cast<void *>(pointer)));
+  }
 
   ///
   /// \brief Comparison operations.
@@ -77,10 +82,54 @@ class TypeId {
   ///
   /// \param storage The storage of this TypeId.
   ///
-  explicit TypeId(const Storage *storage) : storage_(storage) {}
+  explicit TypeId(Storage *storage) : storage_(storage) {}
 
-  const Storage *storage_{nullptr};
+  Storage *storage_{nullptr};
 };
+
+namespace detail {
+class alignas(8) SelfOwningTypeId {
+ public:
+  SelfOwningTypeId() = default;
+  SelfOwningTypeId(const SelfOwningTypeId &) = delete;
+  SelfOwningTypeId &operator=(const SelfOwningTypeId &) = delete;
+  SelfOwningTypeId(SelfOwningTypeId &&) = delete;
+  SelfOwningTypeId &operator=(SelfOwningTypeId &&) = delete;
+
+  operator TypeId() const { return id(); }
+  TypeId id() const { return TypeId::RecoverFromOpaquePointer(this); }
+};
+template <typename T>
+class TypeIdResolver;
+
+}  // namespace detail
+
+template <typename T>
+TypeId TypeId::get() {
+  return detail::TypeIdResolver<T>::Resolve();
+}
+
+#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
+  namespace ir {                                \
+  namespace detail {                            \
+  template <>                                   \
+  class TypeIdResolver<TYPE_CLASS> {            \
+   public:                                      \
+    static TypeId Resolve() { return id_; }     \
+                                                \
+   private:                                     \
+    static SelfOwningTypeId id_;                \
+  };                                            \
+  }                                             \
+  }  // namespace ir
+
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)           \
+  namespace ir {                                         \
+  namespace detail {                                     \
+  SelfOwningTypeId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                      \
+  }  // namespace ir
+
 }  // namespace ir
 
 namespace std {

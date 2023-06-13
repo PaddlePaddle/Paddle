@@ -145,3 +145,6 @@ void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ParameterConvertInterface)

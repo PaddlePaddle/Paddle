@@ -43,3 +43,5 @@ const size_t& AllocatedDenseTensorType::offset() const {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)

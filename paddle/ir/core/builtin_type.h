@@ -60,25 +60,25 @@ class VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                         \
-  class __name##Type : public Type {                         \
-   public:                                                   \
-    using Type::Type;                                        \
-                                                             \
-    DECLARE_TYPE_UTILITY_FUNCTOR(__name##Type, TypeStorage); \
-                                                             \
-    static __name##Type get(IrContext *context);             \
+#define DECLARE_BUILTIN_TYPE(__name)                   \
+  class __name : public Type {                         \
+   public:                                             \
+    using Type::Type;                                  \
+                                                       \
+    DECLARE_TYPE_UTILITY_FUNCTOR(__name, TypeStorage); \
+                                                       \
+    static __name get(IrContext *context);             \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
-  __macro(BFloat16);                  \
-  __macro(Float16);                   \
-  __macro(Float32);                   \
-  __macro(Float64);                   \
-  __macro(Int16);                     \
-  __macro(Int32);                     \
-  __macro(Int64);                     \
-  __macro(Bool);
+  __macro(BFloat16Type);              \
+  __macro(Float16Type);               \
+  __macro(Float32Type);               \
+  __macro(Float64Type);               \
+  __macro(Int16Type);                 \
+  __macro(Int32Type);                 \
+  __macro(Int64Type);                 \
+  __macro(BoolType);
 
 FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
@@ -86,3 +86,14 @@ FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 #undef DECLARE_BUILTIN_TYPE
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int8Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::VectorType)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::BFloat16Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Float16Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Float32Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Float64Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int16Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Type)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)

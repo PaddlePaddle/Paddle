@@ -226,3 +226,5 @@ void PassInstrumentor::AddInstrumentation(
 }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::detail::PreservedAnalyses::AllAnalysesType)

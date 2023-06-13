@@ -32,6 +32,8 @@ class ReadOnlyTrait : public ir::OpTraitBase<ReadOnlyTrait> {
   explicit ReadOnlyTrait(ir::Operation *op)
       : ir::OpTraitBase<ReadOnlyTrait>(op) {}
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(ReadOnlyTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(ReadOnlyTrait)
 
 /// \brief Define built-in Interface, derived from OpInterfaceBase. Concepts and
 /// Models need to be defined within the class. Concept defines abstract
@@ -64,6 +66,8 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  private:
   Concept *impl_;
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(InferShapeInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(InferShapeInterface)
 
 ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
                                     std::vector<std::string> attributes) {
@@ -116,6 +120,9 @@ class Operation1 : public ir::Op<Operation1> {
 const char *Operation1::attributes_name[attributes_num] = {"op1_attr1",
                                                            "op1_attr2"};
 
+IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
+
 // Define op2.
 class Operation2
     : public ir::Op<Operation2, ReadOnlyTrait, InferShapeInterface> {
@@ -140,6 +147,8 @@ class Operation2
 };
 const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
+IR_DECLARE_EXPLICIT_TYPE_ID(Operation2)
+IR_DEFINE_EXPLICIT_TYPE_ID(Operation2)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {
@@ -153,6 +162,8 @@ class TestDialect : public ir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1, Operation2>(); }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 TEST(op_test, op_test) {
   // (1) Register Dialect, Operation1, Operation2 into IrContext.

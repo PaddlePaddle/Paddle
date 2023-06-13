@@ -46,3 +46,9 @@ phi::Scalar ScalarAttribute::data() {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IntArrayAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ScalarAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DataTypeAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PlaceAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DataLayoutAttribute)

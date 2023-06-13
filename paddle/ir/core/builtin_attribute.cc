@@ -36,3 +36,12 @@ std::vector<Attribute> ArrayAttribute::data() const {
 void* PointerAttribute::data() const { return storage()->GetAsKey(); }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::StrAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::BoolAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::FloatAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::DoubleAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int32_tAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int64_tAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ArrayAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::PointerAttribute)
