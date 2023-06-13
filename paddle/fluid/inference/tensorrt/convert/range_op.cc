@@ -47,9 +47,12 @@ class RangeOpConverter : public OpConverter {
     }
     auto number_tensor = Max(Sub(zero_tensor, quotient_tensor), zero_tensor);
     auto* start1 = engine_->GetITensor(op_desc.Input("Start")[0]);
+#if IS_TRT_VERSION_LT(8000)
+    nvinfer1::Dims start_dims{0, {1}, { 0 }};
+#else
     nvinfer1::Dims start_dims{0, {1}};
+#endif
     start1 = Reshape(start1, start_dims);
-
     layer = TRT_ENGINE_ADD_LAYER(
         engine_, Fill, nvinfer1::Dims{}, nvinfer1::FillOperation::kLINSPACE);
     layer->setInput(0, *number_tensor);
