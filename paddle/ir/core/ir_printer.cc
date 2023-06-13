@@ -120,6 +120,7 @@ void IrPrinter::PrintProgram(Program* program) {
 void IrPrinter::PrintOperation(Operation* op) {
   if (auto* dialect = op->dialect()) {
     dialect->PrintOperation(op, *this);
+    return;
   }
 
   PrintGeneralOperation(op);
@@ -197,7 +198,7 @@ void IrPrinter::PrintOpResult(Operation* op) {
   std::vector<OpResult> op_results;
   op_results.reserve(num_op_result);
   for (size_t idx = 0; idx < num_op_result; idx++) {
-    op_results.push_back(op->GetResultByIndex(idx));
+    op_results.push_back(op->result(idx));
   }
   PrintInterleave(
       op_results.begin(),
@@ -229,7 +230,7 @@ void IrPrinter::PrintOpOperands(Operation* op) {
   std::vector<Value> op_operands;
   op_operands.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    op_operands.push_back(op->GetOperandByIndex(idx).source());
+    op_operands.push_back(op->operand(idx).source());
   }
   PrintInterleave(
       op_operands.begin(),
@@ -244,9 +245,9 @@ void IrPrinter::PrintOperandsType(Operation* op) {
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    auto op_operand = op->GetOperandByIndex(idx);
+    auto op_operand = op->operand(idx);
     if (op_operand) {
-      op_operand_types.push_back(op->GetOperandByIndex(idx).source().type());
+      op_operand_types.push_back(op->operand(idx).source().type());
     } else {
       op_operand_types.push_back(Type(nullptr));
     }
@@ -265,7 +266,7 @@ void IrPrinter::PrintOpReturnType(Operation* op) {
   std::vector<Type> op_result_types;
   op_result_types.reserve(num_op_result);
   for (size_t idx = 0; idx < num_op_result; idx++) {
-    auto op_result = op->GetResultByIndex(idx);
+    auto op_result = op->result(idx);
     if (op_result) {
       op_result_types.push_back(op_result.type());
     } else {

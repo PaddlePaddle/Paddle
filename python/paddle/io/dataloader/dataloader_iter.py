@@ -752,7 +752,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     batch.reraise()
 
                 if idx == self._rcvd_idx:
-                    del self._task_infos[idx]
+                    if idx in self._task_infos:
+                        del self._task_infos[idx]
                     self._structure_infos.append(structure)
                     return batch
                 else:

@@ -47,10 +47,12 @@ class alignas(8) Operation final {
   void Destroy();
 
   IrContext *ir_context() const;
-  Dialect *dialect() const;
-  OpResult GetResultByIndex(uint32_t index) const;
 
-  OpOperand GetOperandByIndex(uint32_t index) const;
+  Dialect *dialect() const;
+
+  OpResult result(uint32_t index) const;
+
+  OpOperand operand(uint32_t index) const;
 
   void Print(std::ostream &os);
 
@@ -112,11 +114,9 @@ class alignas(8) Operation final {
     }
   };
 
+  // Allow access to 'SetParent'.
   friend class Block;
-  void SetParent(Block *parent, const Block::iterator &position) {
-    parent_ = parent;
-    position_ = position;
-  }
+  void SetParent(Block *parent, const Block::iterator &position);
 
   template <typename T>
   struct CastUtil<

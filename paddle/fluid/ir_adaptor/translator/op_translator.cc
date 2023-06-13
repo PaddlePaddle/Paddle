@@ -143,7 +143,7 @@ inline ir::Operation* InsertSliceOperationForTarget(
                             {src_vec_type[defining_info.idx_in_vector]},
                             op_info);
   program->block()->push_back(operation);
-  ir::OpResult target_op_result = operation->GetResultByIndex(0);
+  ir::OpResult target_op_result = operation->result(0);
   (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
   return operation;
 }
@@ -191,7 +191,7 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
     data = static_cast<float>(attr.dyn_cast<ir::BoolAttribute>().data());
     dtype = phi::DataType::BOOL;
   }
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program->block());
+  ir::Builder builder(ctx, program->block());
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, data, dtype, phi::CPUPlace());
 
@@ -207,7 +207,7 @@ inline ir::Operation* InsertFullArrayOperationForAttributeInput(
   phi::IntArray int_array =
       attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data();
 
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program->block());
+  ir::Builder builder(ctx, program->block());
   paddle::dialect::FullIntArrayOp full_int_array_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
           int_array.GetData(), phi::DataType::INT64, phi::CPUPlace());
@@ -245,7 +245,7 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
     defining_op = InsertFullOperationForAttributeInput(ctx, program, new_attr);
   }
 
-  return defining_op->GetResultByIndex(0);
+  return defining_op->result(0);
 }
 
 inline std::vector<ir::OpResult> GenerateOperationInput(
@@ -341,7 +341,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     } else {
       auto* combine_op = InsertCombineOperationForTarget(
           ctx, param_map, program, legacy_input_vars);
-      op_inputs.push_back(combine_op->GetResultByIndex(0));
+      op_inputs.push_back(combine_op->result(0));
     }
   }
 
@@ -478,7 +478,7 @@ inline void RecordOpResultMapping(TranslationContext* param_map,
       VLOG(10) << "[output recording]"
                << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
 
-      ir::OpResult value = operation->GetResultByIndex(idx);
+      ir::OpResult value = operation->result(idx);
       bool generated_by_vector = value.type().isa<ir::VectorType>();
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
