@@ -18,6 +18,7 @@ from functools import reduce
 
 import paddle
 from paddle import framework
+from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
 
@@ -43,55 +44,78 @@ class DygraphShardingOptimizer:
     # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
-    def __init__(
-        self,
-        hcg,
-        user_defined_strategy,
-        params,
-        inner_optimizer_class,
-        **inner_optimizer_kargs
-    ):
-
-        if not isinstance(params, list):
+    def __init__(self, optimizer, hcg):
+        # TODO(pangengzheng): support param_groups
+        if isinstance(optimizer._parameter_list[0], dict):
             raise TypeError(
-                "`parameters` argument given to the DygraphShardingOptimizer should be "
-                "an iterable of paddle Tensors, but got argument type is `{}`.".format(
-                    type(params)
-                )
+                "Do not support param_groups now, please set optimizer._parameter_list as a list of Parameter"
             )
-        self._parameter_list = params
-        self._reference_is_trainable_params = list(
-            map(_is_trainable, self._parameter_list)
-        )
+        if not hasattr(optimizer, '_apply_optimize') or not callable(
+            optimizer._apply_optimize
+        ):
+            raise ValueError(
+                "the optimzier object should have _apply_optimize function"
+            )
 
-        self._inner_optimizer_class = inner_optimizer_class
-        self._inner_optimizer_kargs = inner_optimizer_kargs
-
-        # sharding parallel information
-        # TODO better way to get the hcg & user_defined_strategy
+        # the self._parameter_list holds the whole model paramters
+        self._parameter_list = optimizer._parameter_list
+        self._inner_opt = optimizer
         self._hcg = hcg
-        self._user_defined_strategy = user_defined_strategy
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
-        # logic partitioning
-        self._build_sharding_mapping()
+        (
+            self._rank2params,
+            self._rank2params_index,
+        ) = self._partition_parameters()
+        param_names = [p.name for p in self._parameter_list]
+        print("all param_names:", param_names)
+        for sharding_rank, param_indexes in enumerate(self._rank2params_index):
+            sharding_rank_param_names = [
+                p.name for p in self._rank2params[sharding_rank]
+            ]
+            print(
+                "sharding rank:{}, params:{}, len:{}, param indexes:{}, len:{}".format(
+                    sharding_rank,
+                    sharding_rank_param_names,
+                    len(sharding_rank_param_names),
+                    param_indexes,
+                    len(param_indexes),
+                )
+            )
+        self._param2rank = self._map_param_to_rank()
 
-        # actually create opt ops
-        self._buid_inner_optimizer()
+        print(
+            "self._inner_opt._parameter_list len:{}".format(
+                len(self._inner_opt._parameter_list)
+            )
+        )
+        self._set_inner_opt_attr(
+            '_parameter_list', self._rank2params[self._sharding_rank]
+        )
+        self._set_inner_opt_attr(
+            '_param_groups', self._rank2params[self._sharding_rank]
+        )
+        print(
+            "after parameters update, params len:%d"
+            % (len(self._inner_opt._parameter_list))
+        )
 
-    def clear_grad(self):
+    def clear_grad(self, set_to_zero=True):
         """
         should clear grad for all parameters in model
         """
+        #
         for p in self._parameter_list:
-            if not p.stop_gradient:
-                p.clear_gradient()
-
-    def _build_sharding_mapping(self):
-
-        self._rank2params = self._partition_parameters()
-        self._param2rank = self._map_param_to_rank()
+            if hasattr(p, "main_grad") and p.main_grad is not None:
+                assert p._grad_ivar() is None
+                if set_to_zero:
+                    p.main_grad.zero_()
+                else:
+                    p.main_grad._clear()
+                    p.main_grad = None
+            elif not hasattr(p, "main_grad"):
+                p.clear_gradient(set_to_zero)
 
     def _partition_parameters(self):
         """
@@ -104,13 +128,16 @@ class DygraphShardingOptimizer:
         # method1: greedy even but unorder
         # method2: roughly even with oreder
 
-        mapping = {}
-        for rank_ in range(self._sharding_world_size):
-            mapping[rank_] = []
+        mapping = [[] for _ in range(self._sharding_world_size)]
+        rank2params_index = [[] for _ in range(self._sharding_world_size)]
+        # mapping = {}
+        # for rank_ in range(self._sharding_world_size):
+        #     mapping[rank_] = []
         sizes = [0] * self._sharding_world_size
-        for param in self._parameter_list:
+        for i, param in enumerate(self._parameter_list):
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
+            rank2params_index[rank].append(i)
             numel = reduce(lambda x, y: x * y, param.shape)
             assert (
                 numel > 0
@@ -119,7 +146,7 @@ class DygraphShardingOptimizer:
             )
             sizes[rank] += numel
 
-        return mapping
+        return mapping, rank2params_index
 
     def _map_param_to_rank(self):
         """
@@ -129,19 +156,34 @@ class DygraphShardingOptimizer:
         Dict[str, int]
         """
         mapping = {}
-        for rank, params in self._rank2params.items():
+        for rank, params in enumerate(self._rank2params):
             for param in params:
                 mapping[param.name] = rank
         return mapping
 
-    def _buid_inner_optimizer(self):
-        # we rely on the inner opt to determine whether a parameter is stop_gradient or not:
-        # create moment
-        # update related ops: clip, regular, opt
-        self._inner_optimizer = self._inner_optimizer_class(
-            parameters=self._rank2params[self._sharding_rank],
-            **self._inner_optimizer_kargs
-        )
+    def reduce_gradients(self, parameter_list, hcg):
+        # TODO merge grad / nrank with dp
+        logger.debug("sharding start gradients sync")
+        with framework.no_grad():
+            sharding_nrank = hcg.get_sharding_parallel_group().nranks
+            for param in parameter_list:
+                g_var = None
+                if param.trainable and (param._grad_ivar() is not None):
+                    g_var = param._grad_ivar()
+                if param.trainable and hasattr(param, "main_grad"):
+                    assert (
+                        param._grad_ivar() is None
+                    ), "param.grad should be None when using main_grad"
+                    g_var = param.main_grad
+                if g_var is not None:
+                    g_var.scale_(1.0 / sharding_nrank)
+                    param_rank = self._param2rank[param.name]
+                    paddle.distributed.reduce(
+                        g_var,
+                        dst=hcg.get_sharding_parallel_group().ranks[param_rank],
+                        group=hcg.get_sharding_parallel_group(),
+                        sync_op=True,
+                    )
 
     def _sharding_sync_parameters(self):
         """
@@ -149,10 +191,10 @@ class DygraphShardingOptimizer:
         """
         # TODO speed up this functional
 
-        logger.debug("sharding start sync parameters")
+        print("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
-            for rank, params in self._rank2params.items():
+            for rank, params in enumerate(self._rank2params):
                 for param in params:
                     paddle.distributed.broadcast(
                         param,
@@ -172,7 +214,6 @@ class DygraphShardingOptimizer:
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
-
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
@@ -183,7 +224,7 @@ class DygraphShardingOptimizer:
                 self._rank2params[self._sharding_rank],
             )
         )
-        result = self._inner_optimizer.minimize(
+        result = self._inner_opt.minimize(
             loss, startup_program, parameters, no_grad_set
         )
 
@@ -192,22 +233,59 @@ class DygraphShardingOptimizer:
 
         return result
 
+    @imperative_base.no_grad
+    @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
         # actually updating
-        self._inner_optimizer.step()
+        self._inner_opt.step()
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
-    # TODO is it a good way to make _grad_clip a property
-    @property
-    def _grad_clip(self):
-        assert (
-            self._inner_optimizer is not None
-        ), "inner opt of sharding is not initiliazed."
-        return self._inner_optimizer._grad_clip
+    @framework.dygraph_only
+    def set_state_dict(self, state_dict):
+        inner_state = {}
+        parameters = self._rank2params[self._sharding_rank]
+
+        if "LR_Scheduler" in state_dict:
+            inner_state["LR_Scheduler"] = state_dict.pop("LR_Scheduler")
+
+        if "master_weights" in state_dict:
+            master = state_dict.pop("master_weights")
+            inner_state["master_weights"] = {}
+            for p in parameters:
+                for k, v in master.items():
+                    if p.name == k:
+                        v.name = self._inner_opt._gen_master_weight_var_name(p)
+                        inner_state["master_weights"][k] = v
+
+        for p in parameters:
+            for k, v in state_dict.items():
+                if p.name in k:
+                    inner_state[k] = v
+
+        self._inner_opt.set_state_dict(inner_state)
+
+    def _set_inner_opt_attr(self, attr_name, value):
+        inner_opt = self._inner_opt
+        inner_opt_name = '_inner_opt'
+        if not isinstance(attr_name, str):
+            raise TypeError(
+                "attr_name should be str type, but is {}".format(
+                    type(attr_name)
+                )
+            )
+        while hasattr(inner_opt, attr_name):
+            setattr(inner_opt, attr_name, value)
+            if (
+                hasattr(inner_opt, inner_opt_name)
+                and getattr(inner_opt, inner_opt_name, None) is not None
+            ):
+                inner_opt = getattr(inner_opt, inner_opt_name, None)
+            else:
+                break
 
     def __getattr__(self, item):
-        return getattr(self._inner_optimizer, item)
+        return getattr(self._inner_opt, item)
