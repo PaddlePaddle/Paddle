@@ -101,14 +101,14 @@ inline bool IsInplace(const OpDesc& op_desc) {
   return inplace;
 }
 
-inline std::string OpNamecompatibleMapping(std::string op_name) {
+inline std::string OpNameCompatibleMapping(std::string op_name) {
   auto& op_normalizer = OpNameNormalizer::instance();
   return op_normalizer[op_name];
 }
 
 inline ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) {
   std::string target_op_name =
-      kTargetDialectPrefix + OpNamecompatibleMapping(op_desc.Type());
+      kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
   if (IsInplace(op_desc)) {
     target_op_name += "_";
   }
@@ -524,6 +524,106 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   return operation;
 }
 
+struct OpTranscriber {
+ public:
+  virtual ir::Operation* operator()(ir::IrContext* ctx,
+                                    TranslationContext* param_map,
+                                    ir::Program* program,
+                                    const OpDesc& op_desc) {
+    auto op_info = this->LoopkUpOpInfo_(ctx, op_desc);
+    auto* op_info_concept =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+
+    OpInputInfoList input_infos;
+    OpAttributeInfoList attr_infos;
+    OpOutputInfoList output_infos;
+    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+        op_info_concept->get_op_info_();
+
+    auto op_inputs = this->GenerateOperationInput_(
+        ctx, param_map, program, op_desc, op_info.name(), input_infos);
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    std::tie(op_output_types, arg_to_idx) =
+        this->GenerateOperationOutput_(ctx, op_desc, output_infos);
+
+    auto attribute_map =
+        this->TranslateOpAttribute_(op_info.name(), attr_infos, op_desc);
+    VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
+
+    ir::Operation* operation = ir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    VLOG(4) << "[general op][" << op_desc.Type()
+            << "] opearation creation end.";
+    program->block()->push_back(operation);
+
+    VLOG(4) << "[general op][" << op_desc.Type()
+            << "] opearation insertion end.";
+    RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
+
+    return operation;
+  }
+
+ public:
+  virtual ir::OpInfo LoopkUpOpInfo_(ir::IrContext* ctx, const OpDesc& op_desc) {
+    return LoopkUpOpInfo(ctx, op_desc);
+  }
+  virtual std::vector<ir::OpResult> GenerateOperationInput_(
+      ir::IrContext* ctx,
+      TranslationContext* param_map,
+      ir::Program* program,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos) {
+    return GenerateOperationInput(
+        ctx, param_map, program, op_desc, normalized_op_name, input_infos);
+  }
+  virtual std::tuple<OpOutputTypeList, OpOutputMapping>
+  GenerateOperationOutput_(ir::IrContext* ctx,
+                           const OpDesc& op_desc,
+                           const OpOutputInfoList& output_infos) {
+    return GenerateOperationOutput(ctx, op_desc, output_infos);
+  }
+  virtual ir::AttributeMap TranslateOpAttribute_(
+      std::string normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) {
+    return TranslateOpAttribute(normalized_op_name, op_attr_infos, op_desc);
+  }
+};
+
+struct CastOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute_(
+      std::string normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::AttributeMap attribute_map = {};
+    const OpAttributeInfo info = op_attr_infos[0];
+
+    std::string legacy_attr_name("out_dtype");
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr(legacy_attr_name)) {
+      legacy_attr = op_desc.GetAttr(legacy_attr_name);
+    }
+    VLOG(10) << "attribute in " << op_desc.Type()
+             << " name: " << legacy_attr_name << " " << legacy_attr.index();
+    ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
+    attribute_map[info.name] = new_attr;
+    if (!new_attr) {
+      VLOG(0) << "empty attribute in " << op_desc.Type()
+              << " name: " << info.name;
+    } else {
+      VLOG(10) << "new attribute in " << op_desc.Type()
+               << " name: " << info.name << " " << new_attr.storage();
+    }
+
+    return attribute_map;
+  }
+};
+
 ir::Operation* FeedOpHandler(ir::IrContext* ctx,
                              TranslationContext* param_map,
                              ir::Program* program,
@@ -589,6 +689,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
 OpTranslator::OpTranslator() : general_handler(GeneralOpHandler) {
   special_handlers["feed"] = FeedOpHandler;
   special_handlers["fetch_v2"] = FetchOpHandler;
+  special_handlers["cast"] = CastOpTranscriber();
 }
 
 }  // namespace translator
