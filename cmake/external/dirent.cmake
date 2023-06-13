@@ -55,7 +55,10 @@ function(download_dirent)
   endif()
 endfunction()
 
-download_dirent()
+if(NOT EXISTS ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME})  
+  message(STATUS "Local package ${DIRENT_CACHE_FILENAME} not found, starting download.")  
+  download_dirent()
+endif()
 
 ExternalProject_Add(
   extern_dirent

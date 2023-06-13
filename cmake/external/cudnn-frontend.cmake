@@ -76,7 +76,10 @@ function(download_cudnn-frontend)
   endif()
 endfunction()
 
-download_dirent()
+if(NOT EXISTS ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME})  
+  message(STATUS "Local package ${CUDNN_FRONTEND_CACHE_FILENAME} not found, starting download.")  
+  download_cudnn-frontend()
+endif()
 
 ExternalProject_Add(
   extern_cudnn_frontend
