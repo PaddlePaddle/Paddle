@@ -2610,6 +2610,14 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
 #endif
+#ifdef PADDLE_WITH_LITE
+#ifdef LITE_SUBGRAPH_WITH_XPU
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_,
+                                config_.xpu_config_.stream);
+#else
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_, nullptr);
+#endif
+#endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
 

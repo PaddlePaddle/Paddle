@@ -31,6 +31,9 @@
 #ifdef PADDLE_WITH_INFERENCE_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
+#ifdef PADDLE_WITH_LITE
+#include "paddle/fluid/operators/lite/lite_engine_op.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -266,6 +269,39 @@ void NaiveExecutor::ResetTrtOps(int num) {
         }
         trtop->PrepareTRTEngine(*anc, trt_engine);
       }
+    }
+  }
+#endif
+}
+
+void NaiveExecutor::CloneLiteEnigne(int num, void *stream) {
+#ifdef PADDLE_WITH_LITE
+  for (auto &op : ops_) {
+    if (op->Type() == "lite_engine") {
+      operators::LiteEngineOp *lite_op =
+          dynamic_cast<operators::LiteEngineOp *>(op.get());
+      PADDLE_ENFORCE_NOT_NULL(
+          lite_op,
+          phi::errors::InvalidArgument(
+              "lite_op(type: lite_engine) should be created."));
+      std::string engine_key = lite_op->Attr<std::string>("engine_key");
+      std::string new_engine_key = engine_key + "_" + std::to_string(num);
+      PADDLE_ENFORCE(
+          paddle::inference::Singleton<inference::lite::EngineManager>::Global()
+              .Has(engine_key),
+          phi::errors::InvalidArgument(
+              "lite_engine(key: %s) should be created.", engine_key));
+      auto *lite_engine =
+          paddle::inference::Singleton<inference::lite::EngineManager>::Global()
+              .Get(engine_key);
+      auto new_lite_engine = lite_engine->Clone();
+#ifdef LITE_SUBGRAPH_WITH_XPU
+      new_lite_engine->SetStream(TARGET(kXPU), stream);
+#endif
+      paddle::inference::Singleton<inference::lite::EngineManager>::Global()
+          .Set(new_engine_key, new_lite_engine);
+      lite_op->SetAttr("engine_key", new_engine_key);
+      lite_op->SetEngine(new_lite_engine.get());
     }
   }
 #endif

@@ -252,24 +252,7 @@ void LiteSubgraphPass::SetUpEngine(
   bool use_opencl = Get<bool>("use_opencl");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
   bool use_xpu = Get<bool>("use_xpu");
-  int xpu_device_id = Get<int>("xpu_device_id");
-  size_t xpu_l3_size = Get<size_t>("xpu_l3_size");
-  bool xpu_l3_locked = Get<bool>("xpu_l3_locked");
-  bool xpu_conv_autotune = Get<int>("xpu_conv_autotune_level") > 0;
-  std::string xpu_conv_autotune_file =
-      Get<std::string>("xpu_conv_autotune_file");
-  int xpu_gemm_compute_precision = Get<int>("xpu_gemm_compute_precision");
-  std::string xpu_transformer_encoder_precision{"int16"};
-  if (xpu_gemm_compute_precision == 0) {
-    xpu_transformer_encoder_precision = "int8";
-  } else if (xpu_gemm_compute_precision == 1) {
-    xpu_transformer_encoder_precision = "int16";
-  } else if (xpu_gemm_compute_precision == 2) {
-    xpu_transformer_encoder_precision = "int31";
-  }
-  bool xpu_transformer_encoder_adaptive_seqlen =
-      Get<bool>("xpu_transformer_encoder_adaptive_seqlen");
-  bool xpu_enable_multi_stream = Get<bool>("xpu_enable_multi_stream");
+
   // NNAdapter Related
   bool use_nnadapter = Get<bool>("use_nnadapter");
   std::string nnadapter_model_cache_dir =
@@ -354,15 +337,32 @@ void LiteSubgraphPass::SetUpEngine(
   }
 
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
-  config.xpu_l3_size = xpu_l3_size;
-  config.device_id = xpu_device_id;
-  config.xpu_l3_locked = xpu_l3_locked;
-  config.xpu_conv_autotune = xpu_conv_autotune;
-  config.xpu_conv_autotune_file = xpu_conv_autotune_file;
-  config.xpu_transformer_encoder_precision = xpu_transformer_encoder_precision;
+
+  // xpu related
+  config.xpu_device_id = Get<int>("xpu_device_id");
+  config.xpu_l3_size = Get<size_t>("xpu_l3_size");
+  config.xpu_l3_ptr = Get<void*>("xpu_l3_ptr");
+  config.xpu_l3_autotune_size = Get<size_t>("xpu_l3_autotune_size");
+  config.xpu_stream = Get<void*>("xpu_stream");
+  config.xpu_conv_autotune_level = Get<int>("xpu_conv_autotune_level");
+  config.xpu_conv_autotune_file = Get<std::string>("xpu_conv_autotune_file");
+  config.xpu_conv_autotune_file_writeback =
+      Get<bool>("xpu_conv_autotune_file_writeback");
+  config.xpu_fc_autotune_level = Get<int>("xpu_fc_autotune_level");
+  config.xpu_fc_autotune_file = Get<std::string>("xpu_fc_autotune_file");
+  config.xpu_fc_autotune_file_writeback =
+      Get<bool>("xpu_fc_autotune_file_writeback");
+  config.xpu_gemm_compute_precision = Get<int>("xpu_gemm_compute_precision");
+  config.xpu_transformer_softmax_optimize_level =
+      Get<int>("xpu_transformer_softmax_optimize_level");
   config.xpu_transformer_encoder_adaptive_seqlen =
-      xpu_transformer_encoder_adaptive_seqlen;
-  config.xpu_enable_multi_stream = xpu_enable_multi_stream;
+      Get<bool>("xpu_transformer_encoder_adaptive_seqlen");
+  config.xpu_quant_post_static_gelu_out_threshold =
+      Get<float>("xpu_quant_post_static_gelu_out_threshold");
+  config.xpu_quant_post_dynamic_activation_method =
+      Get<int>("xpu_quant_post_dynamic_activation_method");
+  config.xpu_enable_multi_stream = Get<bool>("xpu_enable_multi_stream");
+
   // NNAdapter Related
   config.nnadapter_model_cache_dir = nnadapter_model_cache_dir;
   config.nnadapter_device_names = nnadapter_device_names;

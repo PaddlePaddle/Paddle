@@ -73,6 +73,8 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
+  void CloneLiteEnigne(int num, void* stream);
+
   void RegisterOutputHook(const HookFunc& hookfunc);
 
  private:
