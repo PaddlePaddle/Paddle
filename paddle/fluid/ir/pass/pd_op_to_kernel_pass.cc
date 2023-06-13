@@ -162,6 +162,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     // only for single output
     // need update new kernel key layout and data tyep
+
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
       auto allocated_dense_tensor_dtype =
