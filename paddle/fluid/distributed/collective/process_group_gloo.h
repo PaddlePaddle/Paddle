@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_without_stream.h"
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
@@ -206,6 +207,8 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const ScatterOptions&) override;
+
+  phi::distributed::GlooCommContext* GetCommContext();
 
   std::shared_ptr<::gloo::Context> get_context() { return _context; }
   uint64_t next_tag() { return _tag++; }

@@ -55,7 +55,9 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
   if (rank_ == root) {
     GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   }
+  next_tag();
   opts.setRoot(root);
+  opts.setTag(_tag);
   gloo::broadcast(opts);
 }
 
