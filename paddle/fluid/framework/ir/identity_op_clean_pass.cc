@@ -58,7 +58,7 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
             if (x->Op()->Type() == "scale") {
               auto scale = x->Op()->GetAttrIfExists<float>("scale");
               auto bias = x->Op()->GetAttrIfExists<float>("bias");
-              if (std::abs(bias) <= 1e-6 && std::abs(scale - 1) <= 1e-6) {
+              if (bias == 0 && scale == 1) {
                 return true;
               }
             }

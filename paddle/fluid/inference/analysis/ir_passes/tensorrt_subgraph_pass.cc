@@ -166,8 +166,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
         node, no_calib_int8, with_dynamic_shape);
     if (!is_ok)
     {
-      std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
-      std::cout << node->outputs[0]->Name() << " name is not in TensorRT" << std::endl;
+    //  std::cout << node->Op()->Type().c_str() << " op is not in TensorRT" << std::endl;
+     // std::cout << node->outputs[0]->Name() << " name is not in TensorRT" << std::endl;
     }
     return is_ok;
   };

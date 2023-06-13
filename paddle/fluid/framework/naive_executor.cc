@@ -104,28 +104,36 @@ void NaiveExecutor::Run() {
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
 
-    if (0 && "tensorrt_engine" == op->Type() || "slice" == op->Type() && 0) {
+    if ("conv2d" == op->Type() || "conv2d_fusion" == op->Type() && 0) {
       for (auto name : op->OutputVars(true)) {
-        std::cout << name << ": ";
+        std::cout << name << ": " << std::endl;
         auto var = scope_->FindVar(name);
         if (!var->IsType<phi::DenseTensor>()) continue;
         auto tensor = FindTensor(name);
+        if (tensor->numel() <= 0) continue;
         auto dims = tensor->dims();
+        
+        int want_num = std::min(10, (int)(tensor->numel()));
+
         if (tensor->dtype() == paddle::DataType::FLOAT32) {
           float *cpu_data = new float[tensor->numel()];
           float *tensor_data = tensor->data<float>();
           if (tensor->place() == platform::CPUPlace()) {
-            memcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel());
+            memcpy(cpu_data, tensor_data, sizeof(float) * want_num);
           } else {
-            cudaMemcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel(),
+            cudaMemcpy(cpu_data, tensor_data, sizeof(float) * want_num,
                        cudaMemcpyDeviceToHost);
           }
+
           for (int64_t i = 0; i < dims.size(); i++) {
             std::cout << dims[i] << " ";
           }
+
+          std::cout << std::endl;
           
-          for(int i = 0; i < std::min(10, (int)(tensor->numel())); i++) {
-            std::cout << cpu_data[i] << std::endl;
+          for(int i = 0; i < want_num; i++) {
+            if(cpu_data[i] > 50000 || cpu_data[i] < -50000)
+            std::cout << "异常数字" << cpu_data[i] << std::endl;
           }
           delete[] cpu_data;
         }

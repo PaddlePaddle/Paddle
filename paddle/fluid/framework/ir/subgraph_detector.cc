@@ -419,6 +419,18 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubgraphDetector(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
     if (subgraph.size() <= static_cast<size_t>(min_subgraph_size_)) continue;
+
+    bool continue_run = false;
+    for (auto *node : subgraph) {
+      for(auto para : node->inputs) {
+        if(para->Name() == "conv2d_104.w_0") {
+          continue_run = true;
+        }
+      }
+    }
+
+    if(continue_run == false && 0) continue;
+
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph
