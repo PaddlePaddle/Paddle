@@ -461,8 +461,7 @@ if(WITH_PYTHON)
                       DEPENDS ${eager_impl_file})
   endif()
 
-  list(APPEND PYBIND_DEPS standalone_executor pd_dialect new_ir
-       staticgraph_executor_statistics)
+  list(APPEND PYBIND_DEPS standalone_executor staticgraph_executor_statistics)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     set(PYBIND_SRCS eager.cc ${PYBIND_SRCS})
@@ -475,7 +474,6 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
-    list(APPEND PYBIND_DEPS pd_dialect)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
@@ -507,7 +505,7 @@ if(WITH_PYTHON)
   cc_library(
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} pd_dialect)
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)

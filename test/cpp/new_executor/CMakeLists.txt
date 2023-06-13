@@ -40,19 +40,6 @@ if(WITH_GPU
   set(OP_DEPS phi concat_and_split cross_entropy)
   cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
 
-  # cc_test_old(
-  #   standalone_executor_new_ir_test
-  #   SRCS
-  #   standalone_executor_new_ir_test.cc
-  #   DEPS
-  #   standalone_executor
-  #   pd_op_to_kernel_pass
-  #   new_ir
-  #   pd_dialect
-  #   phi
-  #   phi_kernel_adaptor
-  #   gtest)
-
   # add_dependencies(standalone_executor_test download_program)
   # if(WITH_PROFILER)
   #   target_link_libraries(standalone_executor_test profiler)

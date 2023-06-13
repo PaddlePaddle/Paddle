@@ -92,7 +92,6 @@ TEST(program_test, program) {
   EXPECT_EQ(block->size(), 9u);
 
   // Execute program
-  std::cerr << "11" << std::endl;
   paddle::framework::Scope scope;
   PhiKernelAdaptor phi_kernel_adaptor(&scope);
   phi_kernel_adaptor.run(&program);

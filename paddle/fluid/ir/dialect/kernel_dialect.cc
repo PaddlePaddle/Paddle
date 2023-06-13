@@ -28,8 +28,6 @@
 #include "paddle/ir/core/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-// DECLARE_FILE_SYMBOLS("kernel_dialect");
-
 REGISTER_FILE_SYMBOLS(kernel_dialect);
 
 namespace paddle {

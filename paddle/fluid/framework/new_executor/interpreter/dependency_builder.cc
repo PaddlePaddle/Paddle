@@ -84,13 +84,11 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::Build(
 
   AddDependencyForCoalesceTensorOp();
 
-  std::cerr << "fin dependecy here " << std::endl;
   if (FLAGS_add_dependency_for_communication_op) {
     AddDependencyForCommunicationOp();
     VLOG(6) << "Finish AddDependencyForSequentialRun";
   }
 
-  std::cerr << "before random" << std::endl;
   AddDependencyForRandomOp();
   VLOG(6) << "Finish AddDependencyForRandomOp";
 
@@ -119,10 +117,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    std::cerr << "op indx " << op_idx << std::endl;
     if (instructions_->at(op_idx).OpBaseValid() &&
         instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
-      std::cerr << "11" << std::endl;
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
       auto fused_out = instructions_->at(op_idx).Outputs().at("FusedOutput")[0];
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
