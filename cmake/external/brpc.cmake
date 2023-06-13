@@ -66,7 +66,7 @@ endfunction()
 
 if(EXISTS ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE})
   file(MD5 ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE} BRPC_MD5)
-  if(NOT BRPC_MD5 EQUAL BRPC_URL_MD5)
+  if(NOT BRPC_MD5 STREQUAL BRPC_URL_MD5)
     download_brpc()
   endif()
 else()
