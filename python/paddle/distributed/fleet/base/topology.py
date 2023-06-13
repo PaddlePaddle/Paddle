@@ -294,11 +294,6 @@ class HybridCommunicateGroup:
     def _set_p2p_group(self):
         comm_lists = self._topo.get_comm_list('pipe')
 
-        self.send_next_group = None
-        self.send_prev_group = None
-        self.recv_next_group = None
-        self.recv_prev_group = None
-
         for comm_ranks in comm_lists:
             assert len(comm_ranks) == self._pp_degree
             for idx, rank in enumerate(comm_ranks):
@@ -309,28 +304,6 @@ class HybridCommunicateGroup:
                 if self.global_rank == curr_rank:
                     self.next_rank = next_rank
                     self.prev_rank = prev_rank
-
-                next_group = paddle.distributed.new_group(
-                    ranks=[curr_rank, next_rank]
-                )
-                if self.global_rank == curr_rank:
-                    self.send_next_group = next_group
-                elif self.global_rank == next_rank:
-                    self.recv_prev_group = next_group
-
-                prev_group = paddle.distributed.new_group(
-                    ranks=[prev_rank, curr_rank]
-                )
-
-                if self.global_rank == curr_rank:
-                    self.send_prev_group = prev_group
-                elif self.global_rank == prev_rank:
-                    self.recv_next_group = prev_group
-
-        assert self.send_next_group is not None
-        assert self.send_prev_group is not None
-        assert self.recv_next_group is not None
-        assert self.recv_prev_group is not None
 
     def topology(self):
         return self._topo
@@ -384,12 +357,7 @@ class HybridCommunicateGroup:
         return self._pp_comm_group
 
     def get_p2p_groups(self):
-        return (
-            self.send_next_group,
-            self.send_prev_group,
-            self.recv_next_group,
-            self.recv_prev_group,
-        )
+        return None
 
     # sharding parallel message:
     def _get_sharding_parallel_id(self):
