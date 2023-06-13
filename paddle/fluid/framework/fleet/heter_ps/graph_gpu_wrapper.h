@@ -17,6 +17,10 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <thrust/device_ptr.h>
+#include <thrust/random.h>
+#include <thrust/shuffle.h>
+#include <thrust/execution_policy.h>
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"

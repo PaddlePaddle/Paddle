@@ -484,13 +484,17 @@ void DatasetImpl<T>::LoadIntoMemory() {
       auto host_vec = readers_[i]->GetHostVec();
       node_num += host_vec->size();
     }
-    gpu_graph_total_keys_.resize(node_num);
+    gpu_graph_total_keys_.resize(node_num + 1);
     for (int i = 0; i < thread_num_; i++) {
       auto host_vec = readers_[i]->GetHostVec();
       for (size_t j = 0; j < host_vec->size(); j++) {
         gpu_graph_total_keys_.push_back((*host_vec)[j]);
       }
     }
+
+    uint64_t zerokey = 0;
+    gpu_graph_total_keys_.emplace_back(zerokey);
+    VLOG(1) << "add zero key in multi node";
 
     if (GetEpochFinish() == true) {
       VLOG(0) << "epoch finish, set stat and clear sample stat!";
@@ -669,6 +673,25 @@ void DatasetImpl<T>::DumpWalkPath(std::string dump_path, size_t dump_rate) {
                       readers_[i].get(),
                       dump_path,
                       dump_rate));
+    }
+    for (std::thread& t : dump_threads) {
+      t.join();
+    }
+  }
+#endif
+}
+
+template <typename T>
+void DatasetImpl<T>::DumpSampleNeighbors(std::string dump_path) {
+  VLOG(1) << "DatasetImpl<T>::DumpSampleNeighbors() begin";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  std::vector<std::thread> dump_threads;
+  if (gpu_graph_mode_) {
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      dump_threads.push_back(
+          std::thread(&paddle::framework::DataFeed::DumpSampleNeighbors,
+                      readers_[i].get(),
+                      dump_path));
     }
     for (std::thread& t : dump_threads) {
       t.join();
@@ -1124,9 +1147,17 @@ void DatasetImpl<T>::DestroyPreLoadReaders() {
 template <typename T>
 int64_t DatasetImpl<T>::GetMemoryDataSize() {
   if (gpu_graph_mode_) {
+    bool is_multi_node = 0, sage_mode = 0, gpu_graph_training = 1;
     int64_t total_path_num = 0;
     for (int i = 0; i < thread_num_; i++) {
-      total_path_num += readers_[i]->GetGraphPathNum();
+      is_multi_node = readers_[i]->GetMultiNodeMode();
+      sage_mode = readers_[i]->GetSageMode();
+      gpu_graph_training = readers_[i]->GetTrainState();
+      if (is_multi_node && sage_mode && gpu_graph_training) {
+        total_path_num += readers_[i]->GetTrainMemoryDataSize();
+      } else {
+        total_path_num += readers_[i]->GetGraphPathNum();
+      }
     }
     return total_path_num;
   } else {

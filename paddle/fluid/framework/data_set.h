@@ -175,6 +175,7 @@ class Dataset {
   virtual uint32_t GetPassID() = 0;
 
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) = 0;
+  virtual void DumpSampleNeighbors(std::string dump_path) = 0;
   virtual const std::vector<uint64_t>& GetGpuGraphTotalKeys() = 0;
 
  protected:
@@ -273,7 +274,7 @@ class DatasetImpl : public Dataset {
   virtual bool GetEpochFinish();
   virtual void ClearSampleState();
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
-
+  virtual void DumpSampleNeighbors(std::string dump_path);
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
   }
