@@ -110,6 +110,12 @@ if(APPLE AND WITH_ARM)
   set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -target arm64-apple-darwin")
 endif()
 
+if(APPLE)
+  set(WITH_SHARED_PHI
+      ON
+      CACHE BOOL "Open Shared PHI" FORCE)
+endif()
+
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
   message("Build static library of PHI")
