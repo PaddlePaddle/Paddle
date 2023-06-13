@@ -954,10 +954,6 @@ def save_vars(
 
     main_program = paddle.static.io._get_valid_program(main_program)
 
-    print('[before save_vars]', flush=True)
-    print(main_program)
-    print('[before save_vars]', flush=True)
-
     if vars is None:
         return save_vars(
             executor,
@@ -1024,10 +1020,6 @@ def save_vars(
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
-
-        print('[before save_program]', flush=True)
-        print(save_program)
-        print('[before save_program]', flush=True)
 
         executor.run(save_program)
         if save_to_memory:

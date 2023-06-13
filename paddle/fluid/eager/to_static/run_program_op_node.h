@@ -370,16 +370,16 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
     VLOG(0) << "------------------------------------";
-    std::ofstream out_file(
-        "/home/lvyongkang/Paddle/log_dy2static/dy2st_forward.prog",
-        std::ios::out | std::ios::ate);
-    for (size_t i = 0; i < 10; i++) {
-      out_file << '\n';
-    }
+    // std::ofstream out_file(
+    //     "/home/lvyongkang/Paddle/log_dy2static/dy2st_forward.prog",
+    //     std::ios::out | std::ios::ate);
+    // for (size_t i = 0; i < 10; i++) {
+    //   out_file << '\n';
+    // }
 
     std::unique_ptr<ir::Program> ir_program =
         paddle::TranslateLegacyProgramToProgram(*forward_program);
-    ir_program->Print(out_file);
+    ir_program->Print(std::cout);
     VLOG(0) << "------------------------------------";
 
     interpreter_core =
@@ -520,16 +520,16 @@ inline void RunProgramGradAPI(
     VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
 
     VLOG(0) << "------------------------------------";
-    std::ofstream out_file(
-        "/home/lvyongkang/Paddle/log_dy2static/dy2st_backward.prog",
-        std::ios::out | std::ios::ate);
-    for (size_t i = 0; i < 10; i++) {
-      out_file << '\n';
-    }
+    // std::ofstream out_file(
+    //     "/home/lvyongkang/Paddle/log_dy2static/dy2st_backward.prog",
+    //     std::ios::out | std::ios::ate);
+    // for (size_t i = 0; i < 10; i++) {
+    //   out_file << '\n';
+    // }
 
     std::unique_ptr<ir::Program> ir_program =
         paddle::TranslateLegacyProgramToProgram(*backward_program);
-    ir_program->Print(out_file);
+    ir_program->Print(std::cout);
     VLOG(0) << "------------------------------------";
 
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);
