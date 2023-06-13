@@ -32,8 +32,8 @@ static inline phi::DataType GetPromoteType(
       op_name == "moving_average_abs_max_scale") {
     if (amp_tensors_vector[0][0].dtype() == phi::DataType::FLOAT32) {
       dst_type = phi::DataType::FLOAT32;
-      return dst_type;
     }
+    return dst_type;
   }
 
   if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
