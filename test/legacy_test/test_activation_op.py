@@ -160,13 +160,15 @@ class Test_Exp_Op_Fp16(unittest.TestCase):
             with static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='float16')
+                np_x = np.array([[2, 3, 4], [7, 8, 9]])
+                x = paddle.to_tensor(np_x, dtype='float16')
                 out = paddle.exp(x)
                 if core.is_compiled_with_cuda():
                     place = paddle.CUDAPlace(0)
                     exe = paddle.static.Executor(place)
                     (res,) = exe.run(fetch_list=[out])
+                    x_expect = np.exp(np_x.astype('float16'))
+                    np.testing.assert_allclose(res, x_expect, rtol=1e-3)
 
 
 class Test_Exp_Op_Int(unittest.TestCase):
