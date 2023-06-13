@@ -47,8 +47,7 @@ class RangeOpConverter : public OpConverter {
     }
     auto number_tensor = Max(Sub(zero_tensor, quotient_tensor), zero_tensor);
     auto* start1 = engine_->GetITensor(op_desc.Input("Start")[0]);
-    nvinfer1::Dims start_dims{0};
-    start_dims.d[0] = 1;
+    nvinfer1::Dims start_dims{0, {1}};
     start1 = Reshape(start1, start_dims);
 
     layer = TRT_ENGINE_ADD_LAYER(
