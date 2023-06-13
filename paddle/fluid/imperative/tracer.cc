@@ -223,7 +223,6 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   }
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
-  op->SetId(OpBase::GenerateUniqueId());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {

@@ -33,11 +33,9 @@ void DeQuantKernel(const Context& dev_ctx,
                      "Dequantization scale must be different than 0.0f"));
 
   const auto q_shift = static_cast<int32_t>(quantization_shift);
-  PADDLE_ENFORCE(q_shift <= 255 && q_shift >= 0,
-                 phi::errors::InvalidArgument(
-                     "Dequantization shift must be lower or equal to ",
-                     "255 and greater or equal to 0, but got %f",
-                     q_shift));
+  PADDLE_ENFORCE_GE(q_shift, 0);
+  PADDLE_ENFORCE_LE(q_shift, 255);
+
   const bool with_shift = q_shift != 0;
 
   auto x_tz = phi::vectorize<int64_t>(x.dims());

@@ -443,8 +443,6 @@ class ExecutionContext : public phi::KernelContext {
 
   const std::string& Type() const { return op_.Type(); }
 
-  uint64_t OpId() const { return op_.Id(); }
-
   const Scope& scope() const { return scope_; }
 
   template <typename T>

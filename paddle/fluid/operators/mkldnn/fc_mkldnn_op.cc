@@ -81,7 +81,7 @@ class FCMKLDNNHandler
       : phi::funcs::OneDNNHandlerNoCachingT<T_in, dnnl::inner_product_forward>(
             onednn_engine, cpu_place),
         dev_ctx_(dev_ctx) {
-    this->memory_key_ = std::to_string(ctx.OpId()) + "_" + ctx.InputName("W");
+    this->memory_key_ = ctx.InputName("W");
 
     auto x_vec_dims = phi::vectorize(x->dims());
     auto weights_vec_dims = phi::vectorize(weights->dims());
@@ -435,7 +435,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     cache_key = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
         dev_ctx,
         phi::funcs::CreateKey(dev_ctx,
-                              std::to_string(ctx.OpId()),
                               ctx.InputName("Input"),
                               ctx.InputName("W"),
                               phi::vectorize(x->dims())));
