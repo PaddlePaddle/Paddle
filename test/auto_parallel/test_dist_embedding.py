@@ -27,7 +27,6 @@ def make_program_lookup_table_v1_mp_dp():
     start_program = paddle.fluid.Program()
     block = main_program.global_block()
     with paddle.static.program_guard(main_program, start_program):
-
         src_ids = paddle.static.data(
             name='src_ids', shape=[12, 512, 1], dtype='int64'
         )
@@ -58,7 +57,6 @@ def make_program_lookup_table_v1_mp_dp():
 
 class TestDistPNorm(unittest.TestCase):
     def test_lookup_table_v1_mp_dp(self):
-
         for rank in range(4):
             dist_main_prog, dist_context = parallelizer(
                 make_program_lookup_table_v1_mp_dp, rank

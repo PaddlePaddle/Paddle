@@ -17,8 +17,9 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/ir/core/region.h"
+
 namespace ir {
-class Region;
 class Operation;
 
 class Block {
@@ -49,16 +50,19 @@ class Block {
   void push_front(Operation *op);
   iterator insert(const_iterator iterator, Operation *op);
   void clear();
+  operator Region::iterator() { return position_; }
 
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
 
+  // Allow access to 'SetParent'.
   friend class Region;
-  void SetParent(Region *parent) { parent_ = parent; }
+  void SetParent(Region *parent, Region::iterator position);
 
  private:
   Region *parent_;  // not owned
   OpListType ops_;  // owned
+  Region::iterator position_;
 };
 }  // namespace ir

@@ -323,7 +323,7 @@ class RewritePatternSet {
     native_patterns_.emplace_back(std::move(pattern));
   }
 
-  IrContext* context() const { return context_; }
+  IrContext* ir_context() const { return context_; }
 
   NativePatternListT& native_patterns() { return native_patterns_; }
 

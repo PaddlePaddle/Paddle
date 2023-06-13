@@ -11,27 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/parameter.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 namespace dialect {
 
-class PaddleKernelDialect : public ir::Dialect {
- public:
-  explicit PaddleKernelDialect(ir::IrContext* context);
-
-  static const char* name() { return "pd_kernel"; }
-
-  void PrintType(ir::Type type, std::ostream& os);
-
- private:
-  void initialize();
-};
+std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog);
 
 }  // namespace dialect
 }  // namespace paddle

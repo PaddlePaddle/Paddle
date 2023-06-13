@@ -338,7 +338,6 @@ class SingleReturnTransformer(BaseTransformer):
         max_return_length,
         parent_node_of_return,
     ):
-
         assert max_return_length >= 0, "Input illegal max_return_length"
         i = index_in_list(stmt_list, return_node)
         if i == -1:

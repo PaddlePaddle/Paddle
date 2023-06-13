@@ -110,7 +110,6 @@ def segment_mean(data, segment_ids, name=None):
     if in_dynamic_mode():
         return _C_ops.segment_pool(data, segment_ids, "MEAN")
     else:
-
         check_variable_and_dtype(
             data,
             "X",

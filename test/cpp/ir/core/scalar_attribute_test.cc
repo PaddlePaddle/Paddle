@@ -47,9 +47,9 @@ TEST(ScalarTest, test_classof) {
   ir::Attribute double_scalar = ir::DoubleAttribute::get(ctx, 1.0);
   EXPECT_TRUE(double_scalar.isa<ScalarAttribute>());
 
-  ir::Attribute int32_scalar = ir::Int32_tAttribute::get(ctx, 1);
+  ir::Attribute int32_scalar = ir::Int32Attribute::get(ctx, 1);
   EXPECT_TRUE(int32_scalar.isa<ScalarAttribute>());
 
-  ir::Attribute int64_scalar = ir::Int64_tAttribute::get(ctx, 1l);
+  ir::Attribute int64_scalar = ir::Int64Attribute::get(ctx, 1l);
   EXPECT_TRUE(int64_scalar.isa<ScalarAttribute>());
 }

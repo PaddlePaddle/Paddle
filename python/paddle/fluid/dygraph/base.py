@@ -82,7 +82,6 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 @signature_safe_contextmanager
 def _switch_declarative_mode_guard_(is_declarative=True):
-
     global global_var
     original_val = global_var._in_declarative_mode_
     global_var._in_declarative_mode_ = is_declarative

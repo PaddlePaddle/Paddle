@@ -918,7 +918,7 @@ class OpTest(unittest.TestCase):
                 ), f"Duplicable {name} should be set as list"
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[slot_name]:
+                for name, np_value in np_list[slot_name]:
                     v = create_var(
                         np_value,
                         name,
@@ -2151,7 +2151,6 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
     ):
-
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True

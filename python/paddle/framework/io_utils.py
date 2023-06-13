@@ -64,7 +64,6 @@ def _is_file_path(path):
 
 
 def _open_file_buffer(path_or_buffer, mode):
-
     if _is_file_path(path_or_buffer):
         return open(path_or_buffer, mode)
     else:

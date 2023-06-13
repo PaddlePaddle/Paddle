@@ -38,14 +38,6 @@ class Builder {
   explicit Builder(IrContext *context)
       : Builder(context, nullptr, Block::iterator{}) {}
 
-  static Builder AtBlockBegin(IrContext *context, Block *block) {
-    return Builder(context, block, block->begin());
-  }
-
-  static Builder AtBlockEnd(IrContext *context, Block *block) {
-    return Builder(context, block, block->end());
-  }
-
   /// Set the insertion point to the specified location.
   void SetInsertionPoint(Block *block, Block::iterator insert_point) {
     // TODO(liuyuanle): check that insertPoint is in this rather than some other

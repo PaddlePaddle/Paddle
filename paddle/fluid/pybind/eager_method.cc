@@ -1473,6 +1473,15 @@ static PyObject* tensor__clear(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__clear_dataptr(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  self->tensor.set_impl(nullptr);
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor__copy_gradient_from(TensorObject* self,
                                             PyObject* args,
                                             PyObject* kwargs) {
@@ -2108,6 +2117,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_clear",
      (PyCFunction)(void (*)(void))tensor__clear,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_clear_dataptr",
+     (PyCFunction)(void (*)(void))tensor__clear_dataptr,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_copy_gradient_from",
