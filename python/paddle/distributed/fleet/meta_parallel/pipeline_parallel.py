@@ -638,6 +638,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
         assert (
+            self.num_stages > 2
+        ), "virtual pipeline must run under pp degree > 2"
+        assert (
             framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
         assert (
