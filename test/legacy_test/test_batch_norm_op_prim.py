@@ -45,7 +45,6 @@ def batch_norm_wrapper(
     data_format,
     use_global_stats,
 ):
-    # breakpoint()
     y = F.batch_norm(
         x,
         running_mean,
@@ -131,6 +130,8 @@ class TestBatchNormOp(OpTest):
                 check_prim=True,
                 only_check_prim=True,
             )
+        # restore init config
+        self.initConfig()
 
     def initConfig(self):
         self.rev_comp_atol = 1e-5

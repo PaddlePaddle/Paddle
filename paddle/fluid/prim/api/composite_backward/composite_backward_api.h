@@ -1207,12 +1207,16 @@ void batch_norm_grad(const Tensor& x,
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
 
-  bool need_cast = out_grad.dtype() == phi::DataType::FLOAT16 ||
-                   out_grad.dtype() == phi::DataType::BFLOAT16;
+  bool need_cast = x.dtype() == phi::DataType::FLOAT16 ||
+                   x.dtype() == phi::DataType::BFLOAT16;
   if (need_cast) {
     x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
+      out_grad.dtype() == phi::DataType::BFLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
+
   auto x_dims = x_data.dims();
   const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
                                                    : x_dims[x_dims.size() - 1]);
