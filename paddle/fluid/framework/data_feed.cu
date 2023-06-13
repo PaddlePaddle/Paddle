@@ -3652,8 +3652,8 @@ bool FillInferBuf(const std::vector<uint64_t> &h_device_keys_len, // input
     }
 
     size_t device_key_size = h_device_keys_len[infer_cursor];
-    if (conf.is_multi_node) {
-      int local_reach_end = global_infer_node_type_start[infer_cursor] + conf.buf_size >= 
+    if (conf.is_multi_node || conf.is_thread_sharding) {
+      int local_reach_end = global_infer_node_type_start[infer_cursor] + conf.buf_size >=
                             device_key_size;
       int global_reach_end = dynamic_adjust_total_row_for_infer(local_reach_end, place, stream);
       int remain = device_key_size - global_infer_node_type_start[infer_cursor];
@@ -3794,8 +3794,7 @@ void GraphDataGenerator::AllocResource(
   }
   VLOG(1) << "AllocResource gpuid " << conf_.gpuid
           << " feed_vec.size: " << feed_vec.size()
-          << " table cap: " << conf_.train_table_cap;
-
+          << " table cap: " << conf_.train_table_cap;   
   conf_.is_multi_node = false;
 #if defined(PADDLE_WITH_GLOO)
   auto gloo = paddle::framework::GlooWrapper::GetInstance();
@@ -4104,6 +4103,7 @@ void GraphDataGenerator::SetConfig(
           << ", infer_table_cap: " << conf_.infer_table_cap;
   std::string first_node_type = graph_config.first_node_type();
   std::string meta_path = graph_config.meta_path();
+  conf_.is_thread_sharding = graph_config.is_thread_sharding();
   conf_.sage_mode = graph_config.sage_mode();
   std::string str_samples = graph_config.samples();
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();

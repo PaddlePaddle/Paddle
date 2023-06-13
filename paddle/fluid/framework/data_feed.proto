@@ -48,6 +48,7 @@ message GraphConfig {
   optional bool weighted_sample = 18 [ default = false ];
   optional bool return_weight = 19 [ default = false ];
   optional string pair_label = 20;
+  optional bool is_thread_sharding = 21 [ default = false ];
 }
 
 message DataFeedDesc {

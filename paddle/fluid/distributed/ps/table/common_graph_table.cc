@@ -1987,7 +1987,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
     std::string parse_node_type = vals[0].to_string();
     auto it = feature_to_id.find(parse_node_type);
     if (it == feature_to_id.end()) {
-      VLOG(0) << parse_node_type << "type error, please check";
+      VLOG(1) << parse_node_type << "type error, please check";
       continue;
     }
     idx = it->second;

@@ -945,6 +945,7 @@ struct GraphDataGeneratorConfig {
   bool weighted_sample;
   bool return_weight;
   bool is_multi_node;
+  bool is_thread_sharding;
   int batch_size;
   int slot_num;
   int walk_degree;
