@@ -52,16 +52,22 @@ class HybridParallelClipGrad:
         self._params_in_sharding_rank = params_in_sharding_rank
         # param_rank_in_sharding_rank: [[rank0_param_global_rank], [rank1_param_global_rank], ...]
         self._param_rank_in_sharding_rank = param_rank_in_sharding_rank
+        (
+            self._dist_fp16_param_global_ranks,
+            self._dist_bf16_param_global_ranks,
+            self._dist_fp32_param_global_ranks,
+            self._not_dist_fp16_param_global_ranks,
+            self._not_dist_bf16_param_global_ranks,
+            self._not_dist_fp32_param_global_ranks,
+        ) = self._get_param_global_ranks()
 
-    @no_grad()
-    def _dygraph_clip(self, params_grads):
-        #
-        global_sum_square_dist_fp16 = []
-        global_sum_square_dist_bf16 = []
-        global_sum_square_dist_fp32 = []
-        global_sum_square_not_dist_fp16 = []
-        global_sum_square_not_dist_bf16 = []
-        global_sum_square_not_dist_fp32 = []
+    def _get_param_global_ranks(self):
+        dist_fp16_param_global_ranks = []
+        dist_bf16_param_global_ranks = []
+        dist_fp32_param_global_ranks = []
+        not_dist_fp16_param_global_ranks = []
+        not_dist_bf16_param_global_ranks = []
+        not_dist_fp32_param_global_ranks = []
         assert len(self._param_rank_in_sharding_rank) == len(
             self._params_in_sharding_rank
         )
@@ -83,43 +89,89 @@ class HybridParallelClipGrad:
                 if not_shared_enable:
                     if p.is_distributed:
                         if g.dtype == paddle.float16:
-                            global_sum_square_dist_fp16.append(
+                            dist_fp16_param_global_ranks.append(
                                 self._param_rank_in_sharding_rank[
                                     sharding_rank
                                 ][i]
                             )
                         elif g.dtype == paddle.bfloat16:
-                            global_sum_square_dist_bf16.append(
+                            dist_bf16_param_global_ranks.append(
                                 self._param_rank_in_sharding_rank[
                                     sharding_rank
                                 ][i]
                             )
                         elif g.dtype == paddle.float32:
-                            global_sum_square_dist_fp32.append(
+                            dist_fp32_param_global_ranks.append(
                                 self._param_rank_in_sharding_rank[
                                     sharding_rank
                                 ][i]
                             )
                     else:
                         if g.dtype == paddle.float16:
-                            global_sum_square_not_dist_fp16.append(
+                            not_dist_fp16_param_global_ranks.append(
                                 self._param_rank_in_sharding_rank[
                                     sharding_rank
                                 ][i]
                             )
                         if g.dtype == paddle.bfloat16:
-                            global_sum_square_not_dist_bf16.append(
+                            not_dist_bf16_param_global_ranks.append(
                                 self._param_rank_in_sharding_rank[
                                     sharding_rank
                                 ][i]
                             )
                         elif g.dtype == paddle.float32:
-                            global_sum_square_not_dist_fp32.append(
+                            not_dist_fp32_param_global_ranks.append(
                                 self._param_rank_in_sharding_rank[
                                     sharding_rank
                                 ][i]
                             )
-        #
+        return (
+            dist_fp16_param_global_ranks,
+            dist_bf16_param_global_ranks,
+            dist_fp32_param_global_ranks,
+            not_dist_fp16_param_global_ranks,
+            not_dist_bf16_param_global_ranks,
+            not_dist_fp32_param_global_ranks,
+        )
+
+    def _sum_global_norm(
+        self, param_global_norm_in_cur_rank, param_global_ranks
+    ):
+        print(f"param_global_norm_in_cur_rank:{param_global_norm_in_cur_rank}")
+        if self._hcg.get_sharding_parallel_world_size() > 1:
+            numpy_list = []
+            paddle.distributed.all_gather_object(
+                numpy_list,
+                param_global_norm_in_cur_rank.numpy(),
+                group=self._hcg.get_sharding_parallel_group(),
+            )
+            tensor_list = [paddle.to_tensor(v) for v in numpy_list]
+            global_norm_in_sharding_group = paddle.concat(tensor_list)
+            if int(global_norm_in_sharding_group.numel()) != len(
+                param_global_ranks
+            ):
+                raise ValueError(
+                    "global_norm_in_sharding_group.numel().numpy()[0]:{}, len(param_global_ranks):{}".format(
+                        global_norm_in_sharding_group.numel().numpy()[0],
+                        len(param_global_ranks),
+                    )
+                )
+            indexes = list(
+                np.array(param_global_ranks).argsort().astype(np.int32)
+            )
+            print(f"param_global_ranks:{param_global_ranks}, indexes:{indexes}")
+            reindexed_global_norm = global_norm_in_sharding_group[indexes]
+            print(
+                "global_norm_in_sharding_group:{}, reindexed_global_norm:{}".format(
+                    global_norm_in_sharding_group, reindexed_global_norm
+                )
+            )
+            return paddle.sum(reindexed_global_norm)
+        else:
+            return paddle.sum(param_global_norm_in_cur_rank)
+
+    @no_grad()
+    def _dygraph_clip(self, params_grads):
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -160,39 +212,6 @@ class HybridParallelClipGrad:
                     elif g.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
 
-        def _sum_global_norm(concat_global_norm, global_ranks):
-            print(f"concat_global_norm:{concat_global_norm}")
-            if self._hcg.get_sharding_parallel_world_size() > 1:
-                # tensor_list = []
-                numpy_list = []
-                paddle.distributed.all_gather_object(
-                    numpy_list,
-                    concat_global_norm.numpy(),
-                    group=self._hcg.get_sharding_parallel_group(),
-                )
-                tensor_list = [paddle.to_tensor(v) for v in numpy_list]
-                all_concat_tensor = paddle.concat(tensor_list)
-                if int(all_concat_tensor.numel()) != len(global_ranks):
-                    raise ValueError(
-                        "all_concat_tensor.numel().numpy()[0]:{}, len(global_ranks):{}".format(
-                            all_concat_tensor.numel().numpy()[0],
-                            len(global_ranks),
-                        )
-                    )
-                indexes = list(
-                    np.array(global_ranks).argsort().astype(np.int32)
-                )
-                print(f"global_ranks:{global_ranks}, indexes:{indexes}")
-                sorted_tensor = all_concat_tensor[indexes]
-                print(
-                    "all_concat_tensor:{}, sorted_tensor:{}".format(
-                        all_concat_tensor, sorted_tensor
-                    )
-                )
-                return paddle.sum(sorted_tensor)
-            else:
-                return paddle.sum(concat_global_norm)
-
         # global norm of distributed FP16 params_and_grads
         if len(sum_square_dist_fp16) == 0:
             global_norm_dist_fp16 = paddle.to_tensor(
@@ -201,8 +220,8 @@ class HybridParallelClipGrad:
         else:
             global_norm_dist_fp16 = paddle.concat(sum_square_dist_fp16)
             # global_norm_dist_fp16 = paddle.sum(global_norm_dist_fp16)
-            global_norm_dist_fp16 = _sum_global_norm(
-                global_norm_dist_fp16, global_sum_square_dist_fp16
+            global_norm_dist_fp16 = self._sum_global_norm(
+                global_norm_dist_fp16, self._dist_fp16_param_global_ranks
             )
             global_norm_dist_fp16 = paddle.cast(
                 global_norm_dist_fp16, dtype=paddle.float32
@@ -216,8 +235,9 @@ class HybridParallelClipGrad:
         else:
             global_norm_not_dist_fp16 = paddle.concat(sum_square_not_dist_fp16)
             # global_norm_not_dist_fp16 = paddle.sum(global_norm_not_dist_fp16)
-            global_norm_not_dist_fp16 = _sum_global_norm(
-                global_norm_not_dist_fp16, global_sum_square_not_dist_fp16
+            global_norm_not_dist_fp16 = self._sum_global_norm(
+                global_norm_not_dist_fp16,
+                self._not_dist_fp16_param_global_ranks,
             )
             global_norm_not_dist_fp16 = paddle.cast(
                 global_norm_not_dist_fp16, dtype=paddle.float32
@@ -231,8 +251,8 @@ class HybridParallelClipGrad:
         else:
             global_norm_dist_bf16 = paddle.concat(sum_square_dist_bf16)
             # global_norm_dist_bf16 = paddle.sum(global_norm_dist_bf16)
-            global_norm_dist_bf16 = _sum_global_norm(
-                global_norm_dist_bf16, global_sum_square_dist_bf16
+            global_norm_dist_bf16 = self._sum_global_norm(
+                global_norm_dist_bf16, self._dist_bf16_param_global_ranks
             )
             global_norm_dist_bf16 = paddle.cast(
                 global_norm_dist_bf16, dtype=paddle.float32
@@ -246,8 +266,9 @@ class HybridParallelClipGrad:
         else:
             global_norm_not_dist_bf16 = paddle.concat(sum_square_not_dist_bf16)
             # global_norm_not_dist_bf16 = paddle.sum(global_norm_not_dist_bf16)
-            global_norm_not_dist_bf16 = _sum_global_norm(
-                global_norm_not_dist_bf16, global_sum_square_not_dist_bf16
+            global_norm_not_dist_bf16 = self._sum_global_norm(
+                global_norm_not_dist_bf16,
+                self._not_dist_bf16_param_global_ranks,
             )
             global_norm_not_dist_bf16 = paddle.cast(
                 global_norm_not_dist_bf16, dtype=paddle.float32
@@ -260,8 +281,8 @@ class HybridParallelClipGrad:
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
         # global_norm_dist_fp32 = paddle.sum(global_norm_dist_fp32)
-        global_norm_dist_fp32 = _sum_global_norm(
-            global_norm_dist_fp32, global_sum_square_dist_fp32
+        global_norm_dist_fp32 = self._sum_global_norm(
+            global_norm_dist_fp32, self._dist_fp32_param_global_ranks
         )
         print(
             "global_norm_dist_fp32 value:{}".format(
@@ -276,8 +297,8 @@ class HybridParallelClipGrad:
             else paddle.to_tensor([0.0], dtype=paddle.float32)
         )
         # global_norm_not_dist_fp32 = paddle.sum(global_norm_not_dist_fp32)
-        global_norm_not_dist_fp32 = _sum_global_norm(
-            global_norm_not_dist_fp32, global_sum_square_not_dist_fp32
+        global_norm_not_dist_fp32 = self._sum_global_norm(
+            global_norm_not_dist_fp32, self._not_dist_fp32_param_global_ranks
         )
         print(
             "global_norm_not_dist_fp32 value:{}".format(
