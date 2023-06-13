@@ -430,9 +430,9 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
     // conv_filter fp16 --> fp32
     auto filter_dtype = filter_t->dtype();
-    int kernel_dtype = proto::VarType::Type::VarType_Type_FP32;
+    int out_dtype = proto::VarType::Type::VarType_Type_FP32;
     if (filter_dtype == phi::DataType::FLOAT16) {
-      kernel_dtype = proto::VarType::Type::VarType_Type_FP16;
+      out_dtype = proto::VarType::Type::VarType_Type_FP16;
       CastToFp32(filter_t, nullptr);
     }
 
@@ -593,8 +593,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         "strides",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("strides")));
     conv2d_xpu_op_desc.SetAttr("paddings", conv_paddings);
-    conv2d_xpu_op_desc.SetAttr("kernel_dtype", kernel_dtype);
-    conv2d_xpu_op_desc.SetAttr("out_dtype", kernel_dtype);
+    conv2d_xpu_op_desc.SetAttr("out_dtype", out_dtype);
 
     auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
     IR_NODE_LINK_TO(input, conv2d_xpu);

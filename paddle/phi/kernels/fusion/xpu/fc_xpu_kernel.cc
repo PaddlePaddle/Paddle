@@ -114,24 +114,16 @@ void FcXPUKernel(const Context& ctx,
                  float beta,
                  int act_type,
                  float act_alpha,
-                 DataType kernel_dtype,
                  DataType out_dtype,
                  DenseTensor* out,
                  DenseTensor* out_max) {
-  auto x_dtype = x.dtype();
-  if (x_dtype == DataType::FLOAT32 && out_dtype == DataType::FLOAT32) {
-    FC_XPU_KERNEL_IMPL(float, int16_t, float, int16_t);
-  } else if (x_dtype == DataType::FLOAT32 && out_dtype == DataType::FLOAT16) {
-    FC_XPU_KERNEL_IMPL(float, int16_t, dtype::float16, int16_t);
-  } else if (x_dtype == DataType::FLOAT16 && out_dtype == DataType::FLOAT16) {
-    FC_XPU_KERNEL_IMPL(dtype::float16, int16_t, dtype::float16, int16_t);
-  } else if (x_dtype == DataType::FLOAT16 && out_dtype == DataType::FLOAT32) {
-    FC_XPU_KERNEL_IMPL(dtype::float16, int16_t, float, int16_t);
+  if (out_dtype == DataType::FLOAT32) {
+    FC_XPU_KERNEL_IMPL(T, int16_t, float, int16_t);
+  } else if (out_dtype == DataType::FLOAT16) {
+    FC_XPU_KERNEL_IMPL(T, int16_t, dtype::float16, int16_t);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Not support: x_dtype is %s, out_dtype is %s.",
-        DataTypeToString(x_dtype),
-        DataTypeToString(out_dtype)));
+    PADDLE_THROW(phi::errors::Unimplemented("Not support out_dtype is %s.",
+                                            DataTypeToString(out_dtype)));
   }
 }
 
