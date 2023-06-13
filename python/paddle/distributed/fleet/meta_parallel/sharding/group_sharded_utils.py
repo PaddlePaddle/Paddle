@@ -238,7 +238,6 @@ def GroupShardedScaler(scaler):
         if getattr(optimizer._optim, '_param_groups', None) and isinstance(
             optimizer._optim._param_groups[0], dict
         ):
-
             for group in optimizer._optim._param_groups:
                 for param in group['params']:
                     if param.grad is not None:

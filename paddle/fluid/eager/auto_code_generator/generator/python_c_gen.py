@@ -604,7 +604,6 @@ def GenerateCoreOpsInfoMap():
 
 
 def GeneratePythonCWrappers(python_c_function_str, python_c_function_reg_str):
-
     (
         core_ops_infos_definition,
         core_ops_infos_registry,

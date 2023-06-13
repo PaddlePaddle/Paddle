@@ -1870,7 +1870,7 @@ class OneCycleLR(LRScheduler):
                 )
             )
 
-        for (i, (end_step, step_size)) in enumerate(
+        for i, (end_step, step_size) in enumerate(
             zip(self._step_config[1:], self._steps_size)
         ):
             # i == len(self._lr_config) - 2 catch the last step, otherwise it will return None.

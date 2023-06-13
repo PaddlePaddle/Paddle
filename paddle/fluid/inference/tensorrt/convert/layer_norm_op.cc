@@ -24,57 +24,129 @@ class LayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a layer_norm op to tensorrt layer_norm plugin";
+    VLOG(4) << "convert a layer_norm op with dynamic shape to  Normalization "
+               "layer or  Static shape  tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
 
-    auto* X = engine_->GetITensor(op_desc.Input("X").front());
-    auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
-    auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
-    const int begin_norm_axis =
-        op_desc.HasAttr("begin_norm_axis")
-            ? PADDLE_GET_CONST(int, op_desc.GetAttr("begin_norm_axis"))
-            : 1;
+    auto* X = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto rank = X->getDimensions().nbDims;
+    std::string output_name = op_desc.Output("Y")[0];
     const float eps = op_desc.HasAttr("epsilon")
                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
-    PADDLE_ENFORCE_NOT_NULL(
-        Bias_v,
-        platform::errors::InvalidArgument(
-            "Input(Bias) of layer_norm should not be null."));
-    PADDLE_ENFORCE_NOT_NULL(
-        Scale_v,
-        platform::errors::InvalidArgument(
-            "Input(Scale) of layer_norm should not be null."));
-
-    auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
-    auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
-
-    auto bias_weight =
-        engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);
-    auto scale_weight =
-        engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
-
-    nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      // For dynamic shape,
-      // the shape of mean and variance will be determine in configuPlugin.
-      std::vector<int64_t> mean_shape{1};
-      std::vector<int64_t> variance_shape{1};
-      bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-      plugin::LayerNormPluginDynamic* plugin =
-          new plugin::LayerNormPluginDynamic(
-              static_cast<const float*>(bias_weight.get().values),
-              bias_weight.get().count,
-              static_cast<const float*>(scale_weight.get().values),
-              scale_weight.get().count,
-              begin_norm_axis,
-              eps,
-              mean_shape,
-              variance_shape,
-              with_fp16);
-      layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
+      auto* Scale = engine_->GetITensor(op_desc.Input("Scale")[0]);
+      auto* Bias = engine_->GetITensor(op_desc.Input("Bias")[0]);
+      int32_t begin_axis =
+          op_desc.HasAttr("begin_norm_axis")
+              ? PADDLE_GET_CONST(int, op_desc.GetAttr("begin_norm_axis"))
+              : 1;
+      uint32_t axisMask{0};
+      for (int32_t i = begin_axis; i < rank; i++) {
+        axisMask |= 1 << i;
+      }
+      std::vector<int32_t> indice_dim_vec(rank);
+      std::iota(indice_dim_vec.begin(), indice_dim_vec.end(), 0);
+      auto p = std::remove_if(indice_dim_vec.begin(),
+                              indice_dim_vec.end(),
+                              [begin_axis](int x) { return x < begin_axis; });
+      indice_dim_vec.resize(p - indice_dim_vec.begin());
+      auto newDims = Gather(Shape(X), indice_dim_vec);
+      auto newrank = indice_dim_vec.size();
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(rank - newrank, 1));
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(newDims);
+      nvinfer1::ITensor* concat_shape_tensor = Concat(itensors);
+      auto Bias_reshape = Reshape(
+          Bias,
+          concat_shape_tensor,
+          ("layer_norm Bias: reshape: (Output(" + output_name + ")").c_str());
+      auto Scale_reshape = Reshape(
+          Scale,
+          concat_shape_tensor,
+          ("layer_norm Scale: reshape: (Output(" + output_name + ")").c_str());
+#if IS_TRT_VERSION_GE(8600)
+      auto layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Normalization, *X, *Scale_reshape, *Bias_reshape, axisMask);
+      layer->setEpsilon(eps);
+      RreplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
+#else
+      // μ
+      auto miu_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *X, nvinfer1::ReduceOperation::kAVG, axisMask, true);
+      miu_layer->setName((output_name + "_miu").c_str());
+      auto miu_output = miu_layer->getOutput(0);
+      // x−μ
+      auto xsubmiu_output = Sub(X, miu_output);
+      // σ
+      // pow(x−μ,2)
+      auto pow_tensor = Add1DConstantLayer(static_cast<float>(2));
+      auto xsubmiu_pow_out = Pow(
+          xsubmiu_output,
+          BroadcastTensors(xsubmiu_output,
+                           pow_tensor,
+                           ("layer_norm_pow: reshape_for_broadcast: (Output(" +
+                            output_name + ")")
+                               .c_str()));
+      // mean_var
+      auto mean_var_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               Reduce,
+                               *xsubmiu_pow_out,
+                               nvinfer1::ReduceOperation::kAVG,
+                               axisMask,
+                               true);
+      mean_var_layer->setName((output_name + "_sigma").c_str());
+      auto mean_var_out = mean_var_layer->getOutput(0);
+      // sigma
+      auto eps_tensor = Add1DConstantLayer(eps);
+      auto sum_out = Sum(
+          mean_var_out,
+          BroadcastTensors(mean_var_out,
+                           eps_tensor,
+                           ("layer_norm_eps: reshape_for_broadcast: (Output(" +
+                            output_name + ")")
+                               .c_str()));
+      auto sigma_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Unary, *sum_out, nvinfer1::UnaryOperation::kSQRT);
+      auto sigma_output = sigma_layer->getOutput(0);
+      // σ/sigma
+      auto div_out = Div(xsubmiu_output, sigma_output);
+      // (σ/sigma)*g+b
+      auto scale_out = Prod(div_out, Scale_reshape);
+      auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                        ElementWise,
+                                        *scale_out,
+                                        *Bias_reshape,
+                                        nvinfer1::ElementWiseOperation::kSUM);
+      RreplenishLayerAndOutput(layer, "layer_norm", {output_name}, test_mode);
+#endif
     } else {
+      auto* Bias_v = scope.FindVar(op_desc.Input("Bias")[0]);
+      auto* Scale_v = scope.FindVar(op_desc.Input("Scale")[0]);
+      PADDLE_ENFORCE_NOT_NULL(
+          Bias_v,
+          platform::errors::InvalidArgument(
+              "Input(Bias) of layer_norm should not be null."));
+      PADDLE_ENFORCE_NOT_NULL(
+          Scale_v,
+          platform::errors::InvalidArgument(
+              "Input(Scale) of layer_norm should not be null."));
+      auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
+      auto* Scale_t = Scale_v->GetMutable<phi::DenseTensor>();
+
+      auto bias_weight =
+          engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *Bias_t);
+      auto scale_weight =
+          engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
+
+      const int begin_norm_axis =
+          op_desc.HasAttr("begin_norm_axis")
+              ? PADDLE_GET_CONST(int, op_desc.GetAttr("begin_norm_axis"))
+              : 1;
+
       int statis_num = 1;
       for (int i = 1; i < begin_norm_axis; i++) {
         statis_num *= X->getDimensions().d[i];
@@ -93,13 +165,11 @@ class LayerNormOpConverter : public OpConverter {
           mean_shape,
           variance_shape,
           with_fp16);
-      layernorm_layer = engine_->AddPlugin(
+      auto* layernorm_layer = engine_->AddPlugin(
           &X, 1, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
+      RreplenishLayerAndOutput(
+          layernorm_layer, "layer_norm", {output_name}, test_mode);
     }
-
-    auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(
-        layernorm_layer, "layer_norm", {output_name}, test_mode);
   }
 };
 

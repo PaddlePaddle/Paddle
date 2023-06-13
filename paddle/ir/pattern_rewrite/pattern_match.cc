@@ -88,7 +88,7 @@ RewriterBase::~RewriterBase() = default;
 //   // assert(op->num_results() == new_values.size() && "incorrect number of
 //   values to replace operation"); NotifyRootReplaced(op, new_values); bool
 //   replace_all_uses = true; for (uint32_t i = 0; i < op->num_results(); ++i) {
-//     // op->GetResultByIndex(0)
+//     // op->result(0)
 //   }
 // }
 // void RewriterBase::ReplaceOpWithIf(Operation* op,
@@ -138,7 +138,7 @@ void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
          "replacement op doesn't match results of original op");
   // TODO(wilber): Op support results method.
   // if (op->num_results() == 1) return ReplaceOp(op,
-  // new_op->GetResultByIndex(0)); return ReplaceOp(op, new_op->GetResults());
+  // new_op->result(0)); return ReplaceOp(op, new_op->GetResults());
 }
 
 }  // namespace ir
