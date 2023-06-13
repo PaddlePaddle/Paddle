@@ -54,7 +54,6 @@ class ControllerBase:
         self.join_server = None
 
     def deploy_pod(self):
-
         assert (
             len(self.pod.containers) + len(self.pod.init_containers) > 0
         ), "No container in the pod"
@@ -219,7 +218,6 @@ class Controller(ControllerBase):
         log_file=None,
         is_init=False,
     ):
-
         if not container:
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file

@@ -1093,7 +1093,6 @@ class TestDistBase(unittest.TestCase):
         log_name="",
         devices="1",
     ):
-
         cmd = self._python_interp
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -1336,7 +1335,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": f"{trainer_num}",
                 "PADDLE_TRAINER_ID": f"{trainer_id}",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_DISTRI_BACKEND": "gloo",
                 "GLOG_v": "2",
@@ -1789,7 +1787,6 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         log_name="",
     ):
-
         # need open p2p or shm otherwise multi cards mode will hang
         need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
 

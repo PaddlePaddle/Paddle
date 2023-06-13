@@ -18,6 +18,7 @@
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
@@ -40,6 +41,7 @@
 
 #include "paddle/fluid/platform/init.h"
 
+#include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
 #include "glog/logging.h"
@@ -54,7 +56,7 @@ void build_scope(ir::Block* block,
     int input = (*it)->num_operands();
     if (input > 0) {
       for (int i = 0; i < input; ++i) {
-        auto ptr = (*it)->GetOperandByIndex(i).source();
+        auto ptr = (*it)->operand(i).source();
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -72,7 +74,7 @@ void build_scope(ir::Block* block,
 
     if (out_num > 0) {
       for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = (*it)->GetResultByIndex(i);
+        ir::Value ptr = (*it)->result(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -92,33 +94,33 @@ template <typename T>
 void build_context(ir::Operation* op,
                    const std::unordered_map<ir::Value, std::string>& name_map,
                    paddle::framework::Scope* scope,
+                   const OpInfoTuple& op_yaml_info,
                    T* ctx,
                    bool is_infer_meta = true) {
-  paddle::dialect::OpYamlInfoInterface op_info_interface =
-      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-  auto op_info_res = op_info_interface.GetOpInfo();
-
-  auto input_info = std::get<0>(op_info_res);
-
-  std::set<std::string> input_set;
+  // inputs include input and mutable attributes
+  auto input_info = std::get<0>(op_yaml_info);
+  std::map<std::string, size_t> input_index_map;
+  std::map<std::string, std::string> mutable_attr_type_map;
+  int input_index = 0;
   for (auto& t : input_info) {
     VLOG(6) << t.name << "\t" << t.type_name;
-
-    input_set.insert(t.name);
+    input_index_map[t.name] = input_index++;
+    if (t.is_mutable_attribute) {
+      mutable_attr_type_map[t.name] = t.type_name;
+    }
   }
 
-  auto attr_map = op->attributes();
-
+  auto attr_info = std::get<1>(op_yaml_info);
   std::map<std::string, std::string> attr_type_map;
-  auto attr_info = std::get<1>(op_info_res);
   for (auto& t : attr_info) {
     VLOG(6) << t.name << "\t" << t.type_name;
     attr_type_map[t.name] = t.type_name;
   }
 
-  auto runtime_info = std::get<3>(op_info_res);
+  auto attr_map = op->attributes();
+  auto runtime_info = std::get<3>(op_yaml_info);
 
-  int input_index = 0;
+  // int input_index = 0;
   std::vector<std::string> vec_param_list;
   if (is_infer_meta) {
     vec_param_list = runtime_info.infer_meta_param;
@@ -126,13 +128,31 @@ void build_context(ir::Operation* op,
     vec_param_list = runtime_info.kernel_param;
   }
   for (auto& t : vec_param_list) {
-    if (input_set.count(t)) {
+    if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->GetOperandByIndex(input_index++).source();
+      ir::Value ptr = op->operand(input_index_map[t]).source();
       auto in_var_name = name_map.at(ptr);
 
-      ctx->EmplaceBackInput(
-          scope->Var(in_var_name)->GetMutable<phi::DenseTensor>());
+      if (mutable_attr_type_map.count(t)) {
+        VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
+                << in_var_name;
+        if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
+          ctx->EmplaceBackAttr(phi::IntArray(
+              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+        } else if (mutable_attr_type_map[t] ==
+                   "paddle::dialect::ScalarAttribute") {
+          ctx->EmplaceBackAttr(phi::Scalar(
+              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
+                                                  mutable_attr_type_map[t]));
+        }
+
+      } else {
+        VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
+        ctx->EmplaceBackInput(
+            scope->Var(in_var_name)->GetMutable<phi::DenseTensor>());
+      }
     }
 
     if (attr_type_map.count(t)) {
@@ -143,20 +163,23 @@ void build_context(ir::Operation* op,
       } else if (type_name == "paddle::dialect::DataTypeAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "ir::Int32_tAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<ir::Int32_tAttribute>().data());
+      } else if (type_name == "ir::Int32Attribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
+      } else if (type_name == "paddle::dialect::ScalarAttribute") {
+        ctx->EmplaceBackAttr(
+            attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 type_name));
       }
+      VLOG(6) << "ctx->EmplaceBackAttr: " << t;
     }
   }
 
-  ir::Value out_ptr = op->GetResultByIndex(0);
+  ir::Value out_ptr = op->result(0);
   auto name = name_map.at(out_ptr);
 
   ctx->EmplaceBackOutput(scope->Var(name)->GetMutable<phi::DenseTensor>());
@@ -178,16 +201,17 @@ class PhiKernelAdaptor {
 
       auto attr_map = (*it)->attributes();
 
-      InferShapeInterface interface = (*it)->dyn_cast<InferShapeInterface>();
-      phi::InferMetaContext ctx;
-
-      build_context<phi::InferMetaContext>((*it), name_map, scope_, &ctx);
-
-      interface.InferShape(&ctx);
-
       paddle::dialect::OpYamlInfoInterface op_info_interface =
           (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
       auto op_info_res = op_info_interface.GetOpInfo();
+
+      InferShapeInterface interface = (*it)->dyn_cast<InferShapeInterface>();
+      phi::InferMetaContext ctx;
+
+      build_context<phi::InferMetaContext>(
+          (*it), name_map, scope_, op_info_res, &ctx);
+
+      interface.InferShape(&ctx);
 
       auto runtime_info = std::get<3>(op_info_res);
 
@@ -197,6 +221,9 @@ class PhiKernelAdaptor {
       phi::KernelKey kernel_key(phi::TransToPhiBackend(cpu_place),
                                 phi::DataLayout::ANY,
                                 phi::DataType::FLOAT32);
+      if (runtime_info.kernel_func[0] == "full_int_array") {
+        kernel_key.set_dtype(phi::DataType::INT64);
+      }
       auto found_it = phi_kernels.find(kernel_key);
       if (found_it == phi_kernels.end()) {
         std::cerr << "kernel name " << runtime_info.kernel_func[0] << std::endl;
@@ -209,12 +236,64 @@ class PhiKernelAdaptor {
         phi::KernelContext kernel_ctx(dev_ctx);
 
         build_context<phi::KernelContext>(
-            (*it), name_map, scope_, &kernel_ctx, false);
+            (*it), name_map, scope_, op_info_res, &kernel_ctx, false);
         found_it->second(&kernel_ctx);
 
-        auto out_value = (*it)->GetResultByIndex(0);
+        auto out_value = (*it)->result(0);
         out_name = name_map[out_value];
       }
+    }
+  }
+
+  void run_kernel_prog(ir::Program* program) {
+    auto block = program->block();
+    std::unordered_map<ir::Value, std::string> name_map;
+    build_scope(block, scope_, &name_map);
+    ir::IrContext* ctx = ir::IrContext::Instance();
+
+    ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
+    phi::Place cpu_place(phi::AllocationType::CPU);
+    for (auto it = block->begin(); it != block->end(); ++it) {
+      auto attr_map = (*it)->attributes();
+
+      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+
+      ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op_name);
+
+      auto impl =
+          op1_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+      auto yaml_info = impl->get_op_info_();
+
+      auto attr_info = std::get<1>(yaml_info);
+
+      auto infer_shape_impl = op1_info.GetInterfaceImpl<InferShapeInterface>();
+
+      phi::InferMetaContext ctx;
+
+      build_context<phi::InferMetaContext>(
+          (*it), name_map, scope_, yaml_info, &ctx);
+
+      infer_shape_impl->infer_shape_(&ctx);
+
+      auto kernel_name =
+          attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+      auto kernel_key = attr_map.at("kernel_key")
+                            .dyn_cast<paddle::dialect::KernelAttribute>()
+                            .data();
+
+      auto kernel_fn =
+          phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
+
+      phi::KernelContext kernel_ctx(dev_ctx);
+
+      build_context<phi::KernelContext>(
+          (*it), name_map, scope_, yaml_info, &kernel_ctx, false);
+      kernel_fn(&kernel_ctx);
+
+      auto out_value = (*it)->GetResultByIndex(0);
+      out_name = name_map[out_value];
     }
   }
 

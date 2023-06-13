@@ -242,7 +242,6 @@ class TestListWithoutControlFlow(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-
         with fluid.dygraph.guard():
             if to_static:
                 res = paddle.jit.to_static(self.dygraph_func)(self.input)
@@ -285,7 +284,6 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
         ]
 
     def train(self, to_static=False):
-
         with fluid.dygraph.guard():
             if to_static:
                 print(paddle.jit.to_static(self.dygraph_func).code)

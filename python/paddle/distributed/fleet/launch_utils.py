@@ -494,7 +494,6 @@ def run_with_coverage(*args):
 def start_local_trainers(
     cluster, pod, training_script, training_script_args, log_dir=None, envs=None
 ):
-
     if envs is None:
         current_env = copy.copy(os.environ.copy())
     else:
@@ -695,8 +694,9 @@ def get_gpus(gpus):
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, (
                     "Can't find "
-                    "your gpus %s in CUDA_VISIBLE_DEVICES[%s]."
-                    % (x, cuda_visible_devices)
+                    "your gpus {} in CUDA_VISIBLE_DEVICES[{}].".format(
+                        x, cuda_visible_devices
+                    )
                 )
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
@@ -1485,10 +1485,9 @@ class ParameterServerLauncher:
             else:
                 self.current_node_ip = pod_ip
             if not self.distribute_mode == DistributeMode.PS_HETER:
-                assert self.current_node_ip in self.node_ips, (
-                    "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}"
-                    % (self.current_node_ip, self.node_ips)
-                )
+                assert (
+                    self.current_node_ip in self.node_ips
+                ), f"Can't find your local ip {{{self.current_node_ip}}} in args.servers and args.workers ips: {{{self.node_ips}}}"
         if self.current_node_ip in self.node_ips:
             self.node_rank = self.node_ips.index(self.current_node_ip)
             logger.debug(

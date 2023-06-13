@@ -88,7 +88,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             dilations,
             data_format,
         ) in itertools.product(*configurations):
-
             attrs = [
                 {
                     "data_fromat": data_format,

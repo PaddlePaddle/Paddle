@@ -129,8 +129,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    std::cout <<op_type << std::endl;
-
     // do not support the op which is labeled the `skip_quant`
     if ((desc.HasAttr("namescope") &&
          PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==

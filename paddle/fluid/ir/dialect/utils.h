@@ -83,9 +83,9 @@ static inline ir::Attribute TransToIrAttribute(phi::Scalar scalar,
     case phi::DataType::FLOAT64:
       return ir::DoubleAttribute::get(ctx, scalar.to<double>());
     case phi::DataType::INT32:
-      return ir::Int32_tAttribute::get(ctx, scalar.to<int32_t>());
+      return ir::Int32Attribute::get(ctx, scalar.to<int32_t>());
     case phi::DataType::INT64:
-      return ir::Int64_tAttribute::get(ctx, scalar.to<int64_t>());
+      return ir::Int64Attribute::get(ctx, scalar.to<int64_t>());
     case phi::DataType::BOOL:
       return ir::BoolAttribute::get(ctx, scalar.to<bool>());
     default:
@@ -101,14 +101,17 @@ struct OpInputInfo {
   std::string type_name;
   bool optional = false;
   bool no_need_buffer = false;
+  bool is_mutable_attribute = false;
   OpInputInfo(std::string name,
               std::string type_name,
               bool optional,
-              bool no_need_buffer)
+              bool no_need_buffer,
+              bool is_mutable_attribute)
       : name(name),
         type_name(type_name),
         optional(optional),
-        no_need_buffer(no_need_buffer) {}
+        no_need_buffer(no_need_buffer),
+        is_mutable_attribute(is_mutable_attribute) {}
 };
 
 struct OpOutputInfo {
@@ -141,14 +144,23 @@ struct OpRunTimeInfo {
   std::vector<std::string> infer_meta_param;
   std::vector<std::string> kernel_func;
   std::vector<std::string> kernel_param;
+  std::vector<std::string> kernel_key_dtype;
+  std::vector<std::pair<std::string, std::string>> inplace;
+  std::vector<std::pair<std::string, std::string>> view;
   OpRunTimeInfo(std::string infer_meta_func,
                 std::vector<std::string> infer_meta_param,
                 std::vector<std::string> kernel_func,
-                std::vector<std::string> kernel_param)
+                std::vector<std::string> kernel_param,
+                std::vector<std::string> dtype,
+                std::vector<std::pair<std::string, std::string>> inplace,
+                std::vector<std::pair<std::string, std::string>> view)
       : infer_meta_func(infer_meta_func),
         infer_meta_param(infer_meta_param),
         kernel_func(kernel_func),
-        kernel_param(kernel_param) {}
+        kernel_param(kernel_param),
+        kernel_key_dtype(dtype),
+        inplace(inplace),
+        view(view) {}
 };
 
 }  // namespace dialect

@@ -171,7 +171,6 @@ class TestBilateralSliceOp(OpTest):
     def test_check_output(self):
         place = paddle.fluid.CUDAPlace(0)
         self.check_output_with_place(place, atol=1e-5)
-        self.check_output
 
     def test_check_grad(self):
         place = paddle.fluid.CUDAPlace(0)

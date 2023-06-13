@@ -559,7 +559,6 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         data = np.array(data)
 
     if not isinstance(data, np.ndarray):
-
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array(data)
         elif isinstance(data, (list, tuple)):
@@ -641,7 +640,6 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
-
     if isinstance(data, Variable):
         output = data
         if dtype is not None and dtype != data.dtype:
@@ -2108,11 +2106,9 @@ def assign(x, output=None):
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
-                [
-                    x.shape == (1,)
-                    for x in input
-                    if isinstance(x, (Variable, core.eager.Tensor))
-                ]
+                x.shape == (1,)
+                for x in input
+                if isinstance(x, (Variable, core.eager.Tensor))
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."

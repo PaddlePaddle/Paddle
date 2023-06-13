@@ -267,20 +267,41 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(lite_enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
-      pass->Set("xpu_l3_workspace_size",
-                new int(argument->xpu_l3_workspace_size()));
+      pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      pass->Set("xpu_l3_size", new size_t(argument->xpu_l3_size()));
+      pass->Set("xpu_l3_ptr", new void *(argument->xpu_l3_ptr()));
+      pass->Set("xpu_l3_autotune_size",
+                new size_t(argument->xpu_l3_autotune_size()));
+      pass->Set("xpu_stream", new void *(argument->xpu_stream()));
+      pass->Set("xpu_conv_autotune_level",
+                new int(argument->xpu_conv_autotune_level()));
+      pass->Set("xpu_conv_autotune_file",
+                new std::string(argument->xpu_conv_autotune_file()));
+      pass->Set("xpu_conv_autotune_file_writeback",
+                new bool(argument->xpu_conv_autotune_file_writeback()));
+      pass->Set("xpu_fc_autotune_level",
+                new int(argument->xpu_fc_autotune_level()));
+      pass->Set("xpu_fc_autotune_file",
+                new std::string(argument->xpu_fc_autotune_file()));
+      pass->Set("xpu_fc_autotune_file_writeback",
+                new bool(argument->xpu_fc_autotune_file_writeback()));
+      pass->Set("xpu_gemm_compute_precision",
+                new int(argument->xpu_gemm_compute_precision()));
+      pass->Set("xpu_transformer_softmax_optimize_level",
+                new int(argument->xpu_transformer_softmax_optimize_level()));
+      pass->Set("xpu_transformer_encoder_adaptive_seqlen",
+                new bool(argument->xpu_transformer_encoder_adaptive_seqlen()));
+      pass->Set(
+          "xpu_quant_post_static_gelu_out_threshold",
+          new float(argument->xpu_quant_post_static_gelu_out_threshold()));
+      pass->Set("xpu_quant_post_dynamic_activation_method",
+                new int(argument->xpu_quant_post_dynamic_activation_method()));
+      pass->Set("xpu_l3_locked", new bool(argument->xpu_lite_l3_locked()));
+      pass->Set("xpu_enable_multi_stream",
+                new bool(argument->xpu_lite_enable_multi_stream()));
       pass->Set("use_opencl", new bool(argument->use_opencl()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
-      pass->Set("locked", new bool(argument->xpu_locked()));
-      pass->Set("autotune", new bool(argument->xpu_autotune()));
-      pass->Set("autotune_file",
-                new std::string(argument->xpu_autotune_file()));
-      pass->Set("precision", new std::string(argument->xpu_precision()));
-      pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
-      pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
-      pass->Set("enable_multi_stream",
-                new bool(argument->xpu_enable_multi_stream()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",
@@ -313,12 +334,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     } else if (pass_name == "fused_multi_transformer_xpu_pass") {
-      auto op_types = argument->xpu_quant_post_dynamic_op_types();
-      if (std::count(op_types.begin(),
-                     op_types.end(),
-                     "fused_multi_transformer") > 0) {
-        pass->Set("quant_weight_bits",
-                  new int(argument->xpu_quant_post_dynamic_weight_bits()));
+      int quant_post_dynamic_weight_precision =
+          argument->xpu_quant_post_dynamic_weight_precision();
+      if (quant_post_dynamic_weight_precision == 0) {
+        pass->Set("quant_post_dynamic_weight_precision ", new int(0));
       }
     }
     pre_pass = pass_name;
