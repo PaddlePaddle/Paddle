@@ -54,7 +54,7 @@ void build_scope(ir::Block* block,
     if (op_name == "pd.fetch") {
       // fetch is a very special op, with no output
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->GetOperandByIndex(i).source();
+        auto ptr = (*it)->operand(i).source();
         auto var_name = attr_map.at("name").dyn_cast<ir::StrAttribute>().data();
 
         PADDLE_ENFORCE_EQ(
@@ -72,7 +72,7 @@ void build_scope(ir::Block* block,
 
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->GetOperandByIndex(i).source();
+        auto ptr = (*it)->operand(i).source();
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -89,7 +89,7 @@ void build_scope(ir::Block* block,
 
     if (out_num > 0) {
       for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = (*it)->GetResultByIndex(i);
+        ir::Value ptr = (*it)->result(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -141,7 +141,7 @@ void build_infer_meta_context(
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->GetOperandByIndex(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]).source();
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {
@@ -194,7 +194,7 @@ void build_infer_meta_context(
     }
   }
 
-  ir::Value out_ptr = op->GetResultByIndex(0);
+  ir::Value out_ptr = op->result(0);
   auto name = name_map.at(out_ptr);
 
   ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
@@ -236,7 +236,7 @@ void build_phi_kernel_context(
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->GetOperandByIndex(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]).source();
       auto in_var_name = name_map.at(ptr);
 
       if (input_map != nullptr) {
@@ -303,7 +303,7 @@ void build_phi_kernel_context(
     }
   }
 
-  ir::Value out_ptr = op->GetResultByIndex(0);
+  ir::Value out_ptr = op->result(0);
   auto name = name_map.at(out_ptr);
   std::cerr << "out name " << name << std::endl;
 

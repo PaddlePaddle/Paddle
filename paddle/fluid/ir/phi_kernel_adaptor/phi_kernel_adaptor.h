@@ -103,7 +103,7 @@ class PhiKernelAdaptor {
             (*it), name_map, scope_, op_info_res, &kernel_ctx);
         found_it->second(&kernel_ctx);
 
-        auto out_value = (*it)->GetResultByIndex(0);
+        auto out_value = (*it)->result(0);
         out_name = name_map[out_value];
       }
     }
@@ -156,7 +156,7 @@ class PhiKernelAdaptor {
           (*it), name_map, scope_, yaml_info, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
-      auto out_value = (*it)->GetResultByIndex(0);
+      auto out_value = (*it)->result(0);
       out_name = name_map[out_value];
     }
   }
