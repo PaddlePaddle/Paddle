@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, _set_use_system_allocator
+from eager_op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -160,7 +164,13 @@ class TestBatchNormOp(OpTest):
         np.random.seed(123)
 
         self.C = self.shape[1] if self.data_format == "NCHW" else self.shape[-1]
-        x = np.random.random(self.shape).astype(self.dtype)
+        if self.dtype == "uint16":
+            x = convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")
+            )
+        else:
+            x = np.random.random(self.shape).astype(self.dtype)
+
         self.var_dtype = (
             "float32" if self.dtype in ["float16", "uint16"] else self.dtype
         )
@@ -168,7 +178,14 @@ class TestBatchNormOp(OpTest):
         bias = np.random.random(self.C).astype(self.var_dtype)
         running_mean = np.random.random(self.C).astype(self.var_dtype)
         running_var = np.random.random(self.C).astype(self.var_dtype)
-        self.out_grad = [np.random.random(self.shape).astype(self.dtype)]
+        if self.dtype == "uint16":
+            self.out_grad = [
+                convert_float_to_uint16(
+                    np.random.random(self.shape).astype("float32")
+                )
+            ]
+        else:
+            self.out_grad = [np.random.random(self.shape).astype(self.dtype)]
         self.inputs = {
             "X": x,
             "Scale": weight,
@@ -214,6 +231,8 @@ class TestBatchNormOp(OpTest):
             self.use_global_stats,
             trainable_statistics,
         )
+        if self.dtype == "uint16":
+            y = convert_float_to_uint16(y)
         paddle.enable_static()
         self.outputs = {
             "Y": y,

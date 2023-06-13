@@ -1206,12 +1206,11 @@ void batch_norm_grad(const Tensor& x,
 
   Tensor x_data = x;
   Tensor out_grad_data = out_grad;
-  if (x.dtype() == phi::DataType::FLOAT16 ||
-      x.dtype() == phi::DataType::BFLOAT16) {
+
+  bool need_cast = out_grad.dtype() == phi::DataType::FLOAT16 ||
+                   out_grad.dtype() == phi::DataType::BFLOAT16;
+  if (need_cast) {
     x_data = cast<T>(x, phi::DataType::FLOAT32);
-  }
-  if (out_grad.dtype() == phi::DataType::FLOAT16 ||
-      out_grad.dtype() == phi::DataType::BFLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
   auto x_dims = x_data.dims();
@@ -1276,8 +1275,7 @@ void batch_norm_grad(const Tensor& x,
         if (use_global_stats) {
           auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
-          if (x.dtype() == phi::DataType::FLOAT16 ||
-              x.dtype() == phi::DataType::BFLOAT16) {
+          if (need_cast) {
             nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
           }
           set_output<T>(nchw_x_grad, x_grad);
@@ -1290,8 +1288,7 @@ void batch_norm_grad(const Tensor& x,
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
-          if (x.dtype() == phi::DataType::FLOAT16 ||
-              x.dtype() == phi::DataType::BFLOAT16) {
+          if (need_cast) {
             nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
           }
           set_output<T>(nchw_x_grad, x_grad);
@@ -1314,8 +1311,7 @@ void batch_norm_grad(const Tensor& x,
             out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
-          if (x.dtype() == phi::DataType::FLOAT16 ||
-              x.dtype() == phi::DataType::BFLOAT16) {
+          if (need_cast) {
             x_grad_data = cast<T>(x_grad_data, x.dtype());
           }
           set_output<T>(x_grad_data, x_grad);
@@ -1329,8 +1325,7 @@ void batch_norm_grad(const Tensor& x,
               out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
-          if (x.dtype() == phi::DataType::FLOAT16 ||
-              x.dtype() == phi::DataType::BFLOAT16) {
+          if (need_cast) {
             x_grad_data = cast<T>(x_grad_data, x.dtype());
           }
           set_output<T>(x_grad_data, x_grad);
