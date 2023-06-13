@@ -4,4 +4,4 @@ file(GLOB PD_INTERFACE_SRCS "*.cc")
 cc_library(
   pd_interface
   SRCS ${PD_INTERFACE_SRCS}
-  DEPS ir_shared framework_proto phi_utils)
+  DEPS ir framework_proto phi_utils)

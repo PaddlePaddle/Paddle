@@ -17,8 +17,6 @@
 #include <glog/logging.h>
 #include <functional>
 
-#include "paddle/ir/core/enforce.h"
-
 namespace ir {
 
 ///
