@@ -48,7 +48,7 @@ class RangeOpConverter : public OpConverter {
     auto number_tensor = Max(Sub(zero_tensor, quotient_tensor), zero_tensor);
     auto* start1 = engine_->GetITensor(op_desc.Input("Start")[0]);
 #if IS_TRT_VERSION_LT(8000)
-    nvinfer1::Dims start_dims{0, {1}, { 0 }};
+    nvinfer1::Dims start_dims{0, {1}, { nvinfer1::DimensionType::kSPATIAL }};
 #else
     nvinfer1::Dims start_dims{0, {1}};
 #endif
