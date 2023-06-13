@@ -82,7 +82,7 @@ function(download_lapack)
 endfunction()
 
 # Download and check lapack.
-if(NOT EXISTS ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE})
+if(EXISTS ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE})
   file(MD5 ${LAPACK_DOWNLOAD_DIR}/${LAPACK_FILE} LAPACK_MD5)
   if(NOT LAPACK_MD5 STREQUAL LAPACK_URL_MD5)
     # clean build file

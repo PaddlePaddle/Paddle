@@ -72,7 +72,7 @@ function(download_mklml)
 endfunction()
 
 # Download and check mklml.
-if(NOT EXISTS ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE})
+if(EXISTS ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE})
   file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
   if(NOT MKLML_MD5 STREQUAL MKLML_URL_MD5)
     # clean build file
