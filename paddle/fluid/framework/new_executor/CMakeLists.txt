@@ -12,7 +12,8 @@ set(STANDALONE_EXECUTOR_DEPS
     new_ir
     pd_dialect
     pd_op_to_kernel_pass
-    phi_kernel_adaptor)
+    phi_kernel_adaptor
+    program_translator)
 
 cc_library(
   standalone_executor

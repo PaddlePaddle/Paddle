@@ -23,6 +23,8 @@ namespace phi {
 
 template <typename T, typename Context, typename VType>
 void FullValue(const Context& dev_ctx, DenseTensor* tensor, VType val) {
+  std::cerr << "full value " << (tensor != nullptr) << std::endl;
+  std::cerr << "init " << tensor->initialized() << std::endl;
   dev_ctx.template Alloc<T>(tensor);
   auto t = phi::EigenVector<T>::Flatten(*tensor);
   t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(val));
@@ -34,6 +36,7 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
+  std::cerr << "11 full" << std::endl;
   out->Resize(phi::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
 }

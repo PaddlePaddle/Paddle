@@ -3,7 +3,6 @@ set(PYBIND_DEPS
     init_phi
     pybind
     python
-    pd_dialect
     proto_desc
     memory
     executor
@@ -39,8 +38,10 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
-    new_ir
     phi_kernel_adaptor
+    pd_dialect
+    new_ir
+    program_translator
     new_profiler
     jit_layer
     jit_property
@@ -479,9 +480,6 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS backward)
     list(APPEND PYBIND_DEPS grad_node_info)
     list(APPEND PYBIND_DEPS phi)
-    list(APPEND PYBIND_DEPS new_ir)
-    list(APPEND PYBIND_DEPS program_translator)
-    list(APPEND PYBIND_DEPS phi_kernel_adaptor)
     list(APPEND PYBIND_DEPS final_dygraph_function)
     list(APPEND PYBIND_DEPS final_dygraph_node)
     list(APPEND PYBIND_DEPS dygraph_function)
@@ -509,7 +507,7 @@ if(WITH_PYTHON)
   cc_library(
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} pd_dialect)
 
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)

@@ -102,6 +102,8 @@ phi::KernelKey GetKernelKey(
     }
   }
 
+  kernel_data_type = phi::DataType::FLOAT32;
+
   // parse all the input tensor
 
   if (input_map.size() == 0 || op->name() == "pd.full_") {
@@ -123,7 +125,8 @@ phi::KernelKey GetKernelKey(
 
       std::shared_ptr<phi::Allocation> holder(ptr);
 
-      auto dtype = convetIrType2DataType(type.dtype());
+      // auto dtype = convetIrType2DataType(type.dtype());
+      auto dtype = phi::DataType::FLOAT32;
 
       phi::DenseTensorMeta meta(
           dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
@@ -175,15 +178,18 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     // only for single output
     // need update new kernel key layout and data tyep
-    auto allocated_dense_tensor_dtype =
-        paddle::dialect::AllocatedDenseTensorType::get(
-            ctx,
-            phi::TransToPhiPlace(kernel_key.backend()),
-            (*it)
-                ->GetResultByIndex(0)
-                .type()
-                .dyn_cast<dialect::DenseTensorType>());
-
+    std::vector<ir::Type> op_output_types;
+    if ((*it)->num_results() > 0) {
+      auto allocated_dense_tensor_dtype =
+          paddle::dialect::AllocatedDenseTensorType::get(
+              ctx,
+              phi::TransToPhiPlace(kernel_key.backend()),
+              (*it)
+                  ->GetResultByIndex(0)
+                  .type()
+                  .dyn_cast<dialect::DenseTensorType>());
+      op_output_types.push_back(allocated_dense_tensor_dtype);
+    }
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
     if ((*it)->name() != "pd.full_" && (*it)->num_operands() > 0) {
@@ -213,10 +219,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     }
 
     ir::Operation* op1 = ir::Operation::Create(
-        vec_inputs, op1_attribute, {allocated_dense_tensor_dtype}, op1_info);
+        vec_inputs, op1_attribute, op_output_types, op1_info);
 
     map_op_pair[*it] = op1;
-    map_value_pair[(*it)->GetResultByIndex(0)] = op1->GetResultByIndex(0);
+
+    // only deal with single output
+    if ((*it)->num_results() > 0) {
+      map_value_pair[(*it)->GetResultByIndex(0)] = op1->GetResultByIndex(0);
+    }
 
     program->block()->push_back(op1);
   }

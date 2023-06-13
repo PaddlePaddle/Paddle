@@ -41,8 +41,8 @@
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "test/cpp/ir/core/phi_kernel_adaptor.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -97,6 +97,7 @@ TEST(program_test, program) {
   EXPECT_EQ(block->size(), 9u);
 
   // Execute program
+  std::cerr << "11" << std::endl;
   paddle::framework::Scope scope;
   PhiKernelAdaptor phi_kernel_adaptor(&scope);
   phi_kernel_adaptor.run(&program);

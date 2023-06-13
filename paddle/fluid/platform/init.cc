@@ -51,9 +51,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/program.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
@@ -198,6 +201,10 @@ void InitDevices() {
 }
 
 void InitDevices(const std::vector<int> devices) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
   std::vector<platform::Place> places;
 
   for (size_t i = 0; i < devices.size(); ++i) {

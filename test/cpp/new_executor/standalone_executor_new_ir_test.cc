@@ -29,6 +29,10 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
 
+#include "paddle/fluid/platform/init_phi.h"
+
+DECLARE_FILE_SYMBOLS(kernel_dialect);
+
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
@@ -71,7 +75,7 @@ TEST(StandaloneExecutor, run) {
 
   test_core.Run({});
 
-  auto tensor = scope.Var("var_2")->Get<phi::DenseTensor>();
+  auto tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
 
   std::cerr << "uot" << tensor << std::endl;
 }

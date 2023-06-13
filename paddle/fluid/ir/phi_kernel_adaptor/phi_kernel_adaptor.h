@@ -54,13 +54,15 @@ class PhiKernelAdaptor {
   void run(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
+    std::cerr << "run here" << std::endl;
     ir::build_scope(block, scope_, &name_map);
-
+    std::cerr << "after buid scope" << std::endl;
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
     for (auto it = block->begin(); it != block->end(); ++it) {
       VLOG(6) << "begin to run op " << (*it)->name();
 
+      std::cerr << (*it)->name() << std::endl;
       auto attr_map = (*it)->attributes();
 
       paddle::dialect::OpYamlInfoInterface op_info_interface =
@@ -71,8 +73,7 @@ class PhiKernelAdaptor {
           (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
       phi::InferMetaContext ctx;
 
-      ir::build_context<phi::InferMetaContext>(
-          (*it), name_map, scope_, op_info_res, &ctx);
+      ir::build_infer_meta_context((*it), name_map, scope_, op_info_res, &ctx);
 
       interface.InferShape(&ctx);
 
@@ -98,8 +99,8 @@ class PhiKernelAdaptor {
       } else {
         phi::KernelContext kernel_ctx(dev_ctx);
 
-        ir::build_context<phi::KernelContext>(
-            (*it), name_map, scope_, op_info_res, &kernel_ctx, false);
+        ir::build_phi_kernel_context(
+            (*it), name_map, scope_, op_info_res, &kernel_ctx);
         found_it->second(&kernel_ctx);
 
         auto out_value = (*it)->GetResultByIndex(0);
@@ -136,8 +137,7 @@ class PhiKernelAdaptor {
 
       phi::InferMetaContext ctx;
 
-      ir::build_context<phi::InferMetaContext>(
-          (*it), name_map, scope_, yaml_info, &ctx);
+      ir::build_infer_meta_context((*it), name_map, scope_, yaml_info, &ctx);
 
       infer_shape_impl->infer_shape_(&ctx);
 
@@ -152,8 +152,8 @@ class PhiKernelAdaptor {
 
       phi::KernelContext kernel_ctx(dev_ctx);
 
-      ir::build_context<phi::KernelContext>(
-          (*it), name_map, scope_, yaml_info, &kernel_ctx, false);
+      ir::build_phi_kernel_context(
+          (*it), name_map, scope_, yaml_info, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->GetResultByIndex(0);

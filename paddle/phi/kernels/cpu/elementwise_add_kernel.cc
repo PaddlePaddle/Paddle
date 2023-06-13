@@ -51,7 +51,9 @@ void AddKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  std::cerr << "add here" << std::endl;
   AddFunctor<T, Context>(dev_ctx, x, y, -1, out);
+  std::cerr << "fin add " << std::endl;
 }
 
 template <typename T, typename Context>

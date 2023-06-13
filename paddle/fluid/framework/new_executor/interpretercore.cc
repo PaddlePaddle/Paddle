@@ -297,6 +297,13 @@ paddle::framework::FetchList InterpreterCore::Run(
       std::cerr << "build scope" << std::endl;
       ::ir::build_scope(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
+      std::cerr << "check name name" << std::endl;
+
+      for (auto it = value_2_var_name_map_.begin();
+           it != value_2_var_name_map_.end();
+           ++it) {
+        std::cerr << it->second << std::endl;
+      }
       std::cerr << "build scope fin" << std::endl;
     } else {
       paddle::framework::interpreter::BuildVariableScope(
@@ -1116,6 +1123,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       op_func_node->infer_shape_interface_->infer_shape_(
           &(op_func_node->infer_meta_context_));
       std::cerr << "fin interface " << std::endl;
+      std::cerr << "op_func phi kernel "
+                << (op_func_node->phi_kernel_ != nullptr) << std::endl;
       (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
       std::cerr << "fin run kernel " << std::endl;
     } else if (!instr_node.IsArtificial()) {
