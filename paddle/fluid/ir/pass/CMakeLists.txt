@@ -4,4 +4,4 @@ file(GLOB PD_PASS_SRCS "*.cc")
 cc_library(
   pd_op_to_kernel_pass
   SRCS ${PD_PASS_SRCS}
-  DEPS new_ir phi_utils)
+  DEPS ir phi_utils)
