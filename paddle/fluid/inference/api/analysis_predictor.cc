@@ -389,7 +389,7 @@ bool AnalysisPredictor::Init(
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (config_.use_xpu_) {
+  if (config_.use_xpu_ && !config_.use_lite_) {
     private_context_ = true;
     if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
@@ -1418,14 +1418,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-    argument_->SetXpuLocked(config_.xpu_locked_);
-    argument_->SetXpuAutotune(config_.xpu_autotune_);
-    argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-    argument_->SetXpuPrecision(config_.xpu_precision_);
-    argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-    argument_->SetXpuDeviceId(config_.xpu_device_id_);
-    argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_->SetXpuLocked(config_.xpu_lite_l3_locked_);
+    argument_->SetXpuEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
     argument_->SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
@@ -1506,21 +1500,36 @@ void AnalysisPredictor::PrepareArgument() {
   }
 #endif
 
-#ifdef PADDLE_WITH_XPU
   argument_->SetUseXpu(config_.use_xpu_);
-  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-  argument_->SetXpuLocked(config_.xpu_locked_);
-  argument_->SetXpuAutotune(config_.xpu_autotune_);
-  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-  argument_->SetXpuPrecision(config_.xpu_precision_);
-  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-  argument_->SetXpuDeviceId(config_.xpu_device_id_);
-  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
-  argument_->SetXpuQuantPostDynamicWeightBits(
-      config_.xpu_quant_post_dynamic_weight_bits_);
+  argument_->SetXpuDeviceId(config_.xpu_config_.device_id);
+  argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
+  argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
+  argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuStream(config_.xpu_config_.stream);
+  argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
+  argument_->SetXpuConvAutotuneFile(config_.xpu_config_.conv_autotune_file);
+  argument_->SetXpuConvAutotuneFileWriteback(
+      config_.xpu_config_.conv_autotune_file_writeback);
+  argument_->SetXpuFcAutotuneLevel(config_.xpu_config_.fc_autotune_level);
+  argument_->SetXpuFcAutotuneFile(config_.xpu_config_.fc_autotune_file);
+  argument_->SetXpuFcAutotuneFileWriteback(
+      config_.xpu_config_.fc_autotune_file_writeback);
+  argument_->SetXpuGemmComputePrecision(
+      config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuTransformerSoftmaxOptimizeLevel(
+      config_.xpu_config_.transformer_softmax_optimize_level);
+  argument_->SetXpuTransformerEncoderAdaptiveSeqlen(
+      config_.xpu_config_.transformer_encoder_adaptive_seqlen);
+  argument_->SetXpuQuantPostStaticGeluOutThreshold(
+      config_.xpu_config_.quant_post_static_gelu_out_threshold);
+  argument_->SetXpuQuantPostDynamicActivationMethod(
+      config_.xpu_config_.quant_post_dynamic_activation_method);
+  argument_->SetXpuQuantPostDynamicWeightPrecision(
+      config_.xpu_config_.quant_post_dynamic_weight_precision);
   argument_->SetXpuQuantPostDynamicOpTypes(
-      config_.xpu_quant_post_dynamic_op_types_);
-#endif
+      config_.xpu_config_.quant_post_dynamic_op_types);
+  argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
+  argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
@@ -2076,8 +2085,35 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_ && !config_.use_lite_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
+
   executor_->Run();
   inference::DisplayMemoryInfo(place_, "after run");
+
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+#endif
 
   if (config_.shape_range_info_collected()) {
     CollectShapeRangeInfo();
@@ -2148,18 +2184,6 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 
 bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
 #ifdef PADDLE_WITH_XPU
-  PADDLE_ENFORCE(
-      private_context_,
-      paddle::platform::errors::Fatal(
-          "Must use private context if run predictor with external config."));
-
-  auto *dev_ctxs = reinterpret_cast<const std::map<
-      phi::Place,
-      std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-      this->GetDeviceContexts());
-  auto *dev_ctx =
-      static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
-
   auto xpu_runtime_config =
       reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
   auto *stream = xpu_runtime_config->stream;
@@ -2167,12 +2191,10 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
     paddle::platform::XPUStreamSync(
         static_cast<paddle::xpuStream>(predictor_stream_));
     predictor_stream_ = stream;
-    dev_ctx->SetStream(stream);
   }
 
-  size_t l3_size = xpu_runtime_config->l3_size;
-  void *l3_ptr = xpu_runtime_config->l3_ptr;
-  size_t l3_autotune_size = xpu_runtime_config->l3_autotune_size;
+  auto l3_size = xpu_runtime_config->l3_size;
+  auto l3_autotune_size = xpu_runtime_config->l3_autotune_size;
   PADDLE_ENFORCE_LE(
       l3_autotune_size,
       l3_size,
@@ -2180,11 +2202,11 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
           "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
           l3_autotune_size,
           l3_size));
-  dev_ctx->SetL3Info(l3_size, l3_ptr, l3_autotune_size, place_);
+  config_.xpu_config_.l3_size = l3_size;
+  config_.xpu_config_.l3_ptr = xpu_runtime_config->l3_ptr;
+  config_.xpu_config_.l3_autotune_size = l3_autotune_size;
 
-  bool ret = ZeroCopyRun();
-  dev_ctx->L3CacheAutotune();
-  return ret;
+  return ZeroCopyRun();
 #endif
   return false;
 }
@@ -2634,23 +2656,26 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void AnalysisPredictor::RegisterOutputHook(
+    const OutputTensorHookFunc &hookfunc) {
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
-    executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
-      for (auto &output : op->Outputs()) {
-        for (auto &var_name : output.second) {
-          auto *var = this->sub_scope_->FindVar(var_name);
-          if (!var || !var->IsType<phi::DenseTensor>()) continue;
-          auto dense_tensor = var->Get<phi::DenseTensor>();
-          if (!dense_tensor.initialized()) continue;
-          auto tensor = this->GetOutputTensor(var_name);
-          for (auto &hookfunc : this->hookfuncs_) {
-            hookfunc(op->Type(), var_name, *tensor);
+    executor_->RegisterOutputHook(
+        [this](framework::OperatorBase *op, framework::Scope *scope) {
+          for (auto &output : op->Outputs()) {
+            for (auto &var_name : output.second) {
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->hookfuncs_) {
+                hookfunc(op->Type(), var_name, tensor);
+              }
+            }
           }
-        }
-      }
-    });
+        });
   });
   hookfuncs_.push_back(hookfunc);
 }
@@ -2936,7 +2961,7 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
 

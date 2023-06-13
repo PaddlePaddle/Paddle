@@ -13,28 +13,35 @@
 // limitations under the License.
 
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/region.h"
 
 namespace ir {
 Block::~Block() { clear(); }
-void Block::push_back(Operation *op) {
-  op->set_parent(this);
-  ops_.push_back(op);
-}
+void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 
-void Block::push_front(Operation *op) {
-  op->set_parent(this);
-  ops_.push_front(op);
+void Block::push_front(Operation *op) { insert(ops_.begin(), op); }
+
+Operation *Block::GetParentOp() const {
+  return parent_ ? parent_->GetParent() : nullptr;
 }
 
 Block::iterator Block::insert(const_iterator iterator, Operation *op) {
-  op->set_parent(this);
-  return ops_.insert(iterator, op);
+  Block::iterator iter = ops_.insert(iterator, op);
+  op->SetParent(this, iter);
+  return iter;
 }
 
 void Block::clear() {
   while (!empty()) {
-    ops_.back()->destroy();
+    ops_.back()->Destroy();
     ops_.pop_back();
   }
 }
+
+void Block::SetParent(Region *parent, Region::iterator position) {
+  parent_ = parent;
+  position_ = position;
+}
+
 }  // namespace ir

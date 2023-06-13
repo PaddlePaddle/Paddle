@@ -158,38 +158,6 @@ InterpreterCore::~InterpreterCore() {
 #endif
 }
 
-interpreter::CostInfo InterpreterCore::DryRun(
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
-  SetDeviceId(place_);
-  CheckCUDAGraphBeforeRun(feed_names);
-
-  Prepare(feed_names, feed_tensors, true);
-  interpreter::CostInfo cost_info;
-  {
-    interpreter::ProfilerGuard(place_, &cost_info);
-
-    // For the program that only run once, it is no need to
-    // create work_queue, so the async_work_queue_ is created
-    // until the second step run.
-    async_work_queue_ = GetWorkQueue();
-
-    // lazy initialization of gc, do not create gc is the program only run once
-    if (!gc_) {
-      gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
-    }
-
-    ExecuteInstructionList(vec_instruction_);
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-
-  if (HasLocalScope()) {
-    ClearLoDTensorArrayInLocalScope();
-  }
-
-  return cost_info;
-}
-
 void InterpreterCore::RunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
@@ -981,6 +949,10 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
 #endif
   }
 
+  for (auto& hook : hookfuncs_) {
+    hook(op, local_scope);
+  }
+
   // for debug nan/inf
   if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
@@ -1538,25 +1510,6 @@ void InterpreterCore::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
-}
-
-std::shared_ptr<InterpreterCore> CreateInterpreterCore(
-    const platform::Place& place,
-    const ProgramDesc& prog,
-    Scope* scope,
-    const std::vector<std::string>& fetch_names,
-    const interpreter::ExecutionConfig& execution_config) {
-  std::shared_ptr<InterpreterCore> core = nullptr;
-  // NOTE(Aurelius84): `AddFetch` will modify BlockDesc, so we should copy
-  // a new program.
-  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
-  auto* block = new_prog->MutableBlock(0);
-  interpreter::AddFetch(fetch_names, block);
-
-  core =
-      std::make_shared<InterpreterCore>(place, *block, scope, execution_config);
-  core->SetCopyProgram(new_prog);
-  return core;
 }
 
 }  // namespace framework

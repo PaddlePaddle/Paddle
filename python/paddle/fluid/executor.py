@@ -632,10 +632,10 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor:
-    def __init__(self, place, main_program, scope):
+    def __init__(self, place, programs, scope):
         self._place = core.Place()
         self._place.set_place(place)
-        self._main_program = main_program
+        self._programs = programs
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
@@ -660,45 +660,11 @@ class _StandaloneExecutor:
             return tensors
 
     def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
+        new_exe = core.StandaloneExecutor(
+            self._place, [program.desc for program in self._programs]
+        )
 
         return new_exe
-
-    def _update_feed(self, feed):
-        """
-        Update the feed dict, remove the feed item which is pruned in program.
-
-        Notes: This is a very low level API. Users should not use this API
-        directly.
-
-        Args:
-            feed(list|dict): feed dict or list.
-
-        Returns:
-            feed:(list|dict)  updated feed.
-        """
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        global_block = self._main_program.global_block()
-        for feed_name in list(feed.keys()):
-            if not global_block.has_var(feed_name):
-                feed.pop(feed_name)
-                warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % feed_name
-                )
-
-        return feed
 
     def _check_fetch(self, fetch_list):
         if fetch_list is None:
@@ -886,7 +852,7 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, new_program, scope)
+        new_exe = _StandaloneExecutor(place, [new_program], scope)
         return new_program, new_exe
 
 
@@ -1462,12 +1428,6 @@ class Executor:
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
-                    # Temporary manual enable standalone executor for fleet executor,
-                    # delete this code after the FLAGS is removed.
-                    if 'tasks' in program._pipeline_opt["fleet_opt"]:
-                        set_flags(
-                            {"FLAGS_fleet_executor_with_standalone": True}
-                        )
                     self._fleet_executor = _prepare_fleet_executor()
                 return self._run_using_fleet_executor(
                     program=program,
@@ -1584,7 +1544,6 @@ class Executor:
             return True
 
         if _can_use_interpreter_core(program, self.place):
-
             if feed is None:
                 feed = {}
             elif isinstance(feed, (list, tuple)):

@@ -45,6 +45,8 @@ set(PHI_DEPS
     cblas
     utf8proc)
 
+set(INFERENCE_DEPS phi_profiler_proto auto_parallel_proto)
+
 if(WITH_GPU)
   list(APPEND PHI_DEPS external_error_proto)
 endif()
@@ -79,6 +81,7 @@ endif()
 
 if(WITH_MKLML)
   list(APPEND PHI_DEPS pocketfft dynload_mklml)
+  list(APPEND INFERENCE_DEPS dynload_mklml)
 endif()
 
 if(WITH_XPU)
@@ -94,7 +97,7 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-if(WITH_PHI_SHARED)
+if(WITH_SHARED_PHI)
   set(PHI_BUILD_TYPE
       SHARED
       CACHE INTERNAL "" FORCE)
@@ -133,7 +136,7 @@ if(WIN32)
 endif()
 
 if(WIN32)
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
         phi.dll
@@ -144,7 +147,7 @@ if(WIN32)
         CACHE INTERNAL "" FORCE)
   endif()
 elseif(APPLE)
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set(PHI_NAME
         libphi.dylib
         CACHE INTERNAL "" FORCE)
@@ -154,7 +157,7 @@ elseif(APPLE)
         CACHE INTERNAL "" FORCE)
   endif()
 else()
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set(PHI_NAME
         libphi.so
         CACHE INTERNAL "" FORCE)
@@ -181,6 +184,13 @@ if(WITH_CUTLASS)
 endif()
 if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
+endif()
+
+# for inference static library
+if(NOT WITH_SHARED_PHI)
+  get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+  set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
+  set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")
 endif()
 
 set(phi_extension_header_file

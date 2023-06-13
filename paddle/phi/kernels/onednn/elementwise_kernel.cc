@@ -22,6 +22,32 @@
 
 namespace phi {
 
+KernelKey ElementwiseGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (expected_kernel_type.dtype() == phi::DataType::COMPLEX64 ||
+      expected_kernel_type.dtype() == phi::DataType::COMPLEX128) {
+    // only promote inputs’s types when contains complex input
+    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  } else {
+    // When elementwise is first oneDNN op (there was some non oneDNN op
+    // previously)
+    // then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+        (tensor.layout() != phi::DataLayout::ONEDNN) &&
+        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+            phi::DataLayout::kNHWC) {
+      return phi::KernelKey(
+          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
+    }
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  }
+}
+
 template <typename T, dnnl::algorithm BINARY_OP>
 void ElementwiseKernel(const OneDNNContext& dev_ctx,
                        const DenseTensor& x,
@@ -144,7 +170,9 @@ PD_REGISTER_KERNEL(add_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(add,
                    OneDNN,
@@ -153,7 +181,9 @@ PD_REGISTER_KERNEL(add,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(subtract_raw,
                    OneDNN,
@@ -162,7 +192,9 @@ PD_REGISTER_KERNEL(subtract_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(subtract,
                    OneDNN,
@@ -171,7 +203,9 @@ PD_REGISTER_KERNEL(subtract,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(multiply_raw,
                    OneDNN,
@@ -180,7 +214,9 @@ PD_REGISTER_KERNEL(multiply_raw,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(multiply,
                    OneDNN,
@@ -189,7 +225,9 @@ PD_REGISTER_KERNEL(multiply,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(divide_raw,
                    OneDNN,
@@ -199,4 +237,6 @@ PD_REGISTER_KERNEL(divide_raw,
                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(
-    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
+    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
+}

@@ -14,12 +14,12 @@
 
 import unittest
 
-import config
 import mock_data as mock
 import numpy as np
 import parameterize as param
 import scipy.special
 import scipy.stats
+from distribution import config
 
 import paddle
 from paddle.distribution import kl
@@ -116,7 +116,6 @@ class TestKLDirichletDirichlet(unittest.TestCase):
             self.feeds = {'conc1': self.conc1, 'conc2': self.conc2}
 
     def test_kl_divergence(self):
-
         with paddle.static.program_guard(self.mp, self.sp):
             out = paddle.distribution.kl_divergence(self.p, self.q)
             self.executor.run(self.sp)

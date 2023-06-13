@@ -18,7 +18,6 @@
 
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/operation.h"
-#include "paddle/ir/core/program.h"
 
 namespace ir {
 ///
@@ -27,10 +26,10 @@ namespace ir {
 ///
 class Builder {
  public:
-  explicit Builder(IrContext *context,
-                   Block *block,
-                   Block::iterator insert_point)
+  Builder(IrContext *context, Block *block, Block::iterator insert_point)
       : context_(context), block_(block), insert_point_(insert_point) {}
+  Builder(IrContext *context, Block *block)
+      : Builder(context, block, block->end()) {}
 
   static Builder AtBlockBegin(IrContext *context, Block *block) {
     return Builder(context, block, block->begin());
@@ -44,27 +43,27 @@ class Builder {
 
   Block *block() const { return block_; }
 
-  Operation *insert(Operation *op);
-
   /// Creates an operation given the fields represented as an OperationState.
-  Operation *create(OperationArgument &&argument);
+  Operation *Build(OperationArgument &&argument);
 
   /// Creates an operation with the given fields.
-  Operation *create(const std::vector<ir::OpResult> &inputs,
-                    const AttributeMap &attribute,
-                    const std::vector<ir::Type> &output_types,
-                    ir::OpInfo op_info);
+  Operation *Build(const std::vector<ir::OpResult> &inputs,
+                   const AttributeMap &attribute,
+                   const std::vector<ir::Type> &output_types,
+                   ir::OpInfo op_info);
 
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
-  OpTy create(Args &&...args) {
+  OpTy Build(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
-    OpTy::build(*this, argument, std::forward<Args>(args)...);
-    Operation *op = create(std::move(argument));
+    OpTy::Build(*this, argument, std::forward<Args>(args)...);
+    Operation *op = Build(std::move(argument));
     return op->dyn_cast<OpTy>();
   }
 
  private:
+  Operation *Insert(Operation *op);
+
   IrContext *context_;
   Block *block_ = nullptr;
   // The insertion point within the list that this builder is inserting before.

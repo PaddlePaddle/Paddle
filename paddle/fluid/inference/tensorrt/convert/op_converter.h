@@ -291,8 +291,9 @@ class OpConverter {
       if (parameters.count(input)) continue;
       // NOTE(liuyuanle): It is a trick. If you need a name [input], then you
       // need to use [input.substr(0, idx)].
-      // Maybe we insert suffix of "_cast.tmp_" in auto_mixed_precision_pass.
-      auto idx = input.find("_cast.tmp_");
+      // Maybe we insert suffix of "_cast_auto_mixed.tmp_" in
+      // auto_mixed_precision_pass.
+      auto idx = input.find("_cast_auto_mixed.tmp_");
       input = input.substr(0, idx);
 
       auto* var = block_desc->FindVar(input);
@@ -514,6 +515,14 @@ class OpConverter {
                              *a,
                              *b,
                              nvinfer1::ElementWiseOperation::kFLOOR_DIV)
+            ->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* Pow(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kPOW)
             ->getOutput(0);
     return c;
   }

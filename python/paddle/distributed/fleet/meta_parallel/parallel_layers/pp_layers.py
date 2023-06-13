@@ -109,7 +109,6 @@ class SegmentLayers:
         ), "layer number should be greater than number of segments"
 
     def do_segment(self):
-
         if isinstance(self.method, list):
             seg_method = self.method[:]
             source_num_parts = len(seg_method) - 1
@@ -703,6 +702,14 @@ class PipelineLayer(nn.Layer):
                             self.shared_layers[layer.layer_name],
                         )
                     )
+                    # Note: the PipelineLayerChunk won't add the partial function to the sub layer,
+                    # will introduce error when calling chunk.parameters(). Have to manually add
+                    # this layer to the chunk's sub layer.
+                    if self._num_virtual_pipeline_stages > 1:
+                        run_function.add_sublayer(
+                            layer.layer_name,
+                            self.shared_layers[layer.layer_name],
+                        )
 
             elif isinstance(layer, LayerDesc):
                 model = layer.build_layer()

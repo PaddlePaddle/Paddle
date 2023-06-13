@@ -124,7 +124,6 @@ class Engine:
         cluster=None,
         strategy=None,
     ):
-
         if (
             model
             and not isinstance(model, paddle.nn.Layer)
@@ -235,6 +234,11 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self._acc_steps = 1
+        if self._strategy.gradient_merge.enable:
+            self._acc_steps = self._strategy.gradient_merge.k_steps
+        elif self._strategy.pipeline.enable:
+            self._acc_steps = self._strategy.pipeline.accumulate_steps
 
         self.history = None
 
@@ -400,7 +404,12 @@ class Engine:
         if self.main_program._pipeline_opt:
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
-            fwd_task = fleet_opt["tasks"][0]
+            fwd_task = None
+            if self._strategy.pipeline.schedule_mode == "1F1B":
+                fwd_task = fleet_opt["tasks"][1]
+            elif self._strategy.pipeline.schedule_mode == "stream":
+                fwd_task = fleet_opt["tasks"][0]
+            assert fwd_task is not None
             fwd_prog = fwd_task.get_program()
             fwd_block = fwd_prog.global_block()
 
@@ -450,8 +459,6 @@ class Engine:
             ), "user_fetches must be a list, but receive {}".format(
                 type(user_fetches).__name__
             )
-        else:
-            user_fetches = []
         fetch_names = []
         fetch_indices = []
 
@@ -478,7 +485,7 @@ class Engine:
                 _process_fetch_group("metrics_" + str(i), var_list)
         if mode == "predict":
             _process_fetch_group("outputs", fetch_vars["outputs"])
-        for usr_fetch in user_fetches:
+        for usr_fetch in user_fetches or []:
             var_name = _to_name_str(usr_fetch)
             fetch(var_name)
         user_fetches_collection = [
@@ -931,6 +938,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             train_data, train_sample_split, batch_size
         )
+        micro_batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -940,7 +948,7 @@ class Engine:
             dataset=train_data,
             capacity=70,
             iterable=False,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             collate_fn=collate_fn,
@@ -951,7 +959,7 @@ class Engine:
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             epochs=epochs,
             steps=train_dataloader._steps,
             log_freq=log_freq,
@@ -959,7 +967,7 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=self._k_steps,
+            acc_step=self._acc_steps,
         )
 
         cbks.on_begin('train')
@@ -977,7 +985,7 @@ class Engine:
                     )
                 except core.EOFException:
                     break
-                lr = auto_utils.get_lr(self._optimizer)
+                lr = auto_utils.get_lr(self.optimizer)
                 logs = self._prepare_logger(
                     outs,
                     epoch,
@@ -1074,6 +1082,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             valid_data, valid_sample_split, batch_size
         )
+        micro_batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1083,7 +1092,7 @@ class Engine:
             dataset=valid_data,
             capacity=70,
             iterable=False,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             steps_per_epoch=steps,
             collate_fn=collate_fn,
         )
@@ -1093,7 +1102,7 @@ class Engine:
         cbks = config_callbacks(
             callbacks,
             engine=self,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             log_freq=log_freq,
             verbose=verbose,
             metrics=self._metrics_name(),
@@ -1180,6 +1189,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             test_data, test_sample_split, batch_size
         )
+        micro_batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1189,7 +1199,7 @@ class Engine:
             dataset=test_data,
             capacity=70,
             iterable=False,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             steps_per_epoch=steps,
             collate_fn=collate_fn,
         )
@@ -1242,6 +1252,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             dataset, sample_split, batch_size
         )
+        micro_batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1250,7 +1261,7 @@ class Engine:
         dataloader = self._prepare_dataloader(
             dataset,
             return_list=False,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             shuffle=shuffle,
             drop_last=drop_last,
             collate_fn=collate_fn,
@@ -1284,6 +1295,7 @@ class Engine:
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             dataset, sample_split, batch_size
         )
+        micro_batch_size = self._validate_batch_size(batch_size)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
@@ -1297,7 +1309,7 @@ class Engine:
             return_list=False,
             use_multiprocess=use_multiprocess,
             drop_last=drop_last,
-            batch_size=batch_size,
+            batch_size=micro_batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             collate_fn=collate_fn,
@@ -1398,15 +1410,6 @@ class Engine:
         epochs=1,
         steps_per_epoch=None,
     ):
-
-        if self._strategy.gradient_merge and batch_size is not None:
-            assert (
-                batch_size % self._k_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(
-                batch_size, self._k_steps
-            )
-            batch_size //= self._k_steps
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1467,15 +1470,6 @@ class Engine:
         steps_per_epoch=None,
         collate_fn=None,
     ):
-
-        if self._strategy.gradient_merge and batch_size is not None:
-            assert (
-                batch_size % self._k_steps == 0
-            ), "Requires batch_size:[{}] to be divisible by k_steps:[{}].".format(
-                batch_size, self._k_steps
-            )
-            batch_size //= self._k_steps
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1515,6 +1509,9 @@ class Engine:
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
+                acc_steps=1
+                if not self._strategy.pipeline.enable
+                else self._acc_steps,
             )
         self._prepare_reader(feed_list)
         return dataloader
@@ -1526,9 +1523,18 @@ class Engine:
         )
         self._optimization_tuning(self._mode, tune_data, batch_size)
 
+    def _validate_batch_size(self, batch_size):
+        if batch_size is None:
+            return None
+        assert (
+            batch_size % self._acc_steps == 0
+        ), "Requires batch_size:[{}] to be divisible by acc_steps:[{}].".format(
+            batch_size, self._acc_steps
+        )
+        return batch_size // self._acc_steps
+
     def _validate_spec(self, specs):
         specs = auto_utils.to_list(specs)
-        self._k_steps = self._strategy.gradient_merge.k_steps
         if specs is not None:
             for i, spec in enumerate(specs):
                 if not isinstance(spec, InputSpec):
@@ -1541,14 +1547,14 @@ class Engine:
                             i, spec
                         )
                     )
-                if self._k_steps > 1:
+                if self._acc_steps > 1:
                     shape = list(spec.shape)
                     assert (
-                        shape[0] % self._k_steps == 0
+                        shape[0] % self._acc_steps == 0
                     ), "Requires batch_size[{}] to be divisible by k_steps[{}].".format(
-                        spec.shape[0], self._k_steps
+                        spec.shape[0], self._acc_steps
                     )
-                    shape[0] //= self._k_steps
+                    shape[0] //= self._acc_steps
                     spec.shape = shape
         return specs or []
 
@@ -1579,7 +1585,6 @@ class Engine:
             mode in self._dist_contexts
         ), f"{mode} model is not ready, please call `prepare()` first."
         self.to_mode(mode)
-        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
         assert mode in [

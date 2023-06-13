@@ -271,12 +271,13 @@ else()
     SRCS ${src_dir}/inference/api/paddle_*.h ${paddle_inference_lib}
     DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include
          ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
-
-  set(paddle_phi_lib ${PADDLE_BINARY_DIR}/paddle/phi/libphi.*)
-  copy(
-    inference_lib_dist
-    SRCS ${paddle_phi_lib}
-    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
+  if(WITH_SHARED_PHI)
+    set(paddle_phi_lib ${PADDLE_BINARY_DIR}/paddle/phi/libphi.*)
+    copy(
+      inference_lib_dist
+      SRCS ${paddle_phi_lib}
+      DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
+  endif()
 
 endif()
 

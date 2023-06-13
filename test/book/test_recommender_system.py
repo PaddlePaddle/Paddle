@@ -101,7 +101,6 @@ def get_usr_combined_features():
 
 
 def get_mov_combined_features():
-
     MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
 
     mov_id = paddle.static.data(name='movie_id', shape=[-1, 1], dtype='int64')

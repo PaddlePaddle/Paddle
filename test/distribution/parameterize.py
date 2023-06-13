@@ -18,8 +18,8 @@ import re
 import sys
 from unittest import SkipTest
 
-import config
 import numpy as np
+from distribution import config
 
 TEST_CASE_NAME = 'suffix'
 
@@ -218,12 +218,11 @@ class param(_param):
             if "after * must be" not in str(e):
                 raise
             raise TypeError(
-                "Parameters must be tuples, but %r is not (hint: use '(%r, )')"
-                % (args, args),
+                f"Parameters must be tuples, but {args!r} is not (hint: use '({args!r}, )')",
             )
 
     def __repr__(self):
-        return "param(*%r, **%r)" % self
+        return "param(*{!r}, **{!r})".format(*self)
 
 
 def to_safe_name(s):

@@ -54,10 +54,6 @@ class InterpreterCore {
 
   ~InterpreterCore();
 
-  interpreter::CostInfo DryRun(
-      const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors);
-
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
       const std::vector<phi::DenseTensor>& feed_tensors);
@@ -80,6 +76,11 @@ class InterpreterCore {
   void reset_scope(Scope* new_scope);
 
   const platform::Place& GetPlace() const { return place_; }
+
+  using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+    hookfuncs_ = hookfuncs;
+  }
 
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
@@ -188,15 +189,9 @@ class InterpreterCore {
   std::vector<size_t> trace_execute_order_;
 
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
-};
 
-std::shared_ptr<InterpreterCore> CreateInterpreterCore(
-    const platform::Place& place,
-    const ProgramDesc& prog,
-    Scope* scope,
-    const std::vector<std::string>& fetch_names = {},
-    const interpreter::ExecutionConfig& execution_config =
-        interpreter::ExecutionConfig());
+  std::vector<HookFunc> hookfuncs_;
+};
 
 }  // namespace framework
 }  // namespace paddle

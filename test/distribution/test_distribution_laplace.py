@@ -14,10 +14,10 @@
 
 import unittest
 
-import config
 import numpy as np
 import parameterize
 import scipy.stats
+from distribution import config
 
 import paddle
 
@@ -71,7 +71,6 @@ class TestLaplace(unittest.TestCase):
         self.assertEqual(entropy.numpy().dtype, self.scale.dtype)
 
     def test_sample(self):
-
         sample_shape = (50000,)
         samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()
@@ -124,7 +123,6 @@ class TestLaplaceKS(unittest.TestCase):
         self._dist = paddle.distribution.Laplace(loc=self.loc, scale=self.scale)
 
     def test_sample(self):
-
         sample_shape = (20000,)
         samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()

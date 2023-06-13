@@ -16,13 +16,10 @@ import os
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
+from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import (
-    TestConv2DOp,
-    conv2d_forward_naive,
-)
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -391,7 +388,6 @@ class TestDepthwiseConv2d(TestConv2D):
 
 
 def create_test_int8_class(parent):
-
     # --------------------test conv2d s8 in and u8 out--------------------
     class TestS8U8Case(parent):
         def init_data_type(self):

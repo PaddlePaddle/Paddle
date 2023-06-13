@@ -34,6 +34,7 @@ set(PYBIND_DEPS
     cost_model
     cuda_graph_with_memory_pool
     fleet_executor
+    plan
     global_utils
     phi_utils
     phi
@@ -329,7 +330,7 @@ if(WITH_PYTHON)
       ")\n"
       "exit /b 0")
 
-    if(WITH_PHI_SHARED)
+    if(WITH_SHARED_PHI)
       add_custom_command(
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}

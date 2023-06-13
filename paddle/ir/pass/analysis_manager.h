@@ -41,19 +41,17 @@ class PreservedAnalyses {
 
  public:
   /// Mark all analyses as preserved.
-  void PreserveAll() {
-    preserved_ids_.insert(ir::TypeId::get<AllAnalysesType>());
-  }
+  void PreserveAll() { preserved_ids_.insert(TypeId::get<AllAnalysesType>()); }
 
   bool IsAll() const {
-    return preserved_ids_.count(ir::TypeId::get<AllAnalysesType>());
+    return preserved_ids_.count(TypeId::get<AllAnalysesType>());
   }
 
   bool IsNone() const { return preserved_ids_.empty(); }
 
   template <typename AnalysisT>
   void Preserve() {
-    Preserve(ir::TypeId::get<AnalysisT>());
+    Preserve(TypeId::get<AnalysisT>());
   }
 
   template <typename AnalysisT, typename AnalysisT2, typename... OtherAnalysesT>
@@ -62,25 +60,25 @@ class PreservedAnalyses {
     Preserve<AnalysisT2, OtherAnalysesT...>();
   }
 
-  void Preserve(ir::TypeId id) { preserved_ids_.insert(id); }
+  void Preserve(TypeId id) { preserved_ids_.insert(id); }
 
   template <typename AnalysisT>
   bool IsPreserved() const {
-    return IsPreserved(ir::TypeId::get<AnalysisT>());
+    return IsPreserved(TypeId::get<AnalysisT>());
   }
 
-  bool IsPreserved(ir::TypeId id) const { return preserved_ids_.count(id); }
+  bool IsPreserved(TypeId id) const { return preserved_ids_.count(id); }
 
   template <typename AnalysisT>
   void Unpreserve() {
-    preserved_ids_.erase(ir::TypeId::get<AnalysisT>());
+    preserved_ids_.erase(TypeId::get<AnalysisT>());
   }
 
  private:
   template <typename>
   friend struct AnalysisModel;
 
-  std::unordered_set<ir::TypeId> preserved_ids_;
+  std::unordered_set<TypeId> preserved_ids_;
 };
 
 namespace detail {
@@ -132,11 +130,11 @@ struct AnalysisModel : public AnalysisConcept {
 /// All computation, caching and invalidation of analyses takes place here.
 class AnalysisMap {
  public:
-  explicit AnalysisMap(ir::Operation* ir) : ir_(ir) {}
+  explicit AnalysisMap(Operation* ir) : ir_(ir) {}
 
   template <typename AnalysisT>
   AnalysisT& GetAnalysis(PassInstrumentor* pi, AnalysisManager& am) {
-    return GetAnalysisImpl<AnalysisT, ir::Operation*>(pi, ir_, am);
+    return GetAnalysisImpl<AnalysisT, Operation*>(pi, ir_, am);
   }
 
   template <typename AnalysisT, typename OpT>
@@ -151,12 +149,12 @@ class AnalysisMap {
   template <typename AnalysisT>
   paddle::optional<std::reference_wrapper<AnalysisT>> GetCachedAnalysis()
       const {
-    auto res = analyses_.find(ir::TypeId::get<AnalysisT>());
+    auto res = analyses_.find(TypeId::get<AnalysisT>());
     if (res == analyses_.end()) return paddle::none;
     return {static_cast<AnalysisModel<AnalysisT>&>(*res->second).analysis};
   }
 
-  ir::Operation* getOperation() const { return ir_; }
+  Operation* getOperation() const { return ir_; }
 
   void Clear() { analyses_.clear(); }
 
@@ -190,7 +188,7 @@ class AnalysisMap {
   AnalysisT& GetAnalysisImpl(PassInstrumentor* pi,
                              OpT op,
                              AnalysisManager& am) {  // NOLINT
-    ir::TypeId id = ir::TypeId::get<AnalysisT>();
+    TypeId id = TypeId::get<AnalysisT>();
     auto it = analyses_.find(id);
     if (it == analyses_.end()) {
       if (pi) {
@@ -234,8 +232,8 @@ class AnalysisMap {
   }
 
  private:
-  ir::Operation* ir_;
-  std::unordered_map<ir::TypeId, std::unique_ptr<AnalysisConcept>> analyses_;
+  Operation* ir_;
+  std::unordered_map<TypeId, std::unique_ptr<AnalysisConcept>> analyses_;
 };
 
 }  // namespace detail
@@ -273,7 +271,7 @@ class AnalysisManager {
 
   PassInstrumentor* GetPassInstrumentor() const { return instrumentor_; }
 
-  ir::Operation* GetOperation() { return analyses_->getOperation(); }
+  Operation* GetOperation() { return analyses_->getOperation(); }
 
  private:
   AnalysisManager(detail::AnalysisMap* impl, PassInstrumentor* pi)
@@ -292,7 +290,7 @@ class AnalysisManager {
 /// analyses.
 class AnalysisManagerHolder {
  public:
-  AnalysisManagerHolder(ir::Operation* op, PassInstrumentor* pi)
+  AnalysisManagerHolder(Operation* op, PassInstrumentor* pi)
       : analyses_(op), pi_(pi) {}
   AnalysisManagerHolder(const AnalysisManagerHolder&) = delete;
   AnalysisManagerHolder& operator=(const AnalysisManagerHolder&) = delete;

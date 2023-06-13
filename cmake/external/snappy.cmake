@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 include(ExternalProject)
 
 # NOTE: snappy is needed when linking with recordio
@@ -21,7 +20,7 @@ set(SNAPPY_INSTALL_DIR ${THIRD_PARTY_PATH}/install/snappy)
 set(SNAPPY_INCLUDE_DIR
     "${SNAPPY_INSTALL_DIR}/include"
     CACHE PATH "snappy include directory." FORCE)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/snappy)
 if(WIN32)
   set(SNAPPY_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267")
   if(NOT EXISTS "${SNAPPY_INSTALL_DIR}/lib/libsnappy.lib")
@@ -39,8 +38,7 @@ endif()
 
 ExternalProject_Add(
   extern_snappy
-  GIT_REPOSITORY "https://github.com/google/snappy"
-  GIT_TAG "1.1.7"
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${SNAPPY_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -64,9 +62,7 @@ ExternalProject_Add(
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${SNAPPY_LIBRARIES})
-
 add_library(snappy STATIC IMPORTED GLOBAL)
 set_property(TARGET snappy PROPERTY IMPORTED_LOCATION ${SNAPPY_LIBRARIES})
-
 include_directories(${SNAPPY_INCLUDE_DIR})
 add_dependencies(snappy extern_snappy)

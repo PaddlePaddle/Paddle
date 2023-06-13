@@ -126,7 +126,6 @@ class TestWithNestedOutput(unittest.TestCase):
 
 class TestWithTrainAndEval(unittest.TestCase):
     def test_switch_eval_and_train(self):
-
         with fluid.dygraph.guard():
             linear_net = Linear()
             x_data = np.random.random((4, 10)).astype('float32')

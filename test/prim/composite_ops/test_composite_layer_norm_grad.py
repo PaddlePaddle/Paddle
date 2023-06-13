@@ -17,7 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from utils import SUB_TOLERANCE
+from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
@@ -474,7 +474,6 @@ class TestCompositelayer_norm(unittest.TestCase):
                 self.compare_comp_forward()
 
     def test_backward_withNone(self):
-
         for t in range(0, len(self.shape1s)):
             if paddle.device.get_device() == "cpu":
                 print("need pass this case")
