@@ -70,9 +70,9 @@ op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
 
-OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->GetOperandByIndex({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->operand({input_index}); }}
 """
-OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->GetResultByIndex({output_index}); }}
+OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->result({output_index}); }}
 """
 
 # =====================================
@@ -110,7 +110,8 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{inplace}}}, {{{view}}});
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{"{kernel_key_dtype}"}}, {{{inplace}}}, {{{view}}});
+
   return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
@@ -817,11 +818,11 @@ def GenBuildInserFullForMutableAttribute(
     build_mutable_attribute = ""
     BUILD_INTARRAY_ATTRIBUTE_TEMPLATE = """  // Generate int_array mutable attribute: {attr_name}
   paddle::dialect::FullIntArrayOp full_{attr_name}_op = builder.Build<paddle::dialect::FullIntArrayOp>({attr_name}, {phi_dtype}, phi::CPUPlace());
-  ir::OpResult {attr_name}_ = full_{attr_name}_op->GetResultByIndex(0);
+  ir::OpResult {attr_name}_ = full_{attr_name}_op->result(0);
     """
     BUILD_SCALAR_ATTRIBUTE_TEMPLATE = """  // Generate scalar mutable attribute: {attr_name}
   paddle::dialect::FullOp full_{attr_name}_op = builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{{1}}, {attr_name}, {phi_dtype}, phi::CPUPlace());
-  ir::OpResult {attr_name}_ = full_{attr_name}_op->GetResultByIndex(0);
+  ir::OpResult {attr_name}_ = full_{attr_name}_op->result(0);
     """
     for idx in range(len(op_mutable_attribute_name_list)):
         attr_name = op_mutable_attribute_name_list[idx]
@@ -1508,9 +1509,14 @@ def OpGenerator(
 
             kernel_func_str = ""
             kernel_param_str = ""
+            kernel_key_dtype = ""
             if op_kernel_map is not None:
                 kernel_func_str = '", "'.join(op_kernel_map['func'])
                 kernel_param_str = '", "'.join(op_kernel_map['param'])
+                if 'data_type' in op_kernel_map and op_kernel_map['data_type']:
+                    kernel_key_dtype = '", "'.join(
+                        op_kernel_map['data_type']['candidates']
+                    )
 
             inplace_str = ""
             view_str = ""
@@ -1533,6 +1539,7 @@ def OpGenerator(
                 infer_meta_param=infer_meta_param_str,
                 kernel_func=kernel_func_str,
                 kernel_param=kernel_param_str,
+                kernel_key_dtype=kernel_key_dtype,
                 inplace=inplace_str,
                 view=view_str,
             )
