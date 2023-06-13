@@ -122,7 +122,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           ir::Operation* op =
               InsertGetParamaterOp(ctx_, parameter_name_mappings_[var_name]);
           program_->block()->push_back(op);
-          param_map_[var_name] = VariableDefiningInfo(op->GetResultByIndex(0));
+          param_map_[var_name] = VariableDefiningInfo(op->result(0));
           VLOG(10) << "[op translated][get parameter]" << op;
 
           program_->SetParameter(var_name, nullptr);
