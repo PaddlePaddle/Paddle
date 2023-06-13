@@ -1315,7 +1315,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [2, 3])
 
     def test_tensordot(self):
-
         # 1) input is 1D
         x = paddle.arange(10, dtype='float64')
         x.stop_gradient = False
@@ -1599,7 +1598,7 @@ class TestSundryAPI(unittest.TestCase):
 
         x1 = paddle.uniform([], None, -10, 10)
         x1.stop_gradient = False
-        out1 = paddle.clip(x1, paddle.full([], 5.0), paddle.full([], 5.0))
+        out1 = paddle.clip(x1, paddle.full([], -5.0), paddle.full([], 5.0))
         out1.retain_grads()
         out1.backward()
         self.assertEqual(out1.shape, [])
@@ -3723,7 +3722,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         x1 = paddle.uniform([], None, -10, 10)
         x1.stop_gradient = False
-        out1 = paddle.clip(x1, paddle.full([], 5.0), paddle.full([], 5.0))
+        out1 = paddle.clip(x1, paddle.full([], -5.0), paddle.full([], 5.0))
         paddle.static.append_backward(out1)
 
         prog = paddle.static.default_main_program()

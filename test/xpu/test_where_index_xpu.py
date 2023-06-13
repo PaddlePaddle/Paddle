@@ -58,7 +58,7 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
             self.inputs = {
                 'Condition': np.array([False, False, False]).astype(self.dtype),
             }
-            self.outputs = {'Out': np.array([], dtype='int64')}
+            self.outputs = {'Out': np.array([], dtype='int64').reshape(0, 1)}
 
     class TestRank2(TestWhereIndexOp):
         def init_data(self):

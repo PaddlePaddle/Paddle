@@ -47,7 +47,6 @@ class ProgramDeps:
     def _build_deps(
         self,
     ):
-
         for var_name in self._start_vars:
             self._var_to_use_op[var_name] = []
             self._var_to_generate_op[var_name] = []

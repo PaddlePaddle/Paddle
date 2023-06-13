@@ -147,7 +147,6 @@ class Device:
 
 
 class Link:
-
     default_hop = 1
     default_nic_bandwidth = 24
 

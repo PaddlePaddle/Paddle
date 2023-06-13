@@ -804,7 +804,7 @@ def decorate(
 
 
 @overload(key=FunctionType.COMMON)
-def decorate(
+def decorate(  # noqa: F811
     optimizer,
     amp_lists=None,
     level='O1',

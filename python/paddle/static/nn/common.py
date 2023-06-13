@@ -473,7 +473,7 @@ def data_norm(
     Args:
         input (Tensor): The input Tensor.
         act (str, optional): Activation type, linear|relu|prelu|... Default: None.
-        epsilon(float, optional): Whether to add small values ​in​to the variance during calculations
+        epsilon(float, optional): Whether to add small values into the variance during calculations
             to prevent division by zero. Default: 1e-05.
         param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`. Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
@@ -957,7 +957,6 @@ def conv2d(
 
     # padding
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 4:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCHW"
@@ -1243,8 +1242,9 @@ def conv3d(
         if num_channels % groups != 0:
             raise ValueError(
                 "The number of input channels must be divisible by Attr(groups). "
-                "Received: number of channels(%s), groups(%s)."
-                % (str(num_channels), str(groups))
+                "Received: number of channels({}), groups({}).".format(
+                    str(num_channels), str(groups)
+                )
             )
         num_filter_channels = num_channels // groups
 
@@ -1253,7 +1253,6 @@ def conv3d(
     dilation = paddle.utils.convert_to_list(dilation, 3, 'dilation')
 
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 5:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCDHW"
@@ -1576,7 +1575,6 @@ def conv2d_transpose(
         raise ValueError("use_cudnn should be True or False")
 
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 4:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCHW"
@@ -1947,7 +1945,6 @@ def conv3d_transpose(
         raise ValueError("use_cudnn should be True or False")
 
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 5:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCDHW"
@@ -2986,7 +2983,6 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
 
     alpha_shape = [1]
     if mode == 'channel':
-
         true_data_format = [
             'NC',
             'NCL',

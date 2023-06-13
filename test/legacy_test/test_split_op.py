@@ -32,7 +32,6 @@ class TestSplitOp(OpTest):
         self.dtype = self.get_dtype()
         axis = 1
         if self.dtype == np.uint16:
-            self.enable_cinn = False
             x = np.random.random((4, 5, 6)).astype(np.float32)
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': convert_float_to_uint16(x)}
@@ -285,7 +284,7 @@ def create_test_bf16(parent):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'out2')
+            self.check_grad_with_place(place, ['X'], 'out2', check_prim=True)
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
     TestSplitBF16Op.__name__ = cls_name
@@ -404,7 +403,11 @@ class API_TestSplit(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
             input2 = np.array([2]).astype('int32')
-            r0, r1, r2, = exe.run(
+            (
+                r0,
+                r1,
+                r2,
+            ) = exe.run(
                 feed={"data1": input1, "data2": input2}, fetch_list=[x0, x1, x2]
             )
             ex_x0, ex_x1, ex_x2 = np.split(input1, 3, axis=2)

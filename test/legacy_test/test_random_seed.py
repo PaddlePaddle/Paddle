@@ -325,7 +325,6 @@ class TestGeneratorSeed(unittest.TestCase):
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
     def test_generator_randperm_static(self):
-
         fluid.disable_dygraph()
 
         paddle.seed(123123143)

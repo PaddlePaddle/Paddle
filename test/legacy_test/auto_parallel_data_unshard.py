@@ -31,7 +31,6 @@ class TestDataUnshard(unittest.TestCase):
     def test_dp2pp1mp1(self):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
-
                 MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
                 input = paddle.static.data(name='input', shape=[2, 8])
                 label = paddle.static.data(name='label', shape=[2, 8])
@@ -110,7 +109,6 @@ class TestDataUnshard(unittest.TestCase):
     def dp1pp1mp2(self):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
-
                 MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
                 input = paddle.static.data(name='input', shape=[8, 8])
                 label = paddle.static.data(name='label', shape=[8, 8])

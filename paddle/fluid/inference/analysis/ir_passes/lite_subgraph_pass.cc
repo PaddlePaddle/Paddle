@@ -249,17 +249,27 @@ void LiteSubgraphPass::SetUpEngine(
 
   bool use_gpu = Get<bool>("use_gpu");
   bool enable_int8 = Get<bool>("enable_int8");
-  bool use_xpu = Get<bool>("use_xpu");
-  int xpu_device_id = Get<int>("xpu_device_id");
-  int xpu_l3_workspace_size = Get<int>("xpu_l3_workspace_size");
   bool use_opencl = Get<bool>("use_opencl");
   int cpu_math_library_num_threads = Get<int>("cpu_math_library_num_threads");
-  bool locked = Get<bool>("locked");
-  bool autotune = Get<bool>("autotune");
-  std::string autotune_file = Get<std::string>("autotune_file");
-  std::string precision = Get<std::string>("precision");
-  bool adaptive_seqlen = Get<bool>("adaptive_seqlen");
-  bool enable_multi_stream = Get<bool>("enable_multi_stream");
+  bool use_xpu = Get<bool>("use_xpu");
+  int xpu_device_id = Get<int>("xpu_device_id");
+  size_t xpu_l3_size = Get<size_t>("xpu_l3_size");
+  bool xpu_l3_locked = Get<bool>("xpu_l3_locked");
+  bool xpu_conv_autotune = Get<int>("xpu_conv_autotune_level") > 0;
+  std::string xpu_conv_autotune_file =
+      Get<std::string>("xpu_conv_autotune_file");
+  int xpu_gemm_compute_precision = Get<int>("xpu_gemm_compute_precision");
+  std::string xpu_transformer_encoder_precision{"int16"};
+  if (xpu_gemm_compute_precision == 0) {
+    xpu_transformer_encoder_precision = "int8";
+  } else if (xpu_gemm_compute_precision == 1) {
+    xpu_transformer_encoder_precision = "int16";
+  } else if (xpu_gemm_compute_precision == 2) {
+    xpu_transformer_encoder_precision = "int31";
+  }
+  bool xpu_transformer_encoder_adaptive_seqlen =
+      Get<bool>("xpu_transformer_encoder_adaptive_seqlen");
+  bool xpu_enable_multi_stream = Get<bool>("xpu_enable_multi_stream");
   // NNAdapter Related
   bool use_nnadapter = Get<bool>("use_nnadapter");
   std::string nnadapter_model_cache_dir =
@@ -344,14 +354,15 @@ void LiteSubgraphPass::SetUpEngine(
   }
 
   config.cpu_math_library_num_threads = cpu_math_library_num_threads;
-  config.xpu_l3_workspace_size = xpu_l3_workspace_size;
+  config.xpu_l3_size = xpu_l3_size;
   config.device_id = xpu_device_id;
-  config.locked = locked;
-  config.autotune = autotune;
-  config.autotune_file = autotune_file;
-  config.precision = precision;
-  config.adaptive_seqlen = adaptive_seqlen;
-  config.enable_multi_stream = enable_multi_stream;
+  config.xpu_l3_locked = xpu_l3_locked;
+  config.xpu_conv_autotune = xpu_conv_autotune;
+  config.xpu_conv_autotune_file = xpu_conv_autotune_file;
+  config.xpu_transformer_encoder_precision = xpu_transformer_encoder_precision;
+  config.xpu_transformer_encoder_adaptive_seqlen =
+      xpu_transformer_encoder_adaptive_seqlen;
+  config.xpu_enable_multi_stream = xpu_enable_multi_stream;
   // NNAdapter Related
   config.nnadapter_model_cache_dir = nnadapter_model_cache_dir;
   config.nnadapter_device_names = nnadapter_device_names;
