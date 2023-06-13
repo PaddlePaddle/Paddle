@@ -28,19 +28,12 @@ void SliceStridedKernel(const Context& ctx,
                         const std::vector<int64_t>& axis,
                         const IntArray& starts_arr,
                         const IntArray& ends_arr,
-                        const std::vector<int64_t>& infer_flags_t,
+                        const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* out) {
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
   auto in_dims = input.dims();
-
-  std::vector<int64_t> infer_flags = infer_flags_t;
-  if (infer_flags.empty()) {
-    // Initialize infer_flags with 1.
-    // To be compatible with other op tests in which infer_flags is not set.
-    infer_flags = std::vector<int64_t>(axis.size(), 1);
-  }
 
   auto new_axis = axis;
   for (auto& item : new_axis) {
@@ -50,18 +43,7 @@ void SliceStridedKernel(const Context& ctx,
   }
 
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
-      in_dims, new_axis, &starts, &ends, nullptr, &infer_flags);
-
-  for (size_t i = 0; i < new_axis.size(); ++i) {
-    // when start == -1 && end == start+1
-    if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
-      auto ret =
-          std::find(decrease_axis.begin(), decrease_axis.end(), new_axis[i]);
-      if (ret != decrease_axis.end()) {
-        ends[i] = in_dims[new_axis[i]];
-      }
-    }
-  }
+      in_dims, new_axis, &starts, &ends, nullptr, nullptr);
 
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
@@ -73,16 +55,14 @@ void SliceStridedKernel(const Context& ctx,
     output_dims[new_axis[i]] = ends[i] - starts[i];
   }
 
-  auto iter_dims = output_dims.begin();
-  auto iter_stride = output_stride.begin();
-  while (iter_dims != output_dims.end()) {
-    if (*iter_dims == 1) {
-      iter_dims = output_dims.erase(iter_dims);
-      iter_stride = output_stride.erase(iter_stride);
-    } else {
-      iter_dims++;
-      iter_stride++;
-    }
+  if (*output_dims.begin() == 1) {
+    output_dims.erase(output_dims.begin());
+    output_stride.erase(output_stride.begin());
+  }
+
+  if (*output_dims.end() == 1) {
+    output_dims.erase(output_dims.end());
+    output_stride.erase(output_stride.end());
   }
 
   auto meta = out->meta();

@@ -35,19 +35,10 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   std::vector<int64_t> ends = ends_arr.GetData();
   std::vector<int64_t> strides = strides_arr.GetData();
 
-  DDim output_dims = input.dims();
-  DDim output_stride = input.stride();
+  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
   int64_t output_offset = input.offset();
   for (size_t i = 0; i < axis.size(); ++i) {
-    if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
-      if (decrease_axis.end() ==
-          std::find(decrease_axis.begin(), decrease_axis.end(), axis[i])) {
-        output_dims[axis[i]] = 1;
-        output_stride[axis[i]] = input.stride()[axis[i]];
-        continue;
-      }
-    }
-
     int64_t axis_size = input.dims()[axis[i]];
 
     if (axis_size < 0) {
@@ -93,14 +84,25 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
     output_stride[axis[i]] *= strides[i];
   }
 
+  if (*output_dims.begin() == 1) {
+    output_dims.erase(output_dims.begin());
+    output_stride.erase(output_stride.begin());
+  }
+
+  if (*output_dims.end() == 1) {
+    output_dims.erase(output_dims.end());
+    output_stride.erase(output_stride.end());
+  }
+
   auto meta = out->meta();
   meta.offset = output_offset;
-  if (meta.dims != output_dims) {
+  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  if (meta.dims != tmp_dim) {
     LOG(WARNING) << "Striede_slice kernel stride compute diff, infer shape is "
-                 << meta.dims << ", but compute is " << output_dims << ".";
-    meta.dims = output_dims;
+                 << meta.dims << ", but compute is " << tmp_dim << ".";
+    meta.dims = tmp_dim;
   }
-  meta.stride = output_stride;
+  meta.stride = DDim(output_stride.data(), output_stride.size());
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }
