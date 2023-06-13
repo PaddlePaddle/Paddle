@@ -115,22 +115,22 @@ TEST(program_test, mutable_attribute) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
+  ir::Builder builder = ir::Builder(ctx, program.block());
   ir::Block* block = program.block();
 
   // Def FullOp
   paddle::dialect::FullIntArrayOp full_shape_op =
       builder.Build<paddle::dialect::FullIntArrayOp>(
           std::vector<int64_t>{2, 2}, phi::DataType::INT64, phi::CPUPlace());
-  ir::OpResult shape_ = full_shape_op->GetResultByIndex(0);
+  ir::OpResult shape_ = full_shape_op->result(0);
   // Generate scalar mutable attribute: min
   paddle::dialect::FullOp full_min_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 0.0, phi::DataType::FLOAT32, phi::CPUPlace());
-  ir::OpResult min_ = full_min_op->GetResultByIndex(0);
+  ir::OpResult min_ = full_min_op->result(0);
   // Generate scalar mutable attribute: max
   paddle::dialect::FullOp full_max_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
-  ir::OpResult max_ = full_max_op->GetResultByIndex(0);
+  ir::OpResult max_ = full_max_op->result(0);
 
   // Def: static void Build(ir::Builder &builder, ir::OperationArgument
   // &argument, ir::OpResult shape_, ir::OpResult min_, ir::OpResult max_,
@@ -138,9 +138,7 @@ TEST(program_test, mutable_attribute) {
   paddle::dialect::UniformOp uniform1 =
       builder.Build<paddle::dialect::UniformOp>(
           shape_, min_, max_, phi::DataType::FLOAT32, 2, phi::CPUPlace());
-  EXPECT_EQ(uniform1->GetResultByIndex(0)
-                .type()
-                .isa<paddle::dialect::DenseTensorType>(),
+  EXPECT_EQ(uniform1->result(0).type().isa<paddle::dialect::DenseTensorType>(),
             true);
   EXPECT_EQ(block->size(), 4u);
 
@@ -148,18 +146,15 @@ TEST(program_test, mutable_attribute) {
   paddle::dialect::UniformOp uniform2 =
       builder.Build<paddle::dialect::UniformOp>(
           shape_, min_, max_, phi::DataType::FLOAT32, 2, phi::CPUPlace());
-  EXPECT_EQ(uniform2->GetResultByIndex(0)
-                .type()
-                .isa<paddle::dialect::DenseTensorType>(),
+  EXPECT_EQ(uniform2->result(0).type().isa<paddle::dialect::DenseTensorType>(),
             true);
   EXPECT_EQ(block->size(), 5u);
 
   // Def: C = paddle::dialect::AddOp(ir::OpResult x_, ir::OpResult y_)
   paddle::dialect::AddOp add = builder.Build<paddle::dialect::AddOp>(
-      uniform1->GetResultByIndex(0), uniform2->GetResultByIndex(0));
-  EXPECT_EQ(
-      add->GetResultByIndex(0).type().isa<paddle::dialect::DenseTensorType>(),
-      true);
+      uniform1->result(0), uniform2->result(0));
+  EXPECT_EQ(add->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+            true);
   EXPECT_EQ(block->size(), 6u);
 
   // Execute program
