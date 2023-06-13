@@ -176,8 +176,10 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
   return res;
 }
 
-::paddle::framework::GpuPsCommGraphFloatFea GraphTable::make_gpu_ps_graph_float_fea(
-    int gpu_id, std::vector<uint64_t> &node_ids, int float_slot_num) {
+::paddle::framework::GpuPsCommGraphFloatFea
+GraphTable::make_gpu_ps_graph_float_fea(int gpu_id,
+                                        std::vector<uint64_t> &node_ids,
+                                        int float_slot_num) {
   size_t shard_num = 64;
   std::vector<std::vector<uint64_t>> bags(shard_num);
   std::vector<float> feature_array[shard_num];
@@ -240,8 +242,8 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
   for (size_t i = 0; i < shard_num; i++) {
     tot_len += feature_array[i].size();
   }
-  VLOG(1) << "Loaded float feature table on cpu, float feature_list_size[" << tot_len
-          << "] node_ids_size[" << node_ids.size() << "]";
+  VLOG(1) << "Loaded float feature table on cpu, float feature_list_size["
+          << tot_len << "] node_ids_size[" << node_ids.size() << "]";
   res.init_on_cpu(tot_len, (unsigned int)node_ids.size(), float_slot_num);
   unsigned int offset = 0, ind = 0;
   for (size_t i = 0; i < shard_num; i++) {
@@ -1323,7 +1325,9 @@ GraphNode *GraphShard::add_graph_node(Node *node) {
   return reinterpret_cast<GraphNode *>(bucket[node_location[id]]);
 }
 
-FeatureNode *GraphShard::add_feature_node(uint64_t id, bool is_overlap, int float_fea_num) {
+FeatureNode *GraphShard::add_feature_node(uint64_t id,
+                                          bool is_overlap,
+                                          int float_fea_num) {
   if (node_location.find(id) == node_location.end()) {
     node_location[id] = bucket.size();
     if (float_fea_num > 0) {
@@ -1935,11 +1939,13 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
 
     size_t index = shard_id - shard_start;
     int slot_fea_num = 0;
-    if (feat_name.size() > 0) slot_fea_num = feat_name[idx].size(); 
+    if (feat_name.size() > 0) slot_fea_num = feat_name[idx].size();
     int float_fea_num = 0;
-    if (float_feat_id_map.size() > 0) float_fea_num = float_feat_id_map[idx].size();
+    if (float_feat_id_map.size() > 0)
+      float_fea_num = float_feat_id_map[idx].size();
     if (load_slot) {
-      auto node = feature_shards[idx][index]->add_feature_node(id, false, float_fea_num);
+      auto node = feature_shards[idx][index]->add_feature_node(
+          id, false, float_fea_num);
       if (node != NULL) {
         if (slot_fea_num > 0) node->set_feature_size(slot_fea_num);
         if (float_fea_num > 0) node->set_float_feature_size(float_fea_num);
@@ -2009,9 +2015,11 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
     }
     size_t index = shard_id - shard_start;
     int float_fea_num = 0;
-    if (float_feat_id_map.size() > 0) float_fea_num = float_feat_id_map[idx].size();
+    if (float_feat_id_map.size() > 0)
+      float_fea_num = float_feat_id_map[idx].size();
     if (load_slot) {
-      auto node = feature_shards[idx][index]->add_feature_node(id, false, float_fea_num);
+      auto node = feature_shards[idx][index]->add_feature_node(
+          id, false, float_fea_num);
       if (node != NULL) {
         for (int i = 2; i < num; ++i) {
           auto &v = vals[i];
@@ -2659,7 +2667,7 @@ int GraphTable::parse_feature(int idx,
             return -1;
           }
           return 0;
-        } 
+        }
         // else if (dtype == "float64") { // not used
         //  int ret = FeatureNode::parse_value_to_bytes<double>(
         //      fea_fields.begin(), fea_fields.end(), fea_ptr);
@@ -2670,8 +2678,9 @@ int GraphTable::parse_feature(int idx,
         //  return 0;
         // }
       } else {
-        VLOG(4) << "feature_name[" << name << "] is not in feat_id_map, ntype_id["
-                << idx << "] feat_id_map_size[" << feat_id_map.size() << "]";
+        VLOG(4) << "feature_name[" << name
+                << "] is not in feat_id_map, ntype_id[" << idx
+                << "] feat_id_map_size[" << feat_id_map.size() << "]";
       }
     }
   }
@@ -3039,8 +3048,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
         feat_shape[k].push_back(f_shape);
         feat_dtype[k].push_back(f_dtype);
         feat_id_map[k][f_name] = feasign_idx++;
-      } 
-      else if (f_dtype == "float32"){
+      } else if (f_dtype == "float32") {
         if (float_feat_id_map.size() < (size_t)node_types.size()) {
           float_feat_name.resize(node_types.size());
           float_feat_shape.resize(node_types.size());

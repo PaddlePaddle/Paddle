@@ -152,6 +152,11 @@ class HeterComm {
                    const void* src,
                    size_t count,
                    StreamType stream = 0);
+  template <typename StreamType>
+  void MemcpyPeerAsync(void* dst,
+                       const void* src,
+                       size_t count,
+                       StreamType stream);
 
 #if defined(PADDLE_WITH_CUDA)
   template <typename Sgd>
@@ -569,36 +574,35 @@ class HeterComm {
                               char* d_rev_buff,
                               const cudaStream_t& stream);
   size_t gather_inter_keys_by_all2all(const int& gpu_id,
-                                       const size_t& fea_size,
-                                       const KeyType* d_in_keys,
-                                       const cudaStream_t& stream);
-  void scatter_inter_vals_by_all2all(const int& gpu_id,
                                       const size_t& fea_size,
-                                      const char* d_in_vals,
-                                      void* d_out_vals,
-                                      const size_t& value_bytes,
-                                      void* d_tmp_vals,
+                                      const KeyType* d_in_keys,
                                       const cudaStream_t& stream);
+  void scatter_inter_vals_by_all2all(const int& gpu_id,
+                                     const size_t& fea_size,
+                                     const char* d_in_vals,
+                                     void* d_out_vals,
+                                     const size_t& value_bytes,
+                                     void* d_tmp_vals,
+                                     const cudaStream_t& stream);
   void recalc_local_and_remote_size(const int& gpu_id,
                                     const size_t& pull_size,
                                     const size_t& node_num,
                                     const uint32_t* d_tmp_size_list,
                                     const uint32_t* d_inter_size_list,
-                                    const cudaStream_t &stream);
+                                    const cudaStream_t& stream);
 
-  template<typename T>
-  void scatter_inter_vals_by_all2all_common(
-          const int& gpu_id,
-          const size_t& len,
-          const size_t& value_bytes,
-          const T* d_in_vals,
-          T* d_out_vals,
-          T* d_tmp_vals,
-          const cudaStream_t& stream,
-          bool sage = false,
-          bool slot = false) {
-    auto &cache = storage_[gpu_id];
-    auto &res = cache.shard_res;
+  template <typename T>
+  void scatter_inter_vals_by_all2all_common(const int& gpu_id,
+                                            const size_t& len,
+                                            const size_t& value_bytes,
+                                            const T* d_in_vals,
+                                            T* d_out_vals,
+                                            T* d_tmp_vals,
+                                            const cudaStream_t& stream,
+                                            bool sage = false,
+                                            bool slot = false) {
+    auto& cache = storage_[gpu_id];
+    auto& res = cache.shard_res;
 
     auto h_local_part_sizes = res.h_local_part_sizes.data();
     auto h_local_part_offsets = res.h_local_part_offsets.data();
@@ -608,28 +612,30 @@ class HeterComm {
 
     size_t total_fea_num = 0;
     if (rdma_checker_->need_rdma_trans() && !sage) {
-      // Sage mode can not run this branch currently, otherwise the process will hang here.
+      // Sage mode can not run this branch currently, otherwise the process will
+      // hang here.
       total_fea_num =
           send_vals_by_all2all_trans(gpu_id,
-                  rank_id_,
-                  node_size_,
-                  reinterpret_cast<const char*>(d_in_vals),
-                  reinterpret_cast<char *>(d_tmp_vals),
-                  value_bytes,
-                  stream);
+                                     rank_id_,
+                                     node_size_,
+                                     reinterpret_cast<const char*>(d_in_vals),
+                                     reinterpret_cast<char*>(d_tmp_vals),
+                                     value_bytes,
+                                     stream);
     } else {
       // sage is true, set default to run here.
-      total_fea_num = send_data_by_all2all(gpu_id,
-              node_size_,
-              rank_id_,
-              value_bytes,
-              h_remote_part_sizes,
-              h_remote_part_offsets,
-              h_local_part_sizes,
-              h_local_part_offsets,
-              reinterpret_cast<const char*>(d_in_vals),
-              reinterpret_cast<char *>(d_tmp_vals),
-              stream);
+      total_fea_num =
+          send_data_by_all2all(gpu_id,
+                               node_size_,
+                               rank_id_,
+                               value_bytes,
+                               h_remote_part_sizes,
+                               h_remote_part_offsets,
+                               h_local_part_sizes,
+                               h_local_part_offsets,
+                               reinterpret_cast<const char*>(d_in_vals),
+                               reinterpret_cast<char*>(d_tmp_vals),
+                               stream);
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
@@ -638,15 +644,15 @@ class HeterComm {
     // slot feature don't need scatter
     if (!slot) {
       heter_comm_kernel_->scatter_vals(
-              reinterpret_cast<const T*>(d_tmp_vals),  // in
-              reinterpret_cast<T*>(d_out_vals),        // out
-              res.d_local_idx_parted,
-              len,
-              value_bytes,
-              stream);
+          reinterpret_cast<const T*>(d_tmp_vals),  // in
+          reinterpret_cast<T*>(d_out_vals),        // out
+          res.d_local_idx_parted,
+          len,
+          value_bytes,
+          stream);
       CUDA_CHECK(cudaStreamSynchronize(stream));
     }
-}
+  }
 
   void scatter_inner_vals_p2p(const size_t& total_fea_num,
                               void* d_out_vals,
