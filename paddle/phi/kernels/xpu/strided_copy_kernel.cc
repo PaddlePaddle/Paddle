@@ -52,6 +52,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
   meta.stride = phi::make_ddim(out_stride);
+  meta.dims = phi::make_ddim(dims);
+  meta.offset = out->offset();
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
