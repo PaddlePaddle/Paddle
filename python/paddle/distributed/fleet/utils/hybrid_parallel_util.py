@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
 import paddle
 from paddle import framework
 from paddle.distributed.parallel import (
+    _coalesce_tensors,
     _split_tensors,
     build_groups,
     in_dynamic_mode,
@@ -29,49 +32,14 @@ from .log_util import logger
 __all__ = []
 
 
-def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
-    grad_var_set = set()
-    grad_vars = []
-    sparse_grad_vars = []
-
-    for param in parameters:
-        if param.trainable and (param._grad_ivar() is not None):
-            g_var = param._grad_ivar()
-            assert (
-                not g_var._is_sparse()
-            ), "Now, it doesn't support sparse parameters"
-            grad_vars.append(g_var)
-            assert g_var not in grad_var_set
-            grad_var_set.add(g_var)
-
-    coalesced_grads_and_vars = build_groups(grad_vars, bucket_size)
-
-    nranks = (
-        paddle.distributed.get_world_size()
-        if comm_group is None
-        else comm_group.nranks
+def slice_ordered_dict(dict, start=0, end=0):
+    return OrderedDict(
+        [(k, v) for (k, v) in dict.items() if k in list(dict.keys())[start:end]]
     )
-
-    scale = nranks if scale is None else 1.0 / scale
-    scale = None if scale == 1.0 else scale
-
-    for coalesced_grad, _, _ in coalesced_grads_and_vars:
-        # need to div nranks
-        if scale is not None:
-            div_factor = paddle.to_tensor(scale, dtype=coalesced_grad.dtype)
-            paddle.fluid.framework._dygraph_tracer().trace_op(
-                type="elementwise_div",
-                inputs={'X': coalesced_grad, 'Y': div_factor},
-                outputs={'Out': coalesced_grad},
-                attrs={'axis': -1},
-            )
-        paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
-
-    _split_tensors(coalesced_grads_and_vars)
 
 
 def _apply_collective_grads_eager(
-    parameters, comm_group, bucket_size, scale=None
+    parameters, comm_group, bucket_size, scale=None, block_size=1
 ):
     grad_var_set = set()
     grad_vars = []
@@ -91,7 +59,7 @@ def _apply_collective_grads_eager(
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
 
-    coalesced_grads_and_vars = build_groups(grad_vars, bucket_size)
+    var_groups = build_groups(grad_vars, bucket_size)
 
     nranks = (
         paddle.distributed.get_world_size()
@@ -102,13 +70,26 @@ def _apply_collective_grads_eager(
     scale = 1.0 / nranks if scale is None else scale
     scale = None if scale == 1.0 else scale
 
-    for coalesced_grad, _, _ in coalesced_grads_and_vars:
-        # need to div nranks
-        if scale is not None:
-            coalesced_grad.scale_(scale)
-        paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
+    var_groups_num = len(list(var_groups.items()))
+    block_capacity = var_groups_num // block_size
 
-    _split_tensors(coalesced_grads_and_vars)
+    group_index_list = list(range(0, var_groups_num, block_capacity))
+    group_index_list.append(var_groups_num)
+
+    for i in range(block_size):
+        block_var_groups = slice_ordered_dict(
+            var_groups, group_index_list[i], group_index_list[i + 1]
+        )
+
+        coalesced_grads_and_vars = _coalesce_tensors(block_var_groups)
+
+        for coalesced_grad, _, _ in coalesced_grads_and_vars:
+            # need to div nranks
+            if scale is not None:
+                coalesced_grad.scale_(scale)
+            paddle.distributed.all_reduce(coalesced_grad, group=comm_group)
+
+        _split_tensors(coalesced_grads_and_vars)
 
 
 def _broadcast_data_help(data, shape, dtype, hcg):
@@ -213,15 +194,16 @@ def broadcast_dp_parameters(model, hcg):
 
 
 def fused_allreduce_gradients_with_group(
-    parameter_list, group, bucket_size=128 * 1024 * 1024, scale=None
+    parameter_list,
+    group,
+    bucket_size=128 * 1024 * 1024,
+    scale=None,
+    block_size=1,
 ):
-    apply_func = (
-        _apply_collective_grads_eager
-        if in_dynamic_mode()
-        else _apply_collective_grads
-    )
     with framework.no_grad():
-        apply_func(parameter_list, group, bucket_size, scale)
+        _apply_collective_grads_eager(
+            parameter_list, group, bucket_size, scale, block_size
+        )
 
 
 def fused_allreduce_gradients(parameter_list, hcg):

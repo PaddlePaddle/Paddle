@@ -134,7 +134,7 @@ def build_groups(vars, group_size):
             dtype = var.dtype
             group_idx += 1
         var_groups.setdefault(group_idx, []).append(var)
-    return _coalesce_tensors(var_groups)
+    return var_groups
 
 
 @imperative_base.no_grad
@@ -166,7 +166,8 @@ def sync_params_buffers(
         return
 
     # group size is 128M
-    coalesced_vars = build_groups(model_vars, 128 * 1024 * 1024)
+    var_groups = build_groups(model_vars, 128 * 1024 * 1024)
+    coalesced_vars = _coalesce_tensors(var_groups)
 
     for coalesced_var, _, _ in coalesced_vars:
         paddle.distributed.broadcast(
