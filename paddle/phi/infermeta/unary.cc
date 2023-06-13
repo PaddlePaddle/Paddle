@@ -760,6 +760,7 @@ void DiagonalInferMeta(const MetaTensor& input,
     }
   }
   out->set_dims(phi::make_ddim(out_dims));
+  out->set_dtype(input.dtype());
 }
 
 void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
@@ -3496,6 +3497,7 @@ void SliceRawInferMeta(const MetaTensor& input,
   if (new_axes.size() > 0 && new_axes[0] != 0) {
     out->share_lod(input);
   }
+  out->set_dtype(input.dtype());
 }
 
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {

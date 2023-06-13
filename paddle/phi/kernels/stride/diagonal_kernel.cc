@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diagonal_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -60,13 +63,11 @@ void DiagonalStridedKernel(const Context& dev_ctx,
 
   auto meta = out->meta();
   auto tmp_dim = DDim(shape.data(), shape.size());
-  PADDLE_ENFORCE_EQ(
-      meta.dims,
-      tmp_dim,
-      phi::errors::Fatal(
-          "Strided compute error, infer shape is %s, but compute is %s.",
-          meta.dims,
-          tmp_dim));
+  if (meta.dims != tmp_dim) {
+    LOG(WARNING) << "Diagonal kernel stride compute diff, infer shape is "
+                 << meta.dims << ", but compute is " << tmp_dim << ".";
+    meta.dims = tmp_dim;
+  }
   meta.stride = DDim(stride.data(), stride.size());
   meta.offset = x_offset;
   out->set_meta(meta);

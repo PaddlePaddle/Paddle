@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_select_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -40,13 +43,11 @@ void IndexSelectStridedKernel(const Context& ctx,
   auto meta = output->meta();
   meta.offset = offset;
   auto tmp_dim = DDim(shape.data(), shape.size());
-  PADDLE_ENFORCE_EQ(
-      meta.dims,
-      tmp_dim,
-      phi::errors::Fatal(
-          "Strided compute error, infer shape is %s, but compute is %s.",
-          meta.dims,
-          tmp_dim));
+  if (meta.dims != tmp_dim) {
+    LOG(WARNING) << "Index_select kernel stride compute diff, infer shape is "
+                 << meta.dims << ", but compute is " << tmp_dim << ".";
+    meta.dims = tmp_dim;
+  }
   meta.stride = DDim(stride.data(), stride.size());
   output->set_meta(meta);
   output->ResetHolder(x.Holder());

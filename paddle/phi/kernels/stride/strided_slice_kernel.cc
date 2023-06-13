@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/strided_slice_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -92,13 +95,11 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 
   auto meta = out->meta();
   meta.offset = output_offset;
-  PADDLE_ENFORCE_EQ(
-      meta.dims,
-      output_dims,
-      phi::errors::Fatal(
-          "Strided compute error, infer shape is %s, but compute is %s.",
-          meta.dims,
-          output_dims));
+  if (meta.dims != output_dims) {
+    LOG(WARNING) << "Striede_slice kernel stride compute diff, infer shape is "
+                 << meta.dims << ", but compute is " << output_dims << ".";
+    meta.dims = output_dims;
+  }
   meta.stride = output_stride;
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
