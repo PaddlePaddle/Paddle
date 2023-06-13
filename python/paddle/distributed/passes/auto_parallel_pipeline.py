@@ -92,7 +92,6 @@ class PipelinePass(PassBase):
             )
 
     def _insert_sync_ops_for_stream(self):
-
         for block in self._program.blocks:
             offset = 0
             send_vars = []
@@ -243,7 +242,6 @@ class PipelinePass(PassBase):
 
         # set upstream/downstream for task_nodes of cur_rank
         for i, (task_role, task_node) in enumerate(task_nodes.items()):
-
             cur_id = int(self._cur_rank * num_of_functionality + i)
             ups = []
             downs = []

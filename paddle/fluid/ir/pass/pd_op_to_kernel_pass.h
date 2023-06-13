@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,25 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace dialect {
 
-class Graph;
+std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog);
 
-class IdentityScaleOpCleanPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  virtual ~IdentityScaleOpCleanPass() = default;
-};
-
-}  // namespace ir
-}  // namespace framework
+}  // namespace dialect
 }  // namespace paddle

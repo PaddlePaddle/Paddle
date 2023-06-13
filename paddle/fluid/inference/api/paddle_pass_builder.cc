@@ -94,12 +94,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_quant_dequant_filter_op_pass",          //
       "trt_delete_weight_dequant_linear_op_pass",     //
       "delete_quant_dequant_linear_op_pass",          //
-      "identity_scale_op_clean_pass",                 //
+      "identity_op_clean_pass",                       //
       "add_support_int8_pass",                        //
       "simplify_with_basic_ops_pass",                 //
       "trt_embedding_eltwise_layernorm_fuse_pass",    //
       "preln_embedding_eltwise_layernorm_fuse_pass",  //
-      "delete_c_identity_op_pass",                    //
       "trt_multihead_matmul_fuse_pass_v2",            //
       "trt_multihead_matmul_fuse_pass_v3",            //
       "multihead_matmul_roformer_fuse_pass",          //
@@ -175,7 +174,7 @@ const std::vector<std::string> kLiteSubgraphPasses({
 // running errors. After fusion operator supports low precision, delete this.
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     "map_op_to_another_pass",
-    "identity_scale_op_clean_pass",
+    "identity_op_clean_pass",
     "simplify_with_basic_ops_pass",
     "silu_fuse_pass",
     "delete_quant_dequant_linear_op_pass",
@@ -222,7 +221,7 @@ const std::vector<std::string> kCINNCompilerPasses{
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
     "map_op_to_another_pass",                                           //
-        "identity_scale_op_clean_pass",                                 //
+        "identity_op_clean_pass",                                       //
         "is_test_pass",                                                 //
         "simplify_with_basic_ops_pass",                                 //
         "delete_quant_dequant_linear_op_pass",                          //
@@ -511,7 +510,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
-      "identity_scale_op_clean_pass",
+      "identity_op_clean_pass",
       "delete_repeated_ops_pass",
       "delete_op_device_pass",
       "constant_folding_pass",

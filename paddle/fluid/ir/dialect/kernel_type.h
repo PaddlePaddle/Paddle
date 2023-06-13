@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/fluid/ir/dialect/pd_kernel_type_storage.h"
+#include "paddle/fluid/ir/dialect/kernel_type_storage.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/ir/core/type.h"
 
@@ -31,18 +31,18 @@ class AllocatedDenseTensorType : public ir::Type {
                                AllocatedDenseTensorTypeStorage);
 
   static AllocatedDenseTensorType get(ir::IrContext *ctx,
-                                      phi::Place place,
+                                      const phi::Place &place,
                                       dialect::DenseTensorType type) {
     return ir::TypeManager::template get<AllocatedDenseTensorType>(
         ctx, place, type);
   }
 
   static AllocatedDenseTensorType get(ir::IrContext *ctx,
-                                      phi::Place place,
-                                      ir::Type dtype,
-                                      phi::DDim dims,
-                                      phi::DataLayout layout,
-                                      phi::LoD lod,
+                                      const phi::Place &place,
+                                      const ir::Type &dtype,
+                                      const phi::DDim &dims,
+                                      const phi::DataLayout &layout,
+                                      const phi::LoD &lod,
                                       size_t offset) {
     dialect::DenseTensorType dense_tensor_type =
         dialect::DenseTensorType::get(ctx, dtype, dims, layout, lod, offset);

@@ -176,7 +176,7 @@ class TestDetectionMAPOp(OpTest):
             sorted_list = sorted(pos_list, key=lambda pos: pos[0], reverse=True)
             sum = 0
             accu_list = []
-            for (score, count) in sorted_list:
+            for score, count in sorted_list:
                 sum += count
                 accu_list.append(sum)
             return accu_list
@@ -196,11 +196,11 @@ class TestDetectionMAPOp(OpTest):
             elif not difficult:
                 label_count[label] += 1
 
-        for (label, score, tp, fp) in tf_pos:
+        for label, score, tp, fp in tf_pos:
             true_pos[label].append([score, tp])
             false_pos[label].append([score, fp])
 
-        for (label, label_pos_num) in label_count.items():
+        for label, label_pos_num in label_count.items():
             if label_pos_num == 0:
                 continue
             if label not in true_pos:

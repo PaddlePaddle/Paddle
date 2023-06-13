@@ -18,7 +18,6 @@ from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphGroupSharded(TestMultipleGpus):
-
     # check group sharded logic as well as the accuracy with single mode
     def test_dygraph_group_sharded(self):
         self.run_mnist_2gpu('dygraph_group_sharded_api_eager.py')

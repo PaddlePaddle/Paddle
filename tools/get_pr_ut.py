@@ -104,7 +104,7 @@ class PRChecker:
     def __urlretrieve(self, url, filename):
         ix = 1
         with_proxy = urllib.request.getproxies()
-        without_proxy = {'http': '', 'http': ''}
+        without_proxy = {'http': '', 'https': ''}
         while ix < 6:
             if ix // 2 == 0:
                 cur_proxy = urllib.request.ProxyHandler(without_proxy)

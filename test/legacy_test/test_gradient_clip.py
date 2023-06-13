@@ -476,8 +476,7 @@ class TestDygraphGradientClipByGlobalNorm(TestDygraphGradientClip):
         b = global_norm_clip
         self.assertTrue(
             np.isclose(a=a, b=b, rtol=1e-6, atol=1e-8),
-            "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
-            % (a, b),
+            f"gradient clip by global norm has wrong results, expetcd:{a:f}, but received:{b:f}",
         )
 
 
@@ -505,8 +504,7 @@ class TestDygraphGradientClipByNorm(TestDygraphGradientClip):
             b = np.sqrt(np.sum(np.power(v, 2)))
             self.assertTrue(
                 np.isclose(a=a, b=b, rtol=1e-6, atol=1e-8),
-                "gradient clip by norm has wrong results, expetcd:%f, but received:%f"
-                % (a, b),
+                f"gradient clip by norm has wrong results, expetcd:{a:f}, but received:{b:f}",
             )
 
 
@@ -602,8 +600,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 b = global_norm_clip
                 self.assertTrue(
                     np.isclose(a=a, b=b, rtol=1e-3, atol=1e-8),
-                    "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
-                    % (a, b),
+                    f"gradient clip by global norm has wrong results, expetcd:{a:f}, but received:{b:f}",
                 )
 
 
@@ -647,8 +644,7 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
 
             self.assertTrue(
                 np.isclose(a=a, b=b, rtol=1e-6, atol=1e-8),
-                "gradient clip by global norm has wrong results, expetcd:%f, but received:%f"
-                % (a, b),
+                f"gradient clip by global norm has wrong results, expetcd:{a:f}, but received:{b:f}",
             )
 
 

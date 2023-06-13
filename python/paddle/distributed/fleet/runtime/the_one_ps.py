@@ -354,7 +354,7 @@ class CommonAccessor:
             attr_varnames = self.opt_attr_map[oop.type]
             self.accessor_class = oop.type
 
-        for (formal_name, shape) in param_varnames:
+        for formal_name, shape in param_varnames:
             params.append(formal_name)
             if self.accessor_class == "adam_d2sum":
                 # for dims
@@ -424,7 +424,7 @@ class CommonAccessor:
                     )
                     initializers.append(initializer)
 
-        for (attr_varname, type_) in attr_varnames:
+        for attr_varname, type_ in attr_varnames:
             value = oop.attr(attr_varname)
             attrs.append("&".join([attr_varname, type_, str(value)]))
 
@@ -1307,7 +1307,6 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_distributed_persistables(
         self, executor, dirname, main_program, mode=0
     ):
-
         denses = self.compiled_strategy.get_the_one_recv_context(
             is_dense=True,
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,

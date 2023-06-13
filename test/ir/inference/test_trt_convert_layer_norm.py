@@ -43,7 +43,7 @@ class TrtConvertLayerNormTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]], shape_input):
-            return np.ones(shape_input).astype(np.float32)
+            return np.random.random(shape_input).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], shape_input):
             begin = attrs[0]["begin_norm_axis"]

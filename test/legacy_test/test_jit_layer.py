@@ -57,7 +57,6 @@ class TestMultiLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_multi_load(self):
-
         x = paddle.full([2, 4], 2)
         model = Net()
         paddle.jit.enable_to_static(False)

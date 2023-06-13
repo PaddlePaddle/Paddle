@@ -68,7 +68,6 @@ def place(devices, key='place'):
 
 
 def parameterize(fields, values=None):
-
     fields = [fields] if isinstance(fields, str) else fields
     params = [dict(zip(fields, vals)) for vals in values]
 
