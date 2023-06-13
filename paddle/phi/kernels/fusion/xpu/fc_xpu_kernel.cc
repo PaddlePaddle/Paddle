@@ -60,27 +60,27 @@ void FcXPUKernelImpl(const Context& ctx,
   } else if (act_type == xpu::Activation_t::HARD_SIGMOID) {
     act.hard_sigmoid_slope = act_alpha;
   }
-  int r = xpu::fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX, TW.
-                                                                   // TY, TGEMM
-      ctx.x_context(),                                             // ctx
-      x_data,                                                      // x
-      w_data,                                                      // w
-      out_data,                                                    // y
-      m,                                                           // m
-      n,                                                           // n
-      k,                                                           // k
-      transpose_x,                                                 // x_trans
-      true,                                                        // w_trans
-      x_max_data,                                                  // x_maxptr
-      w_max_data,                                                  // w_maxptr
-      out_max_data,                                                // y_maxptr
-      transpose_x ? m : k,                                         // ldx
-      k,                                                           // ldw
-      n,                                                           // ldy
-      alpha,                                                       // alpha
-      beta,                                                        // beta
-      bias_data,                                                   // bias
-      act);
+  int r =
+      xpu::fc_fusion<XPUTypeX, XPUTypeW, XPUTypeOut, T_GEMM>(  // TX/TW/TY/TGEMM
+          ctx.x_context(),                                     // ctx
+          x_data,                                              // x
+          w_data,                                              // w
+          out_data,                                            // y
+          m,                                                   // m
+          n,                                                   // n
+          k,                                                   // k
+          transpose_x,                                         // x_trans
+          true,                                                // w_trans
+          x_max_data,                                          // x_maxptr
+          w_max_data,                                          // w_maxptr
+          out_max_data,                                        // y_maxptr
+          transpose_x ? m : k,                                 // ldx
+          k,                                                   // ldw
+          n,                                                   // ldy
+          alpha,                                               // alpha
+          beta,                                                // beta
+          bias_data,                                           // bias
+          act);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_xpu");
 }
 
