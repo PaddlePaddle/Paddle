@@ -182,8 +182,7 @@ class TestNanmedian(unittest.TestCase):
         paddle.enable_static()
 
     def test_check_grad(self):
-        paddle.disable_static(place=paddle.CPUPlace())
-        paddle.set_device('cpu')
+        paddle.disable_static(place=self.place)
         shape = (4, 5)
         x_np = np.random.uniform(-1, 1, shape).astype(np.float64)
         x_np[0, :] = np.nan
@@ -200,8 +199,7 @@ class TestNanmedian(unittest.TestCase):
         np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
 
     def test_check_grad_axis(self):
-        paddle.disable_static(place=paddle.CPUPlace())
-        paddle.set_device('cpu')
+        paddle.disable_static(place=self.place)
         shape = (4, 5)
         x_np = np.random.uniform(-1, 1, shape).astype(np.float64)
         x_np[0, :] = np.nan
