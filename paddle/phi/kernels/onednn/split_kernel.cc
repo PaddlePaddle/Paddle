@@ -24,11 +24,11 @@ const std::vector<int64_t> get_slice_strides(
     const dnnl::memory::desc& full_md,
     int axis) {
   auto strides = full_md.get_strides();
-  auto ndims = static_cast<int16_t>(full_md.get_dims().size());
+  auto ndims = full_md.get_dims().size();
   auto full_dims = full_md.get_dims();
   auto splitted_stride = strides[axis];
   std::vector<int64_t> slice_strides(ndims, splitted_stride);
-  for (int16_t i = 0; i < ndims; ++i) {
+  for (size_t i = 0; i < ndims; ++i) {
     slice_strides[i] = strides[i] > splitted_stride
                            ? (strides[i] / full_dims[axis]) * out_vec_dims[axis]
                            : strides[i];
