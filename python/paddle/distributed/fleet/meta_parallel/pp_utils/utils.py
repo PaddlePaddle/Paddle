@@ -167,11 +167,12 @@ class FusedCommBuffer:
         self._acc_steps = acc_steps
         self._comm_group = comm_group
 
-        use_main_grad = hasattr(self._params[0], "main_grad")
+        self.use_main_grad = hasattr(self._params[0], "main_grad")
 
         self._task = None
         self._params_step_dict = {}
         self._params_checked_in = 0
+        self._params_to_addr = {}
 
         self._act = act
         if self._act == HOOK_ACTION.ALL_REDUCE:
@@ -186,7 +187,20 @@ class FusedCommBuffer:
 
         self._init_step_dict()
 
-        self.grad_storage = flatten_dense_tensors(self._params, use_main_grad)
+        self.grad_storage = flatten_dense_tensors(
+            self._params, self.use_main_grad
+        )
+
+        self._record_addr()
+
+    def _record_addr(self):
+        for param in self._params:
+            addr = (
+                param.main_grad.data_ptr()
+                if self.use_main_grad
+                else param.grad.data_ptr()
+            )
+            self._params_to_addr[param.name] = addr
 
     def _init_step_dict(self):
         for p in self._params:
@@ -206,6 +220,18 @@ class FusedCommBuffer:
 
     def add_grad(self, param):
         assert param.name in self._params_step_dict
+        current_ptr = (
+            param.main_grad.data_ptr()
+            if self.use_main_grad
+            else param.grad.data_ptr()
+        )
+        if self._params_to_addr[param.name] != current_ptr:
+            raise ValueError(
+                "The address of the grad/main_grad of the param has been changed during training, "
+                "which is not allowed for dp/sharding overlap with pp. "
+                "This may be caused by some non-inplace operations on the grad/main_grad. "
+                "Please use the inplace version of the operations or disable the overlapping."
+            )
 
         self._params_step_dict[param.name] += 1
 
@@ -245,7 +271,6 @@ class FusedCommBuffer:
 
 
 def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
-
     group_idx = 0
     memory_counter = 0
     var_groups = OrderedDict()

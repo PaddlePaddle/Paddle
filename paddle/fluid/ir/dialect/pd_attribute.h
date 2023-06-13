@@ -44,8 +44,8 @@ class ScalarAttribute : public ir::Attribute {
     return (val.type_id() == ir::BoolAttribute::type_id()) ||
            (val.type_id() == ir::FloatAttribute::type_id()) ||
            (val.type_id() == ir::DoubleAttribute::type_id()) ||
-           (val.type_id() == ir::Int32_tAttribute::type_id()) ||
-           (val.type_id() == ir::Int64_tAttribute::type_id());
+           (val.type_id() == ir::Int32Attribute::type_id()) ||
+           (val.type_id() == ir::Int64Attribute::type_id());
   }
 
   phi::Scalar data();

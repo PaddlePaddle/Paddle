@@ -146,7 +146,6 @@ class TestDygraphHybridFp16(TestCollectiveAPIRunnerBase):
         pass
 
     def check_pass(self, *args, **kwargs):
-
         from common import init_parallel_env
 
         import paddle
