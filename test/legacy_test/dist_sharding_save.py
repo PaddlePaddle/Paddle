@@ -15,7 +15,6 @@
 import os
 
 from dist_mnist import cnn_model  # noqa: F401
-from test_dist_base import dump_output
 
 import paddle
 from paddle import fluid
