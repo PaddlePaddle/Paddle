@@ -1315,7 +1315,6 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.grad.shape, [2, 3])
 
     def test_tensordot(self):
-
         # 1) input is 1D
         x = paddle.arange(10, dtype='float64')
         x.stop_gradient = False

@@ -345,7 +345,6 @@ def generate_inplace_fn(inplace_op_type):
     origin_op_type = inplace_op_type[:-1]
 
     def func(x, name=None):
-
         if in_dynamic_mode():
             if hasattr(_C_ops, inplace_op_type):
                 op = getattr(_C_ops, inplace_op_type)

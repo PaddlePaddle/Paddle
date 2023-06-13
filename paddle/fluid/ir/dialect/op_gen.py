@@ -70,9 +70,9 @@ op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
 
-OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->GetOperandByIndex({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->operand({input_index}); }}
 """
-OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->GetResultByIndex({output_index}); }}
+OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->result({output_index}); }}
 """
 
 # =====================================
@@ -110,7 +110,7 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}});
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{inplace}}}, {{{view}}});
   return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
@@ -251,8 +251,8 @@ def to_phi_and_fluid_op_name(op_item):
 
 
 scalar_type_maps = {
-    'int': 'ir::Int32_tAttribute',
-    'int64_t': 'ir::Int64_tAttribute',
+    'int': 'ir::Int32Attribute',
+    'int64_t': 'ir::Int64Attribute',
     'float': 'ir::FloatAttribute',
     'dobule': 'ir::DoubleAttribute',
     'bool': 'ir::BoolAttribute',
@@ -309,17 +309,17 @@ class OpInfoParser:
         self.attr_types_map = {
             'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
             'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-            'Scalar(int)': ['ir::Int32_tAttribute', 'int'],
-            'Scalar(int64_t)': ['ir::Int64_tAttribute', 'int64_t'],
+            'Scalar(int)': ['ir::Int32Attribute', 'int'],
+            'Scalar(int64_t)': ['ir::Int64Attribute', 'int64_t'],
             'Scalar(float)': ['ir::FloatAttribute', 'float'],
             'Scalar(dobule)': ['ir::DoubleAttribute', 'dobule'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
                 'const std::vector<Scalar>&',
             ],
-            'int': ['ir::Int32_tAttribute', 'int'],
-            'int32_t': ['ir::Int32_tAttribute', 'int32_t'],
-            'int64_t': ['ir::Int64_tAttribute', 'int64_t'],
+            'int': ['ir::Int32Attribute', 'int'],
+            'int32_t': ['ir::Int32Attribute', 'int32_t'],
+            'int64_t': ['ir::Int64Attribute', 'int64_t'],
             'long': ['ir::LongAttribute', 'long'],
             'size_t': ['ir::Size_tAttribute', 'size_t'],
             'float': ['ir::FloatAttribute', 'float'],
@@ -345,11 +345,11 @@ class OpInfoParser:
             ],
             'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
             'int64_t[]': [
-                'ir::ArrayAttribute<ir::Int64_tAttribute>',
+                'ir::ArrayAttribute<ir::Int64Attribute>',
                 'const std::vector<int64_t>&',
             ],
             'int[]': [
-                'ir::ArrayAttribute<ir::Int32_tAttribute>',
+                'ir::ArrayAttribute<ir::Int32Attribute>',
                 'const std::vector<int>&',
             ],
         }
@@ -386,6 +386,10 @@ class OpInfoParser:
         else:
             self.infer_shape_func = None
 
+        # parse inplace && view
+        self.inplace_map = self.parse_op_inplace_info()
+        self.view_map = self.parse_op_view_info()
+
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
             type_list
@@ -396,7 +400,9 @@ class OpInfoParser:
             ), "type list size != optional list size."
 
     def parse_op_phi_name(self):
-        if self.parse_op_inplace_info() is None:
+        if (self.parse_op_inplace_info() is None) and (
+            self.parse_op_view_info() is None
+        ):
             return [self.op_yaml_item['name']]
         else:
             if self.op_yaml_item['name'][-1] == "_":
@@ -410,6 +416,11 @@ class OpInfoParser:
     def parse_op_inplace_info(self):
         if 'inplace' in self.op_yaml_item:
             return self.op_yaml_item['inplace']
+        return None
+
+    def parse_op_view_info(self):
+        if 'view' in self.op_yaml_item:
+            return self.op_yaml_item['view']
         return None
 
     def parse_mutable_attribute(self):
@@ -806,11 +817,11 @@ def GenBuildInserFullForMutableAttribute(
     build_mutable_attribute = ""
     BUILD_INTARRAY_ATTRIBUTE_TEMPLATE = """  // Generate int_array mutable attribute: {attr_name}
   paddle::dialect::FullIntArrayOp full_{attr_name}_op = builder.Build<paddle::dialect::FullIntArrayOp>({attr_name}, {phi_dtype}, phi::CPUPlace());
-  ir::OpResult {attr_name}_ = full_{attr_name}_op->GetResultByIndex(0);
+  ir::OpResult {attr_name}_ = full_{attr_name}_op->result(0);
     """
     BUILD_SCALAR_ATTRIBUTE_TEMPLATE = """  // Generate scalar mutable attribute: {attr_name}
   paddle::dialect::FullOp full_{attr_name}_op = builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{{1}}, {attr_name}, {phi_dtype}, phi::CPUPlace());
-  ir::OpResult {attr_name}_ = full_{attr_name}_op->GetResultByIndex(0);
+  ir::OpResult {attr_name}_ = full_{attr_name}_op->result(0);
     """
     for idx in range(len(op_mutable_attribute_name_list)):
         attr_name = op_mutable_attribute_name_list[idx]
@@ -1256,6 +1267,8 @@ def OpGenerator(
         # others
         op_infer_meta_map = op_info.infer_meta_map
         op_kernel_map = op_info.kernel_map
+        op_inplace_map = op_info.inplace_map
+        op_view_map = op_info.view_map
         op_interfaces = ["OpYamlInfoInterface"]
         op_traits = []
 
@@ -1472,11 +1485,24 @@ def OpGenerator(
             if op_infer_meta_map is not None:
                 infer_meta_func_str = op_infer_meta_map['func']
                 infer_meta_param_str = '", "'.join(op_infer_meta_map['param'])
+
             kernel_func_str = ""
             kernel_param_str = ""
             if op_kernel_map is not None:
                 kernel_func_str = '", "'.join(op_kernel_map['func'])
                 kernel_param_str = '", "'.join(op_kernel_map['param'])
+
+            inplace_str = ""
+            view_str = ""
+            if op_name[-1] == "_":
+                if op_inplace_map is not None:
+                    for key, value in op_inplace_map.items():
+                        inplace_str += '{"' + key + '", "' + value + '"},'
+                    inplace_str = inplace_str[:-1]
+                if op_view_map is not None:
+                    for key, value in op_view_map.items():
+                        view_str += '{"' + key + '", "' + value + '"},'
+                    view_str = view_str[:-1]
 
             op_info_func_str = OP_INFO_TEMPLATE.format(
                 op_name=op_class_name,
@@ -1487,6 +1513,8 @@ def OpGenerator(
                 infer_meta_param=infer_meta_param_str,
                 kernel_func=kernel_func_str,
                 kernel_param=kernel_param_str,
+                inplace=inplace_str,
+                view=view_str,
             )
 
             # =================================== #

@@ -256,7 +256,6 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
             self.assertTrue(first_program == recent_program)
 
     def test_get_concrete_program(self):
-
         foo = to_static(foo_func)
 
         # 1. specific InputSpec for `x`/`y`
@@ -298,7 +297,6 @@ class TestDifferentInputSpecCacheProgram(unittest.TestCase):
 
     def test_concrete_program(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
-
             # usage 1
             foo_1 = paddle.jit.to_static(
                 foo_func,

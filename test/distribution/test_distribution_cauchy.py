@@ -363,7 +363,6 @@ class CauchyTestFeature(CauchyTest):
     )
     def test_kl_divergence(self, loc, scale):
         with paddle.fluid.dygraph.guard(self.place):
-
             # convert loc/scale to paddle's dtype(float32/float64)
             rv_paddle_other = Cauchy(
                 loc=paddle.full((), loc, dtype=self.rv_paddle.loc.dtype),

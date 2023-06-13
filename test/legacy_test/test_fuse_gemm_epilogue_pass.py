@@ -23,7 +23,6 @@ from paddle.fluid import core
 
 
 def compare(ref, res, atol, rtol):
-
     ref = np.array(ref).flatten()
     res = np.array(res).flatten()
 

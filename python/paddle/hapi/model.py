@@ -1973,7 +1973,6 @@ class Model:
             cbks.on_epoch_end(epoch, logs)
 
             if do_eval and epoch % eval_freq == 0:
-
                 eval_steps = self._len_data_loader(eval_loader)
                 cbks.on_begin(
                     'eval',

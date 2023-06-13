@@ -54,7 +54,7 @@ void build_scope(ir::Block* block,
     int input = (*it)->num_operands();
     if (input > 0) {
       for (int i = 0; i < input; ++i) {
-        auto ptr = (*it)->GetOperandByIndex(i).source();
+        auto ptr = (*it)->operand(i).source();
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -72,7 +72,7 @@ void build_scope(ir::Block* block,
 
     if (out_num > 0) {
       for (int i = 0; i < out_num; ++i) {
-        ir::Value ptr = (*it)->GetResultByIndex(i);
+        ir::Value ptr = (*it)->result(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -131,7 +131,7 @@ void build_context(ir::Operation* op,
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->GetOperandByIndex(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]).source();
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {
@@ -164,9 +164,8 @@ void build_context(ir::Operation* op,
       } else if (type_name == "paddle::dialect::DataTypeAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
-      } else if (type_name == "ir::Int32_tAttribute") {
-        ctx->EmplaceBackAttr(
-            attr_map[t].dyn_cast<ir::Int32_tAttribute>().data());
+      } else if (type_name == "ir::Int32Attribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -181,7 +180,7 @@ void build_context(ir::Operation* op,
     }
   }
 
-  ir::Value out_ptr = op->GetResultByIndex(0);
+  ir::Value out_ptr = op->result(0);
   auto name = name_map.at(out_ptr);
 
   ctx->EmplaceBackOutput(scope->Var(name)->GetMutable<phi::DenseTensor>());
@@ -240,7 +239,7 @@ class PhiKernelAdaptor {
             (*it), name_map, scope_, &kernel_ctx, false);
         found_it->second(&kernel_ctx);
 
-        auto out_value = (*it)->GetResultByIndex(0);
+        auto out_value = (*it)->result(0);
         out_name = name_map[out_value];
       }
     }
