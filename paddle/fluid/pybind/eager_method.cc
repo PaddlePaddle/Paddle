@@ -201,6 +201,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
 
   void* array_buffer = nullptr;
+  size_t array_offset = 0;
 
   if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
     eager_gil_scoped_release guard;
@@ -211,24 +212,26 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       // deep copy
       paddle::memory::Copy(place,
                            array_buffer,
                            place,
-                           dense_tensor->data(),
-                           dense_tensor->memory_size());
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       // deep copy
       paddle::memory::Copy(place,
                            array_buffer,
                            place,
-                           dense_tensor->data(),
-                           dense_tensor->memory_size());
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -245,19 +248,21 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       paddle::platform::GpuMemcpySync(array_buffer,
-                                      dense_tensor->data(),
-                                      dense_tensor->memory_size(),
+                                      dense_tensor->Holder()->ptr(),
+                                      dense_tensor->Holder()->size(),
                                       kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       paddle::platform::GpuMemcpySync(array_buffer,
-                                      dense_tensor->data(),
-                                      dense_tensor->memory_size(),
+                                      dense_tensor->Holder()->ptr(),
+                                      dense_tensor->Holder()->size(),
                                       kind);
     }
 #endif
@@ -270,22 +275,24 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       paddle::memory::Copy(place,
                            array_buffer,
                            dense_tensor->place(),
-                           dense_tensor->data(),
-                           dense_tensor->memory_size());
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       paddle::memory::Copy(place,
                            array_buffer,
                            dense_tensor->place(),
-                           dense_tensor->data(),
-                           dense_tensor->memory_size());
+                           dense_tensor->Holder()->ptr(),
+                           dense_tensor->Holder()->size());
     }
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -297,10 +304,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
-          ->MemoryCopyD2H(
-              array_buffer, dense_tensor->data(), dense_tensor->memory_size());
+          ->MemoryCopyD2H(array_buffer,
+                          dense_tensor->Holder()->ptr(),
+                          dense_tensor->Holder()->size());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -313,10 +322,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
         dense_tensor =
             std::dynamic_pointer_cast<phi::DenseTensor>(temp_tensor.impl());
       }
-      array_buffer = malloc(dense_tensor->memory_size());
+      array_buffer = malloc(dense_tensor->Holder()->size());
+      array_offset = dense_tensor->offset();
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
-          ->MemoryCopyD2H(
-              array_buffer, dense_tensor->data(), dense_tensor->memory_size());
+          ->MemoryCopyD2H(array_buffer,
+                          dense_tensor->Holder()->ptr(),
+                          dense_tensor->Holder()->size());
     }
 #endif
   } else {
@@ -331,7 +342,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_rank,
       py_dims,
       py_strides,
-      array_buffer,
+      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
+                              array_offset),
       pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_ |
           pybind11::detail::npy_api::NPY_ARRAY_OWNDATA_,
