@@ -62,7 +62,7 @@ TEST(program_test, program) {
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
+  ir::Builder builder = ir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
@@ -70,8 +70,7 @@ TEST(program_test, program) {
   paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  builder.Build<paddle::dialect::AddOp>(op1->GetResultByIndex(0),
-                                        op2->GetResultByIndex(0));
+  builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
