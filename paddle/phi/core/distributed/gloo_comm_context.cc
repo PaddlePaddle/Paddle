@@ -18,6 +18,7 @@
 #include <gloo/allgather.h>
 #include <gloo/allreduce.h>
 #include <gloo/broadcast.h>
+#include <gloo/gather.h>
 #include <gloo/reduce.h>
 #include <gloo/types.h>
 
@@ -55,7 +56,9 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
   if (rank_ == root) {
     GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   }
+  next_tag();
   opts.setRoot(root);
+  opts.setTag(_tag);
   gloo::broadcast(opts);
 }
 
@@ -65,9 +68,26 @@ void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
 
   gloo::AllgatherOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
+  next_tag();
+  opts.setTag(_tag);
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   gloo::allgather(opts);
+}
+
+void GlooCommContext::Gather(phi::DenseTensor* out_tensor,
+                             const phi::DenseTensor& in_tensor,
+                             int src) {
+  gloo::GatherOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  next_tag();
+  opts.setTag(_tag);
+  opts.setRoot(src);
+  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
+  if (rank_ == src) {
+    GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  }
+  gloo::gather(opts);
 }
 
 void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
@@ -75,6 +95,8 @@ void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 int reduce_type) {
   gloo::AllreduceOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
+  next_tag();
+  opts.setTag(_tag);
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   GENERATE_FUNC(dtype, SetReduceFunc, &opts, reduce_type);
@@ -86,6 +108,8 @@ void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
                              int reduce_type,
                              int root) {
   gloo::ReduceOptions opts(gloo_context_);
+  next_tag();
+  opts.setTag(_tag);
   opts.setRoot(root);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
