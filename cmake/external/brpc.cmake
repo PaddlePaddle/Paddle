@@ -18,7 +18,6 @@ find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
 message(STATUS "crypto:" ${OPENSSL_CRYPTO_LIBRARY})
-message(STATUS "WITH_SNAPPY:" ${WITH_SNAPPRY})
 
 add_library(ssl SHARED IMPORTED GLOBAL)
 set_property(TARGET ssl PROPERTY IMPORTED_LOCATION ${OPENSSL_SSL_LIBRARY})
@@ -37,40 +36,25 @@ set(BRPC_LIBRARIES
 
 include_directories(${BRPC_INCLUDE_DIR})
 
-# download brpc
-set(BRPC_FILE
-    1.4.0.tar.gz
-    CACHE STRING "" FORCE)
-set(BRPC_URL
-    https://github.com/apache/brpc/archive/refs/tags/${BRPC_FILE}
-    CACHE STRING "" FORCE)
-set(BRPC_DOWNLOAD_DIR
-    ${PADDLE_SOURCE_DIR}/third_party/brpc/${CMAKE_SYSTEM_NAME})
-set(BRPC_URL_MD5 6af9d50822c33a3abc56a1ec0af0e0bc)
+# clone brpc to Paddle/third_party
+set(BRPC_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
+set(BRPC_URL https://github.com/apache/brpc.git)
+set(BRPC_TAG 1.4.0)
 
-function(download_brpc)
-  message(STATUS "Downloading ${BRPC_URL} to ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE}")
-  file(
-    DOWNLOAD ${BRPC_URL} ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE}
-    EXPECTED_MD5 ${BRPC_URL_MD5}
-    STATUS ERR)
-  if(ERR EQUAL 0)
-    message(STATUS "Download ${BRPC_FILE} success")
-  else()
-    message(
-      FATAL_ERROR
-        "Download failed, error: ${ERR}\n You can try downloading ${BRPC_FILE} again"
-    )
-  endif()
-endfunction()
-
-if(EXISTS ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE})
-  file(MD5 ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE} BRPC_MD5)
-  if(NOT BRPC_MD5 STREQUAL BRPC_URL_MD5)
-    download_brpc()
-  endif()
+if(NOT EXISTS ${BRPC_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${BRPC_TAG} ${BRPC_URL}
+                          ${BRPC_SOURCE_DIR})
 else()
-  download_brpc()
+  # check git tag
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} -C ${BRPC_SOURCE_DIR} describe --tags
+    OUTPUT_VARIABLE CURRENT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT ${CURRENT_TAG} STREQUAL ${BRPC_TAG})
+    message(STATUS "Checkout brpc to ${BRPC_TAG}")
+    execute_process(COMMAND ${GIT_EXECUTABLE} -C ${BRPC_SOURCE_DIR} checkout -q
+                            ${BRPC_TAG})
+  endif()
 endif()
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
@@ -82,8 +66,7 @@ set(prefix_path
 ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  URL ${BRPC_DOWNLOAD_DIR}/${BRPC_FILE}
-  URL_MD5 ${BRPC_URL_MD5}
+  SOURCE_DIR ${BRPC_SOURCE_DIR}
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
