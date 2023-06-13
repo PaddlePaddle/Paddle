@@ -137,7 +137,6 @@ class TensorCheckerConfig:
         debug_step=None,
         stack_height_limit=1,
     ):
-
         self.enable = enable
         self.debug_mode = debug_mode
         self.output_dir = output_dir

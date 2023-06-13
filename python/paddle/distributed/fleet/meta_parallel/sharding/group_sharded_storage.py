@@ -157,7 +157,6 @@ class ParamStorage(InternalStorage):
 
     @paddle.autograd.no_grad()
     def _add_param_as_view(self, param, align, convert_gpu=True):
-
         assert (
             param.dtype == self.buffer.dtype
         ), "Different types for the InternalStorage and the param, cannot proceed: {} - {}".format(
@@ -192,7 +191,6 @@ class ParamStorage(InternalStorage):
 
     @paddle.autograd.no_grad()
     def _convert_buffer(self, param, p_shape, align):
-
         var_end = self._fill + np.prod(p_shape).tolist()
         offset = var_end + align
         assert offset <= self.buffer._numel()

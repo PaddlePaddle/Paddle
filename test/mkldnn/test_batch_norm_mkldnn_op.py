@@ -47,7 +47,6 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
         shape,
         data_layout,
     ):
-
         if data_layout != "NCHW" and data_layout != "NHWC":
             raise ValueError("Unknown data order.")
 

@@ -137,7 +137,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -159,7 +159,10 @@ def log(x, name=None):
         return _C_ops.log(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['uint16', 'float16', 'float32', 'float64'], "log"
+            x,
+            'x',
+            ['int32', 'int64', 'uint16', 'float16', 'float32', 'float64'],
+            "log",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
@@ -2763,7 +2766,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2783,7 +2786,10 @@ def log1p(x, name=None):
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log1p"
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            "log1p",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
@@ -2802,7 +2808,7 @@ def log2(x, name=None):
         Out = \log_2x
 
     Args:
-        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
@@ -2835,7 +2841,10 @@ def log2(x, name=None):
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log2"
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            "log2",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log2', **locals())
@@ -2854,7 +2863,7 @@ def log10(x, name=None):
         Out = \log_10_x
 
     Args:
-        x (Tensor): Input tensor must be one of the following types: float32, float64.
+        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
@@ -2887,7 +2896,10 @@ def log10(x, name=None):
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], "log10"
+            x,
+            'x',
+            ['int32', 'int64', 'float16', 'uint16', 'float32', 'float64'],
+            "log10",
         )
         inputs = {'X': [x]}
         helper = LayerHelper('log10', **locals())

@@ -26,8 +26,20 @@ namespace phi {
   void name##Kernel(                                                    \
       const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) { \
     funcs::functor_class<T> functor;                                    \
-    ActivationImpl<T, Context, funcs::functor_class<T>>(                \
+    ActivationImpl<T, T, Context, funcs::functor_class<T>>(             \
         dev_ctx, x, out, functor);                                      \
+  }
+
+#define DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(name,           \
+                                                           functor_class)  \
+  template <typename T, typename Context>                                  \
+  void name##Kernel(                                                       \
+      const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {    \
+    funcs::functor_class<T> functor;                                       \
+    using U =                                                              \
+        typename std::conditional_t<std::is_integral<T>::value, float, T>; \
+    ActivationImpl<T, U, Context, funcs::functor_class<T>>(                \
+        dev_ctx, x, out, functor);                                         \
   }
 
 #define DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(name, functor_class, attr) \
@@ -39,24 +51,24 @@ namespace phi {
     funcs::functor_class<T> functor;                                    \
     auto attrs = functor.GetAttrs();                                    \
     *(attrs[0].second) = attr;                                          \
-    ActivationImpl<T, Context, funcs::functor_class<T>>(                \
+    ActivationImpl<T, T, Context, funcs::functor_class<T>>(             \
         dev_ctx, x, out, functor);                                      \
   }
 
-#define DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(            \
-    name, functor_class, attr1, attr2)                   \
-  template <typename T, typename Context>                \
-  void name##Kernel(const Context& dev_ctx,              \
-                    const DenseTensor& x,                \
-                    float attr1,                         \
-                    float attr2,                         \
-                    DenseTensor* out) {                  \
-    funcs::functor_class<T> functor;                     \
-    auto attrs = functor.GetAttrs();                     \
-    *(attrs[0].second) = attr1;                          \
-    *(attrs[1].second) = attr2;                          \
-    ActivationImpl<T, Context, funcs::functor_class<T>>( \
-        dev_ctx, x, out, functor);                       \
+#define DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(               \
+    name, functor_class, attr1, attr2)                      \
+  template <typename T, typename Context>                   \
+  void name##Kernel(const Context& dev_ctx,                 \
+                    const DenseTensor& x,                   \
+                    float attr1,                            \
+                    float attr2,                            \
+                    DenseTensor* out) {                     \
+    funcs::functor_class<T> functor;                        \
+    auto attrs = functor.GetAttrs();                        \
+    *(attrs[0].second) = attr1;                             \
+    *(attrs[1].second) = attr2;                             \
+    ActivationImpl<T, T, Context, funcs::functor_class<T>>( \
+        dev_ctx, x, out, functor);                          \
   }
 
 DEFINE_CPU_ACTIVATION_KERNEL(Sin, SinFunctor)
@@ -83,14 +95,15 @@ DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Log, LogFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Log2, Log2Functor)
-DEFINE_CPU_ACTIVATION_KERNEL(Log10, Log10Functor)
-DEFINE_CPU_ACTIVATION_KERNEL(Log1p, Log1pFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Round, RoundFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Negative, NegativeFunctor)
+
+DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, LogFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, Log2Functor)
+DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log10, Log10Functor)
+DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, Log1pFunctor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -123,7 +136,7 @@ void HardSwishKernel(const Context& dev_ctx,
   *(attrs[0].second) = threshold;
   *(attrs[1].second) = scale;
   *(attrs[2].second) = offset;
-  ActivationImpl<T, Context, funcs::HardSwishFunctor<T>>(
+  ActivationImpl<T, T, Context, funcs::HardSwishFunctor<T>>(
       dev_ctx, x, out, functor);
 }
 
@@ -186,11 +199,49 @@ PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
-PD_REGISTER_ACTIVATION_KERNEL(log2, Log2Kernel)
-PD_REGISTER_ACTIVATION_KERNEL(log10, Log10Kernel)
-PD_REGISTER_ACTIVATION_KERNEL(log1p, Log1pKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+
+PD_REGISTER_KERNEL(log,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LogKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(log2,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Log2Kernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(log10,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Log10Kernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(log1p,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Log1pKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)

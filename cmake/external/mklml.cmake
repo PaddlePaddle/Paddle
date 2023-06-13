@@ -81,9 +81,6 @@ find_file(
 if(LOCAL_MKLML_LIB_ZIP)
   file(MD5 ${MKLML_DOWNLOAD_DIR}/${MKLML_FILE} MKLML_MD5)
   if(NOT MKLML_MD5 EQUAL MKLML_URL_MD5)
-    # clean build file
-    file(REMOVE_RECURSE ${MKLML_PREFIX_DIR})
-    file(REMOVE_RECURSE ${MKLML_INSTALL_DIR})
     download_mklml()
   endif()
 else()
