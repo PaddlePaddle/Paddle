@@ -55,7 +55,7 @@ class PhiKernelAdaptor {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
     std::cerr << "run here" << std::endl;
-    ir::build_scope(block, scope_, &name_map);
+    ir::BuildScope(block, scope_, &name_map);
     std::cerr << "after buid scope" << std::endl;
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
@@ -73,7 +73,7 @@ class PhiKernelAdaptor {
           (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
       phi::InferMetaContext ctx;
 
-      ir::build_infer_meta_context((*it), name_map, scope_, op_info_res, &ctx);
+      ir::BuildInferMetaContext((*it), name_map, scope_, op_info_res, &ctx);
 
       interface.InferShape(&ctx);
 
@@ -99,7 +99,7 @@ class PhiKernelAdaptor {
       } else {
         phi::KernelContext kernel_ctx(dev_ctx);
 
-        ir::build_phi_kernel_context(
+        ir::BuildPhiKernelContext(
             (*it), name_map, scope_, op_info_res, &kernel_ctx);
         found_it->second(&kernel_ctx);
 
@@ -112,7 +112,7 @@ class PhiKernelAdaptor {
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    build_scope(block, scope_, &name_map);
+    BuildScope(block, scope_, &name_map);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -137,7 +137,7 @@ class PhiKernelAdaptor {
 
       phi::InferMetaContext ctx;
 
-      ir::build_infer_meta_context((*it), name_map, scope_, yaml_info, &ctx);
+      ir::BuildInferMetaContext((*it), name_map, scope_, yaml_info, &ctx);
 
       infer_shape_impl->infer_shape_(&ctx);
 
@@ -152,7 +152,7 @@ class PhiKernelAdaptor {
 
       phi::KernelContext kernel_ctx(dev_ctx);
 
-      ir::build_phi_kernel_context(
+      ir::BuildPhiKernelContext(
           (*it), name_map, scope_, yaml_info, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 

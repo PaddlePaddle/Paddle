@@ -38,18 +38,18 @@
 
 namespace ir {
 
-void build_scope(ir::Block* block,
-                 paddle::framework::Scope* scope,
-                 std::unordered_map<ir::Value, std::string>* name_map);
+void BuildScope(ir::Block* block,
+                paddle::framework::Scope* scope,
+                std::unordered_map<ir::Value, std::string>* name_map);
 
-void build_infer_meta_context(
+void BuildInferMetaContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
     const OpInfoTuple& op_yaml_info,
     phi::InferMetaContext* ctx);
 
-void build_phi_kernel_context(
+void BuildPhiKernelContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,

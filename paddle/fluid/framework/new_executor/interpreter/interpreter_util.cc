@@ -937,7 +937,6 @@ void BuildOpFuncList(
     framework::Scope* scope,
     const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
     const ExecutionConfig& execution_config) {
-  std::cerr << "begin to build op func" << std::endl;
   vec_func_list->reserve(block->size());
   ::ir::IrContext* ctx = ir::IrContext::Instance();
 
@@ -945,15 +944,12 @@ void BuildOpFuncList(
 
   for (auto it = block->begin(); it != block->end(); ++it) {
     OpFuncNode op_func_node;
-    std::cerr << "name 1 " << (*it)->name() << std::endl;
-
     auto attr_map = (*it)->attributes();
 
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
 
-    std::cerr << "op name " << op_name << std::endl;
     if (op_name == "pd.fetch") {
-      std::cerr << "not need to process pd.fetch" << std::endl;
+      VLOG(6) << "skip process pd.fetch op";
       continue;
     }
     op_func_node.phi_op_name_ = op_name;
@@ -966,29 +962,20 @@ void BuildOpFuncList(
 
     auto attr_info = std::get<1>(yaml_info);
 
-    std::cerr << "11" << std::endl;
     op_func_node.infer_shape_interface_ =
         op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
 
-    ::ir::build_infer_meta_context((*it),
-                                   value_2_name_map,
-                                   scope,
-                                   yaml_info,
-                                   &(op_func_node.infer_meta_context_));
+    ::ir::BuildInferMetaContext((*it),
+                                value_2_name_map,
+                                scope,
+                                yaml_info,
+                                &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
         attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
     auto kernel_key = attr_map.at("kernel_key")
                           .dyn_cast<paddle::dialect::KernelAttribute>()
                           .data();
-
-    std::cerr << "befin infer meta" << std::endl;
-    op_func_node.infer_shape_interface_->infer_shape_(
-        &(op_func_node.infer_meta_context_));
-
-    std::cerr << "22" << std::endl;
-    std::cerr << "kernel name " << kernel_name << "\t " << kernel_key
-              << std::endl;
     auto t1 =
         phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
     op_func_node.phi_kernel_ = new phi::Kernel(t1);
@@ -997,25 +984,19 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    ::ir::build_phi_kernel_context((*it),
-                                   value_2_name_map,
-                                   scope,
-                                   yaml_info,
-                                   &(op_func_node.kernel_context_),
-                                   &(op_func_node.input_index),
-                                   &(op_func_node.output_index));
-
-    std::cerr << "33" << std::endl;
+    ::ir::BuildPhiKernelContext((*it),
+                                value_2_name_map,
+                                scope,
+                                yaml_info,
+                                &(op_func_node.kernel_context_),
+                                &(op_func_node.input_index),
+                                &(op_func_node.output_index));
 
     op_func_node.kernel_context_.SetDeviceContext(
         phi::DeviceContextPool::Instance().Get(
             phi::TransToPhiPlace(kernel_key.backend())));
     op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
         phi::TransToPhiPlace(kernel_key.backend()));
-
-    std::cerr << "begin to run kernel" << std::endl;
-    t1(&(op_func_node.kernel_context_));
-    std::cerr << "fin run kenrel " << std::endl;
 
     vec_func_list->emplace_back(op_func_node);
   }

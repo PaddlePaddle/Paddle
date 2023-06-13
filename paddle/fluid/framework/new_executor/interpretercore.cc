@@ -290,21 +290,11 @@ paddle::framework::FetchList InterpreterCore::Run(
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
 
-  std::cerr << "begin to run" << std::endl;
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     if (FLAGS_enable_new_ir_in_executor) {
-      std::cerr << "build scope" << std::endl;
-      ::ir::build_scope(
+      ::ir::BuildScope(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
-      std::cerr << "check name name" << std::endl;
-
-      for (auto it = value_2_var_name_map_.begin();
-           it != value_2_var_name_map_.end();
-           ++it) {
-        std::cerr << it->second << std::endl;
-      }
-      std::cerr << "build scope fin" << std::endl;
     } else {
       paddle::framework::interpreter::BuildVariableScope(
           block_, execution_config_, &var_scope_);
@@ -312,14 +302,12 @@ paddle::framework::FetchList InterpreterCore::Run(
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     if (FLAGS_enable_new_ir_in_executor) {
-      std::cerr << "build op func list" << std::endl;
       paddle::framework::interpreter::BuildOpFuncList(place_,
                                                       ir_program_->block(),
                                                       &op_func_nodes,
                                                       local_scope_,
                                                       value_2_var_name_map_,
                                                       execution_config_);
-      std::cerr << "build op func list fin" << std::endl;
     } else {
       paddle::framework::interpreter::BuildOpFuncList(
           place_,
@@ -331,19 +319,14 @@ paddle::framework::FetchList InterpreterCore::Run(
           HasLocalScope(),
           static_build_);
     }
-    std::cerr << "core 1" << std::endl;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
-    std::cerr << "core 2" << std::endl;
     Convert(&op_func_nodes);
-    std::cerr << "core 3" << std::endl;
     UpdateSyncOpNum();
-    std::cerr << "core 5" << std::endl;
     if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
-    std::cerr << "fin run" << std::endl;
     is_build_ = true;
   } else {
     RunImpl();
@@ -712,20 +695,15 @@ void InterpreterCore::ClearLoDTensorArrayInLocalScope() {
 
 void InterpreterCore::Convert(
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
-  std::cerr << "begin to convert" << std::endl;
   auto& vec_meta_info = var_scope_.MutableVecMetaInfo();
   auto nodes = *op_func_nodes;
   auto op_nums = nodes.size();
   vec_instruction_.clear();
   vec_instruction_.reserve(op_nums);
-  std::cerr << "convert 1" << std::endl;
   for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
     auto& op_func_node = nodes[op_idx];
-    std::cerr << "begin to pasrse context" << std::endl;
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
-    std::cerr << "fin parse context" << std::endl;
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
-    std::cerr << "fin emplace" << std::endl;
 #ifdef PADDLE_WITH_CUDA
     if (FLAGS_new_executor_use_cuda_graph) {
       auto& op = op_func_node.operator_base_;
@@ -749,9 +727,7 @@ void InterpreterCore::Convert(
     }
 #endif
   }
-  std::cerr << "convert 2" << std::endl;
   BuildOperatorDependences();
-  std::cerr << "convert 3" << std::endl;
 
   // NOTE(Ruibiao): For cross-step stream synchronization, an event may be
   // recorded in the first step and waited in the second step. So, in the first
@@ -760,7 +736,6 @@ void InterpreterCore::Convert(
   // work and WaitEvent always return succeed immediately, we omit the
   // prelude-record for the first step here.
   stream_analyzer_.ConstructEvents(&vec_instruction_);
-  std::cerr << "convert 5" << std::endl;
   // add event for the input var of jit program, since there are async copied
   // from gpu_pinned place to gpu place on compute stream.
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -786,7 +761,6 @@ void InterpreterCore::Convert(
     }
   }
 
-  std::cerr << "convert 6" << std::endl;
   // calculate last_live_ops_
   if (!FLAGS_enable_new_ir_in_executor) {
     for (size_t op_idx = 0; op_idx < op_nums; ++op_idx) {
@@ -851,7 +825,6 @@ void InterpreterCore::Convert(
     }
   }
 
-  std::cerr << "convert 7" << std::endl;
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
     int var_id = var_scope_.GetIdByName(skip_gc_var);
@@ -892,13 +865,11 @@ void InterpreterCore::Convert(
     last_live_ops_[i] = minumum_last_live_ops;
     vec_meta_info[i].var_ref_count_ = last_live_ops_[i].size();
   }
-  std::cerr << "convert 8" << std::endl;
   if (!FLAGS_enable_new_ir_in_executor) {
     for (size_t i = 0; i < vec_instruction_.size(); ++i) {
       BuildAndCacheInstructionCtx(&vec_instruction_[i]);
     }
   }
-  std::cerr << "convert 9" << std::endl;
   bool inplaced = false;
   for (const Instruction& inst : vec_instruction_) {
     if (inst.OpBaseValid() && (inst.OpBase()->Type() == "share_buffer" ||
@@ -913,7 +884,6 @@ void InterpreterCore::Convert(
     BuildInplace();
   }
 
-  std::cerr << "convert 10" << std::endl;
   for (auto& dep : dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
   }
@@ -922,9 +892,7 @@ void InterpreterCore::Convert(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
 
-  std::cerr << "convert 11" << std::endl;
   AnalyseExecuteOrderForTrace();
-  std::cerr << "convert 12" << std::endl;
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -1103,7 +1071,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
                          ? "kGpuSync"
                          : "kGpuAsync"))
           << " runs on " << platform::GetCurrentThreadName();
-  std::cerr << "run instr " << std::endl;
   OperatorBase* op = nullptr;
   if (instr_node.OpBaseValid()) {
     op = instr_node.OpBase();
@@ -1117,16 +1084,11 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     instr_node.WaitEvent(place_);
 
     if (instr_node.PreDefineContext()) {
-      std::cerr << "run pre define " << std::endl;
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
-      std::cerr << "run ins " << op_func_node->phi_op_name_ << std::endl;
       op_func_node->infer_shape_interface_->infer_shape_(
           &(op_func_node->infer_meta_context_));
-      std::cerr << "fin interface " << std::endl;
-      std::cerr << "op_func phi kernel "
-                << (op_func_node->phi_kernel_ != nullptr) << std::endl;
       (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
-      std::cerr << "fin run kernel " << std::endl;
+
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
       CheckGC(instr_node);
@@ -1523,7 +1485,6 @@ void InterpreterCore::TraceInstructionList(
     return;
   }
 
-  std::cerr << "begin to run" << std::endl;
   exception_holder_.Clear();
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {

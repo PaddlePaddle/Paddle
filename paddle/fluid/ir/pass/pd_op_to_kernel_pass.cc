@@ -87,7 +87,6 @@ phi::KernelKey GetKernelKey(
     }
   }
 
-  kernel_data_type = phi::DataType::FLOAT32;
   // parse all the input tensor
 
   if (input_map.size() == 0 || op->name() == "pd.full_") {
@@ -109,8 +108,7 @@ phi::KernelKey GetKernelKey(
 
       std::shared_ptr<phi::Allocation> holder(ptr);
 
-      // auto dtype = convetIrType2DataType(type.dtype());
-      auto dtype = phi::DataType::FLOAT32;
+      auto dtype = TransToPhiDataType(type.dtype());
 
       phi::DenseTensorMeta meta(
           dtype, type.dims(), type.data_layout(), type.lod(), type.offset());

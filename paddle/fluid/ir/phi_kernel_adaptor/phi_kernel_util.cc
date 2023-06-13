@@ -37,9 +37,9 @@
 
 namespace ir {
 
-void build_scope(ir::Block* block,
-                 paddle::framework::Scope* scope,
-                 std::unordered_map<ir::Value, std::string>* name_map) {
+void BuildScope(ir::Block* block,
+                paddle::framework::Scope* scope,
+                std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
   // int count = name_map->size();
@@ -106,7 +106,7 @@ void build_scope(ir::Block* block,
   }
 }
 
-void build_infer_meta_context(
+void BuildInferMetaContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
@@ -161,9 +161,6 @@ void build_infer_meta_context(
 
       } else {
         VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
-        if (scope->FindVar(in_var_name) == nullptr) {
-          std::cerr << "can not found var " << in_var_name << std::endl;
-        }
         auto var = scope->Var(in_var_name);
         const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
         ctx->EmplaceBackInput(const_cast<phi::TensorBase*>(tensor_in));
@@ -200,7 +197,7 @@ void build_infer_meta_context(
   ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
 }
 
-void build_phi_kernel_context(
+void BuildPhiKernelContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
@@ -263,9 +260,12 @@ void build_phi_kernel_context(
 
       } else {
         VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
-        if (scope->FindVar(in_var_name) == nullptr) {
-          std::cerr << "can not found var " << in_var_name << std::endl;
-        }
+
+        PADDLE_ENFORCE_NOT_NULL(
+            scope->FindLocalVar(in_var_name),
+            phi::errors::PreconditionNotMet("can not find var[%s] in scope",
+                                            in_var_name));
+
         auto var = scope->Var(in_var_name);
         const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
         ctx->EmplaceBackInput(tensor_in);
@@ -286,15 +286,8 @@ void build_phi_kernel_context(
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
       } else if (type_name == "paddle::dialect::ScalarAttribute") {
-        std::cerr << " scalar attr "
-                  << attr_map[t]
-                         .dyn_cast<paddle::dialect::ScalarAttribute>()
-                         .data()
-                         .ToString()
-                  << std::endl;
-        ctx->EmplaceBackAttr(phi::Scalar(1.0));
-        // ctx->EmplaceBackAttr(
-        //     attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
+        ctx->EmplaceBackAttr(
+            attr_map[t].dyn_cast<paddle::dialect::ScalarAttribute>().data());
       } else {
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 type_name));
@@ -305,7 +298,6 @@ void build_phi_kernel_context(
 
   ir::Value out_ptr = op->result(0);
   auto name = name_map.at(out_ptr);
-  std::cerr << "out name " << name << std::endl;
 
   ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
       &(scope->Var(name)->Get<phi::DenseTensor>())));
