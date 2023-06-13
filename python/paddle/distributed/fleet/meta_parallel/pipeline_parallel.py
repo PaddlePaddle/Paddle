@@ -10,7 +10,6 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-import warnings
 
 import paddle
 from paddle import framework
@@ -629,10 +628,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def __init__(self, layers, hcg, strategy):
         super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
-        if self.num_stages <= 2:
-            warnings.warn(
-                "Deprecate warning! In the near future the virtual pp will only available when pp degree > 2."
-            )
+        assert (
+            self.num_stages > 2
+        ), "virtual pipeline must run under pp degree > 2"
         assert (
             framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"

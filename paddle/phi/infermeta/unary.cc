@@ -506,6 +506,69 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
   CumInferMeta(x, axis.to<int>(), flatten, exclusive, reverse, out);
 }
 
+void CumWithIndicesInferMeta(const MetaTensor& x,
+                             int axis,
+                             int dtype,
+                             MetaTensor* out,
+                             MetaTensor* indices) {
+  auto x_dims = x.dims();
+  auto indices_type = phi::TransToPhiDataType(dtype);
+  PADDLE_ENFORCE_EQ(
+      (indices_type == DataType::INT32 || indices_type == DataType::INT64),
+      true,
+      phi::errors::InvalidArgument("dtype of indices must be int32 or int64"));
+
+  if (indices_type == DataType::INT32) {
+    int _axis;
+    if (axis < 0) {
+      _axis = axis + x_dims.size();
+    } else {
+      _axis = axis;
+    }
+    PADDLE_ENFORCE_LT(
+        phi::vectorize(x_dims)[_axis],
+        INT32_MAX,
+        phi::errors::OutOfRange(
+            "cummax with axis %ld may be overflow, set dtype int64 to continue",
+            axis));
+  }
+
+  if (x_dims.size() > 0) {
+    PADDLE_ENFORCE_GE(
+        axis,
+        -x_dims.size(),
+        phi::errors::OutOfRange(
+            "axis is out of range (expected to be in range of [%ld, "
+            "%ld), but got %ld).",
+            -(x_dims.size()),
+            x_dims.size(),
+            axis));
+    PADDLE_ENFORCE_LT(
+        axis,
+        x_dims.size(),
+        phi::errors::OutOfRange(
+            "axis is out of range (expected to be in range of [%ld, "
+            "%ld), but got %ld).",
+            -(x_dims.size()),
+            x_dims.size(),
+            axis));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (axis == 0 || axis == -1),
+        true,
+        errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
+                                "but the value given is %d.",
+                                axis));
+  }
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+  indices->set_dims(x_dims);
+  indices->set_dtype(indices_type);
+  indices->share_lod(x);
+}
+
 void CropInferMeta(const MetaTensor& x,
                    const IntArray& shape,
                    const IntArray& offsets,
