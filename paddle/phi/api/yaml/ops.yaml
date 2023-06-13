@@ -753,6 +753,16 @@
   inplace : (x -> out)
   backward : exp_grad
 
+- op : expand
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ExpandInferMeta
+  kernel :
+    func : expand
+    data_type : x
+  backward : expand_grad
+
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape = {})
   output : Tensor(out)
