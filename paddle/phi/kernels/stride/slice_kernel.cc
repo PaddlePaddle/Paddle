@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
 
@@ -24,19 +25,37 @@ void SliceStridedKernel(const Context& ctx,
                         const std::vector<int64_t>& axis,
                         const IntArray& starts_arr,
                         const IntArray& ends_arr,
-                        const std::vector<int64_t>& infer_flags,
+                        const std::vector<int64_t>& infer_flags_t,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* out) {
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
   auto in_dims = input.dims();
 
-  for (size_t i = 0; i < axis.size(); ++i) {
+  std::vector<int64_t> infer_flags = infer_flags_t;
+  if (infer_flags.empty()) {
+    // Initialize infer_flags with 1.
+    // To be compatible with other op tests in which infer_flags is not set.
+    infer_flags = std::vector<int64_t>(axis.size(), 1);
+  }
+
+  auto new_axis = axis;
+  for (auto& item : new_axis) {
+    if (item < 0) {
+      item = std::max(int64_t(0), item + int64_t(in_dims.size()));
+    }
+  }
+
+  phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
+      in_dims, new_axis, &starts, &ends, nullptr, &infer_flags);
+
+  for (size_t i = 0; i < new_axis.size(); ++i) {
     // when start == -1 && end == start+1
     if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
-      auto ret = std::find(decrease_axis.begin(), decrease_axis.end(), axis[i]);
+      auto ret =
+          std::find(decrease_axis.begin(), decrease_axis.end(), new_axis[i]);
       if (ret != decrease_axis.end()) {
-        ends[i] = in_dims[axis[i]];
+        ends[i] = in_dims[new_axis[i]];
       }
     }
   }
@@ -45,10 +64,10 @@ void SliceStridedKernel(const Context& ctx,
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
   int64_t output_offset = input.offset();
 
-  for (size_t i = 0; i < axis.size(); ++i) {
-    output_offset = output_offset +
-                    starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
-    output_dims[axis[i]] = ends[i] - starts[i];
+  for (size_t i = 0; i < new_axis.size(); ++i) {
+    output_offset = output_offset + starts[i] * output_stride[new_axis[i]] *
+                                        SizeOf(out->dtype());
+    output_dims[new_axis[i]] = ends[i] - starts[i];
   }
 
   auto iter_dims = output_dims.begin();
@@ -63,9 +82,16 @@ void SliceStridedKernel(const Context& ctx,
     }
   }
 
-  auto meta = input.meta();
+  auto meta = out->meta();
   meta.offset = output_offset;
-  meta.dims = DDim(output_dims.data(), output_dims.size());
+  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  PADDLE_ENFORCE_EQ(
+      meta.dims,
+      tmp_dim,
+      phi::errors::Fatal(
+          "Strided compute error, infer shape is %s, but compute is %s.",
+          meta.dims,
+          tmp_dim));
   meta.stride = DDim(output_stride.data(), output_stride.size());
   out->set_meta(meta);
   out->ResetHolder(input.Holder());

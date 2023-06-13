@@ -36,19 +36,33 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   DDim output_stride = input.stride();
   int64_t output_offset = input.offset();
   for (size_t i = 0; i < axis.size(); ++i) {
+    if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
+      if (decrease_axis.end() ==
+          std::find(decrease_axis.begin(), decrease_axis.end(), axis[i])) {
+        output_dims[axis[i]] = 1;
+        output_stride[axis[i]] = input.stride()[axis[i]];
+        continue;
+      }
+    }
+
+    int64_t axis_size = input.dims()[axis[i]];
+
+    if (axis_size < 0) {
+      continue;
+    }
+
     if (starts[i] < 0) {
-      starts[i] = starts[i] + axis.size();
+      starts[i] = starts[i] + axis_size;
       starts[i] = std::max<int64_t>(starts[i], 0);
     }
     if (ends[i] < 0) {
       if (!(ends[i] == -1 && strides[i] < 0)) {  // skip None stop condition
-        ends[i] = ends[i] + axis.size();
+        ends[i] = ends[i] + axis_size;
         if (ends[i] < 0) {
           ends[i] = 0;
         }
       }
     }
-
     if (strides[i] < 0) {
       starts[i] = starts[i] + 1;
       ends[i] = ends[i] + 1;
@@ -56,17 +70,35 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 
     int64_t left =
         std::max(static_cast<int64_t>(0), std::min(starts[i], ends[i]));
-    int64_t right = std::min(axis.size(), std::max(starts[i], ends[i]));
+    int64_t right = std::min(axis_size, std::max(starts[i], ends[i]));
     int64_t step = std::abs(strides[i]);
 
-    output_offset =
-        output_offset + left * output_stride[axis[i]] * SizeOf(out->dtype());
-    output_dims[axis[i]] = (std::abs(right - left) + step - 1) / step;
-    output_stride[axis[i]] *= step;
+    auto dim = (std::abs(right - left) + step - 1) / step;
+
+    if (dim <= 0) {
+      dim = 0;
+      strides[i] = 1;
+      starts[i] = 0;
+    }
+
+    if (starts[i] >= axis_size) {
+      starts[i] = (strides[i] < 0) ? axis_size - 1 : axis_size;
+    }
+
+    output_offset += starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
+    output_dims[axis[i]] = dim;
+    output_stride[axis[i]] *= strides[i];
   }
-  auto meta = input.meta();
+
+  auto meta = out->meta();
   meta.offset = output_offset;
-  meta.dims = output_dims;
+  PADDLE_ENFORCE_EQ(
+      meta.dims,
+      output_dims,
+      phi::errors::Fatal(
+          "Strided compute error, infer shape is %s, but compute is %s.",
+          meta.dims,
+          output_dims));
   meta.stride = output_stride;
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
@@ -75,15 +107,15 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 template <typename Context>
 void StridedSliceStridedKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const std::vector<int>& axes,
+                               const std::vector<int>& axis,
                                const IntArray& starts,
                                const IntArray& ends,
                                const IntArray& strides,
                                DenseTensor* out) {
-  std::vector<int> infer_flags(axes.size(), 1);
+  std::vector<int> infer_flags(axis.size(), 1);
   std::vector<int> decrease_axis;
   StridedSliceRawStridedKernel<Context>(
-      dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
+      dev_ctx, x, axis, starts, ends, strides, infer_flags, decrease_axis, out);
 }
 }  // namespace phi
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(

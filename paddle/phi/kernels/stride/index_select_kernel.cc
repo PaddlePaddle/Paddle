@@ -37,9 +37,16 @@ void IndexSelectStridedKernel(const Context& ctx,
     stride.erase(stride.begin() + dim);
   }
 
-  auto meta = x.meta();
+  auto meta = output->meta();
   meta.offset = offset;
-  meta.dims = DDim(shape.data(), shape.size());
+  auto tmp_dim = DDim(shape.data(), shape.size());
+  PADDLE_ENFORCE_EQ(
+      meta.dims,
+      tmp_dim,
+      phi::errors::Fatal(
+          "Strided compute error, infer shape is %s, but compute is %s.",
+          meta.dims,
+          tmp_dim));
   meta.stride = DDim(stride.data(), stride.size());
   output->set_meta(meta);
   output->ResetHolder(x.Holder());
