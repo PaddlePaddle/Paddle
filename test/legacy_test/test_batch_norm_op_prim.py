@@ -77,8 +77,6 @@ class TestBatchNormOp(OpTest):
             self.check_output_with_place(
                 core.CPUPlace(),
                 no_check_set=None,
-                atol=self.fw_comp_atol,
-                rtol=self.fw_comp_rtol,
                 check_prim=True,
                 only_check_prim=True,
             )
@@ -86,8 +84,6 @@ class TestBatchNormOp(OpTest):
             self.check_output_with_place(
                 core.CUDAPlace(0),
                 no_check_set=None,
-                atol=self.fw_comp_atol,
-                rtol=self.fw_comp_rtol,
                 check_prim=True,
                 only_check_prim=True,
             )
