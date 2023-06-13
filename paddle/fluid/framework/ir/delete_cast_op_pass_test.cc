@@ -314,6 +314,58 @@ TEST(ApplyCastPass, basic) {
                         cast_num_in_graph));
 }
 
+TEST(ApplyCastSoftmaxPass, basic) {
+  paddle::framework::ProgramDesc program;
+  auto* block = program.MutableBlock(0);
+  auto* cast0_in = Data(block, "cast0_in", {1});
+  auto* cast0_out = AddCast(block, cast0_in, 4, 5);
+  auto* softmax_out = Data(block, "softmax_out", {1});
+  OpDesc* softmax = block->AppendOp();
+  softmax->SetType("softmax");
+  softmax->SetInput("X", {cast0_out->Name()});
+  softmax->SetOutput("Out", {softmax_out->Name()});
+  AddCast(block, softmax_out, 5, 4);
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
+  auto scope = new Scope();
+  graph->Set("__param_scope__", scope);
+  auto pass = PassRegistry::Instance().Get("delete_cast_op_pass");
+  pass->Apply(graph.get());
+  int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
+  PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "graph should have 0 cast after delete_cast_op_pass, "
+                        "but actually has %d.",
+                        cast_num_in_graph));
+}
+
+TEST(ApplyCastLayerNormPass, basic) {
+  paddle::framework::ProgramDesc program;
+  auto* block = program.MutableBlock(0);
+  auto* cast0_in = Data(block, "cast0_in", {1});
+  auto* cast0_out = AddCast(block, cast0_in, 4, 5);
+  auto* layer_norm_out = Data(block, "layer_norm_out", {1});
+  OpDesc* layer_norm = block->AppendOp();
+  layer_norm->SetType("layer_norm");
+  layer_norm->SetInput("X", {cast0_out->Name()});
+  layer_norm->SetOutput("Out", {layer_norm_out->Name()});
+  AddCast(block, layer_norm_out, 5, 4);
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
+  auto scope = new Scope();
+  graph->Set("__param_scope__", scope);
+  auto pass = PassRegistry::Instance().Get("delete_cast_op_pass");
+  pass->Apply(graph.get());
+  int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
+  PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "cast"),
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "graph should have 0 cast after delete_cast_op_pass, "
+                        "but actually has %d.",
+                        cast_num_in_graph));
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
