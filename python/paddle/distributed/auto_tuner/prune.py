@@ -226,7 +226,6 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
 
 @register_prune
 def prune_by_num_gpus(tuner_cfg, cur_cfg, history_cfgs):
-
     num_gpus = tuner_cfg.get("num_gpus")
     dp_degree = cur_cfg.get("dp_degree", 1)
     mp_degree = cur_cfg.get("mp_degree", 1)
