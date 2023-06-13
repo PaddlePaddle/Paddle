@@ -59,7 +59,7 @@ class MixPrecisionLayer(nn.Layer):
                     name="main_grad@" + param.name,
                 )
             else:
-                param.main_grad.add_(tmp_grad.cast(paddle.float32))
+                param.main_grad.add_(tmp_grad)
 
             tmp_grad._clear_data()
             return None

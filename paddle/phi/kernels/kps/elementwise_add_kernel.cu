@@ -25,6 +25,47 @@ namespace phi {
 DEFINE_CUDA_ELEMENTWISE_OP(Add)
 
 template <typename T, typename Context>
+void Float32Bfloat16OrFloat16AddCudaFunctor(const Context& dev_ctx,
+                                            const DenseTensor& x,
+                                            const DenseTensor& y,
+                                            DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  if (y.dtype() == phi::DataType::BFLOAT16) {
+    funcs::ElementwiseKernel<T>(
+        dev_ctx, inputs, &outputs, funcs::Float32Bfloat16AddFunctor<T>());
+  } else if (y.dtype() == phi::DataType::FLOAT16) {
+    funcs::ElementwiseKernel<T>(
+        dev_ctx, inputs, &outputs, funcs::Float32Float16AddFunctor<T>());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",
+        phi::DataTypeToString(x.type()),
+        phi::DataTypeToString(y.type())));
+  }
+}
+
+template <typename T, typename Context>
+void AddKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
+  if (x.dtype() == phi::DataType::FLOAT32 &&
+      (y.dtype() == phi::DataType::BFLOAT16 ||
+       y.dtype() == phi::DataType::FLOAT16)) {
+    using Type = DataTypeToCppType<phi::DataType::FLOAT32>::type;
+    Float32Bfloat16OrFloat16AddCudaFunctor<Type, Context>(dev_ctx, x, y, out);
+  } else {
+    AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
+  }
+}
+
+template <typename T, typename Context>
 void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
@@ -35,6 +76,7 @@ void GradAddKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
+PD_REGISTER_KERNEL(add, KPS, ALL_LAYOUT, phi::AddKernel, float) {}
 PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
 #else
 
@@ -42,6 +84,20 @@ using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
+
+PD_REGISTER_KERNEL(add,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::AddKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   complex64,
+                   complex128) {}
 
 PD_REGISTER_KERNEL(add_raw,
                    KPS,
