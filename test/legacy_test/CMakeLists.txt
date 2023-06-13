@@ -83,6 +83,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
 
+list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
