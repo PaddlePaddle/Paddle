@@ -80,20 +80,14 @@ if(WITH_ONNXRUNTIME)
          infer_io_utils
          model_utils
          onnxruntime
-         paddle2onnx
-         fleet_executor)
+         paddle2onnx)
 else()
   cc_library(
     analysis_predictor
     SRCS analysis_predictor.cc resource_manager.cc infer_context.cc
          ${mkldnn_quantizer_src}
-    DEPS ${inference_deps}
-         zero_copy_tensor
-         ir_pass_manager
-         op_compatible_info
-         infer_io_utils
-         model_utils
-         fleet_executor)
+    DEPS ${inference_deps} zero_copy_tensor ir_pass_manager op_compatible_info
+         infer_io_utils model_utils)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)

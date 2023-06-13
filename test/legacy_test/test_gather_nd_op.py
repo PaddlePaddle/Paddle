@@ -500,7 +500,6 @@ class TestGatherNdError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='float32', name='x')
             index = paddle.static.data(shape=shape, dtype='bool', name='index')

@@ -215,7 +215,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         skip_tensor_list=None,
         bias_correction=False,
     ):
-
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         val_reader = paddle.dataset.mnist.train()
@@ -262,7 +261,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         onnx_format=False,
         skip_tensor_list=None,
     ):
-
         origin_model_path = self.download_model(data_url, data_md5, model_name)
         origin_model_path = os.path.join(origin_model_path, model_name)
 

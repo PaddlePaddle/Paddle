@@ -56,7 +56,7 @@ TEST(program_test, program) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
+  ir::Builder builder(ctx, program.block());
   ir::Block* block = program.block();
 
   // Def: A = paddle::dialect::UniformOp(std::vector<int64_t> shape,
@@ -68,9 +68,7 @@ TEST(program_test, program) {
                                                 1.0,
                                                 2,
                                                 phi::CPUPlace());
-  EXPECT_EQ(uniform1->GetResultByIndex(0)
-                .type()
-                .isa<paddle::dialect::DenseTensorType>(),
+  EXPECT_EQ(uniform1->result(0).type().isa<paddle::dialect::DenseTensorType>(),
             true);
   EXPECT_EQ(block->size(), 4u);
 
@@ -82,18 +80,15 @@ TEST(program_test, program) {
                                                 1.0,
                                                 2,
                                                 phi::CPUPlace());
-  EXPECT_EQ(uniform2->GetResultByIndex(0)
-                .type()
-                .isa<paddle::dialect::DenseTensorType>(),
+  EXPECT_EQ(uniform2->result(0).type().isa<paddle::dialect::DenseTensorType>(),
             true);
   EXPECT_EQ(block->size(), 8u);
 
   // Def: C = paddle::dialect::AddOp(ir::OpResult x_, ir::OpResult y_)
   paddle::dialect::AddOp add = builder.Build<paddle::dialect::AddOp>(
-      uniform1->GetResultByIndex(0), uniform2->GetResultByIndex(0));
-  EXPECT_EQ(
-      add->GetResultByIndex(0).type().isa<paddle::dialect::DenseTensorType>(),
-      true);
+      uniform1->result(0), uniform2->result(0));
+  EXPECT_EQ(add->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+            true);
   EXPECT_EQ(block->size(), 9u);
 
   // Execute program
@@ -108,10 +103,7 @@ TEST(program_test, program) {
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
   bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.56764);
   bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.85063);
-  std::cerr << out_tensor.data<float>()[0] << "\t"
-            << out_tensor.data<float>()[1] << "\t"
-            << out_tensor.data<float>()[2] << "\t"
-            << out_tensor.data<float>()[3] << std::endl;
+
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);

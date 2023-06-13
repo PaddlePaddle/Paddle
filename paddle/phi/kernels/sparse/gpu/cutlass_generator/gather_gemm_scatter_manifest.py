@@ -156,7 +156,6 @@ launchKernel<"""
 
 class GatherGemmScatterManifest(Manifest):
     def emit(self, target=GeneratorTarget.Library):
-
         operation_emitters = {
             GeneratorTarget.Library: GatherGemmScatterEmitOperationKindLibrary
         }

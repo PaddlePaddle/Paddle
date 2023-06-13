@@ -58,7 +58,6 @@ def remove_process_group(ring_id):
 def new_process_group(
     ranks, group_id=None, force_new_group=False, group_type=None
 ):
-
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication

@@ -285,7 +285,6 @@ class SimpleAttention(paddle.nn.Layer):
         self.fc_2 = Linear(decoder_size, 1, bias_attr=False)
 
     def forward(self, encoder_vec, encoder_proj, decoder_state):
-
         decoder_state_fc = self.fc_1(decoder_state)
         decoder_state_proj_reshape = paddle.reshape(
             decoder_state_fc, [-1, 1, decoder_state_fc.shape[1]]

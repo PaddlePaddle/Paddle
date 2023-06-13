@@ -171,7 +171,6 @@ class Optimizer:
         grad_clip=None,
         name=None,
     ):
-
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the

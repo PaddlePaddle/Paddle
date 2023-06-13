@@ -235,7 +235,6 @@ def sharding_reduce_gradients(parameter_list, hcg):
     # TODO merge grad / nrank with dp
     logger.debug("sharding start gradients sync")
     with framework.no_grad():
-
         sharding_nrank = hcg.get_sharding_parallel_group().nranks
         for param in parameter_list:
             g_var = None
