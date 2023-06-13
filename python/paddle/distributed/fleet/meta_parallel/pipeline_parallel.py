@@ -174,6 +174,21 @@ class PipelineParallel(MetaParallelBase):
         )
         self._forward_color = "thread_state_running"  # RGB: 126, 200, 148
         self._backward_color = "rail_idle"  # RGB: 238, 142, 0
+        if self._profiling:
+            logger.info(
+                "If enable pp profiling, the max training steps should be restricted "
+                "to a reasonable value (such as 5) to avoid generating large profile files. "
+                "The profiler will generate a profile file 'profile_record_tmp_file_for_rank_*' "
+                "for each rank. Users should gather all profile files for one entire pipeline "
+                "to one node (rank 0 is recommended) to get the full view of the pipeline profile. "
+                "[DONT CHANGE THE NAME OF THE PROFILE FILES!]. "
+                "Then get the profile parser from this url: "
+                "https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/distributed/fleet/meta_parallel/pp_utils/profiler_helper.py "
+                "and save the script to the same directory of all profile files."
+                "Parse those files by this command: `python profiler_helper.py`. "
+                "After parsing, a new file 'pipeline_profile.json' will be generated. "
+                "Users can inspect this file by chrome://tracing website."
+            )
 
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
@@ -357,7 +372,7 @@ class PipelineParallel(MetaParallelBase):
                 warnings.warn(
                     "Static scheduler run won't real run the model, but data has been provided"
                 )
-            logger.log(
+            logger.info(
                 "enable static_scheduler will return the pp schedule instead of the loss"
             )
             schedule = ""
@@ -382,7 +397,7 @@ class PipelineParallel(MetaParallelBase):
         for step_id in range(startup_steps):
             if static_scheduler:
                 schedule += f"f{step_id};"
-                logger.log(f"forward step for micro step {step_id}")
+                logger.info(f"forward step for micro step {step_id}")
                 continue
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
@@ -397,15 +412,15 @@ class PipelineParallel(MetaParallelBase):
             if not self.is_pipeline_last_stage():
                 self._release_output(output_tensor)
 
-        if steady_steps > 0:
+        if steady_steps > 0 and not static_scheduler:
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
         for i in range(steady_steps):
             if static_scheduler:
                 schedule += f"f{startup_steps + i};"
                 schedule += f"b{i};"
-                logger.log(f"forward step for micro step {startup_steps + i}")
-                logger.log(f"backward step for micro step {i}")
+                logger.info(f"forward step for micro step {startup_steps + i}")
+                logger.info(f"backward step for micro step {i}")
                 continue
             last_iter = i == (steady_steps - 1)
 
@@ -450,7 +465,7 @@ class PipelineParallel(MetaParallelBase):
         for i in range(startup_steps):
             if static_scheduler:
                 schedule += f"b{steady_steps + i};"
-                logger.log(f"backward step for micro step {steady_steps + i}")
+                logger.info(f"backward step for micro step {steady_steps + i}")
                 continue
             input_tensor = input_buffers.pop(0)
             output_tensor = output_buffers.pop(0)
@@ -765,7 +780,7 @@ class PipelineParallel(MetaParallelBase):
             output._clear_dataptr()
 
     def get_static_scheduler(self):
-        self.forward_backward_pipeline(data=None, static_scheduler=True)
+        return self.forward_backward_pipeline(data=None, static_scheduler=True)
 
 
 class PipelineParallelWithInterleave(PipelineParallel):
@@ -783,8 +798,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             "thread_state_unknown",  # RGB: 199, 155, 125
         ]
         self._backward_colors = [
-            "rail_idle",  # RGB: 238, 142, 0
             "rail_load",  # RGB: 13, 168, 97
+            "rail_idle",  # RGB: 238, 142, 0
         ]
         # Structures to record the micro step for each layer chunk
         self._forward_micro_step_counter = {}
@@ -931,13 +946,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         if static_scheduler:
             assert (
+                not forward_only
+            ), "static_scheduler only for training not for eval"
+            assert (
                 not self._profiling
             ), "While _profiling, static scheduler is not available"
             if data is not None:
                 warnings.warn(
                     "Static scheduler run won't real run the model, but data has been provided"
                 )
-            logger.log(
+            logger.info(
                 "enable static_scheduler will return the pp schedule instead of the loss"
             )
             schedule = ""
@@ -971,9 +989,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
         steady_steps = num_steps - startup_steps
 
         self.set_virtual_pipeline_rank(0)
-        self.input_tensors[0].append(
-            p2p.recv_forward(self.is_pipeline_first_stage(), sync_recv=False)
-        )
+        if not static_scheduler:
+            self.input_tensors[0].append(
+                p2p.recv_forward(
+                    self.is_pipeline_first_stage(), sync_recv=False
+                )
+            )
 
         # run startup steps
         for micro_step in range(startup_steps):
@@ -986,7 +1007,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 ]
                 self._forward_micro_step_counter[virtual_pp_rank] += 1
                 schedule += f"f{real_micro_step}_vp{virtual_pp_rank};"
-                logger.log(
+                logger.info(
                     f"forward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
                 )
                 continue
@@ -1067,10 +1088,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 schedule += (
                     f"b{real_backward_micro_step}_vp{backward_virtual_pp_rank};"
                 )
-                logger.log(
+                logger.info(
                     f"forward step for {real_forward_micro_step} with virtual pp rank {forward_virtual_pp_rank}"
                 )
-                logger.log(
+                logger.info(
                     f"backward step for {real_backward_micro_step} with virtual pp rank {backward_virtual_pp_rank}"
                 )
                 continue
@@ -1161,7 +1182,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             )
             self._release_output(output_tensor)
 
-        self._release_output(output_tensor)
+        if not static_scheduler:
+            self._release_output(output_tensor)
 
         # remaining backward steps
         if not forward_only:
@@ -1175,7 +1197,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     ]
                     self._backward_micro_step_counter[virtual_pp_rank] += 1
                     schedule += f"b{real_micro_step}_vp{virtual_pp_rank};"
-                    logger.log(
+                    logger.info(
                         f"backward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
                     )
                     continue
@@ -1208,15 +1230,15 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 for buffer in self._comm_buffers:
                     buffer.scale_and_split_grads()
 
+            if static_scheduler:
+                self._reset_counter()
+                return schedule
+
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").start()
             self._layers.allreduce_shared_weight_gradients()
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").stop()
-
-        if static_scheduler:
-            self._reset_counter()
-            return schedule
 
         self._flush_records()
 
@@ -1256,6 +1278,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         return self.forward_backward_pipeline(data, None, forward_only=True)
 
     def get_static_scheduler(self):
-        self.forward_backward_pipeline(
+        return self.forward_backward_pipeline(
             data=None, scaler=None, static_scheduler=True
         )
