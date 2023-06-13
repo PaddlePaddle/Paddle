@@ -319,17 +319,6 @@
     func : expand
   backward : expand_grad
 
-- op : exponential_
-  args : (Tensor x, float lam)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : exponential
-  inplace : (x -> out)
-  backward : exponential__grad
-
 - op : eye
   args : (Scalar num_rows, Scalar num_columns, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
@@ -428,20 +417,6 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
-
-- op : full_like
-  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
-  output: Tensor(out)
-  infer_meta :
-    func : CreateLikeInferMeta
-    param : [x, dtype]
-  kernel :
-    func : full_like
-    param : [x, value, dtype]
-    data_type : dtype > x
-    backend : place > x
-  data_transform :
-    skip_transform : x
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
@@ -1094,8 +1069,3 @@
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
   invoke : full(shape, 0, dtype, place)
-
-- op : zeros_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
-  output : Tensor(out)
-  invoke : full_like(x, 0, dtype, place)

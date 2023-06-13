@@ -774,6 +774,17 @@
     func : expm1
   backward : expm1_grad
 
+- op : exponential_
+  args : (Tensor x, float lam = 1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : exponential
+  inplace : (x -> out)
+  backward : exponential__grad
+
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
@@ -907,6 +918,20 @@
   kernel :
     func : frame
   backward : frame_grad
+
+- op : full_like
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
+  output: Tensor(out)
+  infer_meta :
+    func : CreateLikeInferMeta
+    param : [x, dtype]
+  kernel :
+    func : full_like
+    param : [x, value, dtype]
+    data_type : dtype > x
+    backend : place > x
+  data_transform :
+    skip_transform : x
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
@@ -2494,3 +2519,8 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+
+- op : zeros_like
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
+  output : Tensor(out)
+  invoke : full_like(x, 0, dtype, place)
