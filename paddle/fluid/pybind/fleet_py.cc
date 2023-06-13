@@ -390,7 +390,6 @@ void BindGraphGpuWrapper(py::module* m) {
                              bool>(
                &GraphGpuWrapper::load_edge_file))
       .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
-      .def("calc_edge_type_limit", &GraphGpuWrapper::calc_edge_type_limit)
       .def("show_mem", &GraphGpuWrapper::show_mem)
       .def("upload_batch",
            py::overload_cast<int, int, const std::string&>(

@@ -597,7 +597,6 @@ class HeterComm {
           const cudaStream_t& stream,
           bool sage = false,
           bool slot = false) {
-
     auto &cache = storage_[gpu_id];
     auto &res = cache.shard_res;
 

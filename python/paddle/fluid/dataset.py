@@ -1187,12 +1187,6 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.dump_walk_path(path, dump_rate)
 
-    def dump_sample_neighbors(self, path):
-        """
-        dump_sample_neighbors
-        """
-        self.dataset.dump_sample_neighbors(path)
-
 
 class QueueDataset(DatasetBase):
     """

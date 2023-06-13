@@ -880,18 +880,6 @@ PHI_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
                          "mutli threads parallely.");
 
 /**
-  * Distributed related FLAG
-  * Name: FLAGS_graph_neighbor_size_percent
-  * Since Version: 2.2.0
-  * Value Range: double, default=1.0
-  * Example:
-  * Note: Control neighbor size percent in sampling
-  */
- PADDLE_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
-                               1.0,
-                               "It controls neighbor size percent in sampling.");
-
-/**
  * Distributed related FLAG
  * Name: FLAGS_graph_get_neighbor_id
  * Since Version: 2.2.0

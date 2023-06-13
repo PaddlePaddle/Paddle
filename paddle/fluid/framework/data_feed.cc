@@ -2816,15 +2816,6 @@ void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
 #endif
 }
 
-void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
-  VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpSampleNeighbors(path);
-#endif
-}
-
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                                                    MiniBatchGpuPack* pack) {

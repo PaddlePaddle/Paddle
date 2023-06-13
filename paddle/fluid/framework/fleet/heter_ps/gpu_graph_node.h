@@ -157,15 +157,13 @@ struct NeighborSampleQuery {
   int len;
   int sample_size;
   int sample_step;
-  int neighbor_size_limit;
   void initialize(
-      int gpu_id, int table_idx, uint64_t src_nodes, int sample_size, int len, int neighbor_size_limit, int sample_step=1) {
+      int gpu_id, int table_idx, uint64_t src_nodes, int sample_size, int len, int sample_step=1) {
     this->table_idx = table_idx;
     this->gpu_id = gpu_id;
     this->src_nodes = reinterpret_cast<uint64_t *>(src_nodes);
     this->len = len;
     this->sample_size = sample_size;
-    this->neighbor_size_limit = neighbor_size_limit;
     this->sample_step = sample_step;
   }
   void display() {
