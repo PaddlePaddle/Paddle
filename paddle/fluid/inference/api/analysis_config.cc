@@ -179,7 +179,7 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                const std::string &transformer_encoder_precision,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
-#ifdef PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
@@ -198,7 +198,8 @@ void AnalysisConfig::EnableXpu(int l3_size,
   Update();
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "To use XPU inference, please compile with option 'WITH_XPU' first."));
+      "To use XPU inference, please compile with option 'WITH_XPU' or "
+      "'WITH_LITE & LITE_WITH_XPU' first."));
 #endif
 }
 
