@@ -21,7 +21,6 @@ set(MKLDNN_INC_DIR
     "${MKLDNN_INSTALL_DIR}/include"
     CACHE PATH "mkldnn include directory." FORCE)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/mkldnn)
-set(MKLDNN_TAG 2089770c4818be8933c5e9d1dd3cbaeba1457667)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
