@@ -67,20 +67,11 @@ class DygraphShardingOptimizer:
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
-        print(
-            "self._inner_opt._parameter_list len:{}".format(
-                len(self._inner_opt._parameter_list)
-            )
-        )
         self._set_inner_opt_attr(
             '_parameter_list', self._rank2params[self._sharding_rank]
         )
         self._set_inner_opt_attr(
             '_param_groups', self._rank2params[self._sharding_rank]
-        )
-        print(
-            "after parameters update, params len:%d"
-            % (len(self._inner_opt._parameter_list))
         )
 
     def clear_grad(self, set_to_zero=True):
@@ -176,7 +167,6 @@ class DygraphShardingOptimizer:
         """
         # TODO speed up this functional
 
-        print("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
             for rank, params in self._rank2params.items():
@@ -245,16 +235,9 @@ class DygraphShardingOptimizer:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-            print(
-                "dygraph_sharding inner_opt:{}, grad_clip:{}".format(
-                    self._inner_opt, self._inner_opt._grad_clip
-                )
-            )
-            print(f"clip grad params_grads len:{len(params_grads)}")
             if hasattr(self._inner_opt._grad_clip, 'not_sharding_stage1'):
                 self._inner_opt._grad_clip.not_sharding_stage1 = False
             params_grads = self._inner_opt._grad_clip(params_grads)
-            print(f"after grad clip, params_grads len:{len(params_grads)}")
             # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
             self._set_inner_opt_attr('_grad_clip', None)
             update_param_names = [
@@ -263,20 +246,10 @@ class DygraphShardingOptimizer:
             update_params_grads = [
                 (p, g) for p, g in params_grads if p.name in update_param_names
             ]
-            print(
-                "update_params_grads len:{}, non update params len:{}".format(
-                    len(update_params_grads), len(params_grads)
-                )
-            )
             self._apply_optimize(
                 loss=None,
                 startup_program=None,
                 params_grads=update_params_grads,
-            )
-            print(
-                "after clip, dygraph_sharding inner_opt:{}, grad_clip:{}".format(
-                    self._inner_opt, self._inner_opt._grad_clip
-                )
             )
             # restore the grad clip
             self._set_inner_opt_attr('_grad_clip', origin_clip)
