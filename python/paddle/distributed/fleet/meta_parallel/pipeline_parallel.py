@@ -237,6 +237,10 @@ class PipelineParallel(MetaParallelBase):
                 "Users can inspect this file by chrome://tracing website."
             )
 
+        assert (
+            not self._dp_comm_overlap and not self._sharding_comm_overlap
+        ), "Comm overlap is not supported now."
+
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
 
