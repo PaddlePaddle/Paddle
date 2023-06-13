@@ -443,15 +443,6 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount" || op_type == "reduce_sum_grad") {
             dtype = GetInputDType(runtime_ctx, "X");
-          } else if (op_type == "cudnn_lstm" || op_type == "cudnn_lstm_grad") {
-            phi::TensorBase* state_out = GetTensorFormVar(
-                runtime_ctx.outputs.find("StateOut")->second.at(0));
-            bool state_initialized = state_out->initialized() ? true : false;
-            if (!state_initialized) {
-              dtype = phi::DataType::UINT8;
-            } else {
-              dtype = GetInputDType(runtime_ctx, "Input");
-            }
           } else if (op_type == "lamb") {
             bool multi_precision = op.Attr<bool>("multi_precision");
             dtype = GetInputDType(runtime_ctx, "Moment1");

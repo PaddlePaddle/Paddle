@@ -1054,12 +1054,7 @@ void CudnnLSTMInferMeta(
   last_c->set_dtype(x.dtype());
 
   reserve->set_dtype(phi::DataType::UINT8);
-  bool state_initialized = state_out->initialized() ? true : false;
-  if (!state_initialized) {
-    state_out->set_dtype(phi::DataType::UINT8);
-  } else {
-    state_out->set_dtype(x.dtype());
-  }
+  state_out->set_dtype(phi::DataType::UINT8);
 }
 
 inline int ConvOutputSize(
