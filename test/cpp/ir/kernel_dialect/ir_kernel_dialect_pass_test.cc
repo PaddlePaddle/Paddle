@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -40,9 +42,11 @@
 #include "paddle/fluid/platform/init.h"
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "test/cpp/ir/core/phi_kernel_adaptor.h"
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "test/cpp/ir/core/phi_kernel_adaptor.h"
+
+#include "paddle/fluid/ir/dialect/kernel_dialect.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -52,60 +56,61 @@ PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
 TEST(program_test, program) {
-  // Prepare ir env
+  // (1) Init environment.
   ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
-  ir::Program program(ctx);
-  ir::Builder builder(ctx, program.block());
-  ir::Block* block = program.block();
 
-  // Def: A = paddle::dialect::UniformOp(std::vector<int64_t> shape,
-  // phi::DataType dtype, float min, float max, int seed, phi::Place place)
-  paddle::dialect::UniformOp uniform1 =
-      builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
-                                                phi::DataType::FLOAT32,
-                                                0.0,
-                                                1.0,
-                                                2,
-                                                phi::CPUPlace());
-  EXPECT_EQ(uniform1->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-            true);
-  EXPECT_EQ(block->size(), 4u);
+  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
 
-  // Def: B = paddle::dialect::UniformOp(...)
-  paddle::dialect::UniformOp uniform2 =
-      builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
-                                                phi::DataType::FLOAT32,
-                                                0.0,
-                                                1.0,
-                                                2,
-                                                phi::CPUPlace());
-  EXPECT_EQ(uniform2->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-            true);
-  EXPECT_EQ(block->size(), 8u);
+  paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  // Def: C = paddle::dialect::AddOp(ir::OpResult x_, ir::OpResult y_)
-  paddle::dialect::AddOp add = builder.Build<paddle::dialect::AddOp>(
-      uniform1->result(0), uniform2->result(0));
-  EXPECT_EQ(add->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-            true);
-  EXPECT_EQ(block->size(), 9u);
+  paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  // Execute program
+  builder.Build<paddle::dialect::AddOp>(op1->GetResultByIndex(0),
+                                        op2->GetResultByIndex(0));
+
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+
   paddle::framework::Scope scope;
   PhiKernelAdaptor phi_kernel_adaptor(&scope);
-  phi_kernel_adaptor.run(&program);
+  phi_kernel_adaptor.run_kernel_prog(kernel_program.get());
 
   auto out_tensor =
       scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
 
-  bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.80721);
-  bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
-  bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.56764);
-  bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.85063);
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
 
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);
   EXPECT_EQ(res3, true);
+}
+
+TEST(dialect_attr, attr) {
+  // (1) Init environment.
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  auto kernel_dialect =
+      ctx->GetOrRegisterDialect<paddle::dialect::PaddleKernelDialect>();
+
+  phi::KernelKey kernel_key(
+      phi::Backend::CPU, phi::DataLayout::ALL_LAYOUT, phi::DataType::FLOAT32);
+  auto attr = paddle::dialect::KernelAttribute::get(ctx, kernel_key);
+
+  std::stringstream ss;
+
+  kernel_dialect->PrintAttribute(attr, ss);
+
+  EXPECT_EQ(
+      ss.str() == "<backend:CPU|layout:Undefined(AnyLayout)|dtype:float32>",
+      true);
 }
