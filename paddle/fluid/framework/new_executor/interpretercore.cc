@@ -1197,6 +1197,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       instr.KernelType() != OpFuncType::kGpuAsync) {
     return;
   }
+  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
+    return;
+  }
   platform::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
