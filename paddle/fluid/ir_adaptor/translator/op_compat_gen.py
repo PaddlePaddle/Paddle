@@ -70,8 +70,10 @@ def OpNameNormalizerInitialization(
         def insert_new_mutable_attributes(
             op_name: str, mutable_attribute_infos: Dict[str, Dict[str, str]]
         ):
-            op_mutable_attribues[op_name] = set()
-            op_mutable_attribute_infos[op_name] = {}
+            if op_name not in op_mutable_attribues:
+                op_mutable_attribues[op_name] = set()
+            if op_name not in op_mutable_attribute_infos:
+                op_mutable_attribute_infos[op_name] = {}
             for (
                 attribute_name,
                 mutable_attribute_info,
@@ -107,6 +109,14 @@ def OpNameNormalizerInitialization(
             insert_new_arg_mappings(legacy_name, op_compat_item["outputs"])
             for backward_op in legacy_backward_op_names:
                 insert_new_arg_mappings(backward_op, op_compat_item["outputs"])
+
+        if "int_array" in op_compat_item:
+            insert_new_mutable_attributes(
+                legacy_name, op_compat_item["int_array"]
+            )
+
+        if "scalar" in op_compat_item:
+            insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
 
         if "int_array" in op_compat_item:
             insert_new_mutable_attributes(

@@ -19,19 +19,15 @@
 class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  public:
   struct Concept {
-    explicit Concept(void (*infer_shape)(ir::Operation *,
-                                         phi::InferMetaContext *))
+    explicit Concept(void (*infer_shape)(phi::InferMetaContext *))
         : infer_shape_(infer_shape) {}
-    void (*infer_shape_)(ir::Operation *, phi::InferMetaContext *);
+    void (*infer_shape_)(phi::InferMetaContext *);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferShape(ir::Operation *op,
-                           phi::InferMetaContext *infer_meta) {
-      ConcreteOp concret_op = op->dyn_cast<ConcreteOp>();
-      if (concret_op == nullptr) throw("concret_op is nullptr");
-      concret_op.InferShape(infer_meta);
+    static void InferShape(phi::InferMetaContext *infer_meta) {
+      return ConcreteOp::InferShape(infer_meta);
     }
 
     Model() : Concept(InferShape) {}
@@ -41,7 +37,7 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
       : ir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
 
   void InferShape(phi::InferMetaContext *infer_meta) {
-    impl_->infer_shape_(operation(), infer_meta);
+    impl_->infer_shape_(infer_meta);
   }
 
  private:

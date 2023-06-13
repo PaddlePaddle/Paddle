@@ -841,7 +841,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         )
 
                     if flag_multi_task:
-
                         if len(root_params_list) > 0:
                             worker.add_dense_table(
                                 dense_table_index,

@@ -14,26 +14,24 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/parameter.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace dialect {
+namespace phi {
 
-class PaddleKernelDialect : public ir::Dialect {
- public:
-  explicit PaddleKernelDialect(ir::IrContext* context);
+template <typename T, typename Context>
+void CummaxKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  int dtype,
+                  DenseTensor* out,
+                  DenseTensor* indices);
 
-  static const char* name() { return "pd_kernel"; }
+template <typename T, typename Context>
+void CumminKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int axis,
+                  int dtype,
+                  DenseTensor* out,
+                  DenseTensor* indices);
 
-  void PrintType(ir::Type type, std::ostream& os);
-
- private:
-  void initialize();
-};
-
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)
+}  // namespace phi

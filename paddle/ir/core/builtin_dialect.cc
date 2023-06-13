@@ -41,8 +41,8 @@ void BuiltinDialect::initialize() {
                      FloatAttribute,
                      DoubleAttribute,
                      PointerAttribute,
-                     Int32_tAttribute,
-                     Int64_tAttribute,
+                     Int32Attribute,
+                     Int64Attribute,
                      ArrayAttribute>();
 
   RegisterOps<ModuleOp,

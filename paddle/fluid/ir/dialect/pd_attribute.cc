@@ -31,10 +31,10 @@ phi::Scalar ScalarAttribute::data() {
     return phi::Scalar(dyn_cast<ir::FloatAttribute>().data());
   } else if (isa<ir::DoubleAttribute>()) {
     return phi::Scalar(dyn_cast<ir::DoubleAttribute>().data());
-  } else if (isa<ir::Int32_tAttribute>()) {
-    return phi::Scalar(dyn_cast<ir::Int32_tAttribute>().data());
-  } else if (isa<ir::Int64_tAttribute>()) {
-    return phi::Scalar(dyn_cast<ir::Int64_tAttribute>().data());
+  } else if (isa<ir::Int32Attribute>()) {
+    return phi::Scalar(dyn_cast<ir::Int32Attribute>().data());
+  } else if (isa<ir::Int64Attribute>()) {
+    return phi::Scalar(dyn_cast<ir::Int64Attribute>().data());
   } else if (isa<ir::BoolAttribute>()) {
     return phi::Scalar(dyn_cast<ir::BoolAttribute>().data());
   } else {

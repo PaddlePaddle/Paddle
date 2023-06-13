@@ -165,7 +165,6 @@ class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
         assert len(rc1_vars) < len(rc2_vars) and len(rc2_vars) < len(rc3_vars)
 
     def test_recompute_pass_error(self):
-
         with self.assertRaises(AssertionError):
             rc_engine = self.get_engine(True, True, "full", [2])
             history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)

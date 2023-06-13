@@ -166,6 +166,8 @@ void Operation::Destroy() {
 
 IrContext *Operation::ir_context() const { return info_.ir_context(); }
 
+Dialect *Operation::dialect() const { return info_.dialect(); }
+
 Operation::Operation(const AttributeMap &attributes,
                      ir::OpInfo op_info,
                      uint32_t num_results,
@@ -177,7 +179,7 @@ Operation::Operation(const AttributeMap &attributes,
       num_operands_(num_operands),
       num_regions_(num_regions) {}
 
-ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
+ir::OpResult Operation::result(uint32_t index) const {
   if (index >= num_results_) {
     IR_THROW("index exceeds OP output range.");
   }
@@ -198,7 +200,7 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
   }
 }
 
-ir::OpOperand Operation::GetOperandByIndex(uint32_t index) const {
+ir::OpOperand Operation::operand(uint32_t index) const {
   if (index >= num_operands_) {
     IR_THROW("index exceeds OP input range.");
   }
@@ -213,7 +215,7 @@ std::string Operation::name() const {
 }
 
 Region *Operation::GetParentRegion() const {
-  return parent_ ? parent_->GetParentRegion() : nullptr;
+  return parent_ ? parent_->GetParent() : nullptr;
 }
 
 Operation *Operation::GetParentOp() const {
@@ -232,6 +234,11 @@ Program *Operation::GetParentProgram() {
 Region &Operation::GetRegion(unsigned index) {
   assert(index < num_regions_ && "invalid region index");
   return regions_[index];
+}
+
+void Operation::SetParent(Block *parent, const Block::iterator &position) {
+  parent_ = parent;
+  position_ = position;
 }
 
 }  // namespace ir

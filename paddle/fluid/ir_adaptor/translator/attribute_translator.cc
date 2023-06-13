@@ -38,7 +38,7 @@ class AttributeVisitor {
  public:
   virtual ir::Attribute operator()(int i) {
     VLOG(10) << "translating int";
-    return ir::Int32_tAttribute::get(ctx, i);
+    return ir::Int32Attribute::get(ctx, i);
   }
 
   virtual ir::Attribute operator()(float f) {
@@ -91,7 +91,7 @@ class AttributeVisitor {
     std::vector<ir::Attribute> attrs;
     attrs.reserve(is.size());
     for (const auto& v : is) {
-      attrs.push_back(ir::Int32_tAttribute::get(ctx, v));
+      attrs.push_back(ir::Int32Attribute::get(ctx, v));
     }
     return ir::ArrayAttribute::get(ctx, attrs);
   }
@@ -111,7 +111,7 @@ class AttributeVisitor {
     std::vector<ir::Attribute> attrs;
     attrs.reserve(i64s.size());
     for (const auto& v : i64s) {
-      attrs.push_back(ir::Int64_tAttribute::get(ctx, v));
+      attrs.push_back(ir::Int64Attribute::get(ctx, v));
     }
     return ir::ArrayAttribute::get(ctx, attrs);
   }
