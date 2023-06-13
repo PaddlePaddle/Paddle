@@ -763,6 +763,16 @@ class PipelineParallel(MetaParallelBase):
             self.timers("forward_step").stop()
         return output_tensor
 
+    def _check_micro_batch_data_valid(self, micro_batch_data):
+        if isinstance(micro_batch_data, (tuple, list)):
+            for data in micro_batch_data:
+                self._check_micro_batch_data_valid(data)
+        elif micro_batch_data is not None:
+            micro_batch_size = micro_batch_data.shape[0]
+            assert (
+                micro_batch_size == self.micro_batch_size
+            ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
+
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
         if self._enable_timer:
             self.timers("backward_step").start()
