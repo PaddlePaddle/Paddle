@@ -58,6 +58,9 @@ class DygraphShardingOptimizer:
         # the self._parameter_list holds the whole model paramters
         self._parameter_list = optimizer._parameter_list
         self._inner_opt = optimizer
+        self._hcg = hcg
+        self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
+        self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
