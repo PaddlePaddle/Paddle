@@ -20,9 +20,7 @@ import sys
 import unittest
 import warnings
 from collections import defaultdict
-from copy import copy, deepcopy
-
-import traceback
+from copy import copy
 
 import numpy as np
 from op import Operator
@@ -559,7 +557,10 @@ class OpTest(unittest.TestCase):
         )
 
     def enable_cal_ref_output(self):
-        self.is_calc_ref = self.is_fp16_compared_with_fp32() or self.is_bf16_compared_with_fp32()
+        self.is_calc_ref = (
+            self.is_fp16_compared_with_fp32()
+            or self.is_bf16_compared_with_fp32()
+        )
 
     def disable_cal_ref_output(self):
         self.is_calc_ref = False
@@ -662,7 +663,7 @@ class OpTest(unittest.TestCase):
                         dtype = np.array(np_value[1]).dtype
 
                         if self.is_calc_ref:
-                            #convert the float16 to float by numpy.astype
+                            # convert the float16 to float by numpy.astype
                             if dtype == np.float16:
                                 if isinstance(np_value[1], list):
                                     tensor.set_recursive_sequence_lengths(
@@ -672,27 +673,33 @@ class OpTest(unittest.TestCase):
                                     tensor.set_recursive_sequence_lengths(
                                         np_value[1].astype(np.float32)
                                     )
-                            #convert the bfloat16 to float by convert_uint16_to_float
-                            #provided in this file
+                            # convert the bfloat16 to float by convert_uint16_to_float
+                            # provided in this file
                             elif dtype == np.uint16:
                                 if isinstance(np_value[1], list):
                                     tensor.set_recursive_sequence_lengths(
-                                        convert_uint16_to_float(np.array(np_value[1]))
-                                    )     
+                                        convert_uint16_to_float(
+                                            np.array(np_value[1])
+                                        )
+                                    )
                                 else:
                                     tensor.set_recursive_sequence_lengths(
                                         convert_uint16_to_float(np_value[1])
                                     )
                             else:
-                                tensor.set_recursive_sequence_lengths(np_value[1])
+                                tensor.set_recursive_sequence_lengths(
+                                    np_value[1]
+                                )
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
                         if self.is_calc_ref:
                             if np_value.dtype == np.float16:
-                                tensor.set(np_value.astype(np.float32), place) 
+                                tensor.set(np_value.astype(np.float32), place)
                             elif np_value.dtype == np.uint16:
-                                tensor.set(convert_uint16_to_float(np_value), place)
+                                tensor.set(
+                                    convert_uint16_to_float(np_value), place
+                                )
                             else:
                                 tensor.set(np_value, place)
                         else:
@@ -708,9 +715,10 @@ class OpTest(unittest.TestCase):
                                 self.inputs[var_name][1].astype(np.float32)
                             )
                         elif self.inputs[var_name][1].dtype == np.uint16:
-                            #print("self.inputs[var_name][1].dtype: ", self.inputs[var_name][1].dtype)
                             tensor.set_recursive_sequence_lengths(
-                                convert_uint16_to_float(self.inputs[var_name][1])
+                                convert_uint16_to_float(
+                                    self.inputs[var_name][1]
+                                )
                             )
                         else:
                             tensor.set_recursive_sequence_lengths(
@@ -728,7 +736,8 @@ class OpTest(unittest.TestCase):
                             )
                         elif self.inputs[var_name].dtype == np.uint16:
                             tensor.set(
-                                convert_uint16_to_float(self.inputs[var_name]), place
+                                convert_uint16_to_float(self.inputs[var_name]),
+                                place,
                             )
                         else:
                             tensor.set(self.inputs[var_name], place)
@@ -737,7 +746,6 @@ class OpTest(unittest.TestCase):
                 feed_map[var_name] = tensor
 
         return feed_map
-    
 
     def _append_ops(self, block):
         self.__class__.op_type = (
@@ -761,14 +769,14 @@ class OpTest(unittest.TestCase):
             self.output_dtype = np.uint16
         else:
             self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        
+
         inputs = append_input_output(
             block, op_proto, self.inputs, True, self.dtype, self.is_calc_ref
         )
         outputs = append_input_output(
             block, op_proto, self.outputs, False, self.dtype, self.is_calc_ref
         )
-        
+
         if hasattr(self, "cache_name_list"):
             for name in self.cache_name_list:
                 inputs[name] = block.create_var(
@@ -1803,7 +1811,10 @@ class OpTest(unittest.TestCase):
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
                 # expect_np = expect[0] if isinstance(expect, tuple) else expect
-                if self.op_test.is_fp16_compared_with_fp32() or self.op_test.is_bf16_compared_with_fp32():
+                if (
+                    self.op_test.is_fp16_compared_with_fp32()
+                    or self.op_test.is_bf16_compared_with_fp32()
+                ):
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
@@ -1858,7 +1869,10 @@ class OpTest(unittest.TestCase):
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
-                if self.op_test.is_fp16_compared_with_fp32() or self.op_test.is_bf16_compared_with_fp32():
+                if (
+                    self.op_test.is_fp16_compared_with_fp32()
+                    or self.op_test.is_bf16_compared_with_fp32()
+                ):
                     self.op_test.enable_cal_ref_output()
                     ref_outs, ref_fetch_list = self.op_test._calc_output(
                         place, no_check_set=no_check_set
@@ -1925,7 +1939,10 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = dygraph_outs
-                if self.op_test.is_fp16_compared_with_fp32() or self.op_test.is_bf16_compared_with_fp32():
+                if (
+                    self.op_test.is_fp16_compared_with_fp32()
+                    or self.op_test.is_bf16_compared_with_fp32()
+                ):
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
                     self.ref_outputs = self.op_test._calc_python_api_output(
@@ -2507,7 +2524,7 @@ class OpTest(unittest.TestCase):
                     + self.op_type
                     + " Op."
                 )
-            
+
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
@@ -2525,20 +2542,12 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        analytic_grads = self._get_gradient(
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set,
-            user_defined_grad_outputs,
-            check_cinn=check_cinn,
-        )
-        
-        #if user_defined_grads is None and (self.is_fp16_compared_with_fp32() or self.is_bf16_compared_with_fp32()):
-        if user_defined_grads is None and (self.is_fp16_compared_with_fp32() or self.is_bf16_compared_with_fp32()):
+        if user_defined_grads is None and (
+            self.is_fp16_compared_with_fp32()
+            or self.is_bf16_compared_with_fp32()
+        ):
             self.enable_cal_ref_output()
-            # we need to convert the data type of input tensor in scope from uint16 to float32 by re-setting the tensor
-            
+
             numeric_grads = self._get_gradient(
                 inputs_to_check,
                 place,
@@ -2562,12 +2571,16 @@ class OpTest(unittest.TestCase):
                 for input_to_check in inputs_to_check
             ]
 
+        analytic_grads = self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs,
+            check_cinn=check_cinn,
+        )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
-        if self.is_bf16_compared_with_fp32(): 
-            print("numeric_grads: ", numeric_grads[0].dtype)
-            print("analytic_grads: ", analytic_grads[0].dtype)
-        #exit(0)
 
         fp32_analytic_grads = []
         for grad in analytic_grads:
@@ -2588,10 +2601,6 @@ class OpTest(unittest.TestCase):
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
-        
-        if self.is_bf16_compared_with_fp32(): 
-            print("after convertion, numeric_grads: ", numeric_grads[0].dtype)
-            print("after convertion, analytic_grads: ", analytic_grads[0].dtype)            
 
         if self.is_float16_op():
             max_relative_error = (
