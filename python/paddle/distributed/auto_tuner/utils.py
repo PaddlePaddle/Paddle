@@ -14,6 +14,9 @@
 
 import copy
 import itertools
+import os
+import re
+from typing import Tuple
 
 
 def divisor(num, reverse=False):
@@ -231,3 +234,38 @@ def gen_new_args(raw_args, cfg, tuner_cfg):
         res_args.extend(cmd["local_batch_size"])
 
     return res_args
+
+
+def read_log(
+    path, file="workerlog.0", target_metric='step/s'
+) -> Tuple[float, bool]:
+    """For extracting metric from log file."""
+    if not os.path.exists(path):
+        return (0.0, True)
+    target_file = path + "/" + file
+    with open(target_file, "r") as f:
+        # read file
+        re_metric_pattern = r'speed: (\d+(\.\d*)?) *' + target_metric
+
+        metric_list = []
+        lines = f.readlines()
+        for line in lines:
+            metric = re.findall(re_metric_pattern, line)
+            if metric:
+                metric_list.append(float(metric[0][0]))
+        if not metric_list:
+            metric_ave = 0.0
+            flag = True
+        elif len(metric_list) < 10:
+            metric_ave = metric_list[-1]
+            flag = False
+        elif len(metric_list) < 20:
+            metric_ave = sum(metric_list[10:]) / (len(metric_list) - 10)
+            flag = False
+        else:
+            metric_ave = sum(metric_list[-10:]) / 10
+            flag = False
+        # round to 5 decimal places
+        metric_ave = round(metric_ave, 5)
+    res = metric_ave, flag
+    return res
