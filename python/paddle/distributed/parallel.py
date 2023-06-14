@@ -1017,7 +1017,6 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
-    _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
