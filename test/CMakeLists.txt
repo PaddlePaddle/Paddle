@@ -180,8 +180,6 @@ if(${len} GREATER_EQUAL 1)
         target_link_libraries(${test_name} ${ROCM_HIPRTC_LIB})
       endif()
       if(APPLE)
-        set_target_properties(${test_name} PROPERTIES LINK_OPTIONS
-                                                      "-flat_namespace")
         target_link_libraries(
           ${test_name}
           "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi>"
