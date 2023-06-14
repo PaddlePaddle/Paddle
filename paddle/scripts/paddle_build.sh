@@ -3539,7 +3539,7 @@ EOF
     fi
 
     build_size
-
+    sleep 10h
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
