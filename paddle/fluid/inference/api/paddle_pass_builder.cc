@@ -534,6 +534,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",
+      "delete_xpu_unnecessary_cast_op_pass",
   });
   use_xpu_ = true;
 }

@@ -260,6 +260,8 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(delete_xpu_unnecessary_cast_op_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -547,4 +549,8 @@ if(WITH_XPU)
     test_fold_interp_outsize_fuse_pass
     SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
     DEPS fold_interp_outsize_fuse_pass)
+  cc_test(
+    test_delete_xpu_unnecessary_cast_op_pass
+    SRCS xpu/delete_xpu_unnecessary_cast_op_pass_test.cc
+    DEPS delete_xpu_unnecessary_cast_op_pass)
 endif()
