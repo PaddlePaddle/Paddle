@@ -104,7 +104,7 @@ void NaiveExecutor::Run() {
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
 
-    if ("conv2d" == op->Type() || "conv2d_fusion" == op->Type() && 0) {
+    if (0 && "conv2d" == op->Type() && "conv2d_fusion" == op->Type() && 0) {
       for (auto name : op->OutputVars(true)) {
         std::cout << name << ": " << std::endl;
         auto var = scope_->FindVar(name);

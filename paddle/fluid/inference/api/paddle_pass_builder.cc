@@ -110,14 +110,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "layernorm_shift_partition_fuse_pass",          //
       "merge_layernorm_fuse_pass",                    //
 #if !defined _WIN32
-      "split_layernorm_to_math_ops_pass",  //
+   //   "split_layernorm_to_math_ops_pass",  //
 #endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trt_skip_layernorm_fuse_pass",          //
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-      "preln_residual_bias_fuse_pass",   //
+    // "preln_residual_bias_fuse_pass",   //
       "preln_layernorm_x_fuse_pass",     //
       "reverse_roll_fuse_pass",          //
       "conv_bn_fuse_pass",               //
@@ -140,6 +140,43 @@ const std::vector<std::string> kTRTSubgraphPasses({
 #endif
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //
+        // 下面这些pass直接从GPU那里搬移过来的
+        // 搬移开始
+        "map_op_to_another_pass",                                       //
+        "identity_op_clean_pass",                                       //
+        "is_test_pass",                                                 //
+        "simplify_with_basic_ops_pass",                                 //
+        "delete_quant_dequant_linear_op_pass",                          //
+        "delete_weight_dequant_linear_op_pass",                         //
+        "constant_folding_pass",                                        //
+        "silu_fuse_pass",                                               //
+        "conv_bn_fuse_pass",                                            //
+        "conv_eltwiseadd_bn_fuse_pass",                                 //
+        "embedding_eltwise_layernorm_fuse_pass",                        //
+        "multihead_matmul_fuse_pass_v2",                                //
+        "vit_attention_fuse_pass",                                      //
+        "fused_multi_transformer_encoder_pass",                         //
+        "fused_multi_transformer_decoder_pass",                         //
+        "fused_multi_transformer_encoder_fuse_qkv_pass",                //
+        "fused_multi_transformer_decoder_fuse_qkv_pass",                //
+        "multi_devices_fused_multi_transformer_encoder_pass",           //
+        "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
+        "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
+        "fuse_multi_transformer_layer_pass",                            //
+        "gpu_cpu_squeeze2_matmul_fuse_pass",                            //
+        "gpu_cpu_reshape2_matmul_fuse_pass",                            //
+        "gpu_cpu_flatten2_matmul_fuse_pass",                            //
+        "gpu_cpu_map_matmul_v2_to_mul_pass",                            //
+        "gpu_cpu_map_matmul_v2_to_matmul_pass",                         //
+        "matmul_scale_fuse_pass",                                       //
+        "multihead_matmul_fuse_pass_v3",                                //
+        "gpu_cpu_map_matmul_to_mul_pass",                               //
+        "fc_fuse_pass",                                                 //
+        "fc_elementwise_layernorm_fuse_pass",                           //
+        "conv_elementwise_add_act_fuse_pass",   //
+        "conv_elementwise_add2_act_fuse_pass",  //
+        "transpose_flatten_concat_fuse_pass",  //
+         // 搬移结束 
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
