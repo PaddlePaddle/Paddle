@@ -80,6 +80,12 @@ def create_pyobject_test_data(shape=None, seed=None):
     return [list_data, dict_data]
 
 
+def dump_output(x):
+    dump_file = os.environ['DUMP_FILE']
+    with open(dump_file, 'wb') as f:
+        pickle.dump(x, f)
+
+
 def create_test_data(shape=None, dtype=None, seed=None):
     assert shape, "Shape should be specified"
     if dtype == "float32" or dtype == "float16" or dtype == "float64":
@@ -159,9 +165,8 @@ class TestCollectiveAPIRunnerBase:
             )
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
-        file_path = os.getenv("DUMP_FILE")
-        with open(os.getenv("DUMP_FILE"), "wb") as f:
-            pickle.dump(out, f)
+            # print(out, sys.stderr)
+        dump_output(out)
 
 
 def runtime_main(test_class, col_type):
@@ -219,12 +224,6 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        out_path0 = os.path.join(
-            self.temp_dir.name, "/tmp/tr0_out_%d.log" % os.getpid()
-        )
-        out_path1 = os.path.join(
-            self.temp_dir.name, "/tmp/tr1_out_%d.log" % os.getpid()
-        )
         if core.is_compiled_with_cuda():
             env0 = {
                 "FLAGS_selected_gpus": "0",
@@ -233,7 +232,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
                 "PADDLE_MASTER": self._master_endpoints,
-                "DUMP_FILE": out_path0,
             }
 
             env1 = {
@@ -243,7 +241,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
                 "PADDLE_MASTER": self._master_endpoints,
-                "DUMP_FILE": out_path1,
             }
         elif core.is_compiled_with_xpu():
             env0 = {
@@ -264,6 +261,13 @@ class TestDistBase(unittest.TestCase):
         # update environment
         env0.update(envs)
         env1.update(envs)
+
+        cur_pid = os.getpid()
+        dump_file_0 = f'./out_data_0_{cur_pid}.pickled'
+        dump_file_1 = f'./out_data_1_{cur_pid}.pickled'
+        env0['DUMP_FILE'] = dump_file_0
+        env1['DUMP_FILE'] = dump_file_1
+
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             tr_cmd = "%s -m coverage run --branch -p %s"
         else:
@@ -278,6 +282,7 @@ class TestDistBase(unittest.TestCase):
         )
         tr0_pipe = open(path0, "w")
         tr1_pipe = open(path1, "w")
+        # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -303,15 +308,16 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
-        tr0_file = open(out_path0, "rb")
-        tr1_file = open(out_path1, "rb")
-        tr0_result = pickle.load(tr0_file)
-        tr1_result = pickle.load(tr1_file)
-        tr0_file.close()
-        tr1_file.close()
+
+        def load_and_remove(path):
+            with open(path, 'rb') as f:
+                out = pickle.load(f)
+            os.remove(path)
+            return out
+
         return (
-            tr0_result,
-            tr1_result,
+            load_and_remove(dump_file_0),
+            load_and_remove(dump_file_1),
             tr0_proc.pid,
             tr1_proc.pid,
         )
@@ -346,8 +352,6 @@ class TestDistBase(unittest.TestCase):
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
         }
-        if paddle.version.cuda() >= '12.0':
-            additional_envs.pop("NCCL_P2P_DISABLE")
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
         if check_error_log:
@@ -485,7 +489,7 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "column_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
-            weight = np.random.rand(1000, 16)
+            weight = np.random.rand(1000, 16).astype(np.float32)
             need_result = np.matmul(input1, weight)
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
