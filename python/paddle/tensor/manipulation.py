@@ -1118,6 +1118,11 @@ def concat(x, axis=0, name=None):
             axis = axis.item(0)
         if not isinstance(input, Variable):
             input = [t for t in input if t.shape.count(0) == 0]
+            data_dtype = input[0].dtype
+            for t in input:
+                assert (
+                    data_dtype == t.dtype
+                ), "The input data type of concat is inconsistent."
         return _C_ops.concat(input, axis)
     else:
         check_type(input, 'input', (list, tuple, Variable), 'concat')
