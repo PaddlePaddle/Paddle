@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/builder.h"
@@ -20,7 +21,9 @@
 #include "paddle/ir/core/builtin_op.h"
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/ir_printer.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/region.h"
@@ -99,7 +102,7 @@ class Operation1 : public ir::Op<Operation1> {
                     ir::OperationArgument &argument) {  // NOLINT
     std::vector<ir::OpResult> inputs = {};
     std::vector<ir::Type> output_types = {
-        ir::Float32Type::get(builder.context())};
+        ir::Float32Type::get(builder.ir_context())};
     std::unordered_map<std::string, ir::Attribute> attributes =
         CreateAttributeMap({"op1_attr1", "op1_attr2"},
                            {"op1_attr1", "op1_attr2"});
@@ -149,6 +152,15 @@ class TestDialect : public ir::Dialect {
   }
   static const char *name() { return "test"; }
 
+  void PrintOperation(ir::Operation *op,
+                      ir::IrPrinter &printer) const override {
+    printer.PrintOpResult(op);
+    printer.os << " =";
+
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
+  }
+
  private:
   void initialize() { RegisterOps<Operation1, Operation2>(); }
 };
@@ -162,10 +174,10 @@ TEST(op_test, op_test) {
   // (2) Get registered operations.
   std::string op1_name = Operation1::name();
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
-  EXPECT_EQ(op1_info != nullptr, true);
+  EXPECT_TRUE(op1_info);
   std::string op2_name = Operation2::name();
   ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  EXPECT_EQ(op2_info != nullptr, true);
+  EXPECT_TRUE(op2_info);
   EXPECT_EQ(op1_info.HasTrait<ReadOnlyTrait>(), false);
   EXPECT_EQ(op1_info.HasInterface<InferShapeInterface>(), false);
   EXPECT_EQ(op2_info.HasTrait<ReadOnlyTrait>(), true);
@@ -221,6 +233,11 @@ TEST(op_test, region_test) {
   ir::Region *region = argument.regions.back().get();
   EXPECT_EQ(region->empty(), true);
 
+  // (3) Test custom operation printer
+  std::stringstream ss;
+  op1->Print(ss);
+  EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
+
   region->push_back(new ir::Block());
   region->push_front(new ir::Block());
   region->insert(region->begin(), new ir::Block());
@@ -235,15 +252,16 @@ TEST(op_test, module_op_death) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(ir::ModuleOp::name());
 
-  // (3) Test uses for op.
   std::vector<ir::OpResult> inputs{ir::OpResult()};
-  ir::AttributeMap attrs{{"program", ir::Int32_tAttribute::get(ctx, 1)}};
+  ir::AttributeMap attrs{{"program", ir::Int32Attribute::get(ctx, 1)}};
   std::vector<ir::Type> output_types = {ir::Float32Type::get(ctx)};
 
-  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info), const char *);
-  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info), const char *);
+  EXPECT_THROW(ir::Operation::Create(inputs, {}, {}, op_info),
+               ir::IrNotMetException);
+  EXPECT_THROW(ir::Operation::Create({}, attrs, {}, op_info),
+               ir::IrNotMetException);
   EXPECT_THROW(ir::Operation::Create({}, {}, output_types, op_info),
-               const char *);
+               ir::IrNotMetException);
 
   ir::Program program(ctx);
 

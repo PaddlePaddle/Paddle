@@ -238,7 +238,6 @@ def lm_model(
     def encoder_static(
         input_embedding, len=3, init_hidden=None, init_cell=None
     ):
-
         weight_1_arr = []
         weight_2_arr = []
         bias_arr = []

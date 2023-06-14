@@ -1257,7 +1257,6 @@ class Completer:
 
             # grad ops that have not a corresponding mapping in grad_op_id_to_op_id
             else:
-
                 if grad_op.type == 'sum':
                     assert all(map(_is_grad_var_name, grad_op.input_arg_names))
                     output_name = grad_op.output_arg_names[0]
@@ -1382,7 +1381,6 @@ class Completer:
         ]
 
         for idx in range(first_backward_op_idx, len(ops)):
-
             # complete the initial grad loss op
             if idx == first_backward_op_idx:
                 assert ops[idx].type == "fill_constant"
@@ -1656,7 +1654,6 @@ class Completer:
         learning_rate_completed = False
 
         for idx in range(len(ops)):
-
             # complete the annotation of the optimizer op.
             # TODO to add attribute for moment var
             op = ops[idx]
@@ -1823,7 +1820,6 @@ class Completer:
                         )
 
                     for input_name in op.desc.input_names():
-
                         if input_name in [
                             'Param',
                             'Grad',

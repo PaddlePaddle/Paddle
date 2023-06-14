@@ -63,7 +63,7 @@ void CompareOutput(std::shared_ptr<Predictor> predictor) {
   }
 }
 
-Config XpuConfig() {
+Config InferXpuConfig() {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   Config config;
   config.SetModel(model_dir + "/model", model_dir + "/params");
@@ -72,7 +72,7 @@ Config XpuConfig() {
 }
 
 TEST(resnet50_xpu, basic) {
-  Config config = XpuConfig();
+  Config config = InferXpuConfig();
   auto predictor = CreatePredictor(config);
   PrepareInput(predictor);
   predictor->Run();
@@ -80,7 +80,7 @@ TEST(resnet50_xpu, basic) {
 }
 
 #define RUN_WITH_RUNTIME_CONFIG(idx_, config_)                             \
-  Config config##idx_ = XpuConfig();                                       \
+  Config config##idx_ = InferXpuConfig();                                  \
   auto predictor##idx_ = CreatePredictor(config##idx_);                    \
   PrepareInput(predictor##idx_);                                           \
   experimental::InternalUtils::RunWithRuntimeConfig(predictor##idx_.get(), \

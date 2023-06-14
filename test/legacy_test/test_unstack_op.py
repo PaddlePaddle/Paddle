@@ -182,7 +182,6 @@ class TestUnStackBF16Op(OpTest):
 
 class TestUnstackZeroInputOp(unittest.TestCase):
     def unstack_zero_input_static(self):
-
         paddle.enable_static()
 
         array = np.array([], dtype=np.float32)
@@ -190,7 +189,6 @@ class TestUnstackZeroInputOp(unittest.TestCase):
         paddle.unstack(x, axis=1)
 
     def unstack_zero_input_dynamic(self):
-
         array = np.array([], dtype=np.float32)
         x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
         paddle.unstack(x, axis=1)

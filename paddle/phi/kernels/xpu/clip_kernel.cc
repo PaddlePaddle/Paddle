@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/clip_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -33,8 +36,8 @@ void ClipKernel(const Context& dev_ctx,
                        x_data,
                        out_data,
                        x.numel(),
-                       min.to<XPUDataType>(),
-                       max.to<XPUDataType>());
+                       static_cast<XPUDataType>(min.to<T>()),
+                       static_cast<XPUDataType>(max.to<T>()));
 
   PADDLE_ENFORCE_EQ(r,
                     XPU_SUCCESS,
@@ -46,5 +49,11 @@ void ClipKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    clip, XPU, ALL_LAYOUT, phi::ClipKernel, float, int64_t, int) {}
+PD_REGISTER_KERNEL(clip,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ClipKernel,
+                   float,
+                   phi::dtype::float16,
+                   int64_t,
+                   int) {}

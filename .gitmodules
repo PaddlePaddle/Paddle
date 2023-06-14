@@ -2,6 +2,10 @@
 	path = third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf.git
 	ignore = dirty
+[submodule "third_party/pocketfft"]
+	path = third_party/pocketfft
+	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
+	ignore = dirty
 [submodule "third_party/gflags"]
 	path = third_party/gflags
 	url = https://github.com/gflags/gflags.git
@@ -34,6 +38,10 @@
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb
 	ignore = dirty
+[submodule "third_party/pybind"]
+	path = third_party/pybind
+	url = https://github.com/pybind/pybind11.git
+	ignore = dirty
 [submodule "third_party/threadpool"]
 	path = third_party/threadpool
 	url = https://github.com/progschj/ThreadPool.git
@@ -49,6 +57,22 @@
 [submodule "third_party/eigen3"]
 	path = third_party/eigen3
 	url = https://gitlab.com/libeigen/eigen.git
+	ignore = dirty
+[submodule "third_party/snappy"]
+	path = third_party/snappy
+	url = https://github.com/google/snappy.git
+	ignore = dirty
+[submodule "third_party/cub"]
+	path = third_party/cub
+	url = https://github.com/NVIDIA/cub.git
+	ignore = dirty
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = https://github.com/NVIDIA/cutlass.git
+	ignore = dirty
+[submodule "third_party/xbyak"]
+	path = third_party/xbyak
+	url = https://github.com/herumi/xbyak.git
 	ignore = dirty
 [submodule "third_party/mkldnn"]
 	path = third_party/mkldnn

@@ -689,7 +689,6 @@ def _addup_repetitive_outputs_(
     for key, value in collections.OrderedDict(
         reversed(list(pending_sum_ops.items()))
     ).items():
-
         # NOTE(zhiqiu): Since reversed, the idx of op_descs to be inserted will remains correct.
         # For example, [0, 1, 2], and we want to insert 'a' at idx 1, 'b' at idx 2, and the expected result is [0, 1, 'a', 2, 'b'].
         # If reversed, we first insert 'b' at idx 2, it becomes [0, 1, 2, 'b'], and then insert 'a' at idx 1, it becomes [0, 1, 'a', 2, 'b'].
@@ -1873,7 +1872,6 @@ def _get_stop_gradients_(program):
 
 
 def _get_son_parent_block_idx_dict(program, current_block_idx):
-
     son_parent_block_idx_dict = collections.OrderedDict()
     while current_block_idx >= 0:
         parent_block_idx = program.block(current_block_idx).parent_idx

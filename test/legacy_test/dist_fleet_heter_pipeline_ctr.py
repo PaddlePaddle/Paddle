@@ -146,7 +146,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             wn.write(str(program))
 
     def do_dataset_training(self, fleet):
-
         train_file_list = ctr_dataset_reader.prepare_fake_data()
 
         exe = fluid.Executor(fluid.CPUPlace())
@@ -190,7 +189,6 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
         exe.close()
 
     def do_dataset_heter_training(self, fleet):
-
         exe = fluid.Executor()
         exe.run(fluid.default_startup_program())
         fleet.init_worker()

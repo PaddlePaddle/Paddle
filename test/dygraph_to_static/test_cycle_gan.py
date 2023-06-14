@@ -585,7 +585,6 @@ def train(args, to_static):
         loss_data = []
         for epoch in range(args.epoch):
             for batch_id in range(max_images_num):
-
                 data_A = next(A_reader)
                 data_B = next(B_reader)
 

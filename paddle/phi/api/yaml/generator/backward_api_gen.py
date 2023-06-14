@@ -316,7 +316,6 @@ def generate_backward_api(
     header_file_path,
     source_file_path,
 ):
-
     bw_apis = []
     for each_api_yaml in backward_yaml_path:
         with open(each_api_yaml, 'r') as f:

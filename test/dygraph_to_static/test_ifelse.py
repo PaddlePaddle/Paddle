@@ -83,7 +83,6 @@ class TestDygraphIfElse(unittest.TestCase):
         return self._run_dygraph(to_static=True)
 
     def _run_dygraph(self, to_static=False):
-
         with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             if to_static:

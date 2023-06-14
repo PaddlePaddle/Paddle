@@ -19,12 +19,16 @@ from enum import Enum
 import numpy as np
 
 import paddle
+from paddle import _C_ops
 from paddle.fluid import core
 from paddle.fluid.framework import dygraph_only
+
+from ..framework import LayerHelper, in_dynamic_mode
 
 __all__ = [
     "DebugMode",
     "TensorCheckerConfig",
+    "check_numerics",
     "enable_operator_stats_collection",
     "disable_operator_stats_collection",
     "collect_operator_stats",
@@ -133,7 +137,6 @@ class TensorCheckerConfig:
         debug_step=None,
         stack_height_limit=1,
     ):
-
         self.enable = enable
         self.debug_mode = debug_mode
         self.output_dir = output_dir
@@ -257,6 +260,74 @@ class TensorCheckerConfig:
 
     def stop_check_nan_inf(self):
         self._set_env(False)
+
+
+def check_numerics(
+    tensor, op_type, var_name, debug_mode=DebugMode.CHECK_NAN_INF_AND_ABORT
+):
+    """
+    This function is used to debugging a tensor, finding the number of NaNs, Infs and zeros in the tensor.
+
+    Args:
+        tensor(Tensor): The target tensor to check.
+        op_type(str): The OP or API name which produce the target tensor.
+        var_name(str): The name of target tensor.
+        debug_mode(paddle.amp.debugging.DebugMode, optional): The mode of debugging to be used. Default is DebugMode.CHECK_NAN_INF_AND_ABORT.
+
+    Returns:
+        (Tensor, Tensor): A tuple of tensors containing
+
+        - **stats** (Tensor): Returns the number of NaNs, Infs and zeros of input tensor. The shape is [3] and dtype is int64.
+        - **values** (Tensor): Returns the maximum, minimum and mean value of input tensor. The shape is [3] and dtype is float.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            checker_config = paddle.amp.debugging.TensorCheckerConfig(
+                enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+
+            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32')
+            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            res = paddle.pow(x, y)
+            paddle.amp.debugging.check_numerics(res, "pow", "res")
+
+    """
+    stack_height_limit = -1
+    output_dir = ""
+
+    if in_dynamic_mode():
+        return _C_ops.check_numerics(
+            tensor,
+            op_type,
+            var_name,
+            debug_mode.value,
+            stack_height_limit,
+            output_dir,
+        )
+
+    helper = LayerHelper("check_numerics", **locals())
+
+    stats = helper.create_variable_for_type_inference(dtype="int64")
+    values = helper.create_variable_for_type_inference(dtype="float")
+
+    helper.append_op(
+        type='check_numerics',
+        inputs={
+            'tensor': tensor,
+        },
+        attrs={
+            'op_type': op_type,
+            'var_name': var_name,
+            'check_nan_inf_level': debug_mode.value,
+            'stack_height_limit': stack_height_limit,
+            'output_dir': output_dir,
+        },
+        outputs={'stats': [stats], 'values': [values]},
+    )
+    return stats, values
 
 
 def _get_operator_stats_flag():
