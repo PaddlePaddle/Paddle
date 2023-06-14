@@ -107,7 +107,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_alltoall_single_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_alltoall_single_api
-                       PROPERTIES TIMEOUT "160" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -137,10 +137,10 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   if(${CUDA_ARCH_NAME} STREQUAL "Ampere")
     set_tests_properties(test_collective_broadcast_api
-                         PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "360" LABELS "RUN_TYPE=DIST")
   else()
     set_tests_properties(test_collective_broadcast_api
-                         PROPERTIES TIMEOUT "450" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -178,7 +178,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_isend_irecv_api MODULES test_collective_isend_irecv_api
     ENVS "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_isend_irecv_api
-                       PROPERTIES TIMEOUT "160" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -240,10 +240,10 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   if(${CUDA_ARCH_NAME} STREQUAL "Ampere")
     set_tests_properties(test_collective_reduce_scatter_api
-                         PROPERTIES TIMEOUT "360" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "210" LABELS "RUN_TYPE=DIST")
   else()
     set_tests_properties(test_collective_reduce_scatter_api
-                         PROPERTIES TIMEOUT "250" LABELS "RUN_TYPE=DIST")
+                         PROPERTIES TIMEOUT "150" LABELS "RUN_TYPE=DIST")
   endif()
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
@@ -258,7 +258,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_scatter_api MODULES test_collective_scatter_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_scatter_api
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(

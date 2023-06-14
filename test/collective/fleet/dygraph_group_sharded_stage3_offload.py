@@ -215,10 +215,7 @@ def test_stage3_offload():
 
     # bfp16 offload
     nccl_version = core.nccl_version()
-    if (
-        nccl_version >= 21000
-        and paddle.device.cuda.get_device_properties().major >= 8
-    ):
+    if nccl_version >= 21000:
         stage3_params = train_mlp(mlp7, use_pure_fp16=True, use_bfp16=True)
         stage3_params_offload = train_mlp(
             mlp8, use_pure_fp16=True, offload=True, use_bfp16=True
