@@ -1003,6 +1003,9 @@ def GenBuildOutputs(
   }}
  """
 
+    CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE = """  std::vector<int64_t> {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullIntArrayOp>().operation()->attributes().at("value").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData(); (void){name};\n"""
+    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE = """  {dtype} {name} = {name}_.owner()->dyn_cast<paddle::dialect::FullOp>().operation()->attributes().at("value").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{dtype}>(); (void){name};\n"""
+
     CREATE_OUTPUT_METATENSOR_TEMPLATE = """  phi::DenseTensor dense_{name};
   phi::MetaTensor meta_{name}(&dense_{name});
 """
@@ -1028,6 +1031,32 @@ def GenBuildOutputs(
             build_output_str += "  paddle::dialect::DenseTensorType {name} = {name}_.type().dyn_cast<paddle::dialect::DenseTensorType>(); (void){name};\n".format(
                 name=op_input_name_list[idx]
             )
+
+    # Prepare mutable attributes
+    if mutable_attr_is_input:
+        for idx in range(len(op_mutable_attribute_name_list)):
+            attr_dtype = op_mutable_attribute_type_list[idx]
+            # int_array
+            if attr_dtype[0] == "paddle::dialect::IntArrayAttribute":
+                build_output_str += (
+                    CREATE_INTARRAY_MUTABLE_ATTRIBUE_TEMPLATE.format(
+                        name=op_mutable_attribute_name_list[idx]
+                    )
+                )
+            # scalar
+            elif attr_dtype[0] == "paddle::dialect::ScalarAttribute":
+                build_output_str += (
+                    CREATE_SCALAR_MUTABLE_ATTRIBUE_TEMPLATE.format(
+                        name=op_mutable_attribute_name_list[idx],
+                        dtype=attr_dtype[1],
+                    )
+                )
+            # string
+            elif attr_dtype[0] == "ir::StrAttribute":
+                build_output_str += ""
+            else:
+                assert "mutable attribtue type is not right."
+        build_output_str += "\n"
 
     # Prepare inputs_meta_tensor & attributes for infer meta
     infer_meta_args = []
@@ -1193,7 +1222,7 @@ def GenBuild(
         op_output_type_list,
         op_output_size_list,
         op_infer_meta_map,
-        False,
+        muta_attr_is_input,
     )
 
     build_func = OP_BUILD_TEMPLATE.format(
@@ -1358,16 +1387,7 @@ def OpGenerator(
                     op_infer_meta_map,
                     muta_attr_is_input=False,
                 )
-                op_infer_meta_args = op_infer_meta_map['param']
-                if (len(op_mutable_attribute_name_list) > 0) and (
-                    len(
-                        list(
-                            set(op_infer_meta_args)
-                            & set(op_mutable_attribute_name_list)
-                        )
-                    )
-                    == 0
-                ):
+                if len(op_mutable_attribute_name_list) > 0:
                     (
                         build_args_with_muta_attr_is_input_for_declare,
                         build_func_with_muta_attr_is_input,
