@@ -1848,13 +1848,11 @@ All parameter, weight, gradient are variables in Paddle.
                     const interpreter::Plan &,
                     Scope *>())
       .def("run",
-           [](StandaloneExecutor &self,
-              std::vector<std::string> feed_names,
-              std::vector<std::string> fetch_names) {
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(feed_names, fetch_names);
+               ret = self.Run(feed_names);
              }
              return py::cast(std::move(ret));
            });

@@ -641,7 +641,7 @@ class _StandaloneExecutor:
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, feed_names, fetch_list, return_numpy=True):
+    def run(self, feed_names, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -651,9 +651,7 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        fetch_list = self._check_fetch(fetch_list)
-
-        tensors = self._new_exe.run(feed_names, fetch_list)._move_to_list()
+        tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
@@ -663,24 +661,6 @@ class _StandaloneExecutor:
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
         return new_exe
-
-    def _check_fetch(self, fetch_list):
-        if fetch_list is None:
-            fetch_list = []
-
-        res = []
-        for fetch_var in fetch_list:
-            if isinstance(fetch_var, Variable):
-                fetch_var = fetch_var.name
-            elif not isinstance(fetch_var, str):
-                raise TypeError(
-                    "Required fetch_var shall be str|Variable, but received {}".format(
-                        type(fetch_var).__name__
-                    )
-                )
-
-            res.append(fetch_var)
-        return res
 
 
 class _ExecutorCache:
@@ -1619,7 +1599,7 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(list(feed.keys()), fetch_list, return_numpy)
+            ret = new_exe.run(list(feed.keys()), return_numpy)
             set_flags(stored_flag)
             return ret
 

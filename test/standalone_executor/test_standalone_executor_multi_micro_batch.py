@@ -160,7 +160,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
             Plan([Job("startup")], {"startup": startup_program.desc}),
             scope,
         )
-        startup_exe.run([], [])
+        startup_exe.run([])
 
         programs = [main_program]
         fetch_op_num = len(fetch_list)
@@ -205,14 +205,13 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
             type_to_program[f"P{program_id}"] = programs[program_id].desc
 
         plan = Plan(job_list, type_to_program)
-        plan.set_fetch_names(f"P{program_num-1}", fetch_list)
 
         main_exe = _StandaloneExecutor(self.place, plan, scope)
 
         loader.start()
         res = []
         for i in range(self.run_step):
-            fetch_res = main_exe.run(feed_names=[], fetch_list=fetch_list)
+            fetch_res = main_exe.run(feed_names=[])
             res.append(
                 np.array(fetch_res).reshape(
                     self.batch_size, self.src_len, self.d_model

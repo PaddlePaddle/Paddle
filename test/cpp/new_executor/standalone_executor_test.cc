@@ -158,7 +158,7 @@ TEST(StandaloneExecutor, run) {
            std::unordered_map<std::string, ProgramDesc*>(
                {{startup_job->Type(), &startup_prog}})),
       &scope);
-  startup_exec.Run({}, {});
+  startup_exec.Run({});
 
   std::shared_ptr<Job> main_job = std::make_shared<Job>(Job("main"));
   StandaloneExecutor exec(place,
@@ -166,7 +166,7 @@ TEST(StandaloneExecutor, run) {
                                std::unordered_map<std::string, ProgramDesc*>(
                                    {{main_job->Type(), &main_prog}})),
                           &scope);
-  exec.Run({}, {});
+  exec.Run({});
   auto start = std::chrono::steady_clock::now();
 
   for (size_t i = 0; i < 10; ++i) {
@@ -174,7 +174,7 @@ TEST(StandaloneExecutor, run) {
       std::cout << i << std::endl;
     }
 
-    exec.Run({}, {});
+    exec.Run({});
   }
 
   auto end = std::chrono::steady_clock::now();

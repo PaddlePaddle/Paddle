@@ -38,8 +38,7 @@ class StandaloneExecutor {
 
   ~StandaloneExecutor() {}
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   const std::vector<std::string>& fetch_names);
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
  private:
   const platform::Place place_;
