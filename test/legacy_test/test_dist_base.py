@@ -85,13 +85,6 @@ def load_and_remove_dump_file(rank=0):
     return out
 
 
-def load_and_remove(path):
-    with open(path, 'rb') as f:
-        out = pickle.load(f)
-    os.remove(path)
-    return out
-
-
 def print_to_err(class_name, log_str):
     localtime = time.asctime(time.localtime(time.time()))
     print_str = localtime + "\t" + class_name + "\t" + log_str
@@ -1183,9 +1176,6 @@ class TestDistBase(unittest.TestCase):
             cmd += " --find_unused_parameters"
 
         env_local.update(envs)
-        cur_pid = os.getpid()
-        dump_file = f"out_data_local_{cur_pid}.pickled"
-        env_local["DUMP_FILE"] = dump_file
         print(f"local_cmd: {cmd}, env: {env_local}")
 
         if check_error_log:
@@ -1290,14 +1280,6 @@ class TestDistBase(unittest.TestCase):
 
         env0.update(envs)
         env1.update(envs)
-
-        cur_pid = os.getpid()
-        dump_files = [
-            f'./out_data_0_{cur_pid}.pickled',
-            f'./out_data_1_{cur_pid}.pickled',
-        ]
-        env0["DUMP_FILE"] = dump_files[0]
-        env1["DUMP_FILE"] = dump_files[1]
 
         print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
         print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
@@ -1533,8 +1515,6 @@ class TestDistBase(unittest.TestCase):
 
         procs = []
         pipes = []
-        dump_files = []
-        cur_pid = os.getpid()
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_gloo_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num
@@ -1542,10 +1522,6 @@ class TestDistBase(unittest.TestCase):
             tr_env.update(envs)
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
-
-            dump_file = f'./out_data_{i}_{cur_pid}.pickled'
-            dump_files.append(dump_file)
-            tr_env["DUMP_FILE"] = dump_file
             print(
                 "use_hallreduce:{} tr_cmd:{}, env: {}".format(
                     self._use_hallreduce, tr_cmd, tr_env
@@ -1615,16 +1591,11 @@ class TestDistBase(unittest.TestCase):
 
         procs = []
         pipes = []
-        cur_pid = os.getpid()
-        dump_files = []
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num
             )
             tr_env.update(envs)
-            dump_file = f'./out_data_{i}_{cur_pid}.pickled'
-            dump_files.append(dump_file)
-            tr_env["DUMP_FILE"] = dump_file
             print(
                 "use_hallreduce:{} tr_cmd:{}, env: {}".format(
                     self._use_hallreduce, tr_cmd, tr_env
@@ -1672,8 +1643,6 @@ class TestDistBase(unittest.TestCase):
 
         procs = []
         pipes = []
-        cur_pid = os.getpid()
-        dump_files = []
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num
@@ -1683,10 +1652,6 @@ class TestDistBase(unittest.TestCase):
             tr_env['NCCL_SHM_DISABLE'] = '1'
             tr_env['FLAGS_selected_gpus'] = str(i)
             tr_env['FLAGS_cudnn_deterministic'] = '0'
-
-            dump_file = f'./out_data_{i}_{cur_pid}.pickled'
-            dump_files.append(dump_file)
-            tr_env["DUMP_FILE"] = dump_file
             print(f"tr_cmd:{tr_cmd}, env: {tr_env}")
 
             path = os.path.join(self.temp_dir.name + f"tr{i}_err.log")
