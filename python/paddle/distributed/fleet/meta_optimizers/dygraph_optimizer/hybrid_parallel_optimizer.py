@@ -201,6 +201,38 @@ class HybridParallelClipGrad:
 
         self._global_norm(global_norm_var_dist, global_norm_var_not_dist)
 
+        # add all reduce to get global norm of distributed params_and_grads
+        if self._hcg.get_model_parallel_world_size() > 1:
+            sharding_flag = False
+            if (
+                self._hcg.get_sharding_parallel_world_size() > 1
+                and self._hcg.get_data_parallel_world_size() == 1
+            ):
+                sharding_flag = True
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group(sharding_flag),
+            )
+
+        # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
+        if self._hcg.get_pipe_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_pipe_parallel_group(),
+            )
+
+        # In Sharding mode, param and grad is mapping different rank in optimizer.
+        # ClipGradByGlobalNorm need allreduce to get globol norm
+        # TODO(pangengzheng): remove the self.not_sharding_stage1 flag when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+        if (
+            self._hcg.get_sharding_parallel_world_size() > 1
+            and self.not_sharding_stage1
+        ):
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group(),
+            )
+
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
         )
@@ -284,7 +316,6 @@ class HybridParallelOptimizer:
                 "While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel "
                 "or Sharding, the grad clip of original optimizer will be changed."
             )
-
             inner_opt = unwrap_optimizer(
                 self._inner_opt,
                 (MixPrecisionOptimizer, DygraphShardingOptimizer),
@@ -454,6 +485,13 @@ class HybridParallelOptimizer:
     def step(self):
         parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
         self._hybrid_sync_grad(parameter_list)
+        if self._sharding_enable:
+            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
+            self._inner_opt.reduce_gradients(parameter_list, self._hcg)
+
+        if self._dp_enable:
+            fused_allreduce_gradients(parameter_list, self._hcg)
+
         self._step(parameter_list)
 
     @no_grad()
@@ -469,6 +507,15 @@ class HybridParallelOptimizer:
         )
         parameter_list = list(parameter_list)
         self._hybrid_sync_grad(parameter_list)
+
+        # Here sharding should use global parameter list
+        if self._sharding_enable:
+            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
+            self._inner_opt.reduce_gradients(list(parameter_list), self._hcg)
+
+        if self._dp_enable:
+            fused_allreduce_gradients(list(parameter_list), self._hcg)
+
         return self._inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )

@@ -19,6 +19,7 @@ from functools import reduce
 import paddle
 from paddle import framework
 from paddle.distributed import fleet
+from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import fused_parameters
@@ -140,10 +141,21 @@ class DygraphShardingOptimizer:
             # operations), here we manulay let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
 
+        self._rank2params = self._partition_parameters()
+        self._param2rank = self._map_param_to_rank()
+
+        self._set_inner_opt_attr(
+            '_parameter_list', self._rank2params[self._sharding_rank]
+        )
+        self._set_inner_opt_attr(
+            '_param_groups', self._rank2params[self._sharding_rank]
+        )
+
     def clear_grad(self, set_to_zero=True):
         """
         should clear grad for all parameters in model
         """
+        #
         for p in self._parameter_list:
             if hasattr(p, "main_grad") and p.main_grad is not None:
                 assert p._grad_ivar() is None
@@ -277,7 +289,6 @@ class DygraphShardingOptimizer:
         """
         # TODO speed up this functional
 
-        logger.debug("sharding start sync parameters")
         with framework.no_grad():
             # TODO detach not need (?)
             valid_rank_to_params = (
@@ -324,6 +335,8 @@ class DygraphShardingOptimizer:
 
         return result
 
+    @imperative_base.no_grad
+    @framework.dygraph_only
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
@@ -358,6 +371,7 @@ class DygraphShardingOptimizer:
                 else self._rank2fused[self._sharding_rank]
             )
             update_param_names = [p.name for p in rank_params]
+
             update_params_grads = [
                 (p, g) for p, g in params_grads if p.name in update_param_names
             ]

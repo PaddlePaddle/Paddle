@@ -462,10 +462,6 @@ class HybridCommunicateGroup:
         self._check_sep_exist()
         return self._sep_comm_group
 
-    def get_sep_parallel_group_src_rank(self):
-        self._check_sep_exist()
-        return self._sep_comm_group.ranks[0]
-
     def get_pipe_parallel_group(self):
         return self._pp_comm_group
 

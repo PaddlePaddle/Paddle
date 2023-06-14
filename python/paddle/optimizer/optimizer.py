@@ -792,15 +792,6 @@ class Optimizer:
             self._master_grads[grad.name] = var
         return var
 
-    def _create_accumulators(self, block, parameters):
-        """Create all accumulators needed by the parameters
-
-        Args:
-            block: the block in which the loss tensor is present
-            parameters: list of parameter tensors for the optimizer
-        """
-        pass
-
     def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
            before completing an optimization step
