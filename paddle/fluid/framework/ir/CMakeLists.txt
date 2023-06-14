@@ -258,9 +258,10 @@ if(WITH_XPU)
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
-  pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
-               ${XPU_PASS_DEPS})
+  pass_library(fold_small_ops_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(shape_matmul_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -545,9 +546,9 @@ if(WITH_XPU)
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
   cc_test(
-    test_fold_interp_outsize_fuse_pass
-    SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
-    DEPS fold_interp_outsize_fuse_pass)
+    test_fold_small_ops_fuse_pass
+    SRCS xpu/fold_small_ops_fuse_pass_test.cc
+    DEPS fold_small_ops_fuse_pass)
   cc_test(
     test_matmul_weight_trans_pass
     SRCS xpu/matmul_weight_trans_pass_test.cc

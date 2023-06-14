@@ -31,42 +31,31 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FoldInterpOutsizeFusePass : public FusePassBase {
+class ReShape2MatmulXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  /*
-  Origin subgraph:
-             x
-           /   \
-          |    shape
-          |      |
-          |     cast
-          |      |
-          |    slice
-          |      |
-          |    concat
-          |      |
-          |    split
-          |      |   \
-          |      |    \
-          |   outvar_1 outvar_0
-          |      |
-          |     cast
-          |     /
-           \   /
-      bilinear_interp_v2
+  void FuseReShape2Matmul(ir::Graph* graph) const;
+  const std::string name_scope_{"reshape2_matmul_xpu_fuse_pass"};
+};
 
-  Fused subgraph:
-              x
-              |      concat_y
-              |       /
-      bilinear_interp_v2
-  */
-  void DetectorFuse(ir::Graph* graph) const;
+class Squeeze2MatmulXPUFusePass : public FusePassBase {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 
-  const std::string name_scope_{"fold_interp_outsize_fuse_pass"};
+ private:
+  void FuseSqueeze2Matmul(ir::Graph* graph) const;
+  const std::string name_scope_{"squeeze2_matmul_xpu_fuse_pass"};
+};
+
+class MapMatmulV2ToMatmulXPUPass : public FusePassBase {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  void MapMatmulV2ToMatmul(ir::Graph* graph) const;
+  const std::string name_scope_{"map_matmulv2_to_matmul_xpu_pass"};
 };
 
 }  // namespace ir
