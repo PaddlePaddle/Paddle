@@ -179,7 +179,7 @@ void AnalysisConfig::EnableXpu(int l3_size,
                                const std::string &transformer_encoder_precision,
                                bool transformer_encoder_adaptive_seqlen,
                                bool enable_multi_stream) {
-#ifdef PADDLE_WITH_XPU
+#if defined(PADDLE_WITH_XPU) || defined(LITE_SUBGRAPH_WITH_XPU)
   use_xpu_ = true;
   xpu_config_.l3_size = l3_size;
   xpu_config_.conv_autotune_level = conv_autotune;
@@ -198,7 +198,8 @@ void AnalysisConfig::EnableXpu(int l3_size,
   Update();
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "To use XPU inference, please compile with option 'WITH_XPU' first."));
+      "To use XPU inference, please compile with option 'WITH_XPU' or "
+      "'WITH_LITE & LITE_WITH_XPU' first."));
 #endif
 }
 
@@ -1095,6 +1096,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.l3_size;
   ss << xpu_config_.l3_ptr;
   ss << xpu_config_.l3_autotune_size;
+  ss << xpu_config_.context;
   ss << xpu_config_.stream;
   ss << xpu_config_.conv_autotune_level;
   ss << xpu_config_.conv_autotune_file;
@@ -1345,6 +1347,9 @@ std::string AnalysisConfig::Summary() {
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.l3_ptr))});
     os.InsertRow(
         {"xpu_l3_autotune_size", std::to_string(xpu_config_.l3_autotune_size)});
+    os.InsertRow(
+        {"xpu_context",
+         std::to_string(reinterpret_cast<int64_t>(xpu_config_.context))});
     os.InsertRow(
         {"xpu_stream",
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.stream))});

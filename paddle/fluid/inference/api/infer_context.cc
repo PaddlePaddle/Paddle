@@ -75,6 +75,22 @@ void* InferXPUContext::Alloc(phi::TensorBase* tensor,
   }
 }
 
+void InferXPUContext::SetXContext(xpu::Context* x_context) {
+  auto* old_x_context = this->x_context();
+  if (old_x_context != x_context) {
+    if (l3_owned_ && l3_size_ > 0 &&
+        (x_context->_l3_mgr.get_size() != l3_size_ ||
+         x_context->_l3_mgr.get_ptr() != l3_ptr_)) {
+      xpu_free(l3_ptr_);
+    }
+    old_x_context->_l3_mgr.set(nullptr, 0);
+    l3_size_ = x_context->_l3_mgr.get_size();
+    l3_ptr_ = x_context->_l3_mgr.get_ptr();
+    l3_owned_ = false;
+    phi::XPUContext::SetXContext(x_context);
+  }
+}
+
 void InferXPUContext::SetL3Info(size_t l3_size,
                                 void* l3_ptr,
                                 size_t l3_autotune_size,

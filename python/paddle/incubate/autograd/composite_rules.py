@@ -79,9 +79,12 @@ def composite_batchnorm(
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
-    if convert_dtype(x.dtype) == "float16":
+    dtype = convert_dtype(x.dtype)
+    if dtype in ["float16", "uint16"]:
         is_amp = True
         x = cast(x, "float32")
+        scale = cast(scale, "float32") if scale else scale
+        bias = cast(bias, "float32") if bias else bias
 
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
@@ -124,7 +127,7 @@ def composite_batchnorm(
     else:
         y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
     if is_amp:
-        y = cast(y, "float16")
+        y = cast(y, dtype)
 
     # add op assign to detach tensor in void unsafe change outside the rule.
     batch_mean_ = assign(batch_mean)
@@ -656,8 +659,9 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
-    # when inputs are float16, convert to float32 in computing
-    if convert_dtype(x.dtype) == "float16":
+    dtype = convert_dtype(x.dtype)
+    # when inputs are float16 or bfloat16, convert to float32 in computing
+    if dtype in ["float16", "uint16"]:
         is_amp = True
         x = cast(x, "float32")
         scale = cast(scale, "float32")
@@ -676,9 +680,9 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
         out = out + reshape(bias, (-1, 1, 1))
     ret_mean_ = reshape(mean_, (N, groups))
     ret_var_ = reshape(var_, (N, groups))
-    # return output in float16, mean and var in float32
+    # return output in float16 or bfloat16, mean and var in float32
     if is_amp:
-        out = cast(out, "float16")
+        out = cast(out, dtype)
     return out, ret_mean_, ret_var_
 
 
