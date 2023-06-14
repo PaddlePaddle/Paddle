@@ -53,8 +53,6 @@ class TypeId {
     return TypeId(static_cast<Storage *>(pointer));
   }
 
-  void *AsOpaquePointer() const { return storage_; }
-
   ///
   /// \brief Comparison operations.
   ///
@@ -85,28 +83,23 @@ class TypeId {
 };
 
 namespace detail {
-class alignas(8) SelfOwningTypeId {
+class alignas(8) UniqueingId {
  public:
-  SelfOwningTypeId() = default;
-  SelfOwningTypeId(const SelfOwningTypeId &) = delete;
-  SelfOwningTypeId &operator=(const SelfOwningTypeId &) = delete;
-  SelfOwningTypeId(SelfOwningTypeId &&) = delete;
-  SelfOwningTypeId &operator=(SelfOwningTypeId &&) = delete;
+  UniqueingId() = default;
+  UniqueingId(const UniqueingId &) = delete;
+  UniqueingId &operator=(const UniqueingId &) = delete;
+  UniqueingId(UniqueingId &&) = delete;
+  UniqueingId &operator=(UniqueingId &&) = delete;
 
   operator TypeId() { return id(); }
   TypeId id() { return TypeId::RecoverFromOpaquePointer(this); }
 };
 template <typename T>
-class __declspec(dllexport) TypeIdResolver {
+class TypeIdResolver {
  public:
   static TypeId Resolve() { return id_; }
-  static SelfOwningTypeId id_;
+  static UniqueingId id_;
 };
-
-template <typename T>
-void PrintDebug() {
-  std::cout << &TypeIdResolver<T>::id_ << '\n';
-}
 
 }  // namespace detail
 
@@ -115,27 +108,27 @@ TypeId TypeId::get() {
   return detail::TypeIdResolver<T>::Resolve();
 }
 
-#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)            \
-  namespace ir {                                           \
-  namespace detail {                                       \
-  template <>                                              \
-  class __declspec(dllexport) TypeIdResolver<TYPE_CLASS> { \
-   public:                                                 \
-    static TypeId Resolve() { return id_; }                \
-    static SelfOwningTypeId id_;                           \
-  };                                                       \
-  }                                                        \
+#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
+  namespace ir {                                \
+  namespace detail {                            \
+  template <>                                   \
+  class TypeIdResolver<TYPE_CLASS> {            \
+   public:                                      \
+    static TypeId Resolve() { return id_; }     \
+    static UniqueingId id_;                     \
+  };                                            \
+  }                                             \
   }  // namespace ir
 
 /*
 #define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)
 */
 
-#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)           \
-  namespace ir {                                         \
-  namespace detail {                                     \
-  SelfOwningTypeId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
-  }                                                      \
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
+  namespace ir {                                    \
+  namespace detail {                                \
+  UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                 \
   }  // namespace ir
 
 }  // namespace ir
