@@ -198,7 +198,8 @@ create_test_fp16_class(TestSumOp3Dim)
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
     )
     class TestSumOpBf16(parent):
         def setUp(self):
@@ -349,6 +350,7 @@ class TestMaxFP16Op(TestMaxFP32Op):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -479,6 +481,7 @@ class TestMinFP16Op(OpTest):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -541,6 +544,7 @@ class TestProdFP16OP(TestProdOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )

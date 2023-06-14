@@ -934,7 +934,7 @@ class TestFastMathLayerNormOp(unittest.TestCase):
         )
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
             return
         self.check_with_dtype(dtype="float32")
         self.check_with_dtype(dtype="bfloat16")
