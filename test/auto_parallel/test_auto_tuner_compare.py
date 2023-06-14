@@ -68,7 +68,6 @@ class TestEngineAPI(unittest.TestCase):
         test_json_path = os.path.join(tmp_dir.name, "test.json")
         with open(test_json_path, "w") as f:
             f.write(json_object)
-
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
