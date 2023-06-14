@@ -920,7 +920,7 @@
   backward : frame_grad
 
 - op : full_like
-  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
+  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED)
   output: Tensor(out)
   infer_meta :
     func : CreateLikeInferMeta
@@ -2521,6 +2521,6 @@
   backward : yolo_loss_grad
 
 - op : zeros_like
-  args : (Tensor x, DataType dtype=DataType::UNDEFINED, Place place = {})
+  args : (Tensor x, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
-  invoke : full_like(x, 0, dtype, place)
+  invoke : full_like(x, 0, dtype)
