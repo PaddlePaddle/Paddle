@@ -16,21 +16,26 @@
 
 #include <cstddef>
 #include <list>
-#include "paddle/ir/core/operation.h"
+
+#include "paddle/ir/core/region.h"
 
 namespace ir {
-class Region;
+class Operation;
 
 class Block {
+  using OpListType = std::list<Operation *>;
+
  public:
-  using iterator = std::list<Operation *>::iterator;
-  using reverse_iterator = std::list<Operation *>::reverse_iterator;
-  using const_iterator = std::list<Operation *>::const_iterator;
+  using iterator = OpListType::iterator;
+  using reverse_iterator = OpListType::reverse_iterator;
+  using const_iterator = OpListType::const_iterator;
 
   Block() = default;
   ~Block();
 
-  Region *parent() const { return parent_; }
+  Region *GetParent() const { return parent_; }
+  Operation *GetParentOp() const;
+
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
@@ -45,16 +50,19 @@ class Block {
   void push_front(Operation *op);
   iterator insert(const_iterator iterator, Operation *op);
   void clear();
+  operator Region::iterator() { return position_; }
 
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;
 
+  // Allow access to 'SetParent'.
   friend class Region;
-  void set_parent(Region *parent) { parent_ = parent; }
+  void SetParent(Region *parent, Region::iterator position);
 
  private:
-  Region *parent_;              // not owned
-  std::list<Operation *> ops_;  // owned
+  Region *parent_;  // not owned
+  OpListType ops_;  // owned
+  Region::iterator position_;
 };
 }  // namespace ir

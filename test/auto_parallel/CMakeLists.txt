@@ -24,7 +24,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_optimization_tuner_api MODULES
                   test_optimization_tuner_api)
   set_tests_properties(test_optimization_tuner_api
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_converter MODULES test_converter)
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
@@ -62,6 +62,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pass_generation_pipeline)
   set_tests_properties(test_pass_generation_pipeline
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_1F1B MODULES test_pass_1F1B)
+  set_tests_properties(test_pass_1F1B PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                 TIMEOUT 50)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -139,6 +142,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
+  py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

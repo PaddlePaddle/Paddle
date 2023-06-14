@@ -23,8 +23,6 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-PHI_DECLARE_int32(check_nan_inf_level);
-
 namespace paddle {
 namespace framework {
 namespace details {

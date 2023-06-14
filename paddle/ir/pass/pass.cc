@@ -13,33 +13,53 @@
 // limitations under the License.
 
 #include "paddle/ir/pass/pass.h"
+
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/core/region.h"
 #include "paddle/ir/pass/pass_adaptor.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
 
 namespace ir {
 
+//===----------------------------------------------------------------------===//
+// Pass
+//===----------------------------------------------------------------------===//
+Pass::~Pass() = default;
+
+bool Pass::CanApplyOn(Operation* op) const { return op->num_regions() > 0; }
+
 //----------------------------------------------------------------------------------------------//
 // PassAdaptor
 //----------------------------------------------------------------------------------------------//
-void detail::PassAdaptor::Run(ir::Operation* op,
-                              uint8_t opt_level,
-                              bool verify) {
+void detail::PassAdaptor::Run(Operation* op, uint8_t opt_level, bool verify) {
   RunImpl(op, opt_level, verify);
 }
 
-void detail::PassAdaptor::RunImpl(ir::Operation* op,
+void detail::PassAdaptor::RunImpl(Operation* op,
                                   uint8_t opt_level,
                                   bool verify) {
-  // TODO(liuyuanle): Support block, region, etc.
+  auto last_am = analysis_manager();
+
+  for (size_t i = 0; i < op->num_regions(); ++i) {
+    auto& region = op->GetRegion(i);
+    for (auto it = region.begin(); it != region.end(); ++it) {
+      auto* block = *it;
+      for (auto it = block->begin(); it != block->end(); ++it) {
+        auto* op = *it;
+        AnalysisManagerHolder am(op, last_am.GetPassInstrumentor());
+        if (!RunPipeline(*pm_, op, am, opt_level, verify))
+          return SignalPassFailure();
+      }
+    }
+  }
   return;
 }
 
 bool detail::PassAdaptor::RunPipeline(const PassManager& pm,
-                                      ir::Operation* op,
+                                      Operation* op,
                                       AnalysisManager am,
                                       uint8_t opt_level,
                                       bool verify) {
@@ -49,7 +69,7 @@ bool detail::PassAdaptor::RunPipeline(const PassManager& pm,
   }
 
   for (auto& pass : pm.passes()) {
-    if (pass->CanScheduleOn(op)) {
+    if (pass->CanApplyOn(op)) {
       if (!RunPass(pass.get(), op, am, opt_level, verify)) {
         return false;
       }
@@ -69,7 +89,7 @@ bool detail::PassAdaptor::RunPipeline(const PassManager& pm,
 }
 
 bool detail::PassAdaptor::RunPass(Pass* pass,
-                                  ir::Operation* op,
+                                  Operation* op,
                                   AnalysisManager am,
                                   uint8_t opt_level,
                                   bool verify) {
@@ -92,7 +112,7 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
   // TODO(liuyuanle): Support verification of operation
   if (!pass_failed && verify) {
     // bool verify_recursively = !dynamic_cast<PassAdaptor*>(pass);
-    // pass_failed = ir::verify(op, verify_recursively);
+    // pass_failed = ir::Verify(op, verify_recursively);
   }
 
   return !pass_failed;
@@ -101,26 +121,26 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
 //----------------------------------------------------------------------------------------------//
 // PassManager
 //----------------------------------------------------------------------------------------------//
-PassManager::PassManager(ir::IrContext* context, uint8_t opt_level)
+PassManager::PassManager(IrContext* context, uint8_t opt_level)
     : context_(context), opt_level_(opt_level) {
   pass_adaptor_ = std::make_unique<detail::PassAdaptor>(this);
 }
 
-// bool PassManager::Run(ir::Program* program) const {
-//   if (!Initialize(context_)) {
-//     return false;
-//   }
-//   return Run(program->operation());
-// }
+bool PassManager::Run(Program* program) {
+  if (!Initialize(context_)) {
+    return false;
+  }
+  return Run(program->module_op());
+}
 
-bool PassManager::Run(ir::Operation* op) const {
+bool PassManager::Run(Operation* op) {
   // Construct a analysis manager for the pipeline.
   AnalysisManagerHolder am(op, instrumentor_.get());
 
   return detail::PassAdaptor::RunPipeline(*this, op, am, opt_level_, verify_);
 }
 
-bool PassManager::Initialize(ir::IrContext* context) const {
+bool PassManager::Initialize(IrContext* context) {
   for (auto& pass : passes()) {
     if (!pass->Initialize(context)) return false;
   }
@@ -149,13 +169,15 @@ PassInstrumentor::PassInstrumentor()
 
 PassInstrumentor::~PassInstrumentor() = default;
 
-void PassInstrumentor::RunBeforePipeline(ir::Operation* op) {
+void PassInstrumentor::RunBeforePipeline(Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforePipeline(op);
   }
 }
 
-void PassInstrumentor::RunAfterPipeline(ir::Operation* op) {
+void PassInstrumentor::RunAfterPipeline(Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {
@@ -163,13 +185,15 @@ void PassInstrumentor::RunAfterPipeline(ir::Operation* op) {
   }
 }
 
-void PassInstrumentor::RunBeforePass(Pass* pass, ir::Operation* op) {
+void PassInstrumentor::RunBeforePass(Pass* pass, Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforePass(pass, op);
   }
 }
 
-void PassInstrumentor::RunAfterPass(Pass* pass, ir::Operation* op) {
+void PassInstrumentor::RunAfterPass(Pass* pass, Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {
@@ -178,16 +202,18 @@ void PassInstrumentor::RunAfterPass(Pass* pass, ir::Operation* op) {
 }
 
 void PassInstrumentor::RunBeforeAnalysis(const std::string& name,
-                                         ir::TypeId id,
-                                         ir::Operation* op) {
+                                         TypeId id,
+                                         Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto& instr : impl_->instrumentations) {
     instr->RunBeforeAnalysis(name, id, op);
   }
 }
 
 void PassInstrumentor::RunAfterAnalysis(const std::string& name,
-                                        ir::TypeId id,
-                                        ir::Operation* op) {
+                                        TypeId id,
+                                        Operation* op) {
+  if (op->num_regions() == 0) return;
   for (auto it = impl_->instrumentations.rbegin();
        it != impl_->instrumentations.rend();
        ++it) {

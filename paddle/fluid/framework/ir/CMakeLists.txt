@@ -89,7 +89,7 @@ pass_library(conv_elementwise_add2_act_fuse_pass inference)
 pass_library(conv_elementwise_add_fuse_pass inference)
 pass_library(transpose_flatten_concat_fuse_pass inference)
 pass_library(inplace_op_var_pass inference)
-pass_library(identity_scale_op_clean_pass base)
+pass_library(identity_op_clean_pass base)
 pass_library(sync_batch_norm_pass base)
 pass_library(runtime_context_cache_pass base)
 pass_library(quant_conv2d_dequant_fuse_pass inference)
@@ -102,7 +102,6 @@ pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
-pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
@@ -200,6 +199,13 @@ if(WITH_MKLDNN)
   pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
   pass_library(quant_dequant_mkldnn_pass inference DIR mkldnn)
   pass_library(compute_propagate_scales_mkldnn_pass inference DIR mkldnn)
+  pass_library(self_attention_fuse_pass inference DIR mkldnn)
+  if(WITH_AVX
+     AND AVX512F_FOUND
+     AND AVX512F_FLAG)
+    set_target_properties(self_attention_fuse_pass
+                          PROPERTIES COMPILE_FLAGS "-mfma ${AVX512F_FLAG}")
+  endif()
 endif()
 
 if(WITH_IPU)
@@ -228,6 +234,7 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
@@ -250,6 +257,8 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
 endif()
 
@@ -456,7 +465,6 @@ if(WITH_MKLDNN)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
-      conv_transpose_op
       batch_norm_op
       generated_op
       generated_static_op
@@ -535,4 +543,8 @@ if(WITH_XPU)
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
+  cc_test(
+    test_fold_interp_outsize_fuse_pass
+    SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
+    DEPS fold_interp_outsize_fuse_pass)
 endif()

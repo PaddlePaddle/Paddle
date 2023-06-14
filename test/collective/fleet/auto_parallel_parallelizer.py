@@ -100,7 +100,6 @@ def mlp_pretrain_forward(train_program, start_program):
 
 class TestMLPAutoParallelizer(unittest.TestCase):
     def test_mlp_serial(self):
-
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
 

@@ -37,12 +37,8 @@ class TestGatherOp(OpTest):
         self.public_python_api = paddle.gather
         self.config()
         self.prim_op_type = "prim"
-        xnp = np.random.random(self.x_shape).astype(self.x_type)
-        self.inputs = {
-            'X': xnp,
-            'Index': np.array(self.index).astype(self.index_type),
-        }
-        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+        self.init_inputs_and_outputs()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -62,10 +58,54 @@ class TestGatherOp(OpTest):
     def config_dtype(self):
         self.x_type = "float64"
 
+    def init_inputs_and_outputs(self):
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {
+            'X': xnp,
+            'Index': np.array(self.index).astype(self.index_type),
+        }
+        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+
+    def if_enable_cinn(self):
+        pass
+
 
 class TestGatherOpFP16(TestGatherOp):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
+)
+class TestGatherOpBFP16(TestGatherOp):
+    def config_dtype(self):
+        self.x_type = "float32"
+        self.dtype = np.uint16
+
+    def init_inputs_and_outputs(self):
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {
+            'X': convert_float_to_uint16(xnp),
+            'Index': np.array(self.index).astype(self.index_type),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(xnp[self.inputs["Index"]])
+        }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestCase1(TestGatherOp):
@@ -87,6 +127,14 @@ class TestCase1FP16(TestCase1):
         self.x_type = "float16"
 
 
+class TestCase1BFP16(TestGatherOpBFP16):
+    def config(self):
+        self.x_shape = 100
+        self.config_dtype()
+        self.index = [1, 3, 5]
+        self.index_type = "int32"
+
+
 class TestCase2(TestGatherOp):
     def config(self):
         """
@@ -104,6 +152,14 @@ class TestCase2(TestGatherOp):
 class TestCase2FP16(TestCase2):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestCase2BFP16(TestGatherOpBFP16):
+    def config(self):
+        self.x_shape = 100
+        self.config_dtype()
+        self.index = [1, 3, 5]
+        self.index_type = "int64"
 
 
 class TestCase3(TestGatherOp):
@@ -125,6 +181,14 @@ class TestCase3Fp16(TestCase3):
         self.x_type = "float16"
 
 
+class TestCase3BFP16(TestGatherOpBFP16):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.config_dtype()
+        self.index = [1, 3, 5]
+        self.index_type = "int64"
+
+
 class TestCase4(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
@@ -142,6 +206,15 @@ class TestCase4FP16(TestCase4):
         self.x_type = "float16"
 
 
+class TestCase4BFP16(TestGatherOpBFP16):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.attrs = {'overwrite': False}
+        self.config_dtype()
+        self.index = [1, 1]
+        self.index_type = "int32"
+
+
 class TestCase5(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
@@ -152,6 +225,15 @@ class TestCase5(TestGatherOp):
 
     def config_dtype(self):
         self.x_type = "float64"
+
+
+class TestCase5BFP16(TestGatherOpBFP16):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.attrs = {'overwrite': False}
+        self.config_dtype()
+        self.index = [1, 1]
+        self.index_type = "int32"
 
 
 class TestCase5FP16(TestCase5):
@@ -174,6 +256,15 @@ class TestCase6(TestGatherOp):
 class TestCase6FP16(TestCase6):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestCase6BFP16(TestGatherOpBFP16):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.attrs = {'overwrite': True}
+        self.config_dtype()
+        self.index = [1, 3]
+        self.index_type = "int32"
 
 
 class TestGatherBF16Op(OpTest):
@@ -426,7 +517,6 @@ class TestGathertError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
@@ -457,7 +547,6 @@ class TestGathertError(unittest.TestCase):
 
     def test_error2(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             index = paddle.static.data(shape=shape, dtype='int32', name='mask')
@@ -479,7 +568,6 @@ class TestGathertError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int32', name='x')
             axis = paddle.static.data(shape=[1], dtype='int32', name='axis')

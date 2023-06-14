@@ -144,7 +144,6 @@ class TestUnpool1DOpAPI_static(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-
                 input_data = np.array(
                     [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]]
                 ).astype("float32")

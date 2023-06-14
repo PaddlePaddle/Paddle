@@ -112,7 +112,6 @@ class Partitioner:
     def partition_startup_program(
         self, serial_main_program, serial_startup_program
     ):
-
         if not isinstance(serial_startup_program, (Program)):
             raise TypeError(
                 "dist_context be paddle.framework.Program, got %s here"
@@ -232,7 +231,6 @@ class Partitioner:
         return partitioned_main_prog, partitioned_params_and_grads
 
     def partition_block(self, ref_block, target_block):
-
         dist_op_context = self._dist_context.dist_op_context
         serial_ops = ref_block.ops
 
@@ -256,7 +254,6 @@ class Partitioner:
         # partition
         appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
-
             op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (
                 is_forward_op(serial_ops[idx - 1])
@@ -339,7 +336,7 @@ class Partitioner:
                     **{"grad_var_to_var": grad_var_to_var},
                 )
             elif is_optimize_op(op):
-                # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must 2 because of 1F1B PASS
+                # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must be 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_opt_impl = _get_dist_op_backward_implement(
                     op, self._dist_context, forward_op_id2forward_op
@@ -358,7 +355,6 @@ class Partitioner:
                 )
 
     def _is_valid_annotated_program(self, program):
-
         # TODO (ZJ-LIANG) should check all block
         ops = program.global_block().ops
         vars_ = program.list_vars()
@@ -381,7 +377,6 @@ class Partitioner:
         return all_ops_annotated and all_vars_annotated
 
     def _get_dist_var_by_serial_var(self, serial_var, partitioned_main_prog):
-
         block_idx = serial_var.block.idx
         target_block = partitioned_main_prog.blocks[block_idx]
         dist_var_name = self._serial2dist_varname_mapping[serial_var.name]
@@ -390,7 +385,6 @@ class Partitioner:
 
 
 def _get_dist_shape(var, dist_attr):
-
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
     mesh = dist_attr.process_mesh.shape

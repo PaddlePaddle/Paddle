@@ -91,7 +91,6 @@ class TestPrimDistOp(unittest.TestCase):
         )
 
     def test_loss_and_grad_allreduce(self):
-
         dist_context = DistributedContext(
             self.main_program, self.startup_program
         )

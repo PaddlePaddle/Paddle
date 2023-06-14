@@ -96,10 +96,10 @@ class TestStrideSliceOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out')
+        self.check_grad({'Input'}, 'Out', check_cinn=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -718,7 +718,6 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
     def is_grads_equal(self, g1, g2):
         for i, g in enumerate(g1):
-
             self.assertTrue(
                 self.grad_equal(g, g2[i]),
                 msg=f"gradient_1:\n{g} \ngradient_2:\n{g2}",
@@ -1032,10 +1031,10 @@ class TestStrideSliceFP16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out')
+        self.check_grad({'Input'}, 'Out', check_cinn=True)
 
     def initTestCase(self):
         self.input = np.random.rand(100)

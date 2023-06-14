@@ -97,7 +97,7 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-if(WITH_PHI_SHARED)
+if(WITH_SHARED_PHI)
   set(PHI_BUILD_TYPE
       SHARED
       CACHE INTERNAL "" FORCE)
@@ -136,7 +136,7 @@ if(WIN32)
 endif()
 
 if(WIN32)
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
         phi.dll
@@ -147,7 +147,7 @@ if(WIN32)
         CACHE INTERNAL "" FORCE)
   endif()
 elseif(APPLE)
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set(PHI_NAME
         libphi.dylib
         CACHE INTERNAL "" FORCE)
@@ -157,7 +157,7 @@ elseif(APPLE)
         CACHE INTERNAL "" FORCE)
   endif()
 else()
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     set(PHI_NAME
         libphi.so
         CACHE INTERNAL "" FORCE)
@@ -187,7 +187,7 @@ if(WITH_FLASHATTN)
 endif()
 
 # for inference static library
-if(NOT WITH_PHI_SHARED)
+if(NOT WITH_SHARED_PHI)
   get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
   set(phi_modules ${phi_modules} ${INFERENCE_DEPS} phi)
   set_property(GLOBAL PROPERTY PHI_MODULES "${phi_modules}")

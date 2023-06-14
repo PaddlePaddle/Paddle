@@ -49,7 +49,6 @@ def resnet_unit(
     is_test,
     act,
 ):
-
     helper = LayerHelper('resnet_unit', **locals())
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
     bit_mask_dtype = fluid.core.VarDesc.VarType.INT32

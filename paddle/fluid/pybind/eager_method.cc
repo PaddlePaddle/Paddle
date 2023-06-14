@@ -62,6 +62,9 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 PHI_DECLARE_bool(set_to_1d);
 
@@ -76,7 +79,7 @@ extern void InitTensorWithNumpyValue(TensorObject* self,
 extern PyTypeObject* p_tensor_type;
 
 Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type))) {
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
     paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
@@ -575,7 +578,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
   }
 
   paddle::Tensor* grad;
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(grad != nullptr,
@@ -631,7 +634,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "ZeroGrads " << self->tensor.name();
 
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     eager_gil_scoped_release guard;
     // Add RetainGrad as PostHook to AccumulationNode
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -796,6 +799,15 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     VLOG(6) << "tensor: " << tensor->IsInitialized();
     return ToPyObject(tensor);
+  } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    auto* tensor = static_cast<phi::distributed::auto_parallel::DistTensor*>(
+        self->tensor.impl().get());
+    VLOG(6) << "dist tensor: " << tensor->IsInitialized();
+    return ToPyObject(tensor);
+#else
+    RETURN_PY_NONE
+#endif
   } else {
     RETURN_PY_NONE
   }
@@ -1169,7 +1181,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
 
     if (egr::Controller::Instance().HasGrad()) {
       PADDLE_ENFORCE_EQ(
-          egr::egr_utils_api::IsLeafTensor(self->tensor) &&
+          egr::EagerUtils::IsLeafTensor(self->tensor) &&
               !egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient(),
           false,
           platform::errors::InvalidArgument(
@@ -1352,7 +1364,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* kwargs) {
   EAGER_TRY
   int64_t hook_id;
-  if (egr::egr_utils_api::IsLeafTensor(self->tensor)) {
+  if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
     auto autograd_meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -1419,7 +1431,7 @@ static PyObject* tensor_register_reduce_hook(TensorObject* self,
 
   std::shared_ptr<egr::GradNodeBase> grad_node =
       egr::EagerUtils::grad_node(self->tensor);
-  PADDLE_ENFORCE_EQ(egr::egr_utils_api::IsLeafTensor(self->tensor),
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::IsLeafTensor(self->tensor),
                     true,
                     platform::errors::InvalidArgument(
                         "Only can register backward hook for leaf Tensor."));
@@ -1470,6 +1482,15 @@ static PyObject* tensor__clear(TensorObject* self,
   self->tensor.reset();
   RETURN_PY_NONE
 
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__clear_dataptr(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  self->tensor.set_impl(nullptr);
+  RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1685,6 +1706,17 @@ static PyObject* tensor_method_is_dense(TensorObject* self,
     return ToPyObject(false);
   }
   return ToPyObject(self->tensor.is_dense_tensor());
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_method_is_dist(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  if (!self->tensor.defined()) {
+    return ToPyObject(false);
+  }
+  return ToPyObject(self->tensor.is_dist_tensor());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -1923,7 +1955,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
                         "Detected NULL grad. Please check if you have manually "
                         "cleared the grad inside autograd_meta"));
 
-  bool is_leaf = egr::egr_utils_api::IsLeafTensor(self->tensor);
+  bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     std::static_pointer_cast<egr::GradNodeAccumulation>(
         egr::EagerUtils::grad_node(self->tensor))
@@ -2042,6 +2074,10 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_is_dense,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+    {"is_dist",
+     (PyCFunction)(void (*)(void))tensor_method_is_dist,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
     {"_zero_grads",
      (PyCFunction)(void (*)(void))tensor__zero_grads,
      METH_VARARGS | METH_KEYWORDS,
@@ -2108,6 +2144,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_clear",
      (PyCFunction)(void (*)(void))tensor__clear,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_clear_dataptr",
+     (PyCFunction)(void (*)(void))tensor__clear_dataptr,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"_copy_gradient_from",

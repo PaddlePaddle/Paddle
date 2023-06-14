@@ -66,7 +66,7 @@ class InterfaceValue {
 
 class OpBase {
  public:
-  explicit OpBase(Operation *operation) : operation_(operation) {}
+  explicit OpBase(Operation *operation = nullptr) : operation_(operation) {}
 
   Operation *operation() const { return operation_; }
 
@@ -75,6 +75,8 @@ class OpBase {
   operator Operation *() const { return operation_; }
 
   Operation *operator->() const { return operation_; }
+
+  IrContext *ir_context() const { return operation_->ir_context(); }
 
  private:
   Operation *operation_;  // Not owned
@@ -91,7 +93,7 @@ class OpTraitBase : public OpBase {
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
 
   static ConcreteTrait dyn_cast(Operation *op) {
-    if (op->HasTrait<ConcreteTrait>()) {
+    if (op && op->HasTrait<ConcreteTrait>()) {
       return ConcreteTrait(op);
     }
     return ConcreteTrait(nullptr);
@@ -109,9 +111,9 @@ class OpInterfaceBase : public OpBase {
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
 
   static ConcreteInterface dyn_cast(Operation *op) {
-    if (op->HasInterface<ConcreteInterface>()) {
+    if (op && op->HasInterface<ConcreteInterface>()) {
       return ConcreteInterface(
-          op, op->op_info().GetInterfaceImpl<ConcreteInterface>());
+          op, op->info().GetInterfaceImpl<ConcreteInterface>());
     }
     return ConcreteInterface(nullptr, nullptr);
   }
@@ -140,8 +142,8 @@ class ConstructInterfacesOrTraits {
   static void PlacementConstrctInterface(
       InterfaceValue *&p_interface) {  // NOLINT
     p_interface->swap(InterfaceValue::get<ConcreteOp, T>());
-    VLOG(4) << "New a interface: id[" << (p_interface->type_id()).storage()
-            << "].";
+    VLOG(4) << "New a interface: id["
+            << (p_interface->type_id()).AsOpaquePointer() << "].";
     ++p_interface;
   }
 
@@ -149,7 +151,7 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
-    VLOG(4) << "New a trait: id[" << p_trait->storage() << "].";
+    VLOG(4) << "New a trait: id[" << p_trait->AsOpaquePointer() << "].";
     ++p_trait;
   }
 };
@@ -182,7 +184,7 @@ class Op : public OpBase {
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
   static ConcreteOp dyn_cast(Operation *op) {
-    if (op->op_info().id() == TypeId::get<ConcreteOp>()) {
+    if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
     }
     return ConcreteOp(nullptr);
@@ -204,4 +206,5 @@ class Op : public OpBase {
     return trait_set;
   }
 };
+
 }  // namespace ir

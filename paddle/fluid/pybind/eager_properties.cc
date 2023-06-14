@@ -20,7 +20,6 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -75,7 +74,7 @@ PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
 
 PyObject* tensor_properties_is_leaf(TensorObject* self, void* closure) {
   EAGER_TRY
-  return ToPyObject(egr::egr_utils_api::IsLeafTensor(self->tensor));
+  return ToPyObject(egr::EagerUtils::IsLeafTensor(self->tensor));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -115,7 +114,7 @@ int tensor_properties_set_grad(TensorObject* self,
   EAGER_TRY
   auto src = CastPyArg2Tensor(value, 0);
   PADDLE_ENFORCE(
-      egr::egr_utils_api::IsLeafTensor(self->tensor),
+      egr::EagerUtils::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
 
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -157,6 +156,23 @@ int tensor_properties_set_persistable(TensorObject* self,
   meta->SetPersistable(CastPyArg2AttrBoolean(value, 0));
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
+}
+
+PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::auto_parallel::DistTensor* dist_tensor =
+        static_cast<phi::distributed::auto_parallel::DistTensor*>(
+            self->tensor.impl().get());
+    return ToPyObject(dist_tensor->dist_attr().get());
+#else
+    RETURN_PY_NONE
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
@@ -312,6 +328,11 @@ struct PyGetSetDef variable_properties[] = {
     // nullptr,
     //  nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
+    {"dist_attr",
+     (getter)tensor_properties_get_dist_attr,
+     nullptr,
+     nullptr,
+     nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
      nullptr,
