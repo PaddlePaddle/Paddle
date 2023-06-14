@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/ir/core/program.h"
 
 namespace paddle {
 namespace framework {
@@ -54,6 +55,7 @@ class StandaloneExecutor {
 
   const platform::Place place_;
   const std::vector<ProgramDesc> programs_;
+  std::vector<std::unique_ptr<::ir::Program>> ir_programs_;
   std::vector<framework::Scope*> microbatch_scopes_;
 
   std::unordered_map<std::string, std::shared_ptr<InterpreterCore>>

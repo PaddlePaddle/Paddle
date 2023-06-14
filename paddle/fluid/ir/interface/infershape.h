@@ -16,6 +16,8 @@
 #include "paddle/ir/core/op_base.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
+namespace paddle {
+namespace dialect {
 class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  public:
   struct Concept {
@@ -43,3 +45,6 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  private:
   Concept *impl_;
 };
+
+}  // namespace dialect
+}  // namespace paddle
