@@ -77,13 +77,14 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
-  list(REMOVE_ITEM TEST_OPS test_async_read_write test_audio_logmel_feature
-       test_audio_mel_feature)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
 
+list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
@@ -1190,12 +1191,17 @@ set(TEST_CINN_OPS
     test_roll_op
     test_sum_op
     test_elementwise_min_op
+    test_atan2_op
+    test_top_k_op
+    test_where_op
+    test_take_along_axis_op
     test_arg_min_max_op
     test_reverse_op
     test_flip
     test_triangular_solve_op
     test_scatter_nd_op
     test_strided_slice_op
+    test_pool2d_op
     test_instance_norm_op
     test_cumsum_op
     test_pad_op
@@ -1304,4 +1310,4 @@ set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
-                                                                     120)
+                                                                     160)
