@@ -47,7 +47,18 @@ if(WITH_GPU
   # endif()
 endif()
 
-cc_test(
+cc_test_old(
   standalone_executor_new_ir_test
-  SRCS standalone_executor_new_ir_test.cc
-  DEPS phi_kernel_adaptor new_ir pd_dialect)
+  SRCS
+  standalone_executor_new_ir_test.cc
+  DEPS
+  standalone_executor
+  phi_kernel_adaptor
+  pd_dialect
+  new_ir)
+
+if(TEST standalone_executor_new_ir_test)
+  set_tests_properties(
+    standalone_executor_new_ir_test
+    PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
+endif()

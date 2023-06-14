@@ -61,13 +61,13 @@ class ProgramTranslator {
   const TranslationContext& Name2ValueMap();
 
  private:
-  const ProgramDesc* legacy_program;  // not owned
-  ir::Program* program;               // not owned
-  ir::IrContext* ctx;                 // not owned
+  const ProgramDesc* legacy_program_;  // not owned
+  ir::Program* program_;               // not owned
+  ir::IrContext* ctx_;                 // not owned
 
-  TranslationContext param_map;
-  std::unordered_map<std::string, VarDesc*> parameter_name_mappings;
-  std::unordered_set<std::string> parameter_visited;
+  TranslationContext param_map_;
+  std::unordered_map<std::string, VarDesc*> parameter_name_mappings_;
+  std::unordered_set<std::string> parameter_visited_;
 
   /// In the legacy program desc, there are two special named varibales:
   /// 1. "feed", the input variable of feed op

@@ -40,8 +40,8 @@ using VarDesc = ::paddle::framework::VarDesc;
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      ir::Program* program)
-    : legacy_program(legacy_program), program(program) {
-  ctx = ir::IrContext::Instance();
+    : legacy_program_(legacy_program), program_(program) {
+  ctx_ = ir::IrContext::Instance();
 }
 
 const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
@@ -51,24 +51,24 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
 
 void ProgramTranslator::Translate() {
   PADDLE_ENFORCE_EQ(
-      legacy_program->Size(),
+      legacy_program_->Size(),
       1u,
       platform::errors::PreconditionNotMet(
           "Not support multi block ProgramDesc translated, now has %d blocks",
-          legacy_program->Size()));
+          legacy_program_->Size()));
 
-  for (size_t block_idx = 0; block_idx < legacy_program->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program->Block(block_idx);
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
     GetParameterForSingleBlock(block);
   }
 
-  for (size_t block_idx = 0; block_idx < legacy_program->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program->Block(block_idx);
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
     InsertOperationToSingleBlock(block);
   }
 
-  for (size_t block_idx = 0; block_idx < legacy_program->Size(); block_idx++) {
-    const BlockDesc& block = legacy_program->Block(block_idx);
+  for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
+    const BlockDesc& block = legacy_program_->Block(block_idx);
     SetParameterFromSingleBlock(block);
   }
 }
@@ -109,10 +109,10 @@ inline ir::Operation* InsertSetParamaterOp(ir::IrContext* ctx,
 void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
   for (auto& var : block.AllVars()) {
     if (!var->Persistable()) continue;
-    if (param_map.count(var->Name()) != 0) continue;
+    if (param_map_.count(var->Name()) != 0) continue;
     if (no_cast_var_names.count(var->Name()) != 0) continue;
 
-    parameter_name_mappings[var->Name()] = var;
+    parameter_name_mappings_[var->Name()] = var;
   }
 
   std::unordered_set<std::string> inner_defining_variables;
@@ -143,8 +143,8 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           param_map[var_name] = VariableDefiningInfo(op->result(0));
           VLOG(10) << "[op translated][get parameter]" << op;
 
-          program->SetParameter(var_name, nullptr);
-          parameter_visited.insert(var_name);
+          program_->SetParameter(var_name, nullptr);
+          parameter_visited_.insert(var_name);
         }
       }
     }
@@ -161,7 +161,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-    ir::Operation* operation = fn(ctx, &param_map, program, *op);
+    ir::Operation* operation = fn(ctx_, &param_map_, program_, *op);
     VLOG(10) << "[op translated][special]" << operation;
   }
 }
@@ -172,15 +172,15 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
     for (const auto& n : (*op_desc)->Outputs()) {
       const auto& output_var_names = n.second;
       for (const auto& var_name : output_var_names) {
-        bool need_set_parameter_op = (parameter_name_mappings.find(var_name) !=
-                                      parameter_name_mappings.end());
-        need_set_parameter_op &= (parameter_visited.count(var_name) == 0);
+        bool need_set_parameter_op = (parameter_name_mappings_.find(var_name) !=
+                                      parameter_name_mappings_.end());
+        need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
         if (need_set_parameter_op) {
-          ir::OpResult defining_op_result = param_map[var_name].value;
+          ir::OpResult defining_op_result = param_map_[var_name].value;
           ir::Operation* op = InsertSetParamaterOp(
-              ctx, defining_op_result, parameter_name_mappings[var_name]);
+              ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
-          ir::Block* block = program->block();
+          ir::Block* block = program_->block();
           ir::Block::iterator insert_pos = std::find(
               block->begin(), block->end(), defining_op_result.owner());
 
@@ -193,8 +193,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           block->insert(insert_pos, op);
           VLOG(10) << "[op translated][set parameter]" << op;
 
-          program->SetParameter(var_name, nullptr);
-          parameter_visited.insert(var_name);
+          program_->SetParameter(var_name, nullptr);
+          parameter_visited_.insert(var_name);
         }
       }
     }
