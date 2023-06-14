@@ -109,3 +109,72 @@ TEST(program_test, program) {
   EXPECT_EQ(res2, true);
   EXPECT_EQ(res3, true);
 }
+
+TEST(program_test, mutable_attribute) {
+  // Prepare ir env
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ir::Program program(ctx);
+  ir::Builder builder = ir::Builder(ctx, program.block());
+  ir::Block* block = program.block();
+
+  // Def FullOp
+  paddle::dialect::FullIntArrayOp full_shape_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          std::vector<int64_t>{2, 2}, phi::DataType::INT64, phi::CPUPlace());
+  ir::OpResult shape_ = full_shape_op->result(0);
+  // Generate scalar mutable attribute: min
+  paddle::dialect::FullOp full_min_op = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 0.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  ir::OpResult min_ = full_min_op->result(0);
+  // Generate scalar mutable attribute: max
+  paddle::dialect::FullOp full_max_op = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
+  ir::OpResult max_ = full_max_op->result(0);
+
+  // Def: static void Build(ir::Builder &builder, ir::OperationArgument
+  // &argument, ir::OpResult shape_, ir::OpResult min_, ir::OpResult max_,
+  // phi::DataType dtype, int seed, phi::Place place={});
+  paddle::dialect::UniformOp uniform1 =
+      builder.Build<paddle::dialect::UniformOp>(
+          shape_, min_, max_, phi::DataType::FLOAT32, 2, phi::CPUPlace());
+  EXPECT_EQ(uniform1->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+            true);
+  EXPECT_EQ(block->size(), 4u);
+
+  // Def: B = paddle::dialect::UniformOp(...)
+  paddle::dialect::UniformOp uniform2 =
+      builder.Build<paddle::dialect::UniformOp>(
+          shape_, min_, max_, phi::DataType::FLOAT32, 2, phi::CPUPlace());
+  EXPECT_EQ(uniform2->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+            true);
+  EXPECT_EQ(block->size(), 5u);
+
+  // Def: C = paddle::dialect::AddOp(ir::OpResult x_, ir::OpResult y_)
+  paddle::dialect::AddOp add = builder.Build<paddle::dialect::AddOp>(
+      uniform1->result(0), uniform2->result(0));
+  EXPECT_EQ(add->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+            true);
+  EXPECT_EQ(block->size(), 6u);
+
+  // Execute program
+  paddle::framework::Scope scope;
+  PhiKernelAdaptor phi_kernel_adaptor(&scope);
+  phi_kernel_adaptor.run(&program);
+
+  auto out_tensor =
+      scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
+
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.80721);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.56764);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.85063);
+  std::cerr << out_tensor.data<float>()[0] << "\t"
+            << out_tensor.data<float>()[1] << "\t"
+            << out_tensor.data<float>()[2] << "\t"
+            << out_tensor.data<float>()[3] << std::endl;
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
+}

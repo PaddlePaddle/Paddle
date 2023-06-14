@@ -272,6 +272,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("xpu_l3_ptr", new void *(argument->xpu_l3_ptr()));
       pass->Set("xpu_l3_autotune_size",
                 new size_t(argument->xpu_l3_autotune_size()));
+      pass->Set("xpu_context", new void *(argument->xpu_context()));
       pass->Set("xpu_stream", new void *(argument->xpu_stream()));
       pass->Set("xpu_conv_autotune_level",
                 new int(argument->xpu_conv_autotune_level()));
