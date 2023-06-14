@@ -255,12 +255,6 @@
   invoke : embedding_grad_impl(x, weight, out_grad, padding_idx, sparse, weight_grad)
   no_need_buffer : weight
 
-- backward_op : expand_double_grad
-  forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray shape)
-  output : Tensor(grad_out_grad)
-  invoke : expand(grad_x_grad, shape)
-
 - backward_op : exponential__grad
   forward : exponential_ (Tensor x, float lam) -> Tensor(out)
   args : (Tensor out_grad)

@@ -682,6 +682,12 @@
     func : expand_as_grad
   no_need_buffer : x
 
+- backward_op : expand_double_grad
+  forward : expand_grad (Tensor x, Tensor grad_out, IntArray shape) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray shape)
+  output : Tensor(grad_out_grad)
+  invoke : expand(grad_x_grad, shape)
+
 - backward_op : expand_grad
   forward : expand (Tensor x, IntArray shape) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray shape)
@@ -693,7 +699,7 @@
     func : expand_grad
     data_type : out_grad
   no_need_buffer : x
-  # backward : expand_double_grad
+  backward : expand_double_grad
   composite: expand_grad(x, out_grad, shape, x_grad)
 
 - backward_op : expm1_grad
