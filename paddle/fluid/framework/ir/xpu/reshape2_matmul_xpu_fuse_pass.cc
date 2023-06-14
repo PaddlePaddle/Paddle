@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/shape_matmul_xpu_fuse_pass.h"
+#include "paddle/fluid/framework/ir/xpu/reshape2_matmul_xpu_fuse_pass.h"
 
 #include <cmath>
 #include <string>

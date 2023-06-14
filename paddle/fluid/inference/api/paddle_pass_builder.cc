@@ -522,7 +522,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",
-      "fold_interp_outsize_fuse_pass",
+      "fold_small_ops_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
       "delete_cast_op_pass",
       "stack_fuse_pass",

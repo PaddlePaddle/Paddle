@@ -31,7 +31,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class FoldInterpOutsizeFusePass : public FusePassBase {
+class FoldSmallOpsFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -66,7 +66,7 @@ class FoldInterpOutsizeFusePass : public FusePassBase {
   */
   void DetectorFuse(ir::Graph* graph) const;
 
-  const std::string name_scope_{"fold_interp_outsize_fuse_pass"};
+  const std::string name_scope_{"fold_small_ops_fuse_pass"};
 };
 
 class FoldTwoSqueeze2FusePass : public FusePassBase {

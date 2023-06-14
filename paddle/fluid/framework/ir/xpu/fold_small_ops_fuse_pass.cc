@@ -76,7 +76,7 @@ ReaderFusePattern::ReaderFusePattern(PDPattern* pattern,
   auto* squeeze2_2_out = pattern->NewNode(squeeze2_2_out_repr())
                              ->assert_is_op_output("squeeze2", "Out")
                              ->assert_has_n_outputs(1);
-  squeeze2_1->LinksFrom({squeeze2_1_out}).LinksTo({squeeze2_2_out});
+  squeeze2_2->LinksFrom({squeeze2_1_out}).LinksTo({squeeze2_2_out});
 }
 struct DetectorFusePattern : public PatternBase {
   DetectorFusePattern(PDPattern* pattern, const std::string& name_scope);
@@ -185,7 +185,7 @@ DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-void FoldInterpOutsizeFusePass::DetectorFuse(ir::Graph* graph) const {
+void FoldSmallOpsFusePass::DetectorFuse(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::DetectorFusePattern pattern(gpd.mutable_pattern(), name_scope_);
   int found_subgraph_count = 0;
@@ -249,7 +249,7 @@ void FoldInterpOutsizeFusePass::DetectorFuse(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void FoldInterpOutsizeFusePass::ApplyImpl(ir::Graph* graph) const {
+void FoldSmallOpsFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
@@ -308,10 +308,10 @@ void FoldTwoSqueeze2FusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fold_interp_outsize_fuse_pass,
-              paddle::framework::ir::FoldInterpOutsizeFusePass);
+REGISTER_PASS(fold_small_ops_fuse_pass,
+              paddle::framework::ir::FoldSmallOpsFusePass);
 
-REGISTER_PASS_CAPABILITY(fold_interp_outsize_fuse_pass)
+REGISTER_PASS_CAPABILITY(fold_small_ops_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "shape", 0));

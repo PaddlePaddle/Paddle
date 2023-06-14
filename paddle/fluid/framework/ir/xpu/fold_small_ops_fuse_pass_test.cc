@@ -41,7 +41,25 @@ TEST(DetectorFuse, basic) {
   bilinear_interp_v2_op->SetInput("OutSize", {cast2_out->Name()});
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  auto pass = PassRegistry::Instance().Get("fold_interp_outsize_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("fold_small_ops_fuse_pass");
+  pass->Apply(graph.get());
+  auto ops_num = GetNumOpNodes(graph);
+  PADDLE_ENFORCE_EQ(
+      ops_num,
+      1,
+      platform::errors::PreconditionNotMet(
+          "graph should only have 2 op nodes, but received %d.", ops_num));
+}
+
+TEST(ReaderFuse, basic) {
+  Layers layers;
+
+  auto* in_x = layers.data("in_x", {64, 1, 74, 1});
+  auto* squeeze2_1_out = layers.squeeze2(in_x, std::vector<int>{3});
+  layers.squeeze2(squeeze2_1_out, std::vector<int>{1});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  auto pass = PassRegistry::Instance().Get("fold_two_squeeze2_fuse_pass");
   pass->Apply(graph.get());
   auto ops_num = GetNumOpNodes(graph);
   PADDLE_ENFORCE_EQ(
@@ -55,4 +73,4 @@ TEST(DetectorFuse, basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(fold_interp_outsize_fuse_pass);
+USE_PASS(fold_small_ops_fuse_pass);

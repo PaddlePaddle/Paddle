@@ -33,8 +33,7 @@ TEST(MatMulWeightTransPass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("matmul_weight_trans_pass");
   VLOG(3) << DebugString(graph);
-
-  graph.reset(pass->Apply(graph.release()));
+  pass->Apply(graph.get());
   VLOG(3) << DebugString(graph);
 
   bool trans_y = true;
