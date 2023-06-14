@@ -48,7 +48,10 @@ class TypeId {
 
   TypeId &operator=(const TypeId &other) = default;
 
-  const Storage *storage() const { return storage_; }
+  void *AsOpaquePointer() const { return storage_; }
+  static TypeId RecoverFromOpaquePointer(void *pointer) {
+    return TypeId(static_cast<Storage *>(pointer));
+  }
 
   void *AsOpaquePointer() const { return storage_; }
 
@@ -98,7 +101,16 @@ class alignas(8) SelfOwningTypeId {
   TypeId id() const { return TypeId::RecoverFromOpaquePointer(this); }
 };
 template <typename T>
-class TypeIdResolver;
+class __declspec(dllexport) TypeIdResolver {
+ public:
+  static TypeId Resolve() { return id_; }
+  static SelfOwningTypeId id_;
+};
+
+template <typename T>
+void PrintDebug() {
+  std::cout << &TypeIdResolver<T>::id_ << '\n';
+}
 
 }  // namespace detail
 
@@ -107,19 +119,21 @@ TypeId TypeId::get() {
   return detail::TypeIdResolver<T>::Resolve();
 }
 
-#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
-  namespace ir {                                \
-  namespace detail {                            \
-  template <>                                   \
-  class TypeIdResolver<TYPE_CLASS> {            \
-   public:                                      \
-    static TypeId Resolve() { return id_; }     \
-                                                \
-   private:                                     \
-    static SelfOwningTypeId id_;                \
-  };                                            \
-  }                                             \
+#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)            \
+  namespace ir {                                           \
+  namespace detail {                                       \
+  template <>                                              \
+  class __declspec(dllexport) TypeIdResolver<TYPE_CLASS> { \
+   public:                                                 \
+    static TypeId Resolve() { return id_; }                \
+    static SelfOwningTypeId id_;                           \
+  };                                                       \
+  }                                                        \
   }  // namespace ir
+
+/*
+#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)
+*/
 
 #define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)           \
   namespace ir {                                         \

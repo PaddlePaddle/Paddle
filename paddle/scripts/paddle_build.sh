@@ -3751,7 +3751,6 @@ EOF
 
     ccache -z
     cd ..
-
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
@@ -3767,7 +3766,7 @@ EOF
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
-
+    
     if [ "$build_error" != 0 ];then
         exit 7;
     fi

@@ -84,6 +84,7 @@ class TestPatternRewrite : public ir::OpRewritePattern<Operation1> {
   void Rewrite(Operation1 op, ir::PatternRewriter &rewriter) const override {}
   bool Match(Operation1 op) const override { return false; }
 };
+
 class TestPatternRewrite2 : public ir::OpRewritePattern<Operation1> {
  public:
   using ir::OpRewritePattern<Operation1>::OpRewritePattern;
