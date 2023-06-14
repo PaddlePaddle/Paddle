@@ -55,10 +55,6 @@ class TypeId {
 
   void *AsOpaquePointer() const { return storage_; }
 
-  static TypeId RecoverFromOpaquePointer(const void *pointer) {
-    return TypeId(static_cast<Storage *>(const_cast<void *>(pointer)));
-  }
-
   ///
   /// \brief Comparison operations.
   ///
@@ -97,8 +93,8 @@ class alignas(8) SelfOwningTypeId {
   SelfOwningTypeId(SelfOwningTypeId &&) = delete;
   SelfOwningTypeId &operator=(SelfOwningTypeId &&) = delete;
 
-  operator TypeId() const { return id(); }
-  TypeId id() const { return TypeId::RecoverFromOpaquePointer(this); }
+  operator TypeId() { return id(); }
+  TypeId id() { return TypeId::RecoverFromOpaquePointer(this); }
 };
 template <typename T>
 class __declspec(dllexport) TypeIdResolver {
