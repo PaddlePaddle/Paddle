@@ -18,6 +18,7 @@ from . import unique_name
 from . import core
 import paddle
 import warnings
+from .framework import default_main_program, Variable
 
 MAX_INTEGER = 2**31 - 1
 
@@ -370,7 +371,6 @@ def _getitem_impl_(var, item):
     Returns:
         Sliced variable
     """
-    from .framework import default_main_program, Variable
 
     if isinstance(item, list):
         if not is_one_dim_list(item, int):
@@ -644,7 +644,6 @@ def _setitem_for_tensor_array(var, item, value):
 
 
 def _setitem_impl_(var, item, value):
-    from .framework import default_main_program, Variable
     from paddle.fluid import core
 
     if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -860,6 +859,23 @@ def set_value_for_bool_tensor(var, item, value):
     return var
 
 
+def deal_advanced_index(ori_tensor, indices):
+    """
+    Transpose origin Tensor and indices to the front.
+    """
+    transed_dim = []
+    transed_index = []
+    for i, indice in enumerate(indices):
+        if indice is not None:
+            transed_dim.append(i)
+            transed_index.append(indice[1])
+    for i, indice in enumerate(indices):
+        if indice is None:
+            transed_dim.append(i)
+    transed_tensor = ori_tensor.transpose(transed_dim)
+    return transed_tensor, transed_index
+
+
 def _getitem_iter(x, indices):
     """
     [WIP]: support __getitem__ by iteration strategy. combined indexing will be support by this.
@@ -876,7 +892,11 @@ def _getitem_iter(x, indices):
     starts = []
     ends = []
     steps = []
+    use_strided_slice = False
+    has_advanced_index = False
 
+    # step1 : replace ndarray / None / ellipsis to normal elemement
+    #         and wrap multiple into one tuple
     indices = replace_ndarray(indices)
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
@@ -884,17 +904,21 @@ def _getitem_iter(x, indices):
     if not isinstance(indices, tuple):
         indices = (indices,)
 
+    # step2: Traverse index elements and record them.
     for dim, slice_item in enumerate(indices):
+        start, end, step = None, None, None
         if is_integer_or_scalar_tensor(slice_item):
             # not calculate result to reduce call times for slice OP.
             decrease_axes.append(dim)
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+            advanced_index.append(None)
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
             none_axes.append(dim)
             advanced_index.append((dim, paddle.to_tensor(slice_item)))
+            has_advanced_index = True
         elif isinstance(slice_item, slice):
             start = slice_item.start
             end = slice_item.stop
@@ -908,7 +932,119 @@ def _getitem_iter(x, indices):
             if end is None:
                 end = MAX_INTEGER if step > 0 else -1
             step = 1 if step is None else step
+            advanced_index.append(None)
         elif isinstance(slice_item, (list, tuple)):
             advanced_index.append((dim, paddle.to_tensor(slice_item)))
+            has_advanced_index = True
         elif isinstance(slice_item, paddle.fluid.Variable):
+            # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
             advanced_index.append((dim, slice_item))
+            has_advanced_index = True
+        else:
+            raise IndexError(
+                "Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {}.".format(
+                    slice_item
+                )
+            )
+        if not (start is None or end is None or step is None):
+            starts.append(start)
+            ends.append(end)
+            steps.append(step)
+            axes.append(dim)
+            use_strided_slice = True if step != 1 else use_strided_slice
+
+    # step3: Dealing with basic indexing
+    if len(axes) > 0:
+        op_type = "strided_slice" if use_strided_slice else "slice"
+        inputs = {'X': [x]} if use_strided_slice else {'Input': [x]}
+        attrs = {
+            'axes': axes,
+            'starts': [],
+            'ends': [],
+            'decrease_axis': decrease_axes,
+        }
+        if use_strided_slice:
+            attrs['strides'] = []
+        infer_flags = [1] * len(axes)
+        deal_attrs(
+            attrs, starts, "starts", "StartsTensorList", inputs, infer_flags
+        )
+        deal_attrs(attrs, ends, "ends", "EndsTensorList", inputs, infer_flags)
+        deal_attrs(
+            attrs, steps, "strides", "StridesTensorList", inputs, infer_flags
+        )
+        attrs['infer_flags'] = infer_flags
+
+        if paddle.in_dynamic_mode():
+            if "StartsTensorList" in inputs.keys():
+                st = inputs['StartsTensorList']
+            else:
+                st = attrs['starts']
+            if "EndsTensorList" in inputs.keys():
+                end = inputs['EndsTensorList']
+            else:
+                end = attrs['ends']
+            if "StridesTensorList" in inputs.keys():
+                stride = inputs['StridesTensorList']
+            if use_strided_slice:
+                out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
+            else:
+                out = paddle._C_ops.slice(
+                    x,
+                    axes,
+                    st,
+                    end,
+                    attrs['infer_flags'],
+                    attrs['decrease_axis'],
+                )
+        else:
+            target_block = default_main_program().current_block()
+
+            slice_out_var = target_block.create_var(
+                name=unique_name.generate_with_ignorable_key(
+                    x.name + "_" + op_type
+                ),
+                dtype=x.dtype,
+            )
+            target_block.append_op(
+                type=op_type,
+                inputs=inputs,
+                outputs={'Out': [slice_out_var]},
+                attrs=attrs,
+            )
+            out = slice_out_var
+    else:
+        out = x
+
+    # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+    # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+    # otherwise the output shape will be not correct.
+    set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
+    if set_to_1d and len(decrease_axes) == len(x.shape):
+        warnings.warn(
+            "Warning: In Tensor '__getitem__', if the number of scalar elements in the index is equal to the rank of the Tensor, the output should be 0-D. In order to be consistent with the behavior of previous versions, it will be processed to 1-D. But it is not correct and will be removed in release 2.6. If 1-D is still wanted, please modify the index element from scalar to slice (e.g. 'x[i]' => 'x[i:i+1]')."
+        )
+        none_axes = none_axes[1:]
+
+    if len(none_axes) > 0:
+        # Deal with cases that decrease_axes is not empty
+        # For example:
+        # # x.shape: (2,3,4)
+        # out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+        for idx, axis in enumerate(none_axes):
+            l = len([i for i in decrease_axes if i < axis])
+            new_axis = axis - l
+            none_axes[idx] = new_axis
+
+        out = paddle.unsqueeze(out, axis=none_axes)
+
+    # step4: Dealing with advanced indexing
+    if has_advanced_index:
+        transed_tensor, adjusted_advanced_index = deal_advanced_index(
+            out, advanced_index
+        )
+
+        # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
+        out = paddle.gather_nd(transed_tensor, adjusted_advanced_index)
+
+    return out
