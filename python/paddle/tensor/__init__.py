@@ -46,6 +46,7 @@ from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
 from .linalg import corrcoef  # noqa: F401
 from .linalg import norm  # noqa: F401
+from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
 from .linalg import lstsq  # noqa: F401
@@ -149,6 +150,8 @@ from .math import cos  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
+from .math import cummax  # noqa: F401
+from .math import cummin  # noqa: F401
 from .math import cumprod  # noqa: F401
 from .math import logcumsumexp  # noqa: F401
 from .math import logit  # noqa: F401
@@ -331,6 +334,7 @@ tensor_method_func = [  # noqa
     'mv',
     'matrix_power',
     'qr',
+    'pca_lowrank',
     'eigvals',
     'eigvalsh',
     'abs',
@@ -344,6 +348,8 @@ tensor_method_func = [  # noqa
     'cos',
     'cosh',
     'cumsum',
+    'cummax',
+    'cummin',
     'cumprod',
     'logcumsumexp',
     'logit',

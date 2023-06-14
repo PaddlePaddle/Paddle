@@ -47,7 +47,7 @@ def get_all_kernels():
             register_type = infos[0].split(":")[-1]
             op_kernel_types[op_type].append(register_type.lower())
 
-    for (op_type, op_kernels) in sorted(
+    for op_type, op_kernels in sorted(
         op_kernel_types.items(), key=lambda x: x[0]
     ):
         print(op_type, " ".join(sorted(op_kernels)))

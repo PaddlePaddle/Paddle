@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
@@ -131,7 +132,7 @@ inline ir::Operation* InsertSliceOperationForTarget(
   std::string slice_op_name(ir::SliceOp::name());
   ir::OpInfo op_info = ctx->GetRegisteredOpInfo(slice_op_name);
   std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
-      {"index", ir::Int32_tAttribute::get(ctx, defining_info.idx_in_vector)},
+      {"index", ir::Int32Attribute::get(ctx, defining_info.idx_in_vector)},
   };
   ir::VectorType src_vec_type =
       defining_info.value.type().dyn_cast<ir::VectorType>();
@@ -141,7 +142,7 @@ inline ir::Operation* InsertSliceOperationForTarget(
                             {src_vec_type[defining_info.idx_in_vector]},
                             op_info);
   program->block()->push_back(operation);
-  ir::OpResult target_op_result = operation->GetResultByIndex(0);
+  ir::OpResult target_op_result = operation->result(0);
   (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
   return operation;
 }
@@ -179,17 +180,17 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
   } else if (attr.isa<ir::DoubleAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::DoubleAttribute>().data());
     dtype = phi::DataType::FLOAT64;
-  } else if (attr.isa<ir::Int32_tAttribute>()) {
-    data = static_cast<float>(attr.dyn_cast<ir::Int32_tAttribute>().data());
+  } else if (attr.isa<ir::Int32Attribute>()) {
+    data = static_cast<float>(attr.dyn_cast<ir::Int32Attribute>().data());
     dtype = phi::DataType::INT32;
-  } else if (attr.isa<ir::Int64_tAttribute>()) {
-    data = static_cast<float>(attr.dyn_cast<ir::Int64_tAttribute>().data());
+  } else if (attr.isa<ir::Int64Attribute>()) {
+    data = static_cast<float>(attr.dyn_cast<ir::Int64Attribute>().data());
     dtype = phi::DataType::INT64;
   } else if (attr.isa<ir::BoolAttribute>()) {
     data = static_cast<float>(attr.dyn_cast<ir::BoolAttribute>().data());
     dtype = phi::DataType::BOOL;
   }
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program->block());
+  ir::Builder builder(ctx, program->block());
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{1}, data, dtype, phi::CPUPlace());
 
@@ -198,20 +199,18 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
 
 inline ir::Operation* InsertFullArrayOperationForAttributeInput(
     ir::IrContext* ctx, ir::Program* program, ir::Attribute attr) {
-  std::string constant_op_name(ir::ConstantOp::name());
-  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(constant_op_name);
+  IR_ENFORCE(attr.isa<paddle::dialect::IntArrayAttribute>(),
+             "Encounter non IntArray type when trying to insert IntArray "
+             "mutable attribute");
 
-  ir::Type null_type = paddle::dialect::DenseTensorType::get(
-      ctx,
-      ir::Type(nullptr),
-      phi::DDim{},
-      paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED,
-      phi::LoD{},
-      0);  // TODO(lyk): to be done
-  ir::Operation* operation =
-      ir::Operation::Create({}, {{"value", attr}}, {null_type}, op_info);
-  program->block()->push_back(operation);
-  return operation;
+  phi::IntArray int_array =
+      attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data();
+
+  ir::Builder builder(ctx, program->block());
+  paddle::dialect::FullIntArrayOp full_int_array_op =
+      builder.Build<paddle::dialect::FullIntArrayOp>(
+          int_array.GetData(), phi::DataType::INT64, phi::CPUPlace());
+  return full_int_array_op.operation();
 }
 
 inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
@@ -245,7 +244,7 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
     defining_op = InsertFullOperationForAttributeInput(ctx, program, new_attr);
   }
 
-  return defining_op->GetResultByIndex(0);
+  return defining_op->result(0);
 }
 
 inline std::vector<ir::OpResult> GenerateOperationInput(
@@ -341,7 +340,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     } else {
       auto* combine_op = InsertCombineOperationForTarget(
           ctx, param_map, program, legacy_input_vars);
-      op_inputs.push_back(combine_op->GetResultByIndex(0));
+      op_inputs.push_back(combine_op->result(0));
     }
   }
 
@@ -473,7 +472,7 @@ inline void RecordOpResultMapping(TranslationContext* param_map,
       VLOG(10) << "[output recording]"
                << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
 
-      ir::OpResult value = operation->GetResultByIndex(idx);
+      ir::OpResult value = operation->result(idx);
       bool generated_by_vector = value.type().isa<ir::VectorType>();
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);

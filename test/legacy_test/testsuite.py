@@ -140,7 +140,7 @@ def append_input_output(
                 np_list[var_name], list
             ), f"Duplicable {var_name} should be set as list"
             var_list = []
-            for (name, np_value) in np_list[var_name]:
+            for name, np_value in np_list[var_name]:
                 var_list.append(
                     create_var(
                         block, name, {name: np_value}, var_proto, is_calc_ref

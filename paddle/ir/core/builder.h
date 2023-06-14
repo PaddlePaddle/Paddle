@@ -20,26 +20,55 @@
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
+
 ///
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
 class Builder {
  public:
-  explicit Builder(IrContext *context,
-                   Block *block,
-                   Block::iterator insert_point)
-      : context_(context), block_(block), insert_point_(insert_point) {}
-
-  static Builder AtBlockBegin(IrContext *context, Block *block) {
-    return Builder(context, block, block->begin());
+  Builder(IrContext *context, Block *block, Block::iterator insert_point)
+      : context_(context) {
+    SetInsertionPoint(block, insert_point);
   }
 
-  static Builder AtBlockEnd(IrContext *context, Block *block) {
-    return Builder(context, block, block->end());
+  Builder(IrContext *context, Block *block)
+      : Builder(context, block, block->end()) {}
+
+  explicit Builder(IrContext *context)
+      : Builder(context, nullptr, Block::iterator{}) {}
+
+  /// Set the insertion point to the specified location.
+  void SetInsertionPoint(Block *block, Block::iterator insert_point) {
+    // TODO(liuyuanle): check that insertPoint is in this rather than some other
+    // block.
+    this->block_ = block;
+    this->insert_point_ = insert_point;
   }
 
-  IrContext *context() const { return context_; }
+  /// Set the insertion point to the specified operation, which will cause
+  /// subsequent insertions to go right before it.
+  void SetInsertionPoint(Operation *op) {
+    SetInsertionPoint(op->GetParent(), Block::iterator{*op});
+  }
+
+  /// Set the insertion point to the node after the specified operation, which
+  /// will cause subsequent insertions to go right after it.
+  void SetInsertionPointAfter(Operation *op) {
+    SetInsertionPoint(op->GetParent(), std::next(Block::iterator{*op}));
+  }
+
+  /// Set the insertion point to the start of the specified block.
+  void SetInsertionPointToStart(Block *block) {
+    SetInsertionPoint(block, block->begin());
+  }
+
+  /// Set the insertion point to the end of the specified block.
+  void SetInsertionPointToEnd(Block *block) {
+    SetInsertionPoint(block, block->end());
+  }
+
+  IrContext *ir_context() const { return context_; }
 
   Block *block() const { return block_; }
 
@@ -65,8 +94,9 @@ class Builder {
   Operation *Insert(Operation *op);
 
   IrContext *context_;
-  Block *block_ = nullptr;
+  Block *block_;
   // The insertion point within the list that this builder is inserting before.
   Block::iterator insert_point_;
 };
+
 }  // namespace ir

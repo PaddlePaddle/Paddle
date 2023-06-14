@@ -53,7 +53,6 @@ class FleetDistRunnerBase:
         self._exe = None
 
     def build_role(self, args):
-
         if args.role.upper() == "PSERVER":
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,

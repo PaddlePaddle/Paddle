@@ -164,7 +164,6 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_ret, dy_ret_value)
 
         with self.static_graph():
-
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
@@ -250,7 +249,6 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_ret, dy_ret_value)
 
         with self.static_graph():
-
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
@@ -479,7 +477,6 @@ class TestLayer(LayerTest):
             )
 
         with self.static_graph():
-
             # the input of Conv2DTranspose must be Variable.
             def test_Variable():
                 images = np.ones([2, 3, 5, 5], dtype='float32')
@@ -633,7 +630,6 @@ class TestLayer(LayerTest):
                 feed={'word': inp_word}, fetch_list=[emb_rlt]
             )[0]
         with self.dynamic_graph():
-
             emb2 = paddle.nn.Embedding(
                 dict_size, 32, weight_attr='emb.w', sparse=False
             )

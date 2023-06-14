@@ -519,6 +519,14 @@ class OpConverter {
     return c;
   }
 
+  nvinfer1::ITensor* Pow(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kPOW)
+            ->getOutput(0);
+    return c;
+  }
+
   nvinfer1::ITensor* Act(nvinfer1::ITensor* a,
                          nvinfer1::ActivationType act_type) {
     nvinfer1::ITensor* c =
