@@ -27,7 +27,6 @@ if(WITH_GPU
       reduce_mean_op
       activation_op
       sum_op
-      elementwise_max_op
       elementwise_div_op
       generated_op
       generated_static_op

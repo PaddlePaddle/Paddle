@@ -34,6 +34,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 namespace paddle {
 
@@ -137,6 +140,13 @@ DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
+}
+bool Tensor::is_dist_tensor() const {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  return phi::distributed::auto_parallel::DistTensor::classof(impl_.get());
+#else
+  return false;
+#endif
 }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());

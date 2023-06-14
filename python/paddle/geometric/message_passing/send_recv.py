@@ -455,7 +455,6 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
     if in_dynamic_mode():
         return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
-
         helper = LayerHelper("graph_send_uv", **locals())
         check_variable_and_dtype(
             x,

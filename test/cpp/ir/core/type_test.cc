@@ -77,6 +77,14 @@ TEST(type_test, built_in_type) {
   ir::IrContext *ctx = ir::IrContext::Instance();
 
   // Test 1: Test the parameterless built-in type of IrContext.
+  ir::Type bfp16_1 = ir::BFloat16Type::get(ctx);
+  ir::Type bfp16_2 = ir::BFloat16Type::get(ctx);
+  EXPECT_EQ(bfp16_1, bfp16_2);
+  EXPECT_EQ(bfp16_1.type_id(), bfp16_2.type_id());
+  EXPECT_EQ(&bfp16_1.abstract_type(),
+            &ir::AbstractType::lookup(bfp16_1.type_id(), ctx));
+  EXPECT_EQ(ir::BFloat16Type::classof(bfp16_1), 1);
+
   ir::Type fp16_1 = ir::Float16Type::get(ctx);
   ir::Type fp16_2 = ir::Float16Type::get(ctx);
   EXPECT_EQ(fp16_1, fp16_2);

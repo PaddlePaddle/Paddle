@@ -307,8 +307,7 @@ class DatasetBase:
                     data_gen_len = len(user_parsed_line)
                     if var_len != data_gen_len:
                         raise ValueError(
-                            "var length mismatch error: var_list = %s vs data_generator = %s"
-                            % (var_len, data_gen_len)
+                            f"var length mismatch error: var_list = {var_len} vs data_generator = {data_gen_len}"
                         )
 
                     for i, ele in enumerate(user_parsed_line):
@@ -324,10 +323,11 @@ class DatasetBase:
                             isinstance(ele, float) for ele in ele[1]
                         ):
                             raise TypeError(
-                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-float value, which is %s \n"
+                                "var dtype mismatch error: var name = {}, var type in var_list = {}, while var in data_generator contains non-float value, which is {} \n"
                                 "Please check if order of var_list and data_generator are aligned. \n"
-                                "Please check if var's type in data_generator is correct."
-                                % (ele[0], "float", ele[1])
+                                "Please check if var's type in data_generator is correct.".format(
+                                    ele[0], "float", ele[1]
+                                )
                             )
 
                         if (
@@ -335,10 +335,11 @@ class DatasetBase:
                             or var_list[i].dtype == core.VarDesc.VarType.INT32
                         ) and not all(isinstance(ele, int) for ele in ele[1]):
                             raise TypeError(
-                                "var dtype mismatch error: var name = %s, var type in var_list = %s, while var in data_generator contains non-int value, which is %s \n"
+                                "var dtype mismatch error: var name = {}, var type in var_list = {}, while var in data_generator contains non-int value, which is {} \n"
                                 "Please check if order of var_list and data_generator are aligned. \n"
-                                "Please check if var's type in data_generator is correct."
-                                % (ele[0], "int", ele[1])
+                                "Please check if var's type in data_generator is correct.".format(
+                                    ele[0], "int", ele[1]
+                                )
                             )
 
             else:

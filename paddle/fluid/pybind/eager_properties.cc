@@ -158,6 +158,23 @@ int tensor_properties_set_persistable(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
+PyObject* tensor_properties_get_dist_attr(TensorObject* self, void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::auto_parallel::DistTensor* dist_tensor =
+        static_cast<phi::distributed::auto_parallel::DistTensor*>(
+            self->tensor.impl().get());
+    return ToPyObject(dist_tensor->dist_attr().get());
+#else
+    RETURN_PY_NONE
+#endif
+  } else {
+    RETURN_PY_NONE
+  }
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
@@ -351,6 +368,11 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
     {"offset", (getter)tensor_properties_get_offset, nullptr, nullptr, nullptr},
+    {"dist_attr",
+     (getter)tensor_properties_get_dist_attr,
+     nullptr,
+     nullptr,
+     nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,
      nullptr,

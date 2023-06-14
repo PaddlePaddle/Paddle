@@ -52,7 +52,6 @@ class CostModel:
         device='gpu',
         fetch_cost_list=['time'],
     ):
-
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
         exe = paddle.static.Executor(place)

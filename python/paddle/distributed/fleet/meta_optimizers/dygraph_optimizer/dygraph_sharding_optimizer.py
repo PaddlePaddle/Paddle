@@ -51,7 +51,6 @@ class DygraphShardingOptimizer:
         inner_optimizer_class,
         **inner_optimizer_kargs
     ):
-
         if not isinstance(params, list):
             raise TypeError(
                 "`parameters` argument given to the DygraphShardingOptimizer should be "
@@ -89,7 +88,6 @@ class DygraphShardingOptimizer:
                 p.clear_gradient()
 
     def _build_sharding_mapping(self):
-
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
@@ -172,7 +170,6 @@ class DygraphShardingOptimizer:
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
-
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 

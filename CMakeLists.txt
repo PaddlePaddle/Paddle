@@ -62,6 +62,7 @@ option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -111,7 +112,7 @@ endif()
 
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
-
+  message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 

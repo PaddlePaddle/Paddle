@@ -287,14 +287,12 @@ def launch():
     ctx = Context()
 
     if ctx.is_legacy_mode():
-
         # legacy mode
         from paddle.distributed.fleet import launch
 
         launch.launch()
 
     else:
-
         from . import controllers
 
         # initialize the selected controller
