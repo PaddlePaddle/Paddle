@@ -74,7 +74,7 @@ void ProgramTranslator::Translate() {
 }
 
 const TranslationContext& ProgramTranslator::Name2ValueMap() {
-  return param_map;
+  return param_map_;
 }
 
 inline ir::Operation* InsertGetParamaterOp(ir::IrContext* ctx,
@@ -123,9 +123,9 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
       for (const auto& var_name : input_var_names) {
         VarDesc* var_desc = nullptr;
 
-        bool is_parameter = (parameter_name_mappings.find(var_name) !=
-                             parameter_name_mappings.end());
-        is_parameter &= (parameter_visited.count(var_name) == 0);
+        bool is_parameter = (parameter_name_mappings_.find(var_name) !=
+                             parameter_name_mappings_.end());
+        is_parameter &= (parameter_visited_.count(var_name) == 0);
         if (is_parameter) {
           var_desc = parameter_name_mappings[var_name];
         }
