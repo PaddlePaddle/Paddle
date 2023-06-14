@@ -24,7 +24,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_optimization_tuner_api MODULES
                   test_optimization_tuner_api)
   set_tests_properties(test_optimization_tuner_api
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
   py_test_modules(test_converter MODULES test_converter)
   set_tests_properties(test_converter PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 50)
@@ -142,7 +142,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_saver MODULES test_dist_saver)
   py_test_modules(test_engine_save_load MODULES test_engine_save_load)
   py_test_modules(test_rule_based_tuner MODULES test_rule_based_tuner)
-  py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
