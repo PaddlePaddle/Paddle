@@ -705,7 +705,6 @@ class OpTest(unittest.TestCase):
                                 self.inputs[var_name][1].astype(np.float32)
                             )
                         elif self.inputs[var_name][1].dtype == np.uint16:
-                            #print("self.inputs[var_name][1].dtype: ", self.inputs[var_name][1].dtype)
                             tensor.set_recursive_sequence_lengths(
                                 convert_uint16_to_float(self.inputs[var_name][1])
                             )
@@ -2521,15 +2520,6 @@ class OpTest(unittest.TestCase):
 
         if numeric_place is None:
             numeric_place = place
-
-        analytic_grads = self._get_gradient(
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set,
-            user_defined_grad_outputs,
-            check_cinn=check_cinn,
-        )
         
         if user_defined_grads is None and (self.is_fp16_compared_with_fp32() or self.is_bf16_compared_with_fp32()):
             self.enable_cal_ref_output()
@@ -2556,6 +2546,14 @@ class OpTest(unittest.TestCase):
                 for input_to_check in inputs_to_check
             ]
 
+        analytic_grads = self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            user_defined_grad_outputs,
+            check_cinn=check_cinn,
+        )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
         fp32_analytic_grads = []
