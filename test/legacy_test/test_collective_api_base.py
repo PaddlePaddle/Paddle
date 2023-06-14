@@ -80,6 +80,12 @@ def create_pyobject_test_data(shape=None, seed=None):
     return [list_data, dict_data]
 
 
+def dump_output(x):
+    dump_file = os.environ['DUMP_FILE']
+    with open(dump_file, 'wb') as f:
+        pickle.dump(x, f)
+
+
 def create_test_data(shape=None, dtype=None, seed=None):
     assert shape, "Shape should be specified"
     if dtype == "float32" or dtype == "float16" or dtype == "float64":
@@ -160,7 +166,7 @@ class TestCollectiveAPIRunnerBase:
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
             # print(out, sys.stderr)
-        sys.stdout.buffer.write(pickle.dumps(out))
+        dump_output(out)
 
 
 def runtime_main(test_class, col_type):
@@ -255,6 +261,13 @@ class TestDistBase(unittest.TestCase):
         # update environment
         env0.update(envs)
         env1.update(envs)
+
+        cur_pid = os.getpid()
+        dump_file_0 = f'./out_data_0_{cur_pid}.pickled'
+        dump_file_1 = f'./out_data_1_{cur_pid}.pickled'
+        env0['DUMP_FILE'] = dump_file_0
+        env1['DUMP_FILE'] = dump_file_1
+
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             tr_cmd = "%s -m coverage run --branch -p %s"
         else:
@@ -295,9 +308,16 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
+
+        def load_and_remove(path):
+            with open(path, 'rb') as f:
+                out = pickle.load(f)
+            os.remove(path)
+            return out
+
         return (
-            pickle.loads(tr0_out),
-            pickle.loads(tr1_out),
+            load_and_remove(dump_file_0),
+            load_and_remove(dump_file_1),
             tr0_proc.pid,
             tr1_proc.pid,
         )
@@ -469,7 +489,7 @@ class TestDistBase(unittest.TestCase):
         elif col_type == "column_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
-            weight = np.random.rand(1000, 16)
+            weight = np.random.rand(1000, 16).astype(np.float32)
             need_result = np.matmul(input1, weight)
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
