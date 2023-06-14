@@ -43,7 +43,7 @@ class UnaryOpConverter : public OpConverter {
         engine_->GetITensor(op_desc.Input("X")[0]);
     auto op_pair = ops.find(op_type_);
     nvinfer1::ILayer* layer = nullptr;
-#if !IS_TRT_VERSION_GE(8500)
+
     nvinfer1::DataType org_type = input_tensor->getType();
     bool cast = org_type == nvinfer1::DataType::kINT8 ||
                 org_type == nvinfer1::DataType::kINT32;
@@ -56,19 +56,19 @@ class UnaryOpConverter : public OpConverter {
       }
       input_tensor = layer->getOutput(0);
     }
-#endif
+
     for (auto trt_op : op_pair->second) {
       layer = TRT_ENGINE_ADD_LAYER(engine_, Unary, *input_tensor, trt_op);
       input_tensor = layer->getOutput(0);
     }
-#if !IS_TRT_VERSION_GE(8500)
+
     // type restore
     if (cast) {
       layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input_tensor);
       layer->setOutputType(0, org_type);
       input_tensor = layer->getOutput(0);
     }
-#endif
+
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
   }
