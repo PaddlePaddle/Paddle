@@ -19,11 +19,10 @@ import numpy as np
 
 import paddle
 
-paddle.enable_static()
-
 
 class TestNewIr(unittest.TestCase):
     def test_with_new_ir(self):
+        paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
@@ -40,14 +39,33 @@ class TestNewIr(unittest.TestCase):
         self.assertEqual(
             np.array_equal(
                 np.array(
-                    paddle.static.global_scope()
-                    .find_var("inner_var_2")
-                    .get_tensor()
+                    paddle.static.global_scope().find_var(z.name).get_tensor()
                 ),
                 gold_res,
             ),
             True,
         )
+
+
+# class TestNewIrDygraph(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         paddle.disable_static()
+
+#         @paddle.jit.to_static
+#         def func(x, y):
+#             return x + y
+
+#         x = paddle.ones([2, 2], dtype='float32')
+#         y = paddle.ones([2, 2], dtype='float32')
+#         z = func(x, y)
+
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
+#         self.assertEqual(
+#             np.array_equal( z.numpy(),
+#                 gold_res,
+#             ),
+#             True,
+#         )
 
 
 if __name__ == "__main__":

@@ -94,6 +94,7 @@ void BuildScope(ir::Block* block,
                 "input of fetch op should in name mape, var_name is [%s]",
                 var_name));
 
+        std::cerr << "fetch name change" << std::endl;
         scope->Rename(name_map->at(ptr), var_name);
         (*name_map)[ptr] = var_name;
       }
