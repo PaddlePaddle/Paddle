@@ -28,7 +28,6 @@ void SplitStridedKernel(const Context& dev_ctx,
                         const IntArray& sections UNUSED,
                         const Scalar& axis_scalar,
                         std::vector<DenseTensor*> outs) {
-  int64_t input_dim_size = x.dims().size();
   int64_t num = outs.size();
   int64_t start = 0;
 
@@ -36,8 +35,14 @@ void SplitStridedKernel(const Context& dev_ctx,
 
   for (int64_t i = 0; i < num; i++) {
     auto size = outs[i]->dims()[axis];
-    SliceStridedKernel<Context>(
-        dev_ctx, x, {start}, {start + size}, {}, {}, outs[i]);
+    SliceStridedKernel<Context>(dev_ctx,
+                                x,
+                                {axis},
+                                IntArray({start}),
+                                IntArray({start + size}),
+                                std::vector<int64_t>(),
+                                std::vector<int64_t>(),
+                                outs[i]);
     start += size;
   }
 }
@@ -55,7 +60,7 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
     sections_vec.push_back(input_axis_dim / num);
   }
   IntArray sections(sections_vec);
-  SplitStridedKernel<T, Context>(dev_ctx, x, sections, axis_scalar, outs);
+  SplitStridedKernel<Context>(dev_ctx, x, sections, axis_scalar, outs);
 }
 
 }  // namespace phi

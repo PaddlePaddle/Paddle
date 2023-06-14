@@ -50,4 +50,4 @@ void AsStridedGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    diagonal_grad, STRIDED, phi::DiagonalGradStridedKernel) {}
+    as_strided_grad, STRIDED, phi::AsStridedGradKernel) {}
