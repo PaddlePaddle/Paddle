@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -61,10 +62,21 @@ class SPMDRuleBase {
       const paddle::framework::AttributeMap& attrs);
 
   template <typename T>
-  inline const T& ExtractAttr(
+  inline const T ExtractAttr(
       const std::string& name,
       const paddle::framework::AttributeMap& attrs) const {
-    return PADDLE_GET_CONST(T, GetAttr(name, attrs));
+    auto& attr = GetAttr(name, attrs);
+
+    // In order to get bool attr properly
+    framework::proto::AttrType attr_type =
+        static_cast<framework::proto::AttrType>(attr.index() - 1);
+    if (attr_type == framework::proto::AttrType::INT) {
+      if (std::is_same<bool, T>::value) {
+        return static_cast<bool>(PADDLE_GET_CONST(int, attr));
+      }
+    }
+
+    return PADDLE_GET_CONST(T, attr);
   }
 
   const Attribute& GetAttr(const std::string& name,
@@ -120,7 +132,7 @@ class SPMDRuleMap {
   static SPMDRuleMap& Instance();
 
   // Returns the spmd rule for the given op_type
-  SPMDRuleBase& Get(const std::string& op_type) const;
+  SPMDRuleBase* Get(const std::string& op_type) const;
 
   // Returns the spmd by name or nullptr if not registered
   SPMDRuleBase* GetNullable(const std::string& op_type) const;
@@ -139,7 +151,7 @@ class SPMDRuleMap {
 };
 
 #define REGISTER_SPMD_RULE(op_type, rule_class, ...)                        \
-  static int __spmd_rule_holder_##op_type =                                 \
+  UNUSED static int __spmd_rule_holder_##op_type =                          \
       ::paddle::distributed::auto_parallel::SPMDRuleMap::Instance().Insert( \
           #op_type, std::make_unique<rule_class>(__VA_ARGS__))
 

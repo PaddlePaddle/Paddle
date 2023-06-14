@@ -15,6 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/rules.h"
 
 namespace paddle {
 namespace distributed {
@@ -167,7 +168,7 @@ SPMDRuleMap& SPMDRuleMap::Instance() {
 // To enable default replicated spmd rule for op that are NOT registered
 // which all tensors of inputs and outputs will be replicated in all ranks of
 // the mesh.
-SPMDRuleBase& SPMDRuleMap::Get(const std::string& op_type) const {
+SPMDRuleBase* SPMDRuleMap::Get(const std::string& op_type) const {
   auto rule_ptr = GetNullable(op_type);
   if (rule_ptr == nullptr) {
     std::string str;
@@ -181,7 +182,7 @@ SPMDRuleBase& SPMDRuleMap::Get(const std::string& op_type) const {
       rule_ptr,
       platform::errors::NotFound(
           "NO SPMD Rule has been registered for Operator [%s].", op_type));
-  return *rule_ptr;
+  return rule_ptr;
 }
 
 SPMDRuleBase* SPMDRuleMap::GetNullable(const std::string& op_type) const {
