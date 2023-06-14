@@ -126,7 +126,8 @@ class TestCollectiveRunnerBase:
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=[result.name]
         )
-        with open(os.getenv("DUMP_FILE"), "wb") as f:
+        dump_file = os.environ['DUMP_FILE']
+        with open(dump_file, 'wb') as f:
             pickle.dump(out, f)
 
 
@@ -175,19 +176,12 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        out_path0 = os.path.join(
-            self.temp_dir.name, "/tmp/tr0_out_%d.log" % os.getpid()
-        )
-        out_path1 = os.path.join(
-            self.temp_dir.name, "/tmp/tr1_out_%d.log" % os.getpid()
-        )
         env0 = {
             "FLAGS_selected_gpus": "0",
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w0_ep,
-            "DUMP_FILE": out_path0,
         }
 
         env1 = {
@@ -196,11 +190,18 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
-            "DUMP_FILE": out_path1,
         }
+
+        cur_pid = os.getpid()
+        dump_file_0 = f'./out_data_0_{cur_pid}.pickled'
+        dump_file_1 = f'./out_data_1_{cur_pid}.pickled'
+
         # update environment
         env0.update(envs)
         env1.update(envs)
+        env0['DUMP_FILE'] = dump_file_0
+        env1['DUMP_FILE'] = dump_file_1
+
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
@@ -230,15 +231,16 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        tr0_file = open(out_path0, "rb")
-        tr1_file = open(out_path0, "rb")
-        tr0_result = pickle.load(tr0_file)
-        tr1_result = pickle.load(tr1_file)
-        tr0_file.close()
-        tr1_file.close()
+
+        def load_and_remove(path):
+            with open(path, 'rb') as f:
+                out = pickle.load(f)
+            os.remove(path)
+            return out
+
         return (
-            tr0_result,
-            tr1_result,
+            load_and_remove(dump_file_0),
+            load_and_remove(dump_file_1),
             tr0_proc.pid,
             tr1_proc.pid,
         )
@@ -256,8 +258,6 @@ class TestDistBase(unittest.TestCase):
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
         }
-        if paddle.version.cuda() >= '12.0':
-            required_envs.pop("NCCL_P2P_DISABLE")
         required_envs.update(need_envs)
         if check_error_log:
             required_envs["GLOG_v"] = "3"
