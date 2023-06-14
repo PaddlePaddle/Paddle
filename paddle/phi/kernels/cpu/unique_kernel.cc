@@ -80,10 +80,6 @@ void UniqueRawKernel(const Context& context,
     return;
   }
 
-  if (x.numel() == 0) {
-    context.template Alloc<T>(out);
-    return;
-  }
   if (axis.empty()) {
     phi::VisitDataTypeTiny(
         dtype,
