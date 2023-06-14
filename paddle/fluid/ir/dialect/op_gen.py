@@ -110,7 +110,8 @@ OpInfoTuple {op_name}::GetOpInfo() {{
   std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
   std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
-  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{{inplace}}}, {{{view}}});
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo("{infer_meta_func}", {{"{infer_meta_param}"}}, {{"{kernel_func}"}}, {{"{kernel_param}"}}, {{"{kernel_key_dtype}"}}, {{{inplace}}}, {{{view}}});
+
   return std::make_tuple(inputs, attributes, outputs, run_time_info);
 }}
 """
@@ -1488,9 +1489,14 @@ def OpGenerator(
 
             kernel_func_str = ""
             kernel_param_str = ""
+            kernel_key_dtype = ""
             if op_kernel_map is not None:
                 kernel_func_str = '", "'.join(op_kernel_map['func'])
                 kernel_param_str = '", "'.join(op_kernel_map['param'])
+                if 'data_type' in op_kernel_map and op_kernel_map['data_type']:
+                    kernel_key_dtype = '", "'.join(
+                        op_kernel_map['data_type']['candidates']
+                    )
 
             inplace_str = ""
             view_str = ""
@@ -1513,6 +1519,7 @@ def OpGenerator(
                 infer_meta_param=infer_meta_param_str,
                 kernel_func=kernel_func_str,
                 kernel_param=kernel_param_str,
+                kernel_key_dtype=kernel_key_dtype,
                 inplace=inplace_str,
                 view=view_str,
             )

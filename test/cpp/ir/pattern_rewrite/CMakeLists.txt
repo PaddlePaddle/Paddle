@@ -5,6 +5,4 @@ cc_test_old(
   DEPS
   new_pass
   pattern_rewrite
-  pd_dialect
-  phi
   gtest)
