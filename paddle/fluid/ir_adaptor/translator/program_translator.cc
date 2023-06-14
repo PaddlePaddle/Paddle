@@ -30,6 +30,7 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace translator {
@@ -118,6 +119,9 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
   std::unordered_set<std::string> inner_defining_variables;
 
   for (auto op_desc : block.AllOps()) {
+    if (op_desc->Type() == "feed") {
+      continue;
+    }
     for (const auto& n : op_desc->Inputs()) {
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
