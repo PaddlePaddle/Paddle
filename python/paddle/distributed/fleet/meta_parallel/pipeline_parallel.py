@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import os
+
 import paddle
 from paddle import framework
 
@@ -24,7 +26,15 @@ from ..utils.hybrid_parallel_util import (
 from ..utils.log_util import logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
-from .pp_utils import p2p_communication as p2p
+
+_use_four_directions = os.environ.get(
+    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.fluid.core.is_compiled_with_xpu()
+)
+if _use_four_directions:
+    from .pp_utils import four_directions_p2p_communication as p2p
+else:
+    from .pp_utils import p2p_communication as p2p
+
 from .pp_utils.utils import HOOK_ACTION, FusedCommBuffer, assign_group_by_size
 
 __all__ = []
