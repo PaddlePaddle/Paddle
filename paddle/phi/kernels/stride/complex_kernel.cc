@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -46,9 +47,11 @@ void ImagStridedKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(real,
                                                        STRIDED,
                                                        phi::RealStridedKernel) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(imag,
                                                        STRIDED,
                                                        phi::ImagStridedKernel) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }

@@ -29,15 +29,18 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& out_stride,
+                       int64_t offset,
                        DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor StridedCopy(const Context& dev_ctx,
                         const DenseTensor& input,
                         const std::vector<int64_t>& dims,
-                        const std::vector<int64_t>& out_stride) {
+                        const std::vector<int64_t>& out_stride,
+                        size_t offset) {
   DenseTensor dense_out;
-  StridedCopyKernel<T, Context>(dev_ctx, input, dims, out_stride, &dense_out);
+  StridedCopyKernel<T, Context>(
+      dev_ctx, input, dims, out_stride, offset, &dense_out);
   return dense_out;
 }
 }  // namespace phi

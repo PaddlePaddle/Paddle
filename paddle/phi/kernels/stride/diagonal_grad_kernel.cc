@@ -42,6 +42,7 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                            out_grad,
                            phi::vectorize<int64_t>(tmp.dims()),
                            phi::vectorize<int64_t>(tmp.stride()),
+                           tmp.offset(),
                            &tmp);
                      }));
 }

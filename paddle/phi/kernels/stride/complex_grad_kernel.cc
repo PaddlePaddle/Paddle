@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/phi/kernels/complex_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/fill_kernel.h"
@@ -29,6 +30,7 @@ void RealGradStridedKernel(const Context& dev_ctx,
                        phi::FillKernel<data_t, Context>(dev_ctx, *dx, 0, dx);
                      }));
   DenseTensor tmp;
+  tmp.set_meta(dout.meta());
   RealStridedKernel<Context>(dev_ctx, *dx, &tmp);
   PD_VISIT_ALL_TYPES(dout.dtype(), "RealGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
@@ -36,6 +38,7 @@ void RealGradStridedKernel(const Context& dev_ctx,
                            dout,
                            phi::vectorize<int64_t>(tmp.dims()),
                            phi::vectorize<int64_t>(tmp.stride()),
+                           tmp.offset(),
                            &tmp);
                      }));
 }
@@ -50,6 +53,7 @@ void ImagGradStridedKernel(const Context& dev_ctx,
                      }));
 
   DenseTensor tmp;
+  tmp.set_meta(dout.meta());
   ImagStridedKernel<Context>(dev_ctx, *dx, &tmp);
   PD_VISIT_ALL_TYPES(dout.dtype(), "ImagGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
@@ -57,6 +61,7 @@ void ImagGradStridedKernel(const Context& dev_ctx,
                            dout,
                            phi::vectorize<int64_t>(tmp.dims()),
                            phi::vectorize<int64_t>(tmp.stride()),
+                           tmp.offset(),
                            &tmp);
                      }));
 }
@@ -64,7 +69,11 @@ void ImagGradStridedKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    real_grad, STRIDED, phi::RealGradStridedKernel) {}
+    real_grad, STRIDED, phi::RealGradStridedKernel) {
+  kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    imag_grad, STRIDED, phi::ImagGradStridedKernel) {}
+    imag_grad, STRIDED, phi::ImagGradStridedKernel) {
+  kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
