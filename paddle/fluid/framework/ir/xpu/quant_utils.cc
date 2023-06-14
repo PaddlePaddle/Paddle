@@ -265,7 +265,7 @@ void PrepareWeight(phi::DenseTensor* weight,
   }
 
   // Find max
-  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(0);
+  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   int size = weight_fp32.numel();
   auto* weight_data = weight_fp32.data<float>();
   float max_val = FindMaxAbs(weight_data, size);

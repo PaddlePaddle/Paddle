@@ -32,6 +32,10 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
@@ -208,8 +212,11 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
                     true,
                     platform::errors::PreconditionNotMet(
                         "Should call EnableXpu before SetXpuDeviceId."));
+#ifdef PADDLE_WITH_XPU
   xpu_config_.device_id = device_id;
+  phi::backends::xpu::SetXPUDeviceId(device_id);
   Update();
+#endif
 }
 
 void AnalysisConfig::SetXpuConfig(const XpuConfig &config) {
@@ -224,6 +231,7 @@ void AnalysisConfig::SetXpuConfig(const XpuConfig &config) {
           config.l3_autotune_size,
           config.l3_size));
   xpu_config_ = config;
+  
   Update();
 }
 
@@ -1096,6 +1104,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.l3_size;
   ss << xpu_config_.l3_ptr;
   ss << xpu_config_.l3_autotune_size;
+  ss << xpu_config_.context_gm_size;
   ss << xpu_config_.context;
   ss << xpu_config_.stream;
   ss << xpu_config_.conv_autotune_level;
@@ -1347,6 +1356,8 @@ std::string AnalysisConfig::Summary() {
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.l3_ptr))});
     os.InsertRow(
         {"xpu_l3_autotune_size", std::to_string(xpu_config_.l3_autotune_size)});
+    os.InsertRow(
+        {"context_gm_size", std::to_string(xpu_config_.context_gm_size)});
     os.InsertRow(
         {"xpu_context",
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.context))});

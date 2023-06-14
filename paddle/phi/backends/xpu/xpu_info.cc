@@ -187,6 +187,9 @@ void MemcpySyncD2D(void* dst,
 
 XPUVersion get_xpu_version(int dev_id) {
   uint64_t v = 0;
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
 
   if (v == K100 || v == K200) {

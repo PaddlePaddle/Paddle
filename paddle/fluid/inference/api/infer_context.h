@@ -52,7 +52,7 @@ class InferGPUContext : public phi::GPUContext {
 #ifdef PADDLE_WITH_XPU
 class InferXPUContext : public phi::XPUContext {
  public:
-  explicit InferXPUContext(const phi::Place& place);
+  explicit InferXPUContext(const phi::Place& place, int context_gm_size = -1);
 
   void* Alloc(phi::TensorBase* tensor,
               phi::DataType dtype,

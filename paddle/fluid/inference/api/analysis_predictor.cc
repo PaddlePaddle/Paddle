@@ -509,7 +509,7 @@ void AnalysisPredictor::InitDeviceContexts() {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
           auto &instance = memory::allocation::AllocatorFacade::Instance();
-          auto *xpu_context = new InferXPUContext(place_);
+          auto *xpu_context = new InferXPUContext(place_, config_.xpu_config().context_gm_size);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -1504,6 +1504,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
   argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
   argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuContextGmSize(config_.xpu_config_.context_gm_size);
   argument_->SetXpuContext(config_.xpu_config_.context);
   argument_->SetXpuStream(config_.xpu_config_.stream);
   argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
