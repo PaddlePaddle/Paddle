@@ -179,6 +179,8 @@ reduce_api_list = [
     paddle.mean,
     paddle.nansum,
     paddle.nanmean,
+    paddle.median,
+    paddle.nanmedian,
     paddle.min,
     paddle.max,
     paddle.amin,
@@ -202,7 +204,7 @@ class TestReduceAPI(unittest.TestCase):
             else:
                 x = paddle.rand([])
             x.stop_gradient = False
-            out = api(x, None)
+            out = api(x, axis=None)
 
             out.retain_grads()
             out.backward()
@@ -212,9 +214,10 @@ class TestReduceAPI(unittest.TestCase):
             if api not in [paddle.count_nonzero]:
                 np.testing.assert_allclose(out.numpy(), x.numpy())
 
-            out_empty_list = api(x, [])
-            self.assertEqual(out_empty_list, out)
-            self.assertEqual(out_empty_list.shape, [])
+            if api not in [paddle.median, paddle.nanmedian]:
+                out_empty_list = api(x, axis=[])
+                self.assertEqual(out_empty_list, out)
+                self.assertEqual(out_empty_list.shape, [])
 
             if x.grad is not None:
                 self.assertEqual(x.grad.shape, [])
@@ -222,12 +225,12 @@ class TestReduceAPI(unittest.TestCase):
                 np.testing.assert_allclose(x.grad.numpy(), np.array(1.0))
                 np.testing.assert_allclose(out.grad.numpy(), np.array(1.0))
 
-            out1 = api(x, 0)
+            out1 = api(x, axis=0)
             self.assertEqual(out1.shape, [])
             self.assertEqual(out1, out)
             out1.backward()
 
-            out2 = api(x, -1)
+            out2 = api(x, axis=-1)
             self.assertEqual(out2.shape, [])
             self.assertEqual(out2, out)
             out2.backward()
@@ -236,13 +239,28 @@ class TestReduceAPI(unittest.TestCase):
                 self.assertEqual(x.grad.shape, [])
                 np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
 
-            # 2) x is ND, reduce to 0D
+            # 2) x is 1D, axis=0, reduce to 0D
+            if api in [paddle.all, paddle.any]:
+                x = paddle.randint(0, 2, [5]).astype('bool')
+            else:
+                x = paddle.rand([5])
+            x.stop_gradient = False
+            out = api(x, axis=0)
+            out.retain_grads()
+            out.backward()
+
+            self.assertEqual(out.shape, [])
+            if x.grad is not None:
+                self.assertEqual(out.grad.shape, [])
+                self.assertEqual(x.grad.shape, [5])
+
+            # 3) x is ND, reduce to 0D
             if api in [paddle.all, paddle.any]:
                 x = paddle.randint(0, 2, [3, 5]).astype('bool')
             else:
                 x = paddle.rand([3, 5])
             x.stop_gradient = False
-            out = api(x, None)
+            out = api(x, axis=None)
             out.retain_grads()
             out.backward()
 
@@ -251,20 +269,20 @@ class TestReduceAPI(unittest.TestCase):
                 self.assertEqual(out.grad.shape, [])
                 self.assertEqual(x.grad.shape, [3, 5])
 
-            # 3) x is 1D, axis=0, reduce to 0D
+            # 4) x is ND, reduce to 0D, keepdim=True
             if api in [paddle.all, paddle.any]:
-                x = paddle.randint(0, 2, [5]).astype('bool')
+                x = paddle.randint(0, 2, [3, 5]).astype('bool')
             else:
-                x = paddle.rand([5])
+                x = paddle.rand([3, 5])
             x.stop_gradient = False
-            out = api(x, 0)
+            out = api(x, keepdim=True)
             out.retain_grads()
             out.backward()
 
-            self.assertEqual(out.shape, [])
+            self.assertEqual(out.shape, [1, 1])
             if x.grad is not None:
-                self.assertEqual(out.grad.shape, [])
-                self.assertEqual(x.grad.shape, [5])
+                self.assertEqual(out.grad.shape, [1, 1])
+                self.assertEqual(x.grad.shape, [3, 5])
 
         paddle.enable_static()
 
@@ -283,16 +301,17 @@ class TestReduceAPI(unittest.TestCase):
                 else:
                     x = paddle.rand([])
                 x.stop_gradient = False
-                out = api(x, None)
+                out = api(x, axis=None)
                 paddle.static.append_backward(out)
 
-                out_empty_list = api(x, None)
-                self.assertEqual(out_empty_list.shape, ())
+                if api not in [paddle.median, paddle.nanmedian]:
+                    out_empty_list = api(x, axis=[])
+                    self.assertEqual(out_empty_list.shape, ())
 
-                out1 = api(x, 0)
+                out1 = api(x, axis=0)
                 self.assertEqual(out1.shape, ())
 
-                out2 = api(x, -1)
+                out2 = api(x, axis=-1)
                 self.assertEqual(out2.shape, ())
 
                 fetch_list = [x, out]
@@ -317,7 +336,7 @@ class TestReduceAPI(unittest.TestCase):
                 else:
                     x = paddle.rand([3, 5])
                 x.stop_gradient = False
-                out = api(x, None)
+                out = api(x, axis=None)
                 paddle.static.append_backward(out)
 
                 fetch_list = [out]
@@ -336,7 +355,7 @@ class TestReduceAPI(unittest.TestCase):
                 else:
                     x = paddle.rand([5])
                 x.stop_gradient = False
-                out = api(x, 0)
+                out = api(x, axis=0)
                 paddle.static.append_backward(out)
 
                 fetch_list = [out]
@@ -1200,54 +1219,6 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.argmax(x, keepdim=True)
         self.assertEqual(out.shape, [1, 1])
 
-    def test_median(self):
-        # 1) x is 0D
-        x = paddle.rand([])
-        x.stop_gradient = False
-        out1 = paddle.median(x, 0)
-        out2 = paddle.median(x, -1)
-        out3 = paddle.median(x, None)
-
-        out1.backward()
-        out2.backward()
-        out3.backward()
-
-        self.assertEqual(out1.shape, [])
-        np.testing.assert_allclose(out1, x)
-
-        self.assertEqual(out2.shape, [])
-        np.testing.assert_allclose(out2, x)
-
-        self.assertEqual(out3.shape, [])
-        np.testing.assert_allclose(out3, x)
-
-        self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, 3.0)
-
-        # 2) x is 1D
-        x = paddle.rand([5])
-        x.stop_gradient = False
-        out = paddle.median(x, 0)
-        out.backward()
-        self.assertEqual(out.shape, [])
-        self.assertEqual(x.grad.shape, [5])
-
-        # 3) x is ND
-        x = paddle.rand([3, 5])
-        x.stop_gradient = False
-        out = paddle.median(x, None)
-        out.backward()
-        self.assertEqual(out.shape, [])
-        self.assertEqual(x.grad.shape, [3, 5])
-
-        # 4) x is ND, keepdim=True
-        x = paddle.rand([3, 5])
-        x.stop_gradient = False
-        out = paddle.median(x, keepdim=True)
-        out.backward()
-        self.assertEqual(out.shape, [1, 1])
-        self.assertEqual(x.grad.shape, [3, 5])
-
     def test_kthvalue(self):
         # 1) x is 0D
         x = paddle.randn([])
@@ -1524,6 +1495,40 @@ class TestSundryAPI(unittest.TestCase):
 
         # 2) x is ND
         x = paddle.rand([2, 3])
+        x.stop_gradient = False
+        out = paddle.quantile(x, 0.5, axis=None)
+
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(out.grad, 1.0)
+        self.assertEqual(x.grad.shape, [2, 3])
+
+    def test_nanquantile(self):
+        # 1) x is 0D
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.quantile(x, 0.5, axis=None)
+
+        out.retain_grads()
+        out.backward()
+
+        out_empty_list = paddle.quantile(x, 0.5, axis=[])
+        self.assertEqual(out_empty_list, out)
+
+        self.assertEqual(x.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out, x)
+
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(x.grad, 1.0)
+        self.assertEqual(out.grad.shape, [])
+        self.assertEqual(out.grad, 1.0)
+
+        # 2) x is ND with 'nan'
+        x = paddle.to_tensor([[float('nan'), 2.0, 3.0], [0.0, 1.0, 2.0]])
         x.stop_gradient = False
         out = paddle.quantile(x, 0.5, axis=None)
 
@@ -3443,40 +3448,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
 
     @prog_scope()
-    def test_median(self):
-        # 1) x is 0D
-        x = paddle.rand([])
-        x.stop_gradient = False
-        out = paddle.median(x)
-        paddle.static.append_backward(out)
-
-        # 2) x is ND
-        x1 = paddle.rand([3, 5])
-        x1.stop_gradient = False
-        out1 = paddle.median(x1)
-        paddle.static.append_backward(out1)
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog,
-            fetch_list=[
-                x,
-                out,
-                x.grad_name,
-                out1,
-                x1.grad_name,
-            ],
-        )
-        self.assertEqual(res[1].shape, ())
-        np.testing.assert_allclose(res[1], res[0])
-
-        self.assertEqual(res[2].shape, ())
-        np.testing.assert_allclose(res[2], 1.0)
-
-        self.assertEqual(res[3].shape, ())
-        self.assertEqual(res[4].shape, (3, 5))
-
-    @prog_scope()
     def test_kthvalue(self):
         # 1) x is 0D
         x = paddle.rand([])
@@ -3813,12 +3784,12 @@ class TestSundryAPIStatic(unittest.TestCase):
         x1 = paddle.rand([])
         x1.stop_gradient = False
         out1 = paddle.quantile(x1, 0.5, axis=None)
-        paddle.static.append_backward(out1.sum())
+        paddle.static.append_backward(out1)
 
         x2 = paddle.rand([2, 3])
         x2.stop_gradient = False
         out2 = paddle.quantile(x2, 0.5, axis=None)
-        paddle.static.append_backward(out2.sum())
+        paddle.static.append_backward(out2)
 
         out_empty_list = paddle.quantile(x1, 0.5, axis=[])
         self.assertEqual(out_empty_list.shape, ())
@@ -3845,6 +3816,37 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[4].shape, (2, 3))
         self.assertEqual(res[5].shape, ())
         self.assertEqual(res[5], 1.0)
+
+    @prog_scope()
+    def test_nanquantile(self):
+        # 1) x is 0D
+        x1 = paddle.rand([])
+        x1.stop_gradient = False
+        out1 = paddle.nanquantile(x1, 0.5, axis=None)
+        paddle.static.append_backward(out1)
+
+        # 2) x is ND with 'nan'
+        x2 = paddle.to_tensor([[float('nan'), 2.0, 3.0], [0.0, 1.0, 2.0]])
+        x2.stop_gradient = False
+        out2 = paddle.nanquantile(x2, 0.5, axis=None)
+        print(out2)
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                x1.grad_name,
+                out2,
+                x2.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, (2, 3))
 
     @prog_scope()
     def test_flip(self):
