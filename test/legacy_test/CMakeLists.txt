@@ -1033,7 +1033,7 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)

@@ -656,8 +656,9 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
-    # when inputs are float16, convert to float32 in computing
-    if convert_dtype(x.dtype) == "float16":
+    dtype = convert_dtype(x.dtype)
+    # when inputs are float16 or bfloat16, convert to float32 in computing
+    if dtype in ["float16", "uint16"]:
         is_amp = True
         x = cast(x, "float32")
         scale = cast(scale, "float32")
@@ -676,9 +677,9 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
         out = out + reshape(bias, (-1, 1, 1))
     ret_mean_ = reshape(mean_, (N, groups))
     ret_var_ = reshape(var_, (N, groups))
-    # return output in float16, mean and var in float32
+    # return output in float16 or bfloat16, mean and var in float32
     if is_amp:
-        out = cast(out, "float16")
+        out = cast(out, dtype)
     return out, ret_mean_, ret_var_
 
 
