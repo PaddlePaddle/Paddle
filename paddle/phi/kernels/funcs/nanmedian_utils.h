@@ -15,9 +15,51 @@
 #pragma once
 
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/nanmedian_kernel.h"
 
 namespace phi {
+namespace funcs {
+
+template <typename T, typename Context>
+void PostprocessMedianGradKernel(const Context& dev_ctx,
+                                 DenseTensor* input,
+                                 const IntArray& raw_axes,
+                                 DenseTensor* x) {
+  auto input_dim = input->dims();
+  auto rank = input_dim.size();
+
+  std::vector<int64_t> axes = raw_axes.GetData();
+  int64_t axes_size = static_cast<int>(axes.size());
+  for (int64_t i = 0; i < axes_size; i++) {
+    if (axes[i] < 0) {
+      axes[i] += rank;
+    }
+  }
+
+  std::vector<int> trans_back;
+  std::vector<int> reshape_back;
+  trans_back.resize(rank);
+
+  int offset = 0;
+  for (int64_t i = 0; i < rank; i++) {
+    if (std::find(axes.begin(), axes.end(), i) == axes.end()) {
+      reshape_back.push_back(input_dim[i]);
+      trans_back[i] = offset;
+      offset += 1;
+    }
+  }
+
+  for (int64_t i = 0; i < rank; i++) {
+    if (std::find(axes.begin(), axes.end(), i) != axes.end()) {
+      trans_back[i] = offset;
+      reshape_back.push_back(input_dim[i]);
+      offset += 1;
+    }
+  }
+
+  input->Resize(make_ddim(reshape_back));
+  funcs::TransCompute<Context, T>(
+      static_cast<int>(trans_back.size()), dev_ctx, *input, x, trans_back);
+}
 
 template <typename T, typename Context>
 void PreprocessMedianKernel(const Context& dev_ctx,
@@ -65,4 +107,5 @@ void PreprocessMedianKernel(const Context& dev_ctx,
   x->Resize(make_ddim(reshape));
 }
 
+}  // namespace funcs
 }  // namespace phi
