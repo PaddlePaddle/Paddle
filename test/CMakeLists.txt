@@ -236,7 +236,7 @@ if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
 
-if(TEST standalone_executor_new_ir_test)
+if(TARGET standalone_executor_new_ir_test)
   set_tests_properties(
     standalone_executor_new_ir_test
     PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
