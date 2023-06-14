@@ -240,7 +240,9 @@ def batch_norm(
         from paddle.fluid.data_feeder import convert_dtype
 
         param_dtype = (
-            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+            x.dtype
+            if convert_dtype(x.dtype) not in ['float16', 'uint16']
+            else 'float32'
         )
         saved_mean = helper.create_variable_for_type_inference(
             dtype=param_dtype, stop_gradient=True

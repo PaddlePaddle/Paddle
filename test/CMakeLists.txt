@@ -214,6 +214,14 @@ if(TARGET standalone_executor_test)
   endif()
 endif()
 
+if(TARGET standalone_executor_new_ir_test)
+  if(NOT WIN32)
+    set_tests_properties(
+      standalone_executor_new_ir_test
+      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
+  endif()
+endif()
+
 if(TARGET layer_test)
   add_dependencies(layer_test jit_download_program)
   add_dependencies(layer_test_new jit_download_program)
@@ -234,10 +242,4 @@ add_custom_target(build_tests)
 # add target to build all cpp tests
 if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
-endif()
-
-if(TARGET standalone_executor_new_ir_test)
-  set_tests_properties(
-    standalone_executor_new_ir_test
-    PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
 endif()
