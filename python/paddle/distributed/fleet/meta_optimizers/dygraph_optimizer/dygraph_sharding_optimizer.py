@@ -22,6 +22,7 @@ from paddle import framework
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
+from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
 from ...utils.tensor_fusion_helper import (
@@ -158,6 +159,7 @@ class DygraphShardingOptimizer:
         """
         should clear grad for all parameters in model
         """
+        #
         for p in self._parameter_list:
             if hasattr(p, "main_grad") and p.main_grad is not None:
                 assert p._grad_ivar() is None
