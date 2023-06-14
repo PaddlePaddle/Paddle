@@ -71,6 +71,9 @@ class Lamb(Optimizer):
             ( :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` , :ref:`api_paddle_fluid_clip_ClipGradByNorm` ,
             :ref:`api_paddle_fluid_clip_ClipGradByValue` ). If you want better convergence, it is recommended
             to use :ref:`api_paddle_fluid_clip_ClipGradByGlobalNorm` . Default None, meaning there is no gradient clipping.
+        exclude_from_weight_decay_fn (function, optional): whether to skip weight decay for a parameter when this function returns True while take the parameter as input.
+        always_adapt (bool, optional): whether to use Layer-wise LR adaptation. By default, skip adaptation on parameters that are
+            excluded from weight decay, unless always_adapt == True, then always enable LR adaptation.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
@@ -106,6 +109,7 @@ class Lamb(Optimizer):
         grad_clip=None,
         exclude_from_weight_decay_fn=None,
         multi_precision=False,
+        always_adapt=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -136,6 +140,7 @@ class Lamb(Optimizer):
         self._used_master_weights = {}
         # TODO(zengjinle): expose API as soon as possible
         self._multi_precision = multi_precision
+        self.always_adapt = always_adapt
 
     def _get_parameter(self, name, scope=None):
         if scope is None:
@@ -253,6 +258,7 @@ class Lamb(Optimizer):
                 self._beta1,
                 self._beta2,
                 self._epsilon,
+                self.always_adapt,
                 find_master,
             )
             return None
@@ -279,6 +285,7 @@ class Lamb(Optimizer):
                 "beta2": self._beta2,
                 "epsilon": self._epsilon,
                 "weight_decay": weight_decay,
+                "always_adapt": self.always_adapt,
                 "multi_precision": find_master,
             }
 
