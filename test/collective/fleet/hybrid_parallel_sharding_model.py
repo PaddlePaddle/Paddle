@@ -210,44 +210,21 @@ class TestDistMPTraning(unittest.TestCase):
         optimizer.clear_grad()
         return loss
 
-    def build_optimizer(
-        self, model, strategy=None, is_sharding=True, Optimizer="adam"
-    ):
+    def build_optimizer(self, model, strategy=None, Optimizer="adam"):
         clip = paddle.nn.ClipGradByGlobalNorm(0.5)
         if Optimizer == "adam":
-            if is_sharding:
-                optimizer = DygraphShardingOptimizer(
-                    hcg=fleet.get_hybrid_communicate_group(),
-                    user_defined_strategy=strategy,
-                    params=model.parameters(),
-                    inner_optimizer_class=paddle.optimizer.AdamW,
-                    learning_rate=0.001,
-                    weight_decay=0.00001,
-                    grad_clip=clip,
-                )
-            else:
-                optimizer = paddle.optimizer.AdamW(
-                    parameters=model.parameters(),
-                    learning_rate=0.001,
-                    weight_decay=0.00001,
-                    grad_clip=clip,
-                )
+            optimizer = paddle.optimizer.AdamW(
+                parameters=model.parameters(),
+                learning_rate=0.001,
+                weight_decay=0.00001,
+                grad_clip=clip,
+            )
         else:
-            if is_sharding:
-                optimizer = DygraphShardingOptimizer(
-                    hcg=fleet.get_hybrid_communicate_group(),
-                    user_defined_strategy=strategy,
-                    params=model.parameters(),
-                    inner_optimizer_class=paddle.optimizer.Momentum,
-                    learning_rate=0.001,
-                    grad_clip=clip,
-                )
-            else:
-                optimizer = paddle.optimizer.Momentum(
-                    learning_rate=0.001,
-                    parameters=model.parameters(),
-                    grad_clip=clip,
-                )
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=0.001,
+                parameters=model.parameters(),
+                grad_clip=clip,
+            )
         return optimizer
 
     def build_model_optimizer(self, Optimizer="adam"):
@@ -266,7 +243,6 @@ class TestDistMPTraning(unittest.TestCase):
         optimizer_a = self.build_optimizer(
             model_a,
             strategy=self.strategy,
-            is_sharding=True,
             Optimizer=Optimizer,
         )
         model_a = fleet.distributed_model(model_a)
@@ -278,7 +254,6 @@ class TestDistMPTraning(unittest.TestCase):
         optimizer_b = self.build_optimizer(
             model_b,
             strategy=self.strategy,
-            is_sharding=False,
             Optimizer=Optimizer,
         )
 
@@ -296,9 +271,7 @@ class TestDistMPTraning(unittest.TestCase):
         for idx in range(STEPS):
             if idx == 2 and paddle.distributed.get_rank() == 0:
                 self.assertTrue(
-                    set(
-                        optimizer_a._inner_opt._inner_optimizer.state_dict().keys()
-                    )
+                    set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
                     == sharded_accumulators
                 )
 
