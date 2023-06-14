@@ -1,3 +1,8 @@
+cc_test(
+  standalone_executor_new_ir_test
+  SRCS standalone_executor_new_ir_test.cc
+  DEPS phi_kernel_adaptor new_ir pd_dialect)
+
 # skip win32 since wget is not installed by default on windows machine.
 
 set(OPS
@@ -46,8 +51,3 @@ if(WITH_GPU
   #   add_dependencies(standalone_executor_test profiler)
   # endif()
 endif()
-
-cc_test(
-  standalone_executor_new_ir_test
-  SRCS standalone_executor_new_ir_test.cc
-  DEPS phi_kernel_adaptor new_ir pd_dialect)
