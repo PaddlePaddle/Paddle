@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,19 +18,13 @@
 
 namespace phi {
 
-/*
- * All tensors' dimension should be the same and the values of
- * each dimension must be the same, except the axis dimension.
- */
-template <typename T, typename Context>
-void UnbindKernel(const Context& ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  std::vector<DenseTensor*> outs);
-
 template <typename Context>
-void UnbindStridedKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         int axis,
-                         std::vector<DenseTensor*> outs);
+void AsStridedGradKernel(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& out_grad,
+                         const std::vector<int64_t>& dims,
+                         const std::vector<int64_t>& stride,
+                         int64_t offset,
+                         DenseTensor* input_grad);
+
 }  // namespace phi

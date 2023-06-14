@@ -2380,7 +2380,7 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"stride",
+    {"get_stride",
      (PyCFunction)(void (*)(void))tensor_method_stride,
      METH_VARARGS | METH_KEYWORDS,
      NULL},

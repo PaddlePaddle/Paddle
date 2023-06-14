@@ -223,7 +223,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.lod = meta.lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
-  if (product(meta.stride) <= 0) {
+  if (product(meta.stride) == 0) {
     meta_.stride = meta_.calc_stride(meta_.dims, meta_.layout);
   } else {
     meta_.stride = meta.stride;
