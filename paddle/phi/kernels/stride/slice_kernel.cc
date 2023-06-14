@@ -28,19 +28,12 @@ void SliceStridedKernel(const Context& ctx,
                         const std::vector<int64_t>& axis,
                         const IntArray& starts_arr,
                         const IntArray& ends_arr,
-                        const std::vector<int64_t>& infer_flags_t,
+                        const std::vector<int64_t>& infer_flags,
                         const std::vector<int64_t>& decrease_axis,
                         DenseTensor* out) {
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
   auto in_dims = input.dims();
-
-  std::vector<int64_t> infer_flags = infer_flags_t;
-  if (infer_flags.empty()) {
-    // Initialize infer_flags with 1.
-    // To be compatible with other op tests in which infer_flags is not set.
-    infer_flags = std::vector<int64_t>(axis.size(), 1);
-  }
 
   auto new_axis = axis;
   for (auto& item : new_axis) {
@@ -50,18 +43,7 @@ void SliceStridedKernel(const Context& ctx,
   }
 
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
-      in_dims, new_axis, &starts, &ends, nullptr, &infer_flags);
-
-  for (size_t i = 0; i < new_axis.size(); ++i) {
-    // when start == -1 && end == start+1
-    if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
-      auto ret =
-          std::find(decrease_axis.begin(), decrease_axis.end(), new_axis[i]);
-      if (ret != decrease_axis.end()) {
-        ends[i] = in_dims[new_axis[i]];
-      }
-    }
-  }
+      in_dims, new_axis, &starts, &ends, nullptr, nullptr);
 
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
@@ -73,16 +55,29 @@ void SliceStridedKernel(const Context& ctx,
     output_dims[new_axis[i]] = ends[i] - starts[i];
   }
 
-  auto iter_dims = output_dims.begin();
-  auto iter_stride = output_stride.begin();
-  while (iter_dims != output_dims.end()) {
-    if (*iter_dims == 1) {
-      iter_dims = output_dims.erase(iter_dims);
-      iter_stride = output_stride.erase(iter_stride);
-    } else {
-      iter_dims++;
-      iter_stride++;
+  std::vector<uint8_t> decrease_flag(output_dims.size(), 0);
+  if (decrease_axis.size() > 0) {
+    for (size_t i = 0; i < decrease_axis.size(); ++i) {
+      int64_t axis = decrease_axis[i];
+      decrease_flag[axis] = 1;
     }
+
+    std::vector<int64_t> new_shape;
+    std::vector<int64_t> new_stride;
+    for (size_t i = 0; i < output_dims.size(); ++i) {
+      if (decrease_flag[i] == 0) {
+        new_shape.push_back(output_dims[i]);
+        new_stride.push_back(output_stride[i]);
+      }
+    }
+    if (FLAGS_set_to_1d && new_shape.size() == 0) {
+      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
+      // slice. This will remove in release 2.6.
+      new_shape.push_back(1);
+      new_stride.push_back(1);
+    }
+    output_dims = new_shape;
+    output_stride = new_stride;
   }
 
   auto meta = out->meta();

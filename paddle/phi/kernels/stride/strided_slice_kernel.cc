@@ -35,19 +35,10 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   std::vector<int64_t> ends = ends_arr.GetData();
   std::vector<int64_t> strides = strides_arr.GetData();
 
-  DDim output_dims = input.dims();
-  DDim output_stride = input.stride();
+  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
   int64_t output_offset = input.offset();
   for (size_t i = 0; i < axis.size(); ++i) {
-    if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
-      if (decrease_axis.end() ==
-          std::find(decrease_axis.begin(), decrease_axis.end(), axis[i])) {
-        output_dims[axis[i]] = 1;
-        output_stride[axis[i]] = input.stride()[axis[i]];
-        continue;
-      }
-    }
-
     int64_t axis_size = input.dims()[axis[i]];
 
     if (axis_size < 0) {
@@ -93,14 +84,33 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
     output_stride[axis[i]] *= strides[i];
   }
 
+  // generate new shape
+  if (decrease_axis.size() > 0) {
+    std::vector<int64_t> new_out_shape;
+    std::vector<int64_t> new_out_stride;
+    for (size_t i = 0; i < decrease_axis.size(); ++i) {
+      output_dims[decrease_axis[i]] = 0;
+    }
+
+    for (size_t i = 0; i < output_dims.size(); ++i) {
+      if (output_dims[i] != 0) {
+        new_out_shape.push_back(output_dims[i]);
+        new_out_stride.push_back(output_stride[i]);
+      }
+    }
+    output_dims = new_out_shape;
+    output_stride = new_out_stride;
+  }
+
   auto meta = out->meta();
   meta.offset = output_offset;
-  if (meta.dims != output_dims) {
+  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  if (meta.dims != tmp_dim) {
     LOG(WARNING) << "Striede_slice kernel stride compute diff, infer shape is "
-                 << meta.dims << ", but compute is " << output_dims << ".";
-    meta.dims = output_dims;
+                 << meta.dims << ", but compute is " << tmp_dim << ".";
+    meta.dims = tmp_dim;
   }
-  meta.stride = output_stride;
+  meta.stride = DDim(output_stride.data(), output_stride.size());
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }

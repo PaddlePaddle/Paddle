@@ -324,24 +324,22 @@ def slice(input, axes, starts, ends):
 
         infer_flags = [1 for i in range(len(axes))]
 
-        tmp_tensor_type = core.eager.Tensor
-
         if isinstance(starts, (list, tuple)):
             starts = [
-                item.item(0) if isinstance(item, tmp_tensor_type) else item
+                item.item(0) if isinstance(item, core.eager.Tensor) else item
                 for item in starts
             ]
-        elif isinstance(starts, tmp_tensor_type):
+        elif isinstance(starts, core.eager.Tensor):
             tensor_t = starts.numpy(False)
             starts = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
 
         if isinstance(ends, (list, tuple)):
             ends = [
-                item.item(0) if isinstance(item, tmp_tensor_type) else item
+                item.item(0) if isinstance(item, core.eager.Tensor) else item
                 for item in ends
             ]
-        elif isinstance(ends, tmp_tensor_type):
+        elif isinstance(ends, core.eager.Tensor):
             tensor_t = ends.numpy(False)
             ends = list(tensor_t)
             infer_flags = [-1 for i in range(len(axes))]
