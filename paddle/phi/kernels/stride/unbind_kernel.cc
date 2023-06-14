@@ -20,18 +20,23 @@
 namespace phi {
 
 template <typename Context>
-void UnbindStridedKernel(const Context& ctx,
+void UnbindStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          int axis,
                          std::vector<DenseTensor*> outs) {
-  int64_t input_dim_size = x.dims().size();
   int64_t num = outs.size();
   int64_t start = 0;
 
   for (int64_t i = 0; i < num; i++) {
     auto size = outs[i]->dims()[axis];
-    SliceStridedKernel<Context>(
-        dev_ctx, x, {start}, {start + size}, {}, {}, outs[i]);
+    SliceStridedKernel<Context>(dev_ctx,
+                                x,
+                                {axis},
+                                IntArray({start}),
+                                IntArray({start + size}),
+                                std::vector<int64_t>(),
+                                std::vector<int64_t>(),
+                                outs[i]);
     start += size;
   }
 }

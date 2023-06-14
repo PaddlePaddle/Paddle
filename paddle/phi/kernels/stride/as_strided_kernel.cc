@@ -24,10 +24,10 @@ void AsStridedKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& stride,
                      int64_t offset,
                      DenseTensor* out) {
-  out->set_dims(DDims(dims.data(), dims.size()));
-  out->set_stride(DDims(out_stride.data(), out_stride.size()));
+  out->Resize(DDim(dims.data(), dims.size()));
+  out->set_stride(DDim(stride.data(), stride.size()));
   out->set_offset(offset);
-  out->ResetHolder(x.Holder());
+  out->ResetHolder(input.Holder());
 }
 
 }  // namespace phi
