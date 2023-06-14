@@ -44,7 +44,7 @@ using paddle::framework::GradVarName;
 {{backward_op_reused_maker(op, op_dict[op["forward"]["name"]], op["invoke"])}}
   {% endif %}
   {% if op is composite_op %}
-{{composite_grad_op_maker(op_dict[op["name"]])}}
+{{composite_grad_op_maker(op_dict[op["name"]], op_dict[op["forward"]["name"]])}}
   {% endif %}
 {% endfor %}
 }  // namespace operators
