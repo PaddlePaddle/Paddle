@@ -22,6 +22,12 @@ template <typename Context>
 void RealStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (x.dtype() != DataType::COMPLEX64 && x.dtype() != DataType::COMPLEX128) {
+    PADDLE_THROW(
+        phi::errors::NotFoundError("paddle.real only support COMPLEX64 and "
+                                   "COMPLEX128, but the input dtype is %s",
+                                   x.dtype()));
+  }
   DDim stride = out->stride();
   for (int i = 0; i < stride.size(); i++) {
     stride[i] = out->stride()[i] * 2;
@@ -34,6 +40,12 @@ template <typename Context>
 void ImagStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (x.dtype() != DataType::COMPLEX64 && x.dtype() != DataType::COMPLEX128) {
+    PADDLE_THROW(
+        phi::errors::NotFoundError("paddle.imag only support COMPLEX64 and "
+                                   "COMPLEX128, but the input dtype is %s",
+                                   x.dtype()));
+  }
   DDim stride = out->stride();
   for (int i = 0; i < stride.size(); i++) {
     stride[i] = out->stride()[i] * 2;
