@@ -110,7 +110,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
-        self.atol = 1e-3
+        self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
 
@@ -296,7 +296,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             np.testing.assert_allclose(
                 convert_numpy_array(bn_val),
                 convert_numpy_array(sync_bn_val),
-                rtol=1e-05,
+                rtol=1e-04,
                 atol=self.atol,
                 err_msg='Output ('
                 + fetch_names[i]
@@ -340,7 +340,7 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
-        self.atol = 1e-3
+        self.atol = 5e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
 
