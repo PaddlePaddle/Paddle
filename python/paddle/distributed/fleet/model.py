@@ -85,7 +85,7 @@ def distributed_model(model):
     fleet_env = fleet.fleet
 
     assert model is not None, "model should not be None"
-    if fleet_env.worker_num() <= 1:
+    if paddle.distributed.get_world_size() <= 1:
         return model
 
     amp_enable = False

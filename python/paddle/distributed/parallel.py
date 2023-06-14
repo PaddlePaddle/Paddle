@@ -38,7 +38,11 @@ from paddle.distributed.collective import (
     _set_group_map_by_name,
     _valid_backend_list,
 )
-from paddle.distributed.communication.group import _add_new_group
+from paddle.distributed.communication.group import (
+    _add_new_group,
+    _get_global_group,
+    is_initialized,
+)
 from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
     wait_server_ready,
 )
@@ -1241,6 +1245,10 @@ def get_world_size(group=None):
             print("The world_size is %d" % dist.get_world_size())
             # The world_size is 1
     """
+    if in_dynamic_mode() and (group is None):
+        if is_initialized():
+            group = _get_global_group()
+
     if in_dynamic_mode() and group:
         return group.world_size
 
