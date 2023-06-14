@@ -66,7 +66,7 @@ class DDim {
 
   DDim() : rank_(1) { dim_[0] = 0; }
 
-  DDim(const DDim& ddim) : {
+  DDim(const DDim& ddim) {
     rank_ = ddim.size();
     dynamic_dim_assign(ddim.Get(), dim_.GetMutable(), rank_);
   }
