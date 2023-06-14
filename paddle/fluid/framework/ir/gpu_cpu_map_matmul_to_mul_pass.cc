@@ -656,8 +656,7 @@ void GpuCpuReshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
 
     std::vector<Node*>& next_ops = matmul_out->outputs;
     flag = flag && next_ops.size() == 1 &&
-           (next_ops[0]->Name() == "elementwise_add" ||
-            next_ops[0]->Name() == "batch_norm");
+           next_ops[0]->Name() == "elementwise_add";
 
     if (flag) {
       if (!IsCompat(subgraph, g)) {
