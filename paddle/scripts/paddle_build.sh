@@ -3435,7 +3435,7 @@ EOF
     export WITH_XPU=${WITH_XPU:-OFF}
     export WITH_IPU=${WITH_IPU:-OFF}
     export XPU_SDK_ROOT=${XPU_SDK_ROOT:-""}
-    export WITH_LITE=${WITH_LITE:-OFF}
+    export WITH_LITE=OFF
     export WITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
     export WITH_ARM=${WITH_ARM:-OFF}
     export WITH_STRIP=${WITH_STRIP:-ON}
@@ -3857,6 +3857,7 @@ function main() {
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
+        export WITH_LITE=OFF
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
         check_coverage_build
