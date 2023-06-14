@@ -15,9 +15,6 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
@@ -26,6 +23,9 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
+
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 
 namespace py = pybind11;
 
@@ -294,7 +294,8 @@ void BindAutoParallel(py::module *m) {
       .def("set_dims_mapping", &DistTensorSpec::set_dims_mapping)
       .def("get_process_mesh", &DistTensorSpec::get_process_mesh)
       .def("set_process_mesh", &DistTensorSpec::set_process_mesh)
-      .def_property_readonly("shape", &DistTensorSpec::get_shape)
+      .def_property(
+          "shape", &DistTensorSpec::get_shape, &DistTensorSpec::set_shape)
       .def("__str__", &DistTensorSpec::to_string)
       .def("__copy__",
            [](const DistTensorSpec &self) { return DistTensorSpec(self); })
@@ -408,9 +409,12 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
 
-  m->def("get_spmd_rule", [](const std::string op_type) {
-    return SPMDRuleMap::Instance().Get(op_type);
-  });
+  m->def(
+      "get_spmd_rule",
+      [](const std::string op_type) {
+        return SPMDRuleMap::Instance().Get(op_type);
+      },
+      py::return_value_policy::reference);
 
   // TODO(liuzhenhai): DistributedMapper is not used for now, but
   // dist_mapper_test need the symbols forch DistributedMapper to be linked,
@@ -423,6 +427,3 @@ void BindAutoParallel(py::module *m) {
 
 }  // namespace pybind
 }  // namespace paddle
-
-namespace ap = paddle::distributed::auto_parallel;
-REGISTER_SPMD_RULE(matmul, ap::MatmulSPMDRule);

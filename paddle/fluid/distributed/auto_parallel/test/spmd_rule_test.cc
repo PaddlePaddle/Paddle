@@ -16,8 +16,8 @@ limitations under the License. */
 #include <sstream>
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
@@ -54,11 +54,11 @@ TEST(MatmulSPMDRule, Ctor) {
   attrs["trans_x"] = false;
   attrs["trans_y"] = false;
 
-  const SPMDRuleBase& matmul_rule = SPMDRuleMap::Instance().Get(matmul);
+  SPMDRuleBase* matmul_rule = SPMDRuleMap::Instance().Get("matmul");
 
   // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
-  std::vector<TensorDistAttr> infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  std::vector<TensorDistAttr> infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   size_t nreturn = 3;
   EXPECT_EQ(infered_dist_attrs.size(), nreturn);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
@@ -72,8 +72,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // mk[-1,-1],kn[-1,0] --> mk[-1,-1],kn[-1,0] = nm[-1,0] partial[]
   x_dist_tensor_spec.set_dims_mapping({-1, -1});
   y_dist_tensor_spec.set_dims_mapping({-1, 0});
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
@@ -85,8 +85,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // mk[1, 0],kn[-1,-1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]: done
   x_dist_tensor_spec.set_dims_mapping({1, 0});
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(), std::vector<int64_t>({1, 0}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
             std::vector<int64_t>({0, -1}));
@@ -97,8 +97,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // mk[-1,-1],kn[1,0] --> mk[-1, 1],kn[1, 0] = nm[-1, 0] partial[1]: done
   x_dist_tensor_spec.set_dims_mapping({-1, -1});
   y_dist_tensor_spec.set_dims_mapping({1, 0});
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({-1, 1}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(), std::vector<int64_t>({1, 0}));
@@ -111,8 +111,8 @@ TEST(MatmulSPMDRule, Ctor) {
   x_dist_tensor_spec.set_shape({512, 48, 64, 32});
   x_dist_tensor_spec.set_dims_mapping({0, 1, -1, -1});
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1, -1}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
@@ -125,8 +125,8 @@ TEST(MatmulSPMDRule, Ctor) {
   // -1, -1, -1] partial[0]: done
   x_dist_tensor_spec.set_dims_mapping({1, -1, -1, 0});
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
@@ -140,8 +140,8 @@ TEST(MatmulSPMDRule, Ctor) {
   x_dist_tensor_spec.set_dims_mapping({1, -1, -1, 0});
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
   attrs["trans_x"] = true;
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
@@ -156,8 +156,8 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({1, 0});
   attrs["trans_x"] = false;
   attrs["trans_y"] = true;
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(), std::vector<int64_t>({1, 0}));
@@ -171,8 +171,8 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({1, 0});
   attrs["trans_y"] = true;
   attrs["trans_x"] = true;
-  infered_dist_attrs =
-      matmul_rule.InferForward({x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  infered_dist_attrs = matmul_rule->InferForward(
+      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 0, 1}));
   EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
@@ -181,13 +181,13 @@ TEST(MatmulSPMDRule, Ctor) {
             std::vector<int64_t>({-1, -1, 1, -1}));
   VLOG(4) << "test9 done." << std::endl << std::endl << std::endl;
 
-  // abcmk[-1, -1, -1, -1], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
+  // abcmk[-1, -1, 1, 0], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] =
   // abcmn[-1, -1, -1, 1] partial[0]: done
   x_dist_tensor_spec.set_dims_mapping({-1, -1, 1, 0});
   y_dist_tensor_spec.set_dims_mapping({1, 0});
   attrs["trans_y"] = true;
   attrs["trans_x"] = true;
-  EXPECT_ANY_THROW(infered_dist_attrs = matmul_rule.InferForward(
+  EXPECT_ANY_THROW(infered_dist_attrs = matmul_rule->InferForward(
                        {x_dist_tensor_spec, y_dist_tensor_spec}, attrs));
   // Error
   VLOG(4) << "test10 done." << std::endl << std::endl << std::endl;
