@@ -70,12 +70,6 @@ void SliceStridedKernel(const Context& ctx,
         new_stride.push_back(output_stride[i]);
       }
     }
-    if (FLAGS_set_to_1d && new_shape.size() == 0) {
-      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
-      // slice. This will remove in release 2.6.
-      new_shape.push_back(1);
-      new_stride.push_back(1);
-    }
     output_dims = new_shape;
     output_stride = new_stride;
   }

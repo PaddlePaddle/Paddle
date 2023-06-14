@@ -104,10 +104,9 @@ std::vector<int64_t> Tensor::shape() const {
   return phi::vectorize<int64_t>(dims);
 }
 
-std::vector<int64_t> Tensor::stride() const {
+const phi::DDim &Tensor::stride() const {
   if (is_dense_tensor()) {
-    auto stride = static_cast<phi::DenseTensor *>(impl_.get())->stride();
-    return phi::vectorize<int64_t>(stride);
+    return static_cast<phi::DenseTensor *>(impl_.get())->stride();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support stride operation on DenseTensor now."));
