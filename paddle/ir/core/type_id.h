@@ -17,6 +17,18 @@
 #include <glog/logging.h>
 #include <functional>
 
+#if defined(_WIN32)
+#ifndef IR_API
+#ifdef IR_DLL_EXPORT
+#define IR_API __declspec(dllexport)
+#else
+#define IR_API __declspec(dllimport)
+#endif  // IR_DLL_EXPORT
+#endif  // IR_API
+#else
+#define IR_API
+#endif  // _WIN32
+
 namespace ir {
 
 ///
@@ -104,16 +116,17 @@ TypeId TypeId::get() {
   return detail::TypeIdResolver<T>::Resolve();
 }
 
-#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
-  namespace ir {                                \
-  namespace detail {                            \
-  template <>                                   \
-  class TypeIdResolver<TYPE_CLASS> {            \
-   public:                                      \
-    static TypeId Resolve() { return id_; }     \
-    static UniqueingId id_;                     \
-  };                                            \
-  }                                             \
+#define IR_API                              \
+  IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)   \
+  namespace ir {                            \
+  namespace detail {                        \
+  template <>                               \
+  class TypeIdResolver<TYPE_CLASS> {        \
+   public:                                  \
+    static TypeId Resolve() { return id_; } \
+    static UniqueingId id_;                 \
+  };                                        \
+  }                                         \
   }  // namespace ir
 
 /*
