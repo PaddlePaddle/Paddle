@@ -28,6 +28,14 @@ import paddle.nn.functional as F
 
 unary_api_list = [
     paddle.nn.functional.elu,
+    paddle.nn.functional.rrelu,
+    paddle.frac,
+    paddle.sgn,
+    paddle.nan_to_num,
+    paddle.i0,
+    paddle.i0e,
+    paddle.i1,
+    paddle.i1e,
     paddle.nn.functional.gelu,
     paddle.nn.functional.hardsigmoid,
     paddle.nn.functional.hardswish,
@@ -95,9 +103,15 @@ unary_api_list = [
     paddle.nn.functional.alpha_dropout,
 ]
 
-inplace_api_list = [
+inplace_unary_api_list = [
     paddle.nn.functional.relu_,
     paddle.nn.functional.tanh_,
+    paddle.tensor.sigmoid_,
+    paddle.tensor.ceil_,
+    paddle.tensor.floor_,
+    paddle.tensor.reciprocal_,
+    paddle.tensor.exp_,
+    paddle.tensor.sqrt_,
 ]
 
 
@@ -119,7 +133,7 @@ class TestUnaryAPI(unittest.TestCase):
                 self.assertEqual(x.grad.shape, [])
                 self.assertEqual(out.grad.shape, [])
 
-        for api in inplace_api_list:
+        for api in inplace_unary_api_list:
             x = paddle.rand([])
             out = api(x)
             self.assertEqual(x.shape, [])
@@ -173,6 +187,7 @@ reduce_api_list = [
     paddle.logsumexp,
     paddle.all,
     paddle.any,
+    paddle.count_nonzero,
 ]
 
 
@@ -194,7 +209,8 @@ class TestReduceAPI(unittest.TestCase):
 
             self.assertEqual(x.shape, [])
             self.assertEqual(out.shape, [])
-            np.testing.assert_allclose(out.numpy(), x.numpy())
+            if api not in [paddle.count_nonzero]:
+                np.testing.assert_allclose(out.numpy(), x.numpy())
 
             out_empty_list = api(x, [])
             self.assertEqual(out_empty_list, out)
@@ -286,7 +302,8 @@ class TestReduceAPI(unittest.TestCase):
                 res = exe.run(main_prog, fetch_list=fetch_list)
                 self.assertEqual(res[0].shape, ())
                 self.assertEqual(res[1].shape, ())
-                np.testing.assert_allclose(res[0], res[1])
+                if api not in [paddle.count_nonzero]:
+                    np.testing.assert_allclose(res[0], res[1])
 
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, ())
@@ -359,6 +376,11 @@ binary_api_list = [
     paddle.fmin,
     paddle.complex,
     paddle.kron,
+    paddle.logaddexp,
+    paddle.nextafter,
+    paddle.ldexp,
+    paddle.polar,
+    paddle.heaviside,
 ]
 
 binary_int_api_list = [
@@ -367,6 +389,15 @@ binary_int_api_list = [
     paddle.bitwise_xor,
     paddle.gcd,
     paddle.lcm,
+]
+
+
+inplace_binary_api_list = [
+    paddle.tensor.add_,
+    paddle.tensor.subtract_,
+    paddle.tensor.multiply_,
+    paddle.tensor.remainder_,
+    paddle.tensor.remainder_,
 ]
 
 
@@ -496,6 +527,20 @@ class TestBinaryAPI(unittest.TestCase):
 
             self.assertEqual(out.shape, [3, 5])
             np.testing.assert_array_equal(out.numpy(), out_np)
+
+        for api in inplace_binary_api_list:
+            with paddle.no_grad():
+                x = paddle.rand([])
+                y = paddle.rand([])
+                out = api(x, y)
+                self.assertEqual(x.shape, [])
+                self.assertEqual(out.shape, [])
+
+                x = paddle.rand([3, 5])
+                y = paddle.rand([])
+                out = api(x, y)
+                self.assertEqual(x.shape, [3, 5])
+                self.assertEqual(out.shape, [3, 5])
 
         paddle.enable_static()
 
@@ -639,6 +684,65 @@ class TestSundryAPI(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.rand([])
+
+    def test_polygamma(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.polygamma(x, 2)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_frexp(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out1, out2 = paddle.frexp(x)
+        out1.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(x.grad.shape, [])
+
+    def test_pairwise_distance(self):
+        x = paddle.rand([5])
+        x.stop_gradient = False
+        y = paddle.rand([5])
+        y.stop_gradient = False
+
+        out = paddle.nn.functional.pairwise_distance(x, y)
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [5])
+
+    def test_take(self):
+        x = paddle.rand([4, 5])
+        x.stop_gradient = False
+        out = paddle.take(x, paddle.to_tensor(2))
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [4, 5])
+        np.testing.assert_allclose(x.grad[0, 2], 1.0)
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.take(x, paddle.to_tensor(0))
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, x)
+        self.assertEqual(x.grad.shape, [])
+        np.testing.assert_allclose(x.grad.numpy(), 1.0)
+
+    def test_trapezoid(self):
+        y = paddle.rand([5])
+        y.stop_gradient = False
+        out = paddle.trapezoid(y, dx=2.0)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(y.grad.shape, [5])
 
     def test_create_parameter_var(self):
         zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
@@ -1964,6 +2068,25 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out3.grad.shape, [])
         self.assertTrue(out3.grad.numpy() == 1)
 
+    def test_logcumsumexp(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out1 = paddle.logcumsumexp(x)
+        out2 = paddle.logcumsumexp(x, axis=0)
+        out3 = paddle.logcumsumexp(x, axis=-1)
+
+        out1.backward()
+        out2.backward()
+        out3.backward()
+
+        self.assertEqual(out1.shape, [1])
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out3.shape, [])
+
+        self.assertEqual(x.grad.shape, [])
+        self.assertTrue(x.grad.numpy() == 3)
+
     def test_add_n(self):
         x1 = paddle.rand([])
         x1.stop_gradient = False
@@ -2653,6 +2776,15 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(xt_1_out.shape, [])
         self.assertEqual(xt_1.grad.shape, [12])
 
+    def test_corrcoef(self):
+        x = paddle.randn((12,))
+        x.stop_gradient = False
+        out = paddle.linalg.corrcoef(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [12])
+
     def test_det(self):
         xt = paddle.randn([3, 3, 3])
         xt.stop_gradient = False
@@ -2850,6 +2982,81 @@ class TestSundryAPIStatic(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
+
+    @prog_scope()
+    def test_polygamma(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.polygamma(x, 2)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+
+    @prog_scope()
+    def test_frexp(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out1, out2 = paddle.frexp(x)
+        paddle.static.append_backward(out1)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2, x.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+
+    @prog_scope()
+    def test_pairwise_distance(self):
+        x = paddle.rand([5])
+        x.stop_gradient = False
+        y = paddle.rand([5])
+        y.stop_gradient = False
+
+        out = paddle.nn.functional.pairwise_distance(x, y)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5,))
+        self.assertEqual(res[2].shape, (5,))
+
+    @prog_scope()
+    def test_take(self):
+        x1 = paddle.rand([4, 5])
+        x1.stop_gradient = False
+        out1 = paddle.take(x1, paddle.to_tensor(2))
+        paddle.static.append_backward(out1)
+
+        x2 = paddle.rand([])
+        x2.stop_gradient = False
+        out2 = paddle.take(x2, paddle.to_tensor(0))
+        paddle.static.append_backward(out2)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog, fetch_list=[out1, x1.grad_name, out2, x2.grad_name]
+        )
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (4, 5))
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        np.testing.assert_allclose(res[3], 1.0)
+
+    @prog_scope()
+    def test_trapezoid(self):
+        y = paddle.rand([5])
+        y.stop_gradient = False
+        out = paddle.trapezoid(y, dx=2.0)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, y.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5,))
 
     @prog_scope()
     def test_create_parameter_var(self):
@@ -4107,15 +4314,44 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, ())
         self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, ())
-        self.assertEqual(res[3], 1)
+        self.assertEqual(res[3], 1.0)
         self.assertEqual(res[4].shape, (1,))
-        self.assertEqual(res[4], 1)
+        self.assertEqual(res[4], 1.0)
         self.assertEqual(res[5].shape, ())
-        self.assertEqual(res[5], 1)
+        self.assertEqual(res[5], 1.0)
         self.assertEqual(res[6].shape, ())
-        self.assertEqual(res[6], 1)
+        self.assertEqual(res[6], 1.0)
         self.assertEqual(out2.shape, ())
         self.assertEqual(out3.shape, ())
+
+    @prog_scope()
+    def test_logcumsumexp(self):
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out1 = paddle.logcumsumexp(x)
+        out2 = paddle.logcumsumexp(x, axis=0)
+        out3 = paddle.logcumsumexp(x, axis=-1)
+
+        paddle.static.append_backward(out1)
+        paddle.static.append_backward(out2)
+        paddle.static.append_backward(out3)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(
+            prog,
+            fetch_list=[
+                out1,
+                out2,
+                out3,
+                x.grad_name,
+            ],
+        )
+        self.assertEqual(res[0].shape, (1,))
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[3].shape, ())
+        self.assertEqual(res[3], 1.0)
 
     @prog_scope()
     def test_add_n(self):
@@ -4985,8 +5221,19 @@ class TestSundryAPIStatic(unittest.TestCase):
         paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
-
         res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (12,))
+
+    @prog_scope()
+    def test_corrcoef(self):
+        x = paddle.randn((12,))
+        x.stop_gradient = False
+        out = paddle.linalg.corrcoef(x)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (12,))
 
@@ -5259,6 +5506,14 @@ class TestNoBackwardAPI(unittest.TestCase):
         num = paddle.full([], 5, 'int32')
         out = paddle.linspace(start, stop, num)
         np.testing.assert_array_equal(out.numpy(), [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_logspace(self):
+        start = paddle.full([], 1.0)
+        stop = paddle.full([], 3.0)
+        num = paddle.full([], 5, 'int32')
+        base = paddle.full([], 2.0)
+        out = paddle.logspace(start, stop, num, base)
+        self.assertEqual(out.shape, [5])
 
     def test_arange(self):
         start = paddle.full([], 1.0)
@@ -5881,6 +6136,49 @@ class TestAsComplex(unittest.TestCase):
 class TestDistribution(unittest.TestCase):
     def setUp(self):
         self.x = paddle.full([], 2.0)
+
+    def test_Bernoulli(self):
+        d = paddle.distribution.Bernoulli(probs=0.3)
+        self.assertEqual(d.mean.shape, [])
+        self.assertEqual(d.variance.shape, [])
+        self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.rsample([]).shape, [])
+        self.assertEqual(d.cdf(self.x).shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+
+        d_other = paddle.distribution.Bernoulli(probs=0.7)
+        self.assertEqual(d.kl_divergence(d_other).shape, [])
+
+    def test_Geometric(self):
+        d = paddle.distribution.Geometric(0.5)
+        self.assertEqual(d.mean.shape, [])
+        self.assertEqual(d.variance.shape, [])
+        self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.stddev.shape, [])
+        self.assertEqual(d.pmf(self.x).shape, [])
+        self.assertEqual(d.log_pmf(self.x).shape, [])
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.rsample([]).shape, [])
+        self.assertEqual(d.cdf(self.x).shape, [])
+
+        d_other = paddle.distribution.Geometric(probs=0.7)
+        self.assertEqual(d.kl_divergence(d_other).shape, [])
+
+    def test_Cauchy(self):
+        d = paddle.distribution.Cauchy(loc=0.1, scale=1.2)
+        self.assertEqual(d.sample([]).shape, [])
+        self.assertEqual(d.rsample([]).shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+        self.assertEqual(d.cdf(self.x).shape, [])
+        self.assertEqual(d.entropy().shape, [])
+
+        d_other = paddle.distribution.Cauchy(
+            loc=paddle.to_tensor(1.2), scale=paddle.to_tensor(2.3)
+        )
+        self.assertEqual(d.kl_divergence(d_other).shape, [])
 
     def test_Categorical(self):
         logits = paddle.rand([6])

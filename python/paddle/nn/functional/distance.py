@@ -64,8 +64,8 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
             y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
             distance = paddle.nn.functional.pairwise_distance(x, y)
             print(distance)
-    #       Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
-    #              [4.99999860, 4.99999860])
+            # Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [4.99999860, 4.99999860])
 
     """
     if in_dynamic_mode():
