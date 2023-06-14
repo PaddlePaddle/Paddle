@@ -25,7 +25,7 @@ namespace ir {
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
-class Builder {
+class IR_API Builder {
  public:
   Builder(IrContext *context, Block *block, Block::iterator insert_point)
       : context_(context) {

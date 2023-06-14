@@ -111,7 +111,7 @@ TypeId TypeId::get() {
   namespace ir {                                \
   namespace detail {                            \
   template <>                                   \
-  class IR_API TypeIdResolver<TYPE_CLASS> {     \
+  class TypeIdResolver<TYPE_CLASS> {            \
    public:                                      \
     static TypeId Resolve() { return id_; }     \
     static UniqueingId id_;                     \
@@ -119,9 +119,17 @@ TypeId TypeId::get() {
   }                                             \
   }  // namespace ir
 
-/*
-#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)
-*/
+#define IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
+  namespace ir {                                       \
+  namespace detail {                                   \
+  template <>                                          \
+  class IR_API TypeIdResolver<TYPE_CLASS> {            \
+   public:                                             \
+    static TypeId Resolve() { return id_; }            \
+    static UniqueingId id_;                            \
+  };                                                   \
+  }                                                    \
+  }  // namespace ir
 
 #define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
   namespace ir {                                    \

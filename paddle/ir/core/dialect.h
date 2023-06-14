@@ -37,8 +37,8 @@ class DialectInterface;
 /// the dialect object will be loaded into the global IrContext. Specific
 /// compilers only need to combine existing dialects and add their own
 /// extensions or customizations.
-///
-class Dialect {
+/// dia
+class IR_API Dialect {
  public:
   Dialect(std::string name, IrContext *context, TypeId id);
 

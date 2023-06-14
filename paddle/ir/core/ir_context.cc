@@ -182,6 +182,8 @@ IrContext *IrContext::Instance() {
   return &context;
 }
 
+IrContext::~IrContext() { delete impl_; }
+
 IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "BuiltinDialect registered into IrContext. ===>";
   GetOrRegisterDialect<BuiltinDialect>();

@@ -92,7 +92,8 @@ TEST(value_test, value_test) {
   EXPECT_EQ(op3_first_input.next_use(), nullptr);
 
   // Test 3: Value iterator
-  ir::Value::use_iterator iter = op1->result(0).begin();
+  using my_iterator = ir::Value::use_iterator;
+  my_iterator iter = op1->result(0).begin();
   EXPECT_EQ(iter.owner(), op4);
   ++iter;
   EXPECT_EQ(iter.owner(), op3);

@@ -26,7 +26,7 @@ class Type;
 class Attribute;
 class Dialect;
 
-class OpInfo {
+class IR_API OpInfo {
  public:
   constexpr OpInfo() = default;
 
