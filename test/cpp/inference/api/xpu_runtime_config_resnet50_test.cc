@@ -89,7 +89,12 @@ TEST(resnet50_xpu, basic) {
   CHECK_EQ(predictor##idx_->GetExecStream(), config_.stream);
 
 TEST(runtime_stream, null_stream) {
-  experimental::XpuRuntimeConfig xpu_runtime_config = {nullptr, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config;
+  xpu_runtime_config.context = nullptr;
+  xpu_runtime_config.stream = nullptr;
+  xpu_runtime_config.l3_size = 0;
+  xpu_runtime_config.l3_ptr = nullptr;
+  xpu_runtime_config.l3_autotune_size = 0;
   RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
 }
 
@@ -98,26 +103,45 @@ TEST(runtime_stream, new_stream) {
   xpu_stream_create(&stream);
   CHECK_NOTNULL(stream);
   {
-    experimental::XpuRuntimeConfig xpu_runtime_config = {stream, 0, nullptr, 0};
+    experimental::XpuRuntimeConfig xpu_runtime_config;
+    xpu_runtime_config.context = nullptr;
+    xpu_runtime_config.stream = stream;
+    xpu_runtime_config.l3_size = 0;
+    xpu_runtime_config.l3_ptr = nullptr;
+    xpu_runtime_config.l3_autotune_size = 0;
     RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
   }
   xpu_stream_destroy(stream);
 }
 
 TEST(runtime_stream, 2_null_stream) {
-  experimental::XpuRuntimeConfig xpu_runtime_config = {nullptr, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config;
+  xpu_runtime_config.context = nullptr;
+  xpu_runtime_config.stream = nullptr;
+  xpu_runtime_config.l3_size = 0;
+  xpu_runtime_config.l3_ptr = nullptr;
+  xpu_runtime_config.l3_autotune_size = 0;
   RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
   RUN_WITH_RUNTIME_CONFIG(1, xpu_runtime_config);
 }
 
 TEST(runtime_stream, null_and_new_stream) {
-  experimental::XpuRuntimeConfig xpu_runtime_config0 = {nullptr, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config0;
+  xpu_runtime_config0.context = nullptr;
+  xpu_runtime_config0.stream = nullptr;
+  xpu_runtime_config0.l3_size = 0;
+  xpu_runtime_config0.l3_ptr = nullptr;
+  xpu_runtime_config0.l3_autotune_size = 0;
   void* stream = nullptr;
   xpu_stream_create(&stream);
   CHECK_NOTNULL(stream);
   {
-    experimental::XpuRuntimeConfig xpu_runtime_config1 = {
-        stream, 0, nullptr, 0};
+    experimental::XpuRuntimeConfig xpu_runtime_config1;
+    xpu_runtime_config1.context = nullptr;
+    xpu_runtime_config1.stream = stream;
+    xpu_runtime_config1.l3_size = 0;
+    xpu_runtime_config1.l3_ptr = nullptr;
+    xpu_runtime_config1.l3_autotune_size = 0;
     RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config0);
     RUN_WITH_RUNTIME_CONFIG(1, xpu_runtime_config1);
   }
@@ -128,7 +152,12 @@ TEST(runtime_stream, 2_new_same_stream) {
   void* stream = nullptr;
   xpu_stream_create(&stream);
   CHECK_NOTNULL(stream);
-  experimental::XpuRuntimeConfig xpu_runtime_config = {stream, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config;
+  xpu_runtime_config.context = nullptr;
+  xpu_runtime_config.stream = stream;
+  xpu_runtime_config.l3_size = 0;
+  xpu_runtime_config.l3_ptr = nullptr;
+  xpu_runtime_config.l3_autotune_size = 0;
   {
     RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
     RUN_WITH_RUNTIME_CONFIG(1, xpu_runtime_config);
@@ -140,11 +169,21 @@ TEST(runtime_stream, 2_new_different_stream) {
   void* stream0 = nullptr;
   xpu_stream_create(&stream0);
   CHECK_NOTNULL(stream0);
-  experimental::XpuRuntimeConfig xpu_runtime_config0 = {stream0, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config0;
+  xpu_runtime_config0.context = nullptr;
+  xpu_runtime_config0.stream = stream0;
+  xpu_runtime_config0.l3_size = 0;
+  xpu_runtime_config0.l3_ptr = nullptr;
+  xpu_runtime_config0.l3_autotune_size = 0;
   void* stream1 = nullptr;
   xpu_stream_create(&stream1);
   CHECK_NOTNULL(stream1);
-  experimental::XpuRuntimeConfig xpu_runtime_config1 = {stream1, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config1;
+  xpu_runtime_config1.context = nullptr;
+  xpu_runtime_config1.stream = stream1;
+  xpu_runtime_config1.l3_size = 0;
+  xpu_runtime_config1.l3_ptr = nullptr;
+  xpu_runtime_config1.l3_autotune_size = 0;
   {
     RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config0);
     RUN_WITH_RUNTIME_CONFIG(1, xpu_runtime_config1);
@@ -167,12 +206,22 @@ TEST(runtime_stream, 2_thread) {
   void* stream0 = nullptr;
   xpu_stream_create(&stream0);
   CHECK_NOTNULL(stream0);
-  experimental::XpuRuntimeConfig xpu_runtime_config0 = {stream0, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config0;
+  xpu_runtime_config0.context = nullptr;
+  xpu_runtime_config0.stream = stream0;
+  xpu_runtime_config0.l3_size = 0;
+  xpu_runtime_config0.l3_ptr = nullptr;
+  xpu_runtime_config0.l3_autotune_size = 0;
 
   void* stream1 = nullptr;
   xpu_stream_create(&stream1);
   CHECK_NOTNULL(stream1);
-  experimental::XpuRuntimeConfig xpu_runtime_config1 = {stream1, 0, nullptr, 0};
+  experimental::XpuRuntimeConfig xpu_runtime_config1;
+  xpu_runtime_config1.context = nullptr;
+  xpu_runtime_config1.stream = stream1;
+  xpu_runtime_config1.l3_size = 0;
+  xpu_runtime_config1.l3_ptr = nullptr;
+  xpu_runtime_config1.l3_autotune_size = 0;
 
   {
     RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config0);
@@ -187,6 +236,21 @@ TEST(runtime_stream, 2_thread) {
 
   xpu_stream_destroy(stream0);
   xpu_stream_destroy(stream1);
+}
+
+TEST(runtime_context, new_context) {
+  auto* context = baidu::xpu::api::create_context();
+  CHECK_NOTNULL(context);
+  {
+    experimental::XpuRuntimeConfig xpu_runtime_config;
+    xpu_runtime_config.context = context;
+    xpu_runtime_config.stream = nullptr;
+    xpu_runtime_config.l3_size = 0;
+    xpu_runtime_config.l3_ptr = nullptr;
+    xpu_runtime_config.l3_autotune_size = 0;
+    RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
+  }
+  baidu::xpu::api::destroy_context(context);
 }
 
 }  // namespace paddle_infer

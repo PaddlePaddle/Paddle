@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -271,17 +272,7 @@ void PrepareWeight(phi::DenseTensor* weight,
   }
 
   // Find max
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  const auto& dev_ctxs = pool.device_contexts();
-  auto place = phi::XPUPlace();  // xpu:0
-  for (auto it = dev_ctxs.begin(); it != dev_ctxs.end(); it++) {
-    if (it->first.GetType() == phi::AllocationType::XPU) {  // maybe xpu:1
-      place = it->first;
-    }
-  }
-  phi::XPUContext* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
-  int max_ptr_size = xpu_ctx->x_context()->max_ptr_size();
+  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(0);
   int size = weight_fp32.numel();
   auto* weight_data = weight_fp32.data<float>();
   float max_val = FindMaxAbs(weight_data, size);
