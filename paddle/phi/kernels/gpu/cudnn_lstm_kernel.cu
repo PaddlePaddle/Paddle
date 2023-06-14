@@ -364,13 +364,13 @@ void CudnnLSTMKernel(
 PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {
   kernel->InputAt(5).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
-  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
 #else
 PD_REGISTER_KERNEL(
     cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {
   kernel->InputAt(5).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
-  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
 #endif
