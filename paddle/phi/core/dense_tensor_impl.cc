@@ -65,7 +65,7 @@ const Place& DenseTensor::place() const {
 phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const DataLayout layout) {
-  if (product(meta_.stride) <= 0 || meta_.layout != layout) {
+  if (product(meta_.stride) == 0 || meta_.layout != layout) {
     meta_.stride = meta_.calc_stride(meta_.dims, layout);
   }
   meta_.layout = layout;

@@ -66,10 +66,7 @@ class DDim {
 
   DDim() : rank_(1) { dim_[0] = 0; }
 
-  DDim(const DDim& ddim) {
-    rank_ = ddim.size();
-    dynamic_dim_assign(ddim.Get(), dim_.GetMutable(), rank_);
-  }
+  DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
 
   DDim(const int* d, int n) : rank_(n) {
     dynamic_dim_assign(d, dim_.GetMutable(), n);
@@ -87,11 +84,7 @@ class DDim {
   /*implicit*/ DDim(std::initializer_list<int64_t> init_list)
       : DDim(init_list.begin(), init_list.size()) {}
 
-  inline DDim& operator=(const DDim& ddim) {
-    rank_ = ddim.size();
-    dynamic_dim_assign(ddim.Get(), dim_.GetMutable(), rank_);
-    return *this;
-  }
+  inline DDim& operator=(const DDim& ddim) { return CopyFrom(ddim); }
 
   template <int D>
   inline DDim& operator=(const Dim<D>& dim) {

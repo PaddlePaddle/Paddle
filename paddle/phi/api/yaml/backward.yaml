@@ -104,6 +104,16 @@
   output : Tensor(x_grad)
   invoke : as_complex(out_grad)
 
+- backward_op : as_strided_grad
+  forward : as_strided (Tensor input, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : as_strided_grad
+
 - backward_op : asin_grad
   forward : asin (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
