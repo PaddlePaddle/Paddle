@@ -1185,6 +1185,7 @@ set(TEST_CINN_OPS
     test_clip_op
     test_scatter_op
     test_gather_op
+    test_batch_norm_op_prim
     test_layer_norm_op
     test_cast_op
     test_dropout_op
