@@ -215,9 +215,11 @@ if(TARGET standalone_executor_test)
 endif()
 
 if(TARGET standalone_executor_new_ir_test)
-  set_tests_properties(
-    standalone_executor_new_ir_test
-    PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
+  if(NOT WIN32)
+    set_tests_properties(
+      standalone_executor_new_ir_test
+      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
+  endif()
 endif()
 
 if(TARGET layer_test)
