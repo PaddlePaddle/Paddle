@@ -3501,7 +3501,7 @@ void GraphDataGenerator::DoSageForTrain() {
       if (total_instance == 0) {
         break;
       }
-
+      
       ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_[tensor_pair_idx]->ptr());
       ins_cursor = ins_buf + ins_buf_pair_len_[tensor_pair_idx] * 2 - total_instance;
       auto final_sage_nodes = GenerateSampleGraph(ins_cursor,

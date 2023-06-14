@@ -115,14 +115,29 @@ void MultiTrainer::InitDumpEnv() {
     dump_thread_.emplace_back([this, i] { DumpWork(i); });
   }
 }
-
+inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>&
+GetThreadPool(int thread_num) {
+  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
+      thread_pools;
+  if (!thread_pools.empty()) {
+    return thread_pools;
+  }
+  thread_pools.resize(thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
+  }
+  return thread_pools;
+}
 // call only after all resources are set in current trainer
 void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                   const platform::Place& place) {
-  if (FLAGS_enable_dump_main_program) {
-    DumpProgramDescFile("main_program", main_program);
-  }
+  // multi thread load
+  auto pool = GetThreadPool(thread_num_);
+  std::vector<std::future<void>> wait_futures;
+  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
+    wait_futures.emplace_back(
+        pool[i]->Run([this, i, &main_program, &place]() {
 #ifdef PADDLE_WITH_HETERPS
     workers_[i]->SetPlace(places_[i]);
     workers_[i]->SetReaderPlace(places_[i]);
@@ -136,6 +151,10 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
     workers_[i]->CacheProgram(main_program);
+    }));
+  }
+  for (auto& th : wait_futures) {
+    th.get();
   }
 #ifndef PADDLE_WITH_GPU_GRAPH
 #ifdef PADDLE_WITH_HETERPS
@@ -203,19 +222,6 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 
 Scope* MultiTrainer::GetWorkerScope(int thread_id) {
   return workers_[thread_id]->GetThreadScope();
-}
-inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>&
-GetThreadPool(int thread_num) {
-  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
-      thread_pools;
-  if (!thread_pools.empty()) {
-    return thread_pools;
-  }
-  thread_pools.resize(thread_num);
-  for (int i = 0; i < thread_num; ++i) {
-    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
-  }
-  return thread_pools;
 }
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";

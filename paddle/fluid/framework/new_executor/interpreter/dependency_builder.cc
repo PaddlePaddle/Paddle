@@ -37,7 +37,10 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
                             "Enable sequential execution for standalone "
                             "executor, only applied to GPU OPs.");
 DECLARE_int32(enable_adjust_op_order);
-
+// add debug info
+PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
+                            false,
+                            "Enable dependency builder debug info");
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -767,7 +770,7 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilderSimplify::Build(
 
   ShrinkDownstreamMap();
   VLOG(6) << "Finish ShrinkDownstreamMap";
-  if (FLAGS_v > 0) {
+  if (FLAGS_enable_dependency_builder_debug_info) {
     print_log(std::string("after shrinkDownstreamMap"));
   }
   AddDependencyForCoalesceTensorOp();
@@ -791,13 +794,12 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilderSimplify::Build(
   GetAllbehind();
   GetOpBehindNum();
   VLOG(6) << "Finish AddDependencyForReadOp";
-
   VLOG(6) << "Finish build dependency";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
   is_build_ = true;
-  if (FLAGS_v > 0) {
+  if (FLAGS_enable_dependency_builder_debug_info) {
     print_log(std::string(" all depend info "));
   }
 
@@ -1191,7 +1193,9 @@ void DependencyBuilderSimplify::SetSameStream() {
         }
         if (is_sync_for_reduce) {
           del_c_sync_comm_list.insert(i);
-          VLOG(0) << " del op c_sync_comm_stream index is " << i;
+          if (FLAGS_enable_dependency_builder_debug_info) {
+            VLOG(0) << " del op c_sync_comm_stream index is " << i;
+          }
         }
         break;
       }
@@ -1231,15 +1235,17 @@ std::vector<size_t> DependencyBuilderSimplify::get_new_exexutor_order() {
   std::set<size_t> not_usefull_op;
   for (size_t i = start_index_; i < op_num_; i++) {
     if (usefull_op[i] == false) {
-      std::stringstream ss;
-      ss << "not usefull op " << _ops_ptr->at(i)->Type() << "_" << i;
       not_usefull_op.insert(i);
-      VLOG(0) << ss.str();
+      if (FLAGS_enable_dependency_builder_debug_info) {
+        VLOG(0) << "not usefull op " << _ops_ptr->at(i)->Type() << "_" << i;
+      }
     }
   }
   for (auto del_op : del_c_sync_comm_list) {
     if (not_usefull_op.count(del_op) == 0) {
-      VLOG(0) << " error " << del_op << " not in usefull_op";
+      if (FLAGS_enable_dependency_builder_debug_info) {
+        VLOG(0) << " error " << del_op << " not in usefull_op";
+      }
     }
   }
 
@@ -1296,13 +1302,15 @@ std::vector<size_t> DependencyBuilderSimplify::get_new_exexutor_order() {
       new_order.size(),
       op_num_ - not_usefull_op.size(),
       phi::errors::AlreadyExists("new_order size not equal op num"));
-  std::stringstream ss;
-  ss << " new order [ ";
-  for (auto index : new_order) {
-    ss << index << " ";
+  if (FLAGS_enable_dependency_builder_debug_info) {
+    std::stringstream ss;
+    ss << " new order [ ";
+    for (auto index : new_order) {
+      ss << index << " ";
+    }
+    ss << " ] ";
+    VLOG(0) << ss.str();
   }
-  ss << " ] ";
-  VLOG(0) << ss.str();
   return new_order;
 }
 
