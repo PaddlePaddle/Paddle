@@ -390,6 +390,14 @@
     data_type : x
   inplace : (x -> out)
 
+- op : check_numerics
+  args : (Tensor tensor, str op_type = "", str var_name = "", int check_nan_inf_level = 0, int stack_height_limit = -1, str output_dir = "")
+  output : Tensor(stats), Tensor(values)
+  infer_meta :
+    func : CheckNumericsInferMeta
+  kernel :
+    func : check_numerics
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
@@ -543,6 +551,24 @@
     func : cross_entropy_with_softmax
     data_type : input
   backward : cross_entropy_with_softmax_grad
+
+- op : cummax
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummax
+  backward : cummax_grad
+
+- op : cummin
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummin
+  backward : cummin_grad
 
 - op : cumprod
   args : (Tensor x,  int dim)
@@ -853,6 +879,16 @@
     func : floor
   inplace : (x -> out)
   backward : floor_grad
+
+- op : fmax
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    param: [x, y]
+    func : ElementwiseInferMeta
+  kernel :
+    func : fmax
+  backward : fmax_grad
 
 - op : fold
   args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)

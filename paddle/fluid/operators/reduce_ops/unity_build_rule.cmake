@@ -11,5 +11,3 @@ register_unity_group(cu reduce_all_op.cu reduce_any_op.cu reduce_prod_op.cu
 # compilation instruction when compiling in Unity Build.
 register_unity_group(cu frobenius_norm_op.cu)
 register_unity_group(cu logsumexp_op.cu)
-register_unity_group(cu reduce_max_op.cu)
-register_unity_group(cu reduce_min_op.cu)

@@ -39,7 +39,6 @@ class TestSquareErrorCost(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
             (result,) = exe.run(
