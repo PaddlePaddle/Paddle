@@ -95,11 +95,7 @@ class alignas(8) UniqueingId {
   TypeId id() { return TypeId::RecoverFromOpaquePointer(this); }
 };
 template <typename T>
-class TypeIdResolver {
- public:
-  static TypeId Resolve() { return id_; }
-  static UniqueingId id_;
-};
+class TypeIdResolver;
 
 }  // namespace detail
 
