@@ -85,7 +85,6 @@ class TestNanToNum(unittest.TestCase):
         self.assertTrue(np.allclose(out4_np, res[3]))
 
     def test_dygraph(self):
-
         paddle.disable_static(place=self.place)
 
         with paddle.fluid.dygraph.guard():

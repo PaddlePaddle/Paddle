@@ -69,7 +69,6 @@ def build_dict(corpus, min_freq=3):
     id2word_dict[0] = '[oov]'
 
     for word, freq in word_freq_dict:
-
         if freq < min_freq:
             word2id_freq[0] += freq
             continue
@@ -131,7 +130,6 @@ def build_data(
     max_window_size=3,
     negative_sample_num=10,
 ):
-
     dataset = []
 
     for line in corpus:
@@ -177,7 +175,6 @@ for _, (center_word, target_word, label) in zip(range(50), dataset):
 
 
 def build_batch(dataset, batch_size, epoch_num):
-
     center_word_batch = []
     target_word_batch = []
     label_batch = []

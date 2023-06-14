@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/pass/pass.h"
+
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"

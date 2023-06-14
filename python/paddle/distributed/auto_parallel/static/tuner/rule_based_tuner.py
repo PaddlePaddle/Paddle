@@ -1822,7 +1822,6 @@ class RuleBasedTuner:
                             )
 
                         for input_name in op.desc.input_names():
-
                             if input_name in [
                                 'Param',
                                 'Grad',

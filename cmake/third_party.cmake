@@ -30,7 +30,19 @@ set(third_party_deps)
 include(ProcessorCount)
 ProcessorCount(NPROC)
 if(NOT WITH_SETUP_INSTALL)
-  execute_process(COMMAND git submodule update --init --recursive)
+  #NOTE(risemeup1):Initialize any submodules.
+  message(
+    STATUS
+      "Check submodules of paddle, and run 'git submodule update --init --recursive'"
+  )
+  execute_process(
+    COMMAND git submodule update --init --recursive
+    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+    RESULT_VARIABLE result_var)
+  if(NOT result_var EQUAL 0)
+    message(FATAL_ERROR "Failed to get submodule, please check your network !")
+  endif()
+
 endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
@@ -305,7 +317,7 @@ endif()
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
-  include(external/pybind11) # download pybind11
+  include(external/pybind11) # prepare submodule pybind11
   list(APPEND third_party_deps extern_pybind)
 endif()
 
@@ -441,7 +453,7 @@ if(WITH_DISTRIBUTE
 endif()
 
 if(WITH_XBYAK)
-  include(external/xbyak) # download, build, install xbyak
+  include(external/xbyak) # prepare submodule xbyak
   list(APPEND third_party_deps extern_xbyak)
 endif()
 

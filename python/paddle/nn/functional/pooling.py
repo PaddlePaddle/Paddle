@@ -46,7 +46,6 @@ def _check_input(x, dimension):
 
 
 def _check_instance(x, x_name, types=(int, float)):
-
     if not isinstance(x, types):
         raise ValueError(
             "Excepted {} type for {} but received type: {}. ".format(
@@ -749,7 +748,7 @@ def max_unpool1d(
     This API implements max unpooling 1d opereation.
     `max_unpool1d` accepts the output of `max_pool1d` as input,
     including the indices of the maximum value and calculate the partial inverse.
-    All non-maximum values ​​are set to zero.
+    All non-maximum values are set to zero.
 
     - Input: :math:`(N, C, L_{in})`
     - Output: :math:`(N, C, L_{out})`, where
@@ -1025,7 +1024,7 @@ def max_unpool3d(
     This API implements max unpooling 3d opereation.
     `max_unpool3d` accepts the output of `max_pool3d` as input,
     including the indices of the maximum value and calculate the partial inverse.
-    All non-maximum values ​​are set to zero.
+    All non-maximum values are set to zero.
 
     - Input: :math:`(N, C, D_{in}, H_{in}, W_{in})`
     - Output: :math:`(N, C, D_{out}, H_{out}, W_{out})`, where

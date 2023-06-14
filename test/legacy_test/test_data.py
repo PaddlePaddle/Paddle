@@ -40,7 +40,6 @@ class TestApiStaticDataError(unittest.TestCase):
 
     def test_error(self):
         with program_guard(Program(), Program()):
-
             # 1. The type of 'name' in paddle.static.data must be str.
             def test_name_type():
                 paddle.static.data(name=1, shape=[2, 25], dtype="bool")
@@ -54,7 +53,6 @@ class TestApiStaticDataError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape_type)
 
         with program_guard(Program(), Program()):
-
             # 1. The type of 'name' in paddle.static.data must be str.
             def test_name_type():
                 paddle.static.data(name=1, shape=[2, 25], dtype="bool")
