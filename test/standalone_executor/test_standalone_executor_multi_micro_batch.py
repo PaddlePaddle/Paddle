@@ -97,7 +97,10 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
             )
 
             loader = paddle.fluid.io.DataLoader.from_generator(
-                feed_list=[enc_input, attn_mask], capacity=16, iterable=False
+                feed_list=[enc_input, attn_mask],
+                use_double_buffer=False,
+                capacity=16,
+                iterable=False,
             )
             loader.set_batch_generator(
                 self.batch_generator_creator(micro_batch_size)
