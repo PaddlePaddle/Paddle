@@ -203,7 +203,6 @@ void InitDevices() {
 
 void InitDevices(const std::vector<int> devices) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   std::vector<platform::Place> places;

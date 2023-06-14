@@ -177,7 +177,8 @@ struct OpFuncNode {
   phi::KernelContext kernel_context_;
   phi::InferMetaContext infer_meta_context_;
   std::string phi_op_name_;
-  paddle::dialect::InferShapeInterface::Concept* infer_shape_interface_;
+  paddle::dialect::InferShapeInterface::Concept* infer_shape_interface_{
+      nullptr};
 };
 
 class Instruction {
