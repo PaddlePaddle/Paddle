@@ -43,14 +43,44 @@ void BuildScope(ir::Block* block,
   std::unordered_map<ir::Value, int> map_test;
 
   // int count = name_map->size();
+  std::cerr << "build scope " << block->size() << std::endl;
   int count = 0;
   for (auto it = block->begin(); it != block->end(); ++it) {
     size_t input_num = (*it)->num_operands();
     auto attr_map = (*it)->attributes();
     std::string op_name = (*it)->name();
     if (attr_map.count("op_name")) {
-      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
+    if (op_name == "builtin.get_parameter") {
+      ir::Value out = (*it)->result(0);
+      auto name = (*it)
+                      ->attributes()
+                      .at("parameter_name")
+                      .dyn_cast<ir::StrAttribute>()
+                      .data();
+
+      std::cerr << "get name  " << name << std::endl;
+      (*name_map)[out] = name;
+      continue;
+    }
+    if (op_name == "builtin.set_parameter") {
+      ir::Value in_value = (*it)->operand(0).source();
+      auto new_name = (*it)
+                          ->attributes()
+                          .at("parameter_name")
+                          .dyn_cast<ir::StrAttribute>()
+                          .data();
+
+      auto var_name = name_map->at(in_value);
+
+      // toto, it's danger here
+      std::cerr << "change name " << var_name << "\t" << new_name << std::endl;
+      scope->Rename(var_name, new_name);
+      (*name_map)[in_value] = new_name;
+      continue;
+    }
+
     if (op_name == "pd.fetch") {
       // fetch is a very special op, with no output
       for (size_t i = 0; i < input_num; ++i) {

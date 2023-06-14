@@ -154,7 +154,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
 
   for (auto it = block->begin(); it != block->end(); ++it) {
-    auto kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
+    phi::KernelKey kernel_key;
+    if ((*it)->name() == "builtin.get_parameter" ||
+        (*it)->name() == "builtin.set_parameter") {
+      kernel_key.set_backend(phi::TransToPhiBackend(cpu_place));
+
+    } else {
+      kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
+    }
 
     // create new Op
 
@@ -181,15 +188,19 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       }
     }
 
+    std::string kernel_name;
+
     paddle::dialect::OpYamlInfoInterface op_info_interface =
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-    auto op_info_res = op_info_interface.GetOpInfo();
-    auto runtime_info = std::get<3>(op_info_res);
+    if (op_info_interface) {
+      auto op_info_res = op_info_interface.GetOpInfo();
+      auto runtime_info = std::get<3>(op_info_res);
+      kernel_name = runtime_info.kernel_func[0];
+    }
 
     std::unordered_map<std::string, ir::Attribute> op1_attribute{
         {"op_name", ir::StrAttribute::get(ctx, (*it)->name())},
-        {"kernel_name",
-         ir::StrAttribute::get(ctx, runtime_info.kernel_func[0])},
+        {"kernel_name", ir::StrAttribute::get(ctx, kernel_name)},
         {"kernel_key", dialect::KernelAttribute::get(ctx, kernel_key)}};
 
     auto op_attr_map = (*it)->attributes();

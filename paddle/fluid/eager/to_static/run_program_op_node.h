@@ -18,9 +18,13 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/operators/run_program_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -126,6 +130,7 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
     if (name == "Fake_var") {
       continue;
     }
+    std::cerr << "tensor name " << name << std::endl;
     auto *var = scope->Var(name);
     CheckInputVarStatus(tensors[i]);
     // share tensor
@@ -152,6 +157,7 @@ static void ShareTensorsFromScope(
     // because we can't find them in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     auto &name = tensors[i]->name();
+    std::cerr << "out name " << name << std::endl;
     if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
         !global_block.HasVar(name)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
@@ -364,12 +370,54 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(x, global_inner_scope);
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
+
+    for (auto t1 : x) {
+      std::cerr << "input " << t1.name() << std::endl;
+    }
+    // translator here
+
+    std::unique_ptr<::ir::Program> ir_program;
+    if (FLAGS_enable_new_ir_in_executor) {
+      auto ir_ctx = ir::IrContext::Instance();
+      auto program = std::make_unique<::ir::Program>(ir_ctx);
+
+      paddle::translator::ProgramTranslator program_translator(forward_program,
+                                                               program.get());
+      program_translator.Translate();
+
+      auto name2value = program_translator.Name2ValueMap();
+
+      for (auto &name : output_names) {
+        std::cerr << "name " << name << std::endl;
+        auto t = name2value.at(name);
+
+        std::string set_parameter_op_name(ir::SetParameterOp::name());
+        ir::OpInfo op_info = ir_ctx->GetRegisteredOpInfo(set_parameter_op_name);
+        std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
+            {"parameter_name", ir::StrAttribute::get(ir_ctx, name)},
+        };
+
+        ir::Operation *operation =
+            ir::Operation::Create({t.value}, op_attribute_map, {}, op_info);
+
+        program->block()->push_back(operation);
+      }
+
+      program->Print(std::cout);
+
+      ir_program.reset(
+          paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
+
+      ir_program->Print(std::cout);
+    }
+
     interpreter_core =
         paddle::framework::CreateInterpreterCoreInfoToCache(*forward_program,
                                                             place,
                                                             /*is_grad=*/false,
                                                             program_id,
-                                                            global_inner_scope);
+                                                            global_inner_scope,
+                                                            ir_program.get());
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars =
         paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(

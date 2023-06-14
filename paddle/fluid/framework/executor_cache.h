@@ -30,6 +30,8 @@
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#include "paddle/ir/core/program.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -222,7 +224,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope* scope);
+    framework::Scope* scope,
+    ::ir::Program* ir_prog = nullptr);
 
 }  // namespace framework
 }  // namespace paddle

@@ -90,6 +90,10 @@ class InterpreterCore {
     hookfuncs_ = hookfuncs;
   }
 
+  const std::unordered_map<::ir::Value, std::string>& ValueMape() const {
+    return value_2_var_name_map_;
+  }
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
   // build graph

@@ -58,6 +58,8 @@ class ProgramTranslator {
 
   void Translate();
 
+  const TranslationContext& Name2ValueMap();
+
  private:
   const ProgramDesc* legacy_program;  // not owned
   ir::Program* program;               // not owned

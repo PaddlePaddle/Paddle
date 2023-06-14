@@ -293,8 +293,12 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     if (FLAGS_enable_new_ir_in_executor) {
+      std::cerr << "begin to build block " << std::endl;
+      size_t t1 = ir_program_->block()->size();
+      std::cerr << "size " << t1 << std::endl;
       ::ir::BuildScope(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
+      std::cerr << "fin fetch " << std::endl;
     } else {
       paddle::framework::interpreter::BuildVariableScope(
           block_, execution_config_, &var_scope_);
@@ -1085,9 +1089,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
     if (instr_node.PreDefineContext()) {
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
+      std::cerr << "name " << op_func_node->phi_op_name_ << std::endl;
       op_func_node->infer_shape_interface_->infer_shape_(
           &(op_func_node->infer_meta_context_));
+      std::cerr << "fin infer shape" << std::endl;
       (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+      std::cerr << "fin kernel" << std::endl;
 
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);

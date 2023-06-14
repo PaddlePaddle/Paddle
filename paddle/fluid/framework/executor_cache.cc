@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/executor_cache.h"
 
 #include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
 
 namespace paddle {
 namespace framework {
@@ -291,7 +292,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     const platform::Place &place,
     bool is_grad,
     int64_t program_id,
-    framework::Scope *scope) {
+    framework::Scope *scope,
+    ::ir::Program *ir_program) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
@@ -302,8 +304,23 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
   interpreter::ExecutionConfig execution_config;
   execution_config.create_local_scope = false;
   execution_config.used_for_jit = true;
-  auto core = std::make_shared<InterpreterCore>(
-      place, program_desc.Block(0), scope, execution_config);
+
+  std::shared_ptr<InterpreterCore> core = nullptr;
+  if (ir_program != nullptr) {
+    std::cerr << "using ir to build" << std::endl;
+    size_t t1 = ir_program->block()->size();
+    std::cerr << "size " << t1 << std::endl;
+    core.reset(new InterpreterCore(
+        place, program_desc.Block(0), scope, ir_program, execution_config));
+
+    std::cerr << "run 1 " << std::endl;
+    core->Run({});
+    std::cerr << "run 2 " << std::endl;
+  } else {
+    std::cerr << "usign program desc to build " << std::endl;
+    core.reset(new InterpreterCore(
+        place, program_desc.Block(0), scope, execution_config));
+  }
   auto &cached_value =
       interpretercore_info_cache.GetMutable(program_id, is_grad);
   cached_value.core_ = core;
