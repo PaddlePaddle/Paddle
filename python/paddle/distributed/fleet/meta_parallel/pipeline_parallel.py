@@ -258,6 +258,9 @@ class PipelineParallel(MetaParallelBase):
             input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
 
+            if not self.is_pipeline_last_stage():
+                self._release_output(output_tensor)
+
         if steady_steps > 0:
             input_tensor = p2p.recv_forward(self.is_pipeline_first_stage())
 
@@ -272,6 +275,9 @@ class PipelineParallel(MetaParallelBase):
 
             input_buffers.append(input_tensor)
             output_buffers.append(output_tensor)
+
+            if not self.is_pipeline_last_stage():
+                self._release_output(output_tensor)
 
             input_tensor, output_tensor = input_buffers.pop(
                 0
@@ -607,6 +613,22 @@ class PipelineParallel(MetaParallelBase):
         if self.lr_scheduler:
             self.lr_scheduler.step()
 
+    def _release_output(self, output):
+        def can_free(t):
+            return (
+                t is not None
+                and isinstance(t, paddle.Tensor)
+                and t.inplace_version == 0
+            )
+
+        if isinstance(output, (tuple, list)):
+            for t in output:
+                if can_free(t):
+                    t._clear_dataptr()
+
+        elif can_free(output):
+            output._clear_dataptr()
+
 
 class PipelineParallelWithInterleave(PipelineParallel):
     # pipeline parallel with interleave scheduler
@@ -777,6 +799,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             # append input_tensor no matter none or not
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 
+            self._release_output(output_tensor)
+
         # run 1f1b steady steps
         for micro_step in range(steady_steps):
             # forward
@@ -854,6 +878,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.output_tensor_grads[next_backward_virtual_pp_rank].append(
                 output_tensor_grad
             )
+            self._release_output(output_tensor)
+
+        self._release_output(output_tensor)
 
         # remaining backward steps
         if not forward_only:
