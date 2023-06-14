@@ -142,7 +142,9 @@ void UniqueRawKernel(const Context& dev_ctx,
                      DenseTensor* index,
                      DenseTensor* counts) {
   PADDLE_ENFORCE_EQ(
-      axis.empty(), true, "XPU do not support unique with axis now.");
+      axis.empty(),
+      true,
+      phi::errors::InvalidArgument("XPU do not support unique with axis now."));
   if (dtype == DataType::INT32) {
     PADDLE_ENFORCE_LE(
         x.numel(),
