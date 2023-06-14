@@ -31,10 +31,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     for (size_t i = 0; i < programs_.size(); ++i) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_progrm = paddle::TranslateLegacyProgramToProgram(programs_[i]);
-
+      base_progrm->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_progrm.get());
 
+      kernel_program->Print(std::cout);
       ir_programs_.emplace_back(std::move(kernel_program));
     }
   }

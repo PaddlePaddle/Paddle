@@ -49,7 +49,7 @@ void BuildScope(ir::Block* block,
     auto attr_map = (*it)->attributes();
     std::string op_name = (*it)->name();
     if (attr_map.count("op_name")) {
-      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
     if (op_name == "pd.fetch") {
       // fetch is a very special op, with no output
@@ -177,6 +177,8 @@ void BuildInferMetaContext(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
       } else if (type_name == "ir::Int32Attribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+      } else if (type_name == "ir::FloatAttribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -282,6 +284,8 @@ void BuildPhiKernelContext(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
       } else if (type_name == "ir::Int32Attribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+      } else if (type_name == "ir::FloatAttribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
