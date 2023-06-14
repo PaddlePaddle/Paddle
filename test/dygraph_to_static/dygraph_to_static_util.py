@@ -73,3 +73,21 @@ def ast_only_test(func):
             func(*args, **kwargs)
 
     return impl
+
+
+def sot_only_test(func):
+    """
+    run this test function in ast only mode.
+    Usage:
+
+    class TestA (unittest.TestCase):
+        @ast_only_test
+        def test_ast_only(self):
+            pass
+    """
+
+    def impl(*args, **kwargs):
+        if os.environ.get("ENABLE_FALL_BACK", "True") == "True":
+            func(*args, **kwargs)
+
+    return impl
