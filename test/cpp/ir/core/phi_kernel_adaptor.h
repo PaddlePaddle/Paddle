@@ -292,7 +292,7 @@ class PhiKernelAdaptor {
           (*it), name_map, scope_, yaml_info, &kernel_ctx, false);
       kernel_fn(&kernel_ctx);
 
-      auto out_value = (*it)->GetResultByIndex(0);
+      auto out_value = (*it)->result(0);
       out_name = name_map[out_value];
     }
   }
