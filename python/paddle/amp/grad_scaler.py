@@ -628,11 +628,11 @@ class GradScaler(AmpScaler):
     def __init__(
         self,
         enable=True,
-        init_loss_scaling=2.0**15,
+        init_loss_scaling=2.0**16,
         incr_ratio=2.0,
         decr_ratio=0.5,
-        incr_every_n_steps=1000,
-        decr_every_n_nan_or_inf=2,
+        incr_every_n_steps=2000,
+        decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
         super().__init__(
