@@ -47,25 +47,26 @@ class TestNewIr(unittest.TestCase):
         )
 
 
-# class TestNewIrDygraph(unittest.TestCase):
-#     def test_with_new_ir(self):
-#         paddle.disable_static()
+class TestNewIrDygraph(unittest.TestCase):
+    def test_with_new_ir(self):
+        paddle.disable_static()
 
-#         @paddle.jit.to_static
-#         def func(x, y):
-#             return x + y
+        @paddle.jit.to_static
+        def func(x, y):
+            return x + y
 
-#         x = paddle.ones([2, 2], dtype='float32')
-#         y = paddle.ones([2, 2], dtype='float32')
-#         z = func(x, y)
+        x = paddle.ones([2, 2], dtype='float32')
+        y = paddle.ones([2, 2], dtype='float32')
+        z = func(x, y)
 
-#         gold_res = np.ones([2, 2], dtype="float32") * 2
-#         self.assertEqual(
-#             np.array_equal( z.numpy(),
-#                 gold_res,
-#             ),
-#             True,
-#         )
+        gold_res = np.ones([2, 2], dtype="float32") * 2
+        self.assertEqual(
+            np.array_equal(
+                z.numpy(),
+                gold_res,
+            ),
+            True,
+        )
 
 
 if __name__ == "__main__":
