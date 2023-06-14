@@ -300,28 +300,26 @@ paddle::framework::FetchList InterpreterCore::Run(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
       std::cerr << "fin fetch " << std::endl;
     } else {
-      paddle::framework::interpreter::BuildVariableScope(
-          block_, execution_config_, &var_scope_);
+      interpreter::BuildVariableScope(block_, execution_config_, &var_scope_);
     }
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     if (FLAGS_enable_new_ir_in_executor) {
-      paddle::framework::interpreter::BuildOpFuncList(place_,
-                                                      ir_program_->block(),
-                                                      &op_func_nodes,
-                                                      local_scope_,
-                                                      value_2_var_name_map_,
-                                                      execution_config_);
+      interpreter::BuildOpFuncList(place_,
+                                   ir_program_->block(),
+                                   &op_func_nodes,
+                                   local_scope_,
+                                   value_2_var_name_map_,
+                                   execution_config_);
     } else {
-      paddle::framework::interpreter::BuildOpFuncList(
-          place_,
-          block_,
-          execution_config_.skip_gc_vars,
-          &op_func_nodes,
-          &var_scope_,
-          execution_config_,
-          HasLocalScope(),
-          static_build_);
+      interpreter::BuildOpFuncList(place_,
+                                   block_,
+                                   execution_config_.skip_gc_vars,
+                                   &op_func_nodes,
+                                   &var_scope_,
+                                   execution_config_,
+                                   HasLocalScope(),
+                                   static_build_);
     }
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
@@ -1088,6 +1086,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     instr_node.WaitEvent(place_);
 
     if (instr_node.PreDefineContext()) {
+      VLOG(5) << "run new ir selected kernel";
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
       std::cerr << "name " << op_func_node->phi_op_name_ << std::endl;
       op_func_node->infer_shape_interface_->infer_shape_(
@@ -1101,7 +1100,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       CheckGC(instr_node);
       interpreter::LogDeviceMemoryStats(place_);
     }
-
     instr_node.RecordEvent(place_);
   } catch (platform::EnforceNotMet& ex) {
     framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
