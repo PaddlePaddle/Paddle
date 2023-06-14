@@ -16,8 +16,8 @@ import copy
 import logging
 
 from paddle.amp.amp_lists import (
+    EXTRA_BLACK_LIST,
     FP16_BLACK_LIST,
-    FP16_EXTRA_BLACK_LIST,
     FP16_WHITE_LIST,
 )
 from paddle.fluid import core
@@ -28,7 +28,7 @@ _logger = get_logger(
 )
 
 black_list = FP16_BLACK_LIST
-_extra_black_list = FP16_EXTRA_BLACK_LIST
+_extra_black_list = EXTRA_BLACK_LIST
 white_list = FP16_WHITE_LIST
 
 
@@ -138,7 +138,7 @@ def _get_white_list(dtype):
 
 def _get_black_list():
     _black_list = copy.copy(FP16_BLACK_LIST)
-    _black_list = _black_list | FP16_EXTRA_BLACK_LIST
+    _black_list = _black_list | EXTRA_BLACK_LIST
     return _black_list
 
 
