@@ -198,6 +198,24 @@ XPUVersion get_xpu_version(int dev_id) {
   }
 }
 
+int get_xpu_max_ptr_size(int dev_id) {
+  auto xpu_version = get_xpu_version(dev_id);
+  int max_ptr_size = 0;
+  switch (xpu_version) {
+    case XPUVersion::XPU1:
+      max_ptr_size = 4;
+      break;
+    case XPUVersion::XPU2:
+      max_ptr_size = 6;
+      break;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Only support get max ptr size of XPU1 or XPU2."));
+      break;
+  }
+  return max_ptr_size;
+}
+
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi
