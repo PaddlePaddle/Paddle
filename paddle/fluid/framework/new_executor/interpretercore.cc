@@ -109,8 +109,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope) {
-  VLOG(4) << "InterpreterCore(): " << this << " on " << place_
-          << ", scope:" << scope;
+  VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&

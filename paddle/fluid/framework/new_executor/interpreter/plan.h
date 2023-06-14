@@ -35,20 +35,14 @@ class Plan final {
 
   const std::vector<std::shared_ptr<Job>>& JobList() const;
 
-  const std::vector<std::string>& FetchNames(const std::string& job_type) const;
-
   const ProgramDesc* Program(const std::string& job_type) const;
 
   int64_t MicroBatchNum() const;
-
-  void SetFetchNames(const std::string& job_type,
-                     const std::vector<std::string> fetch_names);
 
  private:
   const std::vector<std::shared_ptr<Job>> job_list_;
   const std::unordered_map<std::string, ProgramDesc*> type_to_program_;
   int64_t micro_batch_num_;
-  std::map<std::string, std::vector<std::string>> type_to_fetch_names_;
 };
 
 }  // namespace interpreter

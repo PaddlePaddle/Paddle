@@ -514,7 +514,7 @@ def _prepare_fleet_executor():
 def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
     return (
         program.desc.cached_hash_str()
-        + str(scope.raw_address)
+        + str(scope.raw_address())
         + _get_program_cache_key(feed, fetch_list)
     )
 

@@ -88,18 +88,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
 
-    // NOTE(Ruibiao): Since fetch_names are considered as executor Cache key in
-    // python side, here aussumes that the feed_names and fetch_names are
-    // unchaned for one Standalone Executor.
-    const std::vector<std::string>& job_fetch_names =
-        plan_.FetchNames(job_type);
-    std::string fetch_name_info;
-    for (const std::string& fetch_name : job_fetch_names) {
-      fetch_name_info += fetch_name + ", ";
-    }
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
-            << ", micro_batch_id =" << job->MicroBatchId()
-            << ", fetch_names = " << fetch_name_info;
+            << ", micro_batch_id =" << job->MicroBatchId();
 
     interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
   }

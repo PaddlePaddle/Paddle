@@ -36,7 +36,6 @@ Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
                        job->MicroBatchId()));
 
     micro_batch_num_ = std::max(micro_batch_num_, job->MicroBatchId() + 1);
-    type_to_fetch_names_[job->Type()] = std::vector<std::string>();
   }
 }
 
@@ -44,21 +43,11 @@ const std::vector<std::shared_ptr<Job>>& Plan::JobList() const {
   return job_list_;
 }
 
-const std::vector<std::string>& Plan::FetchNames(
-    const std::string& job_type) const {
-  return type_to_fetch_names_.at(job_type);
-}
-
 const ProgramDesc* Plan::Program(const std::string& job_type) const {
   return type_to_program_.at(job_type);
 }
 
 int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
-
-void Plan::SetFetchNames(const std::string& job_type,
-                         const std::vector<std::string> fetch_names) {
-  type_to_fetch_names_[job_type] = fetch_names;
-}
 
 }  // namespace interpreter
 }  // namespace framework
