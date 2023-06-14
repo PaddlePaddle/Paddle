@@ -40,16 +40,6 @@ void IndexSelectStridedKernel(const Context& ctx,
     stride.erase(stride.begin() + dim);
   }
 
-  if (*shape.begin() == 1) {
-    shape.erase(shape.begin());
-    stride.erase(stride.begin());
-  }
-
-  if (*shape.end() == 1) {
-    shape.erase(shape.end());
-    stride.erase(stride.end());
-  }
-
   auto meta = output->meta();
   meta.offset = offset;
   auto tmp_dim = DDim(shape.data(), shape.size());

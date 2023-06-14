@@ -55,14 +55,29 @@ void SliceStridedKernel(const Context& ctx,
     output_dims[new_axis[i]] = ends[i] - starts[i];
   }
 
-  if (*output_dims.begin() == 1) {
-    output_dims.erase(output_dims.begin());
-    output_stride.erase(output_stride.begin());
-  }
+  std::vector<uint8_t> decrease_flag(output_dims.size(), 0);
+  if (decrease_axis.size() > 0) {
+    for (size_t i = 0; i < decrease_axis.size(); ++i) {
+      int64_t axis = decrease_axis[i];
+      decrease_flag[axis] = 1;
+    }
 
-  if (*output_dims.end() == 1) {
-    output_dims.erase(output_dims.end());
-    output_stride.erase(output_stride.end());
+    std::vector<int64_t> new_shape;
+    std::vector<int64_t> new_stride;
+    for (size_t i = 0; i < output_dims.size(); ++i) {
+      if (decrease_flag[i] == 0) {
+        new_shape.push_back(output_dims[i]);
+        new_stride.push_back(output_stride[i]);
+      }
+    }
+    if (FLAGS_set_to_1d && new_shape.size() == 0) {
+      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
+      // slice. This will remove in release 2.6.
+      new_shape.push_back(1);
+      new_stride.push_back(1);
+    }
+    output_dims = new_shape;
+    output_stride = new_stride;
   }
 
   auto meta = out->meta();

@@ -84,14 +84,22 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
     output_stride[axis[i]] *= strides[i];
   }
 
-  if (*output_dims.begin() == 1) {
-    output_dims.erase(output_dims.begin());
-    output_stride.erase(output_stride.begin());
-  }
+  // generate new shape
+  if (decrease_axis.size() > 0) {
+    std::vector<int64_t> new_out_shape;
+    std::vector<int64_t> new_out_stride;
+    for (size_t i = 0; i < decrease_axis.size(); ++i) {
+      output_dims[decrease_axis[i]] = 0;
+    }
 
-  if (*output_dims.end() == 1) {
-    output_dims.erase(output_dims.end());
-    output_stride.erase(output_stride.end());
+    for (size_t i = 0; i < output_dims.size(); ++i) {
+      if (output_dims[i] != 0) {
+        new_out_shape.push_back(output_dims[i]);
+        new_out_stride.push_back(output_stride[i]);
+      }
+    }
+    output_dims = new_out_shape;
+    output_stride = new_out_stride;
   }
 
   auto meta = out->meta();
