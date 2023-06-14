@@ -69,7 +69,6 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     return Operator(op_type, **kwargs)
 
 
-
 def set_input(scope, op, inputs, place):
     def __set_input__(var_name, var):
         if isinstance(var, (tuple, np.ndarray)):
