@@ -16,9 +16,9 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
-from paddle import ParamAttr
 from paddle.nn import BatchNorm, Linear
 
 
@@ -28,13 +28,9 @@ class SimpleNet(paddle.nn.Layer):
         self.linear0 = Linear(100, 50)
         self.linear1 = Linear(50, 10)
 
-        param_attr0 = ParamAttr(name="aaaprefix_bn_scale")
-        bias_attr0 = ParamAttr(name="aaaprefix_bn_offset")
-        self.bn0 = BatchNorm(50, param_attr=param_attr0, bias_attr=bias_attr0)
+        self.bn0 = BatchNorm(50)
 
-        param_attr1 = ParamAttr(name="bn_scale")
-        bias_attr1 = ParamAttr(name="bn_offset")
-        self.bn1 = BatchNorm(10, param_attr=param_attr1, bias_attr=bias_attr1)
+        self.bn1 = BatchNorm(10)
 
     def forward(self, x):
         x1 = self.linear0(x)
@@ -45,6 +41,7 @@ class SimpleNet(paddle.nn.Layer):
         return dx[0]
 
 
+@dy2static_unittest
 class TestGradNameParse(unittest.TestCase):
     def test_grad_name_parse(self):
         net = SimpleNet()
@@ -72,6 +69,7 @@ def tanh_high_order_grad(x):
     return paddle.grad(y, x, create_graph=True)[0]
 
 
+@dy2static_unittest
 class TestTanhHighOrderGrad(unittest.TestCase):
     def setUp(self):
         self.func = tanh_high_order_grad
@@ -116,10 +114,11 @@ class TestTanhHighOrderGrad(unittest.TestCase):
 
 def matmul_high_order_grad(x, y):
     z = paddle.matmul(x, y)
-    g = paddle.grad(z, [x, y], create_graph=False)
+    g = paddle.grad(z, [x, y], create_graph=True)
     return g[0]
 
 
+@dy2static_unittest
 class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):
     def setUp(self):
         self.func = matmul_high_order_grad
@@ -139,6 +138,7 @@ class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):
         self.dy2st_grad_input = (x2,)
 
 
+@dy2static_unittest
 class TestMatMulHighOrderGrad2(TestTanhHighOrderGrad):
     def setUp(self):
         self.func = matmul_high_order_grad
