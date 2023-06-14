@@ -76,8 +76,8 @@ function(download_cudnn-frontend)
   endif()
 endfunction()
 
-if(NOT EXISTS ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME})  
-  message(STATUS "Local package ${CUDNN_FRONTEND_CACHE_FILENAME} not found, starting download.")  
+if(NOT EXISTS ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME})
+  message(STATUS "Local package ${CUDNN_FRONTEND_CACHE_FILENAME} not found, starting download.")
   download_cudnn-frontend()
 endif()
 
