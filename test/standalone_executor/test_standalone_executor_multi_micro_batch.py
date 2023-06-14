@@ -135,7 +135,6 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 op._set_attr("dropout_prob", 0)
 
     def run_train(self, split=False, micro_batch_num=1):
-
         paddle.seed(2022)
 
         scope = paddle.static.Scope()
