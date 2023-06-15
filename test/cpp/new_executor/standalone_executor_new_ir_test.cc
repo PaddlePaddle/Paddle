@@ -42,45 +42,43 @@ PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 namespace paddle {
 namespace framework {
 
-// TEST(StandaloneExecutor, run) {
-//   std::cerr << "here" << std::endl;
+TEST(StandaloneExecutor, run) {
+  std::cerr << "here" << std::endl;
 
-//   ir::IrContext* ctx = ir::IrContext::Instance();
-//   ir::Program program((ctx));
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program((ctx));
 
-//   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-//   ir::Builder builder = ir::Builder(ctx, program.block());
+  ir::Builder builder = ir::Builder(ctx, program.block());
 
-//   paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
-//       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32,
-//       phi::CPUPlace());
+  paddle::dialect::FullOp op1 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-//   paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
-//       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32,
-//       phi::CPUPlace());
+  paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
+      std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-//   builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
+  builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
 
-//   program.Print(std::cout);
+  program.Print(std::cout);
 
-//   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-//   kernel_program->Print(std::cout);
+  kernel_program->Print(std::cout);
 
-//   auto place = platform::CPUPlace();
-//   Scope scope;
+  auto place = platform::CPUPlace();
+  Scope scope;
 
-//   ProgramDesc prog_desc;
-//   InterpreterCore test_core(
-//       place, prog_desc.Block(0), &scope, kernel_program.get());
+  ProgramDesc prog_desc;
+  InterpreterCore test_core(
+      place, prog_desc.Block(0), &scope, kernel_program.get());
 
-//   test_core.Run({});
+  test_core.Run({});
 
-//   auto tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
+  auto tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
 
-//   std::cerr << "uot" << tensor << std::endl;
-// }
+  std::cerr << "uot" << tensor << std::endl;
+}
 
 TEST(StandaloneExecutor, run) {
   std::cerr << "here" << std::endl;
@@ -142,7 +140,18 @@ TEST(StandaloneExecutor, run) {
 
   auto tensor = scope.Var("inner_var_8")->Get<phi::DenseTensor>();
 
-  std::cerr << "uot" << tensor << std::endl;
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.80721);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 1.56764);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 1.85063);
+  std::cerr << out_tensor.data<float>()[0] << "\t"
+            << out_tensor.data<float>()[1] << "\t"
+            << out_tensor.data<float>()[2] << "\t"
+            << out_tensor.data<float>()[3] << std::endl;
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
 }
 
 }  // namespace framework
