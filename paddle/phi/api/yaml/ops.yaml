@@ -1762,6 +1762,7 @@
   kernel :
     func : pow
     data_type : x
+  inplace: (x -> out)
   backward : pow_grad
 
 - op : prelu
