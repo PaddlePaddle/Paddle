@@ -34,6 +34,7 @@ message(STATUS "DIRENT_NAME: ${DIRENT_NAME}, DIRENT_URL: ${DIRENT_URL}")
 set(DIRENT_DOWNLOAD_DIR "${PADDLE_SOURCE_DIR}/third_party/dirent")
 set(DIRENT_PREFIX_DIR ${THIRD_PARTY_PATH}/dirent)
 set(DIRENT_INCLUDE_DIR ${THIRD_PARTY_PATH}/dirent/src/extern_dirent/include)
+set(CUDNN_FRONTEND_URL_MD5 "6bf6319ae71432ed6a4d90dc61e80131")
 
 include_directories(${DIRENT_INCLUDE_DIR})
 
@@ -43,8 +44,10 @@ function(download_dirent)
       "Downloading ${DIRENT_URL} to ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}"
   )
   # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
-  file(DOWNLOAD ${DIRENT_URL} ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
-       STATUS ERR)
+  file(
+    DOWNLOAD ${DIRENT_URL} ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
+    EXPECTED_MD5 ${DIRENT_URL_MD5}
+    STATUS ERR)
   if(ERR EQUAL 0)
     message(STATUS "Download ${DIRENT_CACHE_FILENAME} success")
   else()
@@ -55,19 +58,25 @@ function(download_dirent)
   endif()
 endfunction()
 
-if(NOT EXISTS ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME})
-  message(
-    STATUS
-      "Local package ${DIRENT_CACHE_FILENAME} not found, starting download.")
+if(EXISTS ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME})
+  file(MD5 ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME} DIRENT_MD5)
+  if(NOT DIRENT_MD5 STREQUAL DIRENT_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${DIRENT_PREFIX_DIR})
+    file(REMOVE_RECURSE ${DIRENT_INSTALL_DIR})
+    download_dirent()
+  endif()
+else()
   download_dirent()
 endif()
 
 ExternalProject_Add(
   extern_dirent
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
   URL ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME}
   PREFIX ${DIRENT_PREFIX_DIR}
   DOWNLOAD_DIR ${DIRENT_DOWNLOAD_DIR}
+  DOWNLOAD_NO_PROGRESS 1
   SOURCE_DIR ${DIRENT_INSTALL_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
