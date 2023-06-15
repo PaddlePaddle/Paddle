@@ -17,6 +17,7 @@ import os
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import enable_fallback_guard
 
 import paddle
 from paddle import fluid
@@ -230,6 +231,7 @@ class TestErrorBase(unittest.TestCase):
 
         # 1. Check whether the new exception type is the same as the old one
         with self.assertRaises(self.exception_type) as new_cm:
+            breakpoint()
             self.func_call()
 
         new_exception = new_cm.exception
@@ -272,6 +274,7 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
 
     def test_error(self):
         for disable_new_error in [0, 1]:
+            breakpoint()
             self._test_raise_new_exception(disable_new_error)
 
 
@@ -475,4 +478,5 @@ class TestSetStateDictErr(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    with enable_fallback_guard("False"):
+        unittest.main()
