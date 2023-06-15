@@ -43,10 +43,12 @@ void IndexSelectStridedKernel(const Context& ctx,
   auto meta = output->meta();
   meta.offset = offset;
   auto tmp_dim = DDim(shape.data(), shape.size());
-  if (meta.dims != tmp_dim) {
-    LOG(WARNING) << "Index_select kernel stride compute diff, infer shape is "
-                 << meta.dims << ", but compute is " << tmp_dim << ".";
-    meta.dims = tmp_dim;
+  if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
+    PADDLE_THROW(
+        phi::errors::Fatal("Index_select kernel stride compute diff, infer "
+                           "shape is %s, but compute is %s.",
+                           meta.dims,
+                           tmp_dim));
   }
   meta.stride = DDim(stride.data(), stride.size());
   output->set_meta(meta);
