@@ -81,7 +81,7 @@ def _math_attention(
 
 
 def _select_sdp_cuda(head_dim):
-    if head_dim < 128:
+    if head_dim <= 128:
         return "flash_attn"
     else:
         return "mem_efficient"

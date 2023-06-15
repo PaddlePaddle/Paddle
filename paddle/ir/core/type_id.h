@@ -51,7 +51,10 @@ class TypeId {
 
   TypeId &operator=(const TypeId &other) = default;
 
-  const Storage *storage() const { return storage_; }
+  void *AsOpaquePointer() const { return storage_; }
+  static TypeId RecoverFromOpaquePointer(void *pointer) {
+    return TypeId(static_cast<Storage *>(pointer));
+  }
 
   ///
   /// \brief Comparison operations.
@@ -77,10 +80,11 @@ class TypeId {
   ///
   /// \param storage The storage of this TypeId.
   ///
-  explicit TypeId(const Storage *storage) : storage_(storage) {}
+  explicit TypeId(Storage *storage) : storage_(storage) {}
 
-  const Storage *storage_{nullptr};
+  Storage *storage_{nullptr};
 };
+
 }  // namespace ir
 
 namespace std {

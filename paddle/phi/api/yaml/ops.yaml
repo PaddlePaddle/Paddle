@@ -812,6 +812,17 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill
+  args : (Tensor x, Scalar value=0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
   output : Tensor(out)

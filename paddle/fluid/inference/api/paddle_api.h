@@ -472,9 +472,25 @@ class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
 struct XpuRuntimeConfig {
+  // xpu_context(from baidu::xpu::api::create_context) for execution.
+  // If context is nullptr, default context is used.
+  void* context{nullptr};
+  // Stream for execution.
+  // Note: It has a higher priority than stream in "context"
   void* stream{nullptr};
+  // Available l3 size (Byte)
+  // For kunlun1, max l3_size is 16773120 Byte
+  // For kunlun2, max l3_size is 67104768 Byte
+  // Note: If it is difference from l3_size in "context", new l3 buffer is
+  // malloced.
   size_t l3_size{16773120};
+  // If l3_ptr is not nullptr, it is used as l3 buffer.
+  // If l3_ptr is nullptr, new l3 buffer will be created.
   void* l3_ptr{nullptr};
+  // Available l3 size for autotune.
+  // If l3_autotune_size is 0, autotune is closed.
+  // Note: The remaining l3 size (l3_size - l3_autotune_size) is for
+  // kernels (both paddle/xdnn kernels)
   size_t l3_autotune_size{0};
 };
 

@@ -990,6 +990,17 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill (fill_any)
+  backward : fill_grad (fill_any_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
+
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :

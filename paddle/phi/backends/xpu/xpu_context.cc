@@ -103,6 +103,9 @@ struct XPUContext::Impl {
 
   // Set external stream for context
   void SetStream(void* stream) {
+    if (context_->xpu_stream != nullptr && stream_owned_) {
+      xpu_stream_destroy(context_->xpu_stream);
+    }
     stream_owned_ = false;
     context_->set_stream(static_cast<XPUStream>(stream));
   }
@@ -152,7 +155,22 @@ struct XPUContext::Impl {
     SetL3Cache();
   }
 
-  void SetXContext(xpu::Context* context) { context_ = context; }
+  void SetXContext(xpu::Context* context) {
+    if (context_ != nullptr) {
+      backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
+      xpu_wait(context_->xpu_stream);
+      if (context_->xpu_stream != nullptr && stream_owned_) {
+        xpu_stream_destroy(context_->xpu_stream);
+        stream_owned_ = false;
+        context_->xpu_stream = nullptr;
+      }
+      if (owned_) {
+        xpu::destroy_context(context_);
+      }
+    }
+    context_ = context;
+    owned_ = false;
+  }
 
   void SetBkclContext(xpu::BKCLContext_t context) { bkcl_context_ = context; }
 
