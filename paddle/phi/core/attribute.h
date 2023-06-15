@@ -21,6 +21,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/tensor_ref_scalar.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/variant.h"
 
@@ -46,7 +47,8 @@ using Attribute = paddle::variant<bool,
                                   IntArray,
                                   DataType,
                                   DataLayout,
-                                  Place>;
+                                  Place,
+                                  TensorRefScalar>;
 
 using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
 

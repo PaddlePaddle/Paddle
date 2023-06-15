@@ -33,6 +33,7 @@ void ScaleKernel(const Context& dev_ctx,
                  bool bias_after_scale,
                  DenseTensor* out) {
   // calc
+  std::cerr << "in scale kernel" << std::endl;
   dev_ctx.template Alloc<T>(out);
   auto eigen_out = phi::EigenVector<T>::Flatten(*out);
   auto eigen_x = phi::EigenVector<T>::Flatten(x);
