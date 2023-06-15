@@ -25,7 +25,6 @@ from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
 from paddle.nn import TransformerEncoderLayer
 
 paddle.enable_static()
-np.set_printoptions(threshold=np.inf)
 
 
 class TestEncorderMulitMicroBatchRun(unittest.TestCase):
@@ -67,14 +66,12 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
     def batch_generator_creator(self, micro_batch_size):
         def __reader__():
             for i in range(self.run_step):
-                for micro_batch_id in range(
-                    self.batch_size // micro_batch_size
-                ):
+                for offset in range(0, self.batch_size, micro_batch_size):
                     enc_input = self.enc_input_data[i][
-                        micro_batch_id : micro_batch_id + micro_batch_size
+                        offset : offset + micro_batch_size
                     ]
                     attn_mask = self.attn_mask_data[i][
-                        micro_batch_id : micro_batch_id + micro_batch_size
+                        offset : offset + micro_batch_size
                     ]
                     yield enc_input, attn_mask
 
@@ -182,9 +179,6 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
 
         job_list = []
         program_num = len(programs)
-
-        # for i in range(program_num):
-        #    print(f"program_{i} = \n{programs[i]}")
 
         for micro_batch_id in range(micro_batch_num):
             for program_id in range(program_num):
