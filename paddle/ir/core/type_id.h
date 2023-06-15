@@ -17,6 +17,8 @@
 #include <glog/logging.h>
 #include <functional>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 
 ///
@@ -94,6 +96,7 @@ class alignas(8) UniqueingId {
   operator TypeId() { return id(); }
   TypeId id() { return TypeId::RecoverFromOpaquePointer(this); }
 };
+
 template <typename T>
 class TypeIdResolver;
 
@@ -116,9 +119,17 @@ TypeId TypeId::get() {
   }                                             \
   }  // namespace ir
 
-/*
-#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS)
-*/
+#define IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
+  namespace ir {                                       \
+  namespace detail {                                   \
+  template <>                                          \
+  class IR_API TypeIdResolver<TYPE_CLASS> {            \
+   public:                                             \
+    static TypeId Resolve() { return id_; }            \
+    static UniqueingId id_;                            \
+  };                                                   \
+  }                                                    \
+  }  // namespace ir
 
 #define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
   namespace ir {                                    \

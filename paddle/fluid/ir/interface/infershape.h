@@ -49,4 +49,4 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DECLARE_EXPLICIT_TYPE_ID(InferShapeInterface)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InferShapeInterface)

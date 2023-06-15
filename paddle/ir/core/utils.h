@@ -20,11 +20,13 @@
 #include <tuple>
 #include <type_traits>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 ///
 /// \brief Equivalent to boost::hash_combine.
 ///
-std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
+IR_API std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
 
 ///
 /// \brief Aligned malloc and free functions.

@@ -22,7 +22,7 @@ namespace ir {
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
-class Attribute {
+class IR_API Attribute {
  public:
   using Storage = AttributeStorage;
 
@@ -85,7 +85,7 @@ class Attribute {
   const Storage *storage_{nullptr};
 };
 
-std::ostream &operator<<(std::ostream &os, Attribute attr);
+IR_API std::ostream &operator<<(std::ostream &os, Attribute attr);
 }  // namespace ir
 
 namespace std {

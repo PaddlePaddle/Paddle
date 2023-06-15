@@ -31,7 +31,7 @@ class OpResultImpl;
 /// \brief OpOperand class represents the operand of operation. This class only
 /// provides interfaces, for specific implementation, see Impl class.
 ///
-class OpOperand {
+class IR_API OpOperand {
  public:
   OpOperand() = default;
 
@@ -103,7 +103,7 @@ class ValueUseIterator {
 /// \brief Value class represents the SSA value in the IR system. This class
 /// only provides interfaces, for specific implementation, see Impl class.
 ///
-class Value {
+class IR_API Value {
  public:
   Value() = default;
 
@@ -161,7 +161,7 @@ class Value {
 /// This class only provides interfaces, for specific implementation, see Impl
 /// class.
 ///
-class OpResult : public Value {
+class IR_API OpResult : public Value {
  public:
   using Value::Value;
 

@@ -22,7 +22,7 @@ namespace ir {
 /// all built-in types defined in builtin_type.h will be registered in this
 /// Dialect.
 ///
-class BuiltinDialect : public ir::Dialect {
+class IR_API BuiltinDialect : public ir::Dialect {
  public:
   explicit BuiltinDialect(ir::IrContext *context);
   ///
@@ -39,4 +39,4 @@ class BuiltinDialect : public ir::Dialect {
 
 }  // namespace ir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::BuiltinDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BuiltinDialect)

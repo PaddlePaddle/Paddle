@@ -12,8 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/interface/infershape.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#pragma once
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferShapeInterface)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
+#if defined(_WIN32)
+#ifndef IR_API
+#ifdef IR_DLL_EXPORT
+#define IR_API __declspec(dllexport)
+#else
+#define IR_API __declspec(dllimport)
+#endif  // IR_DLL_EXPORT
+#endif  // IR_API
+#else
+#define IR_API
+#endif  // _WIN32

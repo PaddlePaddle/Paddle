@@ -19,7 +19,7 @@
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
-class StrAttribute : public Attribute {
+class IR_API StrAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -34,7 +34,7 @@ class StrAttribute : public Attribute {
   uint32_t size() const;
 };
 
-class BoolAttribute : public Attribute {
+class IR_API BoolAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -43,7 +43,7 @@ class BoolAttribute : public Attribute {
   bool data() const;
 };
 
-class FloatAttribute : public Attribute {
+class IR_API FloatAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -52,7 +52,7 @@ class FloatAttribute : public Attribute {
   float data() const;
 };
 
-class DoubleAttribute : public Attribute {
+class IR_API DoubleAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -61,7 +61,7 @@ class DoubleAttribute : public Attribute {
   double data() const;
 };
 
-class Int32Attribute : public Attribute {
+class IR_API Int32Attribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -70,7 +70,7 @@ class Int32Attribute : public Attribute {
   int32_t data() const;
 };
 
-class Int64Attribute : public Attribute {
+class IR_API Int64Attribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -79,7 +79,7 @@ class Int64Attribute : public Attribute {
   int64_t data() const;
 };
 
-class ArrayAttribute : public Attribute {
+class IR_API ArrayAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -94,7 +94,7 @@ class ArrayAttribute : public Attribute {
   Attribute operator[](size_t index) const { return data()[index]; }
 };
 
-class PointerAttribute : public Attribute {
+class IR_API PointerAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -105,11 +105,11 @@ class PointerAttribute : public Attribute {
 
 }  // namespace ir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::StrAttribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::BoolAttribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::FloatAttribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::DoubleAttribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Attribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Attribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::ArrayAttribute)
-IR_DECLARE_EXPLICIT_TYPE_ID(ir::PointerAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::StrAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::FloatAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::DoubleAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Attribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Attribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::ArrayAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::PointerAttribute)

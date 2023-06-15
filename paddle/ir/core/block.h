@@ -17,12 +17,13 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/region.h"
 
 namespace ir {
 class Operation;
 
-class Block {
+class IR_API Block {
   using OpListType = std::list<Operation *>;
 
  public:
