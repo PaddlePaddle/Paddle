@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 
@@ -69,6 +70,7 @@ class NestSequentialNet(paddle.nn.Layer):
         return self.layers(x)
 
 
+@dy2static_unittest
 class TestSequential(unittest.TestCase):
     def setUp(self):
         paddle.set_device('cpu')
@@ -104,6 +106,7 @@ class TestSequential(unittest.TestCase):
 
         return out
 
+    @ast_only_test
     def test_train(self):
         paddle.jit.set_code_level(100)
         dy_out = self._run(to_static=False)

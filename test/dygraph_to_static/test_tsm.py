@@ -45,7 +45,9 @@ def parse_args():
         default=fluid.is_compiled_with_cuda(),
         help='default use gpu.',
     )
-    args = parser.parse_args(['--config', 'tsm.yaml'])
+    args = parser.parse_args(
+        ['--config', __file__.rpartition('/')[0] + '/tsm.yaml']
+    )
     return args
 
 

@@ -50,3 +50,6 @@
 	path = third_party/eigen3
 	url = https://gitlab.com/libeigen/eigen.git
 	ignore = dirty
+[submodule "python/paddle/jit/PaddleSOT"]
+	path = python/paddle/jit/PaddleSOT
+	url = https://github.com/PaddlePaddle/PaddleSOT
