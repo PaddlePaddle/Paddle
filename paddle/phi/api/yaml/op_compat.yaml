@@ -378,8 +378,8 @@
   outputs :
     out : Out
   scalar:
-    axis:
-      data_type : float32
+    minlength:
+      data_type : int
       support_tensor : true
 
 - op : bitwise_and
