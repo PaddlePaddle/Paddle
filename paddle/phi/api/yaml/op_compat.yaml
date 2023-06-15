@@ -923,6 +923,18 @@
   outputs :
     out : Out
 
+- op : expand_v2
+  backward : expand_v2_grad
+  inputs :
+    x : x
+  outputs :
+    out : Out
+  int_array:
+    shape :
+      data_type : int
+      tensor_name : Shape
+      tensors_name : expand_shapes_tensor
+
 - op : expm1
   backward : expm1_grad
   inputs :
