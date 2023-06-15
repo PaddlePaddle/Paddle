@@ -41,13 +41,13 @@ struct EngineConfig {
   int device_id = 0;
 
   // for xpu
-  size_t xpu_l3_workspace_size;
-  bool locked = false;
-  bool autotune = true;
-  std::string autotune_file = "";
-  std::string precision = "int16";
-  bool adaptive_seqlen = false;
-  bool enable_multi_stream = false;
+  size_t xpu_l3_size{0};
+  bool xpu_l3_locked = false;
+  bool xpu_conv_autotune = true;
+  std::string xpu_conv_autotune_file = "";
+  std::string xpu_transformer_encoder_precision = "int16";
+  bool xpu_transformer_encoder_adaptive_seqlen = false;
+  bool xpu_enable_multi_stream = false;
 
   // for x86 or arm
   int cpu_math_library_num_threads{1};

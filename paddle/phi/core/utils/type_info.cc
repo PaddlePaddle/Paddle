@@ -24,6 +24,9 @@ limitations under the License. */
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 #include "paddle/phi/core/utils/type_info.h"
 
 namespace phi {
@@ -51,6 +54,11 @@ template class TypeInfoTraits<phi::TensorBase, TensorArray>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+template class TypeInfoTraits<phi::TensorBase,
+                              phi::distributed::auto_parallel::DistTensor>;
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)

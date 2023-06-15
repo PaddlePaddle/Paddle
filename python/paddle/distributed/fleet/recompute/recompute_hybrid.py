@@ -29,7 +29,6 @@ __all__ = []
 
 
 def _split_activation(tensor, mp_group):
-
     mp_degree = mp_group.nranks
     mp_rank = mp_group.rank
     if mp_degree < 2:
@@ -87,7 +86,6 @@ class _HPRecomputeFunction(PyLayer):
         *args,
         **kwargs,
     ):
-
         # store for recomputing
         ctx.run_function = run_function
 

@@ -977,7 +977,6 @@ def hsigmoid_loss(
         )
         return out
     else:
-
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'hsigmoid_loss'
         )
@@ -2709,7 +2708,6 @@ def cross_entropy(
         )
 
         if weight is not None:
-
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label:
                 # chajchaj:

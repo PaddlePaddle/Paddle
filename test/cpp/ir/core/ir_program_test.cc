@@ -98,19 +98,16 @@ TEST(program_test, program) {
   ir::Block *block = program.block();
   block->push_back(op1);
 
-  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParentRegion());
+  EXPECT_EQ(&program.module_op()->GetRegion(0), block->GetParent());
 
   EXPECT_EQ(program.module_op(), block->GetParentOp());
 
   EXPECT_EQ(&program, op1->GetParentProgram());
 
-  EXPECT_EQ(op1->GetResultByIndex(0).type().dialect().id(),
-            paddle_dialect->id());
+  EXPECT_EQ(op1->result(0).type().dialect().id(), paddle_dialect->id());
   using Interface = paddle::dialect::ParameterConvertInterface;
-  Interface *a_interface = op1->GetResultByIndex(0)
-                               .type()
-                               .dialect()
-                               .GetRegisteredInterface<Interface>();
+  Interface *a_interface =
+      op1->result(0).type().dialect().GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> a_var =
       a_interface->ParameterToVariable(program.GetParameter("a"));
   const phi::DenseTensor &a_tensor = a_var->Get<phi::DenseTensor>();
@@ -134,12 +131,9 @@ TEST(program_test, program) {
       ir::Operation::Create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
   block->push_back(op2);
 
-  EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
-            paddle_dialect->id());
-  Interface *b_interface = op2->GetResultByIndex(0)
-                               .type()
-                               .dialect()
-                               .GetRegisteredInterface<Interface>();
+  EXPECT_EQ(op2->result(0).type().dialect().id(), paddle_dialect->id());
+  Interface *b_interface =
+      op2->result(0).type().dialect().GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> b_var =
       b_interface->ParameterToVariable(program.GetParameter("b"));
   const phi::DenseTensor &b_tensor = b_var->Get<phi::DenseTensor>();
@@ -158,11 +152,10 @@ TEST(program_test, program) {
       builtin_dialect->name() + "." + std::string(AddOp::name());
   ir::OpInfo op3_info = ctx->GetRegisteredOpInfo(op3_name);
   std::unordered_map<std::string, ir::Attribute> op3_attribute;
-  ir::Operation *op3 = ir::Operation::Create(
-      {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      op3_attribute,
-      {dense_tensor_dtype},
-      op3_info);
+  ir::Operation *op3 = ir::Operation::Create({op1->result(0), op2->result(0)},
+                                             op3_attribute,
+                                             {dense_tensor_dtype},
+                                             op3_info);
   block->push_back(op3);
 
   phi::CPUContext *dev_ctx = static_cast<phi::CPUContext *>(
@@ -186,7 +179,7 @@ TEST(program_test, program) {
 
   // (7) Def AbsOp(b)
   ir::OpInfo abs_info = ctx->GetRegisteredOpInfo("pd.abs");
-  std::vector<ir::OpResult> operands = {op1->GetResultByIndex(0)};
+  std::vector<ir::OpResult> operands = {op1->result(0)};
   std::unordered_map<std::string, ir::Attribute> abs_op_attribute;
   std::vector<ir::Type> output_types = {dense_tensor_dtype};
   ir::OperationArgument abs_argument(abs_info);
@@ -205,15 +198,14 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op4_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
 
-  ir::OperationArgument op4_argument(
-      {op3->GetResultByIndex(0)}, {}, {}, op4_info);
+  ir::OperationArgument op4_argument({op3->result(0)}, {}, {}, op4_info);
   op4_argument.AddAttributes(op4_attribute.begin(), op4_attribute.end());
   ir::Operation *op4 = ir::Operation::Create(std::move(op4_argument));
   block->push_back(op4);
 
-  EXPECT_EQ(op4->GetOperandByIndex(0).source().type().dialect().id(),
+  EXPECT_EQ(op4->operand(0).source().type().dialect().id(),
             paddle_dialect->id());
-  Interface *c_interface = op4->GetOperandByIndex(0)
+  Interface *c_interface = op4->operand(0)
                                .source()
                                .type()
                                .dialect()
@@ -274,21 +266,17 @@ TEST(program_test, slice_combine_test) {
   ir::Type output_type =
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
   ir::Operation *combine_op = ir::Operation::Create(
-      {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      {},
-      {output_type},
-      combine_op_info);
+      {op1->result(0), op2->result(0)}, {}, {output_type}, combine_op_info);
   program.block()->push_back(combine_op);
 
   // (7) Def slice_op = SliceOp(combine_op, 0)
   std::string slice_op_name = std::string(ir::SliceOp::name());
   ir::OpInfo slice_op_info = ctx->GetRegisteredOpInfo(slice_op_name);
-  ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
-  ir::Operation *slice_op =
-      ir::Operation::Create({combine_op->GetResultByIndex(0)},
-                            {{"index", index_attr}},
-                            {fp32_dtype},
-                            slice_op_info);
+  ir::Attribute index_attr = ir::Int32Attribute::get(ctx, 0);
+  ir::Operation *slice_op = ir::Operation::Create({combine_op->result(0)},
+                                                  {{"index", index_attr}},
+                                                  {fp32_dtype},
+                                                  slice_op_info);
   program.block()->push_back(slice_op);
 
   // (8) Traverse Program
@@ -299,11 +287,11 @@ TEST(program_test, builder) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
-  ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
+  ir::Builder builder = ir::Builder(ctx, program.block());
 
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
-  ir::Type full_op_output = full_op->GetResultByIndex(0).type();
+  ir::Type full_op_output = full_op->result(0).type();
   EXPECT_EQ(program.block()->size(), 1u);
   EXPECT_EQ(program.block()->back(), full_op.operation());
   EXPECT_EQ(full_op->num_operands(), 0u);
@@ -319,8 +307,7 @@ TEST(program_test, builder) {
   }
 
   ir::ConstantOp constant = builder.Build<ir::ConstantOp>(
-      ir::Int32_tAttribute::get(ctx, 2), ir::Int32Type::get(ctx));
+      ir::Int32Attribute::get(ctx, 2), ir::Int32Type::get(ctx));
   EXPECT_EQ(program.block()->size() == 2, true);
-  EXPECT_EQ(constant.value().dyn_cast<ir::Int32_tAttribute>().data() == 2,
-            true);
+  EXPECT_EQ(constant.value().dyn_cast<ir::Int32Attribute>().data() == 2, true);
 }

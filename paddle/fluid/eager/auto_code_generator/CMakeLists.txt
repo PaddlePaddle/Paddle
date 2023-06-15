@@ -52,7 +52,7 @@ if(WIN32)
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
   endif()
 
-  if(WITH_PHI_SHARED)
+  if(WITH_SHARED_PHI)
     message("Copied phi.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/phi.dll

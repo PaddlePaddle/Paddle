@@ -124,7 +124,6 @@ class Engine:
         cluster=None,
         strategy=None,
     ):
-
         if (
             model
             and not isinstance(model, paddle.nn.Layer)
@@ -1411,7 +1410,6 @@ class Engine:
         epochs=1,
         steps_per_epoch=None,
     ):
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -1472,7 +1470,6 @@ class Engine:
         steps_per_epoch=None,
         collate_fn=None,
     ):
-
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]

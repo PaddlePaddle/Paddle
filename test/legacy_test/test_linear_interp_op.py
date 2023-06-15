@@ -244,7 +244,6 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
     def test_case(self):
-
         # dygraph
         x_data = np.random.random((1, 3, 128)).astype("float32")
         us_1 = paddle.nn.Upsample(

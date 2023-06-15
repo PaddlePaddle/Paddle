@@ -463,6 +463,26 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_op : cummax_grad
+  forward : cummax(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cummax_grad
+
+- backward_op : cummin_grad
+  forward : cummin(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cummin_grad
+
 - backward_op : cumprod_grad
   forward : cumprod (Tensor x, int dim) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int dim)
@@ -724,6 +744,17 @@
     func : fill_diagonal_tensor_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : fill_grad
+  forward : fill (Tensor x, Scalar value=0) -> Tensor(out)
+  args : (Tensor out_grad, Scalar value)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fill_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : flash_attn_grad
   forward : flash_attn (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false)
@@ -775,6 +806,17 @@
     func : floor_grad
   composite : floor_grad(out_grad, x_grad)
   inplace : (out_grad -> x_grad)
+
+- backward_op : fmax_grad
+  forward : fmax(Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param: [x, y]
+  kernel :
+    func : fmax_grad
+    data_type : out_grad
 
 - backward_op : fold_grad
   forward: fold (Tensor x, int[] output_sizes, int[] kernel_sizes, int[] strides, int[] paddings, int[] dilations) -> Tensor(out)

@@ -32,7 +32,6 @@ def compare_result(actual, expected):
 
 
 def valid_eigenvalues(actual, expected):
-
     FP32_MAX_RELATIVE_ERR = 5e-5
     FP64_MAX_RELATIVE_ERR = 1e-14
 

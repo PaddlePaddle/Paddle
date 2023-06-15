@@ -61,20 +61,20 @@ class DoubleAttribute : public Attribute {
   double data() const;
 };
 
-class Int32_tAttribute : public Attribute {
+class Int32Attribute : public Attribute {
  public:
   using Attribute::Attribute;
 
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int32_tAttribute, Int32_tAttributeStorage);
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int32Attribute, Int32AttributeStorage);
 
   int32_t data() const;
 };
 
-class Int64_tAttribute : public Attribute {
+class Int64Attribute : public Attribute {
  public:
   using Attribute::Attribute;
 
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int64_tAttribute, Int64_tAttributeStorage);
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int64Attribute, Int64AttributeStorage);
 
   int64_t data() const;
 };

@@ -60,6 +60,10 @@ class Attribute {
 
   IrContext *ir_context() const;
 
+  /// @brief print attribute
+  /// @param os
+  void Print(std::ostream &os) const;
+
   ///
   /// \brief Methods for type judgment and cast.
   ///
@@ -80,6 +84,8 @@ class Attribute {
  protected:
   const Storage *storage_{nullptr};
 };
+
+std::ostream &operator<<(std::ostream &os, Attribute attr);
 }  // namespace ir
 
 namespace std {

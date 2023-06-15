@@ -48,7 +48,6 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
         np.random.seed(2333)
 
     def test_hybrid_parallel_inference_helper_mp1pp2(self):
-
         nranks = int(os.getenv("PADDLE_TRAINERS_NUM", 1))
         rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
         dev_id = int(os.getenv("FLAGS_selected_gpus", 0))

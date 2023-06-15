@@ -77,13 +77,14 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
-  list(REMOVE_ITEM TEST_OPS test_async_read_write test_audio_logmel_feature
-       test_audio_mel_feature)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
 
+list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
@@ -952,6 +953,7 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 1200)
+  set_tests_properties(test_batch_norm_op_prim PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
@@ -960,6 +962,7 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_batch_norm_op_prim PROPERTIES TIMEOUT 250)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
@@ -1032,7 +1035,7 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
@@ -1182,6 +1185,7 @@ set(TEST_CINN_OPS
     test_clip_op
     test_scatter_op
     test_gather_op
+    test_batch_norm_op_prim
     test_layer_norm_op
     test_cast_op
     test_dropout_op
@@ -1190,12 +1194,24 @@ set(TEST_CINN_OPS
     test_roll_op
     test_sum_op
     test_elementwise_min_op
+    test_atan2_op
+    test_top_k_op
+    test_where_op
+    test_take_along_axis_op
     test_arg_min_max_op
     test_reverse_op
     test_flip
     test_triangular_solve_op
     test_scatter_nd_op
-    test_strided_slice_op)
+    test_strided_slice_op
+    test_pool2d_op
+    test_instance_norm_op
+    test_cumsum_op
+    test_pad_op
+    test_split_op
+    test_erf_op
+    test_assign_op
+    test_flatten_contiguous_range_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1297,4 +1313,4 @@ set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
-                                                                     120)
+                                                                     250)

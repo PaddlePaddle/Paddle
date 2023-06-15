@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include <unordered_map>
+
 #include "paddle/ir/core/type_id.h"
 
 namespace ir {
@@ -23,12 +24,11 @@ class IrContext;
 class OpResult;
 class Type;
 class Attribute;
+class Dialect;
 
 class OpInfo {
  public:
   constexpr OpInfo() = default;
-
-  OpInfo(const OpInfoImpl *impl) : impl_(impl) {}  // NOLINT
 
   OpInfo(const OpInfo &other) = default;
 
@@ -43,6 +43,7 @@ class OpInfo {
   bool operator!() const { return impl_ == nullptr; }
 
   IrContext *ir_context() const;
+  Dialect *dialect() const;
 
   const char *name() const;
 
@@ -51,8 +52,6 @@ class OpInfo {
   void Verify(const std::vector<OpResult> &inputs,
               const std::vector<Type> &outputs,
               const std::unordered_map<std::string, Attribute> &attributes);
-
-  const OpInfoImpl *impl() const;
 
   template <typename Trait>
   bool HasTrait() const {
@@ -71,13 +70,20 @@ class OpInfo {
   template <typename Interface>
   typename Interface::Concept *GetInterfaceImpl() const;
 
+  void *AsOpaquePointer() const { return impl_; }
+  static OpInfo RecoverFromOpaquePointer(void *pointer) {
+    return OpInfo(static_cast<OpInfoImpl *>(pointer));
+  }
+
+  friend class OpInfoImpl;
   friend struct std::hash<OpInfo>;
 
  private:
+  explicit OpInfo(OpInfoImpl *impl) : impl_(impl) {}
   void *GetInterfaceImpl(TypeId interface_id) const;
 
  private:
-  const OpInfoImpl *impl_{nullptr};  // not owned
+  OpInfoImpl *impl_{nullptr};  // not owned
 };
 
 template <typename Interface>

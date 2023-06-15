@@ -157,6 +157,14 @@
           comment : In order to add additional size to one side of each dimension in the output.
           default : "std::vector<int>{}"
 
+- op : elementwise_max
+  version :
+    - checkpoint : Register elementwise_max for adding the attribute of Scale_y.
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_max.
+          default : 1.0
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
