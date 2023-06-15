@@ -859,7 +859,7 @@ def set_value_for_bool_tensor(var, item, value):
     return var
 
 
-def deal_advanced_index(ori_tensor, indices):
+def deal_advanced_index(ori_tensor, indices, with_transback=False):
     """
     Transpose origin Tensor and indices to the front.
     """
@@ -873,20 +873,13 @@ def deal_advanced_index(ori_tensor, indices):
         if indice is None:
             transed_dim.append(i)
     transed_tensor = ori_tensor.transpose(transed_dim)
-    return transed_tensor, transed_index
+    trans_back_dim = np.argsort(transed_dim) if with_transback else []
+    return transed_tensor, transed_index, trans_back_dim
 
 
-def _getitem_iter(x, indices):
-    """
-    [WIP]: support __getitem__ by iteration strategy. combined indexing will be support by this.
-
-    Args:
-        x(Tensor): Tensor to be indexing.
-        indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
-    """
+def parse_index(indices):
     advanced_index = []  # content is (dim, index)
-
-    # for slice/stride slice OP
+    # for set_value / slice / strided_slice OP
     decrease_axes = []
     axes = []
     starts = []
@@ -895,8 +888,6 @@ def _getitem_iter(x, indices):
     use_strided_slice = False
     has_advanced_index = False
 
-    # step1 : replace ndarray / None / ellipsis to normal elemement
-    #         and wrap multiple into one tuple
     indices = replace_ndarray(indices)
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
@@ -904,7 +895,6 @@ def _getitem_iter(x, indices):
     if not isinstance(indices, tuple):
         indices = (indices,)
 
-    # step2: Traverse index elements and record them.
     for dim, slice_item in enumerate(indices):
         start, end, step = None, None, None
         if is_integer_or_scalar_tensor(slice_item):
@@ -927,12 +917,26 @@ def _getitem_iter(x, indices):
             if start is None and end is None and step is None:
                 continue
 
+            if not isinstance(step, Variable) and step == 0:
+                raise ValueError(
+                    "When assign a value to a paddle.Tensor, step can not be 0, "
+                    "but received step is {}.".format(step)
+                )
+
+            if isinstance(step, Variable) and (start is None or end is None):
+                raise ValueError(
+                    "When assign a value to a paddle.Tensor, it's not supported that "
+                    "the start or end is None when the type of step is paddle.Tensor."
+                )
+
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
                 end = MAX_INTEGER if step > 0 else -1
             step = 1 if step is None else step
+
             advanced_index.append(None)
+
         elif isinstance(slice_item, (list, tuple)):
             advanced_index.append((dim, paddle.to_tensor(slice_item)))
             has_advanced_index = True
@@ -952,9 +956,177 @@ def _getitem_iter(x, indices):
             steps.append(step)
             axes.append(dim)
             use_strided_slice = True if step != 1 else use_strided_slice
+    return (
+        starts,
+        ends,
+        steps,
+        axes,
+        none_axes,
+        decrease_axes,
+        advanced_index,
+        has_advanced_index,
+        use_strided_slice,
+    )
 
-    # step3: Dealing with basic indexing
-    if len(axes) > 0:
+
+def _setitem_static(x, indices, values):
+    """
+    [WIP]: support __setitem__ by iteration strategy. combined indexing will be support by this.
+    In dynamic mode, this function will modify the value at input tensor, returning same Tensor as input.
+    But it will return a new Tensor with assigned value in static mode.
+
+    Args:
+        x(Tensor): Tensor to be set value.
+        indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
+        values(Tensor|Number|Ndarray): values to be assigned to the x.
+    """
+    if x.type == paddle.fluid.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        return _setitem_for_tensor_array(x, indices, values)
+
+    # step1: parsing the index and recording them
+    (
+        starts,
+        ends,
+        steps,
+        axes,
+        none_axes,
+        decrease_axes,
+        advanced_index,
+        has_advanced_index,
+        use_strided_slice,
+    ) = parse_index(indices)
+
+    inputs = {'Input': x}
+    attrs = {
+        'axes': axes,
+        'starts': starts,
+        'ends': ends,
+        'steps': steps,
+        'decrease_axes': decrease_axes,
+        'none_axes': none_axes,
+    }
+    if paddle.utils._contain_var(starts):
+        inputs['StartsTensorList'] = paddle.utils._convert_to_tensor_list(
+            starts
+        )
+        del attrs['starts']
+    if paddle.utils._contain_var(ends):
+        inputs['EndsTensorList'] = paddle.utils._convert_to_tensor_list(ends)
+        del attrs['ends']
+    if paddle.utils._contain_var(steps):
+        inputs['StepsTensorList'] = paddle.utils._convert_to_tensor_list(steps)
+        del attrs['steps']
+
+    if not has_advanced_index:
+        # step2. Parse values
+        dtype = x.dtype
+        attrs['dtype'] = dtype
+
+        from .data_feeder import convert_dtype
+
+        if isinstance(values, (bool, int, float, complex)):
+            values = np.array([values]).astype(convert_dtype(dtype))
+
+        if isinstance(values, np.ndarray):
+            shape = list(values.shape)
+            values = values.ravel().tolist()
+            attrs["values"] = values
+            attrs["shape"] = shape
+
+        elif isinstance(values, Variable):
+            inputs["ValueTensor"] = values
+        else:
+            raise TypeError(
+                "Only support to assign an Number, numpy.ndarray or "
+                "paddle.Tensor to a paddle.Tensor, but received {}".format(
+                    type(values)
+                )
+            )
+
+        # step3.1: Only basic indexing, use OP set_value to set value.
+        if paddle.in_dynamic_mode():
+            x._bump_inplace_version()
+            out = x
+        else:
+            helper = paddle.fluid.layer_helper.LayerHelper(
+                'set_value', **locals()
+            )
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': out},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
+        return out
+    else:
+        # step3.2: Case for there are advanced indexing.
+        #   1. get __getitem__ result of basic indexing;
+        #   2. transpose original tensor so that the axis with advanced indexing will come to the first;
+        #   3. assign values to the sliced result by index_put OP;
+        #   4. transpose back and assign the result to original tensor by set_value OP.
+
+        sub_tensor = get_tensor_with_basic_indexing(
+            x,
+            axes,
+            starts,
+            ends,
+            steps,
+            decrease_axes,
+            none_axes,
+            use_strided_slice,
+        )
+        (
+            transed_sub_tensor,
+            adjusted_advanced_index,
+            transback_dim,
+        ) = deal_advanced_index(sub_tensor, advanced_index)
+        if not isinstance(values, Variable):
+            values = paddle.assign(values)
+        transed_sub_tensor = transed_sub_tensor.index_put(
+            adjusted_advanced_index, values
+        )
+
+        # NOTE(zoooo0820): now basic indexing of __getitem__ will return a new Tensor both in dynamic and static mode
+        # After strided is ready and basic indexing returns view of Tensor in dynamic mode. The code shoule be changed
+        # for dynamic mode.
+        if paddle.in_dynamic_mode():
+            transed_sub_tensor.index_put_(adjusted_advanced_index, values)
+        else:
+            transed_sub_tensor = transed_sub_tensor.index_put(
+                adjusted_advanced_index, values
+            )
+
+        transback_sub_tensor = transed_sub_tensor.transpose(transback_dim)
+
+        inputs["ValueTensor"] = transback_sub_tensor
+        if paddle.in_dynamic_mode():
+            x._bump_inplace_version()
+            out = x
+        else:
+            helper = paddle.fluid.layer_helper.LayerHelper(
+                'set_value', **locals()
+            )
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        cur_block = default_main_program().current_block()
+        cur_block.append_op(
+            type="set_value",
+            inputs=inputs,
+            outputs={'Out': out},
+            attrs=attrs,
+            inplace_map={"Input": "Out"},
+        )
+        return out
+
+
+def get_tensor_with_basic_indexing(
+    x, axes, starts, ends, steps, decrease_axes, none_axes, use_strided_slice
+):
+    if len(axes) == 0:
+        out = x
+    else:
         op_type = "strided_slice" if use_strided_slice else "slice"
         inputs = {'X': [x]} if use_strided_slice else {'Input': [x]}
         attrs = {
@@ -1013,9 +1185,6 @@ def _getitem_iter(x, indices):
                 attrs=attrs,
             )
             out = slice_out_var
-    else:
-        out = x
-
     # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
     # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
     # otherwise the output shape will be not correct.
@@ -1038,9 +1207,45 @@ def _getitem_iter(x, indices):
 
         out = paddle.unsqueeze(out, axis=none_axes)
 
-    # step4: Dealing with advanced indexing
+    return out
+
+
+def _getitem_static(x, indices):
+    """
+    [WIP]: support __getitem__ by iteration strategy. combined indexing will be support by this.
+
+    Args:
+        x(Tensor): Tensor to be indexing.
+        indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
+    """
+    # step1: parsing the index and recording them
+    (
+        starts,
+        ends,
+        steps,
+        axes,
+        none_axes,
+        decrease_axes,
+        advanced_index,
+        has_advanced_index,
+        use_strided_slice,
+    ) = parse_index(indices)
+
+    # step2: Dealing with basic indexing
+    out = get_tensor_with_basic_indexing(
+        x,
+        axes,
+        starts,
+        ends,
+        steps,
+        decrease_axes,
+        none_axes,
+        use_strided_slice,
+    )
+
+    # step3: Dealing with advanced indexing
     if has_advanced_index:
-        transed_tensor, adjusted_advanced_index = deal_advanced_index(
+        transed_tensor, adjusted_advanced_index, _ = deal_advanced_index(
             out, advanced_index
         )
 
