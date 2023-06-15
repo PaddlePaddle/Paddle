@@ -552,6 +552,24 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : cummax
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummax
+  backward : cummax_grad
+
+- op : cummin
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummin
+  backward : cummin_grad
+
 - op : cumprod
   args : (Tensor x,  int dim)
   output : Tensor(out)
@@ -783,6 +801,17 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill
+  args : (Tensor x, Scalar value=0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
   output : Tensor(out)
@@ -861,6 +890,16 @@
     func : floor
   inplace : (x -> out)
   backward : floor_grad
+
+- op : fmax
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    param: [x, y]
+    func : ElementwiseInferMeta
+  kernel :
+    func : fmax
+  backward : fmax_grad
 
 - op : fold
   args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)

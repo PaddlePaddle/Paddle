@@ -83,7 +83,6 @@ class Gloo:
         need_init_all=False,
         kwargs=None,
     ):
-
         self._rendezvous = rendezvous
         self._role = role
         self._role_id = role_id

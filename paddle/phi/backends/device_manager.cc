@@ -596,6 +596,30 @@ void DeviceManager::CCLRecv(const std::string& device_type,
   dev_impl->CCLRecv(recvbuf, num, data_type, src_rank, ccl_comm, stream);
 }
 
+void DeviceManager::CCLAllToAll(const std::string& device_type,
+                                const void** send_buf,
+                                const size_t* send_count,
+                                const ccl::CCLDataType* send_dtype,
+                                void** recv_buf,
+                                const size_t* recv_count,
+                                const ccl::CCLDataType* recv_dtype,
+                                size_t rank,
+                                size_t nranks,
+                                const ccl::CCLComm& comm,
+                                const stream::Stream& stream) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->CCLAllToAll(send_buf,
+                        send_count,
+                        send_dtype,
+                        recv_buf,
+                        recv_count,
+                        recv_dtype,
+                        rank,
+                        nranks,
+                        comm,
+                        stream);
+}
+
 // profiler
 void DeviceManager::ProfilerInitialize(const std::string& dev_type,
                                        phi::TraceEventCollector* collector,

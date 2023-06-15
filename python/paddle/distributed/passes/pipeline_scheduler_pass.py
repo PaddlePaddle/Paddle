@@ -283,20 +283,6 @@ class PipelineFThenBPass(PassBase):
             job_list.append(backward_job)
 
         opt_job = core.Job("optimizer")
-        job_list = []
-        lr_job = core.Job("lr")
-        job_list.append(lr_job)
-        for i in range(self._micro_batch_size):
-            forward_job = core.Job("forward")
-            forward_job.set_micro_batch_id(i)
-            job_list.append(forward_job)
-
-        for i in range(self._micro_batch_size):
-            backward_job = core.Job("backward")
-            backward_job.set_micro_batch_id(i)
-            job_list.append(backward_job)
-
-        opt_job = core.Job("optimizer")
         job_list.append(opt_job)
         return job_list
 

@@ -92,7 +92,7 @@ def make_jacobian(x, y_size, np_dtype):
         )
         return jacobians
     else:
-        None
+        pass
 
 
 def _compute_numerical_jacobian(program, x, y, place, scope, delta):
@@ -321,10 +321,11 @@ def grad_check(
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
             msg = (
-                'Jacobian mismatch for output %s '
-                'with respect to input %s on %s,\n'
-                'numerical:%s\nanalytical:%s\n'
-                % (y[y_idx].name, x[x_idx].name, str(place), n, a)
+                'Jacobian mismatch for output {} '
+                'with respect to input {} on {},\n'
+                'numerical:{}\nanalytical:{}\n'.format(
+                    y[y_idx].name, x[x_idx].name, str(place), n, a
+                )
             )
             return fail_test(msg)
     return True

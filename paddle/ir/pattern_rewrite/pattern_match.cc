@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
+
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
+
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
@@ -22,62 +25,69 @@ namespace ir {
 //===----------------------------------------------------------------------===//
 // Pattern
 //===----------------------------------------------------------------------===//
-
-// Pattern::Pattern(const void* root_val,
-//                  RootKind root_kind,
-//                  const std::vector<std::string>& generated_names,
-//                  PatternBenefit benefit,
-//                  ir::IrContext* context)
-//     : benefit_(benefit), context_(context), generated_names_(generated_names)
-//     {}
-
 Pattern::Pattern(const std::string& root_name,
                  PatternBenefit benefit,
                  IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : op_name_(root_name),
-      root_kind_(RootKind::OperationName),
-      benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+    : Pattern(context->GetRegisteredOpInfo(root_name).AsOpaquePointer(),
+              RootKind::OperationInfo,
+              generated_names,
+              benefit,
+              context) {}
 
 Pattern::Pattern(MatchAnyOpTypeTag tag,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : root_kind_(RootKind::Any),
-      benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+    : Pattern(nullptr, RootKind::Any, generated_names, benefit, context) {}
 
 Pattern::Pattern(MatchInterfaceOpTypeTag tag,
-                 ir::TypeId interface_id,
+                 TypeId interface_id,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : interface_id_(interface_id),
-      root_kind_(RootKind::InterfaceId),
-      benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+    : Pattern(interface_id.AsOpaquePointer(),
+              RootKind::InterfaceId,
+              generated_names,
+              benefit,
+              context) {}
 
 Pattern::Pattern(MatchTraitOpTypeTag tag,
-                 ir::TypeId trait_id,
+                 TypeId trait_id,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : trait_id_(trait_id),
-      root_kind_(RootKind::TraitId),
+    : Pattern(trait_id.AsOpaquePointer(),
+              RootKind::TraitId,
+              generated_names,
+              benefit,
+              context) {}
+
+Pattern::Pattern(void* root_val,
+                 RootKind root_kind,
+                 const std::vector<std::string>& generated_names,
+                 PatternBenefit benefit,
+                 IrContext* context)
+    : root_val_(root_val),
+      root_kind_(root_kind),
       benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+      context_(context) {
+  if (generated_names.empty()) return;
+
+  generated_ops_.reserve(generated_names.size());
+  std::transform(generated_names.begin(),
+                 generated_names.end(),
+                 std::back_inserter(generated_ops_),
+                 [context](const std::string& name) {
+                   return context->GetRegisteredOpInfo(name);
+                 });
+}
 
 RewritePattern::~RewritePattern() = default;
 
 //===----------------------------------------------------------------------===//
 // RewriterBase
 //===----------------------------------------------------------------------===//
-
 RewriterBase::~RewriterBase() = default;
 
 // TODO(wilber): value support replace method.
@@ -88,7 +98,7 @@ RewriterBase::~RewriterBase() = default;
 //   // assert(op->num_results() == new_values.size() && "incorrect number of
 //   values to replace operation"); NotifyRootReplaced(op, new_values); bool
 //   replace_all_uses = true; for (uint32_t i = 0; i < op->num_results(); ++i) {
-//     // op->GetResultByIndex(0)
+//     // op->result(0)
 //   }
 // }
 // void RewriterBase::ReplaceOpWithIf(Operation* op,
@@ -113,9 +123,9 @@ void RewriterBase::EraseOp(Operation* op) {
 
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
   // from.
-  // for (mlir::OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
+  // for (OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
   // {
-  //   mlir::Operation* op = operand.getOwner();
+  //   Operation* op = operand.getOwner();
   //   UpdateRootInPlace(op, [&]() { operand.set(to); });
   // }
 }
@@ -138,7 +148,7 @@ void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
          "replacement op doesn't match results of original op");
   // TODO(wilber): Op support results method.
   // if (op->num_results() == 1) return ReplaceOp(op,
-  // new_op->GetResultByIndex(0)); return ReplaceOp(op, new_op->GetResults());
+  // new_op->result(0)); return ReplaceOp(op, new_op->GetResults());
 }
 
 }  // namespace ir

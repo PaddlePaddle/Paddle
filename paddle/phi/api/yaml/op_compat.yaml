@@ -62,9 +62,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
 - op : adamax_
@@ -85,9 +85,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
@@ -981,6 +981,17 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill (fill_any)
+  backward : fill_grad (fill_any_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
+
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :
@@ -1028,9 +1039,15 @@
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [fmax]
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
@@ -1628,9 +1645,15 @@
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [maximum]
 
 - op : maxout
   inputs :
@@ -1970,7 +1993,7 @@
   outputs:
     out : Out
   int_array:
-    axis :
+    dims :
       data_type : int
   extra :
     attrs : [bool use_mkldnn = false]

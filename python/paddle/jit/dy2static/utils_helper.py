@@ -45,7 +45,6 @@ DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 
 
 def is_dygraph_api(node):
-
     # Note: A api in module dygraph_to_static is not a real dygraph api.
     if is_api_in_module(node, DYGRAPH_TO_STATIC_MODULE_PREFIX):
         return False
