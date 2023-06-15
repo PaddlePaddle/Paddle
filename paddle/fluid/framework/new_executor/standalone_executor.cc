@@ -17,6 +17,12 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+
 namespace paddle {
 namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
@@ -60,12 +66,25 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
     }
 
-    interpretercores_.emplace_back(
-        std::make_unique<InterpreterCore>(place_,
-                                          program->Block(0),
-                                          micro_batch_scopes_[micro_batch_id],
-                                          execution_config));
-    interpretercores_.back()->SetCopyProgram(program);
+    if (FLAGS_enable_new_ir_in_executor) {
+      VLOG(6) << "begin to translate" << std::endl;
+      auto base_progrm = paddle::TranslateLegacyProgramToProgram(*program);
+      auto kernel_program =
+          paddle::dialect::PdOpLowerToKernelPass(base_progrm.get());
+      interpretercores_.emplace_back(
+          std::make_unique<InterpreterCore>(place_,
+                                            program->Block(0),
+                                            micro_batch_scopes_[micro_batch_id],
+                                            kernel_program.get(),
+                                            execution_config));
+    } else {
+      interpretercores_.emplace_back(
+          std::make_unique<InterpreterCore>(place_,
+                                            program->Block(0),
+                                            micro_batch_scopes_[micro_batch_id],
+                                            execution_config));
+      interpretercores_.back()->SetCopyProgram(program);
+    }
   }
 }
 

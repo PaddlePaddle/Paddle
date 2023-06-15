@@ -675,6 +675,7 @@ class PipelineParallel(MetaParallelBase):
             return (
                 t is not None
                 and isinstance(t, paddle.Tensor)
+                and t._is_initialized()
                 and t.inplace_version == 0
             )
 
