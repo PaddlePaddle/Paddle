@@ -29,7 +29,6 @@ class LayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto* X = engine_->GetITensor(op_desc.Input("X")[0]);
     auto rank = X->getDimensions().nbDims;
-    LOG(INFO) << "rank" << rank;
     std::string output_name = op_desc.Output("Y")[0];
     const float eps = op_desc.HasAttr("epsilon")
                           ? PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"))
