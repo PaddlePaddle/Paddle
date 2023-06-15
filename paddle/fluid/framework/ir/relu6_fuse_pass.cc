@@ -19,49 +19,18 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/ir/xpu/pass_utils.h"
-#include "paddle/fluid/framework/ir/xpu/quant_utils.h"
+#include "paddle/fluid/framework/ir/relu6_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
 
-/*
-fuse fill_constant + clip block in to relu6 op
-For example:
-graph:
-            Min(0)  Input  Max(6.0)
-               \      |     /
-                 \    |   /
-                    clip
-                      |
-                      |
-                    Output
-------------------------------------------------------
-After the pass is applied:
-                    Input
-                      |
-                      |
-                    relu6
-                      |
-                      |
-                    Output
-*/
-struct Relu6XPUPattern : public PatternBase {
-  Relu6XPUPattern(PDPattern* pattern, const std::string& name_scope);
+struct Relu6Pattern : public PatternBase {
+  Relu6Pattern(PDPattern* pattern, const std::string& name_scope);
+
   // declare operator node's name
   PATTERN_DECL_NODE(clip);
   // declare variable node's name
@@ -71,8 +40,7 @@ struct Relu6XPUPattern : public PatternBase {
   PATTERN_DECL_NODE(clip_out);
 };
 
-Relu6XPUPattern::Relu6XPUPattern(PDPattern* pattern,
-                                 const std::string& name_scope)
+Relu6Pattern::Relu6Pattern(PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto clip = pattern->NewNode(clip_repr())->assert_is_op("clip");
 
@@ -97,45 +65,58 @@ Relu6XPUPattern::Relu6XPUPattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-class Relu6XPUFusePass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+Relu6FusePass::Relu6FusePass() {}
 
- private:
-  const std::string name_scope_{"relu6_xpu_fuse_pass"};
-};
-
-void Relu6XPUFusePass::ApplyImpl(ir::Graph* graph) const {
+void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   GraphPatternDetector gpd;
-  patterns::Relu6XPUPattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::Relu6Pattern pattern(gpd.mutable_pattern(), name_scope_);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle Relu6XPUFusePass fuse";
-    /* declare operator node's name */
+    VLOG(4) << "handle Relu6FusePass fuse";
+#define GET_IR_NODE(node_) GET_IR_NODE_FROM_SUBGRAPH(node_, node_, pattern)
     GET_IR_NODE(clip);
-    /* declare variable node's name*/
     GET_IR_NODE(clip_x);
     GET_IR_NODE(clip_min);
     GET_IR_NODE(clip_max);
     GET_IR_NODE(clip_out);
+#undef GET_IR_NODE
     auto* block = clip->Op()->Block();
     auto* scope = param_scope();
-    PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
     auto clip_min_t =
         scope->Var(clip_min->Name())->GetMutable<phi::DenseTensor>();
     auto clip_max_t =
         scope->Var(clip_max->Name())->GetMutable<phi::DenseTensor>();
-    float* clip_min_ptr = clip_min_t->data<float>();
-    float* clip_max_ptr = clip_max_t->data<float>();
-    if (clip_min_ptr[0] != 0.f || clip_max_ptr[0] != 6.f) return;
+    // fp16 --> fp32
+    auto tensor_type = clip_min_t->dtype();
+    float clip_min_value = 0.f;
+    float clip_max_value = 0.f;
+    if (tensor_type == phi::DataType::FLOAT16) {
+      phi::dtype::float16* clip_min_fp16 =
+          clip_min_t->data<phi::dtype::float16>();
+      phi::dtype::float16* clip_max_fp16 =
+          clip_max_t->data<phi::dtype::float16>();
+      clip_min_value = static_cast<float>(clip_min_fp16[0]);
+      clip_max_value = static_cast<float>(clip_max_fp16[0]);
+    } else if (tensor_type == phi::DataType::FLOAT32) {
+      float* clip_min_ptr = clip_min_t->data<float>();
+      float* clip_max_ptr = clip_max_t->data<float>();
+      clip_min_value = clip_min_ptr[0];
+      clip_max_value = clip_max_ptr[0];
+    } else {
+      VLOG(4) << "The dtype of clip min must be FP32/16, "
+                 "but received %d, which is not supported.",
+          clip_min_t->dtype();
+      return;
+    }
+    if ((clip_min_value - 0.f) >= 1e-6 || (clip_max_value - 6.f) >= 1e-6)
+      return;
     // Generate relu6 op
     framework::OpDesc relu6_op_desc(block);
     relu6_op_desc.SetType("relu6");
@@ -160,9 +141,9 @@ void Relu6XPUFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(relu6_xpu_fuse_pass, paddle::framework::ir::Relu6XPUFusePass);
+REGISTER_PASS(relu6_fuse_pass, paddle::framework::ir::Relu6FusePass);
 
-REGISTER_PASS_CAPABILITY(relu6_xpu_fuse_pass)
+REGISTER_PASS_CAPABILITY(relu6_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "relu6_xpu", 0));
+            "relu6", 0));
