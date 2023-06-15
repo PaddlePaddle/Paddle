@@ -1540,7 +1540,12 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
-
+        elif p.is_custom_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.CustomPlace(
+                paddle.device.get_device().split(':')[0], p.custom_device_id()
+            )
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
