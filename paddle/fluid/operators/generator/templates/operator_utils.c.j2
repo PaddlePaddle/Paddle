@@ -726,7 +726,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     {% set input_typename = input_dict[inputs[i]]["typename"] %}
     {% set input_optional_flag = input_dict[inputs[i]]["optional"] %}
     {% if fluid_inputs[i] in forward_fluid_inputs %}
-      {% set name_in_forward_orig = forward_fluid_orig_inputs[i]%}
+      {% set name_in_forward_orig = forward_fluid_orig_inputs[forward_fluid_inputs.index(fluid_inputs[i])]%}
       {% if input_typename == "Tensor" %}
         {% if input_optional_flag == True %}
     auto {{inputs[i]}} = this->GetOptionalSingleForwardInput({{name_in_forward_orig | to_opmaker_name}});
