@@ -104,7 +104,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi memcpy pd_dialect ir)
+  DEPS device_context phi memcpy pd_dialect ir_core)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies

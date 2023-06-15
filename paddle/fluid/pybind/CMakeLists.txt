@@ -40,7 +40,7 @@ set(PYBIND_DEPS
     phi
     phi_kernel_adaptor
     pd_dialect
-    ir
+    ir_core
     program_translator
     new_profiler
     jit_layer

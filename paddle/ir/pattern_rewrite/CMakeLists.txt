@@ -1,6 +1,6 @@
 file(GLOB PATTERN_SRCS "*.cc")
 
 cc_library(
-  pattern_rewrite
+  ir_pattern_rewrite
   SRCS ${PATTERN_SRCS}
-  DEPS ir)
+  DEPS ir_core)

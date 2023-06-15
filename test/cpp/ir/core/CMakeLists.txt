@@ -1,13 +1,13 @@
-cc_test_old(type_test SRCS type_test.cc DEPS ir gtest)
-cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS ir gtest)
-cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS ir gtest)
-cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS ir gtest)
+cc_test_old(type_test SRCS type_test.cc DEPS ir_core gtest)
+cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS ir_core gtest)
+cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS ir_core gtest)
+cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS ir_core gtest)
 cc_test_old(
   ir_program_test
   SRCS
   ir_program_test.cc
   DEPS
-  ir
+  ir_core
   pd_dialect
   phi
   gtest)
@@ -17,7 +17,7 @@ cc_test_old(
   SRCS
   ir_phi_kernel_op_test.cc
   DEPS
-  ir
+  ir_core
   pd_dialect
   phi
   gtest)
@@ -27,7 +27,7 @@ cc_test_old(
   SRCS
   ir_infershape_test.cc
   DEPS
-  ir
+  ir_core
   pd_dialect
   phi
   gtest)
@@ -37,7 +37,7 @@ cc_test_old(
   SRCS
   ir_exe_test.cc
   DEPS
-  ir
+  ir_core
   pd_dialect
   phi_kernel_adaptor
   phi
@@ -48,7 +48,7 @@ cc_test_old(
   SRCS
   scalar_attribute_test.cc
   DEPS
-  ir
+  ir_core
   pd_dialect
   gtest)
 
@@ -70,7 +70,7 @@ cc_test_old(
   DEPS
   program_translator
   gtest
-  ir
+  ir_core
   pd_dialect)
 
-cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest ir)
+cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest ir_core)

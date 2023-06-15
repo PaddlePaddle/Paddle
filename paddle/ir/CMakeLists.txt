@@ -1,3 +1,10 @@
 add_subdirectory(core)
 add_subdirectory(pass)
 add_subdirectory(pattern_rewrite)
+
+if(WITH_SHARED_IR)
+  add_definitions(-DIR_DLL_EXPORT)
+  cc_library(ir SHARED DEPS ir_pass ir_pattern_rewrite ir_core)
+else()
+  cc_library(ir DEPS ir_pass ir_pattern_rewrite ir_core)
+endif()
