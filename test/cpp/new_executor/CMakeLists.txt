@@ -25,7 +25,6 @@ if(WITH_GPU
       elementwise_mul_op
       softmax_with_cross_entropy_op
       reduce_mean_op
-      reduce_sum_op
       activation_op
       sum_op
       elementwise_max_op

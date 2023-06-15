@@ -32,7 +32,19 @@ phi::KernelKey GetReduceGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetAssignExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetPoolExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 

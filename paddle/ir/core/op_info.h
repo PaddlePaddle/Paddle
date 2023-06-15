@@ -48,7 +48,7 @@ class OpInfo {
 
   TypeId id() const;
 
-  void verify(const std::vector<OpResult> &inputs,
+  void Verify(const std::vector<OpResult> &inputs,
               const std::vector<Type> &outputs,
               const std::unordered_map<std::string, Attribute> &attributes);
 

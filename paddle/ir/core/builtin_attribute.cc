@@ -33,4 +33,6 @@ std::vector<Attribute> ArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
 
+void* PointerAttribute::data() const { return storage()->GetAsKey(); }
+
 }  // namespace ir

@@ -2735,6 +2735,7 @@ def gather(x, index, axis=None, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
             ],
             'gather',
         )

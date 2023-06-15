@@ -151,6 +151,7 @@ class IrContextImpl {
   // TypeStorage uniquer and cache instances.
   StorageManager registed_type_storage_manager_;
   // Cache some built-in type objects.
+  BFloat16Type bfp16_type;
   Float16Type fp16_type;
   Float32Type fp32_type;
   Float64Type fp64_type;
@@ -185,6 +186,7 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   GetOrRegisterDialect<BuiltinDialect>();
   VLOG(4) << "==============================================";
 
+  impl_->bfp16_type = TypeManager::get<BFloat16Type>(this);
   impl_->fp16_type = TypeManager::get<Float16Type>(this);
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
   impl_->fp64_type = TypeManager::get<Float64Type>(this);
@@ -317,6 +319,10 @@ const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
   } else {
     throw("Abstract attribute not found in IrContext.");
   }
+}
+
+BFloat16Type BFloat16Type::get(IrContext *ctx) {
+  return ctx->impl().bfp16_type;
 }
 
 Float16Type Float16Type::get(IrContext *ctx) { return ctx->impl().fp16_type; }

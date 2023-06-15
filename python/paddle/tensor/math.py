@@ -830,8 +830,8 @@ def floor_divide(x, y, name=None):
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
-        x (Tensor): the input tensor, it's data type should be int32, int64.
-        y (Tensor): the input tensor, it's data type should be int32, int64.
+        x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+        y (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5727,3 +5727,61 @@ def i1e(x, name=None):
             type='i1e', inputs={'x': x}, outputs={'out': out}, attrs={}
         )
     return out
+
+
+def polygamma(x, n, name=None):
+    r"""
+    Calculates the polygamma of the given input tensor, element-wise.
+
+    The equation is:
+
+    .. math::
+        \Phi^n(x) = \frac{d^n}{dx^n} [\ln(\Gamma(x))]
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        n (int): Order of the derivative. Must be integral.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        - out (Tensor), A Tensor. the polygamma of the input Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.to_tensor([2, 3, 25.5], dtype='float32')
+            res = paddle.polygamma(data, 1)
+            print(res)
+            # Tensor(shape=[2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #       [0.64493407,  0.39493407,  0.03999467])
+    """
+    if not isinstance(n, int):
+        raise TypeError(
+            "The input of n must be int type, but received: %s " % (type(n))
+        )
+    if n < 0:
+        raise ValueError(
+            "The input of n must be greater than or equal to 0. But received n = %s"
+            % (n)
+        )
+    if n == 0:
+        return digamma(x)
+    else:
+        if in_dynamic_mode():
+            return _C_ops.polygamma(x, n)
+        else:
+            check_variable_and_dtype(
+                x, "x", ["float32", "float64"], "polygamma"
+            )
+
+            helper = LayerHelper("polygamma", **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='polygamma',
+                inputs={'x': x},
+                outputs={'out': out},
+                attrs={'n': n},
+            )
+        return out

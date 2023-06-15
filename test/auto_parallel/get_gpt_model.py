@@ -86,8 +86,14 @@ def generate_model(strategy, dropout_prob=0.0):
         modeling._global_parallel_strategy = "mp"
     elif strategy == "dp":
         modeling._global_parallel_strategy = "dp"
+    elif strategy == "pp":
+        modeling._global_parallel_strategy = "pp"
+        modeling.PP_MESH_LIST = [
+            auto.ProcessMesh(mesh=[0]),
+            auto.ProcessMesh(mesh=[1]),
+        ]
     else:
-        raise ValueError("Only support serial, mp2 and dp2.")
+        raise ValueError("Only support serial, mp2, dp2 and pp2.")
 
     gpt = GPTModel(
         vocab_size=1000,
@@ -105,6 +111,7 @@ def generate_model(strategy, dropout_prob=0.0):
         eos_token_id=7,
         bos_token_id=0,
         eol_token_id=3,
+        pp_degree=2 if strategy == "pp" else None,
     )
     model = GPTForPretraining(
         gpt, vocab_size=1000, hidden_size=64, initializer_range=0.02

@@ -50,3 +50,27 @@
 	path = third_party/eigen3
 	url = https://gitlab.com/libeigen/eigen.git
 	ignore = dirty
+[submodule "third_party/snappy"]
+	path = third_party/snappy
+	url = https://github.com/google/snappy.git
+	ignore = dirty
+[submodule "third_party/cub"]
+	path = third_party/cub
+	url = https://github.com/NVIDIA/cub.git
+	ignore = dirty
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = https://github.com/NVIDIA/cutlass.git
+	ignore = dirty
+[submodule "third_party/mkldnn"]
+	path = third_party/mkldnn
+	url = https://github.com/oneapi-src/oneDNN.git
+	ignore = dirty
+[submodule "third_party/flashattn"]
+	path = third_party/flashattn
+	url = https://github.com/PaddlePaddle/flash-attention.git
+	ignore = dirty
+[submodule "third_party/gtest"]
+	path = third_party/gtest
+	url = https://github.com/google/googletest.git
+	ignore = dirty

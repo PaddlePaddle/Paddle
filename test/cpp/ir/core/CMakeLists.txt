@@ -22,6 +22,16 @@ cc_test_old(
   phi
   gtest)
 
+cc_test_old(
+  ir_exe_test
+  SRCS
+  ir_exe_test.cc
+  DEPS
+  new_ir
+  pd_dialect
+  phi
+  gtest)
+
 file(
   DOWNLOAD
   https://paddle-ci.gz.bcebos.com/ir_translator_test/restnet50_main.prog

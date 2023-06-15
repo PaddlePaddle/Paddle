@@ -38,6 +38,10 @@ AddInput({{name| to_opmaker_name}}, "({{typename}}), input {{i}} of {{op_name}} 
 
     .AsDispensable()
   {%- endif %}
+  {%- if "is_extra" in input and input["is_extra"] %}
+
+    .AsExtra()
+  {%- endif %}
 {%- endmacro %}
 
 {# add output, it could be duplicable or intermediate, however, optional output is not supported #}

@@ -46,6 +46,12 @@ class Block {
   iterator insert(const_iterator iterator, Operation *op);
   void clear();
 
+  Region *GetParentRegion() const { return parent_; }
+
+  Operation *GetParentOp() const {
+    return parent_ ? parent_->GetParentOp() : nullptr;
+  }
+
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;

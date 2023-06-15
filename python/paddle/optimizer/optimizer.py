@@ -1265,6 +1265,23 @@ class Optimizer:
         ):
             return grad
         regularization_term = None
+
+        # when master_grad is true in amp training, grad will be fp32, but param maybe fp16.
+        # we get master weight when master_grad is true to avoid type mismatch error.
+        def get_target_param(param, grad):
+            target_param = param
+            if param.dtype != grad.dtype:
+                find_master = (
+                    self._multi_precision
+                    and self._is_dtype_fp16_or_bf16(param.dtype)
+                )
+                if find_master and len(self._master_weights) != 0:
+                    target_param = self._master_weights[param.name]
+                else:
+                    target_param = param.astype(grad.dtype)
+            return target_param
+
+        param = get_target_param(param, grad)
         if hasattr(param, 'regularizer') and param.regularizer is not None:
             # Add variable for regularization term in grad block
             regularization_term = param.regularizer(param, grad, grad.block)

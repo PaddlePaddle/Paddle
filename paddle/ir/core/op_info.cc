@@ -34,7 +34,7 @@ const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
 TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
 
-void OpInfo::verify(const std::vector<OpResult> &inputs,
+void OpInfo::Verify(const std::vector<OpResult> &inputs,
                     const std::vector<Type> &outputs,
                     const AttributeMap &attributes) {
   impl_->verify()(inputs, outputs, attributes);

@@ -2819,7 +2819,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
                            "slot Variable %s must be "
-                           "consistent or reigster GetExpectedKernelType. The "
+                           "consistent or register GetExpectedKernelType. The "
                            "current variable type is (%s), but the "
                            "previous variable type is (%s).",
                            Type(),
@@ -2849,7 +2849,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
                            "slot Variable %s must be "
-                           "consistent or reigster GetExpectedKernelType. The "
+                           "consistent or register GetExpectedKernelType. The "
                            "current variable type is (%s), but the "
                            "previous variable type is (%s).",
                            Type(),

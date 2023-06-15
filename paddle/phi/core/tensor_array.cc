@@ -16,11 +16,6 @@ limitations under the License. */
 
 namespace phi {
 
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, TensorArray>::kType =
-        RegisterStaticType<phi::TensorBase>(TensorArray::name());
-
 TensorArray::TensorArray(const std::vector<DenseTensor>& vec) {
   tensors_ = vec;
 }

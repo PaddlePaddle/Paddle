@@ -1,7 +1,6 @@
 set(prim_eager_deps
     phi
     hook_utils
-    tensor_utils
     utils
     global_utils
     backward

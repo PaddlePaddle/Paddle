@@ -41,8 +41,7 @@ cc_test_old(
   recurrent_op_helper
   recurrent_op
   op_registry
-  pool_op
-  shape_op
+  generated_static_op
   crop_op
   activation_op
   generated_op

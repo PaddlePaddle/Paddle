@@ -41,11 +41,14 @@ class Region {
   Block *back() const { return blocks_.back(); }
   Block *front() const { return blocks_.front(); }
   void push_back(Block *block);
+  void emplace_back();
   void push_front(Block *block);
   iterator insert(const_iterator position, Block *block);
   void clear();
 
   void TakeBody(Region &&other);
+
+  Operation *GetParentOp() const { return parent_; }
 
  private:
   Region(Region &) = delete;

@@ -36,7 +36,7 @@ class TestSumOp(OpTest):
         self.prim_op_type = "prim"
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out}
-        self.enable_cinn = True
+        self.if_enable_cinn()
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -46,6 +46,9 @@ class TestSumOp(OpTest):
 
     def init_attrs(self):
         self.attrs = {'dim': [0]}
+
+    def if_enable_cinn(self):
+        pass
 
     def calc_output(self):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
@@ -984,7 +987,10 @@ class Test1DReduce(OpTest):
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random(120).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-        self.enable_cinn = True
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1002,6 +1008,7 @@ class Test2DReduce0(Test1DReduce):
         self.attrs = {'dim': [0]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.if_enable_cinn()
 
 
 class Test2DReduce1(Test1DReduce):
@@ -1015,6 +1022,7 @@ class Test2DReduce1(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        self.if_enable_cinn()
 
 
 class Test3DReduce0(Test1DReduce):
@@ -1028,6 +1036,7 @@ class Test3DReduce0(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        self.if_enable_cinn()
 
 
 class Test3DReduce1(Test1DReduce):
@@ -1041,6 +1050,7 @@ class Test3DReduce1(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        self.if_enable_cinn()
 
 
 class Test3DReduce2(Test1DReduce):
@@ -1054,6 +1064,7 @@ class Test3DReduce2(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        self.if_enable_cinn()
 
 
 class Test3DReduce3(Test1DReduce):
@@ -1067,6 +1078,7 @@ class Test3DReduce3(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
+        self.if_enable_cinn()
 
 
 def reduce_sum_wrapper2(x, axis=[0], dtype=None, keepdim=False):
@@ -1105,6 +1117,7 @@ class TestKeepDimReduce(Test1DReduce):
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
         }
+        self.if_enable_cinn()
 
 
 class TestKeepDimReduceForEager(Test1DReduce):
@@ -1208,6 +1221,10 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
                 axis=tuple(self.attrs['dim']), keepdims=True
             )
         }
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1248,7 +1265,10 @@ class TestReduceSumWithDimOne(OpTest):
                 axis=tuple(self.attrs['dim']), keepdims=True
             )
         }
-        self.enable_cinn = True
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1290,7 +1310,10 @@ class TestReduceSumWithNumelOne(OpTest):
                 axis=tuple(self.attrs['dim']), keepdims=False
             )
         }
-        self.enable_cinn = True
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1314,7 +1337,10 @@ class TestReduceAll(OpTest):
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum()}
-        self.enable_cinn = True
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1332,7 +1358,10 @@ class TestReduceAllFp32(OpTest):
         self.inputs = {'X': np.random.random((100, 1, 1)).astype("float32")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum()}
-        self.enable_cinn = True
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1350,7 +1379,10 @@ class Test1DReduceWithAxes1(OpTest):
         self.inputs = {'X': np.random.random(100).astype("float64")}
         self.attrs = {'dim': [0], 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-        self.enable_cinn = True
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -1380,6 +1412,10 @@ class TestReduceWithDtype(OpTest):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()

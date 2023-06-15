@@ -77,13 +77,26 @@ def gen_indices_np(x_shape, indices_shapes, index_type):
 
 class TestIndexPutAPIBase(unittest.TestCase):
     def setUp(self):
+        self.mixed_indices = False
         self.init_dtype_type()
         self.setPlace()
         self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
         self.value_np = np.random.random(self.value_shape).astype(self.dtype_np)
-        self.indices_np = gen_indices_np(
-            self.x_shape, self.indices_shapes, self.index_type_np
-        )
+
+        if self.mixed_indices:
+            tmp_indices_np1 = gen_indices_np(
+                self.x_shape, self.indices_shapes, self.index_type_np
+            )
+            tmp_indices_np2 = gen_indices_np(
+                self.x_shape, self.indices_shapes1, self.index_type_np1
+            )
+            self.indices_np = tuple(
+                list(tmp_indices_np1) + list(tmp_indices_np2)
+            )
+        else:
+            self.indices_np = gen_indices_np(
+                self.x_shape, self.indices_shapes, self.index_type_np
+            )
 
     def init_dtype_type(self):
         self.dtype_np = np.float64
@@ -109,8 +122,7 @@ class TestIndexPutAPIBase(unittest.TestCase):
             self.x_pd = paddle.to_tensor(self.x_np, dtype=self.dtype_pd)
             self.value_pd = paddle.to_tensor(self.value_np, dtype=self.dtype_pd)
             self.indices_pd = [
-                paddle.to_tensor(indice, dtype=self.index_type_pd)
-                for indice in self.indices_np
+                paddle.to_tensor(indice) for indice in self.indices_np
             ]
             self.indices_pd = tuple(self.indices_pd)
             ref_res = compute_index_put_ref(
@@ -128,16 +140,37 @@ class TestIndexPutAPIBase(unittest.TestCase):
                 x = paddle.static.data(
                     name="x", shape=self.x_shape, dtype=self.dtype_pd
                 )
-                indices = tuple(
-                    [
-                        paddle.static.data(
-                            name="indice" + str(i),
-                            shape=self.indices_shapes[i],
-                            dtype=self.index_type_pd,
-                        )
-                        for i in range(len(self.indices_shapes))
-                    ]
-                )
+                if self.mixed_indices:
+                    indices = tuple(
+                        [
+                            paddle.static.data(
+                                name="indice" + str(i),
+                                shape=self.indices_shapes[i],
+                                dtype=self.index_type_pd,
+                            )
+                            for i in range(len(self.indices_shapes))
+                        ]
+                        + [
+                            paddle.static.data(
+                                name="indice"
+                                + str(i + len(self.indices_shapes)),
+                                shape=self.indices_shapes1[i],
+                                dtype=self.index_type_pd1,
+                            )
+                            for i in range(len(self.indices_shapes1))
+                        ]
+                    )
+                else:
+                    indices = tuple(
+                        [
+                            paddle.static.data(
+                                name="indice" + str(i),
+                                shape=self.indices_shapes[i],
+                                dtype=self.index_type_pd,
+                            )
+                            for i in range(len(self.indices_shapes))
+                        ]
+                    )
                 value = paddle.static.data(
                     name="value", shape=self.value_shape, dtype=self.dtype_pd
                 )
@@ -820,6 +853,40 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 dvalue.numpy(),
                 atol=1e-7,
             )
+
+
+class TestIndexPutAPIMixedIndices(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int32
+        self.x_shape = (110, 42, 32, 56)
+        self.indices_shapes = ((16, 16), (16, 16))
+        self.value_shape = (16, 16, 56)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int32
+        self.accumulate = False
+
+        self.mixed_indices = True
+        self.index_type_np1 = np.bool_
+        self.indices_shapes1 = [(32,)]
+        self.index_type_pd1 = paddle.bool
+
+
+class TestIndexPutAPIMixedIndices1(TestIndexPutAPIBase):
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int32
+        self.x_shape = (110, 42, 32, 56)
+        self.indices_shapes = ((16, 16), (16, 16))
+        self.value_shape = (16, 16, 56)
+        self.dtype_pd = paddle.float64
+        self.index_type_pd = paddle.int32
+        self.accumulate = True
+
+        self.mixed_indices = True
+        self.index_type_np1 = np.bool_
+        self.indices_shapes1 = [(32,)]
+        self.index_type_pd1 = paddle.bool
 
 
 if __name__ == '__main__':

@@ -108,6 +108,9 @@ class TestCastOpBf16ToFp32(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
         self.public_python_api = cast_wrapper
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def test_check_output(self):
@@ -130,6 +133,9 @@ class TestCastOpFp32ToBf16(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cast_wrapper
         self.public_python_api = cast_wrapper
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def test_check_output(self):

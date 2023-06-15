@@ -61,6 +61,20 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
   return true;
 }
 
+// only poolop
+bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
+  if (ctx.Attr<bool>("adaptive") == false) return true;
+  // oneDNN is supporting only unchangable in size pool window
+  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
+  if (!ctx.HasAttr("ksize")) {
+    return false;
+  }
+  std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
+  // Fast but not exhustive check
+  return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
+          (src_tz[src_tz.size() - 2] % ksize[0] == 0));
+}
+
 phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -109,6 +123,15 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
+  kt.set_backend(
+      phi::TransToPhiBackend(ctx.Input<phi::DenseTensor>("X")->place()));
+  return kt;
+}
+
 phi::KernelKey GetAssignExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -125,6 +148,31 @@ phi::KernelKey GetAssignExpectedKernelType(
   return phi::KernelKey(
       op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.device_context().GetPlace());
+}
+
+phi::KernelKey GetPoolExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "grad_x@GRAD");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 phi::KernelKey GetSgdExpectedKernelType(

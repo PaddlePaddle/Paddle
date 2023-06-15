@@ -13,16 +13,70 @@
 // limitations under the License.
 
 #include "paddle/ir/core/builtin_op.h"
-
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace ir {
+
+const char *ModuleOp::attributes_name[attributes_num] = {"program"};
+
+Program *ModuleOp::program() {
+  const AttributeMap &attr = operation()->attributes();
+  auto iter = attr.find("program");
+  if (iter == attr.end() || !iter->second) return nullptr;
+  return static_cast<Program *>(
+      iter->second.dyn_cast<PointerAttribute>().data());
+}
+
+Block *ModuleOp::block() {
+  assert(operation() != nullptr);
+  assert(operation()->num_regions() == 1);
+  assert(operation()->GetRegion(0).size() == 1);
+  return operation()->GetRegion(0).front();
+}
+
+ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
+  ir::OpInfo info = context->GetRegisteredOpInfo(name());
+  OperationArgument argument(info);
+  argument.AddRegion()->emplace_back();
+  argument.AddAttribute("program", PointerAttribute::get(context, pointer));
+  return ModuleOp(Operation::Create(std::move(argument)));
+}
+
+void ModuleOp::Destroy() {
+  if (operation()) {
+    operation()->Destroy();
+    *this = ModuleOp(nullptr);
+  }
+}
+
+void ModuleOp::Verify(const std::vector<ir::OpResult> &inputs,
+                      const std::vector<ir::Type> &outputs,
+                      const ir::AttributeMap &attributes) {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
+  // Verify inputs type:
+  if (inputs.size() != 0) {
+    throw("The size of inputs must be equal to 0.");
+  }
+
+  // Verify if attributes contain attribute name in attributes_name:
+  auto iter = attributes.find("program");
+  if (iter == attributes.end() || !iter->second.isa<PointerAttribute>()) {
+    throw("Type of attribute: program is not right.");
+  }
+
+  // Verify outputs type:
+  if (outputs.size() != 0) {
+    throw("The size of outputs must be equal to 0.");
+  }
+}
+
 const char *GetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
-void GetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+void GetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
                             const std::vector<ir::Type> &outputs,
                             const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
@@ -43,7 +97,7 @@ void GetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
 const char *SetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
-void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+void SetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
                             const std::vector<ir::Type> &outputs,
                             const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
@@ -61,7 +115,7 @@ void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
   }
 }
 
-void CombineOp::verify(const std::vector<ir::OpResult> &inputs,
+void CombineOp::Verify(const std::vector<ir::OpResult> &inputs,
                        const std::vector<ir::Type> &outputs,
                        const ir::AttributeMap &attributes) {
   // outputs.size() == 1
@@ -100,7 +154,7 @@ void CombineOp::verify(const std::vector<ir::OpResult> &inputs,
 }
 
 const char *SliceOp::attributes_name[attributes_num] = {"index"};
-void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
+void SliceOp::Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {
   // inputs.size() == 1
@@ -159,5 +213,25 @@ void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
           index,
           outputs[0]));
 }
+
+const char *ConstantOp::attributes_name[attributes_num] = {"value"};
+
+void ConstantOp::Build(OperationArgument &argument,
+                       Attribute value,
+                       Type output_type) {
+  argument.AddAttribute("value", value);
+  argument.output_types.push_back(output_type);
+}
+
+void ConstantOp::Verify(const std::vector<ir::OpResult> &inputs,
+                        const std::vector<ir::Type> &outputs,
+                        const ir::AttributeMap &attributes) {
+  IR_ENFORCE(inputs.size() == 0, "The size of inputs must be equal to 0.");
+  IR_ENFORCE(outputs.size() == 1, "The size of outputs must be equal to 1.");
+  IR_ENFORCE(attributes.count("value") > 0,
+             "Type of attribute: value is not right.");
+}
+
+Attribute ConstantOp::value() { return operation()->attributes().at("value"); }
 
 }  // namespace ir

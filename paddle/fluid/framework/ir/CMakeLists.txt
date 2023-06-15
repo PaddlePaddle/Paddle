@@ -228,6 +228,7 @@ if(WITH_XPU)
     SRCS xpu/pass_utils.cc
     DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
@@ -250,6 +251,8 @@ if(WITH_XPU)
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
 endif()
 
@@ -456,7 +459,6 @@ if(WITH_MKLDNN)
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
-      conv_transpose_op
       batch_norm_op
       generated_op
       generated_static_op
@@ -535,4 +537,8 @@ if(WITH_XPU)
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
+  cc_test(
+    test_fold_interp_outsize_fuse_pass
+    SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
+    DEPS fold_interp_outsize_fuse_pass)
 endif()

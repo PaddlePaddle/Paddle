@@ -937,6 +937,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::INT32})},
       {"isnan_v2",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"yolo_box_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
 
       // AddMore
       {"sequence_conv", XPUKernelSet({phi::DataType::FLOAT32})},

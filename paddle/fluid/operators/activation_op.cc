@@ -176,21 +176,6 @@ $$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$$
   }
 };
 
-class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Swish operator");
-    AddOutput("Out", "Output of Swish operator");
-    AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
-    AddComment(R"DOC(
-Swish Activation Operator.
-
-$$out = \\frac{x}{1 + e^{- \beta \ x}}$$
-
-)DOC");
-  }
-};
-
 class MishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -406,7 +391,6 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
 
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
-REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(leaky_relu)
