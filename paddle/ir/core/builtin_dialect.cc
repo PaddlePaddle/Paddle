@@ -30,6 +30,7 @@ void BuiltinDialect::initialize() {
                 Float32Type,
                 Float64Type,
                 Int8Type,
+                UInt8Type,
                 Int16Type,
                 Int32Type,
                 Int64Type,

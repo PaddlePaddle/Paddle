@@ -41,6 +41,11 @@ class AttributeVisitor {
     return ir::Int32Attribute::get(ctx, i);
   }
 
+  virtual ir::Attribute operator()(int64_t i) {
+    VLOG(10) << "translating int";
+    return ir::Int64Attribute::get(ctx, i);
+  }
+
   virtual ir::Attribute operator()(float f) {
     VLOG(10) << "translating float";
     return ir::FloatAttribute::get(ctx, f);
@@ -145,6 +150,21 @@ class AttributeVisitor {
   }
 };
 
+class Int64ArrayAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  ir::Attribute operator()(const std::vector<int>& is) override {
+    VLOG(10) << "translating vector<int64>";
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(is.size());
+    for (const auto& v : is) {
+      attrs.push_back(ir::Int64Attribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+};
+
 class IntArrayAttributeVisitor : public AttributeVisitor {
  public:
   using AttributeVisitor::AttributeVisitor;
@@ -190,6 +210,8 @@ AttributeTranslator::AttributeTranslator() {
       new DataTypeAttributeVisitor();
   special_visitors["paddle::dialect::PlaceAttribute"] =
       new PlaceAttributeVisitor();
+  special_visitors["ir::ArrayAttribute<ir::Int64Attribute>"] =
+      new Int64ArrayAttributeVisitor();
 }
 
 ir::Attribute AttributeTranslator::operator()(

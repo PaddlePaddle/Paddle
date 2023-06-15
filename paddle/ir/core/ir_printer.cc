@@ -39,12 +39,18 @@ void BasicIrPrinter::PrintType(Type type) {
     return;
   }
 
-  if (type.isa<Float16Type>()) {
+  if (type.isa<BFloat16Type>()) {
+    os << "bf16";
+  } else if (type.isa<Float16Type>()) {
     os << "f16";
   } else if (type.isa<Float32Type>()) {
     os << "f32";
   } else if (type.isa<Float64Type>()) {
     os << "f64";
+  } else if (type.isa<Int8Type>()) {
+    os << "i8";
+  } else if (type.isa<UInt8Type>()) {
+    os << "u8";
   } else if (type.isa<Int16Type>()) {
     os << "i16";
   } else if (type.isa<Int32Type>()) {

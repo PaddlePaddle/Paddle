@@ -117,6 +117,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
     for (const auto& n : op_desc->Inputs()) {
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
+        if (no_cast_var_names.count(var_name) != 0) continue;
         VarDesc* var_desc = nullptr;
 
         bool is_parameter = (parameter_name_mappings.find(var_name) !=
@@ -140,6 +141,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 
           program->SetParameter(var_name, nullptr);
           parameter_visited.insert(var_name);
+          inner_defining_variables.insert(var_name);
         }
       }
     }

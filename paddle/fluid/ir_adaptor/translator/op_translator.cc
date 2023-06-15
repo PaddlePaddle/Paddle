@@ -366,7 +366,6 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
     // return empty type if this arg is optional and not shown in OpDesc
-    // TODO(lyk): HasOutput doesnot consider variadic attribute
     std::stringstream ss;
     for (auto name : op_desc.OutputNames()) {
       ss << name << " ";
@@ -474,7 +473,13 @@ inline void RecordOpResultMapping(TranslationContext* param_map,
     auto& args = n.second;
     size_t idx_in_vector = 0;
     for (const auto& arg_name : args) {
-      auto idx = arg_to_idx.at(arg_name);
+      auto idx_iter = arg_to_idx.find(arg_name);
+      if (idx_iter == arg_to_idx.end()) {
+        VLOG(10) << "[output recording]"
+                 << "[" << op_desc.Type() << "][skip]" << arg_name;
+        continue;
+      }
+      auto idx = idx_iter->second;
       VLOG(10) << "[output recording]"
                << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
 
@@ -549,7 +554,7 @@ struct OpTranscriber {
         this->GenerateOperationOutput_(ctx, op_desc, output_infos);
 
     auto attribute_map =
-        this->TranslateOpAttribute_(op_info.name(), attr_infos, op_desc);
+        this->TranslateOpAttribute_(ctx, op_info.name(), attr_infos, op_desc);
     VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
     ir::Operation* operation = ir::Operation::Create(
@@ -585,16 +590,52 @@ struct OpTranscriber {
                            const OpOutputInfoList& output_infos) {
     return GenerateOperationOutput(ctx, op_desc, output_infos);
   }
+  virtual void HandleNonexistedAttribute(ir::IrContext*,
+                                         ir::AttributeMap* attribute_map,
+                                         const OpAttributeInfo& info) {
+    auto& attribute_translator = AttributeTranslator::instance();
+    (*attribute_map)[info.name] =
+        attribute_translator(info.type_name, paddle::framework::Attribute());
+  }
   virtual ir::AttributeMap TranslateOpAttribute_(
+      ir::IrContext* ctx,
       std::string normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) {
-    return TranslateOpAttribute(normalized_op_name, op_attr_infos, op_desc);
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+    ir::AttributeMap attribute_map = {};
+
+    for (const auto& info : op_attr_infos) {
+      auto legacy_attr_name =
+          op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+
+      if (op_desc.HasAttr(legacy_attr_name)) {
+        paddle::framework::Attribute legacy_attr =
+            op_desc.GetAttr(legacy_attr_name);
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " " << legacy_attr.index();
+        ir::Attribute new_attr =
+            attribute_translator(info.type_name, legacy_attr);
+        attribute_map[info.name] = new_attr;
+        if (!new_attr) {
+          VLOG(0) << "empty attribute in " << op_desc.Type()
+                  << " name: " << info.name;
+        }
+      } else {
+        VLOG(10) << "attribute in " << op_desc.Type()
+                 << " name: " << legacy_attr_name << " doesn't exist";
+        this->HandleNonexistedAttribute(ctx, &attribute_map, info);
+      }
+    }
+
+    return attribute_map;
   }
 };
 
 struct CastOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute_(
+      ir::IrContext*,
       std::string normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
@@ -612,15 +653,20 @@ struct CastOpTranscriber : public OpTranscriber {
              << " name: " << legacy_attr_name << " " << legacy_attr.index();
     ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
     attribute_map[info.name] = new_attr;
-    if (!new_attr) {
-      VLOG(0) << "empty attribute in " << op_desc.Type()
-              << " name: " << info.name;
-    } else {
-      VLOG(10) << "new attribute in " << op_desc.Type()
-               << " name: " << info.name << " " << new_attr.storage();
-    }
 
     return attribute_map;
+  }
+};
+
+struct EmbeddingOpTranscriber : public OpTranscriber {
+  void HandleNonexistedAttribute(ir::IrContext* ctx,
+                                 ir::AttributeMap* attribute_map,
+                                 const OpAttributeInfo& info) override {
+    if (info.name == "padding_idx") {
+      (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
+    } else if (info.name == "sparse") {
+      (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
+    }
   }
 };
 
@@ -686,10 +732,12 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
 }
 }  // namespace
 
-OpTranslator::OpTranslator() : general_handler(GeneralOpHandler) {
+OpTranslator::OpTranslator() {
+  general_handler = OpTranscriber();
   special_handlers["feed"] = FeedOpHandler;
   special_handlers["fetch_v2"] = FetchOpHandler;
   special_handlers["cast"] = CastOpTranscriber();
+  special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
 }
 
 }  // namespace translator

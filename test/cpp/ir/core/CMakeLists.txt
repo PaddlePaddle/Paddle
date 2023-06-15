@@ -69,7 +69,7 @@ cc_test_old(
   DEPS
   program_translator
   gtest
-  new_ir
-  pd_dialect)
+  pd_dialect
+  new_ir)
 
 cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest new_ir)
