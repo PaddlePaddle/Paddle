@@ -63,6 +63,16 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
+option(CINN_ONLY "Compile CINN only in Paddle" OFF)
+
+find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+  set(GIT_URL "https://github.com")
+endif()
+
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -112,7 +122,7 @@ endif()
 
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
-  message("Build static library of PHI")
+
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 
@@ -229,13 +239,6 @@ else()
   )
 endif()
 
-find_package(Git REQUIRED)
-
-# config GIT_URL with github mirrors to speed up dependent repos clone
-option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
-if(NOT GIT_URL)
-  set(GIT_URL "https://github.com")
-endif()
 
 find_package(Threads REQUIRED)
 
@@ -568,6 +571,28 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
+
+#------------- cinn cmake config start --------------
+
+if(WITH_CINN)
+  message(STATUS "Compile Paddle with CINN.")
+  include(cmake/cinn.cmake)
+  add_definitions(-DPADDLE_WITH_CINN)
+  if(WITH_GPU)
+    add_definitions(-DCINN_WITH_CUDA)
+    add_definitions(-DCINN_WITH_CUDNN)
+  endif()
+
+  if(CINN_ONLY)
+    if(WITH_PYTHON)
+      add_subdirectory(python)
+    endif()
+    add_subdirectory(test)
+    return()
+  endif()
+endif()
+
+#------------- cinn cmake config end --------------
 
 if(WITH_PROFILER)
   find_package(Gperftools REQUIRED)
