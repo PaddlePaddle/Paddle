@@ -22,6 +22,8 @@ namespace xpu {
 XPUOpMap& get_kl2_ops() {
   // KL2支持的op，通过op_name, data_type, place来索引
   static XPUOpMap s_xpu2_kernels{
+      {"add_act_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"abs", XPUKernelSet({phi::DataType::FLOAT32})},
       {"abs_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
@@ -81,6 +83,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"bilinear_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"bitwise_not", XPUKernelSet({phi::DataType::BOOL})},
+      {"bitwise_and", XPUKernelSet({phi::DataType::BOOL})},
       {"broadcast", XPUKernelSet({phi::DataType::FLOAT32})},
       {"c_allgather",
        XPUKernelSet({phi::DataType::FLOAT16,
@@ -525,6 +528,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT64})},
       {"nearest_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"nll_loss", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"nll_loss_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"not_equal",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
@@ -642,7 +647,10 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32})},
       {"scatter_grad",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
-      {"scatter_nd_add", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"scatter_nd_add",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::INT32,
+                     phi::DataType::INT64})},
       {"sampling_id",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT64})},
       {"set_value",

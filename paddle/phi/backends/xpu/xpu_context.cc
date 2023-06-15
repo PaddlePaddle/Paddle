@@ -30,6 +30,9 @@ namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
+template <>
+const TypeInfo<DeviceContext> TypeInfoTraits<DeviceContext, XPUContext>::kType =
+    RegisterStaticType<DeviceContext>(XPUContext::name());
 struct XPUContext::Impl {
   void SetL3Cache(int l3_size = 14155776) {
     const int MAX_XPU_NUM = 16;

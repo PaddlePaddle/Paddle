@@ -126,6 +126,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${filename}
       EXTRA_DEPS
       paddle_inference_shared
+      python
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -139,6 +140,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${filename}
       EXTRA_DEPS
       paddle_inference_shared
+      python
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -156,6 +158,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${filename}
       EXTRA_DEPS
       paddle_inference_shared
+      python
       ARGS
       --infer_model=${install_dir}/mobilenet_v2_models/1
       --infer_model2=${install_dir}/mobilenet_v2_models/xx
@@ -164,7 +167,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   function(inference_analysis_api_test_build TARGET_NAME filename)
     inference_analysis_test_build(${TARGET_NAME} SRCS ${filename} EXTRA_DEPS
-                                  paddle_inference_shared)
+                                  paddle_inference_shared python)
   endfunction()
 
   function(inference_analysis_api_int8_test_run TARGET_NAME test_binary
@@ -224,7 +227,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   function(inference_analysis_api_test_with_fake_data_build TARGET_NAME
            filename)
     inference_analysis_test_build(${TARGET_NAME} SRCS ${filename} EXTRA_DEPS
-                                  paddle_inference_shared)
+                                  paddle_inference_shared python)
   endfunction()
 
   function(inference_analysis_api_test_with_fake_data_run TARGET_NAME
@@ -403,6 +406,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_dam_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${DAM_SMALL_INSTALL_DIR}/model
     --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
@@ -426,15 +430,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     "lac_data.txt.tar.gz" 9983539cd6b34fbdc411e43422776bfd)
   inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
                               analyzer_lac_tester.cc)
-
-  # Pyramid DNN
-  set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
-  download_model_and_data_without_verify(
-    ${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz"
-    "PyramidDNN_data.txt.tar.gz")
-  inference_analysis_api_test(
-    test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR}
-    analyzer_pyramid_dnn_tester.cc)
 
   # Ernie
   set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
@@ -467,6 +462,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_ernie_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${ERNIE_INSTALL_DIR}/model
     --infer_data=${ERNIE_INSTALL_DIR}/data.txt
@@ -512,6 +508,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_transformer_compare_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -523,6 +520,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_transformer_fuse_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -534,6 +532,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_transformer_profile_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -552,6 +551,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_vit_ocr_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
     --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
@@ -575,6 +575,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_detect_functional_mkldnn_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${DENSEBOX_INSTALL_DIR}/model
     --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
@@ -1170,6 +1171,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     lite_mul_model_test.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
   inference_analysis_test(
@@ -1178,6 +1180,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     lite_resnet50_test.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1187,6 +1190,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_capi_exp_tester.cc
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
+    python
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}/model)
   if(WIN32)
@@ -1201,6 +1205,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_capi_exp_pd_config_tester.cc
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
+    python
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
   if(WIN32)
@@ -1216,6 +1221,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_capi_exp_pd_tensor_tester.cc
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
+    python
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
   if(WIN32)
@@ -1232,6 +1238,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       analyzer_capi_exp_pd_threads_tester.cc
       EXTRA_DEPS
       ${INFERENCE_C_EXTRA_DEPS}
+      python
       ARGS
       --infer_model=${MOBILENET_INSTALL_DIR}/model)
     if(WIN32)
@@ -1249,6 +1256,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_zerocopy_tensor_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model)
 
@@ -1259,6 +1267,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       analyzer_dist_model_tester.cc
       EXTRA_DEPS
       paddle_inference_shared
+      python
       ARGS
       --infer_model=${OCR_INSTALL_DIR}/model)
   endif()
@@ -1273,6 +1282,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       analyzer_dist_model_xpu_tester.cc
       EXTRA_DEPS
       paddle_inference_shared
+      python
       ARGS
       --infer_model=${OCR_INSTALL_DIR}/model)
   endif()
@@ -1283,6 +1293,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_paddle_tensor_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    python
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model
     --infer_data=${OCR_INSTALL_DIR}/data.txt
@@ -1311,6 +1322,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_capi_exp_ner_tester.cc
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
+    python
     ARGS
     --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
   if(WIN32)
@@ -1468,6 +1480,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       xpu_runtime_config_resnet50_test.cc
       EXTRA_DEPS
       paddle_inference_shared
+      python
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
   endif()
@@ -1483,6 +1496,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         api_impl_tester.cc
         DEPS
         paddle_inference_shared
+        python
         ARGS
         --word2vec_dirname=${WORD2VEC_MODEL_DIR}
         --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
@@ -1506,6 +1520,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       analysis_predictor_tester.cc
       DEPS
       paddle_inference_shared
+      python
       ARGS
       --dirname=${WORD2VEC_MODEL_DIR})
   elseif(WIN32)
@@ -1526,7 +1541,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       cc_test(
         test_mkldnn_quantizer
         SRCS mkldnn_quantizer_tester.cc
-        DEPS paddle_inference_shared ARGS --dirname=${WORD2VEC_MODEL_DIR})
+        DEPS paddle_inference_shared python ARGS
+             --dirname=${WORD2VEC_MODEL_DIR})
     elseif(WIN32)
       cc_test(
         test_mkldnn_quantizer

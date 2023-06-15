@@ -183,25 +183,9 @@ KernelSignature ReduceMaxGradOpArgumentMapping(
                          {"X@GRAD"});
 }
 
-KernelSignature ReduceAMaxGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("amax_grad",
-                         {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
 KernelSignature ReduceMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("min_grad",
-                         {"X", "Out", "Out@GRAD"},
-                         {"dim", "keep_dim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
-KernelSignature ReduceAMinGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("amin_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"dim", "keep_dim", "reduce_all"},
                          {"X@GRAD"});
@@ -232,8 +216,6 @@ PD_REGISTER_BASE_KERNEL_NAME(reduce_mean_grad, mean_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_prod_grad, prod_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_max_grad, max_grad);
 PD_REGISTER_BASE_KERNEL_NAME(reduce_min_grad, min_grad);
-PD_REGISTER_BASE_KERNEL_NAME(reduce_amax_grad, amax_grad);
-PD_REGISTER_BASE_KERNEL_NAME(reduce_amin_grad, amin_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(reduce_sum, phi::ReduceSumOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_mean, phi::ReduceMeanOpArgumentMapping);
@@ -253,9 +235,5 @@ PD_REGISTER_ARG_MAPPING_FN(reduce_prod_grad,
                            phi::ReduceProdGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_max_grad,
                            phi::ReduceMaxGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(reduce_amax_grad,
-                           phi::ReduceAMaxGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(reduce_min_grad,
                            phi::ReduceMinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(reduce_amin_grad,
-                           phi::ReduceAMinGradOpArgumentMapping);

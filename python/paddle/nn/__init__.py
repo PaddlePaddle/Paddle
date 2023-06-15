@@ -157,7 +157,7 @@ from .layer.layers import Layer  # noqa: F401
 
 from .utils.spectral_norm_hook import spectral_norm
 
-# TODO: remove loss, keep it for too many used in unitests
+# TODO: remove loss, keep it for too many used in unittests
 from .layer import loss  # noqa: F401
 
 from . import utils  # noqa: F401
@@ -171,7 +171,7 @@ from paddle.utils import deprecated
 
 @deprecated(
     since="2.0.0",
-    update_to="paddle.nn.funcitional.diag_embed",
+    update_to="paddle.nn.functional.diag_embed",
     level=1,
     reason="diag_embed in paddle.nn will be removed in future",
 )

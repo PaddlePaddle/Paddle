@@ -58,6 +58,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_generation_pipeline MODULES
+                  test_pass_generation_pipeline)
+  set_tests_properties(test_pass_generation_pipeline
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -113,6 +117,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
   py_test_modules(test_dist_attr_v2 MODULES test_dist_attr_v2)
+  py_test_modules(test_dist_tensor MODULES test_dist_tensor)
   py_test_modules(test_serialization MODULES test_serialization)
   py_test_modules(test_lr_grad_clip MODULES test_lr_grad_clip)
   py_test_modules(test_dist_matmul MODULES test_dist_matmul)

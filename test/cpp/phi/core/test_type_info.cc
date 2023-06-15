@@ -17,6 +17,11 @@ limitations under the License. */
 #include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {
+
+template <typename BaseT, typename DerivedT>
+const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
+    RegisterStaticType<BaseT>(DerivedT::name());
+
 namespace tests {
 
 template <typename T>

@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
@@ -68,7 +68,7 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     #              [4.99999860, 4.99999860])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         sub = _C_ops.subtract(x, y)
         # p_norm op has not used epsilon, so change it to the following.
         if epsilon != 0.0:

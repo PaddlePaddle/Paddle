@@ -38,7 +38,7 @@ def _all_gather(tensor, buffer_size, group):
     """
 
     assert group is not None
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         out = paddle.zeros([buffer_size], dtype=tensor.dtype)
         task = group.process_group.all_gather(tensor, out)
         return out, task

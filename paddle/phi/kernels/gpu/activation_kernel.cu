@@ -274,4 +274,5 @@ PD_REGISTER_KERNEL(selu,
                    phi::SeluKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}

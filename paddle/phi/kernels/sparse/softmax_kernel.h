@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
@@ -24,6 +25,12 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                       const SparseCsrTensor& X,
                       int axis,
                       SparseCsrTensor* out);
+
+template <typename T, typename Context>
+void SoftmaxCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      int axis,
+                      SparseCooTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

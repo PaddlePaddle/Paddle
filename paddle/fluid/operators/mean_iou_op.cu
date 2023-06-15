@@ -111,7 +111,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
         out_mean_iou->mutable_data<float>(ctx.GetPlace());
 
     // Get Eigen tensor
-    auto out_mean_iou_t = EigenTensor<float, 1>::From(*out_mean_iou);
+    auto out_mean_iou_t = EigenScalar<float>::From(*out_mean_iou);
     auto out_wrong_t = EigenTensor<int, 1>::From(*out_wrong);
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
@@ -131,7 +131,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto in_mean_ious = ctx.MultiInput<phi::DenseTensor>("InMeanIou");
     for (int i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
-          EigenTensor<float, 1>::From(*in_mean_ious[i]);
+          EigenScalar<float>::From(*in_mean_ious[i]);
     }
     auto in_wrongs = ctx.MultiInput<phi::DenseTensor>("InWrongs");
     for (int i = 0; i < in_wrongs.size(); ++i) {

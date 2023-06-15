@@ -15,13 +15,13 @@
 import unittest
 
 import paddle
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_context import (
     DistributedContext,
     get_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import set_var_dist_attr
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.utils import set_var_dist_attr
 from paddle.distributed.fleet import auto
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.incubate.autograd import enable_prim

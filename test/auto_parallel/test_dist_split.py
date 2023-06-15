@@ -34,9 +34,11 @@ def make_program_dp2():
 
 
 def parallelizer(program_func, rank):
-    from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.dist_context import DistributedContext
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
+    from paddle.distributed.auto_parallel.static.completion import Completer
+    from paddle.distributed.auto_parallel.static.dist_context import (
+        DistributedContext,
+    )
+    from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 
     main_program, start_program = program_func()
 

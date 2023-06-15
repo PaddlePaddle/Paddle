@@ -16,6 +16,11 @@ limitations under the License. */
 
 namespace phi {
 
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, SparseCooTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(SparseCooTensor::name());
+
 SparseCooTensor::SparseCooTensor() {
   DenseTensor non_zero_indices, non_zero_elements;
   this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
@@ -155,16 +160,18 @@ int32_t SparseCooTensor::dense_dim() const {
 }
 
 void SparseCooTensor::set_meta(SparseTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 phi::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
+  PADDLE_ENFORCE_EQ(meta_.valid(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "Only when the original attribute of Tensor is "
+                        "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
 
 void SparseCooTensor::set_meta(const SparseTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;

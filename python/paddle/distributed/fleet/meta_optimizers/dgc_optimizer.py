@@ -22,7 +22,7 @@ import paddle
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.optimizer import Momentum, Optimizer
-from paddle.framework import core, in_dygraph_mode
+from paddle.framework import core, in_dynamic_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
 from paddle.regularizer import L1Decay, L2Decay
 from paddle.static import create_global_var
@@ -46,7 +46,7 @@ class DGCMomentumOptimizer(Optimizer):
         grad_clip=None,
         name=None,
     ):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
 
         assert (

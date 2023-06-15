@@ -130,7 +130,7 @@ void KLDivInferMeta(const MetaTensor& x,
   if ("none" == reduction) {
     out->set_dims(dim_x);
   } else {
-    out->set_dims({1});
+    out->set_dims(phi::make_ddim({}));
   }
   out->set_dtype(x.dtype());
 }
@@ -2056,9 +2056,6 @@ void MatmulInferMeta(const MetaTensor& x,
   }
   if (!y_broadcasted) {
     new_dims.push_back(N);
-  }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
   }
 
   auto ddim_out = phi::make_ddim(new_dims);

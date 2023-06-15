@@ -26,7 +26,7 @@ from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed.utils.moe_utils import global_gather, global_scatter
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
-from paddle.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from .gate import BaseGate, GShardGate, NaiveGate, SwitchGate
@@ -63,7 +63,7 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
     if group is not None and not group.is_member():
         return
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         group = (
             paddle.distributed.collective._get_default_group()
             if group is None
@@ -385,7 +385,7 @@ class MoELayer(nn.Layer):
                 )
             else:
                 raise AssertionError(
-                    "We only support naive gate,gshard gate and switch gate, but you choose {} gate.".format(
+                    "We only support naive gate,                                 gshard gate and switch gate,                                 but you choose {} gate.".format(
                         str(gate)
                     )
                 )

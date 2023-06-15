@@ -471,7 +471,7 @@ struct DeviceIndependenceTensorOperations {
     NameInTensorMap inputs({{"X", {&x}}});
     return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
   }
-  // Support float and complex type subtraction，the default is T type
+  // Support float and complex type subtraction, the default is T type
   template <typename InT = T>
   phi::DenseTensor Sub(const phi::DenseTensor& x, const phi::DenseTensor& y) {
     phi::DenseTensor ret;

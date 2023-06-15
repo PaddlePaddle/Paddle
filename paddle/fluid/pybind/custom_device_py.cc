@@ -313,7 +313,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           Default: None.
 
       Returns:
-          The recored event.
+          The record event.
 
       Examples:
         .. code-block:: python

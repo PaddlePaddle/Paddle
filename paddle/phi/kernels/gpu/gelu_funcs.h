@@ -22,7 +22,7 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-DECLARE_bool(use_fast_math);
+PHI_DECLARE_bool(use_fast_math);
 
 namespace phi {
 

@@ -52,8 +52,4 @@ class TypeInfoTraits {
 template <typename BaseT>
 TypeInfo<BaseT> RegisterStaticType(const std::string& type);
 
-template <typename BaseT, typename DerivedT>
-const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
-    RegisterStaticType<BaseT>(DerivedT::name());
-
 }  // namespace phi

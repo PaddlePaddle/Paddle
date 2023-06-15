@@ -122,6 +122,5 @@ get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 include_directories(${WARPCTC_INCLUDE_DIR}
 )# For warpctc code to include its headers.
 
-add_library(warpctc SHARED IMPORTED GLOBAL)
-set_property(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})
+add_library(warpctc INTERFACE)
 add_dependencies(warpctc extern_warpctc)

@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from utils import SUB_TOLERANCE
+from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 from paddle import _C_ops
 from paddle.fluid import core, framework
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 from paddle.incubate.autograd import primapi
 from paddle.nn import LayerNorm
 
@@ -56,7 +56,7 @@ def layer_norm_wrapper(
             + str(input_shape)
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
 
     else:

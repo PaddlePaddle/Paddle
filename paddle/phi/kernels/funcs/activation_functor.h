@@ -3083,11 +3083,15 @@ struct CudaRsqrtFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
-  T minus_one_half = static_cast<T>(-0.5f);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType minus_one_half = static_cast<MPType>(-0.5f);
 
   // dx = -0.5 * dout * out^3
-  __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return minus_one_half * dout * out * out * out;
+  __device__ __forceinline__ T operator()(const T arg_dout,
+                                          const T arg_out) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType out = static_cast<MPType>(arg_out);
+    return static_cast<T>(minus_one_half * dout * out * out * out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

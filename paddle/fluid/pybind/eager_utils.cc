@@ -38,7 +38,9 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-DECLARE_bool(check_nan_inf);
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace pybind {
@@ -1362,7 +1364,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
       return paddle::experimental::Scalar(value);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) is numpy.ndarry, the inner elements "
+          "%s(): argument (position %d) is numpy.ndarray, the inner elements "
           "must be "
           "numpy.float32/float64 now, but got %s",
           op_type,

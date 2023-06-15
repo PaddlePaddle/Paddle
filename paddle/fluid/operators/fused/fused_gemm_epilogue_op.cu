@@ -52,8 +52,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fued linear epilogue type should be one of {none, relu, gelu}."
-          "But received activation is %s, please check",
+          "fused_gemm_epilogue's activate should be one of {none, relu, gelu},"
+          " but received %s, please check",
           activation));
     }
   }

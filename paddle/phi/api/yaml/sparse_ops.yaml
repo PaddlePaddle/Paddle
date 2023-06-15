@@ -286,7 +286,8 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : softmax_csr{sparse_csr -> sparse_csr}
+    func : softmax_coo{sparse_coo -> sparse_coo},
+           softmax_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : softmax_grad
 

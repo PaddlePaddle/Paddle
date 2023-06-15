@@ -435,8 +435,8 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_serialized_attr",
            [](pd::OpDesc &self,
               const std::string &name,
-              const pybind11::bytes &seriralized) {
-             std::string ser(seriralized);
+              const pybind11::bytes &serialized) {
+             std::string ser(serialized);
              self.SetAttr(name, ser);
            })
       .def("_block_attr_id", &pd::OpDesc::GetBlockAttrId)
@@ -485,8 +485,8 @@ void BindOpDesc(pybind11::module *m) {
                  return self.to<bool>();
                case phi::DataType::COMPLEX64:
                case phi::DataType::COMPLEX128:
-                 // to paddle's complex to avoid ambiguious
-                 // when converting bfloat16 or float16 to std::copmplex<double>
+                 // to paddle's complex to avoid ambiguous
+                 // when converting bfloat16 or float16 to std::complex<double>
                  return static_cast<std::complex<double>>(
                      self.to<phi::dtype::complex<double>>());
                default:

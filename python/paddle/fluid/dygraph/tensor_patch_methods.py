@@ -270,7 +270,7 @@ def monkey_patch_tensor():
                 # 4: [5000.]
 
         """
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
                     "Gradient Backward", profiler.TracerEventType.Backward
@@ -978,20 +978,19 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("_set_grad_ivar", _set_grad_ivar),
+        ("value", value),
+        ("cpu", cpu),
+        ("cuda", cuda),
+        ("pin_memory", pin_memory),
+        ("_slice", _slice),
+        ("_numel", _numel),
+        ("_uva", _uva),
+        ("_clear_data", _clear_data),
+        ("__hash__", __hash__),
+        ("_use_gpudnn", _use_gpudnn),
     ):
         setattr(core.eager.Tensor, method_name, method)
-
-    setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-    setattr(core.eager.Tensor, "value", value)
-    setattr(core.eager.Tensor, "cpu", cpu)
-    setattr(core.eager.Tensor, "cuda", cuda)
-    setattr(core.eager.Tensor, "pin_memory", pin_memory)
-    setattr(core.eager.Tensor, "_slice", _slice)
-    setattr(core.eager.Tensor, "_numel", _numel)
-    setattr(core.eager.Tensor, "_uva", _uva)
-    setattr(core.eager.Tensor, "_clear_data", _clear_data)
-    setattr(core.eager.Tensor, "__hash__", __hash__)
-    setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
 
     global _already_patch_repr
     if not _already_patch_repr:

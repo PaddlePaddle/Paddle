@@ -77,7 +77,9 @@ void* InferXPUContext::Alloc(phi::TensorBase* tensor,
 
 void InferXPUContext::SetL3Info(size_t l3_size,
                                 void* l3_ptr,
-                                size_t l3_autotune_size) {
+                                size_t l3_autotune_size,
+                                const phi::Place& place) {
+  phi::backends::xpu::XPUDeviceGuard guard(place.GetDeviceId());
   if (l3_ptr == nullptr) {
     if (l3_size_ != l3_size) {
       if (l3_owned_) {

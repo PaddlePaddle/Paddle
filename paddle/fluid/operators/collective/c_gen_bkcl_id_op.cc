@@ -89,7 +89,7 @@ class CGenBKCLIdOp : public framework::OperatorBase {
 class CGenBKCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "Raw variable contains a BKCL UniqueId instaces.");
+    AddOutput("Out", "Raw variable contains a BKCL UniqueId instances.");
     AddComment(R"DOC(
 CGenBKCLId operator
 

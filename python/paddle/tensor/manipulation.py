@@ -33,7 +33,7 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
@@ -120,7 +120,7 @@ def tensor_array_to_tensor(input, axis=1, use_stack=False, name=None):
             paddle.tensor.array.array_write(x1, i + 1, array)
             output, output_index = paddle.tensor.manipulation.tensor_array_to_tensor(input=array)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         assert isinstance(
             input, list
         ), "The 'input' in tensor_array_to_tensor must be list"
@@ -178,7 +178,7 @@ def cast(x, dtype):
             x = paddle.to_tensor([2, 3, 4], 'float64')
             y = paddle.cast(x, 'uint8')
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         return _C_ops.cast(x, dtype)
@@ -298,7 +298,7 @@ def slice(input, axes, starts, ends):
             sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[1:3, 0:2, 2:4].
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = ()
         starts_tensor = None
         ends_tensor = None
@@ -465,7 +465,7 @@ def transpose(x, perm, name=None):
             # [3L, 2L, 4L]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -545,7 +545,7 @@ def unstack(x, axis=0, num=None):
         raise ValueError(
             '`axis` must be in the range [-{0}, {0})'.format(x.ndim)
         )
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if num is None:
             num = x.shape[axis]
         if num == 0:
@@ -618,7 +618,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
             print(shard_label)
             # [[-1], [1]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.shard_index(
             input, index_num, nshards, shard_id, ignore_value
         )
@@ -751,7 +751,7 @@ def crop(x, shape=None, offsets=None, name=None):
     if shape is None:
         shape = x.shape
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.crop(x, shape, offsets)
 
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -934,7 +934,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
             x.fill_diagonal_(1.0)
             print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if len(x.shape) == 2:
             return _C_ops.fill_diagonal_(x, value, offset, wrap)
         return _C_ops.fill_diagonal_(x, value, offset, True)
@@ -1113,7 +1113,7 @@ def concat(x, axis=0, name=None):
             #  [14 15 16]]
     """
     input = x
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
         if not isinstance(input, Variable):
@@ -1226,7 +1226,7 @@ def broadcast_tensors(input, name=None):
     """
 
     num_inputs = len(input)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.broadcast_tensors(input)
     else:
         check_type(input, 'input', (list, tuple), 'broadcast_tensors')
@@ -1340,7 +1340,7 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.flip(x, axis)
     else:
         helper = LayerHelper("flip", **locals())
@@ -1580,7 +1580,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         if start_axis > stop_axis:
             raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
     else:
         check_variable_and_dtype(
@@ -1644,7 +1644,7 @@ def flatten_(x, start_axis=0, stop_axis=-1, name=None):
     if start_axis > stop_axis:
         raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.flatten_(x, start_axis, stop_axis)
 
 
@@ -1709,7 +1709,7 @@ def roll(x, shifts, axis=None, name=None):
     else:
         axis = []
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.roll(x, shifts, axis)
     else:
         check_variable_and_dtype(
@@ -1838,7 +1838,7 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.stack(x, axis)
     else:
         if not isinstance(x, list) and not isinstance(x, tuple):
@@ -1952,7 +1952,7 @@ def split(x, num_or_sections, axis=0, name=None):
     """
     input = x
     dim = axis
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(dim, Variable):
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
@@ -2201,7 +2201,7 @@ def squeeze(x, axis=None, name=None):
 
     input = x
     axes = axis
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.squeeze(input, axes)
     else:
         helper = LayerHelper("squeeze", **locals())
@@ -2261,7 +2261,7 @@ def squeeze_(x, axis=None, name=None):
 
     input = x
     axes = axis
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.squeeze_(input, axes)
 
 
@@ -2342,7 +2342,7 @@ def unique_consecutive(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
         )
@@ -2469,7 +2469,7 @@ def unique(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
@@ -2592,7 +2592,7 @@ def unsqueeze(x, axis, name=None):
     """
     input = x
     axes = axis
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
@@ -2721,7 +2721,7 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.gather(x, index, axis)
     else:
         check_variable_and_dtype(
@@ -2805,7 +2805,7 @@ def unbind(input, axis=0):
             f'The axis must in range({-input.ndim}, {input.ndim}).'
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.unbind(input, axis)
     else:
         if isinstance(axis, np.generic):
@@ -2919,7 +2919,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             #  [2., 2.],
             #  [1., 1.]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.scatter(x, index, updates, overwrite)
     else:
         check_variable_and_dtype(
@@ -3018,7 +3018,7 @@ def scatter_nd_add(x, index, updates, name=None):
             print(output.shape)
             # [3, 5, 9, 10]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
         if x.dtype != updates.dtype:
@@ -3156,7 +3156,7 @@ def tile(x, repeat_times, name=None):
             # Tensor(shape=[1, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 2, 3, 1, 2, 3]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(repeat_times, core.eager.Tensor):
             assert (
                 repeat_times.ndim == 1
@@ -3269,7 +3269,7 @@ def expand_as(x, y, name=None):
             #        [[1, 2, 3],
             #         [1, 2, 3]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.expand_as(x, None, y.shape)
     else:
         check_variable_and_dtype(
@@ -3336,7 +3336,7 @@ def broadcast_to(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3438,7 +3438,7 @@ def expand(x, shape, name=None):
             print(out)
             # [[1, 2, 3], [1, 2, 3]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3572,7 +3572,7 @@ def reshape(x, shape, name=None):
             # the value is [10.]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(shape, (list, tuple)):
             new_shape = []
             for ele in shape:
@@ -3681,7 +3681,7 @@ def reshape_(x, shape, name=None):
     Inplace version of ``reshape`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tensor_reshape`.
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         tmp_tensor_type = core.eager.Tensor
         if isinstance(shape, (list, tuple)):
             shape = [
@@ -3776,7 +3776,7 @@ def gather_nd(x, index, name=None):
             output = paddle.gather_nd(x, index) #[[3, 4]]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.gather_nd(x, index)
     else:
         check_variable_and_dtype(
@@ -3894,7 +3894,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             sliced_2 = paddle.strided_slice(x, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is x[:, 1:3:1, 0:2:1, 2:4:2].
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.strided_slice(x, axes, starts, ends, strides)
     else:
         helper = LayerHelper('strided_slice', **locals())
@@ -4143,7 +4143,7 @@ def tensordot(x, y, axes=2, name=None):
     check_type(axes, 'axes', (int, tuple, list, Variable), op_type)
 
     def _var_to_list(var):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return tolist(var)
         raise TypeError(
             "The 'axes' with type 'Tensor' in "
@@ -4266,7 +4266,7 @@ def as_complex(x, name=None):
             #        [[1j      , (2+3j)  , (4+5j)  ],
             #         [(6+7j)  , (8+9j)  , (10+11j)]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.as_complex(x)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
@@ -4319,7 +4319,7 @@ def as_real(x, name=None):
             #          [8. , 9. ],
             #          [10., 11.]]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.as_real(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
@@ -4374,7 +4374,7 @@ def repeat_interleave(x, repeats, axis=None, name=None):
         x = paddle.flatten(x)
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(repeats, Variable):
             return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
         return _C_ops.repeat_interleave(x, repeats, axis)
@@ -4485,7 +4485,7 @@ def moveaxis(x, source, destination, name=None):
     for i in range(len(src_dims)):
         perm[dst_dims[i]] = src_dims[i]
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.transpose(x, perm)
         return out
     else:
@@ -4578,7 +4578,7 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
@@ -4655,7 +4655,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         )
     axis = non_negative_axis(arr, axis)
     broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         values = (
             paddle.to_tensor(values)
             if not isinstance(values, paddle.Tensor)
@@ -4752,7 +4752,7 @@ def index_add(x, index, axis, value, name=None):
             #         [1., 1., 1.],
             #         [2., 2., 2.]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.index_add(x, index, value, axis)
 
     helper = LayerHelper("index_add", **locals())
@@ -4887,7 +4887,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
             #         [0., 0., 1.],
             #         [0., 1., 0.]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 
     helper = LayerHelper("index_put", **locals())

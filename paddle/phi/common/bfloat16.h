@@ -144,7 +144,7 @@ struct PADDLE_ALIGN(2) bfloat16 {
     return *this;
   }
 
-  // Conversion opertors
+  // Conversion operators
   HOSTDEVICE inline operator float() const {
 #ifdef PADDLE_WITH_HIP
     uint32_t res = 0;

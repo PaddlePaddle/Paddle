@@ -268,7 +268,7 @@ class TensorDataset(Dataset):
     """
 
     def __init__(self, tensors):
-        if not framework._non_static_mode():
+        if not framework.in_dynamic_mode():
             raise RuntimeError(
                 "TensorDataset con only be used in imperative mode"
             )

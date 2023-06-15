@@ -17,7 +17,7 @@ import paddle
 from .framework import (
     Parameter,
     dtype_is_floating,
-    _non_static_mode,
+    in_dygraph_mode,
     OpProtoHolder,
     _global_flags,
 )
@@ -159,7 +159,7 @@ class LayerHelper(LayerHelperBase):
         if use_mkldnn:
             act['use_mkldnn'] = use_mkldnn
         act_type = act.pop('type')
-        if _non_static_mode():
+        if in_dygraph_mode():
             res = _append_activation_in_dygraph(
                 input_var, act_type, use_cudnn, use_mkldnn
             )

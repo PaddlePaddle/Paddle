@@ -20,8 +20,7 @@ from paddle.distributed import fleet
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.framework import Block, Program
+from paddle.framework import Block, Program, in_dynamic_mode
 
 
 class HybridParallelInferenceHelper:
@@ -205,7 +204,7 @@ class HybridParallelInferenceHelper:
             self._device = "gpu"
         assert self._device, "Only gpu are supported."
 
-        assert not in_dygraph_mode(), "Only static graph mode is supported."
+        assert not in_dynamic_mode(), "Only static graph mode is supported."
 
         op_maker = core.op_proto_and_checker_maker
         self._op_role = op_maker.OpRole

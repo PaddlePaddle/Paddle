@@ -28,27 +28,17 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
+  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names);
 
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
   return core->Run(feed_names);
-}
-
-framework::interpreter::CostInfo StandaloneExecutor::DryRun(
-    Scope* scope,
-    const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
-  auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
-
-  return core->DryRun(feed_names, feed_tensors);
 }
 
 std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     Scope* scope,
     const ProgramDesc& prog,
     const std::vector<std::string>& feed_names,
-    const std::vector<std::string>& fetch_names,
-    bool add_fetch_op) {
+    const std::vector<std::string>& fetch_names) {
   std::ostringstream oss;
   oss << "feed:";
   for (auto& feedname : feed_names) {
@@ -65,14 +55,8 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   if (iter == interpretercores_.end()) {
     VLOG(3) << "create interpreter_core for " << oss.str() << " on place "
             << place_;
-    VLOG(3) << "add fetch op: " << add_fetch_op;
-    std::shared_ptr<InterpreterCore> core = nullptr;
-
-    if (add_fetch_op) {
-      core = CreateInterpreterCore(place_, prog, scope, fetch_names);
-    } else {
-      core = std::make_shared<InterpreterCore>(place_, prog.Block(0), scope);
-    }
+    std::shared_ptr<InterpreterCore> core =
+        std::make_shared<InterpreterCore>(place_, prog.Block(0), scope);
     interpretercores_.emplace(oss.str(), core);
     return core;
   } else {

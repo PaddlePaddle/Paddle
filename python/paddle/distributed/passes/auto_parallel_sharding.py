@@ -16,13 +16,15 @@ import logging
 from functools import reduce
 
 import paddle
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.operators.common import (
     ParallelMode,
     is_data_parallel_reduce_op,
     is_parameter_related,
 )
-from paddle.distributed.auto_parallel.process_group import new_process_group
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.process_group import (
+    new_process_group,
+)
+from paddle.distributed.auto_parallel.static.utils import (
     _get_comm_group,
     get_logger,
     get_var_numel,

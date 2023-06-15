@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/gelu_kernel.h"
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
@@ -26,6 +27,9 @@ void GeluKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 bool approximate,
                 DenseTensor* out) {
+  if (approximate) {
+    LOG_FIRST_N(INFO, 1) << "XPU does not support gelu with approximate.";
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::gelu<XPUType>(dev_ctx.x_context(),

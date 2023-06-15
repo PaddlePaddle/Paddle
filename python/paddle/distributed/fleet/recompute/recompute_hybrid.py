@@ -161,7 +161,7 @@ class _HPRecomputeFunction(PyLayer):
                 #  If not marked non_differentiable, all output tensors' attr `stop gradient`
                 #  will be reset to `False` in c++ backend.
                 #  See https://github.com/PaddlePaddle/Paddle/blob/9d62efb0e6e5373823039d9eda96cd5905426c0a/paddle/fluid/pybind/eager_py_layer.cc#L388
-                if framework.in_dygraph_mode() and state:
+                if framework.in_dynamic_mode() and state:
                     ctx.mark_non_differentiable(arg)
             else:
                 ctx.inputs.append(arg)

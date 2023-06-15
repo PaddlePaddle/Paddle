@@ -426,9 +426,11 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.sharding',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
-          'paddle.distributed.auto_parallel.operators',
-          'paddle.distributed.auto_parallel.tuner',
-          'paddle.distributed.auto_parallel.cost',
+          'paddle.distributed.auto_parallel.dygraph',
+          'paddle.distributed.auto_parallel.static',
+          'paddle.distributed.auto_parallel.static.operators',
+          'paddle.distributed.auto_parallel.static.tuner',
+          'paddle.distributed.auto_parallel.static.cost',
           'paddle.distributed.passes',
           'paddle.distributed.models',
           'paddle.distributed.models.moe',
@@ -561,7 +563,11 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[
+if('${WITH_PHI_SHARED}' == 'ON'):
+    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+    shutil.copy('${PHI_LIB}', libs_path)
+
+package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]
@@ -722,8 +728,14 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            if('${WITH_PHI_SHARED}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party libb
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            if('${WITH_PHI_SHARED}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party lib
+                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:

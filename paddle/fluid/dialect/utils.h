@@ -17,7 +17,7 @@
 #include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/ir/builtin_type.h"
+#include "paddle/ir/core/builtin_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -131,6 +131,46 @@ inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
           static_cast<int>(data_layout)));
   }
 }
+
+struct OpInputInfo {
+  std::string name;
+  std::string type_name;
+  bool optional = false;
+  bool no_need_buffer = false;
+  OpInputInfo(std::string name,
+              std::string type_name,
+              bool optional,
+              bool no_need_buffer)
+      : name(name),
+        type_name(type_name),
+        optional(optional),
+        no_need_buffer(no_need_buffer) {}
+};
+
+struct OpOutputInfo {
+  std::string name;
+  std::string type_name;
+  bool optional = false;
+  bool intermediate = false;
+  OpOutputInfo(std::string name,
+               std::string type_name,
+               bool optional,
+               bool intermediate)
+      : name(name),
+        type_name(type_name),
+        optional(optional),
+        intermediate(intermediate) {}
+};
+
+struct OpAttributeInfo {
+  std::string name;
+  std::string type_name;
+  std::string data_type;
+  OpAttributeInfo(std::string name,
+                  std::string type_name,
+                  std::string data_type)
+      : name(name), type_name(type_name), data_type(data_type) {}
+};
 
 }  // namespace dialect
 }  // namespace paddle

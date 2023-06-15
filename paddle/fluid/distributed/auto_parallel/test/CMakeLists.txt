@@ -1,19 +1,19 @@
 cc_test(
   device_mesh_test
   SRCS device_mesh_test.cc
-  DEPS device_mesh)
+  DEPS phi)
 
 cc_test(
   process_mesh_test
   SRCS process_mesh_test.cc
-  DEPS process_mesh)
+  DEPS phi)
 
 cc_test(
   dist_attr_test
   SRCS dist_attr_test.cc
-  DEPS dist_attr proto_desc)
+  DEPS phi proto_desc)
 
 cc_test(
   dist_mapper_test
   SRCS dist_mapper_test.cc
-  DEPS dist_mapper)
+  DEPS phi)

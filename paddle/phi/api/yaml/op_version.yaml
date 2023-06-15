@@ -90,6 +90,33 @@
             of each place to be compatible with before.
           default : -1
 
+- op : conv2d
+  version :
+    - checkpoint : Upgrade conv2d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : conv3d
+  version :
+    - checkpoint : Upgrade conv3d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : depthwise_conv2d
+  version :
+    - checkpoint : Upgrade depthwise_conv2d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]

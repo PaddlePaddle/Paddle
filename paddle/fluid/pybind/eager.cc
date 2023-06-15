@@ -101,8 +101,8 @@ void EmptyTensorInitializer(TensorObject* self,
         std::make_shared<phi::SelectedRows>();
     self->tensor.set_impl(tensor);
   } else if (var_type == paddle::framework::proto::VarType::DIST_TENSOR) {
-    // TODO(liuzhenhai): simple implementation for test purpose, modify it as
-    // appropriate
+    // TODO(liuzhenhai): simple implementation for test purpose, modify it
+    // latter as appropriate
     auto dis_tensor = std::make_shared<phi::DistTensor>(
         std::make_shared<phi::Allocation>(),
         phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
@@ -772,7 +772,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     }
   } else if (args_num == (Py_ssize_t)1 || args_num == (Py_ssize_t)2 ||
              args_num == (Py_ssize_t)3) {
-    // 1 to 3 position args, remainting arguments are kwargs
+    // 1 to 3 position args, remaining arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
       VLOG(6) << "Calling case3's or case4's initializer.";
@@ -807,7 +807,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           "constructor."));
     }
   } else if (args_num == (Py_ssize_t)4) {
-    // 4 position args, remainting arguments are kwargs
+    // 4 position args, remaining arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
       VLOG(6) << "Calling case3's or case4's initializer.";
@@ -817,7 +817,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible constructor arguments, "
-          "there are 4 position args and remainting arguments arg kwargs,"
+          "there are 4 position args and remaining arguments arg kwargs,"
           "but the first position args should be PyArray. "
           "Please check your code and make sure the first position args is "
           "PyArray."));
@@ -865,7 +865,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
             "Please check your code and make sure you call the existed "
             "constructor."));
       }
-    } else {  // five position args, remainting arguments are kwargs
+    } else {  // five position args, remaining arguments are kwargs
       PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
       if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
         VLOG(6) << "Calling case3's or case4's initializer";
@@ -875,7 +875,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Incompatible constructor arguments, "
-            "there are 5 position args and remainting arguments are kwargs,"
+            "there are 5 position args and remaining arguments are kwargs,"
             "but the first position args should be PyArray. "
             "Please check your code and make sure the first position args is "
             "PyArray."));
@@ -888,11 +888,11 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       AutoInitTensorByPyArray(
           py_tensor_ptr, kws_map, args, flag_kwargs, args_num);
       return 0;
-    } else {  // six position args, remainting arguments are kwargs, but this
+    } else {  // six position args, remaining arguments are kwargs, but this
               // is not a right way
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible constructor arguments, "
-          "there are 6 position args and the remainting arguments are kwargs. "
+          "there are 6 position args and the remaining arguments are kwargs. "
           "Please check your code and make sure the first position args is "
           "PyArray."));
     }
@@ -1059,7 +1059,7 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       }
     }
   } else if (args_num == (Py_ssize_t)1) {  // case 3 ~ 6
-    // 1 position args, remainting arguments are kwargs
+    // 1 position args, remaining arguments are kwargs
     PyObject* arg0_ptr = PyTuple_GET_ITEM(args, 0);
     if (pybind11::detail::npy_api::get().PyArray_Check_(arg0_ptr)) {
       VLOG(6) << "Calling case3's or case4's string initializer.";

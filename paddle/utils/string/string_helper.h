@@ -127,12 +127,10 @@ std::vector<T> split_string(const std::string& str, const std::string& delim) {
   while ((pos = str.find(delim, pre_pos)) != std::string::npos) {
     tmp_str.assign(str, pre_pos, pos - pre_pos);
     res_list.push_back(tmp_str);
-    pre_pos = pos + 1;
+    pre_pos = pos + delim.size();
   }
   tmp_str.assign(str, pre_pos, str.length() - pre_pos);
-  if (!tmp_str.empty()) {
-    res_list.push_back(tmp_str);
-  }
+  res_list.push_back(tmp_str);
   return res_list;
 }
 
