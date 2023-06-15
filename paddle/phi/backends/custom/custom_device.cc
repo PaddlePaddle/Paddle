@@ -589,6 +589,7 @@ class CustomDevice : public DeviceInterface {
       return_result(CCL_DATA_TYPE_INT32, INT32);
       return_result(CCL_DATA_TYPE_INT16, INT16);
       return_result(CCL_DATA_TYPE_INT8, INT8);
+      return_result(CCL_DATA_TYPE_UINT8, UINT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
