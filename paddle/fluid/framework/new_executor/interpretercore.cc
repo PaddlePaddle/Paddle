@@ -293,12 +293,8 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     if (FLAGS_enable_new_ir_in_executor) {
-      std::cerr << "begin to build block " << std::endl;
-      size_t t1 = ir_program_->block()->size();
-      std::cerr << "size " << t1 << std::endl;
       ::ir::BuildScope(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
-      std::cerr << "fin fetch " << std::endl;
     } else {
       interpreter::BuildVariableScope(block_, execution_config_, &var_scope_);
     }

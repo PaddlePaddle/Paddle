@@ -27,17 +27,14 @@ namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        const std::vector<ProgramDesc>& programs)
     : place_(place), programs_(programs) {
-  std::cerr << "construct stand alone" << std::endl;
   if (FLAGS_enable_new_ir_in_executor) {
     for (size_t i = 0; i < programs_.size(); ++i) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_progrm = paddle::TranslateLegacyProgramToProgram(programs_[i]);
 
-      base_progrm->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_progrm.get());
 
-      kernel_program->Print(std::cout);
       ir_programs_.emplace_back(std::move(kernel_program));
     }
   }

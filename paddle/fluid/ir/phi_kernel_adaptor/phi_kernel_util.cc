@@ -43,7 +43,6 @@ void BuildScope(ir::Block* block,
   std::unordered_map<ir::Value, int> map_test;
 
   // int count = name_map->size();
-  std::cerr << "build scope " << block->size() << std::endl;
   int count = 0;
   for (auto it = block->begin(); it != block->end(); ++it) {
     size_t input_num = (*it)->num_operands();
@@ -94,7 +93,6 @@ void BuildScope(ir::Block* block,
                 "input of fetch op should in name mape, var_name is [%s]",
                 var_name));
 
-        std::cerr << "fetch name change" << std::endl;
         scope->Rename(name_map->at(ptr), var_name);
         (*name_map)[ptr] = var_name;
       }
