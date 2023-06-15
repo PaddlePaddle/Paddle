@@ -3,7 +3,7 @@ cc_test_old(
   SRCS
   pass_manager_test.cc
   DEPS
-  new_pass
+  ir_pass
   pd_dialect
   phi
   gtest)
