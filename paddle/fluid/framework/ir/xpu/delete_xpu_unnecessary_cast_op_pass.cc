@@ -162,7 +162,7 @@ CastLayerNormPattern::CastLayerNormPattern(PDPattern* pattern,
   auto* layer_norm =
       pattern->NewNode(layer_norm_repr())->assert_is_op("layer_norm");
   auto* layer_norm_out = pattern->NewNode(layer_norm_out_repr())
-                             ->assert_is_op_output("layer_norm", "Out")
+                             ->assert_is_op_output("layer_norm", "Y")
                              ->assert_is_op_input("cast", "X")
                              ->assert_has_n_outputs(1);
   auto* cast1 =

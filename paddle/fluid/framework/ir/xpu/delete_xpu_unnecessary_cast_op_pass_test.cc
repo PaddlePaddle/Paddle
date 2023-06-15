@@ -95,7 +95,7 @@ TEST(ApplyCastLayerNormPass, basic) {
   OpDesc* layer_norm = block->AppendOp();
   layer_norm->SetType("layer_norm");
   layer_norm->SetInput("X", {cast0_out->Name()});
-  layer_norm->SetOutput("Out", {layer_norm_out->Name()});
+  layer_norm->SetOutput("Y", {layer_norm_out->Name()});
   AddCast(block, layer_norm_out, 5, 4);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
