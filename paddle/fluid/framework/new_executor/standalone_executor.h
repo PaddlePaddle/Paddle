@@ -47,7 +47,6 @@ class StandaloneExecutor {
 
   std::vector<framework::Scope*> micro_batch_scopes_;
   std::vector<std::unique_ptr<InterpreterCore>> interpretercores_;
-  std::vector<std::unique_ptr<::ir::Program>> ir_programs_;
 
   Scope* scope_;
 };
