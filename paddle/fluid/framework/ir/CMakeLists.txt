@@ -426,6 +426,10 @@ cc_test(
   test_delete_cast_op_pass
   SRCS delete_cast_op_pass_test.cc
   DEPS delete_cast_op_pass)
+cc_test(
+  test_relu6_fuse_pass
+  SRCS relu6_fuse_pass_test.cc
+  DEPS relu6_fuse_pass)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
