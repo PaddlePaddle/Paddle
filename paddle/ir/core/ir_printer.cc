@@ -47,6 +47,8 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "f32";
   } else if (type.isa<Float64Type>()) {
     os << "f64";
+  } else if (type.isa<BoolType>()) {
+    os << "b";
   } else if (type.isa<Int8Type>()) {
     os << "i8";
   } else if (type.isa<UInt8Type>()) {

@@ -38,3 +38,22 @@
   data_transform: null
   inplace: null
   backward: null
+- name: assert
+  inputs:
+  - typename: Tensor
+    name: cond
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: data
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int64_t', name: summarize, default_value: '-1'}
+  outputs: []
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null
