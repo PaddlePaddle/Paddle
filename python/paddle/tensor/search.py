@@ -460,14 +460,8 @@ def nonzero(x, as_tuple=False):
 
     if not as_tuple:
         return outs
-    elif rank == 1:
-        return (outs,)
     else:
-        for i in range(rank):
-            list_out.append(
-                paddle.slice(outs, axes=[1], starts=[i], ends=[i + 1])
-            )
-        return tuple(list_out)
+        return tuple(paddle.unbind(outs, 1))
 
 
 def sort(x, axis=-1, descending=False, name=None):
