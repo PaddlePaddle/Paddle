@@ -133,12 +133,6 @@ function(copy_part_of_thrid_party TARGET DST)
           COMMAND strip -s ${dst_dir}/lib/libdnnl.so.3
           COMMENT "striping libdnnl.so.3")
       endif()
-      add_custom_command(
-        TARGET ${TARGET}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink libdnnl.so.3
-                ${dst_dir}/lib/libdnnl.so.3
-        COMMENT "Make a symbol link of libdnnl.so.3")
     endif()
   endif()
 
