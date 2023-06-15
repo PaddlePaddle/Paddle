@@ -984,7 +984,7 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    std::cerr << "begin to build phi kernel context" << std::endl;
+
     ::ir::BuildPhiKernelContext((*it),
                                 value_2_name_map,
                                 scope,
@@ -992,7 +992,6 @@ void BuildOpFuncList(
                                 &(op_func_node.kernel_context_),
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));
-    std::cerr << "fin build phi kernel context" << std::endl;
 
     op_func_node.kernel_context_.SetDeviceContext(
         phi::DeviceContextPool::Instance().Get(

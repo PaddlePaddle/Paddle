@@ -217,9 +217,9 @@ void BuildPhiKernelContext(
   for (auto& t : input_info) {
     VLOG(6) << t.name << "\t" << t.type_name;
     input_index_map[t.name] = input_index++;
-    // if (t.is_mutable_attribute) {
-    //   mutable_attr_type_map[t.name] = t.type_name;
-    // }
+    if (t.is_mutable_attribute) {
+      mutable_attr_type_map[t.name] = t.type_name;
+    }
   }
 
   auto attr_info = std::get<1>(op_yaml_info);
@@ -252,11 +252,11 @@ void BuildPhiKernelContext(
                 << in_var_name;
         if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
           ctx->EmplaceBackAttr(phi::IntArray(
-              (scope->Var(in_var_name)->Get<phi::DenseTensor>())));
+              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
         } else if (mutable_attr_type_map[t] ==
                    "paddle::dialect::ScalarAttribute") {
-          ctx->EmplaceBackAttr(phi::TensorRefScalar(
-              &(scope->Var(in_var_name)->Get<phi::DenseTensor>())));
+          ctx->EmplaceBackAttr(phi::Scalar(
+              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
         } else {
           PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                   mutable_attr_type_map[t]));

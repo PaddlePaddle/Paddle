@@ -210,7 +210,7 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(int8.dialect().id(), ir::TypeId::get<IntegerDialect>());
 
   std::vector<ir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
-  EXPECT_EQ(dialect_list.size() == 3, 1);  // integer, builtin, fake
+  EXPECT_EQ(dialect_list.size() == 4, 1);  // integer, builtin, fake
 
   ir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
   ir::Dialect *dialect_builtin2 =

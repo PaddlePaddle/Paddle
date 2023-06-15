@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/impl/nanmedian_grad_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/nanmedian_utils.h"
 
 namespace phi {
 
@@ -26,31 +26,31 @@ void CalcMedianGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& median_index,
                           const DenseTensor& out_grad,
-                          const IntArray& axes UNUSED,
-                          DenseTensor* x_grad,
-                          T* x_grad_ptr) {
+                          DenseTensor* x_grad) {
+  T* dx_data = dev_ctx.template Alloc<T>(x_grad);
+  if (!dx_data) return;
+
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
-  if (!x_grad_ptr) return;
 
-  const int64_t* m_ptr = median_index.data<int64_t>();
-  const T* out_grad_ptr = out_grad.data<T>();
+  const int64_t* m_data = median_index.data<int64_t>();
+  const T* dout_data = out_grad.data<T>();
   int64_t numel = x.numel();
   auto x_dim = x.dims();
   int64_t rank = x_dim.size();
   int64_t stride = x_dim[rank - 1];
-
   int64_t pre_dim = numel / stride;
+
   int64_t i = 0;
   int64_t offset = 0;
-  T div_factor = static_cast<T>(2.0);
   for (i = 0; i < pre_dim; i++) {
-    if (m_ptr[2 * i] >= 0) {
-      if (m_ptr[2 * i] == m_ptr[2 * i + 1]) {
-        x_grad_ptr[offset + m_ptr[2 * i]] = out_grad_ptr[i];
+    if (m_data[2 * i] >= 0) {
+      if (m_data[2 * i] == m_data[2 * i + 1]) {
+        dx_data[offset + m_data[2 * i]] = dout_data[i];
       } else {
-        x_grad_ptr[offset + m_ptr[2 * i]] = out_grad_ptr[i] / div_factor;
-        x_grad_ptr[offset + m_ptr[2 * i + 1]] = out_grad_ptr[i] / div_factor;
+        dx_data[offset + m_data[2 * i]] = dout_data[i] / static_cast<T>(2.0);
+        dx_data[offset + m_data[2 * i + 1]] =
+            dout_data[i] / static_cast<T>(2.0);
       }
     }
     offset += stride;
@@ -58,35 +58,32 @@ void CalcMedianGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void BaseMedianGradKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& median_index,
-                          const DenseTensor& out_grad,
-                          const IntArray& axes,
-                          DenseTensor* x_grad) {
-  auto rank = x.dims().size();
-  T* x_grad_ptr = dev_ctx.template Alloc<T>(x_grad);
-  if (axes.size() && (rank > 1)) {
-    DenseTensor tmp_x_grad(*x_grad);
-    CalcMedianGradKernel<T, Context>(
-        dev_ctx, x, median_index, out_grad, axes, &tmp_x_grad, x_grad_ptr);
-    PostprocessMedianGradKernel<T, Context>(dev_ctx, &tmp_x_grad, axes, x_grad);
-  } else {
-    CalcMedianGradKernel<T, Context>(
-        dev_ctx, x, median_index, out_grad, axes, x_grad, x_grad_ptr);
-  }
-}
-
-template <typename T, typename Context>
 void NanmedianGradKernel(const Context& dev_ctx,
-                         const DenseTensor& input,
+                         const DenseTensor& x,
                          const DenseTensor& median_index,
                          const DenseTensor& out_grad,
                          const IntArray& axes,
-                         bool keep_dim UNUSED,
+                         bool keepdim UNUSED,
                          DenseTensor* x_grad) {
-  BaseMedianGradKernel<T, Context>(
-      dev_ctx, input, median_index, out_grad, axes, x_grad);
+  DenseTensor tmp_x;
+  auto rank = x.dims().size();
+  if ((axes.size() == 0) || rank <= 1) {
+    tmp_x = x;
+    tmp_x.Resize({x.numel()});
+    CalcMedianGradKernel<T, Context>(
+        dev_ctx, tmp_x, median_index, out_grad, x_grad);
+  } else {
+    funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
+
+    DenseTensor tmp_x_grad;
+    tmp_x_grad.Resize(x_grad->dims());
+    CalcMedianGradKernel<T, Context>(
+        dev_ctx, tmp_x, median_index, out_grad, &tmp_x_grad);
+
+    dev_ctx.template Alloc<T>(x_grad);
+    funcs::PostprocessMedianGradKernel<T, Context>(
+        dev_ctx, &tmp_x_grad, axes, x_grad);
+  }
 }
 
 }  // namespace phi

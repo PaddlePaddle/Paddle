@@ -175,7 +175,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     // only for single output
     // need update new kernel key layout and data tyep
-    std::cerr << "begin to process " << (*it)->name() << std::endl;
+
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
       auto allocated_dense_tensor_dtype =
@@ -219,8 +219,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
         vec_inputs, op1_attribute, op_output_types, op1_info);
 
     map_op_pair[*it] = op1;
-
-    std::cerr << "15  " << std::endl;
 
     // only deal with single output
     if ((*it)->num_results() > 0) {

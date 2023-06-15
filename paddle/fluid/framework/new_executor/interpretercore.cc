@@ -1083,14 +1083,10 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
     if (instr_node.PreDefineContext()) {
       VLOG(5) << "run new ir selected kernel";
-
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
-      std::cerr << "run op " << op_func_node->phi_op_name_ << std::endl;
       op_func_node->infer_shape_interface_->infer_shape_(
           &(op_func_node->infer_meta_context_));
-      std::cerr << "fin infer shape  " << std::endl;
       (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
-      std::cerr << "fin kernel" << std::endl;
 
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);

@@ -1992,6 +1992,14 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : prior_box
+  inputs :
+    {input: Input, image: Image}
+  outputs :
+    {out: Boxes, var: Variances}
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+
 - op : prod (reduce_prod)
   backward : prod_grad (reduce_prod_grad)
   inputs:
