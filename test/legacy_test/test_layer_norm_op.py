@@ -164,8 +164,8 @@ class TestLayerNormOpByOpTest(OpTest):
         self.cinn_rtol = 1e-5
 
         self.max_relative_error = 1e-5
-
-        self.dtype = "float64"
+        # ROCm does not have float64 LayerNorm kernel
+        self.dtype = "float32" if paddle.is_compiled_with_rocm() else "float64"
         self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
@@ -218,6 +218,7 @@ class TestLayerNormOpByOpTest(OpTest):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -305,7 +306,10 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             "Variance": convert_float_to_uint16(variance),
         }
 
-
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(),
+    "ROCm doesn't support fp64 LayerNormOpByOp currently",
+)
 class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
     def initConfig(self):
         self.rev_comp_atol = 1e-6
@@ -327,7 +331,10 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
         self.has_scale = False
         self.has_bias = False
 
-
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(),
+    "ROCm doesn't support bf16 LayerNormOpByOp currently",
+)
 class TestLayerNormBF16OpByOpTest_case2(TestLayerNormBF16OpByOpTest):
     def initConfig(self):
         self.ori_atol = 1e-2
@@ -343,6 +350,10 @@ class TestLayerNormBF16OpByOpTest_case2(TestLayerNormBF16OpByOpTest):
         self.has_bias = False
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(),
+    "ROCm doesn't support fp64 LayerNormOpByOp currently",
+)
 class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
     def initConfig(self):
         self.rev_comp_atol = 1e-7
@@ -364,7 +375,10 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
         self.has_scale = True
         self.has_bias = False
 
-
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(),
+    "ROCm doesn't support bf16 LayerNormOpByOp currently",
+)
 class TestLayerNormBF16OpByOpTest_case3(TestLayerNormBF16OpByOpTest):
     def initConfig(self):
         self.ori_atol = 1e-2
@@ -380,6 +394,10 @@ class TestLayerNormBF16OpByOpTest_case3(TestLayerNormBF16OpByOpTest):
         self.has_bias = False
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(),
+    "ROCm doesn't support fp64 LayerNormOpByOp currently",
+)
 class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
     def initConfig(self):
         self.rev_comp_atol = 1e-6
@@ -801,6 +819,10 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
         assert_equal(b_g_np_1, b_g_np_2)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BF16 is only supported on CUDA.",
+)
 class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
     def check_main(self, x_np, weight_np, bias_np, dtype):
         paddle.disable_static()
