@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/full_kernel.h"
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -23,6 +26,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
+#define gettid() syscall(__NR_gettid)
 
 namespace phi {
 
@@ -33,6 +37,13 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   using XPUInTDType = typename XPUTypeTrait<T>::Type;
+#if 0
+  std::stringstream os;
+  for (size_t i = 0; i < shape.size(); i++) {
+    os << shape.GetData()[i] << ",";
+  }
+  LOG(INFO) << "full tid=" << gettid() << " type=" << typeid(T).name() << " shape=[" << os.str() << "]"; // NOLINT
+#endif
   out->Resize(phi::make_ddim(shape.GetData()));
   int numel = out->numel();
   dev_ctx.template Alloc<T>(out);
@@ -43,6 +54,11 @@ void FullKernel(const Context& dev_ctx,
                           out->numel(),
                           static_cast<XPUInTDType>(val.to<T>()));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+#if 0
+    dev_ctx.Wait();
+    LOG(INFO) << "check full tid=" << gettid();
+    phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * out->numel());
+#endif
   }
 }
 

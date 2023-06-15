@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/unsqueeze_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -25,6 +26,13 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& axes,
                           DenseTensor* out) {
+#if 0
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
+    dev_ctx.Wait();
+    LOG(INFO) << "check unsequeeze input tid=" << gettid();
+    phi::backends::xpu::xpu_mem_check(const_cast<void*>(reinterpret_cast<const void*>(x.data<T>())), sizeof(T) * x.numel()); // NOLINT
+  }
+#endif
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor()) {
@@ -36,6 +44,13 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
     return;
   }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+#if 0
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
+    dev_ctx.Wait();
+    LOG(INFO) << "check unsequeeze output tid=" << gettid();
+    phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(out_dims)); // NOLINT
+  }
+#endif
   out->Resize(out_dims);  // copy will reset the dims.
 }
 

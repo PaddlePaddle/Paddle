@@ -108,6 +108,11 @@ void Conv2dXPUKernel(const Context& ctx,
           /* const float* branch_maxptr */ branch_max_data,
           /* const float* scale */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_xpu");
+#if 0
+  ctx.Wait();
+  LOG(INFO) << "check conv2d tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out_data, sizeof(T) * product(out->dims()));
+#endif
 }
 
 }  // namespace fusion

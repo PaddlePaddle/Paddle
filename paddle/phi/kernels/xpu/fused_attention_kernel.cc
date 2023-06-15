@@ -70,6 +70,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
                           DenseTensor *bias_dropout_residual_out,
                           DenseTensor *cache_kv_out,
                           DenseTensor *out) {
+  exit(-1);
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
   // shape [batch_size, 1, 1, seq_len]

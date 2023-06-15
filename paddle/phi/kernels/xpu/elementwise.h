@@ -95,6 +95,13 @@ void XPUElementwise(const XPUContext& dev_ctx,
     y_dims_vec = std::vector<int>({1});
   }
 
+#if 0
+  dev_ctx.Wait();
+  LOG(INFO) << "check eltwise x tid=" << gettid() << " x_dims=" << x_dims;
+  phi::backends::xpu::xpu_mem_check(const_cast<void*>(reinterpret_cast<const void*>(x_data)), sizeof(T) * x.numel()); // NOLINT
+  LOG(INFO) << "check eltwise y tid=" << gettid() << " y_dims=" << y_dims;
+  phi::backends::xpu::xpu_mem_check(const_cast<void*>(reinterpret_cast<const void*>(y_data)), sizeof(T) * y.numel()); // NOLINT
+#endif
   ret = func(dev_ctx.x_context(),
              reinterpret_cast<const XPUType*>(x_data),
              reinterpret_cast<const XPUType*>(y_data),
@@ -102,6 +109,11 @@ void XPUElementwise(const XPUContext& dev_ctx,
              x_dims_vec,
              y_dims_vec);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
+#if 0
+  dev_ctx.Wait();
+  LOG(INFO) << "check eltwise z tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(z_data, sizeof(T) * z->numel());
+#endif
 }
 
 template <typename T, typename XPUType>

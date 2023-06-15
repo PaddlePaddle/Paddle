@@ -83,6 +83,7 @@ std::pair<DenseTensor, DenseTensor> ProposalForOneImage(
     float min_size,
     float eta,
     bool pixel_offset = true) {
+  exit(-1);
   // 1. pre nms
   DenseTensor index_sort;
   SortDescending<T>(dev_ctx, scores_slice, &index_sort, pre_nms_top_n);

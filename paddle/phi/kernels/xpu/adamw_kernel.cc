@@ -157,6 +157,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
+  exit(-1);
 }
 
 }  // namespace phi

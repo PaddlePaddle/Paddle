@@ -50,6 +50,7 @@ class ConcatFunctor<XPUContext, T> {
     std::vector<const XPUType*> ptrs;
     for (int i = 0; i < num; ++i) {
       if (input[i].place() != context.GetPlace()) {
+        exit(-1);
         // data not on xpu, probably on cpu. move it now
         phi::DenseTensor tmp_data = input[i];
         context.template Alloc<T>(&tmp_data);
@@ -108,15 +109,16 @@ class SplitFunctor<XPUContext, T> {
     if (input.place() != context.GetPlace()) {
       // data not on xpu, probably on cpu. move it now
       context.template Alloc<T>(&tmp_data);
+      exit(-1);
     }
 
-    auto r = xpu::split<XPUType>(
-        context.x_context(),
-        reinterpret_cast<const XPUType*>(tmp_data.data<T>()),
-        ptrs,
-        xdims_list,
-        split_list,
-        axis);
+    auto r =
+        xpu::split<XPUType>(context.x_context(),
+                            reinterpret_cast<const XPUType*>(input.data<T>()),
+                            ptrs,
+                            xdims_list,
+                            split_list,
+                            axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "split");
   }
 };

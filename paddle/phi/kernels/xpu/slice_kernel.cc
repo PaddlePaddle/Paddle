@@ -104,6 +104,11 @@ void SliceKernel(const Context& ctx,
                               starts_extension,
                               ends_extension);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "slice");
+#if 0
+  ctx.Wait();
+  LOG(INFO) << "check slice out tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * out->numel());
+#endif
 }
 }  // namespace phi
 

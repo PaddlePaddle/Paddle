@@ -80,6 +80,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                          r,
                          XPUAPIErrorMsg[r]));
   } else {
+    exit(-1);
     DenseTensor out_int64;
     out_int64.Resize(out->dims());
     dev_ctx.template Alloc<int64_t>(&out_int64);

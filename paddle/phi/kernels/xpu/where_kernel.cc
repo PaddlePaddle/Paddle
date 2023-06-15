@@ -41,11 +41,47 @@ void WhereKernel(const Context& ctx,
   if (x_dims.size() == 0) {
     x_dims = std::vector<int>({1});
   }
-
+#if 0
+  if (x.dims().size() == 1 && x.dims()[0] <= 4) {
+    ctx.Wait();
+    xpu_wait();
+    {
+      DenseTensor x_cpu(x.type());
+      phi::Copy(ctx, x, phi::CPUPlace(), true, &x_cpu);
+      std::stringstream os;
+      for (size_t i = 0; i < x_cpu.numel(); i++) {
+        os << x_cpu.data<T>()[i] << ",";
+      }
+      LOG(INFO) << "select tid=" << gettid() << " x_dims=" << x.dims() << "x_type=" << typeid(T).name() << " x_data=[" << os.str() << "]"; // NOLINT
+    }
+    {
+      DenseTensor y_cpu(y.type());
+      phi::Copy(ctx, y, phi::CPUPlace(), true, &y_cpu);
+      std::stringstream os;
+      for (size_t i = 0; i < y_cpu.numel(); i++) {
+        os << y_cpu.data<T>()[i] << ",";
+      }
+      LOG(INFO) << "select tid=" << gettid() << " y_dims=" << y.dims() << "y_type=" << typeid(T).name() << " y_data=[" << os.str() << "]"; // NOLINT
+    }
+  }
+#endif
   int ret = xpu::select(
       ctx.x_context(), cond_data, x_data, y_data, out_data, cond_dims, x_dims);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "xpu::select");
+#if 0
+  if (x.dims().size() == 1 && x.dims()[0] <= 4) {
+    ctx.Wait();
+    xpu_wait();
+    DenseTensor out_cpu(out->type());
+    phi::Copy(ctx, *out, phi::CPUPlace(), true, &out_cpu);
+    std::stringstream os;
+    for (size_t i = 0; i < out_cpu.numel(); i++) {
+      os << out_cpu.data<T>()[i] << ",";
+    }
+    LOG(INFO) << "select tid=" << gettid() << " out_dims=" << out->dims() << "out_type=" << typeid(T).name() << " out_data=[" << os.str() << "]"; // NOLINT
+  }
+#endif
 }
 
 }  // namespace phi

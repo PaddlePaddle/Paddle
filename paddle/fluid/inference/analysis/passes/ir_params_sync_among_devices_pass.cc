@@ -183,23 +183,52 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
 
   platform::CPUPlace cpu_place;
   platform::Place xpu_place = platform::XPUPlace(argument->xpu_device_id());
+
   auto *scope = argument->scope_ptr();
   framework::ir::Graph &main_graph = argument->main_graph();
 
+  std::unordered_set<std::string> visited;
   for (size_t i = 0; i < main_graph.SubGraphsSize(); i++) {
     auto *graph = main_graph.GetSubGraph(i);
     for (auto *node : graph->Nodes()) {
       if (!node->IsVar() || !node->Var()->Persistable()) continue;
-      auto *var = scope->FindVar(node->Name());
+      auto var_name = node->Name();
+      if (visited.count(var_name)) continue;
+      visited.insert(var_name);
+      auto *var = scope->FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(var,
+                              platform::errors::PreconditionNotMet(
+                                  "The var should not be nullptr"));
+      LOG(INFO) << "start xpu sync weight var_name is " << var_name;
       if (!var->IsType<phi::DenseTensor>()) continue;
       auto *tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor->place().GetType() == phi::AllocationType::XPU) continue;
-
+      auto var_data_type = node->Var()->GetDataType();
+      LOG(INFO) << "xpu sync weight var_name is " << var_name
+                << ", data type is " << var_data_type << ", dims is "
+                << tensor->dims() << ", is densetensor "
+                << var->IsType<phi::DenseTensor>();
       phi::DenseTensor temp_tensor;
       temp_tensor.Resize(tensor->dims());
       paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
       tensor->clear();
       paddle::framework::TensorCopySync(temp_tensor, xpu_place, tensor);
+      if (tensor->dims().size() == 1 && tensor->dims()[0] == 1) {
+        phi::DenseTensor cpu_tensor;
+        paddle::framework::TensorCopySync(*tensor, cpu_place, &cpu_tensor);
+        if (var_data_type == framework::proto::VarType::FP32) {
+          LOG(INFO) << "xpu sync weight var_name " << var_name << ":FP32 "
+                    << cpu_tensor.data<float>()[0];
+        } else if (var_data_type == framework::proto::VarType::INT32) {
+          LOG(INFO) << "xpu sync weight var_name " << var_name << ":INT32 "
+                    << cpu_tensor.data<int32_t>()[0];
+        } else if (var_data_type == framework::proto::VarType::INT64) {
+          LOG(INFO) << "xpu sync weight var_name " << var_name << ":INT64 "
+                    << cpu_tensor.data<int64_t>()[0];
+        } else {
+          LOG(ERROR) << "Don't support feed var dtype for: " << var_data_type;
+        }
+      }
     }
   }
 }

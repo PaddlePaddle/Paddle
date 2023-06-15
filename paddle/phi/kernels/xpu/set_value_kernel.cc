@@ -139,7 +139,7 @@ void SetValueImpl(const Context& dev_ctx,
                 in.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-  DenseTensor slice_tensor =
+  static thread_local DenseTensor slice_tensor =
       Empty<T>(dev_ctx, IntArray{slice_dims.Get(), slice_dims.size()});
 
   int in_size = in_dims.size();
@@ -357,14 +357,14 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& decrease_axes,
                     const std::vector<int64_t>& none_axes,
                     const std::vector<int64_t>& shape,
-                    const std::vector<Scalar>& values,
+                    const std::vector<Sca /*  */ lar>& values,
                     DenseTensor* out) {
   std::vector<T> assgin_values;
   assgin_values.reserve(values.size());
   for (const auto& val : values) {
     assgin_values.push_back(val.to<T>());
   }
-  DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
+  static thread_local DenseTensor value_tensor = Empty<T>(dev_ctx, shape);
   phi::TensorFromVector(assgin_values, dev_ctx, &value_tensor);
   value_tensor.Resize(phi::make_ddim(shape));
 

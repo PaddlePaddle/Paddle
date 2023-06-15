@@ -239,6 +239,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   funcs::FreeData<float>(moment1, mom1_ptr);
   funcs::FreeData<float>(moment2, mom2_ptr);
   funcs::FreeData<float>(learning_rate, lr_ptr);
+  exit(-1);
 }
 }  // namespace phi
 

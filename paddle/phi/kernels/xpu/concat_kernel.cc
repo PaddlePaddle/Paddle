@@ -14,11 +14,15 @@
 
 #include "paddle/phi/kernels/concat_kernel.h"
 
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#define gettid() syscall(__NR_gettid)
 
 namespace phi {
 
@@ -96,17 +100,43 @@ void ConcatKernel(const Context& dev_ctx,
       xdims_list.push_back(tmp_dims);
     }
   }
-
+#if 0
+  if (out->dims().size() == 1 && out->dims()[0] <= 4) {
+    dev_ctx.Wait();
+    xpu_wait();
+    for (unsigned int i = 0; i < x.size(); ++i) {
+      DenseTensor x_cpu(x[i]->type());
+      phi::Copy(dev_ctx, *x[i], phi::CPUPlace(), true, &x_cpu);
+      std::stringstream os;
+      for (size_t j = 0; j < x_cpu.numel(); j++) {
+        os << x_cpu.data<T>()[j] << ",";
+      }
+      LOG(INFO) << "concat tid=" << gettid() << "[" << i << "] x_dims=" << x[i]->dims() << "x_type=" << typeid(T).name()  << "x_ptr=" << x[i]->data<T>() << " x_data=[" << os.str() << "]"; // NOLINT
+    }
+  }
+#endif
   PADDLE_ENFORCE_GT(xdims_list.size(),
                     0,
                     phi::errors::InvalidArgument("No tensor need concat"));
-
   int r = xpu::concat<XPUType>(dev_ctx.x_context(),
                                ptrs,
                                reinterpret_cast<XPUType*>(out->data<T>()),
                                xdims_list,
                                axis);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
+#if 0
+  if (out->dims().size() == 1 && out->dims()[0] <= 4) {
+    dev_ctx.Wait();
+    xpu_wait();
+    DenseTensor out_cpu(out->type());
+    phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
+    std::stringstream os;
+    for (size_t i = 0; i < out_cpu.numel(); i++) {
+      os << out_cpu.data<T>()[i] << ",";
+    }
+    LOG(INFO) << "concat tid=" << gettid() << " out_dims=" << out->dims() << "out_type=" << typeid(T).name() << "out_ptr=" << out->data<T>() << " out_data=[" << os.str() << "]"; // NOLINT
+  }
+#endif
 }
 
 }  // namespace phi

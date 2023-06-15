@@ -33,6 +33,13 @@ void TileKernel(const Context& dev_ctx,
   auto rank = x.dims().size();
   std::vector<int64_t> repeat_times = repeat_times_arr.GetData();
   int repeat_times_size = repeat_times.size();
+#if 0
+  std::stringstream os;
+  for (size_t i = 0; i < repeat_times.size(); i++) {
+    os << repeat_times[i] << ",";
+  }
+  LOG(INFO) << "tile tid=" << gettid() << " repeat_times=[" << os.str() << "]";
+#endif
   rank = std::max(rank, repeat_times_size);
   PADDLE_ENFORCE_GE(rank,
                     0,
@@ -111,6 +118,11 @@ void TileKernel(const Context& dev_ctx,
                       reinterpret_cast<int8_t*>(out->data<T>()),
                       count);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+#if 0
+    dev_ctx.Wait();
+    LOG(INFO) << "check tile tid=" << gettid();
+    phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(x.dims())); // NOLINT
+#endif
     return;
   }
 
@@ -124,6 +136,7 @@ void TileKernel(const Context& dev_ctx,
                                  vec_out_dims);
 
   } else if (std::is_same<T, double>::value) {
+    exit(-1);
     float* x_t = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
     float* y_t = RAII_GUARD.alloc_l3_or_gm<float>(out->numel());
     int r =
@@ -149,6 +162,11 @@ void TileKernel(const Context& dev_ctx,
                             vec_out_dims);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
+#if 0
+  dev_ctx.Wait();
+  LOG(INFO) << "check tile tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(out_dims)); // NOLINT
+#endif
 }
 
 }  // namespace phi

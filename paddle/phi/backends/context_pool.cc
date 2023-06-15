@@ -16,8 +16,11 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
+#define gettid() syscall(__NR_gettid)
 
 namespace phi {
 
@@ -59,14 +62,19 @@ thread_local const std::map<Place,
     DeviceContextPool::external_device_contexts_ = nullptr;
 
 phi::DeviceContext* DeviceContextPool::Get(const phi::Place& place) {
-  VLOG(6) << "DeviceContextPool Get: " << place;
+  // VLOG(6) << "DeviceContextPool Get: " << place;
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
       ptr;
+  // LOG(INFO) << "tid=" << gettid() << " external_device_contexts_=" <<
+  // external_device_contexts_ << ", device_contexts=" << &device_contexts_ << "
+  // place=" << place;
   if (external_device_contexts_ && external_device_contexts_->count(place)) {
     ptr = external_device_contexts_;
   } else {
     ptr = &device_contexts_;
   }
+  // LOG(INFO) << "tid=" << gettid() << " DeviceContextPool ptr=" << ptr << "
+  // place=" << place;
 
   auto it = ptr->find(place);
   if (it == ptr->end()) {

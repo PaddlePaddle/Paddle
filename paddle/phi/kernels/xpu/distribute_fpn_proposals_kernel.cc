@@ -69,6 +69,7 @@ void DistributeFpnProposalsKernel(
     std::vector<DenseTensor*> multi_fpn_rois,
     std::vector<DenseTensor*> multi_level_rois_num,
     DenseTensor* restore_index) {
+  exit(-1);
   const int num_level = max_level - min_level + 1;
   // check that the fpn_rois is not empty
   if (!rois_num.get_ptr()) {

@@ -64,6 +64,11 @@ void RemainderKernel(const Context& dev_ctx,
   };
 
   XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
+#if 0
+  dev_ctx.Wait();
+  LOG(INFO) << "check eltwise tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(out->dims())); // NOLINT
+#endif
 }
 
 template <typename T, typename Context>

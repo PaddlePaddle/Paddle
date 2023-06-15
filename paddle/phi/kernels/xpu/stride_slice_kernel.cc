@@ -98,7 +98,36 @@ void StridedSliceRawKernel(const Context& dev_ctx,
 
     strides_in[cur_axe] = strides_[i];
   }
-
+#if 0
+  {
+    std::stringstream os;
+    os << "starts_in=[";
+    for (size_t i = 0; i < starts_in.size(); i++) {
+      os << starts_in[i] << ",";
+    }
+    os << "] ends_in=[";
+    for (size_t i = 0; i < ends_in.size(); i++) {
+      os << ends_in[i] << ",";
+    }
+    os << "] strides_in=[";
+    for (size_t i = 0; i < strides_in.size(); i++) {
+      os << strides_in[i] << ",";
+    }
+    os << "]";
+    LOG(INFO) << "strided_slice tid=" << gettid() << " x_dims=" << x.dims() << " " << os.str(); // NOLINT
+  }
+  if (out_dims.size() == 1) {
+    dev_ctx.Wait();
+    xpu_wait();
+    DenseTensor x_cpu(x.type());
+    phi::Copy(dev_ctx, x, phi::CPUPlace(), true, &x_cpu);
+    std::stringstream os;
+    for (size_t i = 0; i < x_cpu.numel() && i < 10; i++) {
+      os << x_cpu.data<T>()[i] << ",";
+    }
+    LOG(INFO) << "strided_slice tid=" << gettid() << " x_dims=" << x.dims() << " x_type=" << typeid(T).name() << " x_data=[" << os.str() << "]"; // NOLINT
+  }
+#endif
   int r = xpu::strided_slice(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
                              reinterpret_cast<XPUType*>(out->data<T>()),
@@ -108,6 +137,24 @@ void StridedSliceRawKernel(const Context& dev_ctx,
                              strides_in);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
+#if 0
+  if (out_dims.size() == 1) {
+    dev_ctx.Wait();
+    xpu_wait();
+    DenseTensor out_cpu(out->type());
+    phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
+    std::stringstream os;
+    for (size_t i = 0; i < out_cpu.numel() && i < 10; i++) {
+      os << out_cpu.data<T>()[i] << ",";
+    }
+    LOG(INFO) << "strided_slice tid=" << gettid() << " out_dims=" << out->dims() << " out_type=" << typeid(T).name() << " out_data=[" << os.str() << "]"; // NOLINT
+  }
+#endif
+#if 0
+  dev_ctx.Wait();
+  LOG(INFO) << "check stride_slice out tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * out->numel());
+#endif
 }
 
 }  // namespace phi

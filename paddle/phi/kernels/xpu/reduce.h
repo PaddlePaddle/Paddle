@@ -19,9 +19,13 @@
 #include <string>
 #include <vector>
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
+#include "glog/logging.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/xpu/reduce_util.h"
+#define gettid() syscall(__NR_gettid)
 
 namespace phi {
 
@@ -78,7 +82,7 @@ int XPUReduce(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(x_data),
                            reinterpret_cast<XPUType*>(y_data),
-                           x.numel() * sizeof(T));
+                           x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);
@@ -100,7 +104,7 @@ void ReduceKernelImpl(const DeviceContext& dev_ctx,
     int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x_data),
                                reinterpret_cast<XPUType*>(y_data),
-                               input.numel() * sizeof(T));
+                               input.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     Functor func;
@@ -155,6 +159,7 @@ void XPUReduce(const DeviceContext& dev_ctx,
               dev_ctx, x, out, xdims, reduce_dims);
         }));
   } else {
+    exit(-1);
     // cast x tensor to out_dtype
     auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
 

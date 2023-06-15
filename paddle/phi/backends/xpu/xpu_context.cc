@@ -18,6 +18,8 @@
 
 #include "glog/logging.h"
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
@@ -25,6 +27,7 @@
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
+#define gettid() syscall(__NR_gettid)
 
 namespace xpu = baidu::xpu::api;
 
@@ -144,23 +147,25 @@ struct XPUContext::Impl {
   }
 
   void Wait() const {
-    if (IsDataloader()) {
-      xpu::Context* ctx_t = GetXdlCtx();
-      if (ctx_t) {
-        PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
-        xpu_wait(ctx_t->xpu_stream);
-      }
-      return;
-    }
+    // if (IsDataloader()) {
+    //   xpu::Context* ctx_t = GetXdlCtx();
+    //   if (ctx_t) {
+    //     PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+    //     xpu_wait(ctx_t->xpu_stream);
+    //   }
+    //   return;
+    // }
 
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
-    xpu_wait(context_->xpu_stream);
-    xpu::Context* ctx_t = GetXdlCtx();
-    if (ctx_t) {
-      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
-      xpu_wait(ctx_t->xpu_stream);
-    }
+    // LOG(INFO) << "tid=" << gettid() << " Wait(" << context_->xpu_stream <<
+    // ")";
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(context_->xpu_stream));
+    // xpu::Context* ctx_t = GetXdlCtx();
+    // if (ctx_t) {
+    // PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+    // xpu_wait(ctx_t->xpu_stream);
+    //}
   }
 
   void Init() {

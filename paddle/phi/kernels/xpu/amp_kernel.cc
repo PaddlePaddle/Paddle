@@ -271,6 +271,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                      phi::CPUPlace(),
                      &cpu_found_inf_data,
                      sizeof(bool));
+  exit(-1);
 }
 
 }  // namespace phi

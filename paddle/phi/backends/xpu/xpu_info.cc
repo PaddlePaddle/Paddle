@@ -16,10 +16,13 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
+#define gettid() syscall(__NR_gettid)
 
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.

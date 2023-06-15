@@ -160,6 +160,11 @@ void Pool2dKernel(const Context& ctx,
     }
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2d");
+#if 0
+  ctx.Wait();
+  LOG(INFO) << "check pool2d tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(out->dims())); // NOLINT
+#endif
 }
 
 template <typename T, typename Context>

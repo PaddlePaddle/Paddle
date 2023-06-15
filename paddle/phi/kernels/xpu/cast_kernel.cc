@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -58,13 +59,39 @@ void CastKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<int64_t>(out),
           numel);
       break;
-    case phi::DataType::INT32:
+    case phi::DataType::INT32: {
+#if 0
+      if (x.dims().size() == 1 && x.dims()[0] <= 4) {
+        dev_ctx.Wait();
+        xpu_wait();
+        DenseTensor x_cpu(x.type());
+        phi::Copy(dev_ctx, x, phi::CPUPlace(), true, &x_cpu);
+        std::stringstream os;
+        for (size_t i = 0; i < x_cpu.numel(); i++) {
+          os << x_cpu.data<T>()[i] << ",";
+        }
+        LOG(INFO) << "cast int64->int32 tid=" << gettid() << " x_dims=" << x.dims() << " x_type=" << typeid(T).name() << " x_data=[" << os.str() << "]"; // NOLINT
+      }
+#endif
       r = xpu::cast<XPUInTDType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<int>(out),
           numel);
-      break;
+#if 0
+      if (x.dims().size() == 1 && x.dims()[0] <= 4) {
+        dev_ctx.Wait();
+        xpu_wait();
+        DenseTensor out_cpu(out->type());
+        phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
+        std::stringstream os;
+        for (size_t i = 0; i < out_cpu.numel(); i++) {
+          os << out_cpu.data<int32_t>()[i] << ",";
+        }
+        LOG(INFO) << "cast int64->int32 tid=" << gettid() << " out_dims=" << out->dims() << " out_type=int32_t out_data=[" << os.str() << "]"; // NOLINT
+      }
+#endif
+    } break;
     case phi::DataType::BOOL:
       r = xpu::cast<XPUInTDType, bool>(
           dev_ctx.x_context(),
@@ -97,7 +124,6 @@ void CastKernel(const Context& dev_ctx,
       PADDLE_THROW(phi::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
-
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 }
 }  // namespace phi

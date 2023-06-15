@@ -14,6 +14,8 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
@@ -21,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
+#define gettid() syscall(__NR_gettid)
 
 namespace paddle {
 namespace platform {

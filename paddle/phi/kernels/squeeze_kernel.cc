@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/squeeze_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -31,6 +32,13 @@ void SqueezeInferKernel(const Context& dev_ctx,
     return;
   }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+#if 0
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
+    dev_ctx.Wait();
+    LOG(INFO) << "check sequeeze tid=" << gettid();
+    phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(out_dims)); // NOLINT
+  }
+#endif
   out->Resize(out_dims);  // copy will reset the dims.
 }
 

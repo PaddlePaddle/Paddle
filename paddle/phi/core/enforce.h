@@ -96,6 +96,10 @@ limitations under the License. */
 
 #include "paddle/utils/variant.h"
 
+#include <sys/syscall.h>  // NOLINT
+#include <sys/types.h>    // NOLINT
+#define gettid() syscall(__NR_gettid)
+
 namespace phi {
 class ErrorSummary;
 }  // namespace phi
@@ -308,17 +312,32 @@ struct EnforceNotMet : public std::exception {
       err_str_ = GetTraceBackString(e.what(), file, line);
       simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
     }
+    std::stringstream ss_err_str, ss_simple_err_str;
+    ss_err_str << "tid=" << gettid() << " " << err_str_;
+    ss_simple_err_str << "tid=" << gettid() << " " << simple_err_str_;
+    err_str_ = ss_err_str.str();
+    simple_err_str_ = ss_simple_err_str.str();
   }
 
   EnforceNotMet(const std::string& str, const char* file, int line)
       : err_str_(GetTraceBackString(str, file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+    std::stringstream ss_err_str, ss_simple_err_str;
+    ss_err_str << "tid=" << gettid() << " " << err_str_;
+    ss_simple_err_str << "tid=" << gettid() << " " << simple_err_str_;
+    err_str_ = ss_err_str.str();
+    simple_err_str_ = ss_simple_err_str.str();
   }
 
   EnforceNotMet(const phi::ErrorSummary& error, const char* file, int line)
       : code_(error.code()),
         err_str_(GetTraceBackString(error.to_string(), file, line)) {
     simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
+    std::stringstream ss_err_str, ss_simple_err_str;
+    ss_err_str << "tid=" << gettid() << " " << err_str_;
+    ss_simple_err_str << "tid=" << gettid() << " " << simple_err_str_;
+    err_str_ = ss_err_str.str();
+    simple_err_str_ = ss_simple_err_str.str();
   }
 
   const char* what() const noexcept override {

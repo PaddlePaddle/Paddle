@@ -1641,6 +1641,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
+  phi::KernelKey phi_cpu_kernel_key;
   auto* dev_ctx = pool.Get(place);
   // using cache
   if (kernel_type_.get()) {
@@ -1859,7 +1860,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         if (in_custom_back_list) {
           VLOG(3) << "fluid in black list: " << phi_kernel_name;
         }
-        auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
+        phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 phi_kernel_name, phi_cpu_kernel_key)));
@@ -1890,12 +1891,20 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      transfer_scope =
-          PrepareData(scope,
-                      framework::TransOpKernelTypeToPhiKernelKey(*kernel_type_),
-                      &transfered_inplace_vars,
-                      runtime_ctx,
-                      dev_ctx->GetPlace());
+      if (fallback_to_cpu) {
+        transfer_scope = PrepareData(scope,
+                                     phi_cpu_kernel_key,
+                                     &transfered_inplace_vars,
+                                     runtime_ctx,
+                                     dev_ctx->GetPlace());
+      } else {
+        transfer_scope = PrepareData(
+            scope,
+            framework::TransOpKernelTypeToPhiKernelKey(*kernel_type_),
+            &transfered_inplace_vars,
+            runtime_ctx,
+            dev_ctx->GetPlace());
+      }
     }
   }
   // exec scope is the scope that kernel actually executed on.
@@ -2016,6 +2025,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // after run to avoid memory leak
   if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
     scope.DeleteScope(transfer_scope);
+    LOG(INFO) << "DeleteScope....";
+    exit(-1);
   }
 }
 
@@ -2546,16 +2557,20 @@ Scope* OperatorWithKernel::PrepareData(
         if (new_expected_kernel_key) {
           if (kernel_type_for_var.backend() == phi::Backend::GPU ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+              kernel_type_for_var.backend() == phi::Backend::XPU ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
+              new_expected_kernel_key->backend() == phi::Backend::XPU) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
           }
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+                   kernel_type_for_var.backend() == phi::Backend::XPU ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
+                   expected_kernel_key.backend() == phi::Backend::XPU) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;
@@ -2745,7 +2760,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
                            "slot Variable %s must be "
-                           "consistent or reigster GetExpectedKernelType. The "
+                           "consistent or register GetExpectedKernelType. The "
                            "current variable type is (%s), but the "
                            "previous variable type is (%s).",
                            Type(),
@@ -2775,7 +2790,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
                        platform::errors::InvalidArgument(
                            "The DataType of %s Op's duplicable or different "
                            "slot Variable %s must be "
-                           "consistent or reigster GetExpectedKernelType. The "
+                           "consistent or register GetExpectedKernelType. The "
                            "current variable type is (%s), but the "
                            "previous variable type is (%s).",
                            Type(),
