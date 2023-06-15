@@ -31,16 +31,18 @@ namespace phi {
 
 #define PADDLE_VISIT_DDIM(rank, callback)                                    \
   switch (rank) {                                                            \
-    PADDLE_VISIT_DDIM_BASE(0, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(1, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(2, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(3, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(4, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(5, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(6, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(7, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(8, callback);                                     \
-    PADDLE_VISIT_DDIM_BASE(9, callback);                                     \
+    case -1:                                                                 \
+      return 0;                                                              \
+      PADDLE_VISIT_DDIM_BASE(0, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(1, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(2, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(3, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(4, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(5, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(6, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(7, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(8, callback);                                   \
+      PADDLE_VISIT_DDIM_BASE(9, callback);                                   \
     default:                                                                 \
       PD_THROW(                                                              \
           "Unimplemented error. Invalid dimension to be accessed. Now only " \
@@ -64,7 +66,7 @@ class DDim {
  public:
   constexpr static int kMaxRank = 9;
 
-  DDim() : rank_(1) { dim_[0] = 0; }
+  DDim() : rank_(-1) { dim_[0] = 0; }
 
   DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
 
