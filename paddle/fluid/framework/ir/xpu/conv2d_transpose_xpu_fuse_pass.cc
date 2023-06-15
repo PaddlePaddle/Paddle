@@ -124,7 +124,7 @@ Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(PDPattern* pattern,
   } else {
     ew_bias_add_out = conv_out;
   }
-  
+
   // batch_norm op
   PDNode* bn = nullptr;
   PDNode* bn_bias = nullptr;
@@ -345,7 +345,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
             bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
         auto mean_len = bn_mean_t->numel();  // oc
         auto filter_len = filter_t->numel();
-  
+
         float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
         // bias
         if (fusion_bias_node) {
@@ -387,7 +387,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
             }
           }
         }
-      
+
     }
     // filter max
     Node* filter_int16 = nullptr;
@@ -452,7 +452,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv2d_xpu_op_desc.SetAttr(
         "data_format",
         conv->Op()->GetAttrIfExists<std::string>("data_format"));
-    
+
     auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
     IR_NODE_LINK_TO(input, conv2d_xpu);
     IR_NODE_LINK_TO(filter_int16, conv2d_xpu);

@@ -68,40 +68,40 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   const int img_xc = static_cast<int>(out->dims()[1]);
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
-  
+
   auto act = xpu::Activation_t::LINEAR;
   if (with_act) {
     if (act_type == "relu") {
       act = xpu::Activation_t::RELU;
     }
-  } 
+  }
   auto bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto x_max_data = x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   auto filter_max_data = filter_max.data<float>();
 
-  // int r = xpu::conv2d_transpose_fusion_v2<XPUT, int16_t, XPUT, int16_t>(
-  //     ctx.x_context(),
-  //     reinterpret_cast<const XPUT*>(x.data<T>()),
-  //     filter.data<int16_t>(),
-  //     reinterpret_cast<XPUT*>(out->data<T>()),
-  //     batch_size,
-  //     img_yc,
-  //     img_xh,
-  //     img_xw,
-  //     img_xc,
-  //     ksize,
-  //     strides,
-  //     paddings_,
-  //     dilations_,
-  //     groups,
-  //     x_max_data,
-  //     filter_max_data,
-  //     out_max->data<float>(),
-  //     bias_data,
-  //     act,
-  //     is_nchw);
-  // PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
+  int r = xpu::conv2d_transpose_fusion_v2<XPUT, int16_t, XPUT, int16_t>(
+      ctx.x_context(),
+      reinterpret_cast<const XPUT*>(x.data<T>()),
+      filter.data<int16_t>(),
+      reinterpret_cast<XPUT*>(out->data<T>()),
+      batch_size,
+      img_yc,
+      img_xh,
+      img_xw,
+      img_xc,
+      ksize,
+      strides,
+      paddings_,
+      dilations_,
+      groups,
+      x_max_data,
+      filter_max_data,
+      out_max->data<float>(),
+      bias_data,
+      act,
+      is_nchw);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
 }
 
 }  // namespace phi
