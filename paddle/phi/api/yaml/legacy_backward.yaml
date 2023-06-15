@@ -274,25 +274,6 @@
   backward : expand_double_grad
   composite: expand_grad(x, out_grad, shape, x_grad)
 
-- backward_op : exponential__grad
-  forward : exponential_ (Tensor x, float lam) -> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-  invoke : zeros_like(out_grad)
-
-- backward_op : fill_grad
-  forward : fill (Tensor x, Scalar value) -> Tensor(out)
-  args : (Tensor out_grad, Scalar value)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : fill_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : fmin_grad
   forward : fmin(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
