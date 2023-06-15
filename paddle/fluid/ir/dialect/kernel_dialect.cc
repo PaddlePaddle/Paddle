@@ -24,8 +24,11 @@
 #include "paddle/fluid/ir/dialect/kernel_type_storage.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/ir/core/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+REGISTER_FILE_SYMBOLS(kernel_dialect);
 
 namespace paddle {
 namespace dialect {
