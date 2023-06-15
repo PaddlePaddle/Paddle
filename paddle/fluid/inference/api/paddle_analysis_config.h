@@ -93,7 +93,9 @@ struct PD_INFER_DECL XpuConfig {
   // kernels (both paddle/xdnn kernels)
   size_t l3_autotune_size{0};
 
-  // Use for env "XPUAPI_DEFAULT_SIZE".
+  // Reserved xpu global memory size for xpu_context;
+  // If not set(-1), default memory size for xpu_context is 128MB in XPU2 or 64MB in XPU1.
+  // If set 1*1024*1024, memory size for xpu_conext will be 1MB;
   int context_gm_size{-1};
   // xpu_context(from baidu::xpu::api::create_context) for execution.
   // If context is nullptr, new context will be created by default.

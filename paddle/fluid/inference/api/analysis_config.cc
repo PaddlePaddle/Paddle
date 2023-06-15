@@ -32,10 +32,6 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
 
-#ifdef PADDLE_WITH_XPU
-#include "paddle/phi/backends/xpu/xpu_info.h"
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
@@ -212,11 +208,8 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
                     true,
                     platform::errors::PreconditionNotMet(
                         "Should call EnableXpu before SetXpuDeviceId."));
-#ifdef PADDLE_WITH_XPU
   xpu_config_.device_id = device_id;
-  phi::backends::xpu::SetXPUDeviceId(device_id);
   Update();
-#endif
 }
 
 void AnalysisConfig::SetXpuConfig(const XpuConfig &config) {
@@ -231,10 +224,7 @@ void AnalysisConfig::SetXpuConfig(const XpuConfig &config) {
           config.l3_autotune_size,
           config.l3_size));
   xpu_config_ = config;
-#ifdef PADDLE_WITH_XPU
-  phi::backends::xpu::SetXPUDeviceId(xpu_config_.device_id);
   Update();
-#endif
 }
 
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,

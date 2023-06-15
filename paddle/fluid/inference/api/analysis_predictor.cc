@@ -93,6 +93,10 @@
 #include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
+
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -436,6 +440,7 @@ void AnalysisPredictor::InitPlace() {
 #endif  // LITE_SUBGRAPH_WITH_XPU
     } else {
 #ifdef PADDLE_WITH_XPU
+      phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
       place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
