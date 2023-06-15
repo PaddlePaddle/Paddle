@@ -95,9 +95,10 @@ NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
     'p_norm',
 ]
 
+
 NO_BF16_COMPARED_WITH_FP32_OP_LIST = [
     'unique',
     'dequantize',
     'fusion_gru',
-    'fusion_lstm', 
+    'fusion_lstm',
 ]
