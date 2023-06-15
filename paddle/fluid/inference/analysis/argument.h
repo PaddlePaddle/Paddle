@@ -303,6 +303,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_l3_size, XpuL3Size, size_t);
   DECL_POINTER_ARGUMENT_FIELD(xpu_l3_ptr, XpuL3Ptr, void*);
   DECL_ARGUMENT_FIELD(xpu_l3_autotune_size, XpuL3AutotuneSize, size_t);
+  DECL_POINTER_ARGUMENT_FIELD(xpu_context, XpuContext, void*);
   DECL_POINTER_ARGUMENT_FIELD(xpu_stream, XpuStream, void*);
   DECL_ARGUMENT_FIELD(xpu_conv_autotune_level, XpuConvAutotuneLevel, int);
   DECL_ARGUMENT_FIELD(xpu_conv_autotune_file, XpuConvAutotuneFile, std::string);

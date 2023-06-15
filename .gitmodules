@@ -34,10 +34,6 @@
 	path = third_party/xxhash
 	url = https://github.com/Cyan4973/xxHash.git
 	ignore = dirty
-[submodule "third_party/leveldb"]
-	path = third_party/leveldb
-	url = https://github.com/google/leveldb
-	ignore = dirty
 [submodule "third_party/pybind"]
 	path = third_party/pybind
 	url = https://github.com/pybind/pybind11.git

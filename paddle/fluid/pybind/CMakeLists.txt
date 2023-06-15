@@ -38,6 +38,10 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
+    phi_kernel_adaptor
+    pd_dialect
+    new_ir
+    program_translator
     new_profiler
     jit_layer
     jit_property

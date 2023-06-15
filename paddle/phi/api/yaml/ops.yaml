@@ -801,6 +801,17 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill
+  args : (Tensor x, Scalar value=0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
   output : Tensor(out)
@@ -1791,6 +1802,15 @@
     func : prelu
     data_type : x
   backward : prelu_grad
+
+- op : prior_box
+  args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
+  output : Tensor(out), Tensor(var)
+  infer_meta :
+    func : PriorBoxInferMeta
+  kernel :
+    func : prior_box
+    data_type : input
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")

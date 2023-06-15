@@ -24,6 +24,7 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/variant.h"
 
 namespace paddle {
@@ -166,8 +167,9 @@ class DataTypeAttributeVisitor : public AttributeVisitor {
   using AttributeVisitor::AttributeVisitor;
   ir::Attribute operator()(int i) override {
     VLOG(10) << "translating int to DataType: " << i;
-    phi::DataType data = static_cast<phi::DataType>(i);
-    return paddle::dialect::DataTypeAttribute::get(ctx, data);
+
+    auto phi_dtype = phi::TransToPhiDataType(i);
+    return paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype);
   }
 };
 

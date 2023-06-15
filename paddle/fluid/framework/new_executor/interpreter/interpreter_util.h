@@ -38,6 +38,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/ir/core/program.h"
 
 using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 
@@ -92,6 +93,14 @@ void BuildOpFuncList(const platform::Place& place,
                      const ExecutionConfig& execution_config,
                      bool use_local_scope = true,
                      bool static_build = false);
+
+void BuildOpFuncList(
+    const platform::Place& place,
+    ::ir::Block* block,
+    std::vector<OpFuncNode>* vec_func_list,
+    framework::Scope* scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const ExecutionConfig& execution_config);
 
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
