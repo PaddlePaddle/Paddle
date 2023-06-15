@@ -112,17 +112,6 @@
     param : [x, out_grad]
   inplace : (out_grad -> x_grad)
 
-- backward_op : repeat_interleave_grad
-  forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int repeats = 0, int axis)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : repeat_interleave_grad
-  no_need_buffer : x
-
 - backward_op : max_grad
   forward: max (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={}, bool keepdim=false, bool reduce_all=false)
@@ -200,6 +189,17 @@
   kernel :
     func : relu6_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : repeat_interleave_grad
+  forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int repeats = 0, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_grad
+  no_need_buffer : x
 
 - backward_op : rnn_grad
   forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
