@@ -16,6 +16,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 
@@ -84,6 +85,7 @@ class TestFallback(unittest.TestCase):
             u_net(self.x).numpy(),
         )
 
+    @ast_only_test
     def test_case_net_error(self):
         s_net = SuppportNet()
         u_net = UnsuppportNet()
@@ -110,6 +112,7 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
         assert u_net.training is False, "Training must be false."
 
+    @ast_only_test
     def test_case_save_error(self):
         """
         test the save will raise error.
