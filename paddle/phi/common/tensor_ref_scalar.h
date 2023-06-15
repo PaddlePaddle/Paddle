@@ -31,16 +31,16 @@ class TensorRefScalar {
  public:
   // Constructor support implicit
   TensorRefScalar() : tensor_base_(nullptr) {}
-  explicit TensorRefScalar(const TensorBase* base) : tensor_base_(base) {}
+  explicit TensorRefScalar(const DenseTensor* base) : tensor_base_(base) {}
 
-  const TensorBase* Get() const {
+  const DenseTensor* Get() const {
     PADDLE_ENFORCE_NOT_NULL(tensor_base_,
                             "Can not get null ptr from Tensor ref scalar");
     return tensor_base_;
   }
 
  private:
-  const TensorBase* tensor_base_;
+  const DenseTensor* tensor_base_;
 };
 
 }  // namespace phi

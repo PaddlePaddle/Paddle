@@ -140,7 +140,7 @@ TEST(StandaloneExecutor, run) {
   test_core.Run({});
   std::cerr << "after run " << std::endl;
 
-  // auto tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
+  auto tensor = scope.Var("inner_var_8")->Get<phi::DenseTensor>();
 
   std::cerr << "uot" << tensor << std::endl;
 }

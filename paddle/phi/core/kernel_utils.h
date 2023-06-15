@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/common/tensor_ref_scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"

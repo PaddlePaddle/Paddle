@@ -130,8 +130,7 @@ class InferMetaContext {
       static Attribute cmp_t = phi::TensorRefScalar(nullptr);                  \
       attr_type attr1;                                                         \
       if (cmp_t.index() == t.index()) {                                        \
-        attr1 = attr_type(                                                     \
-            paddle::Tensor(*paddle::get<phi::TensorRefScalar>(t).Get()));      \
+        attr1 = attr_type((*paddle::get<phi::TensorRefScalar>(t).Get()));      \
       } else {                                                                 \
         attr1 = paddle::get<attr_type>(t);                                     \
       }                                                                        \
