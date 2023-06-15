@@ -31,18 +31,16 @@ namespace phi {
 
 #define PADDLE_VISIT_DDIM(rank, callback)                                    \
   switch (rank) {                                                            \
-    case -1:                                                                 \
-      return;                                                                \
-      PADDLE_VISIT_DDIM_BASE(0, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(1, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(2, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(3, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(4, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(5, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(6, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(7, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(8, callback);                                   \
-      PADDLE_VISIT_DDIM_BASE(9, callback);                                   \
+    PADDLE_VISIT_DDIM_BASE(0, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(1, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(2, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(3, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(4, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(5, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(6, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(7, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(8, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(9, callback);                                     \
     default:                                                                 \
       PD_THROW(                                                              \
           "Unimplemented error. Invalid dimension to be accessed. Now only " \
