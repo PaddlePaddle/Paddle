@@ -260,7 +260,7 @@ def read_log(
             metric_ave = metric_list[-1]
             flag = False
         elif len(metric_list) < 20:
-            metric_ave = sum(metric_list[10:]) / (len(metric_list) - 10)
+            metric_ave = sum(metric_list[9:]) / (len(metric_list[9:]))
             flag = False
         else:
             metric_ave = sum(metric_list[-10:]) / 10

@@ -61,6 +61,10 @@ class TestEngineAPI(unittest.TestCase):
                 "use_recompute": ["-o", "Model.use_recompute"],
                 "recompute_granularity": ["-o", "Model.recompute_granularity"],
             },
+            "metric_cfg": {
+                "name": "step/s",
+                "OptimizationDirection": "Maximize",
+            },
         }
 
         tmp_dir = tempfile.TemporaryDirectory()
