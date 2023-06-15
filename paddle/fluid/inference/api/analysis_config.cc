@@ -231,8 +231,10 @@ void AnalysisConfig::SetXpuConfig(const XpuConfig &config) {
           config.l3_autotune_size,
           config.l3_size));
   xpu_config_ = config;
-  
+#ifdef PADDLE_WITH_XPU
+  phi::backends::xpu::SetXPUDeviceId(xpu_config_.device_id);
   Update();
+#endif
 }
 
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
@@ -1357,7 +1359,7 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow(
         {"xpu_l3_autotune_size", std::to_string(xpu_config_.l3_autotune_size)});
     os.InsertRow(
-        {"context_gm_size", std::to_string(xpu_config_.context_gm_size)});
+        {"xpu_context_gm_size", std::to_string(xpu_config_.context_gm_size)});
     os.InsertRow(
         {"xpu_context",
          std::to_string(reinterpret_cast<int64_t>(xpu_config_.context))});
