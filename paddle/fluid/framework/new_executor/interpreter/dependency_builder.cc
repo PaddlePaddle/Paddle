@@ -117,7 +117,8 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
+    if (instructions_->at(op_idx).OpBaseValid() &&
+        instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
       auto fused_out = instructions_->at(op_idx).Outputs().at("FusedOutput")[0];
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
@@ -224,7 +225,8 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
   const std::string kSyncComm = "c_sync_comm_stream";
   dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (instructions_->at(op_idx).OpBase()->Type() == kSyncComm) {
+    if (instructions_->at(op_idx).OpBaseValid() &&
+        instructions_->at(op_idx).OpBase()->Type() == kSyncComm) {
       dependence_op_idx = op_idx;
     } else {
       if (dependence_op_idx != ULLONG_MAX) {
@@ -251,7 +253,8 @@ void DependencyBuilder::AddDependencyForRandomOp() {
 
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (random_op_set.count(instructions_->at(op_idx).OpBase()->Type())) {
+    if (instructions_->at(op_idx).OpBaseValid() &&
+        random_op_set.count(instructions_->at(op_idx).OpBase()->Type())) {
       if (dependence_op_idx != ULLONG_MAX) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
@@ -275,7 +278,8 @@ void DependencyBuilder::AddDependencyForReadOp() {
   std::vector<size_t> read_ops;
   std::vector<size_t> startup_ops;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (instructions_->at(op_idx).OpBase()->Type() == "read") {
+    if (instructions_->at(op_idx).OpBaseValid() &&
+        instructions_->at(op_idx).OpBase()->Type() == "read") {
       read_ops.push_back(op_idx);
     }
 
