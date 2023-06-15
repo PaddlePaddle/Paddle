@@ -183,7 +183,7 @@ else()
 endif()
 
 if(WITH_XPU_XPTI)
-  add_dependencies(xpulib ${XPU_XPTI_LIB})
+  target_link_libraries(xpulib ${XPU_XPTI_LIB})
 endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
