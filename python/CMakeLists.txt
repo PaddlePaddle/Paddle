@@ -133,6 +133,7 @@ else()
               ${PADDLE_BINARY_DIR}/python
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+      COMMAND ln -sf ${PADDLE_SOURCE_DIR}/python/paddle/jit/PaddleSOT/sot ${PADDLE_BINARY_DIR}/python/paddle/jit/sot
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
