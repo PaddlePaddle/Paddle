@@ -967,9 +967,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op
                   ENVS NVIDIA_TF32_OVERRIDE=0)
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
-else()
+elseif(WITH_NV_JETSON)
   py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op)
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 1200)
+else()
+  py_test_modules(test_conv3d_transpose_op MODULES test_conv3d_transpose_op)
+  set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
 endif()
 
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
