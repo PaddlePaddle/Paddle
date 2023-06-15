@@ -342,8 +342,8 @@ def dyfunc_CosineDecay():
 
 def dyfunc_ExponentialDecay():
     base_lr = 0.1
-    exponential_decay = fluid.dygraph.ExponentialDecay(
-        learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True
+    exponential_decay = paddle.optimizer.lr.ExponentialDecay(
+        learning_rate=base_lr, gamma=0.5
     )
     lr = exponential_decay()
     return lr
@@ -351,8 +351,8 @@ def dyfunc_ExponentialDecay():
 
 def dyfunc_InverseTimeDecay():
     base_lr = 0.1
-    inverse_time_decay = fluid.dygraph.InverseTimeDecay(
-        learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True
+    inverse_time_decay = paddle.optimizer.lr.InverseTimeDecay(
+        learning_rate=base_lr, gamma=0.5
     )
     lr = inverse_time_decay()
     return lr
@@ -424,10 +424,52 @@ class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_ExponentialDecay
 
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            fluid.default_startup_program.random_seed = SEED
+            fluid.default_main_program.random_seed = SEED
+            res = self.dygraph_func()
+            return res
+
+    def get_static_output(self):
+        startup_program = fluid.Program()
+        startup_program.random_seed = SEED
+        main_program = fluid.Program()
+        main_program.random_seed = SEED
+        with fluid.program_guard(main_program, startup_program):
+            static_out = dygraph_to_static_func(self.dygraph_func)()
+            static_out = paddle.to_tensor(static_out)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(startup_program)
+        static_res = exe.run(main_program, fetch_list=static_out)
+        return static_res[0]
+
 
 class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_InverseTimeDecay
+
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            fluid.default_startup_program.random_seed = SEED
+            fluid.default_main_program.random_seed = SEED
+            res = self.dygraph_func()
+            return res
+
+    def get_static_output(self):
+        startup_program = fluid.Program()
+        startup_program.random_seed = SEED
+        main_program = fluid.Program()
+        main_program.random_seed = SEED
+        with fluid.program_guard(main_program, startup_program):
+            static_out = dygraph_to_static_func(self.dygraph_func)()
+            static_out = paddle.to_tensor(static_out)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(startup_program)
+        static_res = exe.run(main_program, fetch_list=static_out)
+        return static_res[0]
 
 
 class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
