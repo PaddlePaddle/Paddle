@@ -28,7 +28,10 @@ TEST(ReShape2MatmulXPUFusePass, basic) {
   auto* reshape2_in = layers.data("reshape2_in", {64, 1, 74, 1});
   auto* reshape2_out = layers.reshape2(reshape2_in, std::vector<int>{-1, 74});
   auto* matmul_y = layers.data("matmul_y", {74, 64}, true);
-  layers.matmul(reshape2_out, matmul_y, nullptr, false, false);
+  auto* matmul_out =
+      layers.matmul(reshape2_out, matmul_y, nullptr, false, false);
+  auto* ele_y = layers.data("ele_y", {64}, true);
+  layers.elementwise_add(matmul_out, ele_y);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("reshape2_matmul_xpu_fuse_pass");
@@ -40,7 +43,7 @@ TEST(ReShape2MatmulXPUFusePass, basic) {
   auto ops_num = GetNumOpNodes(graph);
   PADDLE_ENFORCE_EQ(
       ops_num,
-      1,
+      3,
       platform::errors::PreconditionNotMet(
           "graph should only have 2 op nodes, but received %d.", ops_num));
 }

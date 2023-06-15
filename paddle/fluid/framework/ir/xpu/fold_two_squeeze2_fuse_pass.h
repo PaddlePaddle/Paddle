@@ -30,23 +30,29 @@ class Scope;
 namespace paddle {
 namespace framework {
 namespace ir {
+/*
+Origin subgraph:
+        x
+        |
+      squeeze2
+        |
+      squeeze2
+        |
 
-class Reshape2MatmulXPUFusePass : public FusePassBase {
+Fused subgraph:
+        x
+        |
+     reshape2
+        |
+*/
+class FoldTwoSqueeze2FusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void FuseReshape2Matmul(ir::Graph* graph) const;
-  const std::string name_scope_{"reshape2_matmul_xpu_fuse_pass"};
-};
+  void FoldTwoSqueeze2(ir::Graph* graph) const;
 
-class MapMatmulV2ToMatmulXPUPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  void MapMatmulV2ToMatmul(ir::Graph* graph) const;
-  const std::string name_scope_{"map_matmulv2_to_matmul_xpu_pass"};
+  const std::string name_scope_{"fold_two_squeeze2_fuse_pass"};
 };
 
 }  // namespace ir

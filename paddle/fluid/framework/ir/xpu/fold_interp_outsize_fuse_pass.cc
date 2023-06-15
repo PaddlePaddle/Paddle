@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/fold_small_ops_fuse_pass.h"
+#include "paddle/fluid/framework/ir/xpu/fold_interp_outsize_fuse_pass.h"
 #include <string>
 
 #include "glog/logging.h"
@@ -28,8 +28,8 @@ namespace ir {
 
 namespace patterns {
 
-struct ReaderFusePattern : public PatternBase {
-  ReaderFusePattern(PDPattern* pattern, const std::string& name_scope);
+struct TwoSqueeze2FusePattern : public PatternBase {
+  TwoSqueeze2FusePattern(PDPattern* pattern, const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(squeeze2_1);
@@ -40,8 +40,8 @@ struct ReaderFusePattern : public PatternBase {
   PATTERN_DECL_NODE(squeeze2_2_out);
 };
 
-ReaderFusePattern::ReaderFusePattern(PDPattern* pattern,
-                                     const std::string& name_scope)
+TwoSqueeze2FusePattern::TwoSqueeze2FusePattern(PDPattern* pattern,
+                                               const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* x = pattern->NewNode(x_repr())
                 ->assert_is_op_input("squeeze2", "X")
@@ -78,8 +78,8 @@ ReaderFusePattern::ReaderFusePattern(PDPattern* pattern,
                              ->assert_has_n_outputs(1);
   squeeze2_2->LinksFrom({squeeze2_1_out}).LinksTo({squeeze2_2_out});
 }
-struct DetectorFusePattern : public PatternBase {
-  DetectorFusePattern(PDPattern* pattern, const std::string& name_scope);
+struct InterpOutsizeFusePattern : public PatternBase {
+  InterpOutsizeFusePattern(PDPattern* pattern, const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(shape);
@@ -101,8 +101,8 @@ struct DetectorFusePattern : public PatternBase {
   PATTERN_DECL_NODE(cast2_out);
 };
 
-DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
-                                         const std::string& name_scope)
+InterpOutsizeFusePattern::InterpOutsizeFusePattern(
+    PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* x = pattern->NewNode(x_repr())
                 ->assert_is_op_input("shape", "Input")
@@ -185,9 +185,10 @@ DetectorFusePattern::DetectorFusePattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-void FoldSmallOpsFusePass::DetectorFuse(ir::Graph* graph) const {
+void FoldInterpOutsizeFusePass::FoldInterpOutsize(ir::Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::DetectorFusePattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::InterpOutsizeFusePattern pattern(gpd.mutable_pattern(),
+                                             name_scope_);
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -249,77 +250,22 @@ void FoldSmallOpsFusePass::DetectorFuse(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-void FoldSmallOpsFusePass::ApplyImpl(ir::Graph* graph) const {
+void FoldInterpOutsizeFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
-  DetectorFuse(graph);
-}
-
-void FoldTwoSqueeze2FusePass::ReaderFuse(ir::Graph* graph) const {
-  GraphPatternDetector gpd;
-  patterns::ReaderFusePattern pattern(gpd.mutable_pattern(), name_scope_);
-  int found_subgraph_count = 0;
-
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* graph) {
-    VLOG(4) << "handle ReaderFuse";
-    // declare operator node's name
-    GET_IR_NODE(squeeze2_1);
-    GET_IR_NODE(squeeze2_2);
-    // declare variable node's name
-    GET_IR_NODE(x);
-    GET_IR_NODE(squeeze2_1_out);
-    GET_IR_NODE(squeeze2_2_out);
-
-    auto* block = squeeze2_1->Op()->Block();
-    // Generate reshape2 op
-    framework::OpDesc reshape2_op_desc(block);
-    reshape2_op_desc.SetType("reshape2");
-    reshape2_op_desc.SetInput("X", {x->Name()});
-    reshape2_op_desc.SetAttr("shape", std::vector<int>{-1, 74});
-    reshape2_op_desc.SetOutput("Out", {squeeze2_2_out->Name()});
-
-    auto* reshape2 = graph->CreateOpNode(&reshape2_op_desc);
-
-    IR_NODE_LINK_TO(x, reshape2);
-    IR_NODE_LINK_TO(reshape2, squeeze2_2_out);
-    // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {
-        squeeze2_1, squeeze2_2, squeeze2_1_out};
-    GraphSafeRemoveNodes(graph, delete_nodes);
-    found_subgraph_count++;
-  };
-
-  gpd(graph, handler);
-  AddStatis(found_subgraph_count);
-}
-
-void FoldTwoSqueeze2FusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  Init(name_scope_, graph);
-
-  ReaderFuse(graph);
+  FoldInterpOutsize(graph);
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fold_small_ops_fuse_pass,
-              paddle::framework::ir::FoldSmallOpsFusePass);
+REGISTER_PASS(fold_interp_outsize_fuse_pass,
+              paddle::framework::ir::FoldInterpOutsizeFusePass);
 
-REGISTER_PASS_CAPABILITY(fold_small_ops_fuse_pass)
+REGISTER_PASS_CAPABILITY(fold_interp_outsize_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "shape", 0));
-
-REGISTER_PASS(fold_two_squeeze2_fuse_pass,
-              paddle::framework::ir::FoldTwoSqueeze2FusePass);
-
-REGISTER_PASS_CAPABILITY(fold_two_squeeze2_fuse_pass)
-    .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "squeeze2", 0));
