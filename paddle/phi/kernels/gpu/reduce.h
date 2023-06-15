@@ -47,10 +47,11 @@ void Reduce(const KPDevice& dev_ctx,
 #ifndef PADDLE_WITH_XPU_KP
   if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
-    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
         phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
         out_dtype,
         "ReduceKernel",
         ([&] {

@@ -158,7 +158,6 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
 
 def _dirichlet(concentration, name=None):
-
     if in_dynamic_mode():
         return paddle._C_ops.dirichlet(concentration)
     else:

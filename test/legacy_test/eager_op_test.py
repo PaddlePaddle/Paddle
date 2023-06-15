@@ -918,7 +918,7 @@ class OpTest(unittest.TestCase):
                 ), f"Duplicable {name} should be set as list"
                 var_list = []
                 slot_name = name
-                for (name, np_value) in np_list[slot_name]:
+                for name, np_value in np_list[slot_name]:
                     v = create_var(
                         np_value,
                         name,
@@ -1624,6 +1624,7 @@ class OpTest(unittest.TestCase):
         equal_nan=False,
         check_dygraph=True,
         check_prim=False,
+        only_check_prim=False,
         inplace_atol=None,
         check_cinn=False,
     ):
@@ -2033,6 +2034,8 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
+            if only_check_prim:
+                return
 
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
@@ -2150,8 +2153,8 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         inplace_atol=None,
         check_cinn=False,
+        only_check_prim=False,
     ):
-
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -2172,9 +2175,12 @@ class OpTest(unittest.TestCase):
                 equal_nan,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
+                only_check_prim=only_check_prim,
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
             )
+            if not res and only_check_prim:
+                continue
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
             else:
@@ -2228,9 +2234,8 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
-                    )
-                    % (
+                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
+                    ).format(
                         self.op_type,
                         msg_prefix,
                         name,

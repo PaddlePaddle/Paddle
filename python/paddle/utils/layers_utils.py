@@ -300,8 +300,9 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         if type_nest1 != type_nest2:
             raise TypeError(
                 "The two structures don't have the same sequence type. First "
-                "structure has type %s, while second structure has type %s."
-                % (type_nest1, type_nest2)
+                "structure has type {}, while second structure has type {}.".format(
+                    type_nest1, type_nest2
+                )
             )
         if isinstance(nest1, dict):
             keys1 = set(nest1.keys())
@@ -438,7 +439,6 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
 
     new_list_tensor = []
     for ele in old_list:
-
         if isinstance(ele, Variable):
             ele.stop_gradient = True
             new_list_tensor.append(ele)

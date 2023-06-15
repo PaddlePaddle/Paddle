@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,26 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/parameter.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace dialect {
 
-class Graph;
+class PaddleKernelDialect : public ir::Dialect {
+ public:
+  explicit PaddleKernelDialect(ir::IrContext* context);
 
-class IdentityScaleOpCleanPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  static const char* name() { return "pd_kernel"; }
+
+  void PrintType(ir::Type type, std::ostream& os) const override;
+
+  void PrintAttribute(ir::Attribute attr, std::ostream& os) const override;
 
  private:
-  virtual ~IdentityScaleOpCleanPass() = default;
+  void initialize();
 };
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace dialect
 }  // namespace paddle

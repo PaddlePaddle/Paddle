@@ -24,6 +24,7 @@ env_args_mapping = {
     'PADDLE_RUN_MODE': 'run_mode',
     'PADDLE_LOG_LEVEL': 'log_level',
     'PADDLE_LOG_OVERWRITE': 'log_overwrite',
+    'PADDLE_SORT_IP': 'sort_ip',
     'PADDLE_NPROC_PER_NODE': 'nproc_per_node',
     'PADDLE_JOB_ID': 'job_id',
     'PADDLE_RANK': 'rank',
@@ -79,6 +80,13 @@ def parse_args():
         type=strtobool,
         default=False,
         help="overwrite exits logfiles. Default False",
+    )
+
+    base_group.add_argument(
+        "--sort_ip",
+        type=strtobool,
+        default=False,
+        help="rank node by ip. Default False",
     )
 
     base_group.add_argument(
@@ -151,6 +159,13 @@ def parse_args():
         help="the full path of py script,"
         "followed by arguments for the "
         "training script",
+    )
+
+    base_group.add_argument(
+        "--auto_tuner_json",
+        type=str,
+        default=None,
+        help="auto tuner json file path",
     )
 
     base_group.add_argument('training_script_args', nargs=REMAINDER)

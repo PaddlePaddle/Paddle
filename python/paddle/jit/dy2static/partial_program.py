@@ -583,10 +583,8 @@ class PartialProgramLayer:
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
-                        [
-                            out_arg == var_grad_name
-                            for out_arg in x[1].output_arg_names
-                        ]
+                        out_arg == var_grad_name
+                        for out_arg in x[1].output_arg_names
                     ),
                     enumerate(target_program.block(0).ops),
                 )
