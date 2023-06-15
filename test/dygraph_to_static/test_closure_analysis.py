@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import os
 import unittest
 
 from numpy import append
@@ -325,4 +326,5 @@ class TestPushPopTrans(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.environ['ENABLE_FALL_BACK'] = "False"
     unittest.main()
