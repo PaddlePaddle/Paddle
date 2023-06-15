@@ -307,7 +307,6 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_IR "Compile PaddlePaddle with NEWIR" ON)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 
 if(WITH_RECORD_BUILDTIME)
