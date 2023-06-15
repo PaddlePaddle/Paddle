@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle.fluid import core
@@ -185,6 +185,34 @@ class TestSortedUniqueBF16Op(TestSortedUniqueOp):
     def init_dtype(self):
         self.dtype = np.uint16
 
+    def init_config(self):
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                np.array([2, 3, 3, 1, 5, 3], dtype=np.float32)
+            )
+        }
+        unique, indices, inverse, count = np.unique(
+            self.inputs['X'],
+            return_index=True,
+            return_inverse=True,
+            return_counts=True,
+            axis=None,
+        )
+        self.attrs = {
+            'dtype': int(core.VarDesc.VarType.INT32),
+            "return_index": True,
+            "return_inverse": True,
+            "return_counts": True,
+            "axis": None,
+            "is_sorted": True,
+        }
+        self.outputs = {
+            'Out': unique,
+            'Indices': indices,
+            "Index": inverse,
+            "Counts": count,
+        }
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
@@ -236,6 +264,34 @@ class TestUniqueOpAxisNoneFP16Op(TestUniqueOpAxisNone):
 class TestUniqueOpAxisNoneBF16Op(TestUniqueOpAxisNone):
     def init_dtype(self):
         self.dtype = np.uint16
+
+    def init_config(self):
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                np.random.randint(0, 100, (4, 7, 10)).astype(np.float32)
+            )
+        }
+        unique, indices, inverse, counts = np.unique(
+            self.inputs['X'],
+            return_index=True,
+            return_inverse=True,
+            return_counts=True,
+            axis=None,
+        )
+        self.attrs = {
+            'dtype': int(core.VarDesc.VarType.INT32),
+            "return_index": True,
+            "return_inverse": True,
+            "return_counts": True,
+            "axis": None,
+            "is_sorted": True,
+        }
+        self.outputs = {
+            'Out': unique,
+            'Indices': indices,
+            "Index": inverse,
+            "Counts": counts,
+        }
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
