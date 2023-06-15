@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
 from collections import OrderedDict
 
 import paddle
@@ -157,10 +158,24 @@ class ProcessGroup:
             ]
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
+
+            master_endpoint = os.getenv("PADDLE_MASTER", None)
+            if master_endpoint:
+                master_addr = master_endpoint.split(":")[0]
+                master_port = int(master_endpoint.split(":")[1])
+                rank = genv.rank
+                world_size = genv.world_size
+                dev_id = genv.device_id
+                is_master = rank == 0
+                store = core.TCPStore(
+                    master_addr,
+                    master_port,
+                    is_master,
+                    world_size,
+                )
             if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(genv.device_id)
-                core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                    ring_id
+                core.CommContextManager.create_nccl_comm_context(
+                    store, dev_id, 0, rank, world_size
                 )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)

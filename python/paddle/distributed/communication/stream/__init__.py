@@ -26,7 +26,7 @@ from .gather import gather
 __all__ = [
     "all_gather",
     "all_reduce",
-    "alltoall",
+    "all_to_all",
     "alltoall_single",
     "broadcast",
     "reduce",

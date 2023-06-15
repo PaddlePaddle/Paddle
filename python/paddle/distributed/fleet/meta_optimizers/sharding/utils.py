@@ -39,7 +39,7 @@ def check_broadcast(block):
     """
     broadcast_vars = {}
     for idx, op in enumerate(block.ops):
-        if op.type == "c_broadcast":
+        if op.type == "broadcast":
             if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
@@ -73,7 +73,7 @@ def check_broadcast(block):
         if op.type == "c_sync_calc_stream":
             last_sync_calc_op_idx = idx
             continue
-        if op.type == "c_broadcast":
+        if op.type == "broadcast":
             if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
@@ -930,7 +930,7 @@ def comm_analyse(main_program):
     broadcast_vars = {}
     block = main_program.global_block()
     for op in block.ops:
-        if op.type == "c_broadcast":
+        if op.type == "broadcast":
             var_name = op.desc.input_arg_names()[0]
             # convert MB to KB
             broadcast_vars[var_name] = (
@@ -951,7 +951,7 @@ def comm_analyse(main_program):
             varsize_count[int(v / gap)] = 1
 
     for k, v in reduce_vars.items():
-        print(f"allreduce: {k}: {v} KB")
+        print(f"all_reduce: {k}: {v} KB")
         if int(v / gap) in varsize_count:
             varsize_count[int(v / gap)] += 1
         else:
@@ -978,7 +978,7 @@ def add_sync_comm(program, sharding_ring_id):
     block = program.global_block()
     not_sync_vars = set()
     for op in block.ops:
-        if op.type in ["c_broadcast", "c_allreduce"]:
+        if op.type in ["broadcast", "all_reduce"]:
             for input_name in op.desc.input_arg_names():
                 not_sync_vars.add(input_name)
         if op.type == "c_sync_comm_stream":

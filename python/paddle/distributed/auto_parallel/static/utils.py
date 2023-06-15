@@ -1269,7 +1269,7 @@ def set_grad_var_shape(program, dist_context):
                 "cross_entropy2",
                 "dropout",
                 "tanh",
-                ["slice_grad", "c_allgather"],
+                ["slice_grad", "all_gather"],
                 "assign",
                 "matmul_v2_grad_grad",
                 "elementwise_add_grad_grad",
@@ -2349,7 +2349,7 @@ def insert_dependencies_for_vars(
 
 
 def is_dep_skip_op(op):
-    if "c_" in op.type:
+    if op.has_attr["ring_id"]:
         return True
 
     return False

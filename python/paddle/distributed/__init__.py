@@ -103,7 +103,7 @@ __all__ = [  # noqa
     "InMemoryDataset",
     "barrier",
     "all_reduce",
-    "alltoall",
+    "all_to_all",
     "alltoall_single",
     "send",
     "reduce",

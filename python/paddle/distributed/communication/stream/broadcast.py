@@ -55,17 +55,16 @@ def _broadcast_in_static_mode(
         'broadcast',
     )
 
-    op_type = 'c_broadcast'
+    op_type = 'broadcast'
     helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
 
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'root': src_rank_in_group,
-            'use_calc_stream': sync_op,
             'ring_id': ring_id,
         },
     )
