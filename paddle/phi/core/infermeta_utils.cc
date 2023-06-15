@@ -135,6 +135,10 @@ const AttrType& InferMetaContext::AttrAt(size_t idx) const {
   }
 }
 
+const Attribute& InferMetaContext::AttrAt(size_t idx) const {
+  return attrs_.at(idx);
+}
+
 template const bool& InferMetaContext::AttrAt(size_t idx) const;
 template const int& InferMetaContext::AttrAt(size_t idx) const;
 template const int64_t& InferMetaContext::AttrAt(size_t idx) const;
@@ -154,6 +158,7 @@ template const IntArray& InferMetaContext::AttrAt(size_t idx) const;
 template const DataType& InferMetaContext::AttrAt(size_t idx) const;
 template const DataLayout& InferMetaContext::AttrAt(size_t idx) const;
 template const Place& InferMetaContext::AttrAt(size_t idx) const;
+template const TensorRefScalar& InferMetaContext::AttrAt(size_t idx) const;
 
 MetaFnFactory& MetaFnFactory::Instance() {
   static MetaFnFactory g_meta_fn_map;

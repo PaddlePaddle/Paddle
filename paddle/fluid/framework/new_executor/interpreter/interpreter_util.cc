@@ -954,6 +954,7 @@ void BuildOpFuncList(
     }
     op_func_node.phi_op_name_ = op_name;
 
+    std::cerr << "process " << op_name << std::endl;
     ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
     auto impl =
@@ -965,6 +966,7 @@ void BuildOpFuncList(
     op_func_node.infer_shape_interface_ =
         op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
 
+    std::cerr << "build infer meta contet" << std::endl;
     ::ir::BuildInferMetaContext((*it),
                                 value_2_name_map,
                                 scope,
@@ -980,6 +982,7 @@ void BuildOpFuncList(
         phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
     op_func_node.phi_kernel_ = new phi::Kernel(t1);
 
+    std::cerr << "after infer meta contet" << std::endl;
     PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
                       true,
                       "not found kernel for [%s]",
@@ -992,12 +995,13 @@ void BuildOpFuncList(
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));
 
+    std::cerr << "build kernel contet" << std::endl;
     op_func_node.kernel_context_.SetDeviceContext(
         phi::DeviceContextPool::Instance().Get(
             phi::TransToPhiPlace(kernel_key.backend())));
     op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
         phi::TransToPhiPlace(kernel_key.backend()));
-
+    std::cerr << "fin build kernel contet" << std::endl;
     vec_func_list->emplace_back(op_func_node);
   }
 }

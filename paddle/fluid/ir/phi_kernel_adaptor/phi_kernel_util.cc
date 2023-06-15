@@ -49,7 +49,7 @@ void BuildScope(ir::Block* block,
     auto attr_map = (*it)->attributes();
     std::string op_name = (*it)->name();
     if (attr_map.count("op_name")) {
-      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
     if (op_name == "pd.fetch") {
       // fetch is a very special op, with no output
@@ -148,12 +148,22 @@ void BuildInferMetaContext(
         VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
                 << in_var_name;
         if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          ctx->EmplaceBackAttr(phi::IntArray(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+          std::cerr << "build int array" << std::endl;
+          phi::Attribute r1 = phi::TensorRefScalar(nullptr);
+          std::cerr << "r1 index " << r1.index() << std::endl;
+          ctx->EmplaceBackAttr(r1);
+          auto r2 = ctx->AttrAt(0);
+          std::cerr << "get attr " << r2.index() << std::endl;
+          auto t1 =
+              phi::IntArray((scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+          std::cerr << "fin build int array" << std::endl;
+          ctx->EmplaceBackAttr(t1);
         } else if (mutable_attr_type_map[t] ==
                    "paddle::dialect::ScalarAttribute") {
-          ctx->EmplaceBackAttr(phi::Scalar(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+          std::cerr << "begin to build scope " << std::endl;
+          auto t1 =
+              phi::Scalar((scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+          ctx->EmplaceBackAttr(t1);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                   mutable_attr_type_map[t]));
