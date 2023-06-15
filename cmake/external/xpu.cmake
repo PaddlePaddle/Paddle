@@ -7,10 +7,12 @@ set(XPU_PROJECT "extern_xpu")
 set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
+set(XPU_XPTI_LIB_NAME "libxpti.so")
 
 set(XPU_BASE_DATE "20230602")
 set(XPU_XCCL_BASE_VERSION "1.0.49.2")
 set(XPU_XFT_BASE_VERSION "latest")
+set(XPU_XPTI_BASE_VERSION "0.0.1")
 
 if(NOT DEFINED XPU_BASE_URL)
   set(XPU_BASE_URL_WITHOUT_DATE
@@ -29,6 +31,10 @@ if(NOT XPU_XFT_BASE_URL)
       "https://klx-sdk-release-public.su.bcebos.com/xft/dev/${XPU_XFT_BASE_VERSION}"
   )
 endif()
+
+set(XPU_XPTI_BASE_URL
+    "https://klx-sdk-release-public.su.bcebos.com/xpti/dev/${XPU_XPTI_BASE_VERSION}"
+)
 
 if(WITH_XCCL_RDMA)
   set(XPU_XCCL_PREFIX "xccl_rdma")
@@ -67,6 +73,7 @@ else()
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 endif()
+set(XPU_XPTI_DIR_NAME "xpti")
 
 set(XPU_XRE_URL
     "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
@@ -78,11 +85,17 @@ set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XFT_URL "${XPU_XFT_BASE_URL}/${XPU_XFT_DIR_NAME}.tar.gz")
+set(XPU_XPTI_URL
+    "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz"
+    CACHE STRING "" FORCE)
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
     CACHE STRING "" FORCE)
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
+    CACHE STRING "" FORCE)
+set(XPU_XPTI_GET_DEPENCE_URL
+    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xpti_dependence.sh"
     CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
@@ -123,7 +136,8 @@ ExternalProject_Add(
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
     ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME}
+    ${XPU_XFT_DIR_NAME} && wget ${XPU_XPTI_GET_DEPENCE_URL} && bash
+    get_xpti_dependence.sh ${XPU_XPTI_URL} ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -151,6 +165,12 @@ if(WITH_XPU_XFT)
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 
+if(WITH_XPU_XPTI)
+  message(STATUS "Compile with XPU XPTI!")
+  add_definitions(-DPADDLE_WITH_XPU_XPTI)
+  set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
+endif()
+
 if(WITH_XPU_BKCL AND WITH_XPU_XFT)
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_BKCL_LIB}
                         ${XPU_XFT_LIB})
@@ -160,6 +180,10 @@ elseif(WITH_XPU_XFT)
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_XFT_LIB})
 else()
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
+endif()
+
+if(WITH_XPU_XPTI)
+  add_dependencies(xpulib ${XPU_XPTI_LIB})
 endif()
 
 add_dependencies(xpulib ${XPU_PROJECT})
