@@ -237,5 +237,5 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 if(WITH_SHARED_PHI)
-  add_definitions(-DPHI_SHARED)
+  add_definitions(-DPADDLE_WITH_SHARED_PHI)
 endif()
