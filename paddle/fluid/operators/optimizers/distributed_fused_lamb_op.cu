@@ -1853,7 +1853,7 @@ void DistributedFusedLambKernel(
                                    global_comm,
                                    stream,
                                    dev_ctx);
-        std::cout << "<<< break point 712" << std::endl;
+        std::cout << "<<< break point 71" << std::endl;
       }
       // (2) Calculate the global grad norm
       std::cout << "<<< break point 72" << std::endl;
@@ -2398,6 +2398,7 @@ void DistributedFusedLambKernel(
                                       ncclFloat16,
                                       local_comm,
                                       stream));
+      std::cout << "<<< break point 144" << std::endl;
     }
   }
   VLOG(10) << "Update Param done";

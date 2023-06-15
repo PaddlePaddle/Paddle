@@ -44,9 +44,8 @@ void TensorCopyImpl(const TENSOR& src,
     TensorCopyImpl(src_copy, dst_place, ctx, dst);
     return;
   }
-
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
+          << dst_place << src.name();
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
@@ -325,7 +324,6 @@ void TensorCopySync(const phi::DenseTensor& src,
             << dst_place;
     return;
   }
-
   auto size = src.numel() * phi::SizeOf(src.dtype());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
