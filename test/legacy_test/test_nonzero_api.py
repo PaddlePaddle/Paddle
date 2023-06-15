@@ -82,6 +82,7 @@ class TestNonZeroAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.disable_static()
         data_x = np.array([[True, False], [False, True]])
         x = paddle.to_tensor(data_x)
         z = paddle.nonzero(x)
