@@ -228,6 +228,16 @@ class DeviceInterface {  // Driver / Runtime
                        const ccl::CCLComm& ccl_comm,
                        const stream::Stream& stream);
 
+  virtual void CCLAllToAll(const void** send_buf,
+                           const size_t* send_count,
+                           const ccl::CCLDataType* send_dtype,
+                           void** recv_buf,
+                           const size_t* recv_count,
+                           const ccl::CCLDataType* recv_dtype,
+                           size_t rank,
+                           size_t nranks,
+                           const ccl::CCLComm& comm,
+                           const stream::Stream& stream);
   // blas
   virtual void BlasAXPBY(size_t dev_id,
                          const stream::Stream& stream,
