@@ -531,7 +531,6 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
                             const std::string& data_format,
                             MetaTensor* out,
                             MetaTensor* out_max) {
-                              #if 0
   auto x_dims = x.dims();
   auto filter_dims = filter.dims();
   std::vector<int> paddings_ = paddings;
@@ -652,7 +651,6 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
   out->set_dims(make_ddim(output_shape));
   out->set_dtype(x.dtype());
   out_max->set_dims(phi::make_ddim({6}));
-  #endif
 }
 
 void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
