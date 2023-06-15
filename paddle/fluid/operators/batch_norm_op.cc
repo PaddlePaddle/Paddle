@@ -209,31 +209,6 @@ phi::KernelKey BatchNormOp::GetExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
-phi::KernelKey BatchNormOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const phi::DenseTensor &tensor,
-    const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
-  // Only input require reshaping, weights and
-  // bias are having shape in NCHW order
-  if ((var_name == "X") &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
-    const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
-    // Some models may have intentionally set "AnyLayout" for pool
-    // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
-    }
-  }
-#endif
-  return phi::KernelKey(
-      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
-}
-
 void BatchNormOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
@@ -396,31 +371,6 @@ phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
 
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   return phi::KernelKey(data_type, ctx.GetPlace());
-}
-
-phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
-    const std::string &var_name,
-    const phi::DenseTensor &tensor,
-    const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
-  // Only input require reshaping, weights and
-  // bias are having shape in NCHW order
-  if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
-      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
-    const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = phi::StringToDataLayout(data_layout);
-    // Some models may have intentionally set "AnyLayout" for pool
-    // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
-    }
-  }
-#endif
-  return phi::KernelKey(
-      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
 template <typename T>
