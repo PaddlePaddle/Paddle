@@ -161,6 +161,7 @@ class IrContextImpl {
   Int16Type int16_type;
   Int32Type int32_type;
   Int64Type int64_type;
+  BoolType bool_type;
 
   // Cached AbstractAttribute instances.
   std::unordered_map<TypeId, AbstractAttribute *> registed_abstract_attributes_;
@@ -198,6 +199,7 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   impl_->int16_type = TypeManager::get<Int16Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
   impl_->int64_type = TypeManager::get<Int64Type>(this);
+  impl_->bool_type = TypeManager::get<BoolType>(this);
 }
 
 StorageManager &IrContext::type_storage_manager() {
@@ -339,5 +341,7 @@ Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
 Int64Type Int64Type::get(IrContext *ctx) { return ctx->impl().int64_type; }
 
 UInt8Type UInt8Type::get(IrContext *ctx) { return ctx->impl().uint8_type; }
+
+BoolType BoolType::get(IrContext *ctx) { return ctx->impl().bool_type; }
 
 }  // namespace ir

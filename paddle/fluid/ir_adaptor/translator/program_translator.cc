@@ -120,11 +120,11 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
         if (no_cast_var_names.count(var_name) != 0) continue;
         VarDesc* var_desc = nullptr;
 
-        bool is_parameter = (parameter_name_mappings.find(var_name) !=
-                             parameter_name_mappings.end());
-        is_parameter &= (parameter_visited.count(var_name) == 0);
+        bool is_parameter = (parameter_name_mappings_.find(var_name) !=
+                             parameter_name_mappings_.end());
+        is_parameter &= (parameter_visited_.count(var_name) == 0);
         if (is_parameter) {
-          var_desc = parameter_name_mappings[var_name];
+          var_desc = parameter_name_mappings_[var_name];
         }
         bool is_unseen_variable =
             (inner_defining_variables.count(var_name) == 0);
@@ -134,13 +134,13 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 
         bool need_get_parameter_op = is_parameter || is_unseen_variable;
         if (need_get_parameter_op) {
-          ir::Operation* op = InsertGetParamaterOp(ctx, var_desc);
-          program->block()->push_back(op);
-          param_map[var_name] = VariableDefiningInfo(op->result(0));
+          ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
+          program_->block()->push_back(op);
+          param_map_[var_name] = VariableDefiningInfo(op->result(0));
           VLOG(10) << "[op translated][get parameter]" << op;
 
-          program->SetParameter(var_name, nullptr);
-          parameter_visited.insert(var_name);
+          program_->SetParameter(var_name, nullptr);
+          parameter_visited_.insert(var_name);
           inner_defining_variables.insert(var_name);
         }
       }
