@@ -381,6 +381,8 @@
     minlength:
       data_type : int
       support_tensor : true
+  get_expected_kernel_type :
+    bincount : GetBincountExpectedKernelType
 
 - op : bitwise_and
   inputs :
