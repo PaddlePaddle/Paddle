@@ -32,7 +32,7 @@ namespace phi {
 #define PADDLE_VISIT_DDIM(rank, callback)                                    \
   switch (rank) {                                                            \
     case -1:                                                                 \
-      return 0;                                                              \
+      return;                                                                \
       PADDLE_VISIT_DDIM_BASE(0, callback);                                   \
       PADDLE_VISIT_DDIM_BASE(1, callback);                                   \
       PADDLE_VISIT_DDIM_BASE(2, callback);                                   \
