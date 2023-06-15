@@ -78,8 +78,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 
         if binary_op and x.dtype != y.dtype:
             raise ValueError(
-                "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
-                % (op_name, x.dtype, y.dtype)
+                f"(InvalidArgument) The DataType of {op_name} Op's Variable must be consistent, but received {x.dtype} and {y.dtype}."
             )
 
         if out is None:

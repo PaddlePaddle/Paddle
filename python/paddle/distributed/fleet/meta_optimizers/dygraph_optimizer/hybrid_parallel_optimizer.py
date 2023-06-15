@@ -428,7 +428,6 @@ class HybridParallelOptimizer:
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
-
         # minimize does not support parameters in the form of param_group,
         # so no need use _obtain_optimizer_parameters_list
         parameter_list = (

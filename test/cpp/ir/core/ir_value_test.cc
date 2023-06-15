@@ -42,7 +42,7 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op1_inputs,
                             CreateAttributeMap("op1_name", "op1_attr"),
                             op1_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op1->Print(std::cout);
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
@@ -51,21 +51,19 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op2_inputs,
                             CreateAttributeMap("op2_name", "op2_attr"),
                             op2_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op2->Print(std::cout);
   // 3. Construct OP3: c = OP3(a, b);
-  std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
-                                          op2->GetResultByIndex(0)};
+  std::vector<ir::OpResult> op3_inputs = {op1->result(0), op2->result(0)};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op3 =
       ir::Operation::Create(op3_inputs,
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op3->Print(std::cout);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
-  std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
-                                          op3->GetResultByIndex(0)};
+  std::vector<ir::OpResult> op4_inputs = {op1->result(0), op3->result(0)};
   std::vector<ir::Type> op4_output_types;
   for (size_t i = 0; i < 7; i++) {
     op4_output_types.push_back(ir::Float32Type::get(ctx));
@@ -74,38 +72,38 @@ TEST(value_test, value_test) {
       ir::Operation::Create(op4_inputs,
                             CreateAttributeMap("op4_name", "op4_attr"),
                             op4_output_types,
-                            nullptr);
+                            ir::OpInfo());
   op4->Print(std::cout);
 
   // Test 1:
-  EXPECT_EQ(op1->GetResultByIndex(0).GetDefiningOp(), op1);
-  EXPECT_EQ(op2->GetResultByIndex(0).GetDefiningOp(), op2);
-  EXPECT_EQ(op3->GetResultByIndex(0).GetDefiningOp(), op3);
-  EXPECT_EQ(op4->GetResultByIndex(6).GetDefiningOp(), op4);
+  EXPECT_EQ(op1->result(0).GetDefiningOp(), op1);
+  EXPECT_EQ(op2->result(0).GetDefiningOp(), op2);
+  EXPECT_EQ(op3->result(0).GetDefiningOp(), op3);
+  EXPECT_EQ(op4->result(6).GetDefiningOp(), op4);
 
   // Test 2: op1_first_output -> op4_first_input
-  ir::OpResult op1_first_output = op1->GetResultByIndex(0);
-  ir::OpOperand op4_first_input = op4->GetOperandByIndex(0);
+  ir::OpResult op1_first_output = op1->result(0);
+  ir::OpOperand op4_first_input = op4->operand(0);
 
   EXPECT_EQ(op1_first_output.first_use(), op4_first_input);
-  ir::OpOperand op3_first_input = op3->GetOperandByIndex(0);
+  ir::OpOperand op3_first_input = op3->operand(0);
 
   EXPECT_EQ(op4_first_input.next_use(), op3_first_input);
   EXPECT_EQ(op3_first_input.next_use(), nullptr);
 
   // Test 3: Value iterator
-  ir::Value::use_iterator iter = op1->GetResultByIndex(0).begin();
+  ir::Value::use_iterator iter = op1->result(0).begin();
   EXPECT_EQ(iter.owner(), op4);
   ++iter;
   EXPECT_EQ(iter.owner(), op3);
 
   // destroy
-  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
   op4->Destroy();
-  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
   op3->Destroy();
-  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
   op2->Destroy();
-  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
   op1->Destroy();
 }

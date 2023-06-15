@@ -86,6 +86,49 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
     const std::string op_type = desc.Type();
+
+    std::unordered_set<std::string> control_set = {"conditional_block",
+                                                   "while"};
+    std::unordered_set<std::string> feed_fetch_set = {"feed", "fetch"};
+    if (control_set.find(op_type) != control_set.end()) {
+      return false;
+    }
+
+    if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
+      return false;
+    }
+
+    // Dont.t allow fp64!
+    {
+      auto inputs = desc.Inputs();
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            auto dtype = var_desc->GetDataType();
+            if (dtype == framework::proto::VarType::FP64) {
+              return false;
+            }
+          }
+        }
+      }
+
+      auto outputs = desc.Outputs();
+      for (auto iter : outputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            auto dtype = var_desc->GetDataType();
+            if (dtype == framework::proto::VarType::FP64) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+
     // do not support the op which is labeled the `skip_quant`
     if ((desc.HasAttr("namescope") &&
          PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -1881,18 +1924,28 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bitwise_not") {
-#if !IS_TRT_VERSION_GE(8400)
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
-      if (dtype == framework::proto::VarType::BOOL ||
-          dtype == framework::proto::VarType::INT8 ||
+      if (dtype == framework::proto::VarType::INT8 ||
           dtype == framework::proto::VarType::UINT8) {
-        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
+        VLOG(3) << "INT8 / UINT8 type convert to trt is not supported";
         return false;
       }
+      if (dtype == framework::proto::VarType::BOOL) {
+#if !IS_TRT_VERSION_GE(8400)
+        VLOG(3) << "BOOL type support requires TensorRT 8.4";
+        return false;
+#elif !IS_TRT_VERSION_GE(8600)
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() == 0) {
+          VLOG(3)
+              << "BOOL type does not support 0 dim input when TensorRT < 8.6.";
+          return false;
+        }
 #endif
+      }
     }
 
     if (op_type == "one_hot" || op_type == "one_hot_v2") {

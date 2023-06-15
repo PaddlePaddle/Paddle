@@ -80,7 +80,6 @@ class TestRandomControl(unittest.TestCase):
     def compare_mask_between_ranks(
         self, rank, mask_np_list, comapre_idx, equal
     ):
-
         for np_mask in [mask_np_list[i] for i in comapre_idx]:
             mask_tensor_local = paddle.to_tensor([np_mask.astype("float32")])
             if rank == 0:

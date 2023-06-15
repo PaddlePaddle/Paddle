@@ -71,7 +71,6 @@ class DownSample(paddle.nn.Layer):
     def __init__(
         self, ch_in, ch_out, filter_size=3, stride=2, padding=1, is_test=True
     ):
-
         super().__init__()
 
         self.conv_bn_layer = ConvBNLayer(
@@ -178,7 +177,6 @@ class DarkNet53_conv_body(paddle.nn.Layer):
             self.downsample_list.append(downsample)
 
     def forward(self, inputs):
-
         out = self.conv0(inputs)
         out = self.downsample0(out)
         blocks = []

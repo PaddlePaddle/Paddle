@@ -100,7 +100,9 @@ class StorageManager {
   ///
   template <typename Storage>
   void RegisterParametricStorage(TypeId type_id) {
-    return RegisterParametricStorageImpl(type_id);
+    return RegisterParametricStorageImpl(type_id, [](StorageBase *storage) {
+      delete static_cast<Storage *>(storage);
+    });
   }
 
   ///
@@ -129,7 +131,8 @@ class StorageManager {
 
   StorageBase *GetParameterlessStorageImpl(TypeId type_id);
 
-  void RegisterParametricStorageImpl(TypeId type_id);
+  void RegisterParametricStorageImpl(
+      TypeId type_id, std::function<void(StorageBase *)> destroy);
 
   void RegisterParameterlessStorageImpl(
       TypeId type_id, std::function<StorageBase *()> constructor);

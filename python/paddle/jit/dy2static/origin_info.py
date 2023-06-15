@@ -299,7 +299,6 @@ def update_op_callstack_with_origin_info(program):
 
         assert len(callstack) % 2 == 0
         for i in range(0, len(callstack), 2):
-
             file_line = callstack[i].lstrip(" ").split(",")
 
             filepath = file_line[0][6:-1]

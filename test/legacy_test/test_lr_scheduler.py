@@ -263,7 +263,6 @@ def polynomial_lr(
     cycle=False,
     verbose=False,
 ):
-
     if cycle:
         div = math.ceil(epoch_num / float(decay_steps))
         if epoch_num == 0:

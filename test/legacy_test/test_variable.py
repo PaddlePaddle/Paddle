@@ -667,7 +667,6 @@ class TestListIndex(unittest.TestCase):
         index_shape = [2, 3, 4, 5, 6]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
         for _ in range(len(inps_shape) - 1):
-
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
             try:
@@ -709,7 +708,6 @@ class TestListIndex(unittest.TestCase):
 
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
-
             x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
             value = paddle.static.data(
@@ -1017,7 +1015,6 @@ class TestListIndex(unittest.TestCase):
             + 100
         )
         for _ in range(3):
-
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))
 
@@ -1028,7 +1025,6 @@ class TestListIndex(unittest.TestCase):
 
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
-
                 x1 = paddle.static.data(
                     name='x1', shape=array.shape, dtype='float32'
                 )
@@ -1121,7 +1117,6 @@ class TestListIndex(unittest.TestCase):
 
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
-
                 x1 = paddle.static.data(
                     name='x1', shape=array.shape, dtype='float32'
                 )
@@ -1200,7 +1195,6 @@ class TestListIndex(unittest.TestCase):
         )
 
         for _ in range(3):
-
             index_mod1 = index1 % (min(array.shape))
             index_mod2 = index2 % (min(array.shape))
             index_mod_t1 = paddle.to_tensor(index_mod1)

@@ -60,6 +60,8 @@ class InferXPUContext : public phi::XPUContext {
               bool pinned = false,
               bool fake_alloc = false) const override;
 
+  void SetXContext(xpu::Context* x_context);
+
   void SetL3Info(size_t l3_size,
                  void* l3_ptr,
                  size_t l3_autotune_size,

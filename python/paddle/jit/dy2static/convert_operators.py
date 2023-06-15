@@ -599,7 +599,7 @@ def convert_shape(x):
     """
 
     def has_negative(list_shape):
-        return any([x < 0 for x in list_shape])
+        return any(x < 0 for x in list_shape)
 
     # When `x` is Variable:
     #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],

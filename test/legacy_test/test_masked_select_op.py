@@ -167,7 +167,6 @@ class TestMaskedSelectError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='float32', name='x')
             mask = paddle.static.data(shape=shape, dtype='bool', name='mask')

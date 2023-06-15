@@ -10,7 +10,8 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License
+
+# limitations under the License.
 
 import unittest
 
@@ -21,7 +22,7 @@ import paddle
 paddle.disable_signal_handler()
 
 
-class TestDistTensor(unittest.TestCase):
+class TestDistTensorv1(unittest.TestCase):
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
@@ -61,6 +62,37 @@ class TestDistTensor(unittest.TestCase):
         self.check_tensor_eq(local1.grad, dist1.grad.local_tensor())
         self.check_tensor_eq(local2.grad, dist2.grad.local_tensor())
         self.check_tensor_eq(local3.grad, dist3.grad.local_tensor())
+
+
+class TestDistTensor(unittest.TestCase):
+    def test_dist_tensor_creation(self):
+        shape = [10, 5]
+        dist_attr = paddle.fluid.core.TensorDistAttr()
+
+        # create dist tensor using numpy
+        dist_tensor_with_numpy = paddle.Tensor(
+            np.ones(shape, dtype=np.float32), dist_attr=dist_attr
+        )
+
+        # create dist tensor using tensor
+        dist_tensor_with_tensor = paddle.Tensor(
+            paddle.ones(shape), dist_attr=dist_attr
+        )
+
+        # create normal tensor
+        tensor = paddle.ones(shape)
+
+        # test dist tensor properties
+        self.assertEqual(dist_tensor_with_numpy.shape, shape)
+        self.assertEqual(dist_tensor_with_tensor.shape, shape)
+        self.assertEqual(dist_tensor_with_numpy.is_dist(), True)
+        self.assertEqual(dist_tensor_with_tensor.is_dist(), True)
+        self.assertEqual(tensor.is_dist(), False)
+        self.assertEqual(
+            str(dist_tensor_with_numpy), str(dist_tensor_with_tensor)
+        )
+        self.assertEqual(dist_tensor_with_numpy.dist_attr, dist_attr)
+        self.assertEqual(dist_tensor_with_tensor.dist_attr, dist_attr)
 
 
 if __name__ == "__main__":

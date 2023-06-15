@@ -443,7 +443,6 @@ class MoELayer(nn.Layer):
         d_model = self.d_model
 
         def experts_fwd(x, fwd_expert_count, experts):
-
             if x.shape[0] == 0:
                 return x
             y = []
