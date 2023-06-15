@@ -174,7 +174,8 @@ void XPUTracer::CollectTraceData(TraceEventCollector* collector) {
           break;
         case XPTI_EVENT_TYPE_KERNEL:
           AddKernelRecord(
-              reinterpret_cast<const baidu::xpu::xpti::XPTIEventKernel*>(record),
+              reinterpret_cast<const baidu::xpu::xpti::XPTIEventKernel*>(
+                  record),
               tracing_start_ns_,
               collector);
           break;
