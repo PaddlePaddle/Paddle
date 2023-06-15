@@ -158,6 +158,13 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.10.0/include/python3.10
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.10.0/lib/libpython3.so"
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp311-cp311" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.11.0/bin/python3.11
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.11.0/include/python3.11
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.11.0/lib/libpython3.so"
+                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
@@ -3404,6 +3411,14 @@ function run_setup(){
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp311-cp311" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
+                #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
+                export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.11.0/bin/python3.11
+                export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
+                export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
+                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
            elif [ "$1" == "conda-python3.7" ]; then
                 export LD_LIBRARY_PATH=/opt/conda/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/conda/bin/:${PATH}
