@@ -30,6 +30,7 @@
 #include "paddle/ir/core/program.h"
 
 #include "paddle/fluid/ir/dialect/pd_type.h"
+
 #include "paddle/fluid/platform/init_phi.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);

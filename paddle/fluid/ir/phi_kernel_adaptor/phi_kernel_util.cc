@@ -148,13 +148,11 @@ void BuildInferMetaContext(
         VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
                 << in_var_name;
         if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          std::cerr << "build int array" << std::endl;
           phi::Attribute r1 = phi::TensorRefScalar(
               &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
           ctx->EmplaceBackAttr(r1);
         } else if (mutable_attr_type_map[t] ==
                    "paddle::dialect::ScalarAttribute") {
-          std::cerr << "begin to build scope " << std::endl;
           phi::Attribute r1 = phi::TensorRefScalar(
               &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
 
@@ -252,13 +250,11 @@ void BuildPhiKernelContext(
         VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
                 << in_var_name;
         if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          std::cerr << "build int array" << std::endl;
           phi::Attribute r1 = phi::TensorRefScalar(
               &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
           ctx->EmplaceBackAttr(r1);
         } else if (mutable_attr_type_map[t] ==
                    "paddle::dialect::ScalarAttribute") {
-          std::cerr << "begin to build scope " << std::endl;
           phi::Attribute r1 = phi::TensorRefScalar(
               &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
 
