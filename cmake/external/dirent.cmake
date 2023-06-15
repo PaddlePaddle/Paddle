@@ -56,7 +56,9 @@ function(download_dirent)
 endfunction()
 
 if(NOT EXISTS ${DIRENT_DOWNLOAD_DIR}/${DIRENT_CACHE_FILENAME})
-  message(STATUS "Local package ${DIRENT_CACHE_FILENAME} not found, starting download.")
+  message(
+    STATUS
+      "Local package ${DIRENT_CACHE_FILENAME} not found, starting download.")
   download_dirent()
 endif()
 

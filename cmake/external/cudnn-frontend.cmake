@@ -57,7 +57,7 @@ message(
     "Adding cudnn-frontend. Version: ${CUDNN_FRONTEND_VER}. Directory: ${DIRENT_DOWNLOAD_DIR}"
 )
 
-function(download_cudnn-frontend)
+function(download_cudnn_frontend)
   message(
     STATUS
       "Downloading ${CUDNN_FRONTEND_URL} to ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME}"
@@ -77,8 +77,11 @@ function(download_cudnn-frontend)
 endfunction()
 
 if(NOT EXISTS ${CUDNN_FRONTEND_DOWNLOAD_DIR}/${CUDNN_FRONTEND_CACHE_FILENAME})
-  message(STATUS "Local package ${CUDNN_FRONTEND_CACHE_FILENAME} not found, starting download.")
-  download_cudnn-frontend()
+  message(
+    STATUS
+      "Local package ${CUDNN_FRONTEND_CACHE_FILENAME} not found, starting download."
+  )
+  download_cudnn_frontend()
 endif()
 
 ExternalProject_Add(
