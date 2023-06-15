@@ -126,6 +126,10 @@ def layer_norm_wrapper(
     )
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(),
+    "ROCm doesn't support fp64 LayerNormOpByOp currently",
+)
 class TestLayerNormOpByOpTest(OpTest):
     def setUp(self):
         self.python_api = layer_norm_wrapper
@@ -165,7 +169,7 @@ class TestLayerNormOpByOpTest(OpTest):
 
         self.max_relative_error = 1e-5
         # ROCm does not have float64 LayerNorm kernel
-        self.dtype = "float32" if paddle.is_compiled_with_rocm() else "float64"
+        self.dtype = "float64"
         self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
