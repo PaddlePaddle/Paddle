@@ -6,5 +6,6 @@ cc_test_old(
   pd_op_to_kernel_pass
   new_ir
   pd_dialect
+  phi_kernel_adaptor
   phi
   gtest)

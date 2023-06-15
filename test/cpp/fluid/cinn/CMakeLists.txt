@@ -4,6 +4,7 @@ if(WITH_TESTING)
     SRCS
     cinn_launch_context_test.cc
     DEPS
+    fleet_executor
     phi
     lod_tensor
     scope
