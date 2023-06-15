@@ -93,6 +93,9 @@ struct PD_INFER_DECL XpuConfig {
   // kernels (both paddle/xdnn kernels)
   size_t l3_autotune_size{0};
 
+  // xpu_context(from baidu::xpu::api::create_context) for execution.
+  // If context is nullptr, new context will be created by default.
+  void* context{nullptr};
   // Stream for execution.
   // If stream is nullptr, default stream will be used.
   void* stream{nullptr};

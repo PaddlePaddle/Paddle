@@ -394,11 +394,10 @@ bool AnalysisPredictor::Init(
     if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
     }
-    auto *global_context = static_cast<phi::XPUContext *>(
-        platform::DeviceContextPool::Instance().Get(place_));
-    auto global_stream = global_context->stream();
     if (predictor_stream_ == nullptr) {
-      predictor_stream_ = global_stream;
+      auto *global_context = static_cast<phi::XPUContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
+      predictor_stream_ = global_context->stream();
     }
     InitDeviceContexts();
   }
@@ -1505,6 +1504,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
   argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
   argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuContext(config_.xpu_config_.context);
   argument_->SetXpuStream(config_.xpu_config_.stream);
   argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
   argument_->SetXpuConvAutotuneFile(config_.xpu_config_.conv_autotune_file);
@@ -2098,6 +2098,10 @@ bool AnalysisPredictor::ZeroCopyRun() {
         this->GetDeviceContexts());
     infer_xpu_ctx =
         static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
     infer_xpu_ctx->SetStream(predictor_stream_);
     infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
                              config_.xpu_config_.l3_ptr,
@@ -2186,6 +2190,8 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
 #ifdef PADDLE_WITH_XPU
   auto xpu_runtime_config =
       reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
+
+  config_.xpu_config_.context = xpu_runtime_config->context;
   auto *stream = xpu_runtime_config->stream;
   if (stream != nullptr && stream != predictor_stream_) {
     paddle::platform::XPUStreamSync(

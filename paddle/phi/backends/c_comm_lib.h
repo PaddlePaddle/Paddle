@@ -56,5 +56,24 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
   }
 }
 
+inline phi::DataType ToPhiDataType(CCLDataType type) {
+  if (type == CCLDataType::CCL_DATA_TYPE_FP64) {
+    return phi::DataType::FLOAT64;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_FP32) {
+    return phi::DataType::FLOAT32;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_FP16) {
+    return phi::DataType::FLOAT16;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT64) {
+    return phi::DataType::INT64;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT32) {
+    return phi::DataType::INT32;
+  } else if (type == CCLDataType::CCL_DATA_TYPE_INT8) {
+    return phi::DataType::INT8;
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("This datatype in CCL is not supported."));
+  }
+}
+
 }  // namespace ccl
 }  // namespace phi

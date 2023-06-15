@@ -39,6 +39,7 @@ cc_test_old(
   DEPS
   new_ir
   pd_dialect
+  phi_kernel_adaptor
   phi
   gtest)
 

@@ -184,7 +184,7 @@ def _partial_send_op(tensor, group, dst, nranks, rank_id):
         group is not None
     ), "Group should be an instance for _partial_send_op."
     dst_rank_in_group = group.get_group_rank(dst)
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         return group.process_group.send_partial(
             tensor, dst_rank_in_group, nranks, rank_id
         )
@@ -195,7 +195,7 @@ def _partial_recv_op(tensor, group, src, nranks, rank_id):
         group is not None
     ), "Group should be an instance for _partial_recv_op."
     src_rank_in_group = group.get_group_rank(src)
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         return group.process_group.recv_partial(
             tensor, src_rank_in_group, nranks, rank_id
         )
@@ -236,7 +236,7 @@ def partial_batch_isend_irecv(p2p_op_list):
     if _warn_cur_rank_not_in_group(group):
         return
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         backend = group.backend
         tasks = []
