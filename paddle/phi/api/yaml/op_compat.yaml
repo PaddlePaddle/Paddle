@@ -372,6 +372,16 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bincount
+  inputs :
+    {x : X, weights : Weights}
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : float32
+      support_tensor : true
+
 - op : bitwise_and
   inputs :
     {x : X, y : Y}
