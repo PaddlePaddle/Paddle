@@ -105,9 +105,6 @@ class XPUTestUniqueOp(XPUOpTestWrapper):
             }
 
     class TestRandom2(TestUniqueOp):
-        def init_dtype(self):
-            self.dtype = np.float64
-
         def init_config(self):
             self.inputs = {
                 'X': (np.random.random([4, 7, 10]) * 100.0).astype(self.dtype)
