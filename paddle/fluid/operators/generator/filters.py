@@ -95,6 +95,21 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
   }}
 }};
 """
+    elif op_name == "fill_any_like":
+        return f"""
+class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    auto var_data_type = static_cast<framework::proto::VarType::Type>(
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
+    if (var_data_type < 0) {{
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
+    }} else {{
+      ctx->SetOutputDataType("Out", var_data_type);
+    }}
+  }}
+}};
+"""
     else:
         return None
 

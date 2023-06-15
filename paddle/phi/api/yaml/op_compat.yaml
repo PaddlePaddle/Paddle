@@ -1095,8 +1095,12 @@
     x : X
   outputs :
     out : Out
-  attrs :
-    {value: value, dtype: dtype}
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
+  get_expected_kernel_type :
+    full_like : GetFullLikeExpectedKernelType
 
 - op : fused_conv2d
   extra :

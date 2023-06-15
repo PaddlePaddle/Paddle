@@ -181,6 +181,8 @@ void ExpandInferMeta(const MetaTensor& x,
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out);
 
+void FillAnyLikeInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void FFTC2CInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,
                      const std::string& normalization,

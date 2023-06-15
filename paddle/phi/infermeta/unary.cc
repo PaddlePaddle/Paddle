@@ -1122,6 +1122,11 @@ void FillDiagonalInferMeta(
   out->set_dtype(x.dtype());
 }
 
+void FillAnyLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->share_lod(x);
+}
+
 void FFTC2CInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,
                      const std::string& normalization,

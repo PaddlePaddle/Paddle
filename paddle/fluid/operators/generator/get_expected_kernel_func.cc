@@ -85,6 +85,18 @@ phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
+phi::KernelKey GetFullLikeExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  phi::KernelKey kt = op_ptr->OperatorWithKernel::GetExpectedKernelType(ctx);
+  const auto& data_type = ctx.Attr<int>("dtype");
+  if (data_type >= 0) {
+    kt.set_dtype(phi::TransToPhiDataType(
+        static_cast<framework::proto::VarType::Type>(data_type)));
+  }
+  return kt;
+}
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
