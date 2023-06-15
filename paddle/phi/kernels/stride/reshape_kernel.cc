@@ -48,6 +48,7 @@ bool ReshapeStride(const DDim& old_dims,
     int64_t new_numel = 1;
     int64_t old_stride_lastvalue = old_stride[old_stride.size() - 1];
     int new_stride_index = new_dims.size() - 1;
+    new_stride = new_dims;
     for (int old_dims_index = old_dims.size() - 1; old_dims_index >= 0;
          old_dims_index--) {
       old_numel *= old_dims[old_dims_index];
@@ -84,9 +85,6 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           const IntArray& shape,
                           DenseTensor* out,
                           DenseTensor* xshape UNUSED) {
-  if (x.Holder() == out->Holder()) {
-    return;
-  }
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   DDim stride;
