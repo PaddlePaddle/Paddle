@@ -40,12 +40,12 @@ PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 
+bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
+
 namespace paddle {
 namespace framework {
 
 TEST(StandaloneExecutor, run) {
-  std::cerr << "here" << std::endl;
-
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::Program program((ctx));
 
@@ -61,8 +61,6 @@ TEST(StandaloneExecutor, run) {
 
   builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
 
-  program.Print(std::cout);
-
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   kernel_program->Print(std::cout);
@@ -76,13 +74,20 @@ TEST(StandaloneExecutor, run) {
 
   test_core.Run({});
 
-  auto tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
+  auto out_tensor = scope.Var("inner_var_2")->Get<phi::DenseTensor>();
 
-  std::cerr << "uot" << tensor << std::endl;
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 2.0);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 2.0);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 2.0);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
+
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
 }
 
-TEST(StandaloneExecutor, run) {
-  std::cerr << "here" << std::endl;
+TEST(StandaloneExecutor, run_2) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
@@ -122,24 +127,18 @@ TEST(StandaloneExecutor, run) {
   EXPECT_EQ(block->size(), 9u);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-  std::cerr << "after lower" << std::endl;
-
-  kernel_program->Print(std::cout);
 
   auto place = platform::CPUPlace();
   Scope scope;
 
   ProgramDesc prog_desc;
 
-  std::cerr << "before init" << std::endl;
   InterpreterCore test_core(
       place, prog_desc.Block(0), &scope, kernel_program.get());
 
-  std::cerr << "after init" << std::endl;
   test_core.Run({});
-  std::cerr << "after run " << std::endl;
 
-  auto tensor = scope.Var("inner_var_8")->Get<phi::DenseTensor>();
+  auto out_tensor = scope.Var("inner_var_8")->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.80721);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.70047);
