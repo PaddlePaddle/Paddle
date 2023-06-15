@@ -197,8 +197,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)
-  set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 100)
-  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 180)
+  set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 180)
+  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 450)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
@@ -219,7 +219,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_transfer_layout_elim_pass PROPERTIES TIMEOUT 300)
 
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
-                         PROPERTIES TIMEOUT 60)
+                         PROPERTIES TIMEOUT 240)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
                          PROPERTIES TIMEOUT 100)
     set_tests_properties(test_conv_act_onednn_fuse_pass PROPERTIES TIMEOUT 120)

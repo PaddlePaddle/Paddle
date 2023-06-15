@@ -161,6 +161,13 @@ def parse_args():
         "training script",
     )
 
+    base_group.add_argument(
+        "--auto_tuner_json",
+        type=str,
+        default=None,
+        help="auto tuner json file path",
+    )
+
     base_group.add_argument('training_script_args', nargs=REMAINDER)
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
