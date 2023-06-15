@@ -11,31 +11,45 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#include "paddle/phi/kernels/unsqueeze_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/flatten_kernel.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
 
 namespace phi {
 
 template <typename Context>
 void UnsqueezeInferStridedKernel(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const IntArray& axes,
+                                 const DenseTensor& input,
+                                 const IntArray& axes_arr,
                                  DenseTensor* out) {
-  if (x.Holder() == out->Holder()) {
-    return;
+  std::vector<int64_t> axes = axes_arr.GetData();
+  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
+
+  for (auto item : axes) {
+    auto axis = item < 0 ? item + output_dims.size() + 1 : item;
+    int64_t stride = static_cast<size_t>(axis) >= output_dims.size()
+                         ? 1
+                         : output_dims[axis] * output_stride[axis];
+    output_dims.insert(output_dims.begin() + axis, 1);
+    output_stride.insert(output_stride.begin() + axis, stride);
   }
 
-  auto x_dims = x.dims();
-  auto out_dims = out->dims();
-  if (axes.FromTensor()) {
-    out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
+  auto meta = out->meta();
+  auto tmp_dim = DDim(output_dims.data(), output_dims.size());
+  if (meta.dims != tmp_dim) {
+    LOG(WARNING) << "Unsqueeze kernel stride compute diff, infer shape is "
+                 << meta.dims << ", but compute is " << tmp_dim << ".";
+    meta.dims = tmp_dim;
   }
-  out->Resize(out_dims);
-  ReshapeStridedKernel<Context>(
-      dev_ctx, x, IntArray(phi::vectorize<int64_t>(out->dims())), out, nullptr);
+  meta.stride = DDim(output_stride.data(), output_stride.size());
+  out->set_meta(meta);
+  out->ResetHolder(input.Holder());
 }
 
 template <typename Context>
