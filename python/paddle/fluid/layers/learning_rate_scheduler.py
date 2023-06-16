@@ -166,10 +166,9 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.ExponentialDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate, decay_rate
             )
-            return decay
         else:
             global_step = _decay_step_counter()
 

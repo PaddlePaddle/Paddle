@@ -528,9 +528,9 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.fluid.optimizer.RMSProp(
+        optimizer = paddle.optimizer.RMSProp(
             learning_rate=0.001,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
         )
         optimizer._multi_precision = mp
         if use_amp:
@@ -561,7 +561,7 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.RMSProp(learning_rate=0.001)
+        optimizer = paddle.optimizer.RMSProp(learning_rate=0.001)
         optimizer._multi_precision = mp
 
         if use_amp:
