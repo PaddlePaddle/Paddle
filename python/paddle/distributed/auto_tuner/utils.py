@@ -240,9 +240,9 @@ def read_log(
     path, file="workerlog.0", target_metric='step/s'
 ) -> Tuple[float, bool]:
     """For extracting metric from log file."""
-    if not os.path.exists(path):
-        return (0.0, True)
     target_file = path + "/" + file
+    if not os.path.exists(target_file):
+        return (0.0, True)
     with open(target_file, "r") as f:
         # read file
         re_metric_pattern = r'speed: (\d+(\.\d*)?) *' + target_metric

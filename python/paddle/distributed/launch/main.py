@@ -324,7 +324,11 @@ def launch():
             gpus_per_node = 8
         else:
             gpus_per_node = len(ctx.args.devices.split(","))
-        tuner_cfg["nodes"] = int(ctx.args.nnodes)
+        nnodes = ctx.args.nnodes
+        if isinstance(nnodes, str):
+            tuner_cfg["nodes"] = int(nnodes.split(":")[0])
+        else:
+            tuner_cfg["nodes"] = int(nnodes)
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
 
         # build AutoTuner to get new config
