@@ -178,10 +178,13 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
 
+void FillAnyLikeInferMeta(const MetaTensor& x,
+                          const Scalar& value,
+                          DataType dtype,
+                          MetaTensor* out);
+
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out);
-
-void FillAnyLikeInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void FFTC2CInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,

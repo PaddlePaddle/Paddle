@@ -208,7 +208,6 @@
   output: Tensor(out)
   infer_meta :
     func : FillAnyLikeInferMeta
-    param : [x]
   kernel :
     func : full_like
     param : [x, value, dtype]
