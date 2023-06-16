@@ -46,8 +46,7 @@ limitations under the License. */
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "epilogue/thread/ft_fused_activations.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 struct EpilogueOpBiasSilu {};
 
 struct EpilogueOpBiasReLU {};
@@ -141,5 +140,4 @@ struct Epilogue<ElementType,
       ElementAccumulator,
       cutlass::epilogue::thread::ScaleType::Default>;
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

@@ -1,19 +1,3 @@
-/*
- * Copyright (c) 2020-2023, NVIDIA CORPORATION.  All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 /* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,12 +27,12 @@ limitations under the License. */
 
 #include "cutlass/gemm/gemm.h"
 
-#include "paddle/fluid/operators/fused/cutlass/cutlass_extensions/gemm/threadblock/dq_mma_base.h"
-#include "paddle/fluid/operators/fused/cutlass/cutlass_extensions/gemm/warp/mma_tensorop_dequantizer.h"
-#include "paddle/fluid/operators/fused/cutlass/cutlass_extensions/interleaved_numeric_conversion.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/threadblock/dq_mma_base.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/warp/mma_tensorop_dequantizer.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/interleaved_numeric_conversion.h"
 
-#include "paddle/fluid/operators/fused/cutlass/cutlass_extensions/ft_gemm_configs.h"
-#include "paddle/fluid/operators/fused/cutlass/cutlass_extensions/gemm/kernel/mixed_gemm_B_layout.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/ft_gemm_configs.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/kernel/mixed_gemm_B_layout.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 

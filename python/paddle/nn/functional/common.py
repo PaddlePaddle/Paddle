@@ -1890,7 +1890,7 @@ def linear_compress(
     name=None,
     config=None,
 ):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if algo == "llm.int8":
             y = _C_ops.llm_int8_mat_mul(
                 x, weight, weight_scale, config['threshold']

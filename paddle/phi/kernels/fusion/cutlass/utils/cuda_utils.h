@@ -27,8 +27,7 @@
 #include <cusparseLt.h>
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 #define MAX_CONFIG_NUM 20
 #define COL32_ 32
@@ -50,9 +49,9 @@ enum CublasDataType {
   FP8_DATATYPE = 4
 };
 
-enum FtCudaDataType { FP32 = 0, FP16 = 1, BF16 = 2, INT8 = 3, FP8 = 4 };
+// enum FtCudaDataType { FP32 = 0, FP16 = 1, BF16 = 2, INT8 = 3, FP8 = 4 };
 
-enum class OperationType { FP32, FP16, BF16, INT8, FP8 };
+// enum class OperationType { FP32, FP16, BF16, INT8, FP8 };
 
 /* **************************** debug tools ********************************* */
 static const char* _cudaGetErrorEnum(cudaError_t error) {
@@ -492,5 +491,4 @@ void compareTwoTensor(const T1* pred,
 }
 
 /* ************************** end of common utils ************************** */
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
