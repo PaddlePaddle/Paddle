@@ -319,7 +319,7 @@ void BuildPhiKernelContext(
           ctx->EmplaceBackInput(tensor_in);
         } else {
           std::cerr << "get data from tensor array " << std::endl;
-          paddle::small_vector<const phi::DenseTensor*> inputs;
+          paddle::small_vector<const phi::TensorBase*> inputs;
           auto& tensor_array = var->Get<paddle::framework::TensorPointVec>();
           std::cerr << "tensor array " << tensor_array.size() << std::endl;
           for (size_t i = 0; i < tensor_array.size(); ++i) {

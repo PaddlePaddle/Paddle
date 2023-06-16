@@ -40,9 +40,7 @@ class TestNewIr(unittest.TestCase):
         self.assertEqual(
             np.array_equal(
                 np.array(
-                    paddle.static.global_scope()
-                    .find_var("inner_var_2")
-                    .get_tensor()
+                    paddle.static.global_scope().find_var(z.name).get_tensor()
                 ),
                 gold_res,
             ),
