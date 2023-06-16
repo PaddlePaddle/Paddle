@@ -332,7 +332,9 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
                                       const Dims4D dilations,
                                       const Dims4D strides,
                                       T* rulebook,
-                                      int* counter) {
+                                      int* counter,
+                                      bool is2D) {
+  // bool is2D = x_dims.size() == 4 ? true : false;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   extern __shared__ int counter_buf[];  // kernel_size
   const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
@@ -345,9 +347,9 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     int kernel_index = 0;
     T batch = x_indices[i];
-    T in_z = x_indices[i + non_zero_num];
-    T in_y = x_indices[i + 2 * non_zero_num];
-    T in_x = x_indices[i + 3 * non_zero_num];
+    T in_z = is2D == true ? 0 : x_indices[i + non_zero_num];
+    T in_y = is2D == true ? x_indices[i + non_zero_num] : x_indices[i + 2 * non_zero_num];
+    T in_x = is2D == true ? x_indices[i + 2 * non_zero_num] : x_indices[i + 3 * non_zero_num];
     for (int kz = 0; kz < kernel_dims[1]; kz++) {
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
@@ -363,7 +365,7 @@ __global__ void ProductRuleBookKernel(const T* x_indices,
                                         kx,
                                         ky,
                                         kz)) {
-            T out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
+            T out_z = is2D == true ? 0 : (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             T out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             in_i = i;
@@ -390,12 +392,16 @@ __global__ void GetOutIndexTable1(const IntT* indices,
                                   const IntT non_zero_num,
                                   const Dims4D dims,
                                   int* index_flags,
-                                  int* out_index_table) {
+                                  int* out_index_table,
+                                  bool is2D) {
+  // bool is2D = dims.size() == 4 ? true : false;
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT batch = indices[i];
-    IntT in_z = indices[i + non_zero_num];
-    IntT in_y = indices[i + 2 * non_zero_num];
-    IntT in_x = indices[i + 3 * non_zero_num];
+    IntT in_z = is2D == true ? 0 : indices[i + non_zero_num];
+    IntT in_y = is2D == true ? indices[i + non_zero_num] : 
+                               indices[i + 2 * non_zero_num];
+    IntT in_x = is2D == true ? indices[i + 2 * non_zero_num] : 
+                               indices[i + 3 * non_zero_num];
     IntT index = PointToIndex(batch, in_x, in_y, in_z, dims);
     phi::funcs::sparse::SetBits(index, index_flags);
     out_index_table[index] = i;
@@ -407,7 +413,8 @@ __global__ void GetOutIndexTable(int* indexs,
                                  const int non_zero_num,
                                  const Dims4D out_dims,
                                  int* out_index_table,
-                                 IntT* out_indices) {
+                                 IntT* out_indices,
+                                 bool is2D) {
   CUDA_KERNEL_LOOP_TYPE(i, non_zero_num, int64_t) {
     IntT index = static_cast<IntT>(indexs[i]);
     out_index_table[index] = i;
@@ -416,9 +423,15 @@ __global__ void GetOutIndexTable(int* indexs,
         index, out_dims, &batch, &x, &y, &z);
     // get out indices
     out_indices[i] = batch;
-    out_indices[i + non_zero_num] = z;
-    out_indices[i + non_zero_num * 2] = y;
-    out_indices[i + non_zero_num * 3] = x;
+    if (is2D) {
+      out_indices[i + non_zero_num] = y;
+      out_indices[i + non_zero_num * 2] = x;
+    }
+    else {
+      out_indices[i + non_zero_num] = z;
+      out_indices[i + non_zero_num * 2] = y;
+      out_indices[i + non_zero_num * 3] = x;
+    }
     indexs[i] = 0;
   }
 }
@@ -467,7 +480,9 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                           const int* index_flags,
                                           const int* out_index_table,
                                           T* rulebook,
-                                          int* counter) {
+                                          int* counter,
+                                          bool is2D) {
+  // bool is2D = x_dims.size() == 4 ? true : false;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   const int kernel_size = kernel_dims[3] * kernel_dims[2] * kernel_dims[1];
   extern __shared__ int counter_buf[];  // kernel_size
@@ -484,9 +499,11 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
     int kernel_index = 0;
     T batch = x_indices[i];
-    T in_z = x_indices[i + non_zero_num];
-    T in_y = x_indices[i + 2 * non_zero_num];
-    T in_x = x_indices[i + 3 * non_zero_num];
+    T in_z = is2D == true ? 0 : x_indices[i + non_zero_num];
+    T in_y = is2D == true ? x_indices[i + non_zero_num] : 
+                            x_indices[i + 2 * non_zero_num];
+    T in_x = is2D == true ? x_indices[i + 2 * non_zero_num] : 
+                            x_indices[i + 3 * non_zero_num];
     for (int kz = 0; kz < kernel_dims[1]; kz++) {
       for (int ky = 0; ky < kernel_dims[2]; ky++) {
         for (int kx = 0; kx < kernel_dims[3]; kx++) {
@@ -502,7 +519,7 @@ __global__ void ProductSubmRuleBookKernel(const T* x_indices,
                                         kx,
                                         ky,
                                         kz)) {
-            T out_z = (in_z + paddings[1] - kz * dilations[1]) / strides[1];
+            T out_z = is2D == true ? 0 : (in_z + paddings[1] - kz * dilations[1]) / strides[1];
             T out_y = (in_y + paddings[2] - ky * dilations[2]) / strides[2];
             T out_x = (in_x + paddings[3] - kx * dilations[3]) / strides[3];
             out_index = phi::funcs::sparse::PointToIndex<Dims4D>(
@@ -637,21 +654,62 @@ int ProductRuleBook(const Context& dev_ctx,
                     SparseCooTensor* out,
                     int* h_counter,
                     int* h_offsets) {
+  bool is2D = out_dims.size() == 4 ? true : false;
   auto indices_dtype = phi::CppTypeToDataType<IntT>::Type();
   const int64_t non_zero_num = x.nnz();
   const auto& indices = x.indices();
   const IntT* indices_ptr = indices.data<IntT>();
   int* counter_ptr = counter_per_kernel->data<int>();
   int* offsets_ptr = offsets_per_kernel->data<int>();
-  int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
+  int kernel_size = is2D == true ? kernel_sizes[0] * kernel_sizes[1] :
+                                   kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
 
   const auto x_dims = x.dims();
-  Dims4D d_x_dims(x_dims[0], x_dims[3], x_dims[2], x_dims[1]);
-  Dims4D d_kernel_dims(1, kernel_sizes[2], kernel_sizes[1], kernel_sizes[0]);
-  Dims4D d_out_dims(out_dims[0], out_dims[3], out_dims[2], out_dims[1]);
-  Dims4D d_paddings(1, paddings[2], paddings[1], paddings[0]);
-  Dims4D d_strides(1, strides[2], strides[1], strides[0]);
-  Dims4D d_dilations(1, dilations[2], dilations[1], dilations[0]);
+
+  int xdim0, xdim1, xdim2, xdim3;
+  int kdim0, kdim1, kdim2, kdim3;
+  int odim0, odim1, odim2, odim3;
+  int pdim0, pdim1, pdim2, pdim3;
+  int sdim0, sdim1, sdim2, sdim3;
+  int ddim0, ddim1, ddim2, ddim3;
+  
+  xdim0 = x_dims[0];
+  xdim1 = is2D == true ? x_dims[2] : x_dims[3];
+  xdim2 = is2D == true ? x_dims[1] : x_dims[2];
+  xdim3 = is2D == true ? 1 : x_dims[1];
+
+  kdim0 = 1;
+  kdim1 = is2D == true ? kernel_sizes[1] : kernel_sizes[2];
+  kdim2 = is2D == true ? kernel_sizes[0] : kernel_sizes[1];
+  kdim3 = is2D == true ? 1 : kernel_sizes[0];
+
+  odim0 = out_dims[0];
+  odim1 = is2D == true ? out_dims[2] : out_dims[3];
+  odim2 = is2D == true ? out_dims[1] : out_dims[2];
+  odim3 = is2D == true ? 1 : out_dims[1];
+
+  pdim0 = 1;
+  pdim1 = is2D == true ? paddings[1] : paddings[2];
+  pdim2 = is2D == true ? paddings[0] : paddings[1];
+  pdim3 = is2D == true ? 1 : paddings[0];
+
+  sdim0 = 1;
+  sdim1 = is2D == true ? strides[1] : strides[2];
+  sdim2 = is2D == true ? strides[0] : strides[1];
+  sdim3 = is2D == true ? 1 : strides[0];
+
+  ddim0 = 1;
+  ddim1 = is2D == true ? dilations[1] : dilations[2];
+  ddim2 = is2D == true ? dilations[0] : dilations[1];
+  ddim3 = is2D == true ? 1 : dilations[0];
+
+  const Dims4D d_x_dims(xdim0, xdim1, xdim2, xdim3);
+  const Dims4D d_kernel_dims(kdim0, kdim1, kdim2, kdim3);
+  const Dims4D d_out_dims(odim0, odim1, odim2, odim3);
+  const Dims4D d_paddings(pdim0, pdim1, pdim2, pdim3);
+  const Dims4D d_strides(sdim0, sdim1, sdim2, sdim3);
+  const Dims4D d_dilations(ddim0, ddim1, ddim2, ddim3);
+
   // 1. product rule book
   phi::backends::gpu::GpuMemsetAsync(counter_ptr,
                                      0,
@@ -682,7 +740,8 @@ int ProductRuleBook(const Context& dev_ctx,
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
     IntT* rulebook_ptr = tmp_rulebook.data<IntT>();
     DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
-    DenseTensor out_values = phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[4]});
+    int tmpidx = is2D == true ? 3 : 4;
+    DenseTensor out_values = phi::Empty<T>(dev_ctx, {x.nnz(), kernel_sizes[tmpidx]});
 
     phi::Copy(dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &out_indices);
 
@@ -695,7 +754,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                   non_zero_num,
                                                   d_x_dims,
                                                   index_flags_ptr,
-                                                  out_index_table_ptr);
+                                                  out_index_table_ptr,
+                                                  is2D);
 
     size_t cache_size =
         kernel_size * 2 * sizeof(int) +
@@ -724,7 +784,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                           index_flags_ptr,
                                                           out_index_table_ptr,
                                                           rulebook_ptr,
-                                                          counter_ptr);
+                                                          counter_ptr,
+                                                          is2D);
 
     out->SetMember(out_indices, out_values, out_dims, false);
 
@@ -767,7 +828,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                       d_dilations,
                                                       d_strides,
                                                       rulebook_ptr,
-                                                      counter_ptr);
+                                                      counter_ptr,
+                                                      is2D);
 
     // 2. remove -1
 #ifdef PADDLE_WITH_HIP
@@ -833,11 +895,12 @@ int ProductRuleBook(const Context& dev_ctx,
                                                    out_nnz,
                                                    out_index_ptr);
 
-    const int64_t sparse_dim = 4;
+    int tmpidx = is2D == true ? 3 : 4;
+    const int64_t sparse_dim = tmpidx;
     phi::DenseTensor out_indices =
         phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
     phi::DenseTensor out_values =
-        phi::Empty<T>(dev_ctx, {out_nnz, kernel_sizes[4]});
+        phi::Empty<T>(dev_ctx, {out_nnz, kernel_sizes[tmpidx]});
     out->SetMember(out_indices, out_values, out_dims, false);
 
     IntT* out_indices_ptr = out_indices.data<IntT>();
@@ -850,7 +913,8 @@ int ProductRuleBook(const Context& dev_ctx,
                                                  out_nnz,
                                                  d_out_dims,
                                                  out_index_table_ptr,
-                                                 out_indices_ptr);
+                                                 out_indices_ptr,
+                                                 is2D);
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
     unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
     int* unique_value_ptr = unique_value->data<int>();

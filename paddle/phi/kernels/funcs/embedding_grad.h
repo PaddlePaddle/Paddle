@@ -14,6 +14,18 @@
 
 #pragma once
 
+// #include <thrust/copy.h>
+// #include <thrust/device_vector.h>
+// #include <thrust/fill.h>
+// #include <thrust/reduce.h>
+// #include <thrust/scan.h>
+// #include <thrust/sequence.h>
+// #include <thrust/set_operations.h>
+// #include <thrust/sort.h>
+// #include <thrust/transform.h>
+// #include <thrust/unique.h>
+
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
@@ -163,5 +175,109 @@ void LaunchEmbeddingGradDeterministicKernel(const GPUContext& ctx,
   }
 }
 
+template <typename IdT>
+__global__ void CUDA_PRINT(const IdT *text,
+                      int        len)
+{
+  for (int i = 0; i < len; i++)
+    printf("%d ", text[i]);
+  __syncthreads();
+  printf("\n\n\n");
+}
+
+// template <typename T, typename IdT>
+// __global__ void scatter_and_convert(T* table,
+//                                    float* table_used,
+//                                    const IdT* unique_ids,
+//                                    const int64_t D,
+//                                    const int64_t unique_num) {
+//   int idx = threadIdx.x;
+//   int idy = blockIdx.x + threadIdx.y * gridDim.x;
+
+//   while (idy < unique_num) {
+//     auto id = unique_ids[idy];
+//     const float* in = table_used + idy * D;
+//     T* out = table + id * D;
+//     for (int i = idx; i < D; i += blockDim.x) {
+//       out[i] = static_cast<T>(in[i]);
+//     }
+//     idy += blockDim.y * gridDim.x;
+//   }
+// }
+
+// template <typename T, typename IdT>
+// __global__ void EmbeddingGrad_fix(T* table,
+//                                   float* table_used,
+//                                   const T* output,
+//                                   const IdT* ids,
+//                                   const IdT* unique_ids,
+//                                   const IdT* ids_map,
+//                                   const int64_t N,
+//                                   const int64_t K,
+//                                   const int64_t D,
+//                                   const int64_t unique_num) {
+//   int idx = threadIdx.x;
+//   int idy = blockIdx.x + threadIdx.y * gridDim.x;
+
+//   while (idy < K) {
+//     for (int i = idx; i < unique_num; i += blockDim.x)
+//       if (ids[idy] == unique_ids[i]) 
+//         ids_map[idy] = i;
+//     __syncthreads();
+    
+//     auto id = static_cast<int64_t>(ids_map[idy]);
+//     const T* out = output + idy * D;
+//     float* tab_used = table_used + id * D;
+// #ifdef PADDLE_WITH_CUDA
+//     for (int i = idx; i < D; i += blockDim.x) {
+//       phi::CudaAtomicAdd(&tab_used[i], static_cast<float>(out[i]));
+//     }
+// #else
+//     for (int i = idx; i < D; i += blockDim.x) {
+//       phi::CudaAtomicAdd(&tab_used[i], out[i]);
+//     }
+// #endif
+//     idy += blockDim.y * gridDim.x;
+//   }
+// }
+
+// template <typename T, typename IdT>
+// void LaunchEmbeddingGradNonDeterministicKernel(const GPUContext& ctx,
+//                                                const IdT* ids,
+//                                                const T* d_output,
+//                                                T* d_table,
+//                                                int64_t N,
+//                                                int64_t D,
+//                                                int64_t K) {
+//     thrust::device_vector<IdT> unique_idsvec(K);
+//     thrust::copy(ids, ids + K, unique_idsvec.begin());
+//     thrust::sort(unique_idsvec.begin(), unique_idsvec.end());
+//     unique_idsvec.erase(thrust::unique(unique_idsvec.begin(), unique_idsvec.end()), unique_idsvec.end());
+//     // CUDA_PRINT<<<1, 1>>>(thrust::raw_pointer_cast(unique_ids.data()), unique_ids.size());
+//     const int unique_num = unique_idsvec.size();
+//     IdT* unique_ids = thrust::raw_pointer_cast(unique_idsvec.data());
+
+//     T* table_used;
+//     cudaMalloc(reinterpret_cast<void**>(&table_used), unique_num * D * sizeof(T));
+//     cudaMemsetAsync(table_used, 0, unique_num * D * sizeof(T), ctx.stream());
+//     IdT* ids_map;
+//     cudaMalloc(reinterpret_cast<void**>(&ids_map), K * sizeof(IdT));
+    
+//     const int gridx = 2 * ctx.GetSMCount();
+//     dim3 threads(128, 8);
+//     dim3 grids(gridx, 1);
+//     EmbeddingGrad_fix<T, IdT><<<grids, threads, 0, ctx.stream()>>>(
+//         d_table, table_used, d_output, ids, unique_ids, ids_map, N, K, D, unique_num);
+//     scatter_and_convert<T, IdT><<<grids, threads, 0, ctx.stream()>>>(
+//         d_table, table_used, unique_ids, D, unique_num);
+
+//     cudaFree(table_used);
+//     cudaFree(ids_map);
+// }
+
+
 }  // namespace funcs
 }  // namespace phi
+
+
+                  

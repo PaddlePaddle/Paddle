@@ -45,9 +45,15 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   // if x.layout != NDHWC then transpose(x), transpose(weight)
 
   const auto& x_dims = x.dims();
+  bool is2D = x_dims.size() == 4 ? true : false;
   const auto& kernel_dims = kernel.dims();
-  int kernel_size = kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  DDim out_dims = {1, 1, 1, 1, 1};
+  int kernel_size = is2D == true ? kernel_dims[0] * kernel_dims[1] : 
+                                   kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  
+  int count_tmp = is2D == true ? 4 : 5;
+  std::vector<int> out_dims_vec(count_tmp, 1);
+  DDim out_dims = make_ddim(out_dims_vec);
+  
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];
@@ -63,8 +69,8 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
 
   phi::funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
-  const int in_channels = kernel_dims[3];
-  const int out_channels = kernel_dims[4];
+  const int in_channels = is2D == true ? kernel_dims[2] : kernel_dims[3];
+  const int out_channels = is2D == true ? kernel_dims[3] : kernel_dims[4];
 
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
@@ -198,7 +204,6 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                counter);
                                }));
 }
-
 }  // namespace sparse
 }  // namespace phi
 

@@ -443,4 +443,5 @@ class TestStatic(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    # paddle.device.set_device("cpu")
     unittest.main()
