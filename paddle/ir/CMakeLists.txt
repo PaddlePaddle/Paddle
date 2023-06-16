@@ -23,10 +23,7 @@ function(ir_library TARGET_NAME)
       ${TARGET_NAME}
       SRCS $<TARGET_OBJECTS:${OBJ_LIB}>
       DEPS ${ir_library_DEPS})
-    #get_property(ir_modules GLOBAL PROPERTY IR_MODULES)
-    #set(ir_modules ${ir_modules} ${TARGET_NAME})
     set_property(GLOBAL APPEND PROPERTY IR_MODULES $<TARGET_OBJECTS:${OBJ_LIB}>)
-    #set_property(GLOBAL PROPERTY IR_MODULES "${ir_modules}")
   endif()
 endfunction()
 
@@ -40,12 +37,7 @@ add_subdirectory(pattern_rewrite)
 
 get_property(ir_modules GLOBAL PROPERTY IR_MODULES)
 if(WITH_SHARED_IR)
-  # set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/ir_dummy.cc)
-  # execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS})
-  # cc_library(ir SHARED SRCS ${target_SRCS})
-  # target_link_libraries(ir -Wl,--whole-archive ${ir_modules} -Wl,--no-whole-archive)
   add_library(ir SHARED ${ir_modules})
 else()
-  # create_static_lib(ir ${ir_modules})
   add_library(ir STATIC ${ir_modules})
 endif()
