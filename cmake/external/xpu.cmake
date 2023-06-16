@@ -165,9 +165,9 @@ if(WITH_XPU_XFT)
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 
-if(WITH_XPU_XPTI)
+if(WITH_XPTI)
   message(STATUS "Compile with XPU XPTI!")
-  add_definitions(-DPADDLE_WITH_XPU_XPTI)
+  add_definitions(-DPADDLE_WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
 endif()
 
@@ -182,7 +182,7 @@ else()
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
 endif()
 
-if(WITH_XPU_XPTI)
+if(WITH_XPTI)
   target_link_libraries(xpulib ${XPU_XPTI_LIB})
 endif()
 
