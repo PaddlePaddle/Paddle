@@ -41,6 +41,42 @@ add_subdirectory(core)
 add_subdirectory(pass)
 add_subdirectory(pattern_rewrite)
 
+if(WIN32)
+  if(WITH_SHARED_IR)
+    set(IR_NAME
+        ir.dll
+        CACHE INTERNAL "" FORCE)
+  else()
+    set(IR_NAME
+        ir.lib
+        CACHE INTERNAL "" FORCE)
+  endif()
+elseif(APPLE)
+  if(WITH_SHARED_IR)
+    set(IR_NAME
+        libir.dylib
+        CACHE INTERNAL "" FORCE)
+  else()
+    set(IR_NAME
+        libir.a
+        CACHE INTERNAL "" FORCE)
+  endif()
+else()
+  if(WITH_SHARED_IR)
+    set(IR_NAME
+        libir.so
+        CACHE INTERNAL "" FORCE)
+  else()
+    set(IR_NAME
+        libir.a
+        CACHE INTERNAL "" FORCE)
+  endif()
+endif()
+
+set(IR_LIB
+    "${CMAKE_CURRENT_BINARY_DIR}/${IR_NAME}"
+    CACHE FILEPATH "IR Library" FORCE)
+
 get_property(ir_modules GLOBAL PROPERTY IR_MODULES)
 if(WITH_SHARED_IR)
   add_library(ir SHARED ${ir_modules})
