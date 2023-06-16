@@ -28,56 +28,6 @@ namespace ir {
 
 namespace patterns {
 
-struct TwoSqueeze2FusePattern : public PatternBase {
-  TwoSqueeze2FusePattern(PDPattern* pattern, const std::string& name_scope);
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(squeeze2_1);
-  PATTERN_DECL_NODE(squeeze2_2);
-  // declare variable node's name
-  PATTERN_DECL_NODE(x);
-  PATTERN_DECL_NODE(squeeze2_1_out);
-  PATTERN_DECL_NODE(squeeze2_2_out);
-};
-
-TwoSqueeze2FusePattern::TwoSqueeze2FusePattern(PDPattern* pattern,
-                                               const std::string& name_scope)
-    : PatternBase(pattern, name_scope, name_scope) {
-  auto* x = pattern->NewNode(x_repr())
-                ->assert_is_op_input("squeeze2", "X")
-                ->AsInput()
-                ->assert_more([](Node* node) {
-                  auto squeeze2_in_x_shape = node->Var()->GetShape();
-                  size_t squeeze2_in_rank = squeeze2_in_x_shape.size();
-                  bool nice_shape = squeeze2_in_x_shape[1] == 1 &&
-                                    squeeze2_in_x_shape[2] == 74 &&
-                                    squeeze2_in_x_shape[3] == 1;
-                  return squeeze2_in_rank == 4 && nice_shape;
-                });
-  auto* squeeze2_1 = pattern->NewNode(squeeze2_1_repr())
-                         ->assert_is_op("squeeze2")
-                         ->assert_more([](Node* node) {
-                           auto* op_desc = node->Op();
-                           return op_desc->GetAttrIfExists<std::vector<int>>(
-                                      "axes") == std::vector<int>{3};
-                         });
-  auto* squeeze2_1_out = pattern->NewNode(squeeze2_1_out_repr())
-                             ->assert_is_op_output("squeeze2", "Out")
-                             ->assert_has_n_outputs(1)
-                             ->assert_is_op_input("squeeze2", "X");
-  squeeze2_1->LinksFrom({x}).LinksTo({squeeze2_1_out});
-  auto* squeeze2_2 = pattern->NewNode(squeeze2_2_repr())
-                         ->assert_is_op("squeeze2")
-                         ->assert_more([](Node* node) {
-                           auto* op_desc = node->Op();
-                           return op_desc->GetAttrIfExists<std::vector<int>>(
-                                      "axes") == std::vector<int>{1};
-                         });
-  auto* squeeze2_2_out = pattern->NewNode(squeeze2_2_out_repr())
-                             ->assert_is_op_output("squeeze2", "Out")
-                             ->assert_has_n_outputs(1);
-  squeeze2_2->LinksFrom({squeeze2_1_out}).LinksTo({squeeze2_2_out});
-}
 struct InterpOutsizeFusePattern : public PatternBase {
   InterpOutsizeFusePattern(PDPattern* pattern, const std::string& name_scope);
 
