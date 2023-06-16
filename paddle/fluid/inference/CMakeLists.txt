@@ -97,7 +97,7 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS phi ir ${fluid_modules} analysis_predictor
+set(SHARED_INFERENCE_DEPS phi ${ir_targets} ${fluid_modules} analysis_predictor
                           ${utils_modules})
 
 if(WITH_CRYPTO)
