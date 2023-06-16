@@ -186,6 +186,16 @@ template <typename T, typename Context>
 void MultiDotKernel(const Context& ctx,
                     const std::vector<const DenseTensor*>& x,
                     DenseTensor* out) {
+  std::cerr << "multi dot" << std::endl;
+
+  for (auto& t : x) {
+    if (t != nullptr) {
+      std::cerr << " t not nullptr" << std::endl;
+      std::cerr << t->IsInitialized() << std::endl;
+    } else {
+      std::cerr << "t is nullptr" << std::endl;
+    }
+  }
   auto ins = x;
   ctx.template Alloc<T>(out);
 

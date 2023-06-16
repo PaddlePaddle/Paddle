@@ -30,6 +30,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/phi/core/kernel_context.h"
 
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
@@ -49,7 +50,7 @@ void BuildScope(ir::Block* block,
     auto attr_map = (*it)->attributes();
     std::string op_name = (*it)->name();
     if (attr_map.count("op_name")) {
-      auto op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
+      op_name = attr_map.at("op_name").dyn_cast<ir::StrAttribute>().data();
     }
     if (op_name == "pd.fetch") {
       // fetch is a very special op, with no output
@@ -67,6 +68,38 @@ void BuildScope(ir::Block* block,
         scope->Rename(name_map->at(ptr), var_name);
         (*name_map)[ptr] = var_name;
       }
+      continue;
+    }
+
+    if (op_name == "builtin.combine") {
+      // fetch is a very special op, with no output
+      auto out_value = (*it)->result(0);
+
+      std::cerr << "run build in " << std::endl;
+      std::string name;
+      if (name_map->find(out_value) != name_map->end()) {
+        name = name_map->at(out_value);
+      } else {
+        name = "inner_var_" + std::to_string(count++);
+        name_map->emplace(out_value, name);
+      }
+
+      auto var = scope->Var(name);
+      auto tensor_array = var->GetMutable<paddle::framework::TensorPointVec>();
+
+      for (size_t i = 0; i < input_num; ++i) {
+        auto ptr = (*it)->operand(i).source();
+
+        PADDLE_ENFORCE_EQ(name_map->count(ptr),
+                          true,
+                          phi::errors::PreconditionNotMet(
+                              "can not found input of combine op"));
+
+        std::cerr << "append dense tensor" << std::endl;
+        tensor_array->emplace_back(
+            &(scope->Var(name_map->at(ptr))->Get<phi::DenseTensor>()));
+      }
+
       continue;
     }
 
@@ -138,7 +171,10 @@ void BuildInferMetaContext(
   // int input_index = 0;
   std::vector<std::string> vec_param_list = runtime_info.infer_meta_param;
 
-  for (auto& t : vec_param_list) {
+  for (size_t input_index = 0; input_index < vec_param_list.size();
+       input_index++) {
+    auto& t = vec_param_list[input_index];
+
     if (input_index_map.count(t)) {
       // get information from input
       ir::Value ptr = op->operand(input_index_map[t]).source();
@@ -162,8 +198,19 @@ void BuildInferMetaContext(
       } else {
         VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
         auto var = scope->Var(in_var_name);
-        const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
-        ctx->EmplaceBackInput(const_cast<phi::TensorBase*>(tensor_in));
+        if (var->IsType<phi::DenseTensor>()) {
+          const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
+          ctx->EmplaceBackInput(const_cast<phi::TensorBase*>(tensor_in));
+        } else {
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>
+              inputs;
+          auto& tensor_array = var->Get<paddle::framework::TensorPointVec>();
+          for (size_t i = 0; i < tensor_array.size(); ++i) {
+            inputs.emplace_back(std::move(phi::MetaTensor(*tensor_array[i])));
+          }
+
+          ctx->EmplaceBackInputs(std::move(inputs));
+        }
       }
     }
 
@@ -267,8 +314,20 @@ void BuildPhiKernelContext(
                                             in_var_name));
 
         auto var = scope->Var(in_var_name);
-        const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
-        ctx->EmplaceBackInput(tensor_in);
+        if (var->IsType<phi::DenseTensor>()) {
+          const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
+          ctx->EmplaceBackInput(tensor_in);
+        } else {
+          std::cerr << "get data from tensor array " << std::endl;
+          paddle::small_vector<const phi::DenseTensor*> inputs;
+          auto& tensor_array = var->Get<paddle::framework::TensorPointVec>();
+          std::cerr << "tensor array " << tensor_array.size() << std::endl;
+          for (size_t i = 0; i < tensor_array.size(); ++i) {
+            inputs.emplace_back(tensor_array[i]);
+          }
+
+          ctx->EmplaceBackInputs(std::move(inputs));
+        }
       }
     }
 

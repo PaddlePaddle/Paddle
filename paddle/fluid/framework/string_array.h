@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/extended_tensor.h"
 
 namespace paddle {
@@ -110,6 +111,11 @@ struct PhiVectorType<std::string> {
   const char* type_name = "PhiVectorString";
 };
 
+template <>
+struct PhiVectorType<const phi::DenseTensor*> {
+  const char* type_name = "PhiTensorPointVec";
+};
+
 template <typename T>
 class PhiVector : public phi::ExtendedTensor,
                   public phi::TypeInfoTraits<phi::TensorBase, PhiVector<T>> {
@@ -171,6 +177,7 @@ class PhiVector : public phi::ExtendedTensor,
 
 using String = std::string;
 using Strings = PhiVector<std::string>;
+using TensorPointVec = PhiVector<const phi::DenseTensor*>;
 
 // Convert the std::string type to the std::string type.
 bool ConvertStrToWstr(const std::string& src, std::wstring* res);
