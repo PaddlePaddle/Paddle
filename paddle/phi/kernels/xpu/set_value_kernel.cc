@@ -357,7 +357,7 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& decrease_axes,
                     const std::vector<int64_t>& none_axes,
                     const std::vector<int64_t>& shape,
-                    const std::vector<Sca /*  */ lar>& values,
+                    const std::vector<Scalar>& values,
                     DenseTensor* out) {
   std::vector<T> assgin_values;
   assgin_values.reserve(values.size());
