@@ -564,11 +564,11 @@ libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
 if('${WITH_SHARED_PHI}' == 'ON'):
-    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+    package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
-    package_data['paddle.libs'] = [('libir' if os.name != 'nt' else 'ir') + ext_name]
+    package_data['paddle.libs'] += [('libir' if os.name != 'nt' else 'ir') + ext_name]
     shutil.copy('${IR_LIB}', libs_path)
 
 package_data['paddle.libs']+=[
