@@ -12,34 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_kernel_type.h"
+#pragma once
+
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/parameter.h"
 
 namespace paddle {
 namespace dialect {
 
-const phi::Place& AllocatedDenseTensorType::place() const {
-  return storage()->place_;
-}
+class PaddleKernelDialect : public ir::Dialect {
+ public:
+  explicit PaddleKernelDialect(ir::IrContext* context);
 
-const ir::Type& AllocatedDenseTensorType::dtype() const {
-  return storage()->dense_tensor_type_.dtype();
-}
+  static const char* name() { return "pd_kernel"; }
 
-const phi::DDim& AllocatedDenseTensorType::dims() const {
-  return storage()->dense_tensor_type_.dims();
-}
+  void PrintType(ir::Type type, std::ostream& os) const override;
 
-const phi::DataLayout& AllocatedDenseTensorType::data_layout() const {
-  return storage()->dense_tensor_type_.data_layout();
-}
+  void PrintAttribute(ir::Attribute attr, std::ostream& os) const override;
 
-const phi::LoD& AllocatedDenseTensorType::lod() const {
-  return storage()->dense_tensor_type_.lod();
-}
-
-const size_t& AllocatedDenseTensorType::offset() const {
-  return storage()->dense_tensor_type_.offset();
-}
+ private:
+  void initialize();
+};
 
 }  // namespace dialect
 }  // namespace paddle

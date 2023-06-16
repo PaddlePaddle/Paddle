@@ -16,6 +16,7 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 
 #include "paddle/fluid/framework/framework.pb.h"
@@ -61,7 +62,9 @@ TEST(PaddleDialectTest, MainProgram) {
   EXPECT_EQ(op_size,
             p.Block(0).OpSize() + program->parameters_num() + 20 + 3 + 8);
 
-  program->Print(std::cout);
+  std::stringstream ss;
+  program->Print(ss);
+  EXPECT_GT(ss.str().size(), 0u);
 }
 
 TEST(PaddleDialectTest, StartupProgram) {
@@ -79,5 +82,7 @@ TEST(PaddleDialectTest, StartupProgram) {
   // + consant_op for guassian
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
 
-  program->Print(std::cout);
+  std::stringstream ss;
+  program->Print(ss);
+  EXPECT_GT(ss.str().size(), 0u);
 }

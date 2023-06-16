@@ -120,6 +120,12 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
                             bool reverse,
                             MetaTensor* out);
 
+void CumWithIndicesInferMeta(const MetaTensor& x,
+                             int axis,
+                             int dtype,
+                             MetaTensor* out,
+                             MetaTensor* indices);
+
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out);

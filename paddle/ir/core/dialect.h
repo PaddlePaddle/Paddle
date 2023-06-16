@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <ostream>
 
 #include "paddle/ir/core/attribute.h"
@@ -25,6 +26,10 @@
 #include "paddle/ir/core/type_base.h"
 
 namespace ir {
+
+class Operation;
+class IrPrinter;
+
 class DialectInterface;
 ///
 /// \brief Dialect can basically be understood as a namespace. In Dialect, we
@@ -136,9 +141,12 @@ class Dialect {
     IR_THROW("dialect has no registered type printing hook");
   }
 
-  virtual void PrintAttribute(Attribute type, std::ostream &os) const {
+  virtual void PrintAttribute(Attribute attr, std::ostream &os) const {
     IR_THROW("dialect has no registered attribute printing hook");
   }
+
+  virtual void PrintOperation(Operation *op,
+                              IrPrinter &printer) const;  // NOLINT
 
  private:
   Dialect(const Dialect &) = delete;

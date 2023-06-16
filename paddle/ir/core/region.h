@@ -35,6 +35,8 @@ class Region {
 
   iterator begin() { return blocks_.begin(); }
   iterator end() { return blocks_.end(); }
+  const_iterator begin() const { return blocks_.begin(); }
+  const_iterator end() const { return blocks_.end(); }
   reverse_iterator rbegin() { return blocks_.rbegin(); }
   reverse_iterator rend() { return blocks_.rend(); }
 

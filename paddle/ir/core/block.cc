@@ -38,4 +38,10 @@ void Block::clear() {
     ops_.pop_back();
   }
 }
+
+void Block::SetParent(Region *parent, Region::iterator position) {
+  parent_ = parent;
+  position_ = position;
+}
+
 }  // namespace ir

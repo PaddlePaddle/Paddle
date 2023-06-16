@@ -12,23 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/pd_kernel_op.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 
 namespace paddle {
 namespace dialect {
 
-const char *PhiKernelOp::attributes_name[attributes_num] = {
-    "base_op", "infermeta_fn", "kernel_fn"};
+const phi::Place& AllocatedDenseTensorType::place() const {
+  return storage()->place_;
+}
 
-void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
-                         const std::vector<ir::Type> &outputs,
-                         const ir::AttributeMap &attributes) {
-  VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
-  // Verify inputs type:
+const ir::Type& AllocatedDenseTensorType::dtype() const {
+  return storage()->dense_tensor_type_.dtype();
+}
 
-  // Verify if attributes contain attribute name in attributes_name:
-  //   if (!attributes.at("parameter_name").isa<StrAttribute>()) {
-  //     throw("Type of attribute: parameter_name is not right.");
+const phi::DDim& AllocatedDenseTensorType::dims() const {
+  return storage()->dense_tensor_type_.dims();
+}
+
+const phi::DataLayout& AllocatedDenseTensorType::data_layout() const {
+  return storage()->dense_tensor_type_.data_layout();
+}
+
+const phi::LoD& AllocatedDenseTensorType::lod() const {
+  return storage()->dense_tensor_type_.lod();
+}
+
+const size_t& AllocatedDenseTensorType::offset() const {
+  return storage()->dense_tensor_type_.offset();
 }
 
 }  // namespace dialect

@@ -463,6 +463,26 @@
     func : cross_grad
     data_type : out_grad
 
+- backward_op : cummax_grad
+  forward : cummax(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cummax_grad
+
+- backward_op : cummin_grad
+  forward : cummin(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cummin_grad
+
 - backward_op : cumprod_grad
   forward : cumprod (Tensor x, int dim) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int dim)
@@ -722,6 +742,17 @@
     func : FillDiagonalTensorGradInferMeta
   kernel :
     func : fill_diagonal_tensor_grad
+  inplace : (out_grad -> x_grad)
+
+- backward_op : fill_grad
+  forward : fill (Tensor x, Scalar value=0) -> Tensor(out)
+  args : (Tensor out_grad, Scalar value)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fill_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : flash_attn_grad

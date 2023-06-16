@@ -29,6 +29,7 @@ bool OpInfo::HasInterface(TypeId interface_id) const {
 IrContext *OpInfo::ir_context() const {
   return impl_ ? impl_->ir_context() : nullptr;
 }
+Dialect *OpInfo::dialect() const { return impl_ ? impl_->dialect() : nullptr; }
 
 const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 

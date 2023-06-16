@@ -32,6 +32,8 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 DECLARE_bool(new_executor_use_local_scope);
 
@@ -50,6 +52,12 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   Scope* scope,
+                  const ExecutionConfig& execution_config = ExecutionConfig());
+
+  InterpreterCore(const platform::Place& place,
+                  const BlockDesc& block,
+                  Scope* scope,
+                  ::ir::Program* ir_prog,
                   const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~InterpreterCore();
@@ -191,6 +199,11 @@ class InterpreterCore {
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 
   std::vector<HookFunc> hookfuncs_;
+
+  // The next only for new IR
+  ::ir::Program* ir_program_{nullptr};
+
+  std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
 };
 
 }  // namespace framework
