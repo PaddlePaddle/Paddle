@@ -212,6 +212,7 @@
   kernel :
     func : full_like
     param : [x, value, dtype]
+    data_type : dtype > x
 
 - op : gaussian
   args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)

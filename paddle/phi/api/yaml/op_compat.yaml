@@ -1099,8 +1099,6 @@
     value :
       data_type : float
       support_tensor : true
-  get_expected_kernel_type :
-    full_like : GetFullLikeExpectedKernelType
 
 - op : fused_conv2d
   extra :
