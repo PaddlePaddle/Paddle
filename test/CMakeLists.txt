@@ -169,6 +169,7 @@ if(${len} GREATER_EQUAL 1)
       target_link_libraries(${test_name} paddle_gtest_main_new)
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:ir>)
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
@@ -180,7 +181,7 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(
           ${test_name}
-          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi>"
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:ir>"
         )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
