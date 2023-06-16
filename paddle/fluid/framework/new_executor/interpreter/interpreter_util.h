@@ -38,7 +38,6 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/ir/core/program.h"
 
 using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 
