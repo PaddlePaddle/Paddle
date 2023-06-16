@@ -1119,30 +1119,58 @@ void BatchNormGradRawKernel(const Context &ctx,
     }
 
     if (compute_format == DataLayout::kNCHW) {
-      if (d_x) {
-        KeBNBackwardData<T, phi::DataLayout::kNCHW>
-            <<<grid1, block, 0, stream>>>(d_y->data<T>(),
-                                          scale.data<BatchNormParamType<T>>(),
-                                          running_var_data,
-                                          epsilon,
-                                          C,
-                                          H * W,
-                                          num,
-                                          d_x->data<T>());
-      }
-      if (d_scale && d_bias) {
-        KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
-            <<<grid2, block, 0, stream>>>(
-                d_y->data<T>(),
-                x.data<T>(),
-                running_mean_data,
-                running_var_data,
-                epsilon,
-                N,
-                C,
-                H * W * D,
-                d_scale->data<BatchNormParamType<T>>(),
-                d_bias->data<BatchNormParamType<T>>());
+      if (data_layout == DataLayout::kNHWC) {
+        if (d_x) {
+          KeBNBackwardData<T, phi::DataLayout::kNHWC>
+              <<<grid1, block, 0, stream>>>(d_y->data<T>(),
+                                            scale.data<BatchNormParamType<T>>(),
+                                            running_var_data,
+                                            epsilon,
+                                            C,
+                                            H * W,
+                                            num,
+                                            d_x->data<T>());
+        }
+        if (d_scale && d_bias) {
+          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNHWC>
+              <<<grid2, block, 0, stream>>>(
+                  d_y->data<T>(),
+                  x.data<T>(),
+                  running_mean_data,
+                  running_var_data,
+                  epsilon,
+                  N,
+                  C,
+                  H * W * D,
+                  d_scale->data<BatchNormParamType<T>>(),
+                  d_bias->data<BatchNormParamType<T>>());
+        }
+      } else {
+        if (d_x) {
+          KeBNBackwardData<T, phi::DataLayout::kNCHW>
+              <<<grid1, block, 0, stream>>>(d_y->data<T>(),
+                                            scale.data<BatchNormParamType<T>>(),
+                                            running_var_data,
+                                            epsilon,
+                                            C,
+                                            H * W,
+                                            num,
+                                            d_x->data<T>());
+        }
+        if (d_scale && d_bias) {
+          KeBNBackwardScaleBias<T, block, phi::DataLayout::kNCHW>
+              <<<grid2, block, 0, stream>>>(
+                  d_y->data<T>(),
+                  x.data<T>(),
+                  running_mean_data,
+                  running_var_data,
+                  epsilon,
+                  N,
+                  C,
+                  H * W * D,
+                  d_scale->data<BatchNormParamType<T>>(),
+                  d_bias->data<BatchNormParamType<T>>());
+        }
       }
     } else {
       if (d_x) {
