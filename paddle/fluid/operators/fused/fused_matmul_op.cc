@@ -106,6 +106,8 @@ class FusedMatmulOpMaker : public MatMulV2OpMaker {
     AddAttr<bool>("force_fp32_output",
                   "Flag determining if output should be converted to FP32")
         .SetDefault(false);
+    AddAttr<bool>("use_mkldnn", "(bool, default false) Used in mkldnn kernel")
+        .SetDefault(true);
     AddComment(
         R"DOC(Matrix multiplication extended with oneDNN-specific fusion logic.)DOC");
   }
