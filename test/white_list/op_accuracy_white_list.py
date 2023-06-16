@@ -94,3 +94,11 @@ NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
     'fake_quantize_moving_average_abs_max',
     'p_norm',
 ]
+
+
+NO_BF16_COMPARED_WITH_FP32_OP_LIST = [
+    'unique',
+    'fusion_gru',
+    'fusion_lstm',
+    'dequantize',
+]
