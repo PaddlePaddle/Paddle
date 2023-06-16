@@ -105,13 +105,14 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   auto meta = out->meta();
   meta.offset = output_offset;
   auto tmp_dim = DDim(output_dims.data(), output_dims.size());
-  if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
-    PADDLE_THROW(
-        phi::errors::Fatal("Striede_slice kernel stride compute diff, infer "
-                           "shape is %s, but compute is %s.",
-                           meta.dims,
-                           tmp_dim));
-  }
+  // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
+  //   PADDLE_THROW(
+  //       phi::errors::Fatal("Striede_slice kernel stride compute diff, infer "
+  //                          "shape is %s, but compute is %s.",
+  //                          meta.dims,
+  //                          tmp_dim));
+  // }
+  meta.dims = tmp_dim;
   meta.stride = DDim(output_stride.data(), output_stride.size());
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
