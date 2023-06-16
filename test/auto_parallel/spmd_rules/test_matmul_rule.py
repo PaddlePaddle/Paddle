@@ -14,8 +14,8 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.completion import get_spmd_rule
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.static.completion import get_spmd_rule
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
 )
@@ -24,7 +24,6 @@ from paddle.distributed.fleet import auto
 
 class TestMatmulSPMDRule(unittest.TestCase):
     def setUp(self):
-
         self.rule = get_spmd_rule("matmul")
 
         x_shape = [64, 32]
@@ -47,7 +46,6 @@ class TestMatmulSPMDRule(unittest.TestCase):
         }
 
     def test_matmul_infer_forward(self):
-
         # TODO test partial: mk[1, 0],kn[0, -1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]
         result_tensor_specs = self.rule.infer_forward(
             [self.x_dist_tensor_spec, self.y_dist_tensor_spec], self.attrs
