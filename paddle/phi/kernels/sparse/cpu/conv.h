@@ -166,8 +166,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
     out_indices_ptr[i] = batch;
     out_indices_ptr[i + out_non_zero_num] = z;
     out_indices_ptr[i + out_non_zero_num * 2] = y;
-    out_indices_ptr[i + out_non_zero_num * 3] = x;
-  }
+    out_indices_ptr[i + out_non_zero_num * 3] = x  }
   for (i = 0; i < n; i++) {
     IntT out_index = rulebook_ptr[i + n * 2];
     rulebook_ptr[i + n * 2] =
