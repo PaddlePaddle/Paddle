@@ -34,7 +34,7 @@ void IndexSelectStridedKernel(const Context& ctx,
   std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
   int64_t offset = x.offset();
 
-  offset = offset + indexs[i] * stride[dim] * SizeOf(output->dtype());
+  offset = offset + index * stride[dim] * SizeOf(output->dtype());
   shape.erase(shape.begin() + dim);
   stride.erase(stride.begin() + dim);
 
