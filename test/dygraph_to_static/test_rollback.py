@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle.jit.dy2static.program_translator import StaticFunction
@@ -88,6 +89,7 @@ class TestRollBackNet(unittest.TestCase):
     def setUp(self):
         paddle.set_device("cpu")
 
+    @ast_only_test
     def test_net(self):
         net = paddle.jit.to_static(Net())
         x = paddle.randn([3, 4])

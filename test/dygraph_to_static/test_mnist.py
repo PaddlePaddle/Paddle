@@ -18,6 +18,7 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
@@ -158,6 +159,7 @@ class TestMNISTWithToStatic(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @ast_only_test
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
