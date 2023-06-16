@@ -35,6 +35,8 @@
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
