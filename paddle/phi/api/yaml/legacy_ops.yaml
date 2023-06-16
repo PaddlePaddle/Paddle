@@ -310,15 +310,6 @@
   kernel :
     func : equal
 
-- op : expand
-  args : (Tensor x, IntArray shape)
-  output : Tensor
-  infer_meta :
-    func : ExpandInferMeta
-  kernel :
-    func : expand
-  backward : expand_grad
-
 - op : exponential_
   args : (Tensor x, float lam)
   output : Tensor(out)
