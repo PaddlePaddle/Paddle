@@ -2010,9 +2010,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
     return true;
   }
 #endif
-  // if (private_context_) {
-  //   paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
-  // }
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+  }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) {
@@ -2049,9 +2049,9 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
-  // if (private_context_) {
-  //   paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
-  // }
+  if (private_context_) {
+    paddle::platform::DeviceContextPool::SetDeviceContexts(nullptr);
+  }
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
@@ -2095,7 +2095,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 }
 #endif
 
-bool AnalysisPredictor::ExpRunWithExternalConfig1(void *config) {
+bool AnalysisPredictor::ExpRunWithExternalConfig(void *config) {
 #ifdef PADDLE_WITH_XPU
   PADDLE_ENFORCE(
       private_context_,
@@ -2118,35 +2118,21 @@ bool AnalysisPredictor::ExpRunWithExternalConfig1(void *config) {
     predictor_stream_ = stream;
     dev_ctx->SetStream(stream);
   }
-  /*
-    size_t l3_size = xpu_external_config->l3_size;
-    void *l3_ptr = xpu_external_config->l3_ptr;
-    size_t l3_autotune_size = xpu_external_config->l3_autotune_size;
-    PADDLE_ENFORCE_LE(
-        l3_autotune_size,
-        l3_size,
-        phi::errors::InvalidArgument(
-            "l3_autotune_size(%zu) should be less than or equal to
-    l3_size(%zu).", l3_autotune_size, l3_size)); dev_ctx->SetL3Info(l3_size,
-    l3_ptr, l3_autotune_size);*/
-  if (private_context_) {
-    paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
-  }
-  return true;
-#endif
-  return false;
-}
 
-bool AnalysisPredictor::ExpRunWithExternalConfig2(void *config) {
-#ifdef PADDLE_WITH_XPU
-  /*auto *dev_ctxs = reinterpret_cast<const std::map<
-        phi::Place,
-        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        this->GetDeviceContexts());
-    auto *dev_ctx =
-        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());*/
+  size_t l3_size = xpu_external_config->l3_size;
+  void *l3_ptr = xpu_external_config->l3_ptr;
+  size_t l3_autotune_size = xpu_external_config->l3_autotune_size;
+  PADDLE_ENFORCE_LE(
+      l3_autotune_size,
+      l3_size,
+      phi::errors::InvalidArgument(
+          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
+          l3_autotune_size,
+          l3_size));
+  dev_ctx->SetL3Info(l3_size, l3_ptr, l3_autotune_size);
+
   bool ret = ZeroCopyRun();
-  // dev_ctx->L3CacheAutotune();
+  dev_ctx->L3CacheAutotune();
   return ret;
 #endif
   return false;
@@ -3026,16 +3012,10 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
   return false;
 }
 
-bool InternalUtils::RunWithExternalConfig1(paddle_infer::Predictor *p,
-                                           void *config) {
+bool InternalUtils::RunWithExternalConfig(paddle_infer::Predictor *p,
+                                          void *config) {
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ExpRunWithExternalConfig1(config);
-}
-
-bool InternalUtils::RunWithExternalConfig2(paddle_infer::Predictor *p,
-                                           void *config) {
-  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ExpRunWithExternalConfig2(config);
+  return pred->ExpRunWithExternalConfig(config);
 }
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,

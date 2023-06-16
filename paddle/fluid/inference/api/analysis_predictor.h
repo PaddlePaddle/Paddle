@@ -229,8 +229,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool ExpRunWithExternalStream(void *stream);
 
   // Note: Can only be used under thread_local semantics.
-  bool ExpRunWithExternalConfig1(void *config);
-  bool ExpRunWithExternalConfig2(void *config);
+  bool ExpRunWithExternalConfig(void *config);
 
   ///
   /// \brief Get the execution stream on devices with a concept of stream,

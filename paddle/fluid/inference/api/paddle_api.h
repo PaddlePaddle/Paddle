@@ -487,10 +487,8 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
-  static bool RunWithExternalConfig1(paddle_infer::Predictor* pred,
-                                     void* config);
-  static bool RunWithExternalConfig2(paddle_infer::Predictor* pred,
-                                     void* config);
+  static bool RunWithExternalConfig(paddle_infer::Predictor* pred,
+                                    void* config);
 
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
