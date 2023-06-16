@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context>
 void IndexSelectStridedKernel(const Context& ctx,
                               const DenseTensor& x,
-                              const std::vector<int64_t>& indexs,
+                              int64_t index,
                               int dim,
                               DenseTensor* output) {
   auto input_dim = x.dims();
@@ -34,19 +34,19 @@ void IndexSelectStridedKernel(const Context& ctx,
   std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
   int64_t offset = x.offset();
 
-  for (size_t i = 0; i < indexs.size(); ++i) {
-    offset = offset + indexs[i] * stride[dim] * SizeOf(output->dtype());
-    shape.erase(shape.begin() + dim);
-    stride.erase(stride.begin() + dim);
-  }
+  offset = offset + indexs[i] * stride[dim] * SizeOf(output->dtype());
+  shape.erase(shape.begin() + dim);
+  stride.erase(stride.begin() + dim);
 
   auto meta = output->meta();
   meta.offset = offset;
   auto tmp_dim = DDim(shape.data(), shape.size());
-  if (meta.dims != tmp_dim) {
-    LOG(WARNING) << "Index_select kernel stride compute diff, infer shape is "
-                 << meta.dims << ", but compute is " << tmp_dim << ".";
-    meta.dims = tmp_dim;
+  if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
+    PADDLE_THROW(
+        phi::errors::Fatal("Index_select kernel stride compute diff, infer "
+                           "shape is %s, but compute is %s.",
+                           meta.dims,
+                           tmp_dim));
   }
   meta.stride = DDim(stride.data(), stride.size());
   output->set_meta(meta);
