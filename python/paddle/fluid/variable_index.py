@@ -18,7 +18,7 @@ from . import unique_name
 from . import core
 import paddle
 import warnings
-from .framework import default_main_program, Variable
+
 
 MAX_INTEGER = 2**31 - 1
 
@@ -371,6 +371,7 @@ def _getitem_impl_(var, item):
     Returns:
         Sliced variable
     """
+    from .framework import default_main_program, Variable
 
     if isinstance(item, list):
         if not is_one_dim_list(item, int):
@@ -645,6 +646,7 @@ def _setitem_for_tensor_array(var, item, value):
 
 def _setitem_impl_(var, item, value):
     from paddle.fluid import core
+    from .framework import default_main_program, Variable
 
     if var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         return _setitem_for_tensor_array(var, item, value)
@@ -980,6 +982,8 @@ def _setitem_static(x, indices, values):
         indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
         values(Tensor|Number|Ndarray): values to be assigned to the x.
     """
+    from .framework import default_main_program, Variable
+
     if x.type == paddle.fluid.core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         return _setitem_for_tensor_array(x, indices, values)
 
@@ -1170,6 +1174,8 @@ def get_tensor_with_basic_indexing(
                     attrs['decrease_axis'],
                 )
         else:
+            from .framework import default_main_program
+
             target_block = default_main_program().current_block()
 
             slice_out_var = target_block.create_var(
