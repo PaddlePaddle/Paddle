@@ -14,17 +14,13 @@ limitations under the License. */
 
 #include <iostream>
 #include <vector>
-#include "paddle/fluid/operators/fused/cublaslt.h"
-#include "paddle/fluid/operators/fused/datatype_traits.h"
-#include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/datatype_traits.h"
+#include "paddle/phi/kernels/funcs/cublaslt.h"
+#include "paddle/phi/kernels/funcs/quant_dequant.h"
 
 #pragma once
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 namespace llm_int8 {
 constexpr int32_t WARP_SIZE = 32;
@@ -462,7 +458,7 @@ template <typename T>
 void LaunchFillKernel(T* input,
                       T value,
                       int64_t num,
-                      GpuLaunchConfig* gpu_config,
+                      backends::gpu::GpuLaunchConfig* gpu_config,
                       gpuStream_t stream) {
   constexpr int VecSize = 16 / sizeof(T);
   Fill<T, VecSize>
@@ -537,7 +533,6 @@ void LaunchSplitKernel(const T* x,
 
   const int32_t sub_x_elem_cnt = m * kfp_num;
   const int32_t sub_w_elem_cnt = n * kfp_num;
-  VLOG(1) << "Sub w elem cnt is: " << sub_w_elem_cnt;
 
   using DataT = typename PDDataTypeTraits<T>::DataType;
   SplitKernel<DataT>
@@ -616,8 +611,6 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
                                 outlier_idx.data<int32_t>(),
                                 quant_input.data<int8_t>(),
                                 dev_ctx.stream());
-  VLOG(2) << "row_ranges " << row_ranges;
-  VLOG(2) << "quant_input " << quant_input;
   int32_t kfp_num = 0;
   phi::DenseTensor kfp_num_tensor;
   kfp_num_tensor.Resize({1});
@@ -653,8 +646,6 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
                                                sub_weight.numel() * sizeof(T),
                                                dev_ctx.stream()));
 
-    // VLOG(1) << "LaunchSplitKernel";
-
     LaunchSplitKernel(input->data<T>(),
                       weight->data<int8_t>(),
                       weight_scale->data<float>(),
@@ -666,7 +657,6 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
                       n,
                       kfp_num,
                       dev_ctx.stream());
-    VLOG(1) << "EndSplitKernel";
 
     CBLAS_TRANSPOSE transA = CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasTrans;
@@ -675,7 +665,6 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
 
     // (m, n, k) = bsz_seq, output_size, input_size, (input, weight, out)
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
-    VLOG(1) << "GEMM fp16 " << m << " " << n;
     blas.GEMM(transA,
               transB,
               m,
@@ -699,7 +688,6 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
 
   {
     auto helper = std::make_unique<CublasLtHelper>(m, k, n);
-    VLOG(1) << "GEMM int8";
     helper->GEMM(quant_input.data<int8_t>(),
                  weight->data<int8_t>(),
                  int_out.data<int32_t>(),
@@ -708,7 +696,6 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
   }
   // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
 
-  // VLOG(1) << "LaunchDequantMergeKernel";
   LaunchDequantMergeKernel<T>(int_out.data<int32_t>(),
                               sub_out.data<T>(),
                               row_ranges.data<float>(),
@@ -721,5 +708,4 @@ void LLMGemm(const phi::GPUContext& dev_ctx,
 }
 
 }  // namespace llm_int8
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

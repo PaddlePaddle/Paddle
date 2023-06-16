@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/llm_int8_mat_mul_kernel.h"
-#include "paddle/fluid/operators/fused/llm_int8.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/llm_int8_mat_mul_kernel_impl.h"
 // #include "paddle/phi/kernels/impl/llm_int8_kernel_impl.h"
 // #include "paddle/phi/kernels/impl/weight_only_kernel_impl.h"
 
@@ -37,18 +37,18 @@ void llm_int8_compute(const Context& dev_ctx,
   int k = w_dims[1];
   int n = w_dims[0];
   int m = x.numel() / k;
-  // mk * kn = mn
-  paddle::operators::llm_int8::LLMGemm<T>(dev_ctx,
-                                          &weight,
-                                          &x,
-                                          &weight_scale,
-                                          threshold,
-                                          out,
-                                          &cublaslt_workspace,
-                                          "llm_int8_mat_mul",
-                                          m,
-                                          k,
-                                          n);
+  // mk * transpose(nk) = mn
+  llm_int8::LLMGemm<T>(dev_ctx,
+                       &weight,
+                       &x,
+                       &weight_scale,
+                       threshold,
+                       out,
+                       &cublaslt_workspace,
+                       "llm_int8_mat_mul",
+                       m,
+                       k,
+                       n);
 }
 
 template <typename T, typename Context>

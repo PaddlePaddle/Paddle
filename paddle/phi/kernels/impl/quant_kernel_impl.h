@@ -15,8 +15,8 @@
 #ifndef PADDLE_PHI_KERNELS_IMPL_QUANT_KERNEL_IMPL_H_
 #define PADDLE_PHI_KERNELS_IMPL_QUANT_KERNEL_IMPL_H_
 #include <iostream>
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"

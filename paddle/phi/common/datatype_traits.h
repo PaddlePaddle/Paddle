@@ -13,30 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 // #include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/float16.h"
 
 #pragma once
 
 namespace phi {
-
-// namespace plat = paddle::platform;
-// using float16 = plat::float16;
-
-// template <typename D>
-// class PDDataTypeTraits;
-
-// template <>
-// class PDDataTypeTraits<float> {
-//  public:
-//   typedef float DataType;
-// };
-
-// template <>
-// class PDDataTypeTraits<float16> {
-//  public:
-//   typedef half DataType;
-// };
 
 template <typename T>
 struct PDDataTypeTraits {
