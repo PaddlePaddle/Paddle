@@ -216,8 +216,8 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   brpc::Channel channel;
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
-  options.connect_timeout_ms = 1000;
-  options.timeout_ms = 1000;
+  options.connect_timeout_ms = 100000;
+  options.timeout_ms = 100000;
   options.max_retry = 5;
   PADDLE_ENFORCE_EQ(
       channel.Init(dst_addr_for_brpc, &options),

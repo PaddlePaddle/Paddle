@@ -76,6 +76,80 @@ struct LiteNNAdapterConfig {
   LiteNNAdapterConfig& Disable();
 };
 
+struct PD_INFER_DECL XpuConfig {
+  // Select which xpu device to run model.
+  int device_id{0};
+
+  // Available l3 size (Byte)
+  // For kunlun1, max l3_size is 16773120 Byte
+  // For kunlun2, max l3_size is 67104768 Byte
+  size_t l3_size{0};
+  // If l3_ptr is not nullptr, it is used as l3 buffer.
+  // If l3_ptr is nullptr, new l3 buffer will be created.
+  void* l3_ptr{nullptr};
+  // Available l3 size for autotune.
+  // If l3_autotune_size is 0, autotune is closed.
+  // Note: The remaining l3 size (l3_size - l3_autotune_size) is for
+  // kernels (both paddle/xdnn kernels)
+  size_t l3_autotune_size{0};
+
+  // xpu_context(from baidu::xpu::api::create_context) for execution.
+  // If context is nullptr, new context will be created by default.
+  void* context{nullptr};
+  // Stream for execution.
+  // If stream is nullptr, default stream will be used.
+  void* stream{nullptr};
+
+  // Conv autotune level. Default 0 means no autotune.
+  // Note: Paddle-Lite only.
+  int conv_autotune_level{0};
+  // Base conv autotune info is read from conv_autotune_file.
+  // Note: Paddle-Lite only.
+  std::string conv_autotune_file;
+  // Whether write new conv autotune info to conv_autotune_file.
+  // Note: Paddle-Lite only.
+  bool conv_autotune_file_writeback{false};
+
+  // Fc autotune level. The Optional values are 0-9. Default 0 means no
+  // autotune. Note: Paddle-Lite only.
+  int fc_autotune_level{0};
+  // Base fc autotune info is read from fc_autotune_file.
+  // Note: Paddle-Lite only.
+  std::string fc_autotune_file;
+  // Whether write new fc autotune info to fc_autotune_file.
+  // Note: Paddle-Lite only.
+  bool fc_autotune_file_writeback{false};
+
+  // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
+  // Note: "gemm_compute_precision" has no effect on quanted ops of quant model
+  // Note: Paddle-Lite only.
+  int gemm_compute_precision{1};
+  // Which method to optimize softmax in transformer structure. Optional values
+  // are 0,1,2. Note: Paddle-Lite only.
+  int transformer_softmax_optimize_level{0};
+  // Whether enable adaptive_seqlen optimize on transformer encoder.
+  // Note: Paddle-Lite only.
+  bool transformer_encoder_adaptive_seqlen{true};
+
+  // Gelu out max threshold is limited to quant_post_static_gelu_out_threshold
+  // if use static post-quantization.
+  // Note: Paddle-Lite only.
+  float quant_post_static_gelu_out_threshold{10.f};
+  // Activation method if use dynamic post-quantization.
+  // For kunlun1, optional values are 0(per_tensor),1(per_batch),2(per_head).
+  // For kunlun2, optional values are 0(per_tensor) or non-zero(every_16).
+  // Note: Paddle-Lite only.
+  int quant_post_dynamic_activation_method{0};
+  // Preprocess weight to quant_post_dynamic_weight_precision if use dynamic
+  // post-quantization. Optional values is 0,1,2.
+  // * If 0, preprocess weight to int8.
+  // * If 1, preprocess weight to int16.
+  // * If 2, preprocess weight to float.
+  // Note: PaddleInference only.
+  int quant_post_dynamic_weight_precision{1};
+  std::vector<std::string> quant_post_dynamic_op_types;
+};
+
 struct DistConfig {
   bool use_dist_model() const { return use_dist_model_; }
   void EnableDistModel(bool use_dist_model) {
@@ -271,42 +345,46 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on XPU.
   ///
   /// \param l3_workspace_size The size of the video memory allocated by the l3
-  ///         cache, the maximum is 16M.
-  /// \param locked Whether the allocated L3 cache can be locked. If false,
+  ///       cache, the maximum is 16M.
+  /// \param l3_locked Whether the allocated L3 cache can be locked. If false,
   ///       it means that the L3 cache is not locked, and the allocated L3
   ///       cache can be shared by multiple models, and multiple models
   ///       sharing the L3 cache will be executed sequentially on the card.
-  /// \param autotune Whether to autotune the conv operator in the model. If
-  ///       true, when the conv operator of a certain dimension is executed
+  /// \param conv_autotune Whether to autotune the conv operator in the model.
+  ///       If true, when the conv operator of a certain dimension is executed
   ///       for the first time, it will automatically search for a better
   ///       algorithm to improve the performance of subsequent conv operators
   ///       of the same dimension.
-  /// \param autotune_file Specify the path of the autotune file. If
+  /// \param conv_autotune_file Specify the path of the autotune file. If
   ///       autotune_file is specified, the algorithm specified in the
   ///       file will be used and autotune will not be performed again.
-  /// \param precision Calculation accuracy of multi_encoder
-  /// \param adaptive_seqlen Is the input of multi_encoder variable length
-  /// \param enable_multi_stream Whether to enable the multi stream of xpu.
+  /// \param transformer_encoder_precision Calculation accuracy of multi_encoder
+  /// \param transformer_encoder_adaptive_seqlen Is the input of multi_encoder
+  ///       variable length
+  /// \param enable_multi_stream Whether to enable the multi
+  ///       stream of xpu.
   ///
-  void EnableXpu(int l3_workspace_size = 0xfffc00,
-                 bool locked = false,
-                 bool autotune = true,
-                 const std::string& autotune_file = "",
-                 const std::string& precision = "int16",
-                 bool adaptive_seqlen = false,
+  void EnableXpu(int l3_size = 0xfffc00,
+                 bool l3_locked = false,
+                 bool conv_autotune = true,
+                 const std::string& conv_autotune_file = "",
+                 const std::string& transformer_encoder_precision = "int16",
+                 bool transformer_encoder_adaptive_seqlen = false,
                  bool enable_multi_stream = false);
 
   ///
   /// \brief configs of XPU
   ///
-  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
-  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
-  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
-  /// dynamic post quantization.
+  /// \param config Configs for xpu. See XpuConfig for more details.
   ///
-  void SetXpuConfig(
-      int quant_post_dynamic_weight_bits = -1,
-      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+  void SetXpuConfig(const XpuConfig& config);
+
+  ///
+  /// \brief Get configs of xpu
+  ///
+  /// \return XpuConfig The configs of xpu.
+  ///
+  XpuConfig xpu_config() { return xpu_config_; }
 
   ///
   /// \brief configs of IPU
@@ -462,7 +540,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return int The XPU device id.
   ///
-  int xpu_device_id() const { return xpu_device_id_; }
+  int xpu_device_id() const { return xpu_config_.device_id; }
   /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
@@ -1191,16 +1269,9 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // XPU related.
   bool use_xpu_{false};
-  int xpu_device_id_{0};
-  int xpu_l3_workspace_size_{0};
-  bool xpu_locked_;
-  bool xpu_autotune_;
-  std::string xpu_autotune_file_;
-  std::string xpu_precision_;
-  bool xpu_adaptive_seqlen_;
-  bool xpu_enable_multi_stream_;
-  int xpu_quant_post_dynamic_weight_bits_{-1};
-  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
+  XpuConfig xpu_config_;
+  bool xpu_lite_l3_locked_{false};
+  bool xpu_lite_enable_multi_stream_{false};
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};

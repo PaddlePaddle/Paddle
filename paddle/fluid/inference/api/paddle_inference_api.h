@@ -47,6 +47,7 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 using DistConfig = paddle::DistConfig;
+using XpuConfig = paddle::XpuConfig;
 
 ///
 /// \class Predictor
@@ -197,7 +198,7 @@ class PD_INFER_DECL Predictor {
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
+  void RegisterOutputHook(const OutputTensorHookFunc& hookfunc);
 
   ///
   /// \brief Get the execution stream on devices with a concept of stream,

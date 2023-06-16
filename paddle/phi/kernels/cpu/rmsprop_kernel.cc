@@ -105,10 +105,6 @@ struct RmsFunctor<T, phi::CPUContext> {
   }
 };
 
-template struct RmsFunctor<phi::GPUContext, float>;
-template struct RmsFunctor<phi::GPUContext, double>;
-template struct RmsFunctor<phi::GPUContext, phi::dtype::float16>;
-
 }  // namespace phi
 PD_REGISTER_KERNEL(
     rmsprop, CPU, ALL_LAYOUT, phi::RmspropDenseKernel, float, double) {}

@@ -420,7 +420,6 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
 
 
 def _get_corresponding_rank(dist_context, target_mesh, rank):
-
     # TODO(JZ-LIANG) a hack method to support varying mesh in Pipeline parallelism case.
     # we assume that all mesh are evenly divide from a parent mesh and should have same size.
     # to revise this in future.
@@ -1188,7 +1187,6 @@ def set_grad_var_shape(program, dist_context):
     grad_var_to_var = dist_context.dist_op_context.grad_var_to_var
 
     for idx, op in enumerate(block.ops):
-
         if int(op.attr('op_role')) != int(OpRole.Backward):
             continue
 
@@ -1208,7 +1206,6 @@ def set_grad_var_shape(program, dist_context):
         assert op_dist_attr is not None
 
         for var_name in op.output_arg_names:
-
             if "@GRAD" not in var_name:
                 continue
             if var_name in grad_var_to_var[appended_grad_times]:
@@ -1807,7 +1804,6 @@ def to_list(value):
 
 
 def debug_program(program, path, name):
-
     filename = os.path.join(
         path, name + '_program' + ".%d" % (paddle.distributed.get_rank())
     )
@@ -1823,7 +1819,6 @@ def ring_id_to_process_group(ring_id):
 
 
 def find_higher_order_backward_op(program):
-
     higher_order_op_suffix = ['_grad_grad', 'triple_grad']
     for block in program.blocks:
         for op in block.ops:
@@ -2233,7 +2228,6 @@ def insert_dependencies_for_two_ops(
     )
 
     def _select_best_depend_var(vars):
-
         # parameter should not be dep var since it maybe partition in sharding pass
         vars = [var for var in vars if not var.is_parameter]
         assert len(vars) > 0

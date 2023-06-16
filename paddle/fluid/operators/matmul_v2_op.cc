@@ -91,9 +91,6 @@ void MatMulV2Op::InferShape(framework::InferShapeContext* ctx) const {
   if (!y_broadcasted) {
     new_dims.push_back(N);
   }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
-  }
 
   ctx->SetOutputDim("Out", phi::make_ddim(new_dims));
   ctx->ShareLoD("X", "Out");

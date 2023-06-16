@@ -22,6 +22,14 @@ namespace phi {
 // Common InferMeta Functions for fusion operators.
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void AddActXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& y,
+                        const MetaTensor& y_max,
+                        int act_type,
+                        MetaTensor* out,
+                        MetaTensor* out_max);
+
 void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& filter,
@@ -127,4 +135,14 @@ void FusedMultiTransformerXpuInferMeta(
     int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out);
+
+void YoloBoxXPUInferMeta(const MetaTensor& x,
+                         const MetaTensor& x_max,
+                         const MetaTensor& grid,
+                         const MetaTensor& stride,
+                         const MetaTensor& anchor_grid,
+                         float offset,
+                         MetaTensor* out,
+                         MetaTensor* out_max);
+
 }  // namespace phi

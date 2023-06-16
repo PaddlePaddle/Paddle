@@ -15,14 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
+from test_fusion_gru_op import fusion_gru
+from test_fusion_lstm_op import ACTIVATION
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-)
-from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION
 
 
 @unittest.skipIf(

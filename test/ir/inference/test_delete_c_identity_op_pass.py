@@ -56,7 +56,7 @@ class TestDeleteCIdentityPass(PassAutoScanTest):
         self.run_and_statis(
             max_examples=2,
             min_success_num=2,
-            passes=["delete_c_identity_op_pass"],
+            passes=["identity_op_clean_pass"],
         )
 
 

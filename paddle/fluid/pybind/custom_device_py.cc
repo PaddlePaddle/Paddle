@@ -29,6 +29,10 @@ namespace pybind {
 void BindCustomDevicePy(py::module *m_ptr) {
   auto &m = *m_ptr;
   // Bind Methods
+  m.def("_get_device_min_chunk_size", [](const std::string &device_type) {
+    auto place = paddle::platform::CustomPlace(device_type);
+    return phi::DeviceManager::GetMinChunkSize(place);
+  });
   m.def(
       "_get_device_total_memory",
       [](const std::string &device_type, int device_id) {

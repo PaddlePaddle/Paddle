@@ -203,7 +203,8 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,

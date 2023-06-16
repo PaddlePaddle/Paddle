@@ -20,12 +20,12 @@ set(PADDLE_RPC_DEPS
     zlib
     leveldb
     snappy
-    gflags
+    phi
     glog
     pybind)
 proto_library(paddle_rpc_proto SRCS rpc.proto)
 cc_library(
   paddle_rpc
   SRCS ${PADDLE_RPC_SRCS}
-  DEPS ${PADDLE_RPC_DEPS} paddle_rpc_proto)
+  DEPS ${PADDLE_RPC_DEPS} paddle_rpc_proto pybind)
 add_dependencies(paddle_rpc brpc)

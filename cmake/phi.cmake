@@ -94,6 +94,13 @@ function(kernel_declare TARGET_LIST)
           continue()
         endif()
       endif()
+      # fusion group kernel is not supported in windows and mac
+      if(WIN32 OR APPLE)
+        string(FIND "${first_registry}" "fusion_group" pos)
+        if(pos GREATER 1)
+          continue()
+        endif()
+      endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
       if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
@@ -214,5 +221,29 @@ function(prune_declaration_h)
     if(NOT ${kernel_registry} EQUAL "")
       file(APPEND ${kernel_declare_file} "${kernel_registry}\n")
     endif()
+  endforeach()
+endfunction()
+
+function(collect_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${CMAKE_CURRENT_SOURCE_DIR}/${src}"
+        CACHE INTERNAL "")
+  endforeach()
+endfunction()
+
+function(collect_generated_srcs SRC_GROUP)
+  set(options)
+  set(oneValueArgs)
+  set(multiValueArgs "SRCS")
+  cmake_parse_arguments(prefix "" "" "${multiValueArgs}" ${ARGN})
+  foreach(src ${prefix_SRCS})
+    set(${SRC_GROUP}
+        "${${SRC_GROUP}};${src}"
+        CACHE INTERNAL "")
   endforeach()
 endfunction()

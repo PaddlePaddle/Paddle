@@ -75,7 +75,7 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
 def _check_vars(name, var_list):
     if not isinstance(var_list, list):
         var_list = [var_list]
-    if not all([isinstance(var, Variable) for var in var_list]):
+    if not all(isinstance(var, Variable) for var in var_list):
         raise ValueError(
             f"'{name}' should be a Variable or a list of Variable."
         )
@@ -1540,7 +1540,12 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
-
+        elif p.is_custom_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.CustomPlace(
+                paddle.device.get_device().split(':')[0], p.custom_device_id()
+            )
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -1555,7 +1560,6 @@ def load(program, model_path, executor=None, var_list=None):
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
-
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)

@@ -20,6 +20,7 @@ set(XBYAK_INSTALL_ROOT ${THIRD_PARTY_PATH}/install/xbyak)
 set(XBYAK_INC_DIR ${XBYAK_INSTALL_ROOT}/include)
 set(XBYAK_REPOSITORY ${GIT_URL}/herumi/xbyak.git)
 set(XBYAK_TAG v5.81) # Dec 19, 2019
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/xbyak)
 
 include_directories(${XBYAK_INC_DIR})
 include_directories(${XBYAK_INC_DIR}/xbyak)
@@ -33,8 +34,7 @@ add_definitions(-DXBYAK_NO_OP_NAMES)
 ExternalProject_Add(
   ${XBYAK_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${XBYAK_REPOSITORY}
-  GIT_TAG ${XBYAK_TAG}
+  SOURCE_DIR ${SOURCE_DIR}
   DEPENDS ""
   PREFIX ${XBYAK_PREFIX_DIR}
   UPDATE_COMMAND ""

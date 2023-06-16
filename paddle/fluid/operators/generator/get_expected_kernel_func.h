@@ -24,11 +24,27 @@ phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetReduceGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetReduceOpUseInputPlaceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetAssignExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetPoolExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetPoolDoubleGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
@@ -41,6 +57,14 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr);
 
 phi::KernelKey GetSoftmaxGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetStridedSliceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetStridedSliceGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
@@ -69,6 +93,10 @@ phi::KernelKey GetYoloLossExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr);
 
 phi::KernelKey GetLayerNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetConvExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 

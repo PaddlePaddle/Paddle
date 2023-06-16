@@ -20,7 +20,7 @@ if(WITH_ARM_BRPC)
     framework_proto
     sendrecv_rpc
     arm_brpc
-    gflags
+    phi
     glog
     snappy
     device_context)
@@ -42,7 +42,7 @@ else()
     ssl
     crypto
     protobuf
-    gflags
+    phi
     glog
     zlib
     snappy

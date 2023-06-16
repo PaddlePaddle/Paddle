@@ -666,10 +666,6 @@ class MatMulOp : public framework::OperatorWithKernel {
       dim_out.resize(dim_out.size() - 1);
     }
 
-    if (dim_out.empty()) {
-      dim_out = {1};
-    }
-
     phi::DDim ddim_out = phi::make_ddim(dim_out);
 
     context->SetOutputDim("Out", ddim_out);
