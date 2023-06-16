@@ -28,7 +28,7 @@ void IndexSelectKernel(const Context& ctx,
 template <typename Context>
 void IndexSelectStridedKernel(const Context& ctx,
                               const DenseTensor& x,
-                              const std::vector<int64_t>& index,
+                              int64_t index,
                               int dim,
                               DenseTensor* output);
 

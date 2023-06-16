@@ -1786,7 +1786,7 @@ void IndexSelectInferMeta(const MetaTensor& x,
 }
 
 void IndexSelectStridedInferMeta(const MetaTensor& x,
-                                 const std::vector<int64_t>& index,
+                                 int64_t index,
                                  int dim,
                                  MetaTensor* output) {
   auto input_dim = x.dims();
@@ -1805,7 +1805,7 @@ void IndexSelectStridedInferMeta(const MetaTensor& x,
   if (dim < 0) {
     dim += input_dim.size();
   }
-  output_dim[dim] = index.size();
+  output_dim.erase(output_dim.begin() + dim);
   output->set_dims(phi::make_ddim(output_dim));
   output->set_dtype(x.dtype());
   output->set_layout(x.layout());

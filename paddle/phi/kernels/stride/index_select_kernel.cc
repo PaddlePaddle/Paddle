@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context>
 void IndexSelectStridedKernel(const Context& ctx,
                               const DenseTensor& x,
-                              const std::vector<int64_t>& indexs,
+                              int64_t index,
                               int dim,
                               DenseTensor* output) {
   auto input_dim = x.dims();
@@ -34,11 +34,9 @@ void IndexSelectStridedKernel(const Context& ctx,
   std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
   int64_t offset = x.offset();
 
-  for (size_t i = 0; i < indexs.size(); ++i) {
-    offset = offset + indexs[i] * stride[dim] * SizeOf(output->dtype());
-    shape.erase(shape.begin() + dim);
-    stride.erase(stride.begin() + dim);
-  }
+  offset = offset + indexs[i] * stride[dim] * SizeOf(output->dtype());
+  shape.erase(shape.begin() + dim);
+  stride.erase(stride.begin() + dim);
 
   auto meta = output->meta();
   meta.offset = offset;

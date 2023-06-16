@@ -288,7 +288,7 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           MetaTensor* output);
 
 void IndexSelectStridedInferMeta(const MetaTensor& x,
-                                 const std::vector<int64_t>& index,
+                                 int64_t index,
                                  int dim,
                                  MetaTensor* output);
 
