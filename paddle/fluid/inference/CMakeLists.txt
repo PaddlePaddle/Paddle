@@ -57,9 +57,9 @@ set(KERNEL_LIST
     CACHE STRING "The list of phi kernels that will be compiled")
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
-get_property(ir_modules GLOBAL PROPERTY IR_MODULES)
+get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${ir_modules}
+  cc_library(paddle_inference DEPS ${fluid_modules} ${ir_targets}
                                    ${STATIC_INFERENCE_API} ${utils_modules})
 else()
   # message("${fluid_modules}")
@@ -67,7 +67,7 @@ else()
   # message("${utils_modules}")
   # message("${phi_modules}")
   create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${ir_modules} ${STATIC_INFERENCE_API} ${utils_modules})
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -97,7 +97,7 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS phi ${ir_modules} ${fluid_modules} analysis_predictor
+set(SHARED_INFERENCE_DEPS phi ir ${fluid_modules} analysis_predictor
                           ${utils_modules})
 
 if(WITH_CRYPTO)
