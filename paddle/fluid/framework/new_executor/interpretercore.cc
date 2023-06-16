@@ -151,14 +151,14 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
                                  framework::Scope* scope,
-                                 ::ir::Program* ir_prog,
+                                 std::unique_ptr<::ir::Program> ir_prog,
                                  const ExecutionConfig& execution_config)
     : place_(place),
       block_(block),
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
-      ir_program_(ir_prog) {
+      ir_program_(std::move(ir_prog)) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
