@@ -47,7 +47,8 @@ set(PYBIND_DEPS
     jit_property
     prim_utils
     static_tensor_operants
-    type_info)
+    type_info
+    auto_parallel)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
