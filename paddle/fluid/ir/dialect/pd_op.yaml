@@ -8,6 +8,7 @@
   data_transform: null
   inplace: null
   backward: null
+
 - name: fetch
   inputs:
   - typename: Tensor
@@ -18,6 +19,72 @@
   attrs:
   - {typename: str, name: name}
   outputs: []
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null
+
+- name: share_buffer_
+  inputs:
+  - typename: Tensor[]
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'bool[]', name: share_dims_and_dtype, default_value: '{}'}
+  outputs:
+  - {typename: 'Tensor[]', name: out, size: x.size(), optional: false, intermediate: false}
+  - {typename: 'Tensor[]', name: xout, size: x.size(), optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null
+
+- name: assert
+  inputs:
+  - typename: Tensor
+    name: cond
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor[]
+    name: data
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int64_t', name: summarize, default_value: '-1'}
+  outputs: []
+  no_need_buffer: null
+  data_transform: null
+  inplace: null
+  backward: null
+
+- name: print
+  inputs:
+  - typename: Tensor
+    name: in
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int', name: first_n}
+  - {typename: 'str', name: message}
+  - {typename: 'int', name: summarize}
+  - {typename: 'bool', name: print_tensor_name, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_type, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_shape, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_layout, default_value: 'true'}
+  - {typename: 'bool', name: print_tensor_lod, default_value: 'true'}
+  - {typename: 'str', name: print_phase, default_value: 'BOTH'}
+  - {typename: 'bool', name: is_forward, default_value: 'true'}
+  outputs:
+    - typename: Tensor
+      name: out
+      optional: false
+      no_need_buffer: false
+      data_transform: {}
   no_need_buffer: null
   data_transform: null
   inplace: null

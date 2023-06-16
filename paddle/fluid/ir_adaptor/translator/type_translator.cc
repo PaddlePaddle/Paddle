@@ -31,6 +31,18 @@ using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 
 TypeTranslator::TypeTranslator() {
   handlers = {
+      {VarType::BOOL,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::BoolType::get(ctx);
+       }},
+      {VarType::UINT8,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::UInt8Type::get(ctx);
+       }},
+      {VarType::INT32,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int32Type::get(ctx);
+       }},
       {VarType::INT64,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Int64Type::get(ctx);

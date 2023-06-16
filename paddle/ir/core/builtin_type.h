@@ -38,13 +38,6 @@ namespace ir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class Int8Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int8Type, TypeStorage);
-};
-
 class VectorType : public Type {
  public:
   using Type::Type;
@@ -75,6 +68,8 @@ class VectorType : public Type {
   __macro(Float16);                   \
   __macro(Float32);                   \
   __macro(Float64);                   \
+  __macro(Int8);                      \
+  __macro(UInt8);                     \
   __macro(Int16);                     \
   __macro(Int32);                     \
   __macro(Int64);                     \
