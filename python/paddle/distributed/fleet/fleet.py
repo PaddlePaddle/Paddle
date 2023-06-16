@@ -644,6 +644,18 @@ class Fleet:
                 fleet.barrier_worker()
         """
         self._role_maker._barrier("worker")
+        
+    def all_reduce(self, input, mode="sum"):
+        """
+             all reduce 
+        """
+        return self._role_maker._all_reduce(input, mode, "worker")
+    
+    def all_gather(self, input):
+        """
+            all gather
+        """
+        return self._role_maker._all_gather(input, "worker")
 
     @is_non_distributed_check
     @inited_runtime_handler
