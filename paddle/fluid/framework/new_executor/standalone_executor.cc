@@ -74,8 +74,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       interpretercores_.emplace_back(
           std::make_unique<InterpreterCore>(place_,
                                             program->Block(0),
-                                            micro_batch_scopes_[micro_batch_id],
-                                            kernel_program.get(),
+                                            scope_,
+                                            std::move(kernel_program),
                                             execution_config));
     } else {
       interpretercores_.emplace_back(
