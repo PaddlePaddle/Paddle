@@ -1827,7 +1827,7 @@ class OpTest(unittest.TestCase):
                     ),
                 )
 
-                # def _compare_list(self, name, actual, expect):
+            def _compare_list(self, name, actual, expect):
                 """if expect is a tuple, we need to compare list."""
                 raise NotImplementedError("base class, not implement!")
 
