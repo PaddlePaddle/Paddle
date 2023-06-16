@@ -429,7 +429,10 @@ class Fleet:
             hybrid_group_names=hybrid_group_names, dims=dims
         )
 
-        self._hcg = tp.HybridCommunicateGroup(self._topology)
+        self._hcg = tp.HybridCommunicateGroup(
+            self._topology,
+            skip_group=self._user_defined_strategy.hybrid_parallel_skip_group,
+        )
 
         if self.mp_degree > 1:
             tensor_parallel_configs = (

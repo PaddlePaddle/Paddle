@@ -129,6 +129,18 @@ class TestStrategyConfig(unittest.TestCase):
             strategy.hybrid_parallel_order, ['sharding', 'mp', 'dp', 'pp']
         )
 
+    def test_hybrid_parallel_configs_skip_group(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 4,
+            "skip_group": ['sharding', 'mp', 'dp', 'pp'],
+        }
+        self.assertEqual(
+            strategy.hybrid_parallel_skip_group, ['sharding', 'mp', 'dp', 'pp']
+        )
+
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True

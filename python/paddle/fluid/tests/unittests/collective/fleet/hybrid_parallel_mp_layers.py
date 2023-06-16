@@ -123,8 +123,22 @@ class TestDistTraning(unittest.TestCase):
             "dp_degree": 1,
             "mp_degree": self.model_parallel_size,
             "pp_degree": 1,
+            "skip_group": ["dp", "pp", "sharding", "check"],
         }
         fleet.init(is_collective=True, strategy=strategy)
+        hcg = fleet.get_hybrid_communicate_group()
+        assert (
+            hcg.get_data_parallel_group() is None
+        ), f"dp group should skip, but created {hcg.get_data_parallel_group()}"
+        assert (
+            hcg.get_pipe_parallel_group() is None
+        ), f"pp group should skip, but created {hcg.get_pipe_parallel_group()}"
+        assert (
+            hcg.get_sharding_parallel_group() is None
+        ), f"sharding group should skip, but created {hcg.get_sharding_parallel_group()}"
+        assert (
+            hcg.get_check_parallel_group() is None
+        ), f"check group should skip, but created {hcg.get_check_parallel_group()}"
 
     def test_column_parallel_layer(self):
         set_random_seed(1024)

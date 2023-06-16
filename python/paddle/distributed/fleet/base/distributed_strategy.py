@@ -146,6 +146,7 @@ class DistributedStrategy:
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.hybrid_parallel_skip_group = []
         self.sync_param_name = ["embedding", "layer_norm", ".b_"]
 
         self.__lock_attr = True
@@ -1694,6 +1695,10 @@ class DistributedStrategy:
         if "order" in hybrid_config:
             self.hybrid_parallel_order = hybrid_config["order"]
             hybrid_config.pop('order')
+
+        if "skip_group" in hybrid_config:
+            self.hybrid_parallel_skip_group = hybrid_config["skip_group"]
+            hybrid_config.pop("skip_group")
 
         check_configs_key(
             self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
