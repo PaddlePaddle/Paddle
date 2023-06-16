@@ -1020,7 +1020,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   if (list_select_flag) {
     eager_gil_scoped_release guard;
     if (FLAGS_use_stride_kernel && list_select_idxs.size() == 1) {
-      out = index_select_strided_ad_func(self->tensor, list_select_idxs, 0);
+      out = index_select_strided_ad_func(self->tensor, list_select_idxs[0], 0);
     } else {
       auto select_index =
           paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
