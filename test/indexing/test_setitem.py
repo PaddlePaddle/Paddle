@@ -60,37 +60,43 @@ class TestSetitemInStatic(unittest.TestCase):
     def test_combined_index_1(self):
         np_data = np.zeros((3, 4, 5, 6), dtype='float32')
         np_data[[0, 1], :, [1, 2]] = 10.0
-
-        x = paddle.zeros((3, 4, 5, 6), dtype='float32')
-        y = _setitem_static(x, ([0, 1], slice(None, None, None), [1, 2]), 10.0)
-
-        program = paddle.static.default_startup_program()
-        res = self.exe.run(program, fetch_list=[y.name])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.zeros((3, 4, 5, 6), dtype='float32')
+            y = _setitem_static(
+                x, ([0, 1], slice(None, None, None), [1, 2]), 10.0
+            )
+            res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_data)
 
     def test_combined_index_2(self):
         np_data = np.ones((3, 4, 5, 6), dtype='float32')
         np_data[:, 1, [1, 2], 0] = 10.0
-
-        x = paddle.ones((3, 4, 5, 6), dtype='float32')
-        y = _setitem_static(x, (slice(None, None, None), 1, [1, 2], 0), 10.0)
-
-        program = paddle.static.default_startup_program()
-        res = self.exe.run(program, fetch_list=[y.name])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='float32')
+            y = _setitem_static(
+                x, (slice(None, None, None), 1, [1, 2], 0), 10.0
+            )
+            res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_data)
 
     def test_combined_index_3(self):
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
         np_data[:, [True, False, True, False], [1, 4]] = 10
-
-        x = paddle.ones((3, 4, 5, 6), dtype='int32')
-        y = _setitem_static(
-            x, (slice(None, None, None), [True, False, True, False], [1, 4]), 10
-        )
-
-        program = paddle.static.default_startup_program()
-        res = self.exe.run(program, fetch_list=[y.name])
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.ones((3, 4, 5, 6), dtype='int32')
+            y = _setitem_static(
+                x,
+                (slice(None, None, None), [True, False, True, False], [1, 4]),
+                10,
+            )
+            res = self.exe.run(fetch_list=[y.name])
 
         np.testing.assert_allclose(res[0], np_data)

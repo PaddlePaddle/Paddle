@@ -875,12 +875,12 @@ def deal_advanced_index(ori_tensor, indices, with_transback=False):
         if indice is None:
             transed_dim.append(i)
     transed_tensor = ori_tensor.transpose(transed_dim)
-    trans_back_dim = np.argsort(transed_dim) if with_transback else []
+    trans_back_dim = np.argsort(transed_dim).tolist() if with_transback else []
     return transed_tensor, transed_index, trans_back_dim
 
 
-def parse_index(indices):
-    advanced_index = []  # content is (dim, index)
+def parse_index(x, indices):
+    advanced_index = [None] * len(x.shape)  # content is (dim, index)
     # for set_value / slice / strided_slice OP
     decrease_axes = []
     axes = []
@@ -890,12 +890,12 @@ def parse_index(indices):
     use_strided_slice = False
     has_advanced_index = False
 
+    if not isinstance(indices, tuple):
+        indices = (indices,)
+
     indices = replace_ndarray(indices)
     indices = replace_ellipsis(x, indices)
     indices, none_axes = replace_none(indices)
-
-    if not isinstance(indices, tuple):
-        indices = (indices,)
 
     for dim, slice_item in enumerate(indices):
         start, end, step = None, None, None
@@ -905,11 +905,10 @@ def parse_index(indices):
             start = slice_item
             step = 1
             end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
-            advanced_index.append(None)
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
             none_axes.append(dim)
-            advanced_index.append((dim, paddle.to_tensor(slice_item)))
+            advanced_index[dim] = (dim, paddle.to_tensor(slice_item))
             has_advanced_index = True
         elif isinstance(slice_item, slice):
             start = slice_item.start
@@ -919,13 +918,15 @@ def parse_index(indices):
             if start is None and end is None and step is None:
                 continue
 
-            if not isinstance(step, Variable) and step == 0:
+            if not isinstance(step, paddle.fluid.Variable) and step == 0:
                 raise ValueError(
                     "When assign a value to a paddle.Tensor, step can not be 0, "
                     "but received step is {}.".format(step)
                 )
 
-            if isinstance(step, Variable) and (start is None or end is None):
+            if isinstance(step, paddle.fluid.Variable) and (
+                start is None or end is None
+            ):
                 raise ValueError(
                     "When assign a value to a paddle.Tensor, it's not supported that "
                     "the start or end is None when the type of step is paddle.Tensor."
@@ -937,14 +938,12 @@ def parse_index(indices):
                 end = MAX_INTEGER if step > 0 else -1
             step = 1 if step is None else step
 
-            advanced_index.append(None)
-
         elif isinstance(slice_item, (list, tuple)):
-            advanced_index.append((dim, paddle.to_tensor(slice_item)))
+            advanced_index[dim] = (dim, paddle.to_tensor(slice_item))
             has_advanced_index = True
         elif isinstance(slice_item, paddle.fluid.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
-            advanced_index.append((dim, slice_item))
+            advanced_index[dim] = (dim, slice_item)
             has_advanced_index = True
         else:
             raise IndexError(
@@ -998,7 +997,7 @@ def _setitem_static(x, indices, values):
         advanced_index,
         has_advanced_index,
         use_strided_slice,
-    ) = parse_index(indices)
+    ) = parse_index(x, indices)
 
     inputs = {'Input': x}
     attrs = {
@@ -1086,7 +1085,7 @@ def _setitem_static(x, indices, values):
             transed_sub_tensor,
             adjusted_advanced_index,
             transback_dim,
-        ) = deal_advanced_index(sub_tensor, advanced_index)
+        ) = deal_advanced_index(sub_tensor, advanced_index, True)
         if not isinstance(values, Variable):
             values = paddle.assign(values)
         transed_sub_tensor = transed_sub_tensor.index_put(
@@ -1235,7 +1234,7 @@ def _getitem_static(x, indices):
         advanced_index,
         has_advanced_index,
         use_strided_slice,
-    ) = parse_index(indices)
+    ) = parse_index(x, indices)
 
     # step2: Dealing with basic indexing
     out = get_tensor_with_basic_indexing(
