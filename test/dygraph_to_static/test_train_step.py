@@ -17,6 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
+from dygraph_to_static_util import enable_fallback_guard
 
 import paddle
 
@@ -433,4 +434,5 @@ class TestTrainStepTinyModelLRCyclicLR(TestTrainStepTinyModel):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    with enable_fallback_guard("False"):
+        unittest.main()
