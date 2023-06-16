@@ -52,6 +52,9 @@ namespace phi {
 
 template <typename T1, typename T2>
 inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
+  if (n == -1) {
+    return;
+  }
   PADDLE_VISIT_DDIM(n, (static_dim_assign<kRank, T1, T2>(in, out)));
 }
 
@@ -177,6 +180,10 @@ class DDim {
   }
 
   inline DDim& CopyFrom(const DDim& ddim) {
+    if (ddim.rank_ == -1) {
+      rank_ = -1;
+      return *this;
+    }
     PADDLE_VISIT_DDIM(ddim.rank_, (*this = ddim.UnsafeCast<kRank>()));
   }
 
