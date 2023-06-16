@@ -33,6 +33,7 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
+get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 set(utils_modules pretty_log string_helper benchmark utf8proc)
 
 add_subdirectory(api)
@@ -57,7 +58,6 @@ set(KERNEL_LIST
     CACHE STRING "The list of phi kernels that will be compiled")
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
-get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${ir_targets}
                                    ${STATIC_INFERENCE_API} ${utils_modules})

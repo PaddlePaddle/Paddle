@@ -25,7 +25,11 @@ function(ir_library TARGET_NAME)
       SRCS $<TARGET_OBJECTS:${OBJ_LIB}>
       DEPS ${ir_library_DEPS})
     set_property(GLOBAL APPEND PROPERTY IR_MODULES $<TARGET_OBJECTS:${OBJ_LIB}>)
-    set_property(GLOBAL APPEND PROPERTY IR_TARGETS ${TARGET_NAME}>)
+
+    get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
+    set(ir_targets ${ir_targets} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")
+
   endif()
 endfunction()
 
