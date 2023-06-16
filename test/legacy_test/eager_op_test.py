@@ -556,7 +556,7 @@ class OpTest(unittest.TestCase):
             not in op_accuracy_white_list.NO_BF16_COMPARED_WITH_FP32_OP_LIST
         )
 
-    def is_fp16_or_bf16_compared_with_fp32(self):
+    def is_compared_with_fp32(self):
         return (
             self.is_fp16_compared_with_fp32()
             or self.is_bf16_compared_with_fp32()
@@ -1834,7 +1834,7 @@ class OpTest(unittest.TestCase):
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
                 # expect_np = expect[0] if isinstance(expect, tuple) else expect
-                if self.op_test.is_fp16_or_bf16_compared_with_fp32():
+                if self.op_test.is_compared_with_fp32():
                     expect, expect_np = self.find_expect_value(name)
                 else:
                     expect_np = (
@@ -1889,7 +1889,7 @@ class OpTest(unittest.TestCase):
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
-                if self.op_test.is_fp16_or_bf16_compared_with_fp32():
+                if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     ref_outs, ref_fetch_list = self.op_test._calc_output(
                         place, no_check_set=no_check_set
@@ -1956,7 +1956,7 @@ class OpTest(unittest.TestCase):
                         place, no_check_set=no_check_set
                     )
                 self.outputs = dygraph_outs
-                if self.op_test.is_fp16_or_bf16_compared_with_fp32():
+                if self.op_test.is_compared_with_fp32():
                     self.op_test.enable_cal_ref_output()
                     self.is_python_api_test = True
                     self.ref_outputs = self.op_test._calc_python_api_output(
@@ -2554,10 +2554,7 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        if (
-            user_defined_grads is None
-            and self.is_fp16_or_bf16_compared_with_fp32()
-        ):
+        if user_defined_grads is None and self.is_compared_with_fp32():
             self.enable_cal_ref_output()
 
             numeric_grads = self._get_gradient(
