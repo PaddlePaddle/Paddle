@@ -97,8 +97,7 @@ class TestBatchNormOp(OpTest):
                 check_prim=True,
                 only_check_prim=True,
             )
-        elif self.data_format == "NCHW" and paddle.is_compiled_with_cuda():
-            # origin batch_norm cuda kernel differ in nhwc x_grad whether to calculate scale_grad and bias_grad
+        if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
                 core.CUDAPlace(0),
                 ["X"],
