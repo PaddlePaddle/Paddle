@@ -13,7 +13,7 @@ set(STANDALONE_EXECUTOR_DEPS
     pd_op_to_kernel_pass
     phi_kernel_adaptor
     program_translator
-    ir_core)
+    ir)
 
 cc_library(
   standalone_executor

@@ -7,8 +7,8 @@ cc_test_old(
   SRCS
   ir_program_test.cc
   DEPS
-  ir
   pd_dialect
+  ir
   phi
   gtest)
 
@@ -17,8 +17,8 @@ cc_test_old(
   SRCS
   ir_phi_kernel_op_test.cc
   DEPS
-  ir
   pd_dialect
+  ir
   phi
   gtest)
 
@@ -27,8 +27,8 @@ cc_test_old(
   SRCS
   ir_infershape_test.cc
   DEPS
-  ir
   pd_dialect
+  ir
   phi
   gtest)
 
@@ -37,9 +37,9 @@ cc_test_old(
   SRCS
   ir_exe_test.cc
   DEPS
-  ir
   pd_dialect
   phi_kernel_adaptor
+  ir
   phi
   gtest)
 
@@ -48,8 +48,8 @@ cc_test_old(
   SRCS
   scalar_attribute_test.cc
   DEPS
-  ir
   pd_dialect
+  ir
   gtest)
 
 file(
@@ -70,7 +70,7 @@ cc_test_old(
   DEPS
   program_translator
   gtest
-  ir
-  pd_dialect)
+  pd_dialect
+  ir)
 
 cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest ir)

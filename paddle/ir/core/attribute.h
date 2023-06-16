@@ -26,7 +26,7 @@ class IR_API Attribute {
  public:
   using Storage = AttributeStorage;
 
-  constexpr Attribute() = default;
+  Attribute() = default;
 
   Attribute(const Storage *storage)  // NOLINT
       : storage_(storage) {}

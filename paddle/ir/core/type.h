@@ -30,7 +30,7 @@ class IR_API Type {
  public:
   using Storage = TypeStorage;
 
-  constexpr Type() = default;
+  Type() = default;
 
   Type(const Storage *storage)  // NOLINT
       : storage_(const_cast<Storage *>(storage)) {}

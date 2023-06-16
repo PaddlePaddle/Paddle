@@ -28,7 +28,7 @@ class Dialect;
 
 class IR_API OpInfo {
  public:
-  constexpr OpInfo() = default;
+  OpInfo() = default;
 
   OpInfo(const OpInfo &other) = default;
 

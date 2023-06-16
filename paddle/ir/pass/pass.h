@@ -68,7 +68,7 @@ struct PassInfo {
 }  // namespace detail
 
 /// We can access pass only from PassManager.
-class Pass {
+class IR_API Pass {
  public:
   explicit Pass(const std::string& name,
                 uint8_t opt_level,
