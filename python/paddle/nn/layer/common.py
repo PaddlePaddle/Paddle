@@ -206,22 +206,24 @@ class LinearCompress(Layer):
     Parameters:
         in_features (int): The number of input units.
         out_features (int): The number of output units.
-        weight_attr (ParamAttr, optional): The attribute for the learnable
-            weight of this layer. The default value is None. If the Initializer of the
+        weight_attr (ParamAttr, optional): The attribute for the weight of this layer.
+            The default value is None. If the Initializer of the
             param_attr is not set, the parameter is initialized with Xavier.
             For detailed information, please refer to paddle.ParamAttr.
-        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
-            of this layer. If it is set to False, no bias will be added to the output.
+        bias_attr (ParamAttr|bool, optional): The attribute for the bias of this layer.
+            If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to paddle.ParamAttr. The default value is None and the bias will be
             initialized to zero.
         name (str, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
-        bits (int optional): The attribute to set num of bits in quant during weight_only,
-            it must be set as 8 ot 4, default: 8.
-        layout (int optional): The attribute to set layout of weight need to be transposed,
-        Set to 0 if transpose is not required,
+        bits (int, optional): The attribute to set num of bits in quant during weight_only,
+            it must be set as 8, default: 8.
+        algo (str, optional): The  attribute to set algorithm of cpmoress, it must be set as 'weight_only'
+            or 'llm.int8', default: weight_only.
+        config (dict, optional): The parameter config for algorithm of cpmoress.
+            For llm.int8, it should be set as {'threshold': 6.0}, default: {'threshold': 6.0}.
 
     Attribute:
         **weight** (Parameter): the learnable weight of this layer.
@@ -229,7 +231,7 @@ class LinearCompress(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16.
         - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
@@ -238,25 +240,16 @@ class LinearCompress(Layer):
           import paddle
 
           # Define the linear layer.
+          paddle.set_default_dtype('float16')
           weight_attr = paddle.ParamAttr(
               name="weight",
               initializer=paddle.nn.initializer.Constant(value=0.5))
           bias_attr = paddle.ParamAttr(
               name="bias",
               initializer=paddle.nn.initializer.Constant(value=1.0))
-          linear = paddle.nn.Linear(2, 4, weight_attr=weight_attr, bias_attr=bias_attr)
-          # linear.weight: [[0.5 0.5 0.5 0.5]
-          #                 [0.5 0.5 0.5 0.5]]
-          # linear.bias: [1. 1. 1. 1.]
-
-          x = paddle.randn((3, 2), dtype="float32")
-          # x: [[-0.32342386 -1.200079  ]
-          #     [ 0.7979031  -0.90978354]
-          #     [ 0.40597573  1.8095392 ]]
+          linear = paddle.nn.LinearCompress(128, 64, weight_attr=weight_attr, bias_attr=bias_attr, bits=8, algo='weight_only')
+          x = paddle.randn((3, 128), dtype="float16")
           y = linear(x)
-          # y: [[0.23824859 0.23824859 0.23824859 0.23824859]
-          #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
-          #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
 
     def __init__(
@@ -267,8 +260,8 @@ class LinearCompress(Layer):
         bias_attr=None,
         name=None,
         bits=8,
-        algo="llm.int8",
-        config=None,
+        algo="weight_only",
+        config={'threshold': 6.0},
     ):
         super().__init__()
         self._dtype = self._helper.get_default_dtype()
@@ -295,7 +288,7 @@ class LinearCompress(Layer):
         self.is_weight_quanted = False
         self.name = (name,)
         self.bits = bits
-        self.layout = 1 if algo == "llm.int8" else 0
+        self.layout = algo
         self.algo = algo
         self.config = config
 
@@ -316,8 +309,6 @@ class LinearCompress(Layer):
                     dtype="int8",
                     is_bias=False,
                 )
-                # self.weight.Tensor = weight_tensor
-                # self.weight.dtype = weight_tensor.dtype
                 weight_scale_attr = paddle.framework.ParamAttr(
                     initializer=paddle.nn.initializer.Assign(
                         weight_scale_tensor
@@ -329,8 +320,6 @@ class LinearCompress(Layer):
                     dtype="float32",
                     is_bias=False,
                 )
-                # self.weight_scale.Tensor = weight_scale_tensor
-                # self.weight_scale.dtype=weight_scale_tensor.dtype
                 self.is_weight_quanted = True
             out = F.linear_compress(
                 x=input,
@@ -346,8 +335,12 @@ class LinearCompress(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'in_features={}, out_features={}, dtype={}{}'.format(
-            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
+        return 'in_features={}, out_features={}, dtype={}{}, algo={}'.format(
+            self.weight.shape[0],
+            self.weight.shape[1],
+            self._dtype,
+            name_str,
+            self.algo,
         )
 
 

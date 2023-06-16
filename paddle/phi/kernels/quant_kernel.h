@@ -19,7 +19,7 @@ template <typename T, typename Context>
 void QuantKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int bits,
-                 int layout,
+                 const std::string& layout,
                  DenseTensor* out,
                  DenseTensor* scale);
 }  // namespace phi

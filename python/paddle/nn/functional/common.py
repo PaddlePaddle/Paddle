@@ -1876,7 +1876,7 @@ def linear(x, weight, bias=None, name=None):
         return res
 
 
-def quant(x, bits=8, layout=1):
+def quant(x, bits=8, layout="weight_only"):
     return _C_ops.quant(x, bits, layout)
 
 

@@ -3414,18 +3414,46 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
 void LLMInt8MatMulInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             MetaTensor* out) {
-  auto dims = x.dims();
-  dims[dims.size() - 1] = weight.dims()[0];
-  out->set_dims(dims);
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[1],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[1]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[0];
+  out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }
 
 void WeightOnlyMatMulInferMeta(const MetaTensor& x,
                                const MetaTensor& weight,
                                MetaTensor* out) {
-  auto dims = x.dims();
-  dims[dims.size() - 1] = weight.dims()[1];
-  out->set_dims(dims);
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[0],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[0] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[0](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[0]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[1];
+  out->set_dims(out_dims);
   out->set_dtype(x.dtype());
 }
 

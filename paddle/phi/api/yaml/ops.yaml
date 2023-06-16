@@ -1844,7 +1844,7 @@
   backward : qr_grad
 
 - op : quant
-  args : (Tensor x, int bits = 8, int layout = 0)
+  args : (Tensor x, int bits = 8, str layout = "weight_only")
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : QuantInferMeta

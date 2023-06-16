@@ -13,32 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/weight_only_mat_mul_kernel.h"
-#include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
-// #include "paddle/fluid/operators/fused/datatype_traits.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
 
 namespace phi {
-
-// template <typename T>
-// struct PDDataTypeTraits {
-//   using DataType = T;
-// };
-
-// template <>
-// struct PDDataTypeTraits<phi::dtype::float16> {
-//   // Since LayerNormDirectCUDAFunctor register half type, we need to convert
-//   // phi::float16 to half.
-//   using DataType = half;
-// };
-
-// template <>
-// class PDDataTypeTraits<phi::dtype::bfloat16> {
-//  public:
-//   using DataType = __nv_bfloat16;
-// };
 
 template <typename T, typename Context>
 void WeightOnlyMatMulKernel(const Context& dev_ctx,
@@ -53,9 +33,9 @@ void WeightOnlyMatMulKernel(const Context& dev_ctx,
   int k = w_dims[0];
   int n = w_dims[1];
   int m = x.numel() / k;
-  auto mixed_gemm_runner = CutlassFpAIntBGemmRunner<
-      typename PDDataTypeTraits<T>::DataType,
-      uint8_t>();
+  auto mixed_gemm_runner =
+      CutlassFpAIntBGemmRunner<typename PDDataTypeTraits<T>::DataType,
+                               uint8_t>();
   int mixgemm_max_size = std::max(n, k);
   DenseTensor mixgemm_workspace;
   int64_t mixgemm_workspace_size_bytes =
@@ -66,14 +46,11 @@ void WeightOnlyMatMulKernel(const Context& dev_ctx,
   char* mixgemm_workspace_data =
       reinterpret_cast<char*>(mixgemm_workspace.data<uint8_t>());
   mixed_gemm_runner.gemm(
-      reinterpret_cast<
-          const typename PDDataTypeTraits<T>::DataType*>(
+      reinterpret_cast<const typename PDDataTypeTraits<T>::DataType*>(
           x.data<T>()),
       reinterpret_cast<const uint8_t*>(weight.data<int8_t>()),
       reinterpret_cast<const float*>(weight_scale.data<float>()),
-      reinterpret_cast<
-          typename PDDataTypeTraits<T>::DataType*>(
-          out->data<T>()),
+      reinterpret_cast<typename PDDataTypeTraits<T>::DataType*>(out->data<T>()),
       m,
       n,
       k,

@@ -27,7 +27,7 @@ void quant_compute(const DeviceContext& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out,
                    DenseTensor* scale,
-                   const int layout) {
+                   const std::string& layout) {
   const auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
@@ -60,7 +60,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   per_channel_scale(scale_data, x_data, m, n);
 
   per_channel_quant(x_int_data, x_data, scale_data, m, n);
-  if (layout == 0) {
+  if (layout == "weight_only") {
     permute_B_rows_for_mixed_gemm(
         int_processed_data, x_int_data, std::vector<size_t>{m, n}, (int64_t)80);
     row_major_to_column_major(
@@ -68,10 +68,13 @@ void quant_compute(const DeviceContext& dev_ctx,
     interleave_column_major_tensor(
         out_data, int_processed_2_data, std::vector<size_t>{m, n});
     add_bias_and_interleave_int8s_inplace(out_data, num);
-  } else if (layout == 1) {
+  } else if (layout == "llm.int8") {
     std::vector<int> axis = {1, 0};
-    phi::funcs::Transpose<DeviceContext, int8_t, 2> trans;
+    funcs::Transpose<DeviceContext, int8_t, 2> trans;
     trans(dev_ctx, x_int, out, axis);
+  } else {
+    phi::errors::InvalidArgument(
+        "The layout must be weight_only or llm.int8, but got %s", layout);
   }
 }
 
@@ -79,13 +82,15 @@ template <typename T, typename Context>
 void QuantKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  int bits,
-                 int layout,
+                 const std::string& layout,
                  DenseTensor* out,
                  DenseTensor* scale) {
   if (bits == 8) {
     dev_ctx.template Alloc<int8_t>(out);
     dev_ctx.template Alloc<float>(scale);
     quant_compute<Context, T, int8_t>(dev_ctx, x, out, scale, layout);
+  } else {
+    phi::errors::Unimplemented("The bits only support 8, but got[%d]", bits);
   }
   // VLOG(0) << "x: " << x.dtype() << x;
   // VLOG(0) << "out: " << out->dtype() << *out;

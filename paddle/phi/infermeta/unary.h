@@ -719,7 +719,7 @@ void UnStackInferMeta(const MetaTensor& x,
 
 void QuantInferMeta(const MetaTensor& x,
                     int bits,
-                    int layout,
+                    const std::string& layout,
                     MetaTensor* out,
                     MetaTensor* scale);
 
