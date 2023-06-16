@@ -44,8 +44,8 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   auto tmp_dim = DDim(output_dims.data(), output_dims.size());
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer shape
-  //       "
+  //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer
+  //       shape"
   //                          "is %s, but compute is %s.",
   //                          meta.dims,
   //                          tmp_dim));

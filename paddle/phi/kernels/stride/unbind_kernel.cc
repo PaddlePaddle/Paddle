@@ -27,17 +27,18 @@ void UnbindStridedKernel(const Context& dev_ctx,
   int64_t num = outs.size();
   int64_t start = 0;
 
+  axis = axis < 0 ? axis + x.dims().size() : axis;
+
   for (int64_t i = 0; i < num; i++) {
-    auto size = outs[i]->dims()[axis];
     SliceStridedKernel<Context>(dev_ctx,
                                 x,
                                 {axis},
                                 IntArray({start}),
-                                IntArray({start + size}),
+                                IntArray({start + 1}),
                                 std::vector<int64_t>(),
-                                std::vector<int64_t>(),
+                                {axis},
                                 outs[i]);
-    start += size;
+    start += 1;
   }
 }
 

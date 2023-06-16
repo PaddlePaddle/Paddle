@@ -13,8 +13,9 @@
 // limitations under the License.
 #include "paddle/phi/kernels/squeeze_kernel.h"
 
-#include "glog/logging.h"
+#include <set>
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -26,27 +27,43 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
                                const IntArray& axes_arr,
                                DenseTensor* out) {
   std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
+  std::vector<int64_t> output_dims;
+  std::vector<int64_t> output_stride;
 
-  for (auto item : axes) {
-    if (output_dims.size() == 0) {
-      break;
+  std::set<int64_t> axes_set;
+
+  auto input_dims = input.dims();
+  auto input_stride = input.stride();
+
+  if (axes.empty()) {
+    for (int i = 0; i < input_dims.size(); i++) {
+      if (input_dims[i] != 1) {
+        output_dims.push_back(input_dims[i]);
+        output_stride.push_back(input_stride[i]);
+      }
     }
-    auto axis = item < 0 ? item + output_dims.size() + 1 : item;
-    if (output_dims[axis] != 1) {
-      continue;
+  } else {
+    for (auto item : axes) {
+      auto axis = item < 0 ? item + input_dims.size() : item;
+      if (input_dims[axis] == 1) {
+        axes_set.insert(axis);
+      }
     }
-    output_dims.erase(output_dims.begin() + axis);
-    output_stride.erase(output_stride.begin() + axis);
+
+    for (int i = 0; i < input_dims.size(); i++) {
+      if (axes_set.count(i) == 0) {
+        output_dims.push_back(input_dims[i]);
+        output_stride.push_back(input_stride[i]);
+      }
+    }
   }
 
   auto meta = out->meta();
   auto tmp_dim = DDim(output_dims.data(), output_dims.size());
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer shape
-  //       "
+  //       phi::errors::Fatal("Unsqueeze kernel stride compute diff, infer
+  //       shape"
   //                          "is %s, but compute is %s.",
   //                          meta.dims,
   //                          tmp_dim));
