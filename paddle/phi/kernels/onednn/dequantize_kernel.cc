@@ -81,6 +81,7 @@ PD_REGISTER_KERNEL(dequantize,
                    phi::DeQuantKernel,
                    uint8_t,
                    int8_t,
-                   phi::dtype::bfloat16) {
+                   phi::dtype::bfloat16,
+                   float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
 }
