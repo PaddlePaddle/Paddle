@@ -15,6 +15,7 @@
 import unittest
 
 import numpy
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle.fluid import core
@@ -148,6 +149,7 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
 
+    @ast_only_test
     def test_to_tensor_err_log(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
