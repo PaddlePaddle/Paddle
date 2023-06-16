@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,22 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/op_base.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace dialect {
 
-class Graph;
-
-class IdentityScaleOpCleanPass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  virtual ~IdentityScaleOpCleanPass() = default;
+class PhiKernelOp : public ir::Op<PhiKernelOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "phi.kernel"; }
+  static constexpr uint32_t attributes_num = 3;
+  static const char *attributes_name[attributes_num];
+  static void Verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes);
 };
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace dialect
 }  // namespace paddle

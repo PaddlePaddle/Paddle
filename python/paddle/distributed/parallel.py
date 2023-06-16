@@ -425,8 +425,7 @@ class DataParallel(layers.Layer):
                 params_set.add(param)
                 if not isinstance(param, self.var_dtype):
                     raise TypeError(
-                        "The data type of '%s' must be '%s'"
-                        % (param.name, self.var_dtype)
+                        f"The data type of '{param.name}' must be '{self.var_dtype}'"
                     )
                 if param.trainable:
                     layers_param.append((sublayer, param))

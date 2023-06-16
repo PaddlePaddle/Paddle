@@ -34,17 +34,17 @@ class alignas(8) Operation final {
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *create(const std::vector<ir::OpResult> &inputs,
+  static Operation *Create(const std::vector<ir::OpResult> &inputs,
                            const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
                            size_t num_regions = 0);
-  static Operation *create(OperationArgument &&op_argument);
+  static Operation *Create(OperationArgument &&op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
-  void destroy();
+  void Destroy();
 
   IrContext *ir_context() const;
 

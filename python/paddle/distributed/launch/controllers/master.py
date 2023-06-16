@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import copy
+import ipaddress
+import json
 import random
 import sys
 import threading
@@ -22,6 +24,12 @@ from paddle.distributed.launch.utils.kv_client import KVClient
 from paddle.distributed.launch.utils.kv_server import KVServer
 
 ETCD_PROTOCAL = 'etcd://'
+
+
+def _cmp_by_ip(x):
+    x = json.loads(x)
+    ip_x = x.get('candidate', '127.0.0.1:8080').split(':')[0]
+    return int(ipaddress.IPv4Address(ip_x))
 
 
 class Master:
@@ -156,7 +164,11 @@ class HTTPMaster(Master):
             rjson = self.client.get_prefix(prefix)
             self.ctx.logger.debug(f"sync peers {rjson}")
             if rjson and len(rjson) == size:
-                if rank < 0:
+                if self.ctx.args.sort_ip:
+                    ret = sorted(rjson.values(), key=_cmp_by_ip)
+                    idx = ret.index(value)
+                    return ret, idx
+                elif rank < 0:
                     keys = list(rjson.keys())
                     keys.sort()
                     ret = [rjson[k] for k in keys]
@@ -210,7 +222,12 @@ class ETCDMaster(Master):
             self.ctx.logger.debug(f"sync peers {result}")
 
             if len(result) == size:
-                if rank < 0:
+                if self.ctx.args.sort_ip:
+                    values = [i[0].decode() for i in result]
+                    ret = sorted(values, key=_cmp_by_ip)
+                    idx = ret.index(value)
+                    return ret, idx
+                elif rank < 0:
                     keys = [i[1].key.decode() for i in result]
                     sorted_keys = [i[1].key.decode() for i in result]
                     sorted_keys.sort()

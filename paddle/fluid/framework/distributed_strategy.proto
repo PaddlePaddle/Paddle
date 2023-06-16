@@ -62,6 +62,7 @@ message PpConfig {
     optional bool dp_comm_overlap = 1 [ default = false ];
     optional bool delay_scale_loss = 2 [ default = false ];
     optional bool enable_timer = 3 [ default = false ];
+    optional bool sharding_comm_overlap = 4 [ default = false ];
 }
 
 message HybridConfig {

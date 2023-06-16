@@ -75,7 +75,7 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
 def _check_vars(name, var_list):
     if not isinstance(var_list, list):
         var_list = [var_list]
-    if not all([isinstance(var, Variable) for var in var_list]):
+    if not all(isinstance(var, Variable) for var in var_list):
         raise ValueError(
             f"'{name}' should be a Variable or a list of Variable."
         )

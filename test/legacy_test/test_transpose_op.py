@@ -244,7 +244,7 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.python_api = paddle.transpose
         self.public_python_api = paddle.transpose
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         x = np.random.random(self.shape).astype("float32")
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
@@ -257,6 +257,9 @@ class TestAutoTuneTransposeBF16Op(OpTest):
             ),
             'Out': self.inputs['X'].transpose(self.axis),
         }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
     def initTestCase(self):
         fluid.core.set_autotune_range(0, 3)
@@ -283,7 +286,7 @@ class TestTransposeFP16Op(OpTest):
         self.initTestCase()
         self.dtype = np.float16
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         self.python_api = paddle.transpose
         self.public_python_api = paddle.transpose
         x = np.random.random(self.shape).astype(self.dtype)
@@ -297,6 +300,9 @@ class TestTransposeFP16Op(OpTest):
             'XShape': np.random.random(self.shape).astype(self.dtype),
             'Out': self.inputs['X'].transpose(self.axis),
         }
+
+    def if_enable_cinn(self):
+        pass
 
     def init_op_type(self):
         self.op_type = "transpose2"
@@ -323,6 +329,7 @@ class TestTransposeBF16Op(OpTest):
         self.python_api = paddle.transpose
         self.public_python_api = paddle.transpose
         x = np.random.random(self.shape).astype("float32")
+        self.if_enable_cinn()
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {
@@ -335,6 +342,9 @@ class TestTransposeBF16Op(OpTest):
             ),
             'Out': self.inputs['X'].transpose(self.axis),
         }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
     def init_op_type(self):
         self.op_type = "transpose2"

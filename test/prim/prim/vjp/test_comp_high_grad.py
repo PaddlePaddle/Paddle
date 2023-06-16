@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../../legacy_test")
 import gradient_checker
 import numpy as np
 import parameterized as param
@@ -23,7 +25,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 
-'''
+
 @param.parameterized_class(
     ('shape1', 'shape2'),
     [
@@ -118,7 +120,6 @@ class TestAddHighGradCheck(unittest.TestCase):
         for p in places:
             self.func_double(p)
             self.func_triple(p)
-'''
 
 
 @param.parameterized_class(
@@ -328,6 +329,7 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
         for p in places:
             self.func_double(p)
             self.func_triple(p)
+
 '''
 
 

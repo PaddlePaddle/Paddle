@@ -77,6 +77,11 @@ class InterpreterCore {
 
   const platform::Place& GetPlace() const { return place_; }
 
+  using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+    hookfuncs_ = hookfuncs;
+  }
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
   // build graph
@@ -184,6 +189,8 @@ class InterpreterCore {
   std::vector<size_t> trace_execute_order_;
 
   InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
+
+  std::vector<HookFunc> hookfuncs_;
 };
 
 }  // namespace framework

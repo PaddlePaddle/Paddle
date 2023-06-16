@@ -722,6 +722,43 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
       false,
       false);
 }
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
+                                               in_tensor,
+                                               /*dst_rank*/ opts.root_rank,
+                                               /*cur_rank*/ rank_,
+                                               size_,
+                                               phi::AllocationType::CUSTOM);
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  return Collective(
+      in_wrapper,
+      out_wrapper,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        phi::DeviceManager::CCLReduce(device_type_,
+                                      input.data(),
+                                      output.data(),
+                                      input.numel(),
+                                      phi::ccl::ToCCLDataType(input.dtype()),
+                                      ToCustomCCLRedType(opts.reduce_op),
+                                      opts.root_rank,
+                                      comm,
+                                      stream);
+      },
+      CommType::REDUCE,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroupCustom>
 ProcessGroupCustom::CreateProcessGroupCustom(
     const std::shared_ptr<phi::distributed::Store>& store,

@@ -305,7 +305,7 @@ endif()
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
   include(external/python) # find python and python_module
-  include(external/pybind11) # download pybind11
+  include(external/pybind11) # prepare submodule pybind11
   list(APPEND third_party_deps extern_pybind)
 endif()
 
@@ -441,7 +441,7 @@ if(WITH_DISTRIBUTE
 endif()
 
 if(WITH_XBYAK)
-  include(external/xbyak) # download, build, install xbyak
+  include(external/xbyak) # prepare submodule xbyak
   list(APPEND third_party_deps extern_xbyak)
 endif()
 

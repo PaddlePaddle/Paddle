@@ -39,7 +39,7 @@ TEST(value_test, value_test) {
   std::vector<ir::OpResult> op1_inputs = {};
   std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op1 =
-      ir::Operation::create(op1_inputs,
+      ir::Operation::Create(op1_inputs,
                             CreateAttributeMap("op1_name", "op1_attr"),
                             op1_output_types,
                             nullptr);
@@ -48,7 +48,7 @@ TEST(value_test, value_test) {
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op2 =
-      ir::Operation::create(op2_inputs,
+      ir::Operation::Create(op2_inputs,
                             CreateAttributeMap("op2_name", "op2_attr"),
                             op2_output_types,
                             nullptr);
@@ -58,7 +58,7 @@ TEST(value_test, value_test) {
                                           op2->GetResultByIndex(0)};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op3 =
-      ir::Operation::create(op3_inputs,
+      ir::Operation::Create(op3_inputs,
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
                             nullptr);
@@ -71,7 +71,7 @@ TEST(value_test, value_test) {
     op4_output_types.push_back(ir::Float32Type::get(ctx));
   }
   ir::Operation *op4 =
-      ir::Operation::create(op4_inputs,
+      ir::Operation::Create(op4_inputs,
                             CreateAttributeMap("op4_name", "op4_attr"),
                             op4_output_types,
                             nullptr);
@@ -101,11 +101,11 @@ TEST(value_test, value_test) {
 
   // destroy
   VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
-  op4->destroy();
+  op4->Destroy();
   VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
-  op3->destroy();
+  op3->Destroy();
   VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
-  op2->destroy();
+  op2->Destroy();
   VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
-  op1->destroy();
+  op1->Destroy();
 }

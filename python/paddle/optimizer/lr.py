@@ -1014,10 +1014,8 @@ class MultiStepDecay(LRScheduler):
             )
 
         if not all(
-            [
-                milestones[i] < milestones[i + 1]
-                for i in range(len(milestones) - 1)
-            ]
+            milestones[i] < milestones[i + 1]
+            for i in range(len(milestones) - 1)
         ):
             raise ValueError('The elements of milestones must be incremented')
         if gamma >= 1.0:

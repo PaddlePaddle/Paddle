@@ -64,10 +64,9 @@ TEST(program_test, program) {
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
-  paddle::dialect::DenseTensorTypeStorage::Dim dims = {2, 2};
-  paddle::dialect::DenseTensorTypeStorage::DataLayout data_layout =
-      paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
-  paddle::dialect::DenseTensorTypeStorage::LoD lod = {{0, 1, 2}};
+  phi::DDim dims = {2, 2};
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
   ir::Type dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);
@@ -94,7 +93,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
+      ir::Operation::Create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
   ir::Block *block = program.block();
   block->push_back(op1);
@@ -132,7 +131,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
-      ir::Operation::create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
+      ir::Operation::Create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
   block->push_back(op2);
 
   EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
@@ -159,7 +158,7 @@ TEST(program_test, program) {
       builtin_dialect->name() + "." + std::string(AddOp::name());
   ir::OpInfo op3_info = ctx->GetRegisteredOpInfo(op3_name);
   std::unordered_map<std::string, ir::Attribute> op3_attribute;
-  ir::Operation *op3 = ir::Operation::create(
+  ir::Operation *op3 = ir::Operation::Create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
       op3_attribute,
       {dense_tensor_dtype},
@@ -194,7 +193,7 @@ TEST(program_test, program) {
   abs_argument.AddOperands(operands.begin(), operands.end());
   abs_argument.AddAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
   abs_argument.AddTypes(output_types.begin(), output_types.end());
-  ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
+  ir::Operation *abs_op = ir::Operation::Create(std::move(abs_argument));
   paddle::dialect::OpYamlInfoInterface interface =
       abs_op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
   EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name == "x", true);
@@ -209,7 +208,7 @@ TEST(program_test, program) {
   ir::OperationArgument op4_argument(
       {op3->GetResultByIndex(0)}, {}, {}, op4_info);
   op4_argument.AddAttributes(op4_attribute.begin(), op4_attribute.end());
-  ir::Operation *op4 = ir::Operation::create(std::move(op4_argument));
+  ir::Operation *op4 = ir::Operation::Create(std::move(op4_argument));
   block->push_back(op4);
 
   EXPECT_EQ(op4->GetOperandByIndex(0).source().type().dialect().id(),
@@ -256,7 +255,7 @@ TEST(program_test, slice_combine_test) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, op1_attribute, {fp32_dtype}, op1_info);
+      ir::Operation::Create({}, op1_attribute, {fp32_dtype}, op1_info);
   program.block()->push_back(op1);
 
   // (5) Def b = Constant("b")
@@ -266,7 +265,7 @@ TEST(program_test, slice_combine_test) {
   attr_map.insert(std::pair<std::string, ir::Attribute>(
       "value", ir::FloatAttribute::get(ctx, 2.0)));
   ir::Operation *op2 =
-      ir::Operation::create({}, attr_map, {fp32_dtype}, op2_info);
+      ir::Operation::Create({}, attr_map, {fp32_dtype}, op2_info);
   program.block()->push_back(op2);
 
   // (6) Def combine_op = CombineOp("a", "b")
@@ -274,7 +273,7 @@ TEST(program_test, slice_combine_test) {
   ir::OpInfo combine_op_info = ctx->GetRegisteredOpInfo(combine_op_name);
   ir::Type output_type =
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
-  ir::Operation *combine_op = ir::Operation::create(
+  ir::Operation *combine_op = ir::Operation::Create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
       {},
       {output_type},
@@ -286,7 +285,7 @@ TEST(program_test, slice_combine_test) {
   ir::OpInfo slice_op_info = ctx->GetRegisteredOpInfo(slice_op_name);
   ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
   ir::Operation *slice_op =
-      ir::Operation::create({combine_op->GetResultByIndex(0)},
+      ir::Operation::Create({combine_op->GetResultByIndex(0)},
                             {{"index", index_attr}},
                             {fp32_dtype},
                             slice_op_info);
@@ -302,14 +301,14 @@ TEST(program_test, builder) {
   ir::Program program(ctx);
   ir::Builder builder = ir::Builder::AtBlockEnd(ctx, program.block());
 
-  paddle::dialect::FullOp full_op = builder.create<paddle::dialect::FullOp>(
+  paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
   ir::Type full_op_output = full_op->GetResultByIndex(0).type();
-  EXPECT_EQ(program.block()->size() == 1, true);
+  EXPECT_EQ(program.block()->size(), 1u);
   EXPECT_EQ(program.block()->back(), full_op.operation());
-  EXPECT_EQ(full_op->num_operands() == 0, true);
-  EXPECT_EQ(full_op->num_results() == 1, true);
-  EXPECT_EQ(full_op->attributes().size() == 4, true);
+  EXPECT_EQ(full_op->num_operands(), 0u);
+  EXPECT_EQ(full_op->num_results(), 1u);
+  EXPECT_EQ(full_op->attributes().size(), 4u);
   EXPECT_EQ(
       full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
       true);
@@ -319,7 +318,7 @@ TEST(program_test, builder) {
     EXPECT_EQ(dim == 2, true);
   }
 
-  ir::ConstantOp constant = builder.create<ir::ConstantOp>(
+  ir::ConstantOp constant = builder.Build<ir::ConstantOp>(
       ir::Int32_tAttribute::get(ctx, 2), ir::Int32Type::get(ctx));
   EXPECT_EQ(program.block()->size() == 2, true);
   EXPECT_EQ(constant.value().dyn_cast<ir::Int32_tAttribute>().data() == 2,

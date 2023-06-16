@@ -204,15 +204,12 @@ class HybridCommunicateGroup:
                 self._dp_degree,
             )
         )
-        debug_str += (
-            ", mp_group: %s,  sharding_group: %s, pp_group: %s, dp_group: %s, check/clip group: %s"
-            % (
-                self._mp_group,
-                self._sharding_group,
-                self._pp_group,
-                self._dp_group,
-                self._check_group,
-            )
+        debug_str += ", mp_group: {},  sharding_group: {}, pp_group: {}, dp_group: {}, check/clip group: {}".format(
+            self._mp_group,
+            self._sharding_group,
+            self._pp_group,
+            self._dp_group,
+            self._check_group,
         )
         logger.info(debug_str)
 

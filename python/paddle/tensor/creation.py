@@ -2108,11 +2108,9 @@ def assign(x, output=None):
         if len(input.shape) > 0 and any(isinstance(x, Variable) for x in input):
             # We only deal with the case where the list is nested one level, convert all scalars into variables, and then use stack to process. It is necessary to ensure the consistency of types.
             if not all(
-                [
-                    x.shape == (1,)
-                    for x in input
-                    if isinstance(x, (Variable, core.eager.Tensor))
-                ]
+                x.shape == (1,)
+                for x in input
+                if isinstance(x, (Variable, core.eager.Tensor))
             ):
                 raise TypeError(
                     "Unsupport paddle.assign([Variable, Variable...]) with non-scalar variable."

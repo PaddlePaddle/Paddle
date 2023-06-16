@@ -18,20 +18,10 @@ import hypothesis.strategies as st
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
-import paddle.inference as paddle_infer
-
 
 class TestIdentityScaleCleanPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
-        config = self.create_trt_inference_config()
-        config.enable_tensorrt_engine(
-            max_batch_size=8,
-            workspace_size=0,
-            min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
-            use_static=False,
-            use_calib_mode=False,
-        )
+        config = self.create_inference_config(use_gpu=True)
         yield config, ['relu'], (1e-5, 1e-5)
 
     def sample_program_config(self, draw):
@@ -61,9 +51,7 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
-            max_examples=25, passes=["identity_scale_op_clean_pass"]
-        )
+        self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
 
 
 if __name__ == "__main__":

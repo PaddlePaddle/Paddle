@@ -49,8 +49,7 @@ else:
             sys.version_info.minor
         ):
             raise RuntimeError(
-                "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
-                % (
+                "You set PY_VERSION={}, but your current python environment is {}, you should keep them consistent!".format(
                     os.getenv("PY_VERSION"),
                     str(sys.version_info.major)
                     + '.'

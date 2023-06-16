@@ -338,6 +338,10 @@ try:
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
         from .libpaddle import _set_max_memory_map_allocation_pool_size
+
+    # CINN
+    from .libpaddle import is_run_with_cinn
+
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
@@ -62,7 +63,7 @@ class AttributeVisitor {
 
   virtual ir::Attribute operator()(const paddle::experimental::Scalar& scalar) {
     VLOG(10) << "translating scalar";
-    return paddle::dialect::ScalarAttribute::get(ctx, scalar);
+    IR_THROW("not support translating paddle::experimental::Scalar");
   }
 
   virtual ir::Attribute operator()(const std::vector<std::string>& strs) {
@@ -128,12 +129,8 @@ class AttributeVisitor {
   virtual ir::Attribute operator()(
       const std::vector<paddle::experimental::Scalar>& ss) {
     VLOG(10) << "translating vector<scalar>";
-    std::vector<ir::Attribute> attrs;
-    attrs.reserve(ss.size());
-    for (const auto& v : ss) {
-      attrs.push_back(paddle::dialect::ScalarAttribute::get(ctx, v));
-    }
-    return ir::ArrayAttribute::get(ctx, attrs);
+    IR_THROW(
+        "not support translating std::vector<paddle::experimental::Scalar>");
   }
 
   virtual ir::Attribute operator()(const paddle::blank& blank) {
@@ -164,22 +161,6 @@ class IntArrayAttributeVisitor : public AttributeVisitor {
   }
 };
 
-class ScalarAttributeVisitor : public AttributeVisitor {
- public:
-  using AttributeVisitor::AttributeVisitor;
-  ir::Attribute operator()(int i) override {
-    VLOG(10) << "translating int to Scalar";
-    phi::Scalar data(i);
-    return paddle::dialect::ScalarAttribute::get(ctx, data);
-  }
-
-  ir::Attribute operator()(float f) override {
-    VLOG(10) << "translating float to Scalar";
-    phi::Scalar data(f);
-    return paddle::dialect::ScalarAttribute::get(ctx, data);
-  }
-};
-
 class DataTypeAttributeVisitor : public AttributeVisitor {
  public:
   using AttributeVisitor::AttributeVisitor;
@@ -205,8 +186,6 @@ AttributeTranslator::AttributeTranslator() {
   general_visitor = new AttributeVisitor();
   special_visitors["paddle::dialect::IntArrayAttribute"] =
       new IntArrayAttributeVisitor();
-  special_visitors["paddle::dialect::ScalarAttribute"] =
-      new ScalarAttributeVisitor();
   special_visitors["paddle::dialect::DataTypeAttribute"] =
       new DataTypeAttributeVisitor();
   special_visitors["paddle::dialect::PlaceAttribute"] =

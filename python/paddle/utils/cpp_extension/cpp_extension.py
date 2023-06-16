@@ -716,7 +716,7 @@ class BuildExtension(build_ext):
         for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
             if not self.contain_cuda_file:
-                self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
+                self.contain_cuda_file = any(is_cuda_file(s) for s in sources)
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:

@@ -74,6 +74,15 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              const std::string& data_format,
                              MetaTensor* out);
 
+void CheckNumericsInferMeta(const MetaTensor& tensor,
+                            const std::string& op_type,
+                            const std::string& var_name,
+                            const int check_nan_inf_level,
+                            const int stack_height_limit,
+                            const std::string& output_dir,
+                            MetaTensor* stats,
+                            MetaTensor* values);
+
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,

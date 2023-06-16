@@ -390,6 +390,14 @@
     data_type : x
   inplace : (x -> out)
 
+- op : check_numerics
+  args : (Tensor tensor, str op_type = "", str var_name = "", int check_nan_inf_level = 0, int stack_height_limit = -1, str output_dir = "")
+  output : Tensor(stats), Tensor(values)
+  infer_meta :
+    func : CheckNumericsInferMeta
+  kernel :
+    func : check_numerics
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
@@ -1724,6 +1732,16 @@
   kernel :
     func : poisson
   backward : poisson_grad
+
+- op : polygamma
+  args : (Tensor x, int n)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : polygamma
+  backward : polygamma_grad
 
 - op : pow
   args : (Tensor x, Scalar y=1.0f)

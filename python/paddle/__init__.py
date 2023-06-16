@@ -301,6 +301,7 @@ from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
+from .tensor.math import ldexp  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -309,6 +310,7 @@ from .tensor.math import i0  # noqa: F401
 from .tensor.math import i0e  # noqa: F401
 from .tensor.math import i1  # noqa: F401
 from .tensor.math import i1e  # noqa: F401
+from .tensor.math import polygamma  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -698,6 +700,7 @@ __all__ = [  # noqa
     'triu_indices',
     'take',
     'frexp',
+    'ldexp',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
@@ -708,4 +711,5 @@ __all__ = [  # noqa
     'i0e',
     'i1',
     'i1e',
+    'polygamma',
 ]

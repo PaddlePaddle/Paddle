@@ -63,8 +63,7 @@ class netFileReader(FileReader):
 
                     except Exception:
                         self._logger.warning(
-                            "invalid record [%s] in [%s]. skip it!"
-                            % (line[:-1], fileName)
+                            f"invalid record [{line[:-1]}] in [{fileName}]. skip it!"
                         )
         traceInfo["traceEvents"] = traceEventList
 

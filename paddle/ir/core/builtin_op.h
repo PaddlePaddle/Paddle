@@ -40,8 +40,8 @@ class ModuleOp : public ir::Op<ModuleOp> {
   //
   // As the top operation, ModuleOp only support create&destroye through
   // below interface: "create"&"destroy".
-  static ModuleOp create(IrContext *context, Program *pointer);
-  void destroy();
+  static ModuleOp Create(IrContext *context, Program *pointer);
+  void Destroy();
 };
 
 ///
@@ -86,6 +86,7 @@ class CombineOp : public ir::Op<CombineOp> {
   static constexpr uint32_t attributes_num = 0;
 
   static constexpr const char **attributes_name = nullptr;
+
   static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);

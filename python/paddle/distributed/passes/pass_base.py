@@ -85,7 +85,7 @@ class PassBase(ABC):
 
     def _check_conflict_including_common_rules(self, other_pass):
         return self._check_conflict(other_pass) and all(
-            [r(other_pass, self) for r in PassBase._COMMON_RULES]
+            r(other_pass, self) for r in PassBase._COMMON_RULES
         )
 
     def apply(self, main_programs, startup_programs, context=None):
@@ -96,10 +96,8 @@ class PassBase(ABC):
             return context
 
         if not all(
-            [
-                self._check_conflict_including_common_rules(p)
-                for p in context.passes
-            ]
+            self._check_conflict_including_common_rules(p)
+            for p in context.passes
         ):
             return context
 
@@ -325,10 +323,8 @@ def _solve_pass_conflict(passes, context):
     passes = []
     for p in old_passes:
         if all(
-            [
-                p._check_conflict_including_common_rules(applied_p)
-                for applied_p in context.passes
-            ]
+            p._check_conflict_including_common_rules(applied_p)
+            for applied_p in context.passes
         ):
             passes.append(p)
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/identity_scale_op_clean_pass.h"
+#include "paddle/fluid/framework/ir/identity_op_clean_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -23,17 +23,16 @@ namespace ir {
 
 class Graph;
 
-void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("identity_scale_op_clean", graph);
 
-  // pre_op -> scale_in -> scale_op -> scale_out
+  // pre_op -> useless_op_in -> useless_op -> useless_op_out
   // ->
-  // pre_op -> scale_out
+  // pre_op -> useless_op_out
   GraphPatternDetector detector;
-  auto scale_in =
+  auto useless_op_in =
       detector.mutable_pattern()
-          ->NewNode("scale_in")
-          ->assert_is_op_input("scale")
+          ->NewNode("useless_op_in")
           ->assert_has_n_outputs(1)
           ->assert_var_not_persistable()
           ->assert_more([](Node* x) {
@@ -45,27 +44,51 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
             }
             return true;
           });
-  auto scale_op = detector.mutable_pattern()
-                      ->NewNode("scale_fuse")
-                      ->assert_is_op("scale")
-                      ->assert_op_attr<float>("scale", 1.)
-                      ->assert_op_attr<float>("bias", 0.);
-  auto scale_out = detector.mutable_pattern()
-                       ->NewNode("scale_out")
-                       ->assert_is_op_output("scale");
 
-  scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
+  // This useless_op must have only one input and one output!
+  auto useless_op =
+      detector.mutable_pattern()
+          ->NewNode("useless_op")
+          ->assert_has_n_inputs(1)
+          ->assert_has_n_outputs(1)
+          ->assert_more([](Node* x) {
+            if (!x->IsOp()) {
+              return false;
+            }
+            if (x->Op()->Type() == "scale") {
+              auto scale = x->Op()->GetAttrIfExists<float>("scale");
+              auto bias = x->Op()->GetAttrIfExists<float>("bias");
+              if (std::abs(bias) <= 1e-6 && std::abs(scale - 1) <= 1e-6) {
+                return true;
+              }
+            }
+            if (x->Op()->Type() == "cast") {
+              auto in_dtype = x->Op()->GetAttrIfExists<int>("in_dtype");
+              auto out_dtype = x->Op()->GetAttrIfExists<int>("out_dtype");
+              if (in_dtype == out_dtype) {
+                return true;
+              }
+            }
+            if (x->Op()->Type() == "c_identity") {
+              return true;
+            }
+            // you can add more cases here.
+            return false;
+          });
+  auto useless_op_out = detector.mutable_pattern()->NewNode("useless_op_out");
+
+  useless_op->LinksFrom({useless_op_in}).LinksTo({useless_op_out});
 
   int found_subgraph_count = 0;
   GraphPatternDetector::handle_t handler =
       [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
-        Node* scale_op_var = subgraph.at(scale_op);
-        Node* scale_in_var = subgraph.at(scale_in);
-        Node* scale_out_var = subgraph.at(scale_out);
-        const std::string scale_in_name = scale_in_var->Name();
-        const std::string scale_out_name = scale_out_var->Name();
+        Node* useless_op_var = subgraph.at(useless_op);
+        Node* useless_op_in_var = subgraph.at(useless_op_in);
+        Node* useless_op_out_var = subgraph.at(useless_op_out);
+        const std::string useless_op_in_name = useless_op_in_var->Name();
+        const std::string useless_op_out_name = useless_op_out_var->Name();
         // Remove links in graph
-        GraphSafeRemoveNodes(graph, {scale_in_var, scale_op_var});
+        GraphSafeRemoveNodes(graph, {useless_op_in_var, useless_op_var});
         // Modify pre_op_desc
         // Link pre_op directly to scale_out
         for (auto& node : graph->Nodes()) {
@@ -76,16 +99,16 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
               auto names = out_var_map.second;
               bool reset = false;
               for (size_t i = 0; i < names.size(); i++) {
-                if (names[i] == scale_in_name) {
+                if (names[i] == useless_op_in_name) {
                   reset = true;
-                  names[i] = scale_out_name;
+                  names[i] = useless_op_out_name;
                   break;
                 }
               }
               if (reset) {
                 op_desc->SetOutput(out_var_map.first, names);
                 op_desc->Flush();
-                IR_NODE_LINK_TO(node, scale_out_var);
+                IR_NODE_LINK_TO(node, useless_op_out_var);
                 break;
               }
             }
@@ -102,9 +125,10 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(identity_scale_op_clean_pass,
-              paddle::framework::ir::IdentityScaleOpCleanPass);
-REGISTER_PASS_CAPABILITY(identity_scale_op_clean_pass)
+REGISTER_PASS(identity_op_clean_pass,
+              paddle::framework::ir::IdentityOpCleanPass);
+REGISTER_PASS_CAPABILITY(identity_op_clean_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "scale", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("scale", 0)
+            .LE("c_identity", 1));

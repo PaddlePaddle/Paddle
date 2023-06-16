@@ -130,10 +130,7 @@ def append_fluid_kernels():
     new_content = content.replace(location_str, location_str + append_str)
 
     if new_content == content:
-        print(
-            "ERROR: can not find \"%s\" in file \"%s\""
-            % (location_str, file_name)
-        )
+        print(f"ERROR: can not find \"{location_str}\" in file \"{file_name}\"")
         return False
 
     with open(file_name, 'w', encoding='utf-8') as f:
