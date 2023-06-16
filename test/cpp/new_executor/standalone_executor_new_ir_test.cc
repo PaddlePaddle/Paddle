@@ -70,7 +70,7 @@ TEST(StandaloneExecutor, run) {
 
   ProgramDesc prog_desc;
   InterpreterCore test_core(
-      place, prog_desc.Block(0), &scope, kernel_program.get());
+      place, prog_desc.Block(0), &scope, std::move(kernel_program));
 
   test_core.Run({});
 
