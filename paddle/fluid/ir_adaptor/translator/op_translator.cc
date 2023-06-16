@@ -26,6 +26,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
+#include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir_adaptor/translator/attribute_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/op_compat_info.h"
@@ -670,6 +671,115 @@ struct EmbeddingOpTranscriber : public OpTranscriber {
   }
 };
 
+// the `assign_value` in static_ops.yaml is different from the one in
+// `legacy_ops.yaml` for this op we simulate the logic in
+// python/paddle/tensor/creation.py::assign(x, output)
+struct AssignValueOpTranscriber : public OpTranscriber {
+  ir::OpInfo LoopkUpOpInfo_(ir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = "pd.assign_value_";
+    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op assign_value should have corresponding OpInfo pd.assign_value_");
+    }
+
+    return op_info;
+  }
+
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            ir::Program* program,
+                            const OpDesc& op_desc) override {
+    VLOG(10) << "[op assign_value] start transcribing";
+    auto op_info = this->LoopkUpOpInfo_(ctx, op_desc);
+    auto* op_info_concept =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    OpInputInfoList input_infos;
+    OpAttributeInfoList attr_infos;
+    OpOutputInfoList output_infos;
+    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+        op_info_concept->get_op_info_();
+    std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
+    for (auto info : attr_infos) {
+      attr_info_maps.insert({info.name, info});
+    }
+
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::AttributeMap attribute_map;
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr("shape")) {
+      legacy_attr = op_desc.GetAttr("shape");
+    } else {
+      IR_THROW("Op assign_value should have attribute `shape` but not find");
+    }
+    ir::Attribute attr_shape =
+        attribute_translator(attr_info_maps.at("shape").type_name, legacy_attr);
+    attribute_map["shape"] = attr_shape;
+
+    if (op_desc.HasAttr("dtype")) {
+      legacy_attr = op_desc.GetAttr("dtype");
+    } else {
+      IR_THROW("Op assign_value should have attribute `dtype` but not find");
+    }
+    ir::Attribute attr_dtype =
+        attribute_translator(attr_info_maps.at("dtype").type_name, legacy_attr);
+    attribute_map["dtype"] = attr_dtype;
+
+    ir::Attribute attr_place =
+        paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+    attribute_map["place"] = attr_place;
+
+    if (op_desc.HasAttr("bool_values")) {
+      legacy_attr = op_desc.GetAttr("bool_values");
+    } else if (op_desc.HasAttr("fp32_values")) {
+      legacy_attr = op_desc.GetAttr("fp32_values");
+    } else if (op_desc.HasAttr("int32_values")) {
+      legacy_attr = op_desc.GetAttr("int32_values");
+    } else if (op_desc.HasAttr("int64_values")) {
+      legacy_attr = op_desc.GetAttr("int64_values");
+    } else {
+      IR_THROW(
+          "Op assign_value should have attribute `**_values` but not find");
+    }
+    ir::Attribute attr_values = attribute_translator(
+        attr_info_maps.at("values").type_name, legacy_attr);
+    attribute_map["values"] = attr_values;
+
+    VLOG(10) << "[op assign_value] attribute translation done";
+
+    std::vector<int> src_shape =
+        paddle::get<std::vector<int>>(op_desc.GetAttr("shape"));
+    std::vector<int64_t> target_shape(src_shape.begin(), src_shape.end());
+
+    ir::Builder builder(ctx, program->block());
+    paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+        target_shape,
+        0.0f,
+        attr_dtype.dyn_cast<paddle::dialect::DataTypeAttribute>().data(),
+        phi::CPUPlace());
+
+    std::vector<ir::OpResult> op_inputs = {full_op->result(0)};
+
+    VLOG(10) << "[op assign_value] insert a full op to get input";
+
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types;
+    std::tie(op_output_types, arg_to_idx) =
+        this->GenerateOperationOutput_(ctx, op_desc, output_infos);
+
+    ir::Operation* operation = ir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    program->block()->push_back(operation);
+    RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
+
+    VLOG(10) << "[op assign_value] translation finished";
+
+    return operation;
+  }
+};
+
 ir::Operation* FeedOpHandler(ir::IrContext* ctx,
                              TranslationContext* param_map,
                              ir::Program* program,
@@ -738,6 +848,7 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpHandler;
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
+  special_handlers["assign_value"] = AssignValueOpTranscriber();
 }
 
 }  // namespace translator
