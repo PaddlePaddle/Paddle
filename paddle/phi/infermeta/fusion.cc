@@ -518,19 +518,18 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   out_max->set_layout(x.layout());
 }
 
-
 void ConvTransposeXPUInferMeta(const MetaTensor& x,
-                            const MetaTensor& filter,
-                            const std::vector<int>& strides,
-                            const std::vector<int>& paddings,
-                            const std::vector<int>& output_padding,
-                            const std::vector<int>& output_size,
-                            const std::string& padding_algorithm,
-                            int groups,
-                            const std::vector<int>& dilations,
-                            const std::string& data_format,
-                            MetaTensor* out,
-                            MetaTensor* out_max) {
+                               const MetaTensor& filter,
+                               const std::vector<int>& strides,
+                               const std::vector<int>& paddings,
+                               const std::vector<int>& output_padding,
+                               const std::vector<int>& output_size,
+                               const std::string& padding_algorithm,
+                               int groups,
+                               const std::vector<int>& dilations,
+                               const std::string& data_format,
+                               MetaTensor* out,
+                               MetaTensor* out_max) {
   auto x_dims = x.dims();
   auto filter_dims = filter.dims();
   std::vector<int> paddings_ = paddings;
@@ -654,37 +653,37 @@ void ConvTransposeXPUInferMeta(const MetaTensor& x,
 }
 
 void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
-                           const MetaTensor &x_max,
-                           const MetaTensor& filter,
-                           const MetaTensor& filter_max,
-                           const MetaTensor &bias,
-                           const std::vector<int>& strides,
-                           const std::vector<int>& paddings,
-                           const std::vector<int>& output_padding,
-                           const IntArray& output_size,
-                           const std::string& padding_algorithm,
-                           int groups,
-                           const std::vector<int>& dilations,
-                           const std::string& data_format,
-                           bool has_bias,
-                           bool with_act,
-                           const std::string& act_type,
-                           MetaTensor* out,
-                           MetaTensor* out_max) {
+                                 const MetaTensor& x_max,
+                                 const MetaTensor& filter,
+                                 const MetaTensor& filter_max,
+                                 const MetaTensor& bias,
+                                 const std::vector<int>& strides,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& output_padding,
+                                 const IntArray& output_size,
+                                 const std::string& padding_algorithm,
+                                 int groups,
+                                 const std::vector<int>& dilations,
+                                 const std::string& data_format,
+                                 bool has_bias,
+                                 bool with_act,
+                                 const std::string& act_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_max) {
   std::vector<int32_t> vec_output_size(output_size.GetData().begin(),
                                        output_size.GetData().end());
   ConvTransposeXPUInferMeta(x,
-                         filter,
-                         strides,
-                         paddings,
-                         output_padding,
-                         vec_output_size,
-                         padding_algorithm,
-                         groups,
-                         dilations,
-                         data_format,
-                         out,
-                         out_max);
+                            filter,
+                            strides,
+                            paddings,
+                            output_padding,
+                            vec_output_size,
+                            padding_algorithm,
+                            groups,
+                            dilations,
+                            data_format,
+                            out,
+                            out_max);
 }
 
 }  // namespace phi

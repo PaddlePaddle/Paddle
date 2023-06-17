@@ -22,24 +22,24 @@
 namespace phi {
 template <typename T, typename Context>
 void Conv2dTransposeXPUKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const paddle::optional<DenseTensor> &x_max,
-                           const DenseTensor& filter,
-                           const DenseTensor& filter_max,
-                           const paddle::optional<DenseTensor> &bias,
-                           const std::vector<int>& strides,
-                           const std::vector<int>& paddings,
-                           const std::vector<int>& output_padding,
-                           const IntArray& output_size,
-                           const std::string& padding_algorithm,
-                           int groups,
-                           const std::vector<int>& dilations,
-                           const std::string& data_format,
-                           bool has_bias,
-                           bool with_act,
-                           const std::string& act_type,
-                           DenseTensor* out,
-                           DenseTensor* out_max) {
+                              const DenseTensor& x,
+                              const paddle::optional<DenseTensor>& x_max,
+                              const DenseTensor& filter,
+                              const DenseTensor& filter_max,
+                              const paddle::optional<DenseTensor>& bias,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& output_padding,
+                              const IntArray& output_size,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::vector<int>& dilations,
+                              const std::string& data_format,
+                              bool has_bias,
+                              bool with_act,
+                              const std::string& act_type,
+                              DenseTensor* out,
+                              DenseTensor* out_max) {
   using XPUT = typename XPUTypeTrait<T>::Type;
 
   // The filter will be reshaped in the calculations,
@@ -52,8 +52,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   is_nchw = (data_format == "NHWC") ? false : true;
 
   auto xxx = out->dims();
-  for(int i = 0; i < xxx.size(); i++)
-    VLOG(1)<<xxx[i];
+  for (int i = 0; i < xxx.size(); i++) VLOG(1) << xxx[i];
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());  // hw
   DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
@@ -77,7 +76,8 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   }
   auto bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
-  auto x_max_data = x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
+  auto x_max_data =
+      x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   auto filter_max_data = filter_max.data<float>();
 
   int r = xpu::conv2d_transpose_fusion_v2<XPUT, int16_t, XPUT, int16_t>(
