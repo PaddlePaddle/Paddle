@@ -332,7 +332,6 @@ def _p2p_helper(
                 tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
         else:
-
             tensor_recv_prev = paddle.empty(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg)
             )
@@ -354,7 +353,6 @@ def _p2p_helper(
             )
 
     ops = []
-    # partial_ops = []
     pipe_group = _hcg.get_pipe_parallel_group()
 
     # start to p2p communicate
