@@ -2273,6 +2273,12 @@ PD_REGISTER_KERNEL(distributed_fused_lamb,
                    ALL_LAYOUT,
                    phi::fusion::DistributedFusedLambKernel,
                    float) {
+  kernel->InputAt(10).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(11).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(12).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(13).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(14).SetBackend(phi::Backend::CPU);
+
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT16);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
