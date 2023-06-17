@@ -675,8 +675,8 @@ def logaddexp(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
-        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1617,7 +1617,7 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
             # x is a 2-D Tensor:
             x = paddle.to_tensor([[0., 1.1, 1.2], [0., 0., 1.3], [0., 0., 0.]])
             out1 = paddle.count_nonzero(x)
-            # [3]
+            # 3
             out2 = paddle.count_nonzero(x, axis=0)
             # [0, 1, 2]
             out3 = paddle.count_nonzero(x, axis=0, keepdim=True)
@@ -1638,17 +1638,8 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
             # [1, 3, 5]
     """
 
-    if axis is not None:
-        if isinstance(axis, int):
-            axis = [axis]
-        dims = len(x.shape)
-        for i in range(len(axis)):
-            if not isinstance(axis[i], int) or not (
-                axis[i] < dims and axis[i] >= -dims
-            ):
-                raise ValueError(
-                    "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-                )
+    if isinstance(axis, int):
+        axis = [axis]
 
     bool_tensor = paddle.cast(x, 'bool')
     int_tensor = paddle.cast(bool_tensor, 'int64')

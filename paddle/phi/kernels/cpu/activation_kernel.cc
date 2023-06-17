@@ -86,8 +86,6 @@ DEFINE_CPU_ACTIVATION_KERNEL(Relu, ReluCPUFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Tanh, TanhFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(TanhShrink, TanhShrinkFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Silu, SiluFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Exp, ExpFunctor)
-DEFINE_CPU_ACTIVATION_KERNEL(Expm1, Expm1Functor)
 DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, ReciprocalFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Square, SquareFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, SqrtFunctor)
@@ -104,6 +102,8 @@ DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, LogFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, Log2Functor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log10, Log10Functor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, Log1pFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, ExpFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, Expm1Functor)
 
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
@@ -175,15 +175,26 @@ PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 
-PD_REGISTER_KERNEL(
-    exp, CPU, ALL_LAYOUT, phi::ExpKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(exp,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ExpKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
+
 PD_REGISTER_KERNEL(expm1,
                    CPU,
                    ALL_LAYOUT,
                    phi::Expm1Kernel,
                    float,
                    double,
+                   int,
+                   int64_t,
                    phi::dtype::float16) {}
+
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
