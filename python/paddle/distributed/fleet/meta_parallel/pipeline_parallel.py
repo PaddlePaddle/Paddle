@@ -266,9 +266,8 @@ class PipelineParallel(MetaParallelBase):
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
 
-            # need reverse to keep the order of parameters' grads for performance
             parameter_list = [
-                p for p in reversed(model.parameters()) if not p.stop_gradient
+                p for p in model.parameters() if not p.stop_gradient
             ]
             if len(parameter_list) < 1:
                 return
