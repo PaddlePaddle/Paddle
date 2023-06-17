@@ -46,9 +46,9 @@
 
 #include "glog/logging.h"
 
-void build_scope(ir::Block* block,
-                 paddle::framework::Scope* scope,
-                 std::unordered_map<ir::Value, std::string>* name_map) {
+void BuildScope(ir::Block* block,
+                paddle::framework::Scope* scope,
+                std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
   int count = 0;
@@ -192,7 +192,7 @@ class PhiKernelAdaptor {
   void run(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    build_scope(block, scope_, &name_map);
+    BuildScope(block, scope_, &name_map);
 
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
@@ -248,7 +248,7 @@ class PhiKernelAdaptor {
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    build_scope(block, scope_, &name_map);
+    BuildScope(block, scope_, &name_map);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();

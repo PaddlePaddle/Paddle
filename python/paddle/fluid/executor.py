@@ -511,9 +511,11 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
-def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
-    return program.desc.cached_hash_str() + _get_program_cache_key(
-        feed, fetch_list
+def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
+    return (
+        program.desc.cached_hash_str()
+        + str(scope.raw_address())
+        + _get_program_cache_key(feed, fetch_list)
     )
 
 
@@ -632,14 +634,14 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor:
-    def __init__(self, place, programs, scope):
+    def __init__(self, place, plan, scope):
         self._place = core.Place()
         self._place.set_place(place)
-        self._programs = programs
+        self._plan = plan
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, scope, feed_names, fetch_list, return_numpy=True):
+    def run(self, feed_names, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -649,40 +651,16 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        fetch_list = self._check_fetch(fetch_list)
-
-        tensors = self._new_exe.run(
-            scope, feed_names, fetch_list
-        )._move_to_list()
+        tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
             return tensors
 
     def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(
-            self._place, [program.desc for program in self._programs]
-        )
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
         return new_exe
-
-    def _check_fetch(self, fetch_list):
-        if fetch_list is None:
-            fetch_list = []
-
-        res = []
-        for fetch_var in fetch_list:
-            if isinstance(fetch_var, Variable):
-                fetch_var = fetch_var.name
-            elif not isinstance(fetch_var, str):
-                raise TypeError(
-                    "Required fetch_var shall be str|Variable, but received {}".format(
-                        type(fetch_var).__name__
-                    )
-                )
-
-            res.append(fetch_var)
-        return res
 
 
 class _ExecutorCache:
@@ -716,13 +694,16 @@ class _ExecutorCache:
                     ).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program._program, feed, fetch_list
+                        self.program._program,
+                        self.scope,
+                        self.feed,
+                        self.fetch_list,
                     )
                 )
             else:
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program, feed, fetch_list
+                        self.program, self.scope, self.feed, self.fetch_list
                     )
                 )
 
@@ -850,9 +831,12 @@ class _ExecutorCache:
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
-
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, [new_program], scope)
+        new_exe = _StandaloneExecutor(
+            place,
+            core.Plan([core.Job("default")], {"default": new_program.desc}),
+            scope,
+        )
         return new_program, new_exe
 
 
@@ -1614,9 +1598,7 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(
-                scope, list(feed.keys()), fetch_list, return_numpy
-            )
+            ret = new_exe.run(list(feed.keys()), return_numpy)
             set_flags(stored_flag)
             return ret
 
