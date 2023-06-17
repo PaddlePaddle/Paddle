@@ -173,10 +173,6 @@ class PipelineParallel(MetaParallelBase):
         if self._sharding_comm_overlap:
             assert self.use_sharding_parallel and self.num_stages > 1
 
-        # assert not (
-        #     self._dp_comm_overlap and self._sharding_comm_overlap
-        # ), "Cannot use dp pp overlap and sharding pp overlap at the same time."
-
         self._comm_buffers = []
         self._comm_overlap = (
             self._dp_comm_overlap or self._sharding_comm_overlap
@@ -269,10 +265,11 @@ class PipelineParallel(MetaParallelBase):
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
+
+            # need reverse to keep the order of parameters' grads for performance
             parameter_list = [
                 p for p in reversed(model.parameters()) if not p.stop_gradient
             ]
-            # need reverse to keep the order of parameters for performance
             if len(parameter_list) < 1:
                 return
 
