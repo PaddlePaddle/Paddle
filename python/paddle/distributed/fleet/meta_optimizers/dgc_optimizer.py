@@ -21,9 +21,10 @@ __all__ = []
 import paddle
 from paddle.common_ops_import import LayerHelper
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.optimizer import Momentum, Optimizer
+from paddle.fluid.optimizer import Optimizer
 from paddle.framework import core, in_dynamic_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
+from paddle.optimizer import Momentum
 from paddle.regularizer import L1Decay, L2Decay
 from paddle.static import create_global_var
 
