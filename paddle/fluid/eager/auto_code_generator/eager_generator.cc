@@ -106,34 +106,41 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["fused_elemwise_add_activation"] = {};
   operators_with_attrs["fused_elemwise_add_activation"]["functor_list"] =
       functor_list;
+  std::cout << "debug PrepareAttrMapForOps 1" << std::endl;
 
   // Handle "fused_elemwise_activation"
   operators_with_attrs["fused_elemwise_activation"] = {};
   operators_with_attrs["fused_elemwise_activation"]["functor_list"] =
       functor_list;
+  std::cout << "debug PrepareAttrMapForOps 2" << std::endl;
 
   // Handle "reverse"
   std::vector<int> axis = {0};
   operators_with_attrs["reverse"] = {};
   operators_with_attrs["reverse"]["axis"] = axis;
+  std::cout << "debug PrepareAttrMapForOps 3" << std::endl;
 
   // Handle "flip"
   operators_with_attrs["flip"] = {};
   operators_with_attrs["flip"]["axis"] = axis;
+  std::cout << "debug PrepareAttrMapForOps 4" << std::endl;
 
   // Handle "cast"
   operators_with_attrs["cast"] = {};
   operators_with_attrs["cast"]["out_dtype"] = 5;
   operators_with_attrs["cast"]["in_dtype"] = 5;
+  std::cout << "debug PrepareAttrMapForOps 5" << std::endl;
 
   // Handle "transfer_dtype"
   operators_with_attrs["transfer_dtype"] = {};
   operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
   operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
+  std::cout << "debug PrepareAttrMapForOps 6" << std::endl;
 
   // Handle "c_split"
   operators_with_attrs["c_split"] = {};
   operators_with_attrs["c_split"]["nranks"] = 1;
+  std::cout << "debug PrepareAttrMapForOps 7" << std::endl;
 }
 
 /* --- Helper Objects --- */
@@ -3128,90 +3135,100 @@ static std::string GenerateCoreOpsReturnsInfo() {
 static void DygraphCodeGeneration(const std::string& output_dir,
                                   int split_count) {
   std::string dygraph_forward_api_str = GenerateDygraphHFileIncludes();
+  std::cout << "debug DygraphCodeGeneration 1" << std::endl;
   std::string fwd_function_str = "";
   std::string grad_node_h_str = "";
   std::string grad_node_cc_str = "";
-
+  std::cout << "debug DygraphCodeGeneration 2" << std::endl;
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
+  std::cout << "debug DygraphCodeGeneration 3" << std::endl;
 
   paddle::flat_hash_map<std::string, OpInfo> op_info_map_need_gen;
+  std::cout << "debug DygraphCodeGeneration 4" << std::endl;
 
   for (auto& pair : op_info_map) {
+    std::cout << "debug DygraphCodeGeneration 5.1" << std::endl;
     const OpInfo& op_info = pair.second;
     proto::OpProto* op_proto = op_info.proto_;
-
+    std::cout << "debug DygraphCodeGeneration 5.2" << std::endl;
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
+    std::cout << "debug DygraphCodeGeneration 5.3 " << op_type << std::endl;
     if (black_ops_list.count(op_type)) {
       continue;
     }
-
+    std::cout << "debug DygraphCodeGeneration 5.4 " << std::endl;
     // Skip the sparse op
     if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
         op_type != "sparse_attention") {
       continue;
     }
-
+    std::cout << "debug DygraphCodeGeneration 5.5 " << std::endl;
     GradNodeGenerationInfo bwd_info;
-
+    std::cout << "debug DygraphCodeGeneration 5.6 " << std::endl;
     bool is_available = CollectGradInformationFromOpInfo(op_info, &bwd_info);
-
+    std::cout << "debug DygraphCodeGeneration 5.7 " << std::endl;
     if (!is_available && !bwd_info.GenerateForwardOnly()) {
       VLOG(6) << "Skipped operator: " << op_type;
       continue;
     }
-
+    std::cout << "debug DygraphCodeGeneration 5.8 " << std::endl;
     op_info_map_need_gen.emplace(pair);
+    std::cout << "debug DygraphCodeGeneration 5.9 " << std::endl;
   }
-
+  std::cout << "debug DygraphCodeGeneration 6" << std::endl;
   int each_cc_file_api_size = op_info_map_need_gen.size() / split_count;
+  std::cout << "debug DygraphCodeGeneration 7" << std::endl;
   if (op_info_map_need_gen.size() % split_count != 0) {
     each_cc_file_api_size++;
   }
   int api_index = 0;
   int file_index = 0;
-
+  std::cout << "debug DygraphCodeGeneration 8" << std::endl;
   for (auto& pair : op_info_map_need_gen) {
+    std::cout << "debug DygraphCodeGeneration 9.1" << std::endl;
     const OpInfo& op_info = pair.second;
     proto::OpProto* op_proto = op_info.proto_;
-
+    std::cout << "debug DygraphCodeGeneration 9.2" << std::endl;
     const std::string& op_type = op_proto->type();
-
+    std::cout << "debug DygraphCodeGeneration 9.3" << op_type << std::endl;
     /* ----------------------------- */
     /* ---- Collect Information ---- */
     /* ----------------------------- */
 
     ForwardGenerationInfo fwd_info;
+    std::cout << "debug DygraphCodeGeneration 9.4" << op_type << std::endl;
     GradNodeGenerationInfo bwd_info;
-
+    std::cout << "debug DygraphCodeGeneration 9.5" << op_type << std::endl;
     VLOG(6) << "-------- CollectInformationFromOpInfo -------";
-
+    std::cout << "debug DygraphCodeGeneration 9.6" << op_type << std::endl;
     CollectForwardInformationFromOpInfo(op_info, &fwd_info);
-
+    std::cout << "debug DygraphCodeGeneration 9.7" << op_type << std::endl;
     CollectGradInformationFromOpInfo(op_info, &bwd_info);
-
+    std::cout << "debug DygraphCodeGeneration 9.8" << op_type << std::endl;
     VLOG(6) << "-------- PurifyOpProto -------";
     PurifyForwardOpProto(*op_proto, &fwd_info);
     if (!bwd_info.GenerateForwardOnly()) {
       PurifyGradNodeGenerationInfo(*op_proto, &bwd_info);
     }
-
+    std::cout << "debug DygraphCodeGeneration 9.9" << op_type << std::endl;
     /* --------------------------- */
     /* --------- CodeGen --------- */
     /* --------------------------- */
     VLOG(6) << "-------- GenerateForwardFunctionContents -------";
     std::pair<std::string, std::string> body_and_declaration =
         GenerateForwardFunctionContents(fwd_info, bwd_info, {});
-
+    std::cout << "debug DygraphCodeGeneration 10" << op_type << std::endl;
     fwd_function_str += body_and_declaration.first + "\n";
 
     VLOG(6) << "-------- GenerateDygraphForwardAPIContents -------";
     std::string fwd_function_declare_str = body_and_declaration.second;
     dygraph_forward_api_str += fwd_function_declare_str;
-
+    std::cout << "debug DygraphCodeGeneration 10" << op_type << std::endl;
     auto& infer_inplace =
         paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
     std::map<std::string, std::string> forward_inplace_map;
+    std::cout << "debug DygraphCodeGeneration 11" << op_type << std::endl;
     // Inplace Function Generator.
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
@@ -3220,35 +3237,36 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       for (auto& inplace_pair : in_to_outs) {
         forward_inplace_map[inplace_pair.second] = inplace_pair.first;
       }
-
+      std::cout << "debug DygraphCodeGeneration 12" << op_type << std::endl;
       VLOG(6) << "-------- GenerateInplaceForwardFunctionContents -------";
       std::pair<std::string, std::string> inplace_body_and_declaration =
           GenerateForwardFunctionContents(
               fwd_info, bwd_info, forward_inplace_map);
 
       fwd_function_str += inplace_body_and_declaration.first + "\n";
-
+      std::cout << "debug DygraphCodeGeneration 13" << op_type << std::endl;
       VLOG(6) << "-------- GenerateInplaceDygraphForwardAPIContents -------";
       std::string inplace_fwd_function_declare_str =
           inplace_body_and_declaration.second;
       dygraph_forward_api_str += inplace_fwd_function_declare_str;
     }
-
+    std::cout << "debug DygraphCodeGeneration 14" << op_type << std::endl;
     if (!bwd_info.GenerateForwardOnly()) {
       VLOG(6) << "-------- GenerateGradNodeHeaderContents -------";
       grad_node_h_str += GenerateGradNodeHeaderContents(fwd_info, bwd_info);
       grad_node_h_str += "\n";
-
+      std::cout << "debug DygraphCodeGeneration 15" << op_type << std::endl;
       VLOG(6) << "-------- GenerateGradNodeCCContents -------";
       grad_node_cc_str += GenerateGradNodeCCContents(fwd_info, bwd_info);
       grad_node_cc_str += "\n";
     }
-
+    std::cout << "debug DygraphCodeGeneration 16" << op_type << std::endl;
     VLOG(6) << op_type << ": Finished Generating Op: " << op_type;
-
+    std::cout << "debug DygraphCodeGeneration 17" << op_type << std::endl;
     api_index++;
     if (api_index / each_cc_file_api_size > file_index) {
       file_index++;
+      std::cout << "debug DygraphCodeGeneration 18" << op_type << std::endl;
       VLOG(6) << "-------- GenerateDygraphForwardCCFile -------";
       std::string forward_cc_path = output_dir +
                                     "/forwards/dygraph_forward_functions" +
@@ -3256,29 +3274,34 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       fwd_function_str += "\n";
       GenerateForwardDygraphFile(forward_cc_path, fwd_function_str);
       fwd_function_str = "";
-
+      std::cout << "debug DygraphCodeGeneration 19" << op_type << std::endl;
       VLOG(6) << "-------- GenerateNodeCCFile -------";
       std::string node_cc_path =
           output_dir + "/nodes/nodes" + std::to_string(file_index) + ".tmp.cc";
       GenerateNodeCCFile(node_cc_path, grad_node_cc_str);
+      std::cout << "debug DygraphCodeGeneration 20" << op_type << std::endl;
       grad_node_cc_str = "";
     }
   }
-
+  std::cout << "debug DygraphCodeGeneration 21" << std::endl;
   file_index++;
   VLOG(6) << "-------- GenerateDygraphForwardCCFile -------";
   std::string forward_cc_path = output_dir +
                                 "/forwards/dygraph_forward_functions" +
                                 std::to_string(file_index) + ".tmp.cc";
+  std::cout << "debug DygraphCodeGeneration 22" << std::endl;
   GenerateForwardDygraphFile(forward_cc_path, fwd_function_str);
+  std::cout << "debug DygraphCodeGeneration 23" << std::endl;
   fwd_function_str = "";
 
   GenerateForwardDygraphFile(
       output_dir + "/forwards/dygraph_forward_functions_args_info.tmp.cc",
       GenerateCoreOpsArgsInfo());
+  std::cout << "debug DygraphCodeGeneration 24" << std::endl;
   GenerateForwardDygraphFile(
       output_dir + "/forwards/dygraph_forward_functions_args_type_info.tmp.cc",
       GenerateCoreOpsArgsTypeInfo());
+  std::cout << "debug DygraphCodeGeneration 25" << std::endl;
   GenerateForwardDygraphFile(
       output_dir + "/forwards/dygraph_forward_functions_returns_info.tmp.cc",
       GenerateCoreOpsReturnsInfo());
@@ -3288,15 +3311,18 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       output_dir + "/nodes/nodes" + std::to_string(file_index) + ".tmp.cc";
   GenerateNodeCCFile(node_cc_path, grad_node_cc_str);
   grad_node_cc_str = "";
+  std::cout << "debug DygraphCodeGeneration 26" << std::endl;
 
   VLOG(6) << "-------- GenerateForwardHFile -------";
   std::string dygraph_forward_api_path =
       output_dir + "/dygraph_forward_api.tmp.h";
   GenerateForwardHFile(dygraph_forward_api_path, dygraph_forward_api_str);
+  std::cout << "debug DygraphCodeGeneration 27" << std::endl;
 
   VLOG(6) << "-------- GenerateNodeHFile -------";
   std::string node_h_path = output_dir + "/nodes/nodes.tmp.h";
   GenerateNodeHFile(node_h_path, grad_node_h_str);
+  std::cout << "debug DygraphCodeGeneration 28" << std::endl;
 }
 
 }  // namespace framework
@@ -3307,6 +3333,7 @@ int main(int argc, char* argv[]) {
     std::cerr << "argc must be 3" << std::endl;
     return -1;
   }
+  std::cout << "debug main 1 " << std::endl;
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   // We need a fake device to trigger the registration of the common kernel and
   // generate api
@@ -3314,11 +3341,13 @@ int main(int argc, char* argv[]) {
 #endif
 
   std::string eager_root = argv[1];
+  std::cout << "debug main 2:  " << eager_root << std::endl;
   int split_count = atoi(argv[2]);
-
+  std::cout << "debug main 3:  " << split_count << std::endl;
   paddle::framework::PrepareAttrMapForOps();
-
+  std::cout << "debug main 4" << std::endl;
   paddle::framework::DygraphCodeGeneration(eager_root, split_count);
+  std::cout << "debug main 5" << std::endl;
 
   return 0;
 }

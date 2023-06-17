@@ -47,6 +47,8 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
