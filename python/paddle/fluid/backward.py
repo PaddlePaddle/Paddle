@@ -762,7 +762,7 @@ def _remove_no_grad_branch_(
                         "fill_any_like",
                         {"X": [x_in]},
                         {"Out": [arg]},
-                        {'value': 0, 'dtype': -1},
+                        {'value': core.Scalar(0), 'dtype': -1},
                     )
                     # update the mapping between fwd and bwd
                     if (
@@ -1367,7 +1367,10 @@ def _append_backward_ops_(
                         "fill_any_like",
                         {"X": [var_name]},
                         {"Out": [grad_var_name]},
-                        {'value': 0, 'dtype': target_vars[0].dtype},
+                        {
+                            'value': core.Scalar(0),
+                            'dtype': target_vars[0].dtype,
+                        },
                     )
                     block.desc.append_op().copy_from(op_desc)
             break
@@ -2470,7 +2473,7 @@ def calc_gradient_helper(
                 {"X": [target.name]},
                 {"Out": [grad_name]},
                 {
-                    "value": 1.0,
+                    "value": core.Scalar(1.0),
                     "dtype": target.dtype,
                 },
             )
