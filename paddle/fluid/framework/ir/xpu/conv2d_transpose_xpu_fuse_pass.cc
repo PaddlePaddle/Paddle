@@ -39,10 +39,10 @@ namespace patterns {
 
 struct Conv2dTransposeXPUPattern : public PatternBase {
   Conv2dTransposeXPUPattern(PDPattern* pattern,
-                   const std::string& name_scope,
-                   const std::string& act_type,
-                   bool with_ew_bias,
-                   bool with_bn);
+                            const std::string& name_scope,
+                            const std::string& act_type,
+                            bool with_ew_bias,
+                            bool with_bn);
   // operator
   PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(ew_bias_add);
@@ -70,15 +70,16 @@ struct Conv2dTransposeXPUPattern : public PatternBase {
 
  private:
   std::string act_type_;
-  bool with_ew_bias_{false};
-  bool with_bn_{false};
+  bool with_ew_bias_;
+  bool with_bn_;
 };
 
-Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(PDPattern* pattern,
-                                   const std::string& name_scope,
-                                   const std::string& act_type,
-                                   bool with_ew_bias,
-                                   bool with_bn)
+Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(
+    PDPattern* pattern,
+    const std::string& name_scope,
+    const std::string& act_type,
+    bool with_ew_bias,
+    bool with_bn)
     : PatternBase(pattern, name_scope, name_scope),
       act_type_(act_type),
       with_bn_(with_bn),
@@ -103,7 +104,7 @@ Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(PDPattern* pattern,
   PDNode* ew_bias_add = nullptr;
   PDNode* ew_bias_add_y = nullptr;
   PDNode* ew_bias_add_out = nullptr;
-  if(with_ew_bias_) {
+  if (with_ew_bias_) {
     conv_out->assert_is_op_input("elementwise_add", "X");
     ew_bias_add_y = pattern->NewNode(ew_bias_add_y_repr())
                         ->assert_is_op_input("elementwise_add", "Y")
@@ -235,12 +236,10 @@ void Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 
   int found_subgraph_count = 0;
   for (auto with_bn : {true, false}) {
-    for(auto with_ew_bias : {true, false}){
+    for (auto with_ew_bias : {true, false}) {
       for (auto act_type : {"relu", ""}) {
-        found_subgraph_count += ApplyImpl(graph,
-                                          act_type,
-                                          with_ew_bias,
-                                          with_bn);
+        found_subgraph_count +=
+            ApplyImpl(graph, act_type, with_ew_bias, with_bn);
       }
     }
   }
@@ -248,15 +247,12 @@ void Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
-                                 const std::string& act_type,
-                                 bool with_ew_bias,
-                                 bool with_bn) const {
+                                          const std::string& act_type,
+                                          bool with_ew_bias,
+                                          bool with_bn) const {
   GraphPatternDetector gpd;
-  patterns::Conv2dTransposeXPUPattern pattern(gpd.mutable_pattern(),
-                                     name_scope_,
-                                     act_type,
-                                     with_ew_bias,
-                                     with_bn);
+  patterns::Conv2dTransposeXPUPattern pattern(
+      gpd.mutable_pattern(), name_scope_, act_type, with_ew_bias, with_bn);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -299,13 +295,12 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     bool has_bias = with_bn || with_ew_bias;
     Node* fusion_bias_node = nullptr;
     int groups = PADDLE_GET_CONST(int, conv->Op()->GetAttr("groups"));
-    int in_c = filter_dims[0];
     int out_c = filter_dims[1] * groups;
 
     // ew bias
-    if(with_ew_bias) {
-      auto* ew_bias_add_y_t = scope->FindVar(ew_bias_add_y->Name())
-                                    ->GetMutable<phi::DenseTensor>();
+    if (with_ew_bias) {
+      auto* ew_bias_add_y_t =
+          scope->FindVar(ew_bias_add_y->Name())->GetMutable<phi::DenseTensor>();
       auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
       PADDLE_ENFORCE_EQ(out_c,
                         ew_bias_add_y_dims[0],
@@ -317,77 +312,67 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
       PrepareBias(graph, scope, block, ew_bias_add_y, &fusion_bias_node);
     }
     // bn
-    if(with_bn) {
+    if (with_bn) {
       auto bn_bias_t =
-            scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
-        PADDLE_ENFORCE_EQ(out_c,
-                          bn_bias_t->dims()[0],
-                          platform::errors::InvalidArgument(
-                              "the shape[%d] of bn bias tensor "
-                              "must equal out_channel[%d] of conv",
-                              bn_bias_t->dims()[0],
-                              out_c));
-        auto bn_scale_t =
-            scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
-        auto bn_mean_t =
-            scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
-        auto bn_var_t =
-            scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
-        float* filter_ptr =
-            filter_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_scale_ptr =
-            bn_scale_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_bias_ptr =
-            bn_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_mean_ptr =
-            bn_mean_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_var_ptr =
-            bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
-        auto mean_len = bn_mean_t->numel();  // oc
-        auto filter_len = filter_t->numel();
+          scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
+      PADDLE_ENFORCE_EQ(out_c,
+                        bn_bias_t->dims()[0],
+                        platform::errors::InvalidArgument(
+                            "the shape[%d] of bn bias tensor "
+                            "must equal out_channel[%d] of conv",
+                            bn_bias_t->dims()[0],
+                            out_c));
+      auto bn_scale_t =
+          scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
+      auto bn_mean_t =
+          scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
+      auto bn_var_t =
+          scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
+      float* filter_ptr = filter_t->data<float>();
+      float* bn_scale_ptr = bn_scale_t->data<float>();
+      float* bn_bias_ptr = bn_bias_t->data<float>();
+      float* bn_mean_ptr = bn_mean_t->data<float>();
+      float* bn_var_ptr = bn_var_t->data<float>();
+      auto mean_len = bn_mean_t->numel();  // oc
 
-        float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
-        // bias
-        if (fusion_bias_node) {
-          auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
+      float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
+      // bias
+      if (fusion_bias_node) {
+        auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
                                  ->GetMutable<phi::DenseTensor>();
-          float* fusion_bias_ptr =
-              fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-          for (int i = 0; i < mean_len; ++i) {
-            bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            fusion_bias_ptr[i] =
-                bn_bias_ptr[i] +
-                (fusion_bias_ptr[i] - bn_mean_ptr[i]) * bn_scale_ptr[i];
-          }
-        } else {
-          PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
-          auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
-                                 ->GetMutable<phi::DenseTensor>();
-          float* fusion_bias_ptr =
-              fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-          for (int i = 0; i < mean_len; ++i) {
-            bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            fusion_bias_ptr[i] += (0.0f - bn_mean_ptr[i]) * bn_scale_ptr[i];
-          }
+        float* fusion_bias_ptr = fusion_bias_t->data<float>();
+        for (int i = 0; i < mean_len; ++i) {
+          bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
+          fusion_bias_ptr[i] =
+              bn_bias_ptr[i] +
+              (fusion_bias_ptr[i] - bn_mean_ptr[i]) * bn_scale_ptr[i];
         }
-        // compute new conv_weight, weight is ic-oc/g-h-w
-        int cout_group = filter_dims[1];
-        int cin_group = filter_dims[0] / groups;
-        int c_size =
-            cout_group * filter_dims[2] * filter_dims[3];
-        int hw = filter_dims[2] * filter_dims[3];
-        for (int g = 0; g < groups; g++) {
-          for (int k = 0; k < cin_group; ++k) {
-            for (int i = 0; i < cout_group; ++i) {
-              auto ptr_row =
-                  filter_ptr + g * cin_group * c_size + k * c_size + i * hw;
-              for (int j = 0; j < hw; ++j) {
-                ptr_row[j] *= bn_scale_ptr[g * cout_group + i];
-              }
+      } else {
+        PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
+        auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
+                                 ->GetMutable<phi::DenseTensor>();
+        float* fusion_bias_ptr = fusion_bias_t->data<float>();
+        for (int i = 0; i < mean_len; ++i) {
+          bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
+          fusion_bias_ptr[i] += (0.0f - bn_mean_ptr[i]) * bn_scale_ptr[i];
+        }
+      }
+      // compute new conv_weight, weight is ic-oc/g-h-w
+      int cout_group = filter_dims[1];
+      int cin_group = filter_dims[0] / groups;
+      int c_size = cout_group * filter_dims[2] * filter_dims[3];
+      int hw = filter_dims[2] * filter_dims[3];
+      for (int g = 0; g < groups; g++) {
+        for (int k = 0; k < cin_group; ++k) {
+          for (int i = 0; i < cout_group; ++i) {
+            auto ptr_row =
+                filter_ptr + g * cin_group * c_size + k * c_size + i * hw;
+            for (int j = 0; j < hw; ++j) {
+              ptr_row[j] *= bn_scale_ptr[g * cout_group + i];
             }
           }
         }
-
+      }
     }
     // filter max
     Node* filter_int16 = nullptr;
@@ -423,7 +408,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
     }
     conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
     // set attrs of conv2d_xpu
-    if(!act_type.empty()) {
+    if (!act_type.empty()) {
       conv2d_xpu_op_desc.SetAttr("with_act", true);
     } else {
       conv2d_xpu_op_desc.SetAttr("with_act", false);
@@ -450,8 +435,7 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
         "strides",
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("strides")));
     conv2d_xpu_op_desc.SetAttr(
-        "data_format",
-        conv->Op()->GetAttrIfExists<std::string>("data_format"));
+        "data_format", conv->Op()->GetAttrIfExists<std::string>("data_format"));
 
     auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
     IR_NODE_LINK_TO(input, conv2d_xpu);
@@ -502,7 +486,8 @@ int Conv2dTransposeXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(conv2d_transpose_xpu_fuse_pass, paddle::framework::ir::Conv2dTransposeXPUFusePass);
+REGISTER_PASS(conv2d_transpose_xpu_fuse_pass,
+              paddle::framework::ir::Conv2dTransposeXPUFusePass);
 
 REGISTER_PASS_CAPABILITY(conv2d_transpose_xpu_fuse_pass)
     .AddCombination(
