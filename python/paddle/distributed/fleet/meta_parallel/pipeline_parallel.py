@@ -163,15 +163,15 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].enable_timer
 
-        assert (
-            not self._dp_comm_overlap and not self._sharding_comm_overlap
-        ), "Comm overlap is not supported now."
-
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
 
         if self._sharding_comm_overlap:
             assert self.use_sharding_parallel and self.num_stages > 1
+
+        assert not (
+            self._dp_comm_overlap and self._sharding_comm_overlap
+        ), "Cannot use dp pp overlap and sharding pp overlap at the same time."
 
         self._comm_buffers = []
         self._comm_overlap = (
