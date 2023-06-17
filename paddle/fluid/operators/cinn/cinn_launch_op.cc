@@ -21,10 +21,7 @@
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
