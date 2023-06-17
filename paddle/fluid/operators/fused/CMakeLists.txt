@@ -39,8 +39,9 @@ if(WITH_AVX
    AND AVX512F_FLAG
    AND WITH_MKL)
   op_library(self_dp_attention_op)
-  set_target_properties(self_dp_attention_op PROPERTIES COMPILE_FLAGS
-                                                        "-mfma ${AVX512F_FLAG}")
+  set_target_properties(
+    self_dp_attention_op
+    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized -mfma ${AVX512F_FLAG}")
 endif()
 
 if(WITH_XPU)

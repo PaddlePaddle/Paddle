@@ -168,7 +168,9 @@ if(${len} GREATER_EQUAL 1)
       add_executable(${test_name} ${test_src})
       target_link_libraries(${test_name} paddle_gtest_main_new)
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
-      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+      if(WITH_SHARED_PHI)
+        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+      endif()
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
@@ -211,6 +213,14 @@ if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
   if(NOT WIN32)
     add_dependencies(standalone_executor_test download_program)
+  endif()
+endif()
+
+if(TARGET standalone_executor_new_ir_test)
+  if(NOT WIN32)
+    set_tests_properties(
+      standalone_executor_new_ir_test
+      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
   endif()
 endif()
 

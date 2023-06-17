@@ -143,9 +143,6 @@ class TestFullOpError(unittest.TestCase):
             )
             output = paddle.full_like(input_data, 2.0)
 
-            def test_input_dtype():
-                paddle.full_like
-
             self.assertRaises(
                 TypeError,
                 paddle.full_like,

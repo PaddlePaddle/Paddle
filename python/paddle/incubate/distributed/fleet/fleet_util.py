@@ -1640,10 +1640,9 @@ class FleetUtil:
             total_ins_num_name,
         )
         self.rank0_print(
-            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
-            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
-            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s"
-            % (
+            "{} global AUC={:.6f} BUCKET_ERROR={:.6f} MAE={:.6f} "
+            "RMSE={:.6f} Actural_CTR={:.6f} Predicted_CTR={:.6f} "
+            "COPC={:.6f} MEAN Q_VALUE={:.6f} Ins number={}".format(
                 print_prefix,
                 auc,
                 bucket_error,

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ostream>
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
@@ -22,7 +23,6 @@
 namespace ir {
 class OpBase;
 class Program;
-class Block;
 class OpOperand;
 class OpResult;
 
@@ -48,9 +48,11 @@ class alignas(8) Operation final {
 
   IrContext *ir_context() const;
 
-  OpResult GetResultByIndex(uint32_t index) const;
+  Dialect *dialect() const;
 
-  OpOperand GetOperandByIndex(uint32_t index) const;
+  OpResult result(uint32_t index) const;
+
+  OpOperand operand(uint32_t index) const;
 
   void Print(std::ostream &os);
 
@@ -85,7 +87,7 @@ class alignas(8) Operation final {
     return info_.HasInterface<Interface>();
   }
 
-  Block *GetParentBlock() const { return parent_; }
+  Block *GetParent() const { return parent_; }
 
   Region *GetParentRegion() const;
 
@@ -95,6 +97,8 @@ class alignas(8) Operation final {
 
   /// Returns the region held by this operation at position 'index'.
   Region &GetRegion(unsigned index);
+
+  operator Block::iterator() { return position_; }
 
  private:
   Operation(const AttributeMap &attribute,
@@ -110,8 +114,9 @@ class alignas(8) Operation final {
     }
   };
 
+  // Allow access to 'SetParent'.
   friend class Block;
-  void set_parent(Block *parent) { parent_ = parent; }
+  void SetParent(Block *parent, const Block::iterator &position);
 
   template <typename T>
   struct CastUtil<
@@ -130,6 +135,7 @@ class alignas(8) Operation final {
 
   Region *regions_{nullptr};
   Block *parent_{nullptr};
+  Block::iterator position_;
 };
 
 }  // namespace ir

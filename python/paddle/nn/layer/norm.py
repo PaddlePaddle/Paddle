@@ -768,7 +768,6 @@ class _BatchNormBase(Layer):
         raise NotImplementedError("BatchNorm Base data format error")
 
     def forward(self, input):
-
         self._check_data_format(self._data_format)
 
         self._check_input_dim(input)

@@ -262,13 +262,11 @@ class CollectiveElasticController(CollectiveController):
         self.master.register_heartbeat(self.job.id, self.pod.name)
 
     def run(self):
-
         timeout = int(self.ctx.args.elastic_timeout)
         timeout = timeout if self.job.elastic else timeout * 10
         self.register()
 
         while self.pod.restart <= self.ctx.args.max_restart:
-
             self.build_job()
 
             self.ctx.logger.info("Waiting peer ready...")

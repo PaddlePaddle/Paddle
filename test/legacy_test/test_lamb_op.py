@@ -38,6 +38,7 @@ def lamb_wrapper(
     beta1=0.9,
     beta2=0.999,
     weight_decay=0.01,
+    always_adapt=False,
 ):
     return paddle._C_ops.lamb_(
         param,
@@ -54,6 +55,7 @@ def lamb_wrapper(
         beta2,
         epsilon,
         False,
+        False,
     )
 
 
@@ -64,6 +66,7 @@ class TestLambOp1(OpTest):
             'beta1': 0.78,
             'beta2': 0.836,
             'weight_decay': 0.01,
+            'always_adapt': False,
         }
 
     def setUp(self):
@@ -120,6 +123,18 @@ class TestLambOp2(TestLambOp1):
             'beta1': 0.9,
             'beta2': 0.999,
             'weight_decay': 0.01,
+            'always_adapt': False,
+        }
+
+
+class TestLambOp3(TestLambOp1):
+    def set_attrs(self):
+        self.attrs = {
+            'epsilon': 1e-8,
+            'beta1': 0.9,
+            'beta2': 0.999,
+            'weight_decay': 0.0,
+            'always_adapt': False,
         }
 
 
@@ -130,6 +145,7 @@ class TestLambOpMultipleSteps(TestLambOp1):
             'beta1': 0.9,
             'beta2': 0.999,
             'weight_decay': 0.01,
+            'always_adapt': False,
         }
         self.num_steps = 10
 
@@ -189,6 +205,7 @@ def lamb_step(inputs, attributes):
     beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
     weight_decay = attributes['weight_decay']
+    always_adapt = attributes['always_adapt']
 
     moment1_out = beta1 * moment1 + (1 - beta1) * grad
     moment2_out = beta2 * moment2 + (1 - beta2) * np.square(grad)
@@ -196,12 +213,15 @@ def lamb_step(inputs, attributes):
     moment1_unbiased = moment1_out / (1 - beta1_pow)
     moment2_unbiased = moment2_out / (1 - beta2_pow)
 
-    r_1 = np.linalg.norm(param)
-    r_2 = np.linalg.norm(
-        moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
-        + weight_decay * param
-    )
-    lr_t = lr * r_1 / r_2
+    if weight_decay > 0 or always_adapt:
+        r_1 = np.linalg.norm(param)
+        r_2 = np.linalg.norm(
+            moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
+            + weight_decay * param
+        )
+        lr_t = lr * r_1 / r_2
+    else:
+        lr_t = lr
 
     param_out = param - lr_t * (
         moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
@@ -234,6 +254,7 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
     weight_decay = attributes['weight_decay']
+    always_adapt = attributes['always_adapt']
 
     moment1_out = np.zeros(shape=[height, row_numel])
     moment2_out = np.zeros(shape=[height, row_numel])
@@ -256,13 +277,16 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
             update_value
         )
 
-    def update_param():
-        r_1 = np.linalg.norm(param)
-        r_2 = np.linalg.norm(
-            moment1_out / (np.sqrt(moment2_out) + epsilon)
-            + weight_decay * param
-        )
-        lr_t = lr * r_1 / r_2
+    def update_param(weight_decay, always_adapt):
+        if weight_decay > 0 or always_adapt:
+            r_1 = np.linalg.norm(param)
+            r_2 = np.linalg.norm(
+                moment1_out / (np.sqrt(moment2_out) + epsilon)
+                + weight_decay * param
+            )
+            lr_t = lr * r_1 / r_2
+        else:
+            lr_t = lr
 
         param_out = param - lr_t * (
             moment1_out / (np.sqrt(moment2_out) + epsilon)
@@ -275,7 +299,7 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
             update_value = np_grad[rows.index(row_id)]
         update_mom(row_id, update_value)
 
-    update_param()
+    update_param(weight_decay, always_adapt)
     beta1_pow_out = beta1_pow * beta1
     beta2_pow_out = beta2_pow * beta2
 
@@ -307,6 +331,7 @@ class TestSparseLambOp(unittest.TestCase):
             'beta1': beta1,
             'beta2': beta2,
             'weight_decay': 0.05,
+            'always_adapt': False,
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()

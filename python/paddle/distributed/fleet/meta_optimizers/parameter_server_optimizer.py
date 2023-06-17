@@ -196,7 +196,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         )
 
         if not compiled_config.is_geo_mode():
-
             from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
                 _get_optimize_ops,
             )

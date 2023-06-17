@@ -25,8 +25,10 @@
 // there is no equivalent intrinsics in msvc.
 #define UNLIKELY(condition) (condition)
 #endif
-
-inline bool is_error(bool stat) { return !stat; }
+template <typename T>
+inline bool is_error(const T& stat) {
+  return !stat;
+}
 
 namespace ir {
 class IrNotMetException : public std::exception {
@@ -55,7 +57,7 @@ class IrNotMetException : public std::exception {
 
 #define IR_ENFORCE(COND, ...)                                               \
   do {                                                                      \
-    auto __cond__ = (COND);                                                 \
+    bool __cond__(COND);                                                    \
     if (UNLIKELY(is_error(__cond__))) {                                     \
       try {                                                                 \
         throw ir::IrNotMetException(                                        \

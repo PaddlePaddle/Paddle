@@ -552,6 +552,24 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : cummax
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummax
+  backward : cummax_grad
+
+- op : cummin
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummin
+  backward : cummin_grad
+
 - op : cumprod
   args : (Tensor x,  int dim)
   output : Tensor(out)
@@ -783,6 +801,17 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill
+  args : (Tensor x, Scalar value=0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
   output : Tensor(out)
@@ -861,6 +890,16 @@
     func : floor
   inplace : (x -> out)
   backward : floor_grad
+
+- op : fmax
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    param: [x, y]
+    func : ElementwiseInferMeta
+  kernel :
+    func : fmax
+  backward : fmax_grad
 
 - op : fold
   args: (Tensor x, int[] output_sizes, int[] kernel_sizes,  int[] strides, int[] paddings, int[] dilations)
@@ -1192,7 +1231,7 @@
   backward : label_smooth_grad
 
 - op : lamb_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1=0.9, float beta2=0.999, float epsilon=1.0e-6f, bool multi_precision=false)
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1=0.9, float beta2=0.999, float epsilon=1.0e-6f, bool always_adapt=false, bool multi_precision=false)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
   infer_meta :
     func : LambInferMeta
@@ -1763,6 +1802,15 @@
     func : prelu
     data_type : x
   backward : prelu_grad
+
+- op : prior_box
+  args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
+  output : Tensor(out), Tensor(var)
+  infer_meta :
+    func : PriorBoxInferMeta
+  kernel :
+    func : prior_box
+    data_type : input
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")

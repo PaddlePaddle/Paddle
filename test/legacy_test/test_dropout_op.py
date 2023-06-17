@@ -1241,7 +1241,6 @@ class TestDropoutBackward(unittest.TestCase):
     def test_backward_downscale_in_infer(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
                 out, mask = _C_ops.dropout(
@@ -1257,7 +1256,6 @@ class TestDropoutBackward(unittest.TestCase):
     def test_backward_upscale_train(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-
                 prob = 0.5
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False
@@ -1275,7 +1273,6 @@ class TestDropoutBackward(unittest.TestCase):
     def test_backward_upscale_train_2(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-
                 prob = 0.3
                 input = paddle.uniform([40, 40], dtype="float32")
                 input.stop_gradient = False

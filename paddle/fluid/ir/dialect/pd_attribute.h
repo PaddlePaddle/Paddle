@@ -17,6 +17,8 @@
 #include "paddle/fluid/ir/dialect/pd_attribute_storage.h"
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
@@ -42,9 +44,11 @@ class ScalarAttribute : public ir::Attribute {
     return (val.type_id() == ir::BoolAttribute::type_id()) ||
            (val.type_id() == ir::FloatAttribute::type_id()) ||
            (val.type_id() == ir::DoubleAttribute::type_id()) ||
-           (val.type_id() == ir::Int32_tAttribute::type_id()) ||
-           (val.type_id() == ir::Int64_tAttribute::type_id());
+           (val.type_id() == ir::Int32Attribute::type_id()) ||
+           (val.type_id() == ir::Int64Attribute::type_id());
   }
+
+  phi::Scalar data();
 };
 
 class DataTypeAttribute : public ir::Attribute {

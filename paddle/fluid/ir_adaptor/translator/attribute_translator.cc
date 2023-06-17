@@ -24,6 +24,7 @@
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/variant.h"
 
 namespace paddle {
@@ -38,7 +39,7 @@ class AttributeVisitor {
  public:
   virtual ir::Attribute operator()(int i) {
     VLOG(10) << "translating int";
-    return ir::Int32_tAttribute::get(ctx, i);
+    return ir::Int32Attribute::get(ctx, i);
   }
 
   virtual ir::Attribute operator()(float f) {
@@ -91,7 +92,7 @@ class AttributeVisitor {
     std::vector<ir::Attribute> attrs;
     attrs.reserve(is.size());
     for (const auto& v : is) {
-      attrs.push_back(ir::Int32_tAttribute::get(ctx, v));
+      attrs.push_back(ir::Int32Attribute::get(ctx, v));
     }
     return ir::ArrayAttribute::get(ctx, attrs);
   }
@@ -111,7 +112,7 @@ class AttributeVisitor {
     std::vector<ir::Attribute> attrs;
     attrs.reserve(i64s.size());
     for (const auto& v : i64s) {
-      attrs.push_back(ir::Int64_tAttribute::get(ctx, v));
+      attrs.push_back(ir::Int64Attribute::get(ctx, v));
     }
     return ir::ArrayAttribute::get(ctx, attrs);
   }
@@ -166,8 +167,9 @@ class DataTypeAttributeVisitor : public AttributeVisitor {
   using AttributeVisitor::AttributeVisitor;
   ir::Attribute operator()(int i) override {
     VLOG(10) << "translating int to DataType: " << i;
-    phi::DataType data = static_cast<phi::DataType>(i);
-    return paddle::dialect::DataTypeAttribute::get(ctx, data);
+
+    auto phi_dtype = phi::TransToPhiDataType(i);
+    return paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype);
   }
 };
 

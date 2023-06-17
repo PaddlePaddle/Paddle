@@ -71,7 +71,6 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         batch_num = 3
 
         with fluid.dygraph.guard(place):
-
             paddle.jit.enable_to_static(True)
             x = fluid.dygraph.to_variable(x_data)
             net = Linear(32, 64)

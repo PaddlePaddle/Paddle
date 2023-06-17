@@ -577,7 +577,6 @@ class FusedFeedForward(Layer):
         ring_id=-1,
         name=None,
     ):
-
         super().__init__()
         assert (
             d_model > 0
