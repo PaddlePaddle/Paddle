@@ -146,6 +146,16 @@
   optional : bias
   backward : depthwise_conv2d_transpose_grad
 
+- op : einsum
+  args : (Tensor[] x, str equation)
+  output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
+  infer_meta :
+    func : EinsumRawInferMeta
+    param : [x, equation]
+  kernel :
+    func : einsum
+  backward : einsum_grad
+
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
   output : Tensor

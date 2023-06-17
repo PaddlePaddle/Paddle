@@ -831,6 +831,12 @@
   attrs :
     uplo : UPLO
 
+- op : einsum
+  inputs :
+    x : Operands
+  outputs:
+    {out : Out, inner_cache: InnerCache, xshape : XShape}
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
