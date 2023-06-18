@@ -59,15 +59,15 @@ set(KERNEL_LIST
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
-                                   ${utils_modules})
+  cc_library(paddle_inference DEPS ${fluid_modules} ${ir_targets}
+                                   ${STATIC_INFERENCE_API} ${utils_modules})
 else()
   # message("${fluid_modules}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
   # message("${phi_modules}")
   create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+                    ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
