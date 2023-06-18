@@ -30,7 +30,6 @@ fluid.default_main_program().random_seed = 1
 
 class TestDistCTR2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
-
         dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
         dnn_data = paddle.static.data(

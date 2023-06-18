@@ -1320,7 +1320,6 @@ class TestRemoteLookupTable(TestDistLookupTableBase):
 # test for remote prefetch
 class TestRemoteNce(TestDistLookupTableBase):
     def network_with_table(self, is_sparse, is_distributed):
-
         num_total_classes = 20
         sampler = "uniform"
         nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
@@ -1397,7 +1396,6 @@ class TestRemoteNce(TestDistLookupTableBase):
 # test for remote prefetch
 class TestRemoteHsigmoid(TestDistLookupTableBase):
     def network_with_table(self, is_sparse, is_distributed):
-
         num_total_classes = 3
 
         input = paddle.static.data(name="input", shape=[-1, 1], dtype="float32")

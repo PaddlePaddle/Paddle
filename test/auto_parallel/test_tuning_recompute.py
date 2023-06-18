@@ -78,7 +78,6 @@ def apply_pass():
 
 class TestRecomputePassTuning(unittest.TestCase):
     def setUp(self):
-
         self.batch_size = 8
         self.batch_num = 200
         self.dataset = FakeDataset(
@@ -88,7 +87,6 @@ class TestRecomputePassTuning(unittest.TestCase):
         )
 
     def test_recompute_pass(self):
-
         strategy = apply_pass()
         clip = paddle.nn.ClipGradByGlobalNorm(0.2)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)

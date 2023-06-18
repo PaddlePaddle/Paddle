@@ -35,16 +35,8 @@ namespace ir {
 /// \endcode
 ///
 
-// NOTE(dev): Currently BF16 and Int8 are not considered as a cached member
-// in IrContextImpl because they are not widely used.
-class BFloat16Type : public Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(BFloat16Type, TypeStorage);
-
-  static BFloat16Type get(IrContext *context);
-};
+// NOTE(dev): Currently Int8 are not considered as a cached member
+// in IrContextImpl because it is not widely used.
 
 class Int8Type : public Type {
  public:
@@ -79,6 +71,7 @@ class VectorType : public Type {
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
+  __macro(BFloat16);                  \
   __macro(Float16);                   \
   __macro(Float32);                   \
   __macro(Float64);                   \

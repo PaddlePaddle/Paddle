@@ -17,26 +17,26 @@
 #include "paddle/ir/core/value.h"
 
 namespace ir {
-Operation *Builder::insert(Operation *op) {
+/// Create an operation given the fields represented as an OperationState.
+Operation *Builder::Build(OperationArgument &&argument) {
+  return Insert(Operation::Create(std::move(argument)));
+}
+
+/// Creates an operation with the given fields.
+Operation *Builder::Build(const std::vector<OpResult> &inputs,
+                          const AttributeMap &attribute,
+                          const std::vector<Type> &output_types,
+                          OpInfo op_info) {
+  return Build(OperationArgument(inputs, attribute, output_types, op_info));
+}
+
+Operation *Builder::Insert(Operation *op) {
   if (block_) {
     block_->insert(insert_point_, op);
   } else {
     LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
   }
   return op;
-}
-
-/// Create an operation given the fields represented as an OperationState.
-Operation *Builder::create(OperationArgument &&argument) {
-  return insert(Operation::create(std::move(argument)));
-}
-
-/// Creates an operation with the given fields.
-Operation *Builder::create(const std::vector<OpResult> &inputs,
-                           const AttributeMap &attribute,
-                           const std::vector<Type> &output_types,
-                           OpInfo op_info) {
-  return create(OperationArgument(inputs, attribute, output_types, op_info));
 }
 
 }  // namespace ir

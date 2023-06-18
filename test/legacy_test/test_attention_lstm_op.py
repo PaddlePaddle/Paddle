@@ -33,7 +33,6 @@ def attention_lstm(
     act_cell,
     act_cand,
 ):
-
     T = sum(lod[0])
     N = len(lod[0])
     M = x.shape[1]

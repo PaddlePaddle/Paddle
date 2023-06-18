@@ -523,7 +523,6 @@ def transformer(
     trg_pad_idx,
     pos_pad_idx,
 ):
-
     (
         src_word,
         src_pos,

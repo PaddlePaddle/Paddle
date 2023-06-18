@@ -131,7 +131,6 @@ class SimpleDPNet(paddle.nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
-
         super().__init__()
         self.linear1 = paddle.nn.Linear(
             hidden_size,

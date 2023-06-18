@@ -96,7 +96,6 @@ class TestLaplace(unittest.TestCase):
         )
 
     def test_sample(self):
-
         self.assertEqual(self.samples.dtype, self.scale.dtype)
         self.assertEqual(
             tuple(self.samples.shape),

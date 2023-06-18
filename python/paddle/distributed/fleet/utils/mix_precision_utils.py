@@ -59,7 +59,7 @@ class MixPrecisionLayer(nn.Layer):
                     name="main_grad@" + param.name,
                 )
             else:
-                param.main_grad.add_(tmp_grad.cast(paddle.float32))
+                param.main_grad.add_(tmp_grad)
 
             tmp_grad._clear_data()
             return None
@@ -77,7 +77,6 @@ class MixPrecisionLayer(nn.Layer):
         include_sublayers=True,
         structured_name_prefix="",
     ):
-
         return self._layers.state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
@@ -86,7 +85,6 @@ class MixPrecisionLayer(nn.Layer):
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):
-
         self._layers.set_state_dict(
             state_dict, use_structured_name=use_structured_name
         )
@@ -113,7 +111,6 @@ class MixPrecisionOptimizer:
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -179,7 +176,6 @@ class MixPrecisionOptimizer:
 
     @framework.dygraph_only
     def clear_grad(self, set_to_zero=True):
-
         param_list = []
         if self._parameter_list is None or not isinstance(
             self._parameter_list[0], dict

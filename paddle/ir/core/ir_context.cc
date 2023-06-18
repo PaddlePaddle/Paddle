@@ -49,7 +49,7 @@ class IrContextImpl {
     registed_dialect_.clear();
 
     for (auto &op_map : registed_op_infos_) {
-      op_map.second->destroy();
+      OpInfoImpl::Destroy(op_map.second);
     }
     registed_op_infos_.clear();
   }
@@ -103,24 +103,25 @@ class IrContextImpl {
     return registed_op_infos_.find(name) != registed_op_infos_.end();
   }
 
-  void RegisterOpInfo(const std::string &name, OpInfoImpl *opinfo) {
+  void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     VLOG(4) << "Register an operation of: [Name=" << name
-            << ", OpInfoImpl ptr=" << opinfo << "].";
-    registed_op_infos_.emplace(name, opinfo);
+            << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
+    registed_op_infos_.emplace(name, info);
   }
 
-  OpInfoImpl *GetOpInfo(const std::string &name) {
+  OpInfo GetOpInfo(const std::string &name) {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
-      VLOG(4) << "Found a cached operation of: [name=" << name
-              << ", OpInfoImpl ptr=" << iter->second << "].";
+      VLOG(4) << "Found a cached OpInfo of: [name=" << name
+              << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
       return iter->second;
     }
     LOG(WARNING) << "No cache found operation of: [Name=" << name << "].";
-    return nullptr;
+    return OpInfo();
   }
+  const OpInfoMap &registered_op_info_map() { return registed_op_infos_; }
 
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
@@ -170,7 +171,7 @@ class IrContextImpl {
   ir::SpinLock registed_dialect_lock_;
 
   // The Op registered in the context.
-  std::unordered_map<std::string, OpInfoImpl *> registed_op_infos_;
+  OpInfoMap registed_op_infos_;
   ir::SpinLock registed_op_infos_lock_;
 
   ir::SpinLock destructor_lock_;
@@ -282,43 +283,39 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
   if (impl().IsOpInfoRegistered(name)) {
     LOG(WARNING) << name << " op already registered.";
   } else {
-    OpInfoImpl *opinfo = OpInfoImpl::create(dialect,
-                                            op_id,
-                                            name,
-                                            std::move(interface_map),
-                                            trait_set,
-                                            attributes_num,
-                                            attributes_name,
-                                            verify);
-    impl().RegisterOpInfo(name, opinfo);
+    OpInfo info = OpInfoImpl::Create(dialect,
+                                     op_id,
+                                     name,
+                                     std::move(interface_map),
+                                     trait_set,
+                                     attributes_num,
+                                     attributes_name,
+                                     verify);
+    impl().RegisterOpInfo(name, info);
     VLOG(4) << name << " op registered into IrContext. --->";
   }
 }
 
 OpInfo IrContext::GetRegisteredOpInfo(const std::string &name) {
-  OpInfoImpl *rtn = impl().GetOpInfo(name);
-  return rtn ? rtn : nullptr;
+  return impl().GetOpInfo(name);
+}
+
+const OpInfoMap &IrContext::registered_op_info_map() {
+  return impl().registered_op_info_map();
 }
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
-  auto &impl = ctx->impl();
-  AbstractType *abstract_type = impl.GetAbstractType(type_id);
-  if (abstract_type) {
-    return *abstract_type;
-  } else {
-    throw("Abstract type not found in IrContext.");
-  }
+  AbstractType *abstract_type = ctx->impl().GetAbstractType(type_id);
+  IR_ENFORCE(abstract_type, "Abstract type not found in IrContext.");
+  return *abstract_type;
 }
 
 const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
                                                    IrContext *ctx) {
-  auto &impl = ctx->impl();
-  AbstractAttribute *abstract_attribute = impl.GetAbstractAttribute(type_id);
-  if (abstract_attribute) {
-    return *abstract_attribute;
-  } else {
-    throw("Abstract attribute not found in IrContext.");
-  }
+  AbstractAttribute *abstract_attribute =
+      ctx->impl().GetAbstractAttribute(type_id);
+  IR_ENFORCE(abstract_attribute, "Abstract attribute not found in IrContext.");
+  return *abstract_attribute;
 }
 
 BFloat16Type BFloat16Type::get(IrContext *ctx) {
