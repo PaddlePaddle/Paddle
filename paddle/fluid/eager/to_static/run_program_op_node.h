@@ -411,13 +411,13 @@ inline void RunProgramAPI(
       ir_program->Print(std::cout);
     }
 
-    interpreter_core =
-        paddle::framework::CreateInterpreterCoreInfoToCache(*forward_program,
-                                                            place,
-                                                            /*is_grad=*/false,
-                                                            program_id,
-                                                            global_inner_scope,
-                                                            ir_program.get());
+    interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
+        *forward_program,
+        place,
+        /*is_grad=*/false,
+        program_id,
+        global_inner_scope,
+        std::move(ir_program));
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars =
         paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(

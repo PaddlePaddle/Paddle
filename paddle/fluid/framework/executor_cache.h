@@ -225,7 +225,7 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope,
-    ::ir::Program* ir_prog = nullptr);
+    std::unique_ptr<::ir::Program> ir_prog = nullptr);
 
 }  // namespace framework
 }  // namespace paddle

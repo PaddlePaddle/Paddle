@@ -293,7 +293,7 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     bool is_grad,
     int64_t program_id,
     framework::Scope *scope,
-    ::ir::Program *ir_program) {
+    std::unique_ptr<::ir::Program> ir_program) {
   auto &interpretercore_info_cache =
       framework::InterpreterCoreInfoCache::Instance();
   if (interpretercore_info_cache.Size() > 10u /* max_cached_size*/) {
@@ -310,8 +310,11 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
     std::cerr << "using ir to build" << std::endl;
     size_t t1 = ir_program->block()->size();
     std::cerr << "size " << t1 << std::endl;
-    core.reset(new InterpreterCore(
-        place, program_desc.Block(0), scope, ir_program, execution_config));
+    core.reset(new InterpreterCore(place,
+                                   program_desc.Block(0),
+                                   scope,
+                                   std::move(ir_program),
+                                   execution_config));
 
     std::cerr << "run 1 " << std::endl;
     core->Run({});
