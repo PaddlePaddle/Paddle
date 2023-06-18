@@ -27,11 +27,11 @@ namespace phi {
 class TensorBase;
 
 // In static model pre analysis, we can't get the data from tensor
-class TensorRefScalar {
+class TensorRef {
  public:
   // Constructor support implicit
-  TensorRefScalar() : tensor_base_(nullptr) {}
-  explicit TensorRefScalar(const DenseTensor* base) : tensor_base_(base) {}
+  TensorRef() = default;
+  explicit TensorRef(const DenseTensor* base) : tensor_base_(base) {}
 
   const DenseTensor* Get() const {
     PADDLE_ENFORCE_NOT_NULL(tensor_base_,
@@ -40,7 +40,7 @@ class TensorRefScalar {
   }
 
  private:
-  const DenseTensor* tensor_base_;
+  const DenseTensor* tensor_base_{nullptr};
 };
 
 }  // namespace phi

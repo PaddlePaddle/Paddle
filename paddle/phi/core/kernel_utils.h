@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/tensor_ref_scalar.h"
+#include "paddle/phi/common/tensor_ref.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
@@ -233,10 +233,10 @@ namespace phi {
       static_assert(out_idx == 0,                                            \
                     "Kernel's Attributes should appear before Outputs.");    \
       const Attribute& t = ctx->AttrAt(attr_idx);                            \
-      static Attribute cmp_t = phi::TensorRefScalar(nullptr);                \
+      static Attribute cmp_t = phi::TensorRef(nullptr);                      \
       attr_type attr1;                                                       \
       if (cmp_t.index() == t.index()) {                                      \
-        attr1 = attr_type(*paddle::get<phi::TensorRefScalar>(t).Get());      \
+        attr1 = attr_type(*paddle::get<phi::TensorRef>(t).Get());            \
       } else {                                                               \
         attr1 = paddle::get<attr_type>(t);                                   \
       }                                                                      \

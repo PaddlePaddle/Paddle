@@ -158,7 +158,7 @@ template const IntArray& InferMetaContext::AttrAt(size_t idx) const;
 template const DataType& InferMetaContext::AttrAt(size_t idx) const;
 template const DataLayout& InferMetaContext::AttrAt(size_t idx) const;
 template const Place& InferMetaContext::AttrAt(size_t idx) const;
-template const TensorRefScalar& InferMetaContext::AttrAt(size_t idx) const;
+template const TensorRef& InferMetaContext::AttrAt(size_t idx) const;
 
 MetaFnFactory& MetaFnFactory::Instance() {
   static MetaFnFactory g_meta_fn_map;
