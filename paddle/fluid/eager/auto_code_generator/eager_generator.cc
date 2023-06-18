@@ -3128,7 +3128,6 @@ static std::string GenerateCoreOpsReturnsInfo() {
 static void DygraphCodeGeneration(const std::string& output_dir,
                                   int split_count) {
   std::string dygraph_forward_api_str = GenerateDygraphHFileIncludes();
-
   std::string fwd_function_str = "";
   std::string grad_node_h_str = "";
   std::string grad_node_cc_str = "";
@@ -3140,44 +3139,57 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   for (auto& pair : op_info_map) {
     const OpInfo& op_info = pair.second;
     proto::OpProto* op_proto = op_info.proto_;
+
     if (!CheckOpProto(op_proto)) continue;
     const std::string& op_type = op_proto->type();
     if (black_ops_list.count(op_type)) {
       continue;
     }
+
     // Skip the sparse op
     if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
         op_type != "sparse_attention") {
       continue;
     }
+
     GradNodeGenerationInfo bwd_info;
 
     bool is_available = CollectGradInformationFromOpInfo(op_info, &bwd_info);
+
     if (!is_available && !bwd_info.GenerateForwardOnly()) {
       VLOG(6) << "Skipped operator: " << op_type;
       continue;
     }
+
     op_info_map_need_gen.emplace(pair);
   }
+
   int each_cc_file_api_size = op_info_map_need_gen.size() / split_count;
   if (op_info_map_need_gen.size() % split_count != 0) {
     each_cc_file_api_size++;
   }
   int api_index = 0;
   int file_index = 0;
+
   for (auto& pair : op_info_map_need_gen) {
     const OpInfo& op_info = pair.second;
     proto::OpProto* op_proto = op_info.proto_;
+
     const std::string& op_type = op_proto->type();
+
     /* ----------------------------- */
     /* ---- Collect Information ---- */
     /* ----------------------------- */
 
     ForwardGenerationInfo fwd_info;
     GradNodeGenerationInfo bwd_info;
+
     VLOG(6) << "-------- CollectInformationFromOpInfo -------";
+
     CollectForwardInformationFromOpInfo(op_info, &fwd_info);
+
     CollectGradInformationFromOpInfo(op_info, &bwd_info);
+
     VLOG(6) << "-------- PurifyOpProto -------";
     PurifyForwardOpProto(*op_proto, &fwd_info);
     if (!bwd_info.GenerateForwardOnly()) {
@@ -3187,17 +3199,19 @@ static void DygraphCodeGeneration(const std::string& output_dir,
     /* --------------------------- */
     /* --------- CodeGen --------- */
     /* --------------------------- */
+    VLOG(6) << "-------- GenerateForwardFunctionContents -------";
     std::pair<std::string, std::string> body_and_declaration =
         GenerateForwardFunctionContents(fwd_info, bwd_info, {});
+
     fwd_function_str += body_and_declaration.first + "\n";
 
+    VLOG(6) << "-------- GenerateDygraphForwardAPIContents -------";
     std::string fwd_function_declare_str = body_and_declaration.second;
     dygraph_forward_api_str += fwd_function_declare_str;
 
     auto& infer_inplace =
         paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
     std::map<std::string, std::string> forward_inplace_map;
-
     // Inplace Function Generator.
     // `sum` op has duplicate input. Don't consider adding inplace strategy
     // for `sum` in temporary.
@@ -3206,26 +3220,32 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       for (auto& inplace_pair : in_to_outs) {
         forward_inplace_map[inplace_pair.second] = inplace_pair.first;
       }
+
       VLOG(6) << "-------- GenerateInplaceForwardFunctionContents -------";
       std::pair<std::string, std::string> inplace_body_and_declaration =
           GenerateForwardFunctionContents(
               fwd_info, bwd_info, forward_inplace_map);
 
       fwd_function_str += inplace_body_and_declaration.first + "\n";
+
       VLOG(6) << "-------- GenerateInplaceDygraphForwardAPIContents -------";
       std::string inplace_fwd_function_declare_str =
           inplace_body_and_declaration.second;
       dygraph_forward_api_str += inplace_fwd_function_declare_str;
     }
+
     if (!bwd_info.GenerateForwardOnly()) {
       VLOG(6) << "-------- GenerateGradNodeHeaderContents -------";
       grad_node_h_str += GenerateGradNodeHeaderContents(fwd_info, bwd_info);
       grad_node_h_str += "\n";
+
       VLOG(6) << "-------- GenerateGradNodeCCContents -------";
       grad_node_cc_str += GenerateGradNodeCCContents(fwd_info, bwd_info);
       grad_node_cc_str += "\n";
     }
+
     VLOG(6) << op_type << ": Finished Generating Op: " << op_type;
+
     api_index++;
     if (api_index / each_cc_file_api_size > file_index) {
       file_index++;
@@ -3236,6 +3256,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       fwd_function_str += "\n";
       GenerateForwardDygraphFile(forward_cc_path, fwd_function_str);
       fwd_function_str = "";
+
       VLOG(6) << "-------- GenerateNodeCCFile -------";
       std::string node_cc_path =
           output_dir + "/nodes/nodes" + std::to_string(file_index) + ".tmp.cc";
@@ -3243,6 +3264,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       grad_node_cc_str = "";
     }
   }
+
   file_index++;
   VLOG(6) << "-------- GenerateDygraphForwardCCFile -------";
   std::string forward_cc_path = output_dir +
@@ -3293,7 +3315,9 @@ int main(int argc, char* argv[]) {
 
   std::string eager_root = argv[1];
   int split_count = atoi(argv[2]);
+
   paddle::framework::PrepareAttrMapForOps();
+
   paddle::framework::DygraphCodeGeneration(eager_root, split_count);
 
   return 0;
