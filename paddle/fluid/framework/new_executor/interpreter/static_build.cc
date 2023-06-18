@@ -147,6 +147,11 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return false;
   }
 
+  if (op_type == "distributed_fused_lamb" && parameter_name == "ParamOut") {
+    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    return false;
+  }
+
   if (op_type == "fake_quantize_range_abs_max") {
     if (op.Attr<bool>("is_test") &&
         (parameter_name == "OutScale" || parameter_name == "OutScales")) {

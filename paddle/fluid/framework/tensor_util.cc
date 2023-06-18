@@ -45,7 +45,7 @@ void TensorCopyImpl(const TENSOR& src,
     return;
   }
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place << src.name();
+          << dst_place;
   src.check_memory_size();
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
