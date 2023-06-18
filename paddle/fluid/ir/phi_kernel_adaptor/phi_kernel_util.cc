@@ -31,6 +31,7 @@
 #include "paddle/phi/core/kernel_context.h"
 
 #include "paddle/fluid/framework/string_array.h"
+#include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
@@ -85,7 +86,7 @@ void BuildScope(ir::Block* block,
       }
 
       auto var = scope->Var(name);
-      auto tensor_array = var->GetMutable<paddle::framework::TensorPointVec>();
+      auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
 
       for (size_t i = 0; i < input_num; ++i) {
         auto ptr = (*it)->operand(i).source();
@@ -204,7 +205,7 @@ void BuildInferMetaContext(
         } else {
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>
               inputs;
-          auto& tensor_array = var->Get<paddle::framework::TensorPointVec>();
+          auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
           for (size_t i = 0; i < tensor_array.size(); ++i) {
             inputs.emplace_back(std::move(phi::MetaTensor(*tensor_array[i])));
           }
@@ -320,7 +321,7 @@ void BuildPhiKernelContext(
         } else {
           std::cerr << "get data from tensor array " << std::endl;
           paddle::small_vector<const phi::TensorBase*> inputs;
-          auto& tensor_array = var->Get<paddle::framework::TensorPointVec>();
+          auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
           std::cerr << "tensor array " << tensor_array.size() << std::endl;
           for (size_t i = 0; i < tensor_array.size(); ++i) {
             inputs.emplace_back(tensor_array[i]);

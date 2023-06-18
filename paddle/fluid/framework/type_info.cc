@@ -41,6 +41,6 @@ template class TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>;
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase,
-                              paddle::framework::TensorPointVec>;
+                              paddle::framework::TensorRefArray>;
 
 }  // namespace phi
