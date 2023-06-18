@@ -94,9 +94,6 @@ set(XPU_PACK_DEPENCE_URL
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
-set(XPU_XPTI_GET_DEPENCE_URL
-    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xpti_dependence.sh"
-    CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -136,8 +133,9 @@ ExternalProject_Add(
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
     ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} && wget ${XPU_XPTI_GET_DEPENCE_URL} && bash
-    get_xpti_dependence.sh ${XPU_XPTI_URL} ${XPU_XPTI_DIR_NAME}
+    ${XPU_XFT_DIR_NAME} && bash
+    ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
+    ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
