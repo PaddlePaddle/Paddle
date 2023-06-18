@@ -36,16 +36,20 @@ class FillConstantOneDNNHandler
     dnnl::primitive_attr attrs;
     attrs.set_scales_mask(DNNL_ARG_SRC_0, /* mask = */ 0);
 
+    src1_md_ = dnnl::memory::desc({1, sizeof(T)},
+                                  OneDNNGetDataType<uint8_t>(),
+                                  dnnl::memory::format_tag::ab);
+
     this->AcquireForwardPrimitiveDescriptor(
-        dnnl::algorithm::binary_add, src0_md, src1_md, src0_md, attrs);
+        dnnl::algorithm::binary_add, src0_md, src1_md_, src0_md, attrs);
   }
 
-  static const dnnl::memory::desc src1_md;
+  const dnnl::memory::desc& get_src1_md() const { return src1_md_; }
+
+ private:
+  dnnl::memory::desc src1_md_;
 };
 
-template <typename T>
-const dnnl::memory::desc FillConstantOneDNNHandler<T>::src1_md(
-    {1, sizeof(T)}, OneDNNGetDataType<uint8_t>(), dnnl::memory::format_tag::ab);
 }  // namespace funcs
 
 template <typename T, typename Context>
@@ -63,7 +67,7 @@ void FullKernel(const Context& dev_ctx,
       out, onednn_engine, dev_ctx.GetPlace());
 
   dnnl::memory constant_value_memory =
-      dnnl::memory(funcs::FillConstantOneDNNHandler<T>::src1_md,
+      dnnl::memory(handler.get_src1_md(),
                    onednn_engine,
                    reinterpret_cast<uint8_t*>(&fill_value));
 
