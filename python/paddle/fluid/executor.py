@@ -883,7 +883,6 @@ class _ExecutorCache:
             plan = apply_pass(new_program, new_program, pass_name, pass_attr)
         else:
             default_job = core.Job("default")
-            default_job.set_micro_batch_id(0)
             type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
