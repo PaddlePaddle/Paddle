@@ -47,9 +47,7 @@ void Region::clear() {
 }
 
 IrContext *Region::ir_context() const {
-  if (parent_ == nullptr) {
-    IR_THROW("Region is not attached to a container.");
-  }
+  IR_ENFORCE(parent_, "Region is not attached to a container.");
   return parent_->ir_context();
 }
 }  // namespace ir
