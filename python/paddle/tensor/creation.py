@@ -893,7 +893,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     else:
         attrs = {'force_cpu': force_cpu}
         dtype = convert_dtype(dtype)
-        if not isinstance(value, Variable):
+        if isinstance(value, core.Scalar):
+            attrs['str_value'] = str(value)
+            attrs['value'] = value
+        elif not isinstance(value, Variable):
             if dtype in ['int8', 'uint8', 'int16', 'int32', 'int64']:
                 attrs['str_value'] = str(int(value))
                 attrs['value'] = int(value)
