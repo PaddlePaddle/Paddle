@@ -28,16 +28,29 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
                                  const IntArray& axes_arr,
                                  DenseTensor* out) {
   std::vector<int64_t> axes = axes_arr.GetData();
-  std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
+  std::vector<int64_t> input_dims = phi::vectorize<int64_t>(input.dims());
+  std::vector<int64_t> input_stride = phi::vectorize<int64_t>(input.stride());
+
+  if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
+    input_dims = phi::vectorize<int64_t>(out->dims());
+    for (int64_t i = static_cast<int64_t>(axes.size() - 1); i >= 0; --i) {
+      axes[i] = axes[i] < 0 ? axes[i] + input_dims.size() : axes[i];
+      axes[i] = axes[i] < 0 ? 0 : axes[i];
+      input_dims.erase(input_dims.begin() + axes[i]);
+    }
+  }
+
+  std::vector<int64_t> output_dims = input_dims;
+  std::vector<int64_t> output_stride = input_stride;
 
   for (auto item : axes) {
-    auto axis = item < 0 ? item + output_dims.size() + 1 : item;
-    int64_t stride = static_cast<size_t>(axis) >= output_dims.size()
+    item = item < 0 ? item + output_dims.size() + 1 : item;
+    item = item < 0 ? 0 : item;
+    int64_t stride = static_cast<size_t>(item) >= output_dims.size()
                          ? 1
-                         : output_dims[axis] * output_stride[axis];
-    output_dims.insert(output_dims.begin() + axis, 1);
-    output_stride.insert(output_stride.begin() + axis, stride);
+                         : output_dims[item] * output_stride[item];
+    output_dims.insert(output_dims.begin() + item, 1);
+    output_stride.insert(output_stride.begin() + item, stride);
   }
 
   auto meta = out->meta();
