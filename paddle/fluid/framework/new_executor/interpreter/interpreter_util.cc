@@ -596,7 +596,7 @@ void BuildOpFuncList(const platform::Place& place,
 
     SingleStreamGuard single_stream_guard(ops[i]);
 
-    VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
+    VLOG(0) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
     try {
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
@@ -879,7 +879,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     }
 
-    VLOG(4) << "End run " << place << " "
+    VLOG(0) << "End run " << place << " "
             << op_func_node.operator_base_->DebugStringEx(local_scope);
 
     if (!static_build) {

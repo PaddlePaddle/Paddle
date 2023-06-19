@@ -124,7 +124,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", has_structed_kerenl = " << (item.second >> 2 & 1)
          << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
     }
-    VLOG(1) << ss.str();
+    VLOG(0) << ss.str();
   }
 
   return invalid_ops.empty();
@@ -147,25 +147,25 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   if (op_type == "adam" || op_type == "adamw" || op_type == "merged_adam") {
     if (op.Attr<bool>("use_global_beta_pow") &&
         (parameter_name == "Beta1PowOut" || parameter_name == "Beta2PowOut")) {
-      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      VLOG(0) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
   }
 
   if (op_type == "coalesce_tensor" && parameter_name == "Output") {
-    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    VLOG(0) << "Skip fake initialization for: " << parameter_name;
     return false;
   }
 
   if (op_type == "dgc" && parameter_name == "k") {
-    VLOG(2) << "Skip fake initialization for: " << parameter_name;
+    VLOG(0) << "Skip fake initialization for: " << parameter_name;
     return false;
   }
 
   if (op_type == "fake_quantize_range_abs_max") {
     if (op.Attr<bool>("is_test") &&
         (parameter_name == "OutScale" || parameter_name == "OutScales")) {
-      VLOG(2) << "Skip fake initialization for: " << parameter_name;
+      VLOG(0) << "Skip fake initialization for: " << parameter_name;
       return false;
     }
   }
@@ -203,7 +203,7 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
           framework::ToTypeName(var->Type())));
     }
   } else {
-    VLOG(4) << "Var is nullptr";
+    VLOG(0) << "Var is nullptr";
     return nullptr;
   }
 }
@@ -273,7 +273,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
   tensor->set_type(dtype);
   tensor->set_layout(layout);
 
-  VLOG(4) << "Tensor " << tensor << " fake alloc with type = " << dtype
+  VLOG(0) << "Tensor " << tensor << " fake alloc with type = " << dtype
           << ", place = " << place << ", layout = " << layout;
 }
 
@@ -412,7 +412,7 @@ void FakeInitializeOutputsForFunctionKernel(
     // the kernel. For example : the outputs of matmul_grad are dx and dy,
     // sometimes dx or dy may be NULL.
     if (it == runtime_ctx.outputs.end() || it->second.empty()) {
-      VLOG(4) << "Output " << parameter_name << " not found";
+      VLOG(0) << "Output " << parameter_name << " not found";
       ++start_idx;
       continue;
     }
@@ -478,7 +478,7 @@ void FakeInitializeOutputsForFunctionKernel(
                       : in_dtype;
             }
           } else {
-            VLOG(4) << "Get dtype result from InferMeta";
+            VLOG(0) << "Get dtype result from InferMeta";
             RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
             dynamic_cast<const framework::OperatorWithKernel*>(&op)
                 ->Info()

@@ -799,7 +799,7 @@ void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
-  VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
+  VLOG(0) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -870,7 +870,7 @@ void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
     }
   }
 
-  VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
+  VLOG(0) << "End run " << place << " " << op->DebugStringEx(local_scope);
 
   if (!instr_node.InplaceBackMap().empty()) {
     platform::RecordEvent inplaceback_event(
