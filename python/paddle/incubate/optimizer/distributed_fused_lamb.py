@@ -25,6 +25,8 @@ from paddle.nn import ClipGradByGlobalNorm
 
 def init_communicator(block, rank, ranks, ring_id):
     eps = os.environ['PADDLE_TRAINER_ENDPOINTS']
+    if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+        eps += "," + os.environ["PADDLE_TRAINER_ENDPOINTS2"]
     eps = [ep.strip() for ep in eps.split(",") if ep.strip()]
     cur_ep = eps[rank]
     other_eps = [eps[r] for r in ranks if r != rank]

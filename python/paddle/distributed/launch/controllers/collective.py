@@ -213,12 +213,16 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_RANK": f"{i}",
                 "PADDLE_NNODES": f"{self.job.replicas}",
                 # compatible env
-                "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
+                "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints[:700]),
                 "PADDLE_CURRENT_ENDPOINT": endpoints[i],
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{global_size}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
+            if len(job_endpoints) > 700:
+                e.update(
+                    {"PADDLE_TRAINER_ENDPOINTS2": ",".join(job_endpoints[700:])}
+                )
             if self._tuner_run_mode is not None:
                 e.update(
                     {

@@ -547,6 +547,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     self._worker_endpoints is not None
                 ), "can't find PADDLE_TRAINER_ENDPOINTS"
                 self._worker_endpoints = self._worker_endpoints.split(",")
+                if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+                    self._worker_endpoints += os.environ[
+                        "PADDLE_TRAINER_ENDPOINTS2"
+                    ].split(",")
                 self._trainers_num = len(self._worker_endpoints)
 
             self._role_is_generated = True
@@ -634,6 +638,10 @@ class GeneralRoleMaker(RoleMakerBase):
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
             training_role = os.environ["TRAINING_ROLE"]
             worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
+            if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+                worker_endpoints += os.environ[
+                    "PADDLE_TRAINER_ENDPOINTS2"
+                ].split(",")
             trainers_num = len(worker_endpoints)
             if training_role not in ["TRAINER", "PSERVER"]:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
@@ -1059,6 +1067,10 @@ class HeterRoleMaker(GeneralRoleMaker):
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
             training_role = os.environ["TRAINING_ROLE"]
             worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
+            if "PADDLE_TRAINER_ENDPOINTS2" in os.environ:
+                worker_endpoints += os.environ[
+                    "PADDLE_TRAINER_ENDPOINTS2"
+                ].split(",")
             trainers_num = len(worker_endpoints)
             xpu_endpoints = os.environ["PADDLE_XPU_ENDPOINTS"].split(",")
             xpu_num = len(xpu_endpoints)
