@@ -128,6 +128,7 @@ pass_library(delete_cast_op_pass inference)
 pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(delete_repeated_ops_pass inference)
 pass_library(sigmoid_elementmul_fuse_pass inference)
+pass_library(relu6_fuse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
