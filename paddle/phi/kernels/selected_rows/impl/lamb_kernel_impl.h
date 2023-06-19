@@ -17,6 +17,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
@@ -38,6 +39,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                     float beta1_f,
                     float beta2_f,
                     float epsilon_f,
+                    bool always_adapt,
                     bool multi_precision,
                     DenseTensor* param_out,
                     DenseTensor* mom1_out,
@@ -61,6 +63,7 @@ void LambKernel(const Context& dev_ctx,
                 float beta1,
                 float beta2,
                 float epsilon,
+                bool always_adapt,
                 bool multi_precision,
                 DenseTensor* param_out,
                 DenseTensor* moment1_out,
@@ -84,6 +87,7 @@ void LambKernel(const Context& dev_ctx,
                                          beta1,
                                          beta2,
                                          epsilon,
+                                         always_adapt,
                                          multi_precision,
                                          param_out,
                                          moment1_out,
@@ -106,6 +110,7 @@ void LambKernel(const Context& dev_ctx,
                                          beta1,
                                          beta2,
                                          epsilon,
+                                         always_adapt,
                                          multi_precision,
                                          param_out,
                                          moment1_out,
@@ -131,6 +136,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                     float beta1_f,
                     float beta2_f,
                     float epsilon_f,
+                    bool always_adapt,
                     bool multi_precision UNUSED,
                     DenseTensor* param_out,
                     DenseTensor* mom1_out,
@@ -285,27 +291,41 @@ void ComputeRowImpl(const Context& dev_ctx,
   // Update parameter
   // The code in the following part is exactly the same as that in
   // paddle/phi/kernels/impl/lamb_kernel_impl.h Please modify it together
+
+  // DenseTensor p_norm_t;
+  // p_norm_t.Resize(phi::make_ddim({1}));
+  // auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
+
+  // DenseTensor trust_ratio_div_norm_t;
+  // trust_ratio_div_norm_t.Resize(phi::make_ddim({1}));
+  // auto* trust_ratio_div_norm_ptr =
+  //     dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
+
   DenseTensor p_norm_t;
-  p_norm_t.Resize(phi::make_ddim({1}));
-  auto* p_norm_ptr = dev_ctx.template Alloc<MT>(&p_norm_t);
+  DataType dtype = phi::CppTypeToDataType<MT>::Type();
+  FullKernel<MT, Context>(
+      dev_ctx, std::vector<int64_t>({1}), 0, dtype, &p_norm_t);
+  auto* p_norm_ptr = p_norm_t.data<MT>();
 
   DenseTensor trust_ratio_div_norm_t;
-  trust_ratio_div_norm_t.Resize(phi::make_ddim({1}));
-  auto* trust_ratio_div_norm_ptr =
-      dev_ctx.template Alloc<MT>(&trust_ratio_div_norm_t);
+  FullKernel<MT, Context>(
+      dev_ctx, std::vector<int64_t>({1}), 0, dtype, &trust_ratio_div_norm_t);
+  auto* trust_ratio_div_norm_ptr = trust_ratio_div_norm_t.data<MT>();
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  memory_utils::Buffer buffer(dev_ctx.GetPlace());
-  phi::funcs::SquaredL2Norm(
-      dev_ctx,
-      reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
-                                                   : param_ptr),
-      p_norm_ptr,
-      numel,
-      &buffer);
-  phi::funcs::SquaredL2Norm(
-      dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
+  if (weight_decay > static_cast<MT>(0) || always_adapt) {
+    memory_utils::Buffer buffer(dev_ctx.GetPlace());
+    phi::funcs::SquaredL2Norm(
+        dev_ctx,
+        reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
+                                                     : param_ptr),
+        p_norm_ptr,
+        numel,
+        &buffer);
+    phi::funcs::SquaredL2Norm(
+        dev_ctx, trust_ratio_div_ptr, trust_ratio_div_norm_ptr, numel, &buffer);
+  }
 
   if (VLOG_IS_ON(1)) {
     const auto& name = "Param";
