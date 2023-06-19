@@ -151,6 +151,7 @@ struct XPUContext::Impl {
     LOG_FIRST_N(WARNING, 1)
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
     context_ = xpu::create_context();
+    context_->set_option("XPUAPI_DEFAULT_SIZE", "1");
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
   }
