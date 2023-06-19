@@ -34,8 +34,9 @@ function(ir_library TARGET_NAME)
 endfunction()
 
 if(WIN32)
-  message("Now not support dll for windows")
+  message("Now not support dll for windows.")
   set(WITH_SHARED_IR OFF)
+  add_definitions(-DIR_API)
 endif()
 
 if(WITH_SHARED_IR)
