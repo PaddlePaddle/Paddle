@@ -24,7 +24,7 @@ from .momentum import Momentum  # noqa: F401
 from .lamb import Lamb  # noqa: F401
 from .lbfgs import LBFGS  # noqa: F401
 from . import lr  # noqa: F401
-
+from .adan import Adan
 __all__ = [  # noqa
     'Optimizer',
     'Adagrad',
@@ -37,4 +37,5 @@ __all__ = [  # noqa
     'Momentum',
     'Lamb',
     'LBFGS',
+    'Adan',
 ]
