@@ -15,9 +15,9 @@
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cstdint>
 
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
@@ -94,8 +94,8 @@ void RewriterBase::ReplaceOpWithIf(Operation* op,
                                    const std::vector<Value>& new_values,
                                    bool* all_uses_replaced,
                                    std::function<bool(OpOperand&)> functor) {
-  assert(op->num_results() == new_values.size() &&
-         "incorrect number of values to replace operation");
+  IR_ENFORCE(op->num_results() == new_values.size(),
+             "incorrect number of values to replace operation");
   NotifyRootReplaced(op, new_values);
 
   // Replace each use of the results when the functor is true.
@@ -120,8 +120,8 @@ void RewriterBase::ReplaceOpWithIf(Operation* op,
 void RewriterBase::ReplaceOp(Operation* op,
                              const std::vector<Value>& new_values) {
   NotifyRootReplaced(op, new_values);
-  assert(op->num_results() == new_values.size() &&
-         "incorrect # of replacement values");
+  IR_ENFORCE(op->num_results() == new_values.size(),
+             "incorrect # of replacement values");
   // TODO(wilber): ir support replace method.
   // op->ReplaceAllUsesWith(new_values);
   NotifyOperationRemoved(op);
@@ -130,7 +130,8 @@ void RewriterBase::ReplaceOp(Operation* op,
 }
 
 void RewriterBase::EraseOp(Operation* op) {
-  assert(op->use_empty() && "expected 'op' to have no uses");
+  // TODO(wilber): Operation support use_empty.
+  // IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
   NotifyOperationRemoved(op);
   // TODO(wilber): ir support erase method.
   // op->erase();
@@ -155,8 +156,8 @@ void RewriterBase::ReplaceUseIf(Value from,
 
 void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
-  assert(op->num_results() == new_op->num_results() &&
-         "replacement op doesn't match results of original op");
+  IR_ENFORCE(op->num_results() == new_op->num_results(),
+             "replacement op doesn't match results of original op");
   // TODO(wilber): Op support results method.
   // if (op->num_results() == 1) return ReplaceOp(op,
   // new_op->result(0)); return ReplaceOp(op, new_op->GetResults());

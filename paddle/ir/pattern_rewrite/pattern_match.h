@@ -270,20 +270,10 @@ class RewriterBase : public Builder {
 
   virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
 
-  // virtual void ReplaceOpWithNewOp()
+  // template <typename OpTy, typename... Args>
+  // OpTy ReplaceOpWithNewOp(Operation *op, Args &&...args);
 
   virtual void EraseOp(Operation* op);
-
-  virtual void StartRootUpdate(Operation* op) {}
-  virtual void FinalizeRootUpdate(Operation* op) {}
-  virtual void CancleRootUpdate(Operation* op) {}
-
-  template <typename CallableT>
-  void UpdateRootInplace(Operation* root, CallableT&& callable) {
-    StartRootUpdate(root);
-    callable();
-    FinalizeRootUpdate(root);
-  }
 
   void ReplaceAllUsesWith(Value from, Value to);
 
@@ -303,7 +293,18 @@ class RewriterBase : public Builder {
 
   virtual void NotifyOperationInserted(Operation* op) {}
 
-  // virtual bool NotifyMatchFailure()
+  virtual void StartRootUpdate(Operation* op) {}
+
+  virtual void FinalizeRootUpdate(Operation* op) {}
+
+  virtual void CancleRootUpdate(Operation* op) {}
+
+  template <typename CallableT>
+  void UpdateRootInplace(Operation* root, CallableT&& callable) {
+    StartRootUpdate(root);
+    callable();
+    FinalizeRootUpdate(root);
+  }
 
  private:
   void operator=(const RewriterBase&) = delete;
