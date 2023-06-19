@@ -233,7 +233,7 @@ FORWARD_FUNCTION_TEMPLATE = """
  // Node Declaration
   std::shared_ptr<{}> grad_node;
 
-  //Before API Call
+  //Set grad_node before API Call
 {}
 
  // Forward API Call
@@ -246,7 +246,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 {}
   // Check Inplace if needed
 {}{}
-  // After api call
+  //Set grad_node after API call
 {}
 
   VLOG(4) << \"Finish AD API: {}";
@@ -303,7 +303,7 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
 }}
 """
 
-FORWARD_BODY_BEFORE_CALL_TEMPLATE = """  if(require_any_grad) {{
+FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if(require_any_grad) {{
 {}
     // Node Construction
 {}
@@ -318,7 +318,7 @@ FORWARD_BODY_BEFORE_CALL_TEMPLATE = """  if(require_any_grad) {{
   }}
 """
 
-FORWARD_BODY_AFTER_CALL_TEMPLATE = """  if(require_any_grad) {{
+FORWARD_BODY_AFTER_API_CALL_TEMPLATE = """  if(require_any_grad) {{
 
     egr::EagerUtils::PassStopGradient({});
 
@@ -447,10 +447,6 @@ extern std::unordered_map<std::string, std::vector<std::string>> core_ops_args_i
 extern std::unordered_map<std::string, std::vector<std::string>> core_ops_args_type_info;
 extern std::unordered_map<std::string, std::vector<std::string>> core_ops_returns_info;
 
-"""
-
-INPLACE_INPUT_CLONE_TEMPLATE = """
-    auto {}_clone = paddle::experimental::assign({});
 """
 
 CHECK_INPLACE_TEMPLATE = """
@@ -1106,7 +1102,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         self.node_creation_str = ""
         if not for_backward:
             self.node_creation_before_call_str = (
-                FORWARD_BODY_BEFORE_CALL_TEMPLATE.format(
+                FORWARD_BODY_BEFORE_API_CALL_TEMPLATE.format(
                     node_creation_event_str,
                     node_assignment_str,
                     set_attributes_str,
@@ -1114,7 +1110,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 )
             )
             self.node_creation_after_call_str = (
-                FORWARD_BODY_AFTER_CALL_TEMPLATE.format(
+                FORWARD_BODY_AFTER_API_CALL_TEMPLATE.format(
                     pass_stop_gradient_args_str,
                     set_grad_out_meta_str,
                     set_out_rank_str,
