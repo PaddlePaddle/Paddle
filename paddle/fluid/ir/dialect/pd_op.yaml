@@ -89,3 +89,18 @@
   data_transform: null
   inplace: null
   backward: null
+
+- name: add_n_
+  inputs:
+  - typename: Tensor[]
+    name: inputs
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  invoke: {func: add_n_impl, args: inputs}
+  backward: add_n_grad
