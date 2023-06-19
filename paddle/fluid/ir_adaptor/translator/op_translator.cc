@@ -763,14 +763,14 @@ struct FetchOpTranscriber : public OpTranscriber {
   std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
       ir::IrContext* ctx,
       const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos) {
+      const OpOutputInfoList& output_infos) override {
     return {};
   }
 
   void RecordOpResultMapping(TranslationContext* param_map,
                              const OpDesc& op_desc,
                              ir::Operation* operation,
-                             const OpOutputMapping& arg_to_idx) {
+                             const OpOutputMapping& arg_to_idx) override {
     return;
   }
 };
