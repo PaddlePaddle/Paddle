@@ -21,6 +21,7 @@ build_dir=$workspace/${build_dir_name}
 py_version=${py_version:-3.7}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
+
 #export LLVM11_DIR=${workspace}/THIRDS/usr
 
 JOBS=8
@@ -148,7 +149,7 @@ function _download_and_untar {
 
 function prepare_model {
     proxy_off
-    cd $build_dir/thirds
+    cd $build_dir/third_party
 
     _download_and_untar ResNet18.tar.gz
     _download_and_untar MobileNetV2.tar.gz
@@ -173,7 +174,7 @@ function prepare_model {
         wget https://github.com/T8T9/files/raw/main/mkldnn.tgz
     fi
     tar -zxvf mkldnn.tgz
-    cd $build_dir/thirds
+    cd $build_dir/third_party
     python${py_version} $workspace/test/cinn/fake_model/naive_mul.py
     python${py_version} $workspace/test/cinn/fake_model/naive_multi_fc.py
     python${py_version} $workspace/test/cinn/fake_model/resnet_model.py

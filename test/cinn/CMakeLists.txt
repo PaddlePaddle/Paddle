@@ -46,8 +46,8 @@ if(WITH_GPU)
   # ADD_TEST(NAME test_cinn_frontend
   #     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
   #     python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_frontend.py
-  #     ${CMAKE_BINARY_DIR}/thirds/naive_mul_model
-  #     ${CMAKE_BINARY_DIR}/thirds/multi_fc_model
+  #     ${CMAKE_BINARY_DIR}/third_party/naive_mul_model
+  #     ${CMAKE_BINARY_DIR}/third_party/multi_fc_model
   #     "${WITH_GPU}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   # )
   add_test(
@@ -62,7 +62,7 @@ endif()
 #ADD_TEST(NAME test_computation_python
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_computation.py
-#    ${CMAKE_BINARY_DIR}/thirds/naive_mul_model
+#    ${CMAKE_BINARY_DIR}/third_party/naive_mul_model
 #    "${WITH_GPU}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #)
 
@@ -87,7 +87,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet.py
-      "${CMAKE_BINARY_DIR}/thirds/resnet_model" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/resnet_model" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -96,7 +96,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet18.py
-      "${CMAKE_BINARY_DIR}/thirds/ResNet18" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/ResNet18" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -105,7 +105,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv2.py
-      "${CMAKE_BINARY_DIR}/thirds/MobileNetV2" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/MobileNetV2" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -114,7 +114,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_efficientnet.py
-      "${CMAKE_BINARY_DIR}/thirds/EfficientNet" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/EfficientNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -123,7 +123,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv1.py
-      "${CMAKE_BINARY_DIR}/thirds/MobilenetV1" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/MobilenetV1" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -132,7 +132,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet50.py
-      "${CMAKE_BINARY_DIR}/thirds/ResNet50" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/ResNet50" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -141,7 +141,7 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_squeezenet.py
-      "${CMAKE_BINARY_DIR}/thirds/SqueezeNet" "${WITH_GPU}"
+      "${CMAKE_BINARY_DIR}/third_party/SqueezeNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
   add_test(
@@ -150,13 +150,13 @@ if(WITH_GPU)
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH} python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test_paddle_model_convertor.py --path
-      "${CMAKE_BINARY_DIR}/thirds/resnet_model"
+      "${CMAKE_BINARY_DIR}/third_party/resnet_model"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
 #ADD_TEST(NAME test_cinn_real_facedet
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-#    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_facedet.py "${CMAKE_BINARY_DIR}/thirds/FaceDet" "${WITH_GPU}"
+#    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_facedet.py "${CMAKE_BINARY_DIR}/third_party/FaceDet" "${WITH_GPU}"
 #    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 if(WITH_GPU)
   file(

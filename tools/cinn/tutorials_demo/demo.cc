@@ -14,13 +14,13 @@
 
 #include <iostream>
 
-#include "cinn/backends/compiler.h"
-#include "cinn/cinn.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/pe/elementwise.h"
-#include "cinn/hlir/pe/nn.h"
-#include "cinn/runtime/cpu/use_extern_funcs.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/backends/compiler.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/nn.h"
+#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace backends {
