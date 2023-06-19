@@ -1,5 +1,5 @@
 if (WITH_TESTING)
-  cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest)
+  cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest gflags)
 endif()
 
 add_subdirectory(auto_schedule)
@@ -12,7 +12,9 @@ add_subdirectory(backends)
 add_subdirectory(lang)
 add_subdirectory(optim)
 add_subdirectory(hlir)
-add_subdirectory(pybind)
+if(CINN_ONLY)
+  add_subdirectory(pybind)
+endif()
 add_subdirectory(frontend)
 
 # Download a model

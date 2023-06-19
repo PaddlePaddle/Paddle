@@ -12,7 +12,7 @@ if(WITH_TESTING)
     graph
     cinn_launch_context
     cinn_instruction_run_op
-    cinn)
+    cinnapi)
   target_link_libraries(cinn_launch_context_test ${PYTHON_LIBRARIES})
   set_tests_properties(cinn_launch_context_test PROPERTIES LABELS
                                                            "RUN_TYPE=CINN")

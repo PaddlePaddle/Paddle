@@ -429,52 +429,7 @@ def is_taged():
 def get_cinn_version():
     if env_dict.get("WITH_CINN") != 'ON':
         return "False"
-
-    cinn_git_version = 'Unknown'
-    # try get cinn tag name
-    try:
-        cmd = [
-            'git',
-            'describe',
-            '--exact-match',
-            '--tags',
-            'HEAD',
-            '2>/dev/null',
-        ]
-        cinn_tag = (
-            subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                cwd=env_dict.get("CINN_SOURCE_DIR"),
-            )
-            .communicate()[0]
-            .strip()
-        )
-        if len(cinn_tag) > 0:
-            cinn_git_version = cinn_tag
-    except:
-        pass
-
-    if cinn_git_version == 'Unknown':
-        # try get cinn commit id
-        try:
-            cmd = ['git', 'rev-parse', 'HEAD']
-            cinn_commit = (
-                subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    cwd=env_dict.get("CINN_SOURCE_DIR"),
-                )
-                .communicate()[0]
-                .strip()
-            )
-            if len(cinn_commit) > 0:
-                cinn_git_version = cinn_commit
-        except:
-            pass
-
-    cinn_git_version = cinn_git_version.decode('utf-8')
-    return str(cinn_git_version)
+    return "0.3.0"
 
 
 def write_version_py(filename='paddle/version/__init__.py'):

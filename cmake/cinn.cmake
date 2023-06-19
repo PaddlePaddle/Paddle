@@ -28,8 +28,18 @@ add_definitions(-w)
 
 include(cmake/cinn/version.cmake)
 # include the customized configures
-if(EXISTS ${CMAKE_BINARY_DIR}/config.cmake)
-  include(${CMAKE_BINARY_DIR}/config.cmake)
+if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+  file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
+endif()
+include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
+
+if(WITH_MKL)
+  generate_dummy_static_lib(LIB_NAME "cinn_mklml" GENERATOR "mklml.cmake")
+  target_link_libraries(cinn_mklml ${MKLML_LIB} ${MKLML_IOMP_LIB})
+  add_definitions(-DCINN_WITH_MKL_CBLAS)
+endif()
+if(WITH_MKLDNN)
+  add_definitions(-DCINN_WITH_MKLDNN)
 endif()
 
 if(WITH_GPU)
