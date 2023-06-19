@@ -78,7 +78,7 @@ set(IR_LIB
     CACHE FILEPATH "IR Library" FORCE)
 
 get_property(ir_modules GLOBAL PROPERTY IR_MODULES)
-if(WITH_SHARED_IR)
+if(NOT WIN32 AND WITH_SHARED_IR)
   add_library(ir SHARED ${ir_modules})
 else()
   add_library(ir STATIC ${ir_modules})
