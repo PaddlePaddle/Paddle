@@ -40,10 +40,11 @@ phi::KernelKey GetKernelKey(
 
   paddle::dialect::OpYamlInfoInterface op_info_interface =
       op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+  std::vector<paddle::dialect::OpInputInfo> input_info;
   if (op_info_interface) {
     auto op_info_res = op_info_interface.GetOpInfo();
 
-    auto input_info = std::get<0>(op_info_res);
+    input_info = std::get<0>(op_info_res);
 
     // only suppurt non vector input for now
     std::map<std::string, int> input_map;
@@ -97,54 +98,54 @@ phi::KernelKey GetKernelKey(
       // all the information have to get from attribute and context
       kernel_backend = paddle::experimental::ParseBackend(place);
     }
+  }
 
-    if (op->num_operands() > 0) {
-      paddle::experimental::detail::KernelKeyParser kernel_key_parser;
+  if (op->num_operands() > 0) {
+    paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        // todo filter attribute tensor
-        if (input_info[i].is_mutable_attribute) {
-          continue;
-        }
-        auto input_tmp = op->operand(i).source();
-        auto new_input_tmp = map_value_pair.at(input_tmp);
-        auto input_type = new_input_tmp.type();
-        dialect::AllocatedDenseTensorType type;
-        if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-          type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
-        } else if (input_type.isa<ir::VectorType>()) {
-          type = input_type.dyn_cast<ir::VectorType>()[0]
-                     .dyn_cast<dialect::AllocatedDenseTensorType>();
-        }
-
-        // fake tensor here
-        auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-        std::shared_ptr<phi::Allocation> holder(ptr);
-
-        auto dtype = TransToPhiDataType(type.dtype());
-
-        phi::DenseTensorMeta meta(
-            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-        phi::DenseTensor fake_tensor(holder, meta);
-
-        kernel_key_parser.AssignKernelKeySet(fake_tensor);
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      // todo filter attribute tensor
+      if ((input_info.size() > i) && input_info[i].is_mutable_attribute) {
+        continue;
+      }
+      auto input_tmp = op->operand(i).source();
+      auto new_input_tmp = map_value_pair.at(input_tmp);
+      auto input_type = new_input_tmp.type();
+      dialect::AllocatedDenseTensorType type;
+      if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
+        type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
+      } else if (input_type.isa<ir::VectorType>()) {
+        type = input_type.dyn_cast<ir::VectorType>()[0]
+                   .dyn_cast<dialect::AllocatedDenseTensorType>();
       }
 
-      auto kernel_key_set = kernel_key_parser.key_set;
+      // fake tensor here
+      auto ptr = new phi::Allocation(nullptr, 0, type.place());
 
-      auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+      std::shared_ptr<phi::Allocation> holder(ptr);
 
-      if (kernel_backend == phi::Backend::UNDEFINED) {
-        kernel_backend = kernel_key.backend();
-      }
-      if (kernel_layout == phi::DataLayout::UNDEFINED) {
-        kernel_layout = kernel_key.layout();
-      }
-      if (kernel_data_type == phi::DataType::UNDEFINED) {
-        kernel_data_type = kernel_key.dtype();
-      }
+      auto dtype = TransToPhiDataType(type.dtype());
+
+      phi::DenseTensorMeta meta(
+          dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+      phi::DenseTensor fake_tensor(holder, meta);
+
+      kernel_key_parser.AssignKernelKeySet(fake_tensor);
+    }
+
+    auto kernel_key_set = kernel_key_parser.key_set;
+
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+    if (kernel_backend == phi::Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == phi::DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == phi::DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
     }
   }
 
@@ -171,7 +172,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   for (auto it = block->begin(); it != block->end(); ++it) {
     VLOG(6) << "op name " << (*it)->name();
     auto kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
-    std::cerr << "kernel type " << kernel_key << std::endl;
+    VLOG(6) << "kernel type " << kernel_key;
     // create new Op
 
     // only for single output
@@ -220,8 +221,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       }
     }
 
-    std::cerr << "11 " << std::endl;
-
     paddle::dialect::OpYamlInfoInterface op_info_interface =
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
     std::string kernel_fn_str;
@@ -242,9 +241,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       op1_attribute.emplace(it1->first, it1->second);
     }
 
-    std::cerr << "12 " << std::endl;
-
-    std::cerr << "15 " << std::endl;
     ir::Operation* op1 = ir::Operation::Create(
         vec_inputs, op1_attribute, op_output_types, op1_info);
 
@@ -254,7 +250,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     if ((*it)->num_results() > 0) {
       map_value_pair[(*it)->result(0)] = op1->result(0);
     }
-    std::cerr << "16" << std::endl;
+
     program->block()->push_back(op1);
   }
 

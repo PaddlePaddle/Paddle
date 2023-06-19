@@ -76,7 +76,7 @@ void BuildScope(ir::Block* block,
       // fetch is a very special op, with no output
       auto out_value = (*it)->result(0);
 
-      std::cerr << "run build in " << std::endl;
+      VLOG(5) << "process builtin combine";
       std::string name;
       if (name_map->find(out_value) != name_map->end()) {
         name = name_map->at(out_value);
@@ -96,7 +96,6 @@ void BuildScope(ir::Block* block,
                           phi::errors::PreconditionNotMet(
                               "can not found input of combine op"));
 
-        std::cerr << "append dense tensor" << std::endl;
         tensor_array->emplace_back(
             &(scope->Var(name_map->at(ptr))->Get<phi::DenseTensor>()));
       }
@@ -329,10 +328,8 @@ void BuildPhiKernelContext(
           const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
           ctx->EmplaceBackInput(tensor_in);
         } else {
-          std::cerr << "get data from tensor array " << std::endl;
           paddle::small_vector<const phi::TensorBase*> inputs;
           auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
-          std::cerr << "tensor array " << tensor_array.size() << std::endl;
           for (size_t i = 0; i < tensor_array.size(); ++i) {
             inputs.emplace_back(tensor_array[i]);
           }
