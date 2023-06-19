@@ -138,7 +138,7 @@ TEST(StandaloneExecutor, run_2) {
 
   ProgramDesc prog_desc;
 
-  InterpreterCore test_core(place, std::move(kernel_program), &scope, );
+  InterpreterCore test_core(place, std::move(kernel_program), &scope);
 
   test_core.Run({});
 
