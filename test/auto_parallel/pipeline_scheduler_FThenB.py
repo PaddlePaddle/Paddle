@@ -22,19 +22,18 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 from paddle.distributed import ParallelEnv
 from paddle.distributed.fleet import auto
-from paddle.fluid.framework import set_flags
 
 paddle.enable_static()
 
 
-def apply_pass(mode="1F1B"):
+def apply_pass(use_standalone_exe=False):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
 
     pipeline = strategy.pipeline
     pipeline.enable = True
-    pipeline.schedule_mode = mode
+    pipeline.schedule_mode = "1F1B" if not use_standalone_exe else "FThenB"
     pipeline.accumulate_steps = 2
 
     return strategy
@@ -62,10 +61,10 @@ class Test1F1BPass(unittest.TestCase):
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, mode="1F1B"):
+    def get_engine(self, use_standalone_exe=False):
         reset_prog()
 
-        strategy = apply_pass(mode)
+        strategy = apply_pass(use_standalone_exe)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model("pp")
@@ -85,29 +84,34 @@ class Test1F1BPass(unittest.TestCase):
             ),
         )
 
-    def test_1f1b_pass(self):
+    def test_pp_pass(self):
         # pp2 1f1b training with fleet executor
-        engine_1f1b = self.get_engine("1F1B")
+        os.environ['FLAGS_new_executor_micro_batching'] = 'False'
+        engine_1f1b = self.get_engine(use_standalone_exe=False)
         history_1f1b = engine_1f1b.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_1f1b._strategy.pipeline.schedule_mode == "1F1B"
-        assert os.environ.get('FLAGS_new_executor_micro_batching') is False
+        assert os.environ.get('FLAGS_new_executor_micro_batching') == "False"
 
         # pp2 fthenb training with standalone executor
-        set_flags({'FLAGS_new_executor_micro_batching': True})
-        engine_fthenb = self.get_engine("FThenB")
+        os.environ['FLAGS_new_executor_micro_batching'] = 'True'
+        engine_fthenb = self.get_engine(use_standalone_exe=True)
         history_fthenb = engine_fthenb.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
         assert engine_fthenb._strategy.pipeline.schedule_mode == "FThenB"
-        assert os.environ.get('FLAGS_new_executor_micro_batching') is True
+        assert os.environ.get('FLAGS_new_executor_micro_batching') == "True"
 
-        # # NOTE: every sample data from dataset is all the same
-        # if paddle.distributed.get_rank() == 1:
-        #     losses_pp = np.array(history_pp.history["loss"])
-        #     losses_1f1b = np.array(history_1f1b.history["loss"])
-        #     self.check_results(losses_pp, losses_1f1b)
+        # NOTE: every sample data from dataset is all the same
+        if paddle.distributed.get_rank() == 1:
+            losses_1f1b = np.array(history_1f1b.history["loss"])
+            losses_fthenb = np.array(history_fthenb.history["loss"])
+            # accumulate_steps is 2
+            assert len(losses_fthenb[0] == 2)
+            # losses_1f1b is the last loss of accumulate_steps
+            # losses_fthenb is all the losses of accumulate_steps
+            self.check_results(losses_1f1b[0], losses_fthenb[0][-1])
 
 
 if __name__ == "__main__":

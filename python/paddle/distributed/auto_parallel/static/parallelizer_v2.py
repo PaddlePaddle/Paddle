@@ -378,9 +378,16 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        use_new_executor = os.environ.get(
+        new_executor_micro_batching = os.environ.get(
             'FLAGS_new_executor_micro_batching', None
         )
+        use_new_executor = new_executor_micro_batching in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]
         if self._strategy.pipeline.enable and not use_new_executor:
             config = copy.deepcopy(self._strategy.pipeline.to_dict())
             config["dist_context"] = self._dist_context

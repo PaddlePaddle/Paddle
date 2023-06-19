@@ -26,7 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags
+from . import set_flags, get_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -1461,9 +1461,16 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        use_new_executor = os.environ.get(
+        new_executor_micro_batching = os.environ.get(
             'FLAGS_new_executor_micro_batching', None
         )
+        use_new_executor = new_executor_micro_batching in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]
         if (
             isinstance(program, Program)
             and program._pipeline_opt
