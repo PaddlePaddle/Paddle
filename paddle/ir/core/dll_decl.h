@@ -14,14 +14,15 @@
 
 #pragma once
 
-#if defined(_WIN32)
-#ifndef IR_API
-#ifdef IR_DLL_EXPORT
-#define IR_API __declspec(dllexport)
-#else
-#define IR_API __declspec(dllimport)
-#endif  // IR_DLL_EXPORT
-#endif  // IR_API
-#else
+// #if defined(_WIN32)
+// #ifndef IR_API
+// #ifdef IR_DLL_EXPORT
+// #define IR_API __declspec(dllexport)
+// #else
+// #define IR_API __declspec(dllimport)
+// #endif  // IR_DLL_EXPORT
+// #endif  // IR_API
+// #else
+// #define IR_API
+// #endif  // _WIN32
 #define IR_API
-#endif  // _WIN32
