@@ -97,54 +97,54 @@ phi::KernelKey GetKernelKey(
       // all the information have to get from attribute and context
       kernel_backend = paddle::experimental::ParseBackend(place);
     }
-  }
 
-  if (op->num_operands() > 0) {
-    paddle::experimental::detail::KernelKeyParser kernel_key_parser;
+    if (op->num_operands() > 0) {
+      paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      // todo filter attribute tensor
-      if (input_info[i].is_mutable_attribute) {
-        continue;
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        // todo filter attribute tensor
+        if (input_info[i].is_mutable_attribute) {
+          continue;
+        }
+        auto input_tmp = op->operand(i).source();
+        auto new_input_tmp = map_value_pair.at(input_tmp);
+        auto input_type = new_input_tmp.type();
+        dialect::AllocatedDenseTensorType type;
+        if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
+          type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
+        } else if (input_type.isa<ir::VectorType>()) {
+          type = input_type.dyn_cast<ir::VectorType>()[0]
+                     .dyn_cast<dialect::AllocatedDenseTensorType>();
+        }
+
+        // fake tensor here
+        auto ptr = new phi::Allocation(nullptr, 0, type.place());
+
+        std::shared_ptr<phi::Allocation> holder(ptr);
+
+        auto dtype = TransToPhiDataType(type.dtype());
+
+        phi::DenseTensorMeta meta(
+            dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
+
+        phi::DenseTensor fake_tensor(holder, meta);
+
+        kernel_key_parser.AssignKernelKeySet(fake_tensor);
       }
-      auto input_tmp = op->operand(i).source();
-      auto new_input_tmp = map_value_pair.at(input_tmp);
-      auto input_type = new_input_tmp.type();
-      dialect::AllocatedDenseTensorType type;
-      if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
-        type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
-      } else if (input_type.isa<ir::VectorType>()) {
-        type = input_type.dyn_cast<ir::VectorType>()[0]
-                   .dyn_cast<dialect::AllocatedDenseTensorType>();
+
+      auto kernel_key_set = kernel_key_parser.key_set;
+
+      auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+
+      if (kernel_backend == phi::Backend::UNDEFINED) {
+        kernel_backend = kernel_key.backend();
       }
-
-      // fake tensor here
-      auto ptr = new phi::Allocation(nullptr, 0, type.place());
-
-      std::shared_ptr<phi::Allocation> holder(ptr);
-
-      auto dtype = TransToPhiDataType(type.dtype());
-
-      phi::DenseTensorMeta meta(
-          dtype, type.dims(), type.data_layout(), type.lod(), type.offset());
-
-      phi::DenseTensor fake_tensor(holder, meta);
-
-      kernel_key_parser.AssignKernelKeySet(fake_tensor);
-    }
-
-    auto kernel_key_set = kernel_key_parser.key_set;
-
-    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-
-    if (kernel_backend == phi::Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == phi::DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == phi::DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
+      if (kernel_layout == phi::DataLayout::UNDEFINED) {
+        kernel_layout = kernel_key.layout();
+      }
+      if (kernel_data_type == phi::DataType::UNDEFINED) {
+        kernel_data_type = kernel_key.dtype();
+      }
     }
   }
 
