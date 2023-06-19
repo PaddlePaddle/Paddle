@@ -965,6 +965,8 @@ void BuildOpFuncList(
     op_func_node.infer_shape_interface_ =
         op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
 
+    VLOG(6) << "op name" << op_func_node.phi_op_name_;
+
     ::ir::BuildInferMetaContext((*it),
                                 value_2_name_map,
                                 scope,
@@ -976,6 +978,8 @@ void BuildOpFuncList(
     auto kernel_key = attr_map.at("kernel_key")
                           .dyn_cast<paddle::dialect::KernelAttribute>()
                           .data();
+
+    VLOG(6) << "finish process infer meta context";
     auto t1 =
         phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
     op_func_node.phi_kernel_ = new phi::Kernel(t1);
@@ -992,6 +996,7 @@ void BuildOpFuncList(
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));
 
+    VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(
         phi::DeviceContextPool::Instance().Get(
             phi::TransToPhiPlace(kernel_key.backend())));
