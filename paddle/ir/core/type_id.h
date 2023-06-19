@@ -82,8 +82,6 @@ class TypeId {
   Storage *storage_{nullptr};
 };
 
-}  // namespace ir
-
 namespace detail {
 class alignas(8) UniqueingId {
  public:
@@ -125,6 +123,8 @@ TypeId TypeId::get() {
   UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
   }                                                 \
   }  // namespace ir
+
+}  // namespace ir
 
 namespace std {
 ///
