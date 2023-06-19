@@ -257,7 +257,7 @@ def _program_for_fthenb_and_1f1b(program):
     }
 
 
-@register_pass("pipeline_fthenb_scheduler")
+@register_pass("pipeline_scheduler_FThenB")
 class PipelineFThenBPass(PassBase):
     def __init__(self):
         super().__init__()
@@ -272,12 +272,12 @@ class PipelineFThenBPass(PassBase):
         job_list = []
         lr_job = core.Job("lr")
         job_list.append(lr_job)
-        for i in range(self._micro_batch_size):
+        for i in range(self._num_micro_batches):
             forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(i)
             job_list.append(forward_job)
 
-        for i in range(self._micro_batch_size):
+        for i in range(self._num_micro_batches):
             backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(i)
             job_list.append(backward_job)
@@ -287,7 +287,7 @@ class PipelineFThenBPass(PassBase):
         return job_list
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        self._micro_batch_size = self.get_attr("micro_batch_size")
+        self._num_micro_batches = self.get_attr("num_micro_batches")
         self._program = main_program
 
         _insert_sync_for_fthenb_1f1b(self._program)
@@ -296,3 +296,18 @@ class PipelineFThenBPass(PassBase):
 
         plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)
+
+
+def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
+    from paddle.distributed.passes import PassContext, new_pass
+
+    assert pass_name in [
+        "FThenB"
+    ], "pipeline scheduler only support FThenB, but recieve {}".format(
+        pass_name
+    )
+    pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
+    pass_context = PassContext()
+    pipeline_pass.apply([main_program], [startup_program], pass_context)
+    plan = pass_context.get_attr("plan")
+    return plan

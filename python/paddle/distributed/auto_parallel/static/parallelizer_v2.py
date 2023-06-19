@@ -14,6 +14,7 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
@@ -38,6 +39,14 @@ class Parallelizer:
         self._strategy = self._dist_context.strategy
         self._logger = get_logger(logging.INFO)
 
+    @property
+    def is_train(self):
+        return self._mode == "train"
+
+    @property
+    def is_test(self):
+        return self._mode in ["eval", "predict"]
+
     def parallel_all(self):
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
@@ -50,7 +59,7 @@ class Parallelizer:
         serial_main_program = self._dist_context.serial_main_program
         serial_startup_program = self._dist_context.serial_startup_program
         serial_optimizer = self._dist_context.serial_optimizer
-        if self._mode == "train" and serial_optimizer:
+        if self.is_train and serial_optimizer:
             # Generate backward
             serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
@@ -191,8 +200,9 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
+
         # Clone program for test
-        if self._mode != 'train':
+        if self.is_test:
             pipeline_opt = dist_main_prog._pipeline_opt
             dist_main_prog = dist_main_prog.clone(for_test=True)
             dist_startup_prog = dist_startup_prog.clone(for_test=True)
@@ -263,7 +273,7 @@ class Parallelizer:
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'
-        if self._mode == 'train' and self._strategy.qat.enable:
+        if self.is_train and self._strategy.qat.enable:
             config = copy.deepcopy(self._strategy.qat.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -282,7 +292,7 @@ class Parallelizer:
 
         # apply recompute pass
         # recompute is then train-only optimization
-        if self._mode == "train" and self._strategy.recompute.enable:
+        if self.is_train and self._strategy.recompute.enable:
             config = copy.deepcopy(self._strategy.recompute.to_dict())
             config["dist_context"] = self._dist_context
             config["no_grad_set"] = None
@@ -326,7 +336,7 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
-        if self._mode == "train":
+        if self.is_train:
             # GradClip is train-only optimization
             config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
@@ -349,7 +359,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._strategy.pipeline.enable:
+        if self.is_train and self._strategy.pipeline.enable:
             self._strategy.gradient_merge.enable = True
             self._strategy.gradient_merge.k_steps = (
                 self._strategy.pipeline.accumulate_steps
@@ -357,7 +367,7 @@ class Parallelizer:
             self._strategy.gradient_merge.avg = True
 
         # gradient_merge is then train-only optimization
-        if self._mode == "train" and self._strategy.gradient_merge.enable:
+        if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -368,7 +378,10 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._strategy.pipeline.enable:
+        use_new_executor = os.environ.get(
+            'FLAGS_new_executor_micro_batching', None
+        )
+        if self._strategy.pipeline.enable and not use_new_executor:
             config = copy.deepcopy(self._strategy.pipeline.to_dict())
             config["dist_context"] = self._dist_context
             auto_parallel_pipeline_pass = new_pass(
@@ -378,10 +391,17 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        if self._mode == "train" and self._strategy.fused_passes.enable:
+        if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
                 new_pass_list = []
                 for op in self._strategy.fused_passes.fused_passes_list:
                     new_pass_list.append(new_pass(op))
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
+
+        if self._strategy.pipeline.enable and use_new_executor:
+            main_program._pipeline_opt = {}
+            main_program._pipeline_opt["standalone_exe"] = {
+                "schedule_mode": self._strategy.pipeline.schedule_mode,
+                "num_micro_batches": self._strategy.pipeline.accumulate_steps,
+            }

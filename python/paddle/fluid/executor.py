@@ -414,6 +414,34 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
+def _set_micro_batch_fetch(plan):
+    if plan.micro_batch_num() <= 1:
+        return
+
+    valid_fetch_types = ["fetch", "fetch_v2"]
+    for job in plan.job_list():
+        idx_to_col_attr = {}
+        prog = plan.program(job.type())
+        for i in range(prog.block(0).op_size()):
+            op = prog.block(0).op(i)
+            if op.type() in valid_fetch_types:
+                idx_to_col_attr[i] = op.attr('col')
+
+        for idx, col in idx_to_col_attr.items():
+            job.set_col_attr_for_fetch_op(
+                idx, col * plan.micro_batch_num() + job.micro_batch_id()
+            )
+
+
+def _merge_tensors(tensor, micro_batch_num):
+    assert len(tensor) % micro_batch_num == 0
+    chunk_tensor = [
+        tensor[i : i + micro_batch_num]
+        for i in range(0, len(tensor), micro_batch_num)
+    ]
+    return [np.array(chunk) for chunk in chunk_tensor]
+
+
 def _apply_inplace_addto_pass(
     program, enable_inplace, enable_addto, skip_var_names
 ):
@@ -653,14 +681,39 @@ class _StandaloneExecutor:
         """
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
-            return as_numpy(tensors, copy=True)
+            tensors = as_numpy(tensors, copy=True)
+            if self._plan.micro_batch_num() <= 1:
+                return tensors
+            return _merge_tensors(tensors, self._plan.micro_batch_num())
         else:
+            if self._plan.micro_batch_num() > 1:
+                logging.warning(
+                    "`merge_tensor` dose not support when return_numpy is False."
+                )
             return tensors
 
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
         return new_exe
+
+    def _check_fetch(self, fetch_list):
+        if fetch_list is None:
+            fetch_list = []
+
+        res = []
+        for fetch_var in fetch_list:
+            if isinstance(fetch_var, Variable):
+                fetch_var = fetch_var.name
+            elif not isinstance(fetch_var, str):
+                raise TypeError(
+                    "Required fetch_var shall be str|Variable, but received {}".format(
+                        type(fetch_var).__name__
+                    )
+                )
+
+            res.append(fetch_var)
+        return res
 
 
 class _ExecutorCache:
@@ -751,6 +804,7 @@ class _ExecutorCache:
 
     def _get_program_and_executor(self, cached_data):
         program = cached_data.program
+        pipeline_opt = program._pipeline_opt
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -831,12 +885,29 @@ class _ExecutorCache:
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
+
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(
-            place,
-            core.Plan([core.Job("default")], {"default": new_program.desc}),
-            scope,
-        )
+        if pipeline_opt:
+            from paddle.distributed.passes.pipeline_scheduler_pass import (
+                apply_pass,
+            )
+
+            pass_attr = {
+                "num_micro_batches": pipeline_opt["standalone_exe"][
+                    "num_micro_batches"
+                ]
+            }
+            pass_name = pipeline_opt["standalone_exe"]["schedule_mode"]
+            plan = apply_pass(new_program, new_program, pass_name, pass_attr)
+        else:
+            default_job = core.Job("default")
+            default_job.set_micro_batch_id(0)
+            type_to_program = {"default": new_program.desc}
+            plan = core.Plan([default_job], type_to_program)
+
+        _set_micro_batch_fetch(plan)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
 
@@ -1408,7 +1479,14 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if isinstance(program, Program) and program._pipeline_opt:
+        use_new_executor = os.environ.get(
+            'FLAGS_new_executor_micro_batching', None
+        )
+        if (
+            isinstance(program, Program)
+            and program._pipeline_opt
+            and not use_new_executor
+        ):
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:

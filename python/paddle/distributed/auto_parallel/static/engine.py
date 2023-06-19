@@ -401,7 +401,9 @@ class Engine:
         self._has_prepared_reader[self._mode] = True
 
         # Insert read op to forward TaskNode if 1F1B pass is setted
-        if self.main_program._pipeline_opt:
+        if self.main_program._pipeline_opt and not os.environ.get(
+            'FLAGS_new_executor_micro_batching', None
+        ):
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None
@@ -471,8 +473,6 @@ class Engine:
                     if var_name not in fetch_names:
                         fetch_names.append(var_name)
                     group_indices.append(fetch_names.index(var_name))
-            if not group_indices:
-                fetch_names.append([])
             fetch_indices.append(group_indices)
 
         dist_context = self._dist_contexts[mode]
