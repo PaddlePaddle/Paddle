@@ -260,6 +260,10 @@ if(WITH_XPU)
                ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(xpu_optimize_data_preparation_for_fill_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
+  pass_library(xpu_delete_mul_data_preparation_for_fill_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -547,4 +551,12 @@ if(WITH_XPU)
     test_fold_interp_outsize_fuse_pass
     SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
     DEPS fold_interp_outsize_fuse_pass)
+  cc_test(
+    test_xpu_optimize_data_preparation_for_fill_pass
+    SRCS xpu/xpu_optimize_data_preparation_for_fill_pass_test.cc
+    DEPS xpu_optimize_data_preparation_for_fill_pass)
+  cc_test(
+    test_xpu_delete_mul_data_preparation_for_fill_pass
+    SRCS xpu/xpu_delete_mul_data_preparation_for_fill_pass_test.cc
+    DEPS xpu_delete_mul_data_preparation_for_fill_pass)
 endif()
