@@ -139,3 +139,11 @@ class ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
 };
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::ModuleOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::GetParameterOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::SetParameterOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::CombineOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::SliceOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::ConstantLikeTrait)
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::ConstantOp)

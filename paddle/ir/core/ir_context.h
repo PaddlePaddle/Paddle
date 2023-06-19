@@ -186,7 +186,8 @@ class IrContext {
 
  private:
   IrContext();
-  const std::unique_ptr<IrContextImpl> impl_;
+  ~IrContext();
+  IrContextImpl *impl_;
 };
 
 }  // namespace ir

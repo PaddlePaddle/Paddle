@@ -40,10 +40,7 @@ class TypeId {
   /// \return The unique TypeId of Type T.
   ///
   template <typename T>
-  static TypeId get() {
-    static Storage instance;
-    return TypeId(&instance);
-  }
+  static TypeId get();
 
   TypeId() = default;
 
@@ -86,6 +83,48 @@ class TypeId {
 };
 
 }  // namespace ir
+
+namespace detail {
+class alignas(8) UniqueingId {
+ public:
+  UniqueingId() = default;
+  UniqueingId(const UniqueingId &) = delete;
+  UniqueingId &operator=(const UniqueingId &) = delete;
+  UniqueingId(UniqueingId &&) = delete;
+  UniqueingId &operator=(UniqueingId &&) = delete;
+
+  operator TypeId() { return id(); }
+  TypeId id() { return TypeId::RecoverFromOpaquePointer(this); }
+};
+
+template <typename T>
+class TypeIdResolver;
+
+}  // namespace detail
+
+template <typename T>
+TypeId TypeId::get() {
+  return detail::TypeIdResolver<T>::Resolve();
+}
+
+#define IR_DECLARE_EXPLICIT_TYPE_ID(TYPE_CLASS) \
+  namespace ir {                                \
+  namespace detail {                            \
+  template <>                                   \
+  class TypeIdResolver<TYPE_CLASS> {            \
+   public:                                      \
+    static TypeId Resolve() { return id_; }     \
+    static UniqueingId id_;                     \
+  };                                            \
+  }                                             \
+  }  // namespace ir
+
+#define IR_DEFINE_EXPLICIT_TYPE_ID(TYPE_CLASS)      \
+  namespace ir {                                    \
+  namespace detail {                                \
+  UniqueingId TypeIdResolver<TYPE_CLASS>::id_ = {}; \
+  }                                                 \
+  }  // namespace ir
 
 namespace std {
 ///
