@@ -62,7 +62,8 @@ NewIRInterpreter::NewIRInterpreter(const platform::Place& place,
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
   }
-  execution_config_.AnalyzeThreadPoolConfig(place, ir_prog->block()->size());
+  execution_config_.AnalyzeThreadPoolConfig(place,
+                                            ir_program_->block()->size());
   execution_config_.Log(/*log_level=*/8);
 
   if (execution_config_.create_local_scope) {
