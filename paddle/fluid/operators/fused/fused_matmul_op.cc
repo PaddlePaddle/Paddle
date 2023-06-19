@@ -54,16 +54,18 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
     std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
-    PADDLE_ENFORCE_GT(ndims_x,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The Input(X) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
-    PADDLE_ENFORCE_GT(ndims_y,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The Input(Y) dims size must be greater than 0,"
-                          " but received dims size is 0. "));
+    PADDLE_ENFORCE_GT(
+        ndims_x,
+        0,
+        phi::errors::InvalidArgument(
+            "The first input tensor X's dimension size must be greater than 0,"
+            " but received the first input tensor X's dimension size is 0. "));
+    PADDLE_ENFORCE_GT(
+        ndims_y,
+        0,
+        phi::errors::InvalidArgument(
+            "The second input tensor Y's dimension size must be greater than 0,"
+            " but received the second input tensor Y's dimension size is 0. "));
 
     bool x_broadcasted = false;
     bool y_broadcasted = false;
