@@ -400,18 +400,11 @@ class Engine:
         dist_main_block._sync_with_cpp()
         self._has_prepared_reader[self._mode] = True
 
-        new_executor_micro_batching = os.environ.get(
-            'FLAGS_new_executor_micro_batching', None
-        )
-        use_new_executor = new_executor_micro_batching in [
-            1,
-            '1',
-            True,
-            'True',
-            'true',
-        ]
         # Insert read op to forward TaskNode for fleet executor if 1F1B pass is setted
-        if self.main_program._pipeline_opt and not use_new_executor:
+        if (
+            self.main_program._pipeline_opt
+            and not auto_utils.use_new_executor()
+        ):
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
             fwd_task = None

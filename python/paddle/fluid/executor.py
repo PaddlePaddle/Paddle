@@ -874,12 +874,11 @@ class _ExecutorCache:
                 apply_pass,
             )
 
+            standalone_opt = pipeline_opt["standalone_opt"]
+            pass_name = standalone_opt["schedule_mode"]
             pass_attr = {
-                "num_micro_batches": pipeline_opt["standalone_exe"][
-                    "num_micro_batches"
-                ]
+                "num_micro_batches": standalone_opt["num_micro_batches"]
             }
-            pass_name = pipeline_opt["standalone_exe"]["schedule_mode"]
             plan = apply_pass(new_program, new_program, pass_name, pass_attr)
         else:
             default_job = core.Job("default")
@@ -1460,20 +1459,14 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        new_executor_micro_batching = os.environ.get(
-            'FLAGS_new_executor_micro_batching', None
+        from paddle.distributed.auto_parallel.static.utils import (
+            use_new_executor,
         )
-        use_new_executor = new_executor_micro_batching in [
-            1,
-            '1',
-            True,
-            'True',
-            'true',
-        ]
+
         if (
             isinstance(program, Program)
             and program._pipeline_opt
-            and not use_new_executor
+            and not use_new_executor()
         ):
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program

@@ -22,7 +22,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Program
 
-from .pass_base import PassBase, register_pass
+from .pass_base import PassBase, PassContext, new_pass, register_pass
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -299,8 +299,6 @@ class PipelineFThenBPass(PassBase):
 
 
 def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
-    from paddle.distributed.passes import PassContext, new_pass
-
     assert pass_name in [
         "FThenB"
     ], "pipeline scheduler only support FThenB, but recieve {}".format(

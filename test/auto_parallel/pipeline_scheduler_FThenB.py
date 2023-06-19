@@ -108,7 +108,7 @@ class Test1F1BPass(unittest.TestCase):
             losses_1f1b = np.array(history_1f1b.history["loss"])
             losses_fthenb = np.array(history_fthenb.history["loss"])
             # accumulate_steps is 2
-            assert len(losses_fthenb[0] == 2)
+            assert losses_fthenb[0].shape[0] == 2
             # losses_1f1b is the last loss of accumulate_steps
             # losses_fthenb is all the losses of accumulate_steps
             self.check_results(losses_1f1b[0], losses_fthenb[0][-1])

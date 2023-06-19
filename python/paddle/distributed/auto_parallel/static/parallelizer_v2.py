@@ -14,7 +14,6 @@
 
 import copy
 import logging
-import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
@@ -26,7 +25,7 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import set_grad_var_shape
+from .utils import set_grad_var_shape, use_new_executor
 
 
 class Parallelizer:
@@ -378,17 +377,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        new_executor_micro_batching = os.environ.get(
-            'FLAGS_new_executor_micro_batching', None
-        )
-        use_new_executor = new_executor_micro_batching in [
-            1,
-            '1',
-            True,
-            'True',
-            'true',
-        ]
-        if self._strategy.pipeline.enable and not use_new_executor:
+        if self._strategy.pipeline.enable and not use_new_executor():
             config = copy.deepcopy(self._strategy.pipeline.to_dict())
             config["dist_context"] = self._dist_context
             auto_parallel_pipeline_pass = new_pass(
@@ -406,9 +395,9 @@ class Parallelizer:
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
-        if self._strategy.pipeline.enable and use_new_executor:
+        if self._strategy.pipeline.enable and use_new_executor():
             main_program._pipeline_opt = {}
-            main_program._pipeline_opt["standalone_exe"] = {
+            main_program._pipeline_opt["standalone_opt"] = {
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
             }
