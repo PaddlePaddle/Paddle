@@ -63,6 +63,10 @@ class LiteEngineOp : public framework::OperatorBase {
     zero_copy_ = Attr<bool>("zero_copy");
   }
 
+  void SetEngine(paddle::lite_api::PaddlePredictor *engine) {
+    engine_ = engine;
+  }
+
  protected:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {

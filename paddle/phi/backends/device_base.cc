@@ -356,6 +356,19 @@ void DeviceInterface::CCLRecv(void* recvbuf,
   INTERFACE_UNIMPLEMENT;
 }
 
+void DeviceInterface::CCLAllToAll(const void** send_buf,
+                                  const size_t* send_count,
+                                  const ccl::CCLDataType* send_dtype,
+                                  void** recv_buf,
+                                  const size_t* recv_count,
+                                  const ccl::CCLDataType* recv_dtype,
+                                  size_t rank,
+                                  size_t nranks,
+                                  const ccl::CCLComm& comm,
+                                  const stream::Stream& stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
 // blas
 void DeviceInterface::BlasAXPBY(size_t dev_id,
                                 const stream::Stream& stream,

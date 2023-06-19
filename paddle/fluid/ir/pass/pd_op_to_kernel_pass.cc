@@ -43,9 +43,14 @@ phi::KernelKey GetKernelKey(
   // only suppurt non vector input for now
   std::map<std::string, int> input_map;
   int index = 0;
+  int tensor_input_number = 0;
   for (auto& t : input_info) {
     // todo filter attribute tensor
     input_map[t.name] = index++;
+
+    if (!t.is_mutable_attribute) {
+      tensor_input_number += 1;
+    }
   }
 
   std::map<std::string, std::string> attr_type_map;
@@ -70,12 +75,12 @@ phi::KernelKey GetKernelKey(
       // parse from input
       int in_index = input_map.at(slot_name);
 
-      dialect::AllocatedDenseTensorType type =
-          op->GetOperandByIndex(in_index)
+      dialect::DenseTensorType type =
+          op->operand(in_index)
               .source()
               .type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      kernel_data_type = type.dyn_cast<dialect::DataTypeAttribute>().data();
+              .dyn_cast<paddle::dialect::DenseTensorType>();
+      kernel_data_type = TransToPhiDataType(type.dtype());
     } else {
       PADDLE_ENFORCE_EQ(
           attr_type_map.count(slot_name),
@@ -89,7 +94,7 @@ phi::KernelKey GetKernelKey(
 
   // parse all the input tensor
 
-  if (input_map.size() == 0 || op->name() == "pd.full_") {
+  if (tensor_input_number == 0 || op->name() == "pd.full_") {
     // all the information have to get from attribute and context
     kernel_backend = paddle::experimental::ParseBackend(place);
 
@@ -98,7 +103,10 @@ phi::KernelKey GetKernelKey(
 
     for (size_t i = 0; i < input_info.size(); ++i) {
       // todo filter attribute tensor
-      auto input_tmp = op->GetOperandByIndex(i).source();
+      if (input_info[i].is_mutable_attribute) {
+        continue;
+      }
+      auto input_tmp = op->operand(i).source();
       auto new_input_tmp = map_value_pair.at(input_tmp);
       dialect::AllocatedDenseTensorType type =
           new_input_tmp.type().dyn_cast<dialect::AllocatedDenseTensorType>();
@@ -154,26 +162,30 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
 
   for (auto it = block->begin(); it != block->end(); ++it) {
+    VLOG(6) << "op name " << (*it)->name();
     auto kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
 
     // create new Op
 
     // only for single output
     // need update new kernel key layout and data tyep
-    auto allocated_dense_tensor_dtype =
-        paddle::dialect::AllocatedDenseTensorType::get(
-            ctx,
-            phi::TransToPhiPlace(kernel_key.backend()),
-            (*it)
-                ->GetResultByIndex(0)
-                .type()
-                .dyn_cast<dialect::DenseTensorType>());
 
+    std::vector<ir::Type> op_output_types;
+    if ((*it)->num_results() > 0) {
+      // filter tensor attribute
+      auto allocated_dense_tensor_dtype =
+          paddle::dialect::AllocatedDenseTensorType::get(
+              ctx,
+              phi::TransToPhiPlace(kernel_key.backend()),
+              (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
+      op_output_types.push_back(allocated_dense_tensor_dtype);
+    }
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
-    if ((*it)->name() != "pd.full_" && (*it)->num_operands() > 0) {
+
+    if ((*it)->name() != "pd.full" && (*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        auto cur_in = (*it)->GetOperandByIndex(i).source();
+        auto cur_in = (*it)->operand(i).source();
         auto new_in = map_value_pair.at(cur_in);
 
         vec_inputs.push_back(new_in);
@@ -198,10 +210,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     }
 
     ir::Operation* op1 = ir::Operation::Create(
-        vec_inputs, op1_attribute, {allocated_dense_tensor_dtype}, op1_info);
+        vec_inputs, op1_attribute, op_output_types, op1_info);
 
     map_op_pair[*it] = op1;
-    map_value_pair[(*it)->GetResultByIndex(0)] = op1->GetResultByIndex(0);
+
+    // only deal with single output
+    if ((*it)->num_results() > 0) {
+      map_value_pair[(*it)->result(0)] = op1->result(0);
+    }
 
     program->block()->push_back(op1);
   }

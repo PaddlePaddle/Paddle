@@ -15,8 +15,7 @@
 include(ExternalProject)
 
 # find_package(jemalloc REQUIRED)
-set(ROCKSDB_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/rocksdb)
-set(ROCKSDB_TAG 6.19.fb)
+
 set(JEMALLOC_INCLUDE_DIR ${THIRD_PARTY_PATH}/install/jemalloc/include)
 set(JEMALLOC_LIBRARIES
     ${THIRD_PARTY_PATH}/install/jemalloc/lib/libjemalloc_pic.a)
@@ -42,29 +41,7 @@ set(ROCKSDB_CMAKE_CXX_FLAGS
 set(ROCKSDB_CMAKE_C_FLAGS
     "${ROCKSDB_COMMON_FLAGS} ${ROCKSDB_FLAGS} -DROCKSDB_LIBAIO_PRESENT -fPIC  -I${JEMALLOC_INCLUDE_DIR}"
 )
-
 include_directories(${ROCKSDB_INCLUDE_DIR})
-
-file(GLOB ROCKSDB_SOURCE_FILE_LIST ${ROCKSDB_SOURCE_DIR})
-list(LENGTH ROCKSDB_SOURCE_FILE_LIST RES_LEN)
-if(RES_LEN EQUAL 0)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${ROCKSDB_TAG}
-            "https://github.com/Thunderbrook/rocksdb" ${ROCKSDB_SOURCE_DIR})
-else()
-  # check git tag
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --abbrev=6 --always --tags
-    OUTPUT_VARIABLE VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET
-    WORKING_DIRECTORY ${ROCKSDB_SOURCE_DIR})
-  if(NOT ${VERSION} STREQUAL ${ROCKSDB_TAG})
-    message(
-      WARNING "rocksdb version is not ${VERSION}, checkout to ${ROCKSDB_TAG}")
-    execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${ROCKSDB_TAG}
-                    WORKING_DIRECTORY ${ROCKSDB_SOURCE_DIR})
-  endif()
-endif()
 
 set(CMAKE_CXX_LINK_EXECUTABLE
     "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -Wl,--no-as-needed -ldl -lrt -lz")
@@ -72,7 +49,8 @@ ExternalProject_Add(
   extern_rocksdb
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${ROCKSDB_PREFIX_DIR}
-  SOURCE_DIR ${ROCKSDB_SOURCE_DIR}
+  GIT_REPOSITORY "https://github.com/Thunderbrook/rocksdb"
+  GIT_TAG 6.19.fb
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -88,8 +66,9 @@ ExternalProject_Add(
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   INSTALL_COMMAND
     mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp
-    ${ROCKSDB_SOURCE_DIR}/librocksdb.a ${ROCKSDB_LIBRARIES} && cp -r
-    ${ROCKSDB_SOURCE_DIR}/include ${ROCKSDB_INSTALL_DIR}/
+    ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
+    && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
+    ${ROCKSDB_INSTALL_DIR}/
   BUILD_IN_SOURCE 1
   BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
 
