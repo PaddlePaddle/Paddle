@@ -583,7 +583,7 @@ class Optimizer:
                 #    current lr is 0.5
 
                 # set learning rate manually by another LRScheduler
-                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.1, gamma=0.6)
+                scheduler = paddle.optimizer.lr.StepDecay(learning_rate=0.1, step_size=5, gamma=0.6)
                 adam.set_lr_scheduler(scheduler)
                 lr = adam.get_lr()
                 print("current lr is {}".format(lr))

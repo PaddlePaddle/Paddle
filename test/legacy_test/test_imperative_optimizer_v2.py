@@ -672,7 +672,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             # float to LRScheduler
             scheduler = paddle.optimizer.lr.StepDecay(
-                learning_rate=0.2, gamma=0.6
+                learning_rate=0.2, step_size=5, gamma=0.6
             )
             adam.set_lr_scheduler(scheduler)
             adam.minimize(loss)
