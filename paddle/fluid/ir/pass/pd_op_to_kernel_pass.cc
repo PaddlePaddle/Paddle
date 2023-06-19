@@ -43,9 +43,14 @@ phi::KernelKey GetKernelKey(
   // only suppurt non vector input for now
   std::map<std::string, int> input_map;
   int index = 0;
+  int tensor_input_number = 0;
   for (auto& t : input_info) {
     // todo filter attribute tensor
     input_map[t.name] = index++;
+
+    if (!t.is_mutable_attribute) {
+      tensor_input_number += 1;
+    }
   }
 
   std::map<std::string, std::string> attr_type_map;
@@ -70,12 +75,12 @@ phi::KernelKey GetKernelKey(
       // parse from input
       int in_index = input_map.at(slot_name);
 
-      dialect::AllocatedDenseTensorType type =
+      dialect::DenseTensorType type =
           op->operand(in_index)
               .source()
               .type()
-              .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-      kernel_data_type = type.dyn_cast<dialect::DataTypeAttribute>().data();
+              .dyn_cast<paddle::dialect::DenseTensorType>();
+      kernel_data_type = TransToPhiDataType(type.dtype());
     } else {
       PADDLE_ENFORCE_EQ(
           attr_type_map.count(slot_name),
@@ -89,7 +94,7 @@ phi::KernelKey GetKernelKey(
 
   // parse all the input tensor
 
-  if (input_map.size() == 0 || op->name() == "pd.full_") {
+  if (tensor_input_number == 0 || op->name() == "pd.full_") {
     // all the information have to get from attribute and context
     kernel_backend = paddle::experimental::ParseBackend(place);
 
@@ -98,6 +103,9 @@ phi::KernelKey GetKernelKey(
 
     for (size_t i = 0; i < input_info.size(); ++i) {
       // todo filter attribute tensor
+      if (input_info[i].is_mutable_attribute) {
+        continue;
+      }
       auto input_tmp = op->operand(i).source();
       auto new_input_tmp = map_value_pair.at(input_tmp);
       dialect::AllocatedDenseTensorType type =
@@ -154,6 +162,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
 
   for (auto it = block->begin(); it != block->end(); ++it) {
+    VLOG(6) << "op name " << (*it)->name();
     phi::KernelKey kernel_key;
     if ((*it)->name() == "builtin.get_parameter" ||
         (*it)->name() == "builtin.set_parameter") {
@@ -170,6 +179,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
+      // filter tensor attribute
       auto allocated_dense_tensor_dtype =
           paddle::dialect::AllocatedDenseTensorType::get(
               ctx,
@@ -179,7 +189,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     }
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
-    if ((*it)->name() != "pd.full_" && (*it)->num_operands() > 0) {
+
+    if ((*it)->name() != "pd.full" && (*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i).source();
         auto new_in = map_value_pair.at(cur_in);

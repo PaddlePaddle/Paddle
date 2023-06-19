@@ -293,8 +293,10 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     if (FLAGS_enable_new_ir_in_executor) {
+      VLOG(6) << "begin to build scope";
       ::ir::BuildScope(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
+      VLOG(6) << "build ccope finshed";
     } else {
       interpreter::BuildVariableScope(block_, execution_config_, &var_scope_);
     }

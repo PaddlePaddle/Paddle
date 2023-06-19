@@ -177,12 +177,15 @@ void BuildInferMetaContext(
         VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
                 << in_var_name;
         if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          ctx->EmplaceBackAttr(phi::IntArray(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+          phi::Attribute r1 = phi::TensorRef(
+              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+          ctx->EmplaceBackAttr(r1);
         } else if (mutable_attr_type_map[t] ==
                    "paddle::dialect::ScalarAttribute") {
-          ctx->EmplaceBackAttr(phi::Scalar(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+          phi::Attribute r1 = phi::TensorRef(
+              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+
+          ctx->EmplaceBackAttr(r1);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                   mutable_attr_type_map[t]));
@@ -206,6 +209,10 @@ void BuildInferMetaContext(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
       } else if (type_name == "ir::Int32Attribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+      } else if (type_name == "ir::FloatAttribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
+      } else if (type_name == "ir::BoolAttribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
@@ -276,12 +283,15 @@ void BuildPhiKernelContext(
         VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t"
                 << in_var_name;
         if (mutable_attr_type_map[t] == "paddle::dialect::IntArrayAttribute") {
-          ctx->EmplaceBackAttr(phi::IntArray(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+          phi::Attribute r1 = phi::TensorRef(
+              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+          ctx->EmplaceBackAttr(r1);
         } else if (mutable_attr_type_map[t] ==
                    "paddle::dialect::ScalarAttribute") {
-          ctx->EmplaceBackAttr(phi::Scalar(
-              *(scope->Var(in_var_name)->GetMutable<phi::DenseTensor>())));
+          phi::Attribute r1 = phi::TensorRef(
+              &(scope->Var(in_var_name)->Get<phi::DenseTensor>()));
+
+          ctx->EmplaceBackAttr(r1);
         } else {
           PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                   mutable_attr_type_map[t]));
@@ -311,6 +321,10 @@ void BuildPhiKernelContext(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
       } else if (type_name == "ir::Int32Attribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+      } else if (type_name == "ir::FloatAttribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
+      } else if (type_name == "ir::BoolAttribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
       } else if (type_name == "paddle::dialect::PlaceAttribute") {
         ctx->EmplaceBackAttr(
             attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
