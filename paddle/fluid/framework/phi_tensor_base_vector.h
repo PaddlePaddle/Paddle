@@ -14,9 +14,6 @@
 
 #pragma once
 
-#include <codecvt>
-#include <iostream>
-#include <locale>
 #include <string>
 #include <unordered_map>
 #include <vector>

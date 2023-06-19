@@ -73,7 +73,6 @@ void BuildScope(ir::Block* block,
     }
 
     if (op_name == "builtin.combine") {
-      // fetch is a very special op, with no output
       auto out_value = (*it)->result(0);
 
       VLOG(5) << "process builtin combine";
