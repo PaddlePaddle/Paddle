@@ -60,7 +60,7 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   Scope* scope,
-                  ::ir::Program* ir_prog,
+                  std::unique_ptr<::ir::Program> ir_prog,
                   const ExecutionConfig& execution_config = ExecutionConfig());
 
   ~InterpreterCore();
@@ -204,7 +204,7 @@ class InterpreterCore {
   std::vector<HookFunc> hookfuncs_;
 
   // The next only for new IR
-  ::ir::Program* ir_program_{nullptr};
+  std::unique_ptr<::ir::Program> ir_program_{nullptr};
 
   std::unordered_map<::ir::Value, std::string> value_2_var_name_map_;
 };
