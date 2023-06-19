@@ -66,8 +66,13 @@ else()
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
   # message("${phi_modules}")
-  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  if(WIN32)
+    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                      ${STATIC_INFERENCE_API} ${utils_modules})
+  else()
+    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  endif()
 endif()
 
 if(NOT APPLE)
@@ -97,8 +102,13 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS phi ${fluid_modules} ${ir_targets} analysis_predictor
-                          ${utils_modules})
+if(WIN32)
+  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
+                            ${utils_modules})
+else()
+  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} ${ir_targets}
+                            analysis_predictor ${utils_modules})
+endif()
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
