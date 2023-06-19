@@ -151,14 +151,14 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
                                  framework::Scope* scope,
-                                 ::ir::Program* ir_prog,
+                                 std::unique_ptr<::ir::Program> ir_prog,
                                  const ExecutionConfig& execution_config)
     : place_(place),
       block_(block),
       stream_analyzer_(place),
       execution_config_(execution_config),
       var_scope_(scope),
-      ir_program_(ir_prog) {
+      ir_program_(std::move(ir_prog)) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
@@ -293,8 +293,10 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     if (FLAGS_enable_new_ir_in_executor) {
+      VLOG(6) << "begin to build scope";
       ::ir::BuildScope(
           ir_program_->block(), local_scope_, &value_2_var_name_map_);
+      VLOG(6) << "build ccope finshed";
     } else {
       interpreter::BuildVariableScope(block_, execution_config_, &var_scope_);
     }
@@ -1276,6 +1278,9 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 #else
   if (!IsInterpretercoreFastGCEnabled() ||
       instr.KernelType() != OpFuncType::kGpuAsync) {
+    return;
+  }
+  if (instr.DeviceContext().GetPlace() == phi::CustomPlace()) {
     return;
   }
   platform::RecordEvent record(

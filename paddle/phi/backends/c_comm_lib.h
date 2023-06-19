@@ -34,7 +34,8 @@ enum CCLDataType {
   CCL_DATA_TYPE_INT64,
   CCL_DATA_TYPE_INT32,
   CCL_DATA_TYPE_INT16,
-  CCL_DATA_TYPE_INT8
+  CCL_DATA_TYPE_INT8,
+  CCL_DATA_TYPE_UINT8
 };
 
 inline CCLDataType ToCCLDataType(phi::DataType type) {
@@ -50,9 +51,12 @@ inline CCLDataType ToCCLDataType(phi::DataType type) {
     return CCL_DATA_TYPE_INT32;
   } else if (type == phi::DataType::INT8) {
     return CCL_DATA_TYPE_INT8;
+  } else if (type == phi::DataType::UINT8) {
+    return CCL_DATA_TYPE_UINT8;
   } else {
     PADDLE_THROW(
-        phi::errors::Unimplemented("This datatype in CCL is not supported."));
+        phi::errors::Unimplemented("This datatype %s in CCL is not supported.",
+                                   phi::DataTypeToString(type)));
   }
 }
 

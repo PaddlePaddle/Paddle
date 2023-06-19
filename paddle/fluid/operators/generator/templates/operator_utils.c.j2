@@ -335,8 +335,8 @@ phi::KernelKey GetExpectedKernelType(
     {% endif %}
   {% elif kernel["data_type"]["candidates"] | length == 2 %}
     {% set data_type_args = kernel["data_type"]["candidates"] %}
-  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_args[0]}}");
-  if (data_type == static_cast<proto::VarType::Type>(-1)) {
+  auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_args[0]}}"));
+  if (data_type == static_cast<framework::proto::VarType::Type>(-1)) {
     data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_args[1] | to_opmaker_name}});
   }
   {% endif %}

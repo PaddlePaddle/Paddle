@@ -11,40 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
-#include <memory>
-#include <string>
-#include <unordered_map>
+
+#include <map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/interpreter/job.h"
-
+#include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
-namespace interpreter {
 
-class Plan final {
- public:
-  Plan(const std::vector<std::shared_ptr<Job>>& job_list,
-       const std::unordered_map<std::string, ProgramDesc*>& type_to_program);
-  ~Plan() = default;
+void SetColAttrForFetchOps(const interpreter::Job& job,
+                           std::shared_ptr<ProgramDesc> program_desc);
 
-  const std::vector<std::shared_ptr<Job>>& JobList() const;
-
-  const ProgramDesc* Program(const std::string& job_type) const;
-
-  int64_t MicroBatchNum() const;
-
- private:
-  const std::vector<std::shared_ptr<Job>> job_list_;
-  const std::unordered_map<std::string, ProgramDesc*> type_to_program_;
-  int64_t micro_batch_num_;
-};
-
-}  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
