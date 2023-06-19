@@ -72,7 +72,7 @@ struct ProductVisitor {
 };
 
 int64_t product(const DDim& ddim) {
-  if (rank_ == -1) {
+  if (ddim.size() == -1) {
     return 0;
   }
   return ddim.apply_visitor(ProductVisitor());
@@ -114,7 +114,7 @@ struct DDimPrinter {
 };
 
 std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
-  if (rank_ == -1) {
+  if (ddim.size() == -1) {
     return os;
   }
   ddim.apply_visitor(DDimPrinter(os));
