@@ -48,8 +48,8 @@ DDim MetaTensor::dims() const {
 
 DDim MetaTensor::stride() const {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_)) {
-    return static_cast<DenseTensor*>(tensor_)->stride();
+  if (dynamic_cast<DenseTensor*>(tensor_)) {
+    return dynamic_cast<DenseTensor*>(tensor_)->stride();
   }
   return DDim();
 }
@@ -90,8 +90,8 @@ void MetaTensor::set_dims(const DDim& dims) {
 
 void MetaTensor::set_stride(const DDim& stride) {
   ValidCheck(*this);
-  if (phi::DenseTensor::classof(tensor_)) {
-    DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_))
+  if (dynamic_cast<DenseTensor*>(tensor_)) {
+    DenseTensorUtils::GetMutableMeta(dynamic_cast<DenseTensor*>(tensor_))
         ->stride = stride;
   }
 }

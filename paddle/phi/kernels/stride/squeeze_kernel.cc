@@ -35,6 +35,40 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   auto input_dims = input.dims();
   auto input_stride = input.stride();
 
+  if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
+    output_dims = phi::vectorize<int64_t>(out->dims());
+    if (axes.empty()) {
+      for (int i = input_stride.size() - 1; i > 0; --i) {
+        if (input_stride[i] != input_stride[i - 1]) {
+          output_stride.insert(output_stride.begin(), input_stride[i]);
+        }
+      }
+      if (output_dims.size() > output_stride.size()) {
+        output_stride.insert(output_stride.begin(), input_stride[0]);
+      }
+    } else {
+      for (auto& item : axes) {
+        item = item < 0 ? item + input_stride.size() : item;
+        if (item != 0 && input_stride[item] == input_stride[item - 1]) {
+          axes_set.insert(item);
+        }
+      }
+      for (int i = 0; i < input_stride.size(); i++) {
+        if (axes_set.count(i) == 0) {
+          output_stride.push_back(input_stride[i]);
+        }
+      }
+      if (output_dims.size() < output_stride.size()) {
+        output_stride.erase(output_stride.begin());
+      }
+    }
+
+    auto meta = out->meta();
+    meta.stride = DDim(output_stride.data(), output_stride.size());
+    out->set_meta(meta);
+    return;
+  }
+
   if (axes.empty()) {
     for (int i = 0; i < input_dims.size(); i++) {
       if (input_dims[i] != 1) {

@@ -3829,16 +3829,14 @@ void SqueezeInferMeta(const MetaTensor& x,
                         x_dims));
 
   if (!config.is_runtime && axes.FromTensor()) {
-    if (!FLAGS_use_stride_kernel) {
-      // compile time infershape, set all elements to -1.
-      int output_size = x.dims().size() - axes.GetData().size();
-      if (x.dims().size() == 0 && output_size == -1) {
-        output_size = 0;
-      }
-      std::vector<int64_t> vec_out_dims(output_size, -1);
-
-      out->set_dims(phi::make_ddim(vec_out_dims));
+    // compile time infershape, set all elements to -1.
+    int output_size = x.dims().size() - axes.GetData().size();
+    if (x.dims().size() == 0 && output_size == -1) {
+      output_size = 0;
     }
+    std::vector<int64_t> vec_out_dims(output_size, -1);
+
+    out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
     std::vector<int32_t> tmp;
     tmp.reserve(axes.GetData().size());
@@ -3846,9 +3844,7 @@ void SqueezeInferMeta(const MetaTensor& x,
                   axes.GetData().end(),
                   [&tmp](const int64_t& t) { tmp.push_back(t); });
     auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, false);
-    if (!FLAGS_use_stride_kernel) {
-      out->set_dims(out_dims);
-    }
+    out->set_dims(out_dims);
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -3863,13 +3859,13 @@ void SqueezeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* xshape,
                                 MetaConfig config) {
+  SqueezeInferMeta(x, axes, out, config);
   const auto& x_dims = x.dims();
   std::vector<int64_t> xshape_dims(x_dims.size() + 1);
   xshape_dims[0] = 0;
   for (int i = 0; i < x_dims.size(); ++i) {
     xshape_dims[i + 1] = x_dims[i];
   }
-  SqueezeInferMeta(x, axes, out, config);
   if (xshape) {
     xshape->set_dims(phi::make_ddim(xshape_dims));
     xshape->share_lod(x);
@@ -4907,13 +4903,16 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     int output_size = x.dims().size() + axes.GetData().size();
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dtype(x.dtype());
-    if (!FLAGS_use_stride_kernel) {
-      out->set_dims(phi::make_ddim(vec_out_dims));
-    }
+    out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
+    DDim stride;
+    if (FLAGS_use_stride_kernel && config.is_runtime) {
+      stride = out->stride();
+    }
     auto out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
-    if (!FLAGS_use_stride_kernel) {
-      out->set_dims(out_dims);
+    out->set_dims(out_dims);
+    if (FLAGS_use_stride_kernel && config.is_runtime) {
+      out->set_stride(stride);
     }
     if (x_dims.size() > 0 && x_dims[0] == out_dims[0]) {
       out->share_lod(x);
