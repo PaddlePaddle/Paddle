@@ -953,7 +953,8 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 1200)
-  set_tests_properties(test_batch_norm_op_prim PROPERTIES TIMEOUT 1500)
+  set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 1500)
+  set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
@@ -962,7 +963,8 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_batch_norm_op_prim PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
@@ -1185,7 +1187,8 @@ set(TEST_CINN_OPS
     test_clip_op
     test_scatter_op
     test_gather_op
-    test_batch_norm_op_prim
+    test_batch_norm_op_prim_nchw
+    test_batch_norm_op_prim_nhwc
     test_layer_norm_op
     test_cast_op
     test_dropout_op
