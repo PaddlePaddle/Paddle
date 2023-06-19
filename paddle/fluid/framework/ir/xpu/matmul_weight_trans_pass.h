@@ -30,43 +30,29 @@ class Scope;
 namespace paddle {
 namespace framework {
 namespace ir {
-
-class FoldInterpOutsizeFusePass : public FusePassBase {
+/*
+Origin subgraph:
+            x
+            |
+         reshape2
+            |
+         matmul_v2(trans_x=fasle, trans_y=true)
+            |
+Fused subgraph:
+            x
+         reshape2
+            |
+         matmul_v2(trans_x=fasle, trans_y=false)
+            |
+*/
+class MatmulWeightTransPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  /*
-  Origin subgraph:
-             x
-           /   \
-          |    shape
-          |      |
-          |     cast
-          |      |
-          |    slice
-          |      |
-          |    concat
-          |      |
-          |    split
-          |      |   \
-          |      |    \
-          |   outvar_1 outvar_0
-          |      |
-          |     cast
-          |     /
-           \   /
-      bilinear_interp_v2
+  void TransMatmulV2Weight(ir::Graph* graph) const;
 
-  Fused subgraph:
-              x
-              |      concat_y
-              |       /
-      bilinear_interp_v2
-  */
-  void FoldInterpOutsize(ir::Graph* graph) const;
-
-  const std::string name_scope_{"fold_interp_outsize_fuse_pass"};
+  const std::string name_scope_{"matmul_weight_trans_pass"};
 };
 
 }  // namespace ir
