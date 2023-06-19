@@ -574,11 +574,16 @@ include(flags) # set paddle compile flags
 
 #------------- cinn cmake config start --------------
 
+set(WITH_MKL_CBLAS ${WITH_MKL})
+set(WITH_CUDA ${WITH_GPU})
+set(WITH_CUDNN ${WITH_GPU})
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
   if(WITH_GPU)
+    set(WITH_CUDA ${WITH_GPU})
+    set(WITH_CUDNN ${WITH_GPU})
     add_definitions(-DCINN_WITH_CUDA)
     add_definitions(-DCINN_WITH_CUDNN)
   endif()

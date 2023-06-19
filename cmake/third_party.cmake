@@ -261,6 +261,8 @@ endif()
 
 ########################### include third_party according to flags ###############################
 
+
+# cinn_only includes third-party libraries separately
 if(CINN_ONLY)
   include(external/zlib)
   include(external/gflags)
@@ -278,6 +280,16 @@ if(CINN_ONLY)
   endif()
   return()
 endif()
+
+if(WITH_CINN)
+  if(WITH_MKL)
+    add_definitions(-DCINN_WITH_MKL_CBLAS)
+  endif()
+  if(WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_MKLDNN)
+  endif()
+endif()
+
 
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
