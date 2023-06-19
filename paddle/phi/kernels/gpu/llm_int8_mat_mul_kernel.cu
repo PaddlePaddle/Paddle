@@ -17,8 +17,6 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/llm_int8_mat_mul_kernel_impl.h"
-// #include "paddle/phi/kernels/impl/llm_int8_kernel_impl.h"
-// #include "paddle/phi/kernels/impl/weight_only_kernel_impl.h"
 
 namespace phi {
 
