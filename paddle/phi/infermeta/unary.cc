@@ -1114,6 +1114,15 @@ void ExpandInferMeta(const MetaTensor& x,
   }
 }
 
+void FillAnyLikeInferMeta(const MetaTensor& x,
+                          const Scalar& value,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out->share_lod(x);
+}
+
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
   PADDLE_ENFORCE_NE(
@@ -2326,37 +2335,47 @@ void NanmedianInferMeta(const MetaTensor& x,
       for (int64_t i = 0; i < x_rank; i++) {
         out_dim.push_back(1);
       }
-    } else {
-      out_dim.push_back(1);
     }
   } else {
-    std::vector<int64_t> cleaned_axis;
+    std::vector<int64_t> formated_axis;
     for (auto& axis : axis_list) {
+      if (x_rank == 0) {
+        PADDLE_ENFORCE_EQ(axis == 0 || axis == -1,
+                          true,
+                          phi::errors::InvalidArgument(
+                              "When input 0D Tensor, each element of the axis "
+                              "can only be -1, 0, None"));
+      } else {
+        PADDLE_ENFORCE_LT(axis,
+                          x_rank,
+                          errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimesion = %d. But received axis = %d.",
+                              x_rank,
+                              axis));
+        PADDLE_ENFORCE_GE(axis,
+                          -x_rank,
+                          errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimesion = %d. But received axis = %d.",
+                              x_rank,
+                              axis));
+      }
       if (axis < 0) axis += x_rank;
-
-      PADDLE_ENFORCE_LT(
-          axis,
-          x_rank,
-          errors::InvalidArgument(
-              "Attr(axis) value should be in range [-R, R-1], R is "
-              "the rank of Input(X). But received axis: %d, R: %d. "
-              "Current Input(X)'s shape is=[%s].",
-              axis,
-              x_rank,
-              x_dim));
-
       PADDLE_ENFORCE_EQ(
-          std::find(cleaned_axis.begin(), cleaned_axis.end(), axis),
-          cleaned_axis.end(),
+          std::find(formated_axis.begin(), formated_axis.end(), axis),
+          formated_axis.end(),
           errors::InvalidArgument("Attr(axes) has duplicated elements: %d.",
                                   static_cast<int>(axis)));
 
-      cleaned_axis.push_back(axis);
+      formated_axis.push_back(axis);
     }
 
     for (int64_t i = 0; i < x_rank; i++) {
-      if (std::find(cleaned_axis.begin(), cleaned_axis.end(), i) ==
-          cleaned_axis.end()) {
+      if (std::find(formated_axis.begin(), formated_axis.end(), i) ==
+          formated_axis.end()) {
         out_dim.push_back(x_dim[i]);
       } else if (keep_dim) {
         out_dim.push_back(1);
