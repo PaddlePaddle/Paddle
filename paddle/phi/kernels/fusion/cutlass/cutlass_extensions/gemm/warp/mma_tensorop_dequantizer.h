@@ -65,6 +65,7 @@ class MmaTensorOpDequantizer;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bfloat specialization for Ampere
+#ifdef PADDLE_CUDA_BF16
 template <
     /// Underlying matrix multiply operator (concept: MmaTensorOp)
     typename MmaOperator_,
@@ -151,8 +152,7 @@ class MmaTensorOpDequantizer<
  private:
   ElementScale const* pointer_;
 };
-
-////////////////////////////////////////////////////////////////////////////////
+#endif
 
 // Specialization for Turing & Ampere
 template <
@@ -578,6 +578,7 @@ class MmaTensorOpDequantizer<
 
 // Specialization for Turing & Ampere when Scale type is float and output type
 // is bfloat16.
+#ifdef PADDLE_CUDA_BF16
 template <
     /// Underlying matrix multiply operator (concept: MmaTensorOp)
     typename MmaOperator_,
@@ -696,7 +697,7 @@ class MmaTensorOpDequantizer<
  private:
   ElementScale const* pointer_;
 };
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 
 }  // namespace warp

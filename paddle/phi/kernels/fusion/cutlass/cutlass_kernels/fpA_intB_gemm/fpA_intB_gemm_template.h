@@ -53,8 +53,10 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
                                        size_t workspace_bytes,
                                        cudaStream_t stream,
                                        int* occupancy = nullptr) {
-  static_assert(cutlass::platform::is_same<T, __nv_bfloat16>::value ||
-                    cutlass::platform::is_same<T, half>::value ||
+  static_assert(cutlass::platform::is_same<T, half>::value ||
+#ifdef PADDLE_CUDA_BF16
+                    cutlass::platform::is_same<T, __nv_bfloat16>::value ||
+#endif
                     cutlass::platform::is_same<T, float>::value,
                 "Specialized for bfloat16, half, float");
   static_assert(

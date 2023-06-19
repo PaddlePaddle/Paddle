@@ -109,6 +109,7 @@ struct MaxFunc<half> {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct MaxFunc<__nv_bfloat16> {
   __device__ __nv_bfloat16 operator()(__nv_bfloat16 a, __nv_bfloat16 b) {
@@ -119,6 +120,7 @@ struct MaxFunc<__nv_bfloat16> {
 #endif
   }
 };
+#endif
 
 template <typename T>
 struct AbsFunc {
@@ -136,6 +138,7 @@ struct AbsFunc<half> {
   }
 };
 
+#ifdef PADDLE_CUDA_BF16
 template <>
 struct AbsFunc<__nv_bfloat16> {
   __device__ __nv_bfloat16 operator()(__nv_bfloat16 x) {
@@ -146,7 +149,7 @@ struct AbsFunc<__nv_bfloat16> {
 #endif
   }
 };
-
+#endif
 template <typename T>
 struct QuantFunc {
   HOSTDEVICE int8_t operator()(T x, float inverse_range) {

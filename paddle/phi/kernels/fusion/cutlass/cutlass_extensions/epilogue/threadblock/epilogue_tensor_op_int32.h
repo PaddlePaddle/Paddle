@@ -117,6 +117,7 @@ struct DefaultIteratorsTensorOp<cutlass::half_t,
 
 /// Partial specialization for bfloat16_t <= int32_t x 8 epilogues avoids shared
 /// memory bank conflicts.
+#ifdef PADDLE_CUDA_BF16
 template <typename ThreadblockShape,
           typename WarpShape,
           typename InstructionShape,
@@ -139,7 +140,7 @@ struct DefaultIteratorsTensorOp<cutlass::bfloat16_t,
 
   static int const kFragmentsPerIteration = 1;
 };
-
+#endif
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 }  // namespace detail
