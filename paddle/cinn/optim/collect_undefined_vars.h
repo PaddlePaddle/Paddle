@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 namespace cinn::optim {
 
 /**

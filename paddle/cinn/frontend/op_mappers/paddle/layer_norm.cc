@@ -16,10 +16,10 @@
 
 #include <string>
 
-#include "cinn/common/context.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/common_utils.h"
-#include "cinn/frontend/syntax.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/common_utils.h"
+#include "paddle/cinn/frontend/syntax.h"
 
 namespace cinn {
 namespace frontend {

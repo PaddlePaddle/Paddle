@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "cinn/ir/buffer.h"
+#include "paddle/cinn/ir/buffer.h"
 
 namespace cinn {
 namespace lang {

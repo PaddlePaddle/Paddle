@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/info_registry.h"
+#include "paddle/cinn/common/info_registry.h"
 
 namespace cinn {
 namespace common {}  // namespace common

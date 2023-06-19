@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir.h"
 
 /** simplify expressions with vars' div and mod.
  *

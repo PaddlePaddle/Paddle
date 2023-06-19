@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 #include <glog/logging.h>
 #include <math.h>
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/backends/function_prototype.h"
-#include "cinn/common/target.h"
-#include "cinn/runtime/custom_function.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/function_prototype.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/runtime/custom_function.h"
 
 #ifdef CINN_WITH_MKL_CBLAS
-#include "cinn/runtime/cpu/mkl_math.h"
+#include "paddle/cinn/runtime/cpu/mkl_math.h"
 #endif
 
 extern "C" {

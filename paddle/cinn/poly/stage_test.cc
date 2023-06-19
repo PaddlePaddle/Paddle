@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/poly/stage.h"
 
 #include <gtest/gtest.h>
 
 #include <set>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/cinn.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace poly {

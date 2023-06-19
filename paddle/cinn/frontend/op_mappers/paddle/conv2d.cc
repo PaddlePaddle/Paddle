@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/common_utils.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/common_utils.h"
 
 namespace cinn {
 namespace frontend {

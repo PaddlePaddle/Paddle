@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task_scheduler/task_scheduler.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/task_scheduler.h"
 
 #include <algorithm>
 
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/task_scheduler/efficiency_priority.h"
-#include "cinn/auto_schedule/task_scheduler/round_robin.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/efficiency_priority.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/round_robin.h"
 
 namespace cinn {
 namespace auto_schedule {

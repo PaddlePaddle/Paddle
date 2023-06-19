@@ -12,32 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/task/task_optimizer.h"
+#include "paddle/cinn/auto_schedule/task/task_optimizer.h"
 
 #include <glog/logging.h>
 
 #include <functional>
 #include <limits>
 
-#include "cinn/auto_schedule/analysis/analyze_ir.h"
-#include "cinn/auto_schedule/cost_model/expr_cost_model.h"
-#include "cinn/auto_schedule/measure/measure.h"
-#include "cinn/auto_schedule/search_strategy/evolutionary_search.h"
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/hlir/op/external_api_registry.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/transform_gpu_forloop.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
+#include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
+#include "paddle/cinn/auto_schedule/measure/measure.h"
+#include "paddle/cinn/auto_schedule/search_strategy/evolutionary_search.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/string.h"
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime_api.h>
 
-#include "cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
 #endif
 
 DECLARE_bool(auto_schedule_use_cost_model);

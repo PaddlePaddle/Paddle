@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
 
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace hlir {

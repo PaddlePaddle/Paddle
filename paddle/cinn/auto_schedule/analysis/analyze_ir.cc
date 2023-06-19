@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/analysis/analyze_ir.h"
+#include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
 
 #include <glog/logging.h>
 
@@ -20,18 +20,18 @@
 #include <string>
 #include <unordered_set>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/collect_ir_nodes.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/lower.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/optimize.h"
-#include "cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/optimize.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
 
 namespace cinn {
 namespace auto_schedule {

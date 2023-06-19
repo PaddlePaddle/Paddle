@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/database/jsonfile_database.h"
+#include "paddle/cinn/auto_schedule/database/jsonfile_database.h"
 
 #include <google/protobuf/message.h>
 #include <google/protobuf/text_format.h>
@@ -20,9 +20,9 @@
 
 #include <fstream>
 
-#include "cinn/auto_schedule/auto_schedule.pb.h"
-#include "cinn/auto_schedule/task/task_registry.h"
-#include "cinn/utils/multi_threading.h"
+#include "paddle/cinn/auto_schedule/auto_schedule.pb.h"
+#include "paddle/cinn/auto_schedule/task/task_registry.h"
+#include "paddle/cinn/utils/multi_threading.h"
 
 namespace cinn {
 namespace auto_schedule {

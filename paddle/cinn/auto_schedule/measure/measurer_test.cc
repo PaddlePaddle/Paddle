@@ -16,16 +16,16 @@
 
 #include <memory>
 
-#include "cinn/auto_schedule/measure/schedule_measurer.h"
-#include "cinn/auto_schedule/measure/simple_builder.h"
-#include "cinn/auto_schedule/measure/simple_runner.h"
-#include "cinn/auto_schedule/task/task_creator.h"
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/auto_schedule/measure/schedule_measurer.h"
+#include "paddle/cinn/auto_schedule/measure/simple_builder.h"
+#include "paddle/cinn/auto_schedule/measure/simple_runner.h"
+#include "paddle/cinn/auto_schedule/task/task_creator.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

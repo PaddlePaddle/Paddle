@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
 
 #include <fstream>
 #include <sstream>
 
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/framework/accuracy_checker.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/profiler.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/framework/accuracy_checker.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/profiler.h"
 
 DECLARE_bool(cinn_sync_run);
 DECLARE_string(cinn_self_check_accuracy);

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
+#include "paddle/cinn/cinn.h"
 
 namespace cinn {
 namespace optim {

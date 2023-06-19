@@ -21,12 +21,12 @@
 #include <type_traits>
 #include <vector>
 
-#include "cinn/common/macros.h"
-#include "cinn/common/type.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/utils/functional.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/utils/functional.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace frontend {

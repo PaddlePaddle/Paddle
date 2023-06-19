@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmatic.h"
 
 #include <map>
 #include <mutex>
@@ -20,11 +20,11 @@
 #include <set>
 #include <string>
 
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace common {

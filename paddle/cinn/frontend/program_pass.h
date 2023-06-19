@@ -20,8 +20,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/frontend/syntax.h"
-#include "cinn/utils/registry.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/utils/registry.h"
 
 namespace cinn {
 namespace frontend {

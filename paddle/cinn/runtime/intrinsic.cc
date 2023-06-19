@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
-#include "cinn/common/common.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace runtime {

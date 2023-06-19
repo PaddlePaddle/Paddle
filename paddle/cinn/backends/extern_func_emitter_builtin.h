@@ -17,11 +17,11 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/codegen_c.h"
-#include "cinn/backends/extern_func_emitter.h"
-#include "cinn/backends/extern_func_protos.h"
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/extern_func_emitter.h"
+#include "paddle/cinn/backends/extern_func_protos.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
 
 namespace cinn {
 namespace backends {

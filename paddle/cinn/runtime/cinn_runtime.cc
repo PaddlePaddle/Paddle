@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -492,4 +492,4 @@ cinn_type_t cinn_type_of<float16*>() {
   return cinn_float64_t();
 }
 
-#include "cinn/runtime/cinn_x86_device_impl.cc"
+#include "paddle/cinn/runtime/cinn_x86_device_impl.cc"

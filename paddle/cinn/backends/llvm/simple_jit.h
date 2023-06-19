@@ -39,11 +39,11 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/ir/module.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace backends {

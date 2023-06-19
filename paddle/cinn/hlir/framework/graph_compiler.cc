@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
 
 #include <absl/container/flat_hash_map.h>
 
 #include <memory>
 #include <unordered_set>
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/common/context.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/op_lowering_util.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/lang/lower.h"
-#include "cinn/optim/transform_gpu_forloop.h"
-#include "cinn/poly/stage.h"
-#include "cinn/utils/profiler.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op_lowering_util.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/profiler.h"
 
 DECLARE_bool(cinn_ir_schedule);
 DECLARE_int32(cinn_parallel_compile_size);

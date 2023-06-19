@@ -20,9 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/bfloat16.h"
-#include "cinn/common/float16.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/common/bfloat16.h"
+#include "paddle/cinn/common/float16.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace common {

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/replace_call_with_expr.h"
+#include "paddle/cinn/optim/replace_call_with_expr.h"
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
 namespace optim {

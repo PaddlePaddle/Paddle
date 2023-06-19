@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -28,13 +28,13 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/llvm/cinn_runtime_llvm_ir.h"
-#include "cinn/cinn.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/module.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
+#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
 
 namespace cinn {
 namespace backends {

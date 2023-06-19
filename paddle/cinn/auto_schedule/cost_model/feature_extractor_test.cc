@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/cost_model/feature_extractor.h"
+#include "paddle/cinn/auto_schedule/cost_model/feature_extractor.h"
 
 #include <gtest/gtest.h>
 #include <pybind11/embed.h>
@@ -21,15 +21,15 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/context.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -19,13 +19,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/paddle/cpp/block_desc.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/paddle/cpp/block_desc.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace frontend {

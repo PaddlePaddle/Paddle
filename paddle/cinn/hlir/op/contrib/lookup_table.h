@@ -17,11 +17,11 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/compute.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
 namespace hlir {

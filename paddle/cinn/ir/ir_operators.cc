@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_operators.h"
 
 #include <limits>
 #include <string>
 
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/lang/compute.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
 namespace ir {

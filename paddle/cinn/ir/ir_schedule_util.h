@@ -20,12 +20,12 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/utils/random_engine.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/utils/random_engine.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {

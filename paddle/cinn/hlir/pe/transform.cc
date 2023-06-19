@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/transform.h"
+#include "paddle/cinn/hlir/pe/transform.h"
 
 #include <algorithm>
 #include <utility>
 
-#include "cinn/common/cas.h"
-#include "cinn/common/context.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/hlir/pe/elementwise.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace hlir {

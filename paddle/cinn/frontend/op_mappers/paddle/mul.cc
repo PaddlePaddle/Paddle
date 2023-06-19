@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "absl/types/optional.h"
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/frontend/op_mappers/common_utils.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mappers/common_utils.h"
 
 namespace cinn {
 namespace frontend {

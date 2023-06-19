@@ -18,11 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/ir/ir.h"
-#include "cinn/lang/packed_func.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/lang/packed_func.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace hlir {

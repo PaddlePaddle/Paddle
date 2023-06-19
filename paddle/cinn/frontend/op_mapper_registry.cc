@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
 
-#include "cinn/frontend/paddle/cpp/var_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/var_desc.h"
 
 namespace cinn {
 namespace frontend {

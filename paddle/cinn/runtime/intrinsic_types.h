@@ -17,7 +17,7 @@
  * \file This file implements some intrinsic types used in CodeGen.
  */
 
-#include "cinn/common/common.h"
+#include "paddle/cinn/common/common.h"
 
 namespace cinn {
 namespace runtime {

@@ -21,9 +21,9 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/poly/dim.h"
-#include "cinn/poly/domain.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/poly/dim.h"
+#include "paddle/cinn/poly/domain.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/pybind/bind.h"
+#include "paddle/cinn/pybind/bind.h"
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/runtime/use_extern_funcs.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/runtime/use_extern_funcs.h"
 
 namespace py = pybind11;
 

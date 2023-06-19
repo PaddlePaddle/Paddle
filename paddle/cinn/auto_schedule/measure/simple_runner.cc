@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/measure/simple_runner.h"
+#include "paddle/cinn/auto_schedule/measure/simple_runner.h"
 
 #include <algorithm>
 #include <chrono>
@@ -21,10 +21,10 @@
 #include <memory>
 #include <random>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/buffer.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/buffer.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
 
 namespace cinn {
 namespace auto_schedule {

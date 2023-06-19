@@ -19,9 +19,9 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/tensor.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/tensor.h"
 
 namespace cinn {
 namespace ir {

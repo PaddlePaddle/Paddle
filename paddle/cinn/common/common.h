@@ -16,14 +16,14 @@
 
 #include <absl/strings/string_view.h>
 
-#include "cinn/common/axis.h"
-#include "cinn/common/cinn_value.h"
-#include "cinn/common/context.h"
-#include "cinn/common/graph_utils.h"
-#include "cinn/common/macros.h"
-#include "cinn/common/shared.h"
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
+#include "paddle/cinn/common/axis.h"
+#include "paddle/cinn/common/cinn_value.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
 
 namespace cinn {
 

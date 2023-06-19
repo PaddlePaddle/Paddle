@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/axis.h"
+#include "paddle/cinn/common/axis.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include <string>
 
-#include "cinn/utils/string.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace common {

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/backends/function_prototype.h"
-#include "cinn/common/bfloat16.h"
-#include "cinn/common/cas.h"
-#include "cinn/runtime/cuda/cuda_util.h"
-#include "cinn/runtime/custom_function.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/function_prototype.h"
+#include "paddle/cinn/common/bfloat16.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/runtime/custom_function.h"
 
 using cinn::common::bfloat16;
 

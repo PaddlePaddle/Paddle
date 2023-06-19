@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/database/jsonfile_database.h"
+#include "paddle/cinn/auto_schedule/database/jsonfile_database.h"
 
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
@@ -20,12 +20,12 @@
 #include <fstream>
 #include <vector>
 
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/auto_schedule/task/task_registry.h"
-#include "cinn/cinn.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/auto_schedule/task/task_registry.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace auto_schedule {

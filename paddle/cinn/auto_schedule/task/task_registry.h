@@ -19,9 +19,9 @@
 #include <mutex>
 #include <string>
 
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/utils/registry.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/utils/registry.h"
 
 namespace cinn {
 

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/function_prototype.h"
+#include "paddle/cinn/backends/function_prototype.h"
 
 #include <glog/raw_logging.h>
 
 #include <iostream>
 
-#include "cinn/ir/tensor.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(verbose_function_register);
 

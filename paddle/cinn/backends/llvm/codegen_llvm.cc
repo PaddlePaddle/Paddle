@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
 
 #include <glog/logging.h>
 #include <glog/stl_logging.h>
@@ -33,18 +33,18 @@
 #include <string>
 #include <type_traits>
 
-#include "cinn/backends/extern_func_emitter.h"
-#include "cinn/backends/extern_func_emitter_builtin.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/common/cas.h"
-#include "cinn/common/type.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_verify.h"
-#include "cinn/optim/var_mod_simplify.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/backends/extern_func_emitter.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/optim/var_mod_simplify.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -722,6 +722,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
 
     VLOG(5) << "fn llvm:\n" << DumpToString(*fnll);
   }
+  return nullptr;
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
@@ -1085,7 +1086,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Sum *op) {
 
 #undef __IR_EMITTER_CINN_NOT_IMPLEMENTED
 
-void CodeGenLLVM::Compile(const ir::Module &module) { Visit(module.self()); }
+void CodeGenLLVM::Compile(const ir::Module &module) {
+  Visit(module.self());
+}
 
 llvm::Value *CodeGenLLVM::EmitCall_buffer_malloc(const ir::Call *op) { return nullptr; }
 

@@ -29,7 +29,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "cinn/common/type.h"
+#include "paddle/cinn/common/type.h"
 
 namespace cinn {
 namespace backends {

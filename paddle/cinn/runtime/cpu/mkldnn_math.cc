@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cpu/mkldnn_math.h"
+#include "paddle/cinn/runtime/cpu/mkldnn_math.h"
 
 #include <vector>
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/common/cas.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/common/cas.h"
 
-using mkldnn::algorithm;
-using mkldnn::memory;
+using dnnl::algorithm;
+using dnnl::memory;
 using tag = memory::format_tag;
 using dt  = memory::data_type;
 
 void cinn_cpu_mkldnn_softmax_fp32(
     int batch, int channel, int h, int w, int axis, cinn_buffer_t* inputs, cinn_buffer_t* out) {
-  auto engine = mkldnn::engine(mkldnn::engine::kind::cpu, 0);
-  mkldnn::stream engine_stream(engine);
+  auto engine = dnnl::engine(dnnl::engine::kind::cpu, 0);
+  dnnl::stream engine_stream(engine);
 
   memory::dims src_dims = {batch, channel};
   if (h != 1) src_dims.push_back(h);
@@ -52,9 +52,9 @@ void cinn_cpu_mkldnn_softmax_fp32(
   auto src_md       = memory::desc(src_dims, dt::f32, format_tag);
   auto src_mem      = memory(src_md, engine, reinterpret_cast<float*>(inputs->memory));
   auto dst_mem      = memory(src_md, engine, reinterpret_cast<float*>(out->memory));
-  auto softmax_d    = mkldnn::softmax_forward::desc(mkldnn::prop_kind::forward_inference, src_md, axis);
-  auto softmax_pd   = mkldnn::softmax_forward::primitive_desc(softmax_d, engine);
-  auto softmax_prim = mkldnn::softmax_forward(softmax_pd);
+  auto softmax_d    = dnnl::softmax_forward::desc(dnnl::prop_kind::forward_inference, src_md, axis);
+  auto softmax_pd   = dnnl::softmax_forward::primitive_desc(softmax_d, engine);
+  auto softmax_prim = dnnl::softmax_forward(softmax_pd);
 
   softmax_prim.execute(engine_stream, {{DNNL_ARG_SRC, src_mem}, {DNNL_ARG_DST, dst_mem}});
   engine_stream.wait();
@@ -77,8 +77,8 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
                                       cinn_buffer_t* inputs,
                                       cinn_buffer_t* weights,
                                       cinn_buffer_t* out) {
-  auto cpu_engine = mkldnn::engine(mkldnn::engine::kind::cpu, 0);
-  mkldnn::stream cpu_stream(cpu_engine);
+  auto cpu_engine = dnnl::engine(dnnl::engine::kind::cpu, 0);
+  dnnl::stream cpu_stream(cpu_engine);
 
   memory::dims conv_src_tz     = {batch_size, c_in, input_h, input_w};
   memory::dims conv_weights_tz = {c_out, c_in, filter_h, filter_w};
@@ -104,8 +104,8 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
   auto conv_weights_md = memory::desc({conv_weights_tz}, dt::f32, tag::any);
   auto conv_dst_md     = memory::desc({conv_dst_tz}, dt::f32, tag::nchw);
 
-  auto conv_desc = mkldnn::convolution_forward::desc(mkldnn::prop_kind::forward_inference,
-                                                     mkldnn::algorithm::convolution_direct,
+  auto conv_desc = dnnl::convolution_forward::desc(dnnl::prop_kind::forward_inference,
+                                                     dnnl::algorithm::convolution_direct,
                                                      conv_src_md,
                                                      conv_weights_md,
                                                      conv_dst_md,
@@ -114,7 +114,7 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
                                                      conv_paddings,
                                                      conv_paddings);
 
-  auto conv_prim_desc = mkldnn::convolution_forward::primitive_desc(conv_desc, cpu_engine);
+  auto conv_prim_desc = dnnl::convolution_forward::primitive_desc(conv_desc, cpu_engine);
 
   auto conv_src_memory     = conv_user_src_memory;
   auto conv_weights_memory = conv_user_weights_memory;
@@ -122,13 +122,13 @@ void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
   if (conv_prim_desc.dst_desc() != conv_user_dst_memory.get_desc()) {
     conv_dst_memory = memory(conv_prim_desc.dst_desc(), cpu_engine);
   }
-  auto conv = mkldnn::convolution_forward(conv_prim_desc);
+  auto conv = dnnl::convolution_forward(conv_prim_desc);
   conv.execute(cpu_stream,
-               {{MKLDNN_ARG_SRC, conv_src_memory},
-                {MKLDNN_ARG_WEIGHTS, conv_weights_memory},
-                {MKLDNN_ARG_DST, conv_dst_memory}});
+               {{DNNL_ARG_SRC, conv_src_memory},
+                {DNNL_ARG_WEIGHTS, conv_weights_memory},
+                {DNNL_ARG_DST, conv_dst_memory}});
   if (conv_prim_desc.dst_desc() != conv_user_dst_memory.get_desc()) {
-    mkldnn::reorder(conv_dst_memory, conv_user_dst_memory).execute(cpu_stream, conv_dst_memory, conv_user_dst_memory);
+    dnnl::reorder(conv_dst_memory, conv_user_dst_memory).execute(cpu_stream, conv_dst_memory, conv_user_dst_memory);
   } else {
     conv_user_dst_memory = conv_dst_memory;
   }

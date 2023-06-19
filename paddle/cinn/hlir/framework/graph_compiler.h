@@ -23,18 +23,18 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/backends/compiler.h"
-#include "cinn/backends/cuda_util.h"
-#include "cinn/common/macros.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/framework/parallel_compiler.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/lang/packed_func.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/backends/compiler.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/lang/packed_func.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace hlir {

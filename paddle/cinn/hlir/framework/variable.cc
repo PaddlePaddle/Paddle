@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/variable.h"
+#include "paddle/cinn/hlir/framework/variable.h"
 
 namespace cinn {
 namespace hlir {

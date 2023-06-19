@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
 
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
@@ -36,19 +36,19 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/llvm/cinn_runtime_llvm_ir.h"
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/cinn.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/module.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/optim/optimize.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
-#include "cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/optimize.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
 
 namespace cinn {
 namespace backends {

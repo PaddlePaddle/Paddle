@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/runtime/cpu/use_extern_funcs.h"
-#include "tests/benchmark/test_utils.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
+#include "test/cpp/cinn/benchmark/test_utils.h"
 
 namespace cinn {
 namespace tests {

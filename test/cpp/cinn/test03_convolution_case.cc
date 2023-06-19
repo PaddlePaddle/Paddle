@@ -15,13 +15,13 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/utils/timer.h"
-#include "tests/test03_convolution.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/utils/timer.h"
+#include "test/cpp/cinn/test03_convolution.h"
 
 TEST(test03, basic) {}
 
 // include the generated C source code:
 // @{
-#include "tests/test03_convolution.cc"
+#include "test/cpp/cinn/test03_convolution.cc"
 // @}

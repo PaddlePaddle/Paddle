@@ -2,7 +2,7 @@ set(srcs runtime.cc common.cc lang.cc ir.cc poly.cc backends.cc bind.cc optim.cc
 
 if (WITH_CUDA)
   message(STATUS "Compile core_api with CUDA support")
-  nv_library(core_api SHARED
+  cinn_nv_library(core_api SHARED
       SRCS ${srcs}
       DEPS cinncore_static cinn_runtime pybind)
   message("cuda_nvrtc: ${CUDA_NVRTC}")
@@ -12,7 +12,7 @@ if (WITH_CUDA)
   endif()
 else()
   message(STATUS "Compile core_api without CUDA support")
-  cc_library(core_api SHARED
+  cinn_cc_library(core_api SHARED
       SRCS ${srcs}
       DEPS cinncore_static cinn_runtime pybind ${llvm_libs})
 endif()

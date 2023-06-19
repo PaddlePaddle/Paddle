@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/backends/compiler.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/cinn.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/common/target.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/cinn/backends/compiler.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
 
 namespace cinn {
 namespace runtime {

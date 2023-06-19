@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/replace_call_with_expr.h"
+#include "paddle/cinn/optim/replace_call_with_expr.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/poly/ast_gen.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/poly/ast_gen.h"
 
 namespace cinn {
 namespace optim {

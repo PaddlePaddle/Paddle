@@ -16,13 +16,13 @@
 #include <algorithm>
 #include <unordered_set>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/pass/use_pass.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace hlir {

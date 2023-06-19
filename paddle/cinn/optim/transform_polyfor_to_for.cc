@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 #include <cmath>
 #include <vector>
 
-#include "cinn/common/arithmatic.h"
-#include "cinn/common/cas.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/common/type.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/ir_simplify.h"
+#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace optim {

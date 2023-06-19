@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/multi_threading.h"
+#include "paddle/cinn/utils/multi_threading.h"
 
 #include <glog/logging.h>
 
@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/utils/string.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace utils {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace utils {

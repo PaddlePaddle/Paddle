@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace optim {

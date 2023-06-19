@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/backends/function_prototype.h"
+#include "paddle/cinn/backends/function_prototype.h"
 
 namespace cinn {
 namespace backends {

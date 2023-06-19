@@ -15,8 +15,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/utils/timer.h"
 
 __global__ void elementwise_add_kernel(const float* __restrict__ A,
                                        const float* __restrict__ B,

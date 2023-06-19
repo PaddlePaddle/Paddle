@@ -20,10 +20,10 @@
 #include <tuple>
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace backends {

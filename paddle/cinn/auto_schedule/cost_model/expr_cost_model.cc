@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/cost_model/expr_cost_model.h"
+#include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
 
 #include <glog/logging.h>
 
 #include <atomic>
 #include <vector>
 
-#include "cinn/auto_schedule/cost_model/feature.h"
-#include "cinn/auto_schedule/cost_model/feature_extractor.h"
-#include "cinn/auto_schedule/search_space/search_state.h"
-#include "cinn/common/target.h"
-#include "cinn/ir/ir_schedule.h"
+#include "paddle/cinn/auto_schedule/cost_model/feature.h"
+#include "paddle/cinn/auto_schedule/cost_model/feature_extractor.h"
+#include "paddle/cinn/auto_schedule/search_space/search_state.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/ir_schedule.h"
 
 namespace cinn {
 namespace auto_schedule {

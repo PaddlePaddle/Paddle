@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/unroll_loops.h"
+#include "paddle/cinn/optim/unroll_loops.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/lang/lower.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/lang/lower.h"
 
 namespace cinn {
 namespace optim {

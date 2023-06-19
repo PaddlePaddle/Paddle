@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/outputs.h"
+#include "paddle/cinn/backends/outputs.h"
 
 namespace cinn {
 namespace lang {}  // namespace lang

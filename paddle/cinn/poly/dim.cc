@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/dim.h"
+#include "paddle/cinn/poly/dim.h"
 
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

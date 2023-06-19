@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/optimize.h"
 
 #include <memory>
 #include <string>
 #include <unordered_set>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/decomposer/use_decomposer.h"
-#include "cinn/frontend/pass/use_program_pass.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/visualize_helper.h"
-#include "cinn/hlir/pass/use_pass.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
+#include "paddle/cinn/frontend/pass/use_program_pass.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(cinn_use_fill_constant_folding);
 DECLARE_bool(cinn_use_op_fusion);

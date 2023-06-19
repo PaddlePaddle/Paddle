@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/op_lowering_util.h"
+#include "paddle/cinn/hlir/framework/op_lowering_util.h"
 
-#include "cinn/hlir/pe/nn_util.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/hlir/pe/nn_util.h"
+#include "paddle/cinn/utils/string.h"
 #ifdef CINN_WITH_CUDA
-#include "cinn/common/bfloat16.h"
-#include "cinn/common/float16.h"
+#include "paddle/cinn/common/bfloat16.h"
+#include "paddle/cinn/common/float16.h"
 #endif
 #include <queue>
 

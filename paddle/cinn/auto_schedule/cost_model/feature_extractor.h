@@ -27,12 +27,12 @@
 
 #pragma once
 
-#include "cinn/auto_schedule/cost_model/feature.h"
-#include "cinn/common/target.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/ir_visitor.h"
+#include "paddle/cinn/auto_schedule/cost_model/feature.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {

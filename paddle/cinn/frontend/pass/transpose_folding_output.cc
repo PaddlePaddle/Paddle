@@ -18,9 +18,9 @@
 #include <string>
 #include <unordered_set>
 
-#include "cinn/frontend/pass/transpose_folding_base.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/frontend/syntax.h"
+#include "paddle/cinn/frontend/pass/transpose_folding_base.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/syntax.h"
 
 namespace cinn::frontend::pass {
 

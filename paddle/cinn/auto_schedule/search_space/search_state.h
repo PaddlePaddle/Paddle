@@ -18,11 +18,11 @@
 #include <limits>
 #include <vector>
 
-#include "cinn/common/object.h"
-#include "cinn/common/shared.h"
-#include "cinn/ir/ir_compare.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/ir_visitor.h"
+#include "paddle/cinn/common/object.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/ir/ir_compare.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/ir_schedule_pe.h"
+#include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <isl/cpp.h>
@@ -24,16 +24,16 @@
 #include <numeric>
 #include <utility>
 
-#include "cinn/common/cas.h"
-#include "cinn/common/common.h"
-#include "cinn/common/target.h"
-#include "cinn/hlir/pe/load_x86_params.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/pe/load_x86_params.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace hlir {

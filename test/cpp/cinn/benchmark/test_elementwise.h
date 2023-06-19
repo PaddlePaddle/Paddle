@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "tests/benchmark/test_utils.h"
+#include "test/cpp/cinn/benchmark/test_utils.h"
 
 namespace cinn {
 namespace tests {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/registry.h"
+#include "paddle/cinn/ir/registry.h"
 
 #include <map>
 #include <mutex>  // NOLINT

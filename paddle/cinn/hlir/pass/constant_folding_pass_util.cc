@@ -11,16 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "cinn/hlir/pass/constant_folding_pass_util.h"
+#include "paddle/cinn/hlir/pass/constant_folding_pass_util.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <queue>
 
 #include "absl/types/variant.h"
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/utils/functional.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/utils/functional.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace hlir {

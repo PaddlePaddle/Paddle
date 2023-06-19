@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn {
 namespace optim {

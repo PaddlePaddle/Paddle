@@ -18,10 +18,10 @@
 #include <iostream>
 #include <vector>
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/common/context.h"
-#include "cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
 
 namespace cinn {
 namespace backends {

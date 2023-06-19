@@ -15,7 +15,7 @@
 #pragma once
 #include <cstring>
 
-#include "cinn/common/shared.h"
+#include "paddle/cinn/common/shared.h"
 
 namespace cinn {
 namespace common {

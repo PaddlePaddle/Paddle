@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/compute_at_transform.h"
+#include "paddle/cinn/poly/compute_at_transform.h"
 
 namespace cinn {
 namespace poly {

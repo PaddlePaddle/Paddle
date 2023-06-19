@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 #include <algorithm>
 #include <iomanip>
 #include <limits>
 #include <vector>
 
-#include "cinn/ir/lowered_func.h"
-#include "cinn/ir/module.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {

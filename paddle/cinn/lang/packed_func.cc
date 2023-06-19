@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/packed_func.h"
+#include "paddle/cinn/lang/packed_func.h"
 
 namespace cinn {
 namespace lang {

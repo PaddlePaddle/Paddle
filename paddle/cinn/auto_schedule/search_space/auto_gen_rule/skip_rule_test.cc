@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -21,15 +21,15 @@
 #include <iostream>
 #include <vector>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/cinn.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace auto_schedule {

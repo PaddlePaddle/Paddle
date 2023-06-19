@@ -19,10 +19,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/schedule_desc.pb.h"
-#include "cinn/utils/registry.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/schedule_desc.pb.h"
+#include "paddle/cinn/utils/registry.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace ir {

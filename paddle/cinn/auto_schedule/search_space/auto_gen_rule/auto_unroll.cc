@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_unroll.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_unroll.h"
 
 #include <glog/logging.h>
 
 #include <cstdlib>
 
-#include "cinn/ir/collect_ir_nodes.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace auto_schedule {

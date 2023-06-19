@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/search_space.h"
+#include "paddle/cinn/auto_schedule/search_space/search_space.h"
 
 #include <glog/logging.h>
 
@@ -20,19 +20,19 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/auto_schedule/cost_model/expr_cost_model.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_unroll.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/multi_level_tiling.h"
-#include "cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
-#include "cinn/auto_schedule/search_space/block_sampler.h"
-#include "cinn/auto_schedule/search_space/rule_sampler.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_unroll.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/multi_level_tiling.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/block_sampler.h"
+#include "paddle/cinn/auto_schedule/search_space/rule_sampler.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(auto_schedule_use_cost_model);
 

@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/cost_model.h"
+#include "paddle/cinn/common/cost_model.h"
 
 namespace cinn {
 namespace auto_schedule {

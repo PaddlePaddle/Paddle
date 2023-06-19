@@ -16,14 +16,14 @@
 #include <mutex>
 #include <vector>
 
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/ir/lowered_func.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/ir/lowered_func.h"
 #ifdef CINN_WITH_CUDA
-#include "cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
 namespace cinn {
 namespace hlir {

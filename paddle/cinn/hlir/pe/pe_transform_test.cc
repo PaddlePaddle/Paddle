@@ -14,21 +14,21 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/cuda_util.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/cinn.h"
-#include "cinn/common/target.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/hlir/pe/reduction.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/hlir/pe/transform.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
-#include "cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/hlir/pe/reduction.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/hlir/pe/transform.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
 
 namespace cinn {
 namespace hlir {

@@ -20,12 +20,12 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/ir/module.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/packed_func.h"
-#include "cinn/poly/schedule.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/packed_func.h"
+#include "paddle/cinn/poly/schedule.h"
 
 namespace cinn {
 namespace lang {

@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/schedule_desc.h"
+#include "paddle/cinn/ir/schedule_desc.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/common/context.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/lang/lower.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/utils/string.h"
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/utils/string.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace ir {

@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/interpreter.h"
+#include "paddle/cinn/frontend/interpreter.h"
 
-#include "cinn/auto_schedule/auto_tuner.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/hlir/pass/use_pass.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(enable_auto_tuner);
 

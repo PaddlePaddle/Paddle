@@ -14,7 +14,7 @@
 
 import logging
 import os
-from tests.passes.pass_test import PassTest
+from test.cinn.passes.pass_test import PassTest
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="pass_test")

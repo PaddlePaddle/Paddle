@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/_generated1.cu"
+#include "paddle/cinn/backends/_generated1.cu"

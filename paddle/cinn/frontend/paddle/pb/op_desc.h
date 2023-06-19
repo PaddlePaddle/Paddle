@@ -15,8 +15,8 @@
 #pragma once
 #include <absl/types/variant.h>
 
-#include "cinn/frontend/paddle/cpp/op_desc.h"
-#include "cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
+#include "paddle/cinn/frontend/paddle/framework.pb.h"
 
 namespace cinn::frontend::paddle::pb {
 

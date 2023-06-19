@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/poly_scheduler.h"
+#include "paddle/cinn/poly/poly_scheduler.h"
 
 #include <glog/logging.h>
 
@@ -23,7 +23,7 @@
 #include <stack>
 #include <unordered_set>
 
-#include "cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/isl_utils.h"
 
 namespace cinn {
 namespace poly {

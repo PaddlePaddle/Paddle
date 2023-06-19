@@ -30,12 +30,12 @@
 
 #include <memory>
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/utils/data_util.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/utils/data_util.h"
 
 DEFINE_string(model_dir, "", "");
 

@@ -34,11 +34,11 @@
 #endif
 
 #ifndef CINN_COMMON_FLOAT16_H
-#include "cinn/common/float16.h"
+#include "paddle/cinn/common/float16.h"
 #endif  // CINN_COMMON_FLOAT16_H
 
 #ifndef CINN_COMMON_BFLOAT16_H
-#include "cinn/common/bfloat16.h"
+#include "paddle/cinn/common/bfloat16.h"
 #endif  // CINN_COMMON_BFLOAT16_H
 
 #ifdef __cplusplus

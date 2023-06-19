@@ -19,22 +19,22 @@
 #include <tuple>
 #include <vector>
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/cinn.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/pe/nn.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/lang/lower.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/pe/nn.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace backends {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/dot_lang.h"
+#include "paddle/cinn/utils/dot_lang.h"
 
 #include <glog/logging.h>
 

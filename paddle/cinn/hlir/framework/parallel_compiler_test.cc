@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/parallel_compiler.h"
+#include "paddle/cinn/hlir/framework/parallel_compiler.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
 
 namespace cinn {
 namespace hlir {

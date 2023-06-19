@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/utils/type_defs.h"
+#include "paddle/cinn/utils/type_defs.h"
 
 namespace cinn {
 namespace utils {

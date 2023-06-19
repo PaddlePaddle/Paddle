@@ -15,12 +15,12 @@
 #include <gtest/gtest.h>
 #include <math.h>
 
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/cinn.h"
-#include "cinn/common/target.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 namespace cinn {
 namespace hlir {

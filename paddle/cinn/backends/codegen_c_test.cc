@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/codegen_c.h"
 
 #include <gtest/gtest.h>
 
 #include <sstream>
 #include <tuple>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/module.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
 
 namespace cinn {
 namespace backends {

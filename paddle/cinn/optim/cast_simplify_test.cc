@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/cast_simplify.h"
+#include "paddle/cinn/optim/cast_simplify.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn::optim {
 

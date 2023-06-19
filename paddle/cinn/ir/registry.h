@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/lang/packed_func.h"
+#include "paddle/cinn/lang/packed_func.h"
 
 namespace cinn::ir {
 

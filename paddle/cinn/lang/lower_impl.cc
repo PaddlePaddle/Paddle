@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/lower_impl.h"
+#include "paddle/cinn/lang/lower_impl.h"
 
 #include <algorithm>
 #include <queue>
 #include <string>
 #include <unordered_set>
 
-#include "cinn/common/common.h"
-#include "cinn/common/context.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/optim/remove_nested_block.h"
-#include "cinn/optim/replace_var_with_expr.h"
-#include "cinn/optim/transform_polyfor_to_for.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace lang {

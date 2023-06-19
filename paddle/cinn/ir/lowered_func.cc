@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/lowered_func.h"
 
 #include <algorithm>
 #include <iostream>
@@ -22,14 +22,14 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/optim/tensor_write_tell.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/optim/tensor_write_tell.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {

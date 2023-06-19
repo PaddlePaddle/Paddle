@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/frontend/decomposer/test_helper.h"
+#include "paddle/cinn/frontend/decomposer/test_helper.h"
 
 namespace cinn::frontend {
 

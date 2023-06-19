@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/cas.h"
+#include "paddle/cinn/common/cas.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/common/common.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace common {

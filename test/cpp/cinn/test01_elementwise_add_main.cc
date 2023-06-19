@@ -14,10 +14,10 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/optim/optimize.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/optim/optimize.h"
 namespace cinn {
 
 TEST(test01_elementwise_add, basic) {

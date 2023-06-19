@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <memory.h>
 #include <stdlib.h>
 
-#include "cinn/auto_schedule/analysis/analyze_ir.h"
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/cinn.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/op_lowering.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/optim/transform_gpu_forloop.h"
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime.h>
 #endif

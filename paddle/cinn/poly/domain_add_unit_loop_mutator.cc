@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/domain_add_unit_loop_mutator.h"
+#include "paddle/cinn/poly/domain_add_unit_loop_mutator.h"
 
 #include <glog/logging.h>
 
 #include <tuple>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace poly {

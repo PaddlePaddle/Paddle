@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/vectorize_loops.h"
+#include "paddle/cinn/optim/vectorize_loops.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <glog/logging.h>
@@ -23,17 +23,17 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/cas.h"
-#include "cinn/common/ir_util.h"
-#include "cinn/ir/collect_ir_nodes.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/ir_replace.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/tensor_write_tell.h"
-#include "cinn/optim/unroll_loops.h"
-#include "cinn/utils/functional.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/tensor_write_tell.h"
+#include "paddle/cinn/optim/unroll_loops.h"
+#include "paddle/cinn/utils/functional.h"
 
 namespace cinn {
 namespace optim {

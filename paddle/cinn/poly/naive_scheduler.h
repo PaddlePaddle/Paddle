@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "cinn/poly/schedule.h"
+#include "paddle/cinn/poly/schedule.h"
 
 namespace cinn {
 namespace poly {

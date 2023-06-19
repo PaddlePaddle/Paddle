@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
 
-#include "cinn/common/cas.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/replace_const_param_to_integer.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/replace_const_param_to_integer.h"
 
 namespace cinn {
 namespace optim {

@@ -21,7 +21,7 @@
 #include <nvToolsExt.h>
 #endif
 
-#include "cinn/utils/event.h"
+#include "paddle/cinn/utils/event.h"
 #include "glog/logging.h"
 
 namespace cinn {

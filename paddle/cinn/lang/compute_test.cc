@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/compute.h"
+#include "paddle/cinn/lang/compute.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/buffer.h"
-#include "cinn/lang/placeholder.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/buffer.h"
+#include "paddle/cinn/lang/placeholder.h"
 
 namespace cinn {
 namespace lang {

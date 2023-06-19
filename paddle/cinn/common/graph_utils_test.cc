@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/common/common.h"
+#include "paddle/cinn/common/common.h"
 
 namespace cinn {
 namespace common {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/profiler.h"
+#include "paddle/cinn/utils/profiler.h"
 
 #include <gflags/gflags.h>
 
@@ -23,7 +23,7 @@
 #include <cuda_profiler_api.h>
 #include <cuda_runtime.h>
 
-#include "cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
 #endif
 #include <chrono>
 

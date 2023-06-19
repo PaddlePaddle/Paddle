@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/extern_func_protos.h"
+#include "paddle/cinn/backends/extern_func_protos.h"
 
 #include <string>
 #include <vector>

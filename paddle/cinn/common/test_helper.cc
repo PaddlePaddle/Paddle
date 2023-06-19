@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/test_helper.h"
+#include "paddle/cinn/common/test_helper.h"
 
 namespace cinn {
 namespace common {

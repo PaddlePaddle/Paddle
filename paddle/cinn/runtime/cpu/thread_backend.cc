@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cpu/thread_backend.h"
+#include "paddle/cinn/runtime/cpu/thread_backend.h"
 
 #include <algorithm>
 #include <vector>
@@ -21,10 +21,10 @@
 #include <omp.h>
 #endif  // CINN_USE_OPENMP
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/common/cas.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 int max_concurrency() {
   int max_concurrency = 1;

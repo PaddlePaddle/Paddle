@@ -15,8 +15,8 @@
 #pragma once
 #include <glog/logging.h>
 
-#include "cinn/frontend/paddle/cpp/desc_api.h"
-#include "cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
+#include "paddle/cinn/frontend/paddle/framework.pb.h"
 
 namespace cinn::frontend::paddle::pb {
 

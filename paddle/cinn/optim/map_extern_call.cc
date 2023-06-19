@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/map_extern_call.h"
+#include "paddle/cinn/optim/map_extern_call.h"
 
-#include "cinn/cinn.h"
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/runtime/cpu/host_intrinsics.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
 namespace cinn {
 namespace optim {

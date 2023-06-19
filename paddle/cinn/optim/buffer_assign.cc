@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/buffer_assign.h"
+#include "paddle/cinn/optim/buffer_assign.h"
 
-#include "cinn/common/union_find.h"
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/lang/lower_impl.h"
-#include "cinn/optim/ir_replace.h"
+#include "paddle/cinn/common/union_find.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/lang/lower_impl.h"
+#include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {
 namespace optim {

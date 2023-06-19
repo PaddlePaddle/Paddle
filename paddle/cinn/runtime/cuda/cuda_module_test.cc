@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
 
 #include <gtest/gtest.h>
 
 #include <random>
 
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/cinn.h"
-#include "cinn/runtime/cuda/cuda_util.h"
-#include "cinn/runtime/cuda/test_util.h"
-#include "cinn/runtime/cuda/use_extern_funcs.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/runtime/cuda/test_util.h"
+#include "paddle/cinn/runtime/cuda/use_extern_funcs.h"
 
 namespace cinn {
 namespace runtime {

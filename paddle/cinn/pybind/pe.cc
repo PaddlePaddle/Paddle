@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/hlir/pe/elementwise.h"
-#include "cinn/hlir/pe/reduction.h"
-#include "cinn/hlir/pe/transform.h"
-#include "cinn/pybind/bind.h"
-#include "cinn/pybind/bind_utils.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/reduction.h"
+#include "paddle/cinn/hlir/pe/transform.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/pybind/bind_utils.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace py = pybind11;
 

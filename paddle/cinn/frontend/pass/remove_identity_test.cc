@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/pass/test_helper.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/frontend/pass/test_helper.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
 
 namespace cinn::frontend {
 

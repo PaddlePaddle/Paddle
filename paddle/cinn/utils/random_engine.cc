@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/random_engine.h"
+#include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {
 namespace utils {

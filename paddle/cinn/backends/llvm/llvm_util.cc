@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
 
 #include <glog/logging.h>
 #include <llvm/Support/Alignment.h>

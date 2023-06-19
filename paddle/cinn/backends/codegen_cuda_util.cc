@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/ir/ir_mutator.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn {
 namespace backends {

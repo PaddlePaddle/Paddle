@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
 
 #include <glog/logging.h>
 
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/common/target.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/common/target.h"
 
 namespace cinn {
 namespace backends {

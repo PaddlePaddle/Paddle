@@ -15,8 +15,8 @@
 #include <string>
 #include <unordered_set>
 
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/program_pass.h"
 
 namespace cinn {
 namespace frontend {

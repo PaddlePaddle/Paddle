@@ -14,8 +14,8 @@
 
 #include <gtest/gtest.h>
 
-#include "cinn/cinn.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace optim {

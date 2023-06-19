@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/data_util.h"
+#include "paddle/cinn/utils/data_util.h"
 
 #include "iostream"
 

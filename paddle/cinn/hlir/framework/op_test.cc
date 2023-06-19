@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op.h"
 
 #include <gtest/gtest.h>
 
 #include <functional>
 #include <string>
 
-#include "cinn/cinn.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

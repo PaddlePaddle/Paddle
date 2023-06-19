@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "cinn/common/macros.h"
+#include "paddle/cinn/common/macros.h"
 
 CINN_USE_REGISTER(nn_ops)
 CINN_USE_REGISTER(nn_grad_ops)

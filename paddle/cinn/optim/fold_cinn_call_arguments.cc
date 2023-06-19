@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/fold_cinn_call_arguments.h"
+#include "paddle/cinn/optim/fold_cinn_call_arguments.h"
 
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace optim {

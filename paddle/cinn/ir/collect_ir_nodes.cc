@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/collect_ir_nodes.h"
+#include "paddle/cinn/ir/collect_ir_nodes.h"
 
 #include <glog/logging.h>
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {

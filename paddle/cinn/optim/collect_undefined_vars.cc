@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/collect_undefined_vars.h"
+#include "paddle/cinn/optim/collect_undefined_vars.h"
 
 #include <set>
 
-#include "cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn::optim {
 

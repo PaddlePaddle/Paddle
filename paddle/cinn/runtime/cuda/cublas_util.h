@@ -15,7 +15,7 @@
 
 #include <cublas_v2.h>
 
-#include "cinn/common/type.h"
+#include "paddle/cinn/common/type.h"
 #include "glog/logging.h"
 
 namespace cinn {

@@ -14,9 +14,9 @@
 
 #include <llvm/Support/FormatVariadic.h>
 
-#include "cinn/poly/stage.h"
-#include "cinn/pybind/bind.h"
-#include "cinn/pybind/bind_utils.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/pybind/bind_utils.h"
 
 namespace py = pybind11;
 

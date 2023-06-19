@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/accuracy_checker.h"
+#include "paddle/cinn/hlir/framework/accuracy_checker.h"
 
 #include <gtest/gtest.h>
 
@@ -21,9 +21,9 @@
 #include <cuda_runtime.h>
 #endif
 
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
 
 DECLARE_string(cinn_self_check_accuracy);
 

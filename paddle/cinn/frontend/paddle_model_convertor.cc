@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle_model_convertor.h"
+#include "paddle/cinn/frontend/paddle_model_convertor.h"
 
 #include <glog/logging.h>
 
@@ -20,12 +20,12 @@
 #include <unordered_set>
 #include <utility>
 
-#include "cinn/frontend/op_mappers/use_op_mappers.h"
-#include "cinn/frontend/paddle/cpp/op_desc.h"
-#include "cinn/frontend/paddle/cpp/program_desc.h"
-#include "cinn/frontend/paddle/model_parser.h"
-#include "cinn/frontend/var_type_utils.h"
-#include "cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
+#include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
+#include "paddle/cinn/frontend/paddle/model_parser.h"
+#include "paddle/cinn/frontend/var_type_utils.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
 
 namespace cinn {
 namespace frontend {

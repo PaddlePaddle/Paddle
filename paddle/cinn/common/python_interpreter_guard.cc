@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/python_interpreter_guard.h"
+#include "paddle/cinn/common/python_interpreter_guard.h"
 
 #include <pybind11/embed.h>
 

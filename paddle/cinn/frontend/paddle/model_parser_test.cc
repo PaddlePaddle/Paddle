@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle/model_parser.h"
+#include "paddle/cinn/frontend/paddle/model_parser.h"
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>

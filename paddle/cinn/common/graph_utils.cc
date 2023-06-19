@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/graph_utils.h"
+#include "paddle/cinn/common/graph_utils.h"
 
 #include <glog/logging.h>
 
@@ -21,8 +21,8 @@
 #include <set>
 #include <stack>
 
-#include "cinn/common/common.h"
-#include "cinn/utils/dot_lang.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/utils/dot_lang.h"
 
 namespace cinn {
 namespace common {

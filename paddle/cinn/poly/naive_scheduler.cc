@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/naive_scheduler.h"
+#include "paddle/cinn/poly/naive_scheduler.h"
 
 #include <vector>
 

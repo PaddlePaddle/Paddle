@@ -25,12 +25,12 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/poly/graph.h"
-#include "cinn/poly/isl_utils.h"
-#include "cinn/poly/map.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/graph.h"
+#include "paddle/cinn/poly/isl_utils.h"
+#include "paddle/cinn/poly/map.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace poly {

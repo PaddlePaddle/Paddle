@@ -17,16 +17,16 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 
-#include "cinn/common/cinn_value.h"
-#include "cinn/frontend/interpreter.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/pybind/bind.h"
-#include "cinn/runtime/flags.h"
+#include "paddle/cinn/common/cinn_value.h"
+#include "paddle/cinn/frontend/interpreter.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/pybind/bind.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

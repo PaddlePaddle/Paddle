@@ -18,15 +18,15 @@
 #include <string>
 #include <vector>
 
-#include "cinn/auto_schedule/measure/schedule_measurer.h"
-#include "cinn/auto_schedule/task/task_optimizer.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/task_scheduler/task_scheduler.h"
-#include "cinn/auto_schedule/tuning.h"
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/auto_schedule/measure/schedule_measurer.h"
+#include "paddle/cinn/auto_schedule/task/task_optimizer.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/task_scheduler.h"
+#include "paddle/cinn/auto_schedule/tuning.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 
 namespace cinn {
 namespace auto_schedule {

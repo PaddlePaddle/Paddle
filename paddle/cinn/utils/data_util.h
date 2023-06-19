@@ -16,8 +16,8 @@
 #include <random>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime.h>
 #endif

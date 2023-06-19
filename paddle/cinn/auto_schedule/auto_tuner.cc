@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/auto_tuner.h"
+#include "paddle/cinn/auto_schedule/auto_tuner.h"
 
 #include <glog/logging.h>
 #include <pybind11/embed.h>
@@ -21,19 +21,19 @@
 #include <memory>
 #include <utility>
 
-#include "cinn/auto_schedule/database/jsonfile_database.h"
-#include "cinn/auto_schedule/measure/schedule_measurer.h"
-#include "cinn/auto_schedule/measure/simple_builder.h"
-#include "cinn/auto_schedule/measure/simple_runner.h"
-#include "cinn/auto_schedule/task/task_creator.h"
-#include "cinn/auto_schedule/task/task_registry.h"
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/auto_schedule/task_scheduler/task_scheduler.h"
-#include "cinn/common/context.h"
-#include "cinn/common/type.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/visualize_helper.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/auto_schedule/database/jsonfile_database.h"
+#include "paddle/cinn/auto_schedule/measure/schedule_measurer.h"
+#include "paddle/cinn/auto_schedule/measure/simple_builder.h"
+#include "paddle/cinn/auto_schedule/measure/simple_runner.h"
+#include "paddle/cinn/auto_schedule/task/task_creator.h"
+#include "paddle/cinn/auto_schedule/task/task_registry.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/task_scheduler.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/visualize_helper.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace auto_schedule {

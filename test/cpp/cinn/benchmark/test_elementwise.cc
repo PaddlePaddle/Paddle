@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "tests/benchmark/test_elementwise.h"
+#include "test/cpp/cinn/benchmark/test_elementwise.h"
 
-#include "cinn/cinn.h"
-#include "cinn/hlir/framework/node.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn {
 namespace tests {

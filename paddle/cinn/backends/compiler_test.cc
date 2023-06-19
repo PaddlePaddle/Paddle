@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/compiler.h"
+#include "paddle/cinn/backends/compiler.h"
 
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "cinn/cinn.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/pe/elementwise.h"
-#include "cinn/hlir/pe/nn.h"
-#include "cinn/runtime/use_extern_funcs.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/nn.h"
+#include "paddle/cinn/runtime/use_extern_funcs.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace backends {

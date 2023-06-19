@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/lang/compute.h"
+#include "paddle/cinn/lang/compute.h"
 
-#include "cinn/backends/extern_func_protos.h"
-#include "cinn/common/common.h"
-#include "cinn/ir/operation.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/poly/dim.h"
-#include "cinn/poly/domain.h"
-#include "cinn/poly/stage.h"
-#include "cinn/runtime/use_extern_funcs.h"
+#include "paddle/cinn/backends/extern_func_protos.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/operation.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/poly/dim.h"
+#include "paddle/cinn/poly/domain.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/runtime/use_extern_funcs.h"
 
 namespace cinn {
 namespace lang {

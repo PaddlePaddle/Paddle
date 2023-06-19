@@ -12,4 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/shared.h"
+#include "paddle/cinn/common/shared.h"

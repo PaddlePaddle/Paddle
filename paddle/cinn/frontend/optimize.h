@@ -19,9 +19,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn {
 namespace frontend {

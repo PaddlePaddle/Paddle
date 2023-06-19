@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/ast_gen.h"
+#include "paddle/cinn/poly/ast_gen.h"
 
 #include <gtest/gtest.h>
 
@@ -21,13 +21,13 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/poly/schedule.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/poly/schedule.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace poly {

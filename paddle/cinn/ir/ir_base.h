@@ -21,10 +21,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/common.h"
-#include "cinn/common/object.h"
-#include "cinn/common/shared.h"
-#include "cinn/common/type.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/object.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/common/type.h"
 
 namespace cinn {
 

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/op_lowering.h"
+#include "paddle/cinn/hlir/framework/op_lowering.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/backends/codegen_c_x86.h"
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/cuda_util.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/backends/nvrtc/nvrtc_util.h"
-#include "cinn/common/target.h"
-#include "cinn/frontend/decomposer/test_helper.h"
+#include "paddle/cinn/backends/codegen_c_x86.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/decomposer/test_helper.h"
 
 namespace cinn {
 namespace hlir {

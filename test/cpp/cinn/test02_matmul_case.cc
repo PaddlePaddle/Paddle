@@ -15,20 +15,20 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/utils/timer.h"
-#include "tests/test02_helper.h"
-#include "tests/test02_matmul.h"
-#include "tests/test02_matmul_array_packing.h"
-#include "tests/test02_matmul_array_packing_dynamic_shape.h"
-#include "tests/test02_matmul_block.h"
-#include "tests/test02_matmul_call.h"
-#include "tests/test02_matmul_loop_permutation.h"
-#include "tests/test02_matmul_split.h"
-#include "tests/test02_matmul_tile.h"
-#include "tests/test02_matmul_varient_shape.h"
-#include "tests/test02_matmul_varient_shape_tile.h"
-#include "tests/test02_matmul_vectorize.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/utils/timer.h"
+#include "test/cpp/cinn/test02_helper.h"
+#include "test/cpp/cinn/test02_matmul.h"
+#include "test/cpp/cinn/test02_matmul_array_packing.h"
+#include "test/cpp/cinn/test02_matmul_array_packing_dynamic_shape.h"
+#include "test/cpp/cinn/test02_matmul_block.h"
+#include "test/cpp/cinn/test02_matmul_call.h"
+#include "test/cpp/cinn/test02_matmul_loop_permutation.h"
+#include "test/cpp/cinn/test02_matmul_split.h"
+#include "test/cpp/cinn/test02_matmul_tile.h"
+#include "test/cpp/cinn/test02_matmul_varient_shape.h"
+#include "test/cpp/cinn/test02_matmul_varient_shape_tile.h"
+#include "test/cpp/cinn/test02_matmul_vectorize.h"
 
 TEST(test02, basic) {
   const int M  = 1024;
@@ -208,15 +208,15 @@ TEST(test02, basic) {
 
 // include the generated C source code:
 // @{
-#include "tests/test02_matmul.cc"
-#include "tests/test02_matmul_array_packing.cc"
-#include "tests/test02_matmul_array_packing_dynamic_shape.cc"
-#include "tests/test02_matmul_block.cc"
-#include "tests/test02_matmul_call.cc"
-#include "tests/test02_matmul_loop_permutation.cc"
-#include "tests/test02_matmul_split.cc"
-#include "tests/test02_matmul_tile.cc"
-#include "tests/test02_matmul_varient_shape.cc"
-#include "tests/test02_matmul_varient_shape_tile.cc"
-#include "tests/test02_matmul_vectorize.cc"
+#include "test/cpp/cinn/test02_matmul.cc"
+#include "test/cpp/cinn/test02_matmul_array_packing.cc"
+#include "test/cpp/cinn/test02_matmul_array_packing_dynamic_shape.cc"
+#include "test/cpp/cinn/test02_matmul_block.cc"
+#include "test/cpp/cinn/test02_matmul_call.cc"
+#include "test/cpp/cinn/test02_matmul_loop_permutation.cc"
+#include "test/cpp/cinn/test02_matmul_split.cc"
+#include "test/cpp/cinn/test02_matmul_tile.cc"
+#include "test/cpp/cinn/test02_matmul_varient_shape.cc"
+#include "test/cpp/cinn/test02_matmul_varient_shape_tile.cc"
+#include "test/cpp/cinn/test02_matmul_vectorize.cc"
 // @}

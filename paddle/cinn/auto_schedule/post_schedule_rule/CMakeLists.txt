@@ -5,5 +5,5 @@ gather_srcs(cinnapi_src SRCS
 	)
 
 if (WITH_CUDA)
-  nv_test(test_cooperative_process SRCS cooperative_process_test.cc DEPS cinncore auto_gen_rule_test_helper test_program_builder)
+  cinn_nv_test(test_cooperative_process SRCS cooperative_process_test.cc DEPS cinncore auto_gen_rule_test_helper test_program_builder)
 endif()

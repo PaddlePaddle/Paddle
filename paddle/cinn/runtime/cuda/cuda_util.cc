@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <cublas_v2.h>
@@ -29,14 +29,14 @@
 #include <cudnn.h>
 #endif
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/common/target.h"
-#include "cinn/runtime/cuda/cublas_util.h"
-#include "cinn/runtime/custom_function.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/profiler.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/runtime/cuda/cublas_util.h"
+#include "paddle/cinn/runtime/custom_function.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/profiler.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace runtime {

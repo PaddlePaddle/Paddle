@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include "cinn/auto_schedule/task_scheduler/task_scheduler.h"
+#include "paddle/cinn/auto_schedule/task_scheduler/task_scheduler.h"
 
 namespace cinn {
 namespace auto_schedule {

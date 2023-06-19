@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle_model_to_program.h"
+#include "paddle/cinn/frontend/paddle_model_to_program.h"
 
 #include <algorithm>
 
-#include "cinn/frontend/paddle/framework.pb.h"
-#include "cinn/frontend/paddle/model_parser.h"
-#include "cinn/frontend/paddle/pb/program_desc.h"
-#include "cinn/hlir/framework/node.h"
+#include "paddle/cinn/frontend/paddle/framework.pb.h"
+#include "paddle/cinn/frontend/paddle/model_parser.h"
+#include "paddle/cinn/frontend/paddle/pb/program_desc.h"
+#include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn {
 namespace frontend {

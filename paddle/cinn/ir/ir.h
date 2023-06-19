@@ -26,11 +26,11 @@
 #include <string>
 #include <vector>
 
-#include "cinn/common/shared.h"
-#include "cinn/common/type.h"
-#include "cinn/ir/function_base.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/utils/small_vector.h"
+#include "paddle/cinn/common/shared.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/function_base.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/utils/small_vector.h"
 
 namespace cinn {
 

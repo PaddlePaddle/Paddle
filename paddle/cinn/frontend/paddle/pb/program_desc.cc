@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle/pb/program_desc.h"
+#include "paddle/cinn/frontend/paddle/pb/program_desc.h"
 
 #include <algorithm>
 #include <limits>

@@ -19,13 +19,13 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/compiler.h"
-#include "cinn/common/target.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/utils/random_engine.h"
+#include "paddle/cinn/backends/compiler.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {
 namespace auto_schedule {

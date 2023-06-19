@@ -9,7 +9,7 @@ gather_srcs(cinnapi_src SRCS
     rule_sampler.cc
     )
 
-cc_test(test_search_space SRCS search_space_test.cc DEPS cinncore)
-cc_test(test_search_state SRCS search_state_test.cc DEPS cinncore)
-cc_test(test_block_sampler SRCS block_sampler_test.cc DEPS cinncore)
-cc_test(test_rule_sampler SRCS rule_sampler_test.cc DEPS cinncore)
+cinn_cc_test(test_search_space SRCS search_space_test.cc DEPS cinncore)
+cinn_cc_test(test_search_state SRCS search_state_test.cc DEPS cinncore)
+cinn_cc_test(test_block_sampler SRCS block_sampler_test.cc DEPS cinncore)
+cinn_cc_test(test_rule_sampler SRCS rule_sampler_test.cc DEPS cinncore)

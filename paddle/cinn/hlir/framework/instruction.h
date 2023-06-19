@@ -19,13 +19,13 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/hlir/framework/scope.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/hlir/framework/scope.h"
 #ifdef CINN_WITH_CUDA
-#include "cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
-#include "cinn/utils/string.h"
-#include "cinn/utils/timer.h"
+#include "paddle/cinn/utils/string.h"
+#include "paddle/cinn/utils/timer.h"
 
 namespace cinn {
 namespace hlir {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/codegen_c_x86.h"
+#include "paddle/cinn/backends/codegen_c_x86.h"
 
 namespace cinn {
 namespace backends {

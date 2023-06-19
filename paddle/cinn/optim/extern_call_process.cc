@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/extern_call_process.h"
+#include "paddle/cinn/optim/extern_call_process.h"
 
-#include "cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 
 namespace cinn {
 namespace optim {

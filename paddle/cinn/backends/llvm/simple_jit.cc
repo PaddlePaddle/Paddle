@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
 
 #include <llvm/AsmParser/Parser.h>
 #include <llvm/ExecutionEngine/JITSymbol.h>
@@ -32,13 +32,13 @@
 #include <string>
 #include <utility>
 
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/llvm/cinn_runtime_llvm_ir.h"
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/backends/llvm/runtime_symbol_registry.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace backends {
@@ -111,6 +111,7 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
 
 template <typename CodeGenT>
 void SimpleJIT::Link(ir::Module module, bool optimize) {
+  VLOG(-1) << "dddddd";
   std::string runtime_ir(backends::kRuntimeLlvmIr);
   llvm::SMDiagnostic error;
   auto m = llvm::parseAssemblyString(runtime_ir, error, context());
@@ -118,11 +119,17 @@ void SimpleJIT::Link(ir::Module module, bool optimize) {
   auto b = std::make_unique<llvm::IRBuilder<>>(context());
 
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
+  VLOG(-1) << "dddddd";
   ir_emitter->Compile(module);
+  VLOG(-1) << "dddddd";
 
+  VLOG(-1) << "dddddd";
   CHECK(!llvm::verifyModule(*m, &llvm::errs())) << "Invalid module found";
+  VLOG(-1) << "dddddd";
 
+  VLOG(-1) << "dddddd";
   AddModule(std::move(m), optimize);
+  VLOG(-1) << "dddddd";
 }
 
 template void SimpleJIT::Link<CodeGenLLVM>(ir::Module module, bool optimize);

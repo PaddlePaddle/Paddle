@@ -6,7 +6,7 @@ set(srcs
   )
 
 foreach(cpp ${srcs})
-  set(cinnapi_src "${cinnapi_src};cinn/frontend/paddle/pb/${cpp}" CACHE INTERNAL "")
+  set(cinnapi_src "${cinnapi_src};paddle/cinn/frontend/paddle/pb/${cpp}" CACHE INTERNAL "")
 endforeach()
 
 file(GLOB includes LIST_DIRECTORIES false RELATIVE ${CMAKE_SOURCE_DIR} *.h)

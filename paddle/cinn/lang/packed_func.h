@@ -19,8 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/common/cinn_value.h"
-#include "cinn/ir/ir.h"
+#include "paddle/cinn/common/cinn_value.h"
+#include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace lang {

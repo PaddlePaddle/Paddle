@@ -17,9 +17,9 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/cinn.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/cinn.h"
 
 namespace cinn {
 namespace common {

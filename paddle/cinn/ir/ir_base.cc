@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_base.h"
 
-#include "cinn/common/cinn_value.h"
-#include "cinn/common/common.h"
-#include "cinn/ir/buffer.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_visitor.h"
-#include "cinn/ir/module.h"
-#include "cinn/ir/tensor.h"
+#include "paddle/cinn/common/cinn_value.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/buffer.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
+#include "paddle/cinn/ir/module.h"
+#include "paddle/cinn/ir/tensor.h"
 
 namespace cinn {
 namespace ir {

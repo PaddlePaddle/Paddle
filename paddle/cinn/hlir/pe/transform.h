@@ -18,10 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/layout.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/layout.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

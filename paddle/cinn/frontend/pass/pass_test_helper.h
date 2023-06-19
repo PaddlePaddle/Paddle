@@ -27,18 +27,18 @@
 #include <cuda_runtime.h>
 #endif
 
-#include "cinn/common/target.h"
-#include "cinn/frontend/optimize.h"
-#include "cinn/frontend/pass/use_program_pass.h"
-#include "cinn/frontend/program_pass.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/graph.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/pass.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/hlir/pass/use_pass.h"
-#include "cinn/utils/data_util.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/frontend/optimize.h"
+#include "paddle/cinn/frontend/pass/use_program_pass.h"
+#include "paddle/cinn/frontend/program_pass.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/pass.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/hlir/pass/use_pass.h"
+#include "paddle/cinn/utils/data_util.h"
 
 DECLARE_bool(cinn_use_op_fusion);
 

@@ -19,10 +19,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/auto_schedule/task/tune_task.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/auto_schedule/task/tune_task.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace auto_schedule {

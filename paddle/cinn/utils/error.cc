@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/utils/error.h"
+#include "paddle/cinn/utils/error.h"
 
 namespace cinn::utils {}  // namespace cinn::utils

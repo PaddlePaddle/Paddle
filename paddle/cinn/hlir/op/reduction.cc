@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/reduction.h"
+#include "paddle/cinn/hlir/pe/reduction.h"
 
 #include <algorithm>
 #include <iostream>
 #include <vector>
 
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/hlir/pe/ir_schedule_pe.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/hlir/pe/transform.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_simplify.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/hlir/pe/transform.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

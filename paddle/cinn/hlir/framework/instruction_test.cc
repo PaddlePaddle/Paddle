@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
 
 #include <gtest/gtest.h>
 
@@ -21,13 +21,13 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/common/test_helper.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/op/use_ops.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/common/test_helper.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 namespace cinn {
 namespace hlir {

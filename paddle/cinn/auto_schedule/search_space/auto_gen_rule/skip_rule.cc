@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/skip_rule.h"
 
 #include <string>
 
-#include "cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
-#include "cinn/common/target.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
+#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_gen_rule.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
 
 namespace cinn {
 namespace auto_schedule {

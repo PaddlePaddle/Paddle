@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/op/contrib/argmin.h"
+#include "paddle/cinn/hlir/op/contrib/argmin.h"
 
 #include <iostream>
 #include <vector>
 
-#include "cinn/common/cas.h"
-#include "cinn/common/cinn_value.h"
-#include "cinn/common/common.h"
-#include "cinn/common/context.h"
-#include "cinn/common/macros.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/op/contrib/sort.h"
-#include "cinn/hlir/pe/ir_schedule_pe.h"
-#include "cinn/hlir/pe/nn.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/builtin.h"
-#include "cinn/lang/compute.h"
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/cinn_value.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/op/contrib/sort.h"
+#include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
+#include "paddle/cinn/hlir/pe/nn.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/builtin.h"
+#include "paddle/cinn/lang/compute.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

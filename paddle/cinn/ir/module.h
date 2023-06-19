@@ -16,10 +16,10 @@
 #include <string>
 #include <vector>
 
-#include "cinn/backends/outputs.h"
-#include "cinn/common/common.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/lang/buffer.h"
+#include "paddle/cinn/backends/outputs.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/lang/buffer.h"
 
 namespace cinn {
 

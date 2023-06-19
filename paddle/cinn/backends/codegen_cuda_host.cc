@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
 
 #include <algorithm>
 #include <string>
 #include <unordered_map>
 
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/extern_func_emitter_builtin.h"
-#include "cinn/backends/extern_func_jit_register.h"
-#include "cinn/backends/llvm/llvm_util.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 
 namespace cinn {
 namespace backends {

@@ -18,9 +18,9 @@
 #include <cuda_runtime.h>
 #endif
 
-#include "cinn/runtime/custom_function.h"
-#include "cinn/runtime/flags.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/runtime/custom_function.h"
+#include "paddle/cinn/runtime/flags.h"
+#include "paddle/cinn/utils/string.h"
 
 DECLARE_string(cinn_check_fusion_accuracy_pass);
 

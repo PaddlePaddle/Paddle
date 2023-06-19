@@ -24,16 +24,16 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/backends/cuda_util.h"
-#include "cinn/common/common.h"
-#include "cinn/common/context.h"
-#include "cinn/common/object.h"
-#include "cinn/common/type.h"
-#include "cinn/frontend/net_builder.h"
-#include "cinn/frontend/paddle/cpp/program_desc.h"
-#include "cinn/frontend/syntax.h"
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/scope.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/object.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/frontend/net_builder.h"
+#include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
+#include "paddle/cinn/frontend/syntax.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/scope.h"
 
 namespace cinn {
 namespace frontend {

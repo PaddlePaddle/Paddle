@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/ir/schedule_desc.h"
+#include "paddle/cinn/ir/schedule_desc.h"
 
 #include <glog/logging.h>
 
@@ -20,9 +20,9 @@
 #include <typeinfo>
 #include <utility>
 
-#include "cinn/common/macros.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace ir {

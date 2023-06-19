@@ -28,7 +28,7 @@ from cinn.framework import Scope
 
 import sys
 sys.path.append("/work/dev_CINN/build/python/tests")
-from tests.ops.op_test import OpTest, OpTestTool
+from test.cinn.ops.op_test import OpTest, OpTestTool
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="op_test")

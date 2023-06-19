@@ -21,15 +21,15 @@
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime.h>
 
-#include "cinn/runtime/cuda/cuda_util.h"
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
 #endif
 
 #ifdef CINN_WITH_MKL_CBLAS
-#include "cinn/runtime/cpu/cblas.h"
+#include "paddle/cinn/runtime/cpu/cblas.h"
 #endif
 
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/custom_function.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/custom_function.h"
 
 namespace cinn {
 namespace runtime {

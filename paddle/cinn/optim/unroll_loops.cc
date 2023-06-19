@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/optim/unroll_loops.h"
+#include "paddle/cinn/optim/unroll_loops.h"
 
 #include <utility>
 #include <vector>
 
-#include "cinn/ir/ir_mutator.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/ir_replace.h"
 
 namespace cinn {
 namespace optim {

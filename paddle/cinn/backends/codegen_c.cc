@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/backends/codegen_c.h"
+#include "paddle/cinn/backends/codegen_c.h"
 
 #include <fstream>
 #include <string>
 
-#include "cinn/backends/extern_func_emitter.h"
-#include "cinn/backends/extern_func_emitter_builtin.h"
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/ir_verify.h"
-#include "cinn/ir/lowered_func.h"
-#include "cinn/optim/ir_simplify.h"
-#include "cinn/optim/remove_nested_block.h"
-#include "cinn/runtime/cpu/thread_backend.h"
-#include "cinn/runtime/intrinsic.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/backends/extern_func_emitter.h"
+#include "paddle/cinn/backends/extern_func_emitter_builtin.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/ir_verify.h"
+#include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/remove_nested_block.h"
+#include "paddle/cinn/runtime/cpu/thread_backend.h"
+#include "paddle/cinn/runtime/intrinsic.h"
+#include "paddle/cinn/utils/string.h"
 
 //! Root of the builtin code.
 DECLARE_string(cinn_x86_builtin_code_root);

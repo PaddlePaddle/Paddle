@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/frontend/paddle/model_parser.h"
+#include "paddle/cinn/frontend/paddle/model_parser.h"
 
 #include <fstream>
 #include <vector>
 
-#include "cinn/backends/codegen_cuda_dev.h"
-#include "cinn/backends/codegen_cuda_host.h"
-#include "cinn/backends/codegen_cuda_util.h"
-#include "cinn/backends/cuda_util.h"
-#include "cinn/common/common.h"
-#include "cinn/frontend/paddle/compatible_pb.h"
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/cuda_util.h"
+#include "paddle/cinn/common/common.h"
+#include "paddle/cinn/frontend/paddle/compatible_pb.h"
 
 namespace cinn::frontend::paddle {
 

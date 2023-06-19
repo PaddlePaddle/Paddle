@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/nn.h"
+#include "paddle/cinn/hlir/pe/nn.h"
 
 #include <functional>
 
-#include "cinn/hlir/framework/node.h"
-#include "cinn/hlir/framework/op.h"
-#include "cinn/hlir/framework/op_strategy.h"
-#include "cinn/hlir/op/op_util.h"
-#include "cinn/hlir/pe/broadcast.h"
-#include "cinn/hlir/pe/elementwise.h"
-#include "cinn/hlir/pe/ir_schedule_pe.h"
-#include "cinn/hlir/pe/schedule.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/layout.h"
-#include "cinn/poly/stage.h"
+#include "paddle/cinn/hlir/framework/node.h"
+#include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/op/op_util.h"
+#include "paddle/cinn/hlir/pe/broadcast.h"
+#include "paddle/cinn/hlir/pe/elementwise.h"
+#include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
+#include "paddle/cinn/hlir/pe/schedule.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/layout.h"
+#include "paddle/cinn/poly/stage.h"
 
 DECLARE_bool(cinn_ir_schedule);
 

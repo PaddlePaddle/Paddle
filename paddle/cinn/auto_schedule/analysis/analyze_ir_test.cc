@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/analysis/analyze_ir.h"
+#include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -20,16 +20,16 @@
 #include <sstream>
 #include <vector>
 
-#include "cinn/common/context.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
-#include "cinn/poly/stage.h"
-#include "cinn/utils/string.h"
+#include "paddle/cinn/common/context.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/utils/string.h"
 
 namespace cinn {
 namespace auto_schedule {

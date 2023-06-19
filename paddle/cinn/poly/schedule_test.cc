@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/poly/schedule.h"
+#include "paddle/cinn/poly/schedule.h"
 
 #include <gtest/gtest.h>
 
-#include "cinn/ir/ir_operators.h"
-#include "cinn/ir/tensor.h"
-#include "cinn/lang/compute.h"
-#include "cinn/lang/lower.h"
-#include "cinn/lang/placeholder.h"
+#include "paddle/cinn/ir/ir_operators.h"
+#include "paddle/cinn/ir/tensor.h"
+#include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/lang/lower.h"
+#include "paddle/cinn/lang/placeholder.h"
 
 namespace cinn {
 namespace poly {

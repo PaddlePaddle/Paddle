@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "tests/program_builder.h"
+#include "test/cpp/cinn/program_builder.h"
 
 namespace cinn {
 namespace tests {

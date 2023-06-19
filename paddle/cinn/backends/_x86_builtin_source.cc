@@ -23,7 +23,7 @@
 
 #include <vector>
 
-#include "cinn/runtime/cpu/thread_backend.h"
+#include "paddle/cinn/runtime/cpu/thread_backend.h"
 
 #ifndef _CINN_X86_BUILTIN_SOURCE_
 #define _CINN_X86_BUILTIN_SOURCE_

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/hlir/pe/load_x86_params.h"
+#include "paddle/cinn/hlir/pe/load_x86_params.h"
 
 #include <glog/logging.h>
 

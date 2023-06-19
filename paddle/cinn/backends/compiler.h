@@ -21,12 +21,12 @@
 #include <mutex>
 #include <string>
 
-#include "cinn/backends/llvm/codegen_llvm.h"
-#include "cinn/backends/llvm/execution_engine.h"
-#include "cinn/backends/llvm/simple_jit.h"
-#include "cinn/lang/packed_func.h"
+#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/llvm/execution_engine.h"
+#include "paddle/cinn/backends/llvm/simple_jit.h"
+#include "paddle/cinn/lang/packed_func.h"
 #ifdef CINN_WITH_CUDA
-#include "cinn/runtime/cuda/cuda_module.h"
+#include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
 
 namespace cinn {

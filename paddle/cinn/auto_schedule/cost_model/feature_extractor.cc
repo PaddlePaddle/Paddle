@@ -25,18 +25,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/auto_schedule/cost_model/feature_extractor.h"
+#include "paddle/cinn/auto_schedule/cost_model/feature_extractor.h"
 
 #include <vector>
 
-#include "cinn/common/target.h"
-#include "cinn/common/type.h"
-#include "cinn/ir/ir.h"
-#include "cinn/ir/ir_base.h"
-#include "cinn/ir/ir_printer.h"
-#include "cinn/ir/ir_schedule.h"
-#include "cinn/optim/ir_copy.h"
-#include "cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_schedule.h"
+#include "paddle/cinn/optim/ir_copy.h"
+#include "paddle/cinn/optim/transform_polyfor_to_for.h"
 
 namespace cinn {
 namespace auto_schedule {
