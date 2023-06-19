@@ -183,7 +183,7 @@
     force_backend : force_cpu
 
 - op : exponential_
-  args : (Tensor x, float lam)
+  args : (Tensor x, float lam = 1.0f)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
