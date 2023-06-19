@@ -980,9 +980,9 @@ void BuildOpFuncList(
                           .data();
 
     VLOG(6) << "finish process infer meta context";
-    auto t1 =
-        phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
-    op_func_node.phi_kernel_ = new phi::Kernel(t1);
+    auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        kernel_name, kernel_key);
+    op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
 
     PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
                       true,
