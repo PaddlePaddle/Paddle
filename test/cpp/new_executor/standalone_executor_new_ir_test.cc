@@ -69,8 +69,7 @@ TEST(StandaloneExecutor, run) {
   Scope scope;
 
   ProgramDesc prog_desc;
-  InterpreterCore test_core(
-      place, prog_desc.Block(0), &scope, std::move(kernel_program));
+  InterpreterCore test_core(place, std::move(kernel_program), &scope);
 
   test_core.Run({});
 
@@ -139,8 +138,7 @@ TEST(StandaloneExecutor, run_2) {
 
   ProgramDesc prog_desc;
 
-  InterpreterCore test_core(
-      place, prog_desc.Block(0), &scope, std::move(kernel_program));
+  InterpreterCore test_core(place, std::move(kernel_program), &scope);
 
   test_core.Run({});
 
@@ -160,7 +158,7 @@ TEST(StandaloneExecutor, run_2) {
   EXPECT_EQ(res3, true);
 }
 
-TEST(StandaloneExecutor, run_2) {
+TEST(StandaloneExecutor, data_transfer) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
   ir::Program program(ctx);
