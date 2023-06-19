@@ -343,6 +343,7 @@ def launch():
 
         job_id = 0
         while cur_cfg:
+            ctx.status._current_status = None
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],

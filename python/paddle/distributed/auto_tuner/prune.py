@@ -204,13 +204,9 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
                 return True
 
     if sharding_degree == 1:
-        for cfg in cfgs:
-            if (
-                sharding_stage == 1
-                or sharding_stage == 2
-                or sharding_stage == 3
-            ):
-                return True
+        cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
+        if cfgs:
+            return True
 
     return False
 
@@ -258,12 +254,9 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
                 return True
 
     if use_recompute is False:
-        for cfg in cfgs:
-            if (
-                recompute_granularity == "full"
-                or recompute_granularity == "attn"
-            ):
-                return True
+        cfgs = same_cfgs_beside("recompute_granularity", cur_cfg, history_cfgs)
+        if cfgs:
+            return True
     return False
 
 
