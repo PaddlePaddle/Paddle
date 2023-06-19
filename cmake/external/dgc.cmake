@@ -61,7 +61,7 @@ find_file(
 
 if(LOCAL_DGC_LIB_ZIP)
   file(MD5 ${DGC_DOWNLOAD_DIR}/${DGC_CACHE_FILENAME} DGC_MD5)
-  if(NOT DGC_MD5 EQUAL DGC_URL_MD5)
+  if(NOT DGC_MD5 STREQUAL DGC_URL_MD5)
     download_dgc()
   endif()
 else()
