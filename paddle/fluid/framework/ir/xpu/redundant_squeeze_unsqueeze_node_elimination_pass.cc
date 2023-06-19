@@ -40,7 +40,7 @@ namespace ir {
 namespace patterns {
 
 // Delete redundant squeeze/unsqueeze op
-/* 
+/*
 For example:
 graph:
       Input
@@ -74,8 +74,8 @@ After the pass is applied:
 */
 struct SqueezeActivationUnsqueezeEliminationPattern : public PatternBase {
   SqueezeActivationUnsqueezeEliminationPattern(PDPattern* pattern,
-                   const std::string& name_scope,
-                   const std::string& act_type);
+                                               const std::string& name_scope,
+                                               const std::string& act_type);
   // declare operator node's name
   PATTERN_DECL_NODE(squeeze);
   PATTERN_DECL_NODE(act);
@@ -90,35 +90,36 @@ struct SqueezeActivationUnsqueezeEliminationPattern : public PatternBase {
   std::string act_type_;
 };
 
-SqueezeActivationUnsqueezeEliminationPattern::SqueezeActivationUnsqueezeEliminationPattern(PDPattern* pattern,
-                                   const std::string& name_scope,
-                                   const std::string& act_type)
-    : PatternBase(pattern, name_scope, name_scope),
-      act_type_(act_type)  {
+SqueezeActivationUnsqueezeEliminationPattern::
+    SqueezeActivationUnsqueezeEliminationPattern(PDPattern* pattern,
+                                                 const std::string& name_scope,
+                                                 const std::string& act_type)
+    : PatternBase(pattern, name_scope, name_scope), act_type_(act_type) {
   // squeeze
   auto squeeze = pattern->NewNode(squeeze_repr())->assert_is_op("squeeze2");
   auto squeeze_input = pattern->NewNode(squeeze_input_repr())
-                   ->assert_is_op_input("squeeze2", "X")
-                   ->AsInput();
+                           ->assert_is_op_input("squeeze2", "X")
+                           ->AsInput();
   auto squeeze_out = pattern->NewNode(squeeze_out_repr())
-                   ->assert_is_op_output("squeeze2", "Out");
+                         ->assert_is_op_output("squeeze2", "Out");
   squeeze->LinksFrom({squeeze_input}).LinksTo({squeeze_out});
   // activation
   auto act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
-  auto act_out = pattern->NewNode(act_out_repr())
-                   ->assert_is_op_output(act_type_, "Out");
+  auto act_out =
+      pattern->NewNode(act_out_repr())->assert_is_op_output(act_type_, "Out");
   squeeze_out->assert_is_op_input(act_type_, "X");
   act->LinksFrom({squeeze_out}).LinksTo({act_out});
   // unsqueeze
-  auto unsqueeze = pattern->NewNode(unsqueeze_repr())->assert_is_op("unsqueeze2");
+  auto unsqueeze =
+      pattern->NewNode(unsqueeze_repr())->assert_is_op("unsqueeze2");
   auto unsqueeze_out = pattern->NewNode(unsqueeze_out_repr())
-                   ->assert_is_op_output("unsqueeze2", "Out")
-                   ->AsOutput();
+                           ->assert_is_op_output("unsqueeze2", "Out")
+                           ->AsOutput();
   act_out->assert_is_op_input("unsqueeze2", "X");
   unsqueeze->LinksFrom({act_out}).LinksTo({unsqueeze_out});
 }
 
-/* 
+/*
 Function Description:Delete redundant squeeze/unsqueeze op
 Pattern: custom pattern
 For example:
@@ -150,17 +151,17 @@ graph:
                - - - - - - - - - - - - - - - - - - -
                |           |          |            |
                |           |          |            |
-          unsqueeze 1    ......  unsqueeze n-1  unsqueeze n      
+          unsqueeze 1    ......  unsqueeze n-1  unsqueeze n
                |           |          |            |
                |           |          |            |
-            Output 1     ......    Output n-1    Output n 
+            Output 1     ......    Output n-1    Output n
 
 ------------------------------------------------------
 After the pass is applied:
-      Input1                                                  
-        |                                                
-        |                                            
-  activation1(leaky_relu)                                  
+      Input1
+        |
+        |
+  activation1(leaky_relu)
         |
         |
   activation1 out                                            Input2
@@ -178,15 +179,15 @@ After the pass is applied:
                - - - - - - - - - - - - - - - - - - -
                |           |          |            |
                |           |          |            |
-            Output 1     ......    Output n-1    Output n 
+            Output 1     ......    Output n-1    Output n
 */
 struct CustomSqueezeUnsqueezeEliminationPattern : public PatternBase {
   CustomSqueezeUnsqueezeEliminationPattern(PDPattern* pattern,
-                   const std::string& name_scope,
-                   const std::string& act1_type,
-                   const std::string& act2_type,
-                   const std::string& elementwise_type,
-                   const bool act1_in_branch_x);
+                                           const std::string& name_scope,
+                                           const std::string& act1_type,
+                                           const std::string& act2_type,
+                                           const std::string& elementwise_type,
+                                           const bool act1_in_branch_x);
   // declare operator node's name
   PATTERN_DECL_NODE(squeeze1);
   PATTERN_DECL_NODE(squeeze2);
@@ -209,12 +210,14 @@ struct CustomSqueezeUnsqueezeEliminationPattern : public PatternBase {
   bool act1_in_branch_x_;
 };
 
-CustomSqueezeUnsqueezeEliminationPattern::CustomSqueezeUnsqueezeEliminationPattern(PDPattern* pattern,
-                                   const std::string& name_scope,
-                                   const std::string& act1_type,
-                                   const std::string& act2_type,
-                                   const std::string& elementwise_type,
-                                   const bool act1_in_branch_x)
+CustomSqueezeUnsqueezeEliminationPattern::
+    CustomSqueezeUnsqueezeEliminationPattern(
+        PDPattern* pattern,
+        const std::string& name_scope,
+        const std::string& act1_type,
+        const std::string& act2_type,
+        const std::string& elementwise_type,
+        const bool act1_in_branch_x)
     : PatternBase(pattern, name_scope, name_scope),
       act1_type_(act1_type),
       act2_type_(act2_type),
@@ -223,29 +226,30 @@ CustomSqueezeUnsqueezeEliminationPattern::CustomSqueezeUnsqueezeEliminationPatte
   // squeeze1
   auto squeeze1 = pattern->NewNode(squeeze1_repr())->assert_is_op("squeeze2");
   auto squeeze1_input = pattern->NewNode(squeeze1_input_repr())
-                   ->assert_is_op_input("squeeze2", "X")
-                   ->AsInput();
+                            ->assert_is_op_input("squeeze2", "X")
+                            ->AsInput();
   auto squeeze1_out = pattern->NewNode(squeeze1_out_repr())
-                   ->assert_is_op_output("squeeze2", "Out");
+                          ->assert_is_op_output("squeeze2", "Out");
   squeeze1->LinksFrom({squeeze1_input}).LinksTo({squeeze1_out});
   // activation1
   auto act1 = pattern->NewNode(act1_repr())->assert_is_op(act1_type_);
-  auto act1_out = pattern->NewNode(act1_out_repr())
-                   ->assert_is_op_output(act1_type_, "Out");
+  auto act1_out =
+      pattern->NewNode(act1_out_repr())->assert_is_op_output(act1_type_, "Out");
   squeeze1_out->assert_is_op_input(act1_type_, "X");
   act1->LinksFrom({squeeze1_out}).LinksTo({act1_out});
   // squeeze2
   auto squeeze2 = pattern->NewNode(squeeze2_repr())->assert_is_op("squeeze2");
   auto squeeze2_input = pattern->NewNode(squeeze2_input_repr())
-                   ->assert_is_op_input("squeeze2", "X")
-                   ->AsInput();
+                            ->assert_is_op_input("squeeze2", "X")
+                            ->AsInput();
   auto squeeze2_out = pattern->NewNode(squeeze2_out_repr())
-                   ->assert_is_op_output("squeeze2", "Out");
+                          ->assert_is_op_output("squeeze2", "Out");
   squeeze2->LinksFrom({squeeze2_input}).LinksTo({squeeze2_out});
   // elementwise
-  auto elementwise = pattern->NewNode(elementwise_repr())->assert_is_op(elementwise_type_);
+  auto elementwise =
+      pattern->NewNode(elementwise_repr())->assert_is_op(elementwise_type_);
   auto elementwise_out = pattern->NewNode(elementwise_out_repr())
-                   ->assert_is_op_output(elementwise_type_, "Out");
+                             ->assert_is_op_output(elementwise_type_, "Out");
   if (act1_in_branch_x_) {
     act1_out->assert_is_op_input(elementwise_type_, "X");
     squeeze2_out->assert_is_op_input(elementwise_type_, "Y");
@@ -256,8 +260,8 @@ CustomSqueezeUnsqueezeEliminationPattern::CustomSqueezeUnsqueezeEliminationPatte
   elementwise->LinksFrom({act1_out, squeeze2_out}).LinksTo({elementwise_out});
   // activation2
   auto act2 = pattern->NewNode(act2_repr())->assert_is_op(act2_type_);
-  auto act2_out = pattern->NewNode(act2_out_repr())
-                   ->assert_is_op_output(act2_type_, "Out");
+  auto act2_out =
+      pattern->NewNode(act2_out_repr())->assert_is_op_output(act2_type_, "Out");
   elementwise_out->assert_is_op_input(act2_type_, "X");
   act2->LinksFrom({elementwise_out}).LinksTo({act2_out});
   act2_out->AsOutput();
@@ -265,44 +269,43 @@ CustomSqueezeUnsqueezeEliminationPattern::CustomSqueezeUnsqueezeEliminationPatte
 
 }  // namespace patterns
 
-
 class RedundantSqueezeUnsqueezeEliminationPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  int ApplyImpl(ir::Graph* graph,
-                const std::string& act_type) const;
+  int ApplyImpl(ir::Graph* graph, const std::string& act_type) const;
 
-  const std::string name_scope_{"redundant_squeeze_unsqueeze_node_elimination_pass"};
+  const std::string name_scope_{
+      "redundant_squeeze_unsqueeze_node_elimination_pass"};
 };
 
-void RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph) const {
+void RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
+    ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   std::vector<std::string> support_act_type{"relu",
-                     "sigmoid",
-                     "tanh",
-                     "gelu",
-                     "leaky_relu",
-                     "hard_swish",
-                     "hard_sigmoid",
-                     "relu6",
-                     "swish"};
+                                            "sigmoid",
+                                            "tanh",
+                                            "gelu",
+                                            "leaky_relu",
+                                            "hard_swish",
+                                            "hard_sigmoid",
+                                            "relu6",
+                                            "swish"};
   int found_subgraph_count = 0;
   for (auto act_type : support_act_type) {
-      found_subgraph_count += ApplyImpl(graph, act_type);
+    found_subgraph_count += ApplyImpl(graph, act_type);
   }
   AddStatis(found_subgraph_count);
 }
 
-int RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
-                                const std::string& act_type) const {
+int RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
+    ir::Graph* graph, const std::string& act_type) const {
   GraphPatternDetector gpd;
-  patterns::SqueezeActivationUnsqueezeEliminationPattern pattern(gpd.mutable_pattern(),
-                                     name_scope_,
-                                     act_type);
+  patterns::SqueezeActivationUnsqueezeEliminationPattern pattern(
+      gpd.mutable_pattern(), name_scope_, act_type);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -320,14 +323,18 @@ int RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
-    // Judge squeeze1 && squeeze2 op shape is same or not, if axes is same, the shape is same too.
-    std::vector<int> squeeze_axes = PADDLE_GET_CONST(std::vector<int>, squeeze->Op()->GetAttr("axes"));
-    std::vector<int> unsqueeze_axes = PADDLE_GET_CONST(std::vector<int>, unsqueeze->Op()->GetAttr("axes"));
+    // Judge squeeze1 && squeeze2 op shape is same or not, if axes is same, the
+    // shape is same too.
+    std::vector<int> squeeze_axes =
+        PADDLE_GET_CONST(std::vector<int>, squeeze->Op()->GetAttr("axes"));
+    std::vector<int> unsqueeze_axes =
+        PADDLE_GET_CONST(std::vector<int>, unsqueeze->Op()->GetAttr("axes"));
     bool elimination = (squeeze_axes == unsqueeze_axes);
     if (!elimination) return;
     // act
     auto act_op_desc = act->Op();
-    act_op_desc->RenameInput(squeeze_out->Var()->Name(), squeeze_input->Var()->Name());
+    act_op_desc->RenameInput(squeeze_out->Var()->Name(),
+                             squeeze_input->Var()->Name());
     act_out->Var()->SetShape(squeeze_input->Var()->GetShape());
     act_op_desc->Flush();
     IR_NODE_LINK_TO(squeeze_input, act);
@@ -335,11 +342,13 @@ int RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
     auto unsqueeze_out_link_nodes = unsqueeze_out->outputs;
     for (auto out_link_node : unsqueeze_out_link_nodes) {
       auto op_desc = out_link_node->Op();
-      op_desc->RenameInput(unsqueeze_out->Var()->Name(), act_out->Var()->Name());
+      op_desc->RenameInput(unsqueeze_out->Var()->Name(),
+                           act_out->Var()->Name());
       op_desc->Flush();
       IR_NODE_LINK_TO(act_out, out_link_node);
     }
-    std::unordered_set<const Node*> delete_nodes{squeeze, squeeze_out, unsqueeze, unsqueeze_out};
+    std::unordered_set<const Node*> delete_nodes{
+        squeeze, squeeze_out, unsqueeze, unsqueeze_out};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
@@ -366,21 +375,25 @@ void CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   std::vector<std::string> support_act_type{"relu",
-                     "sigmoid",
-                     "tanh",
-                     "gelu",
-                     "leaky_relu",
-                     "hard_swish",
-                     "hard_sigmoid",
-                     "relu6",
-                     "swish"};
-  std::vector<std::string> support_elementwise_type{"elementwise_add", "elementwise_sub", "elementwise_mul", "elementwise_div"};
+                                            "sigmoid",
+                                            "tanh",
+                                            "gelu",
+                                            "leaky_relu",
+                                            "hard_swish",
+                                            "hard_sigmoid",
+                                            "relu6",
+                                            "swish"};
+  std::vector<std::string> support_elementwise_type{"elementwise_add",
+                                                    "elementwise_sub",
+                                                    "elementwise_mul",
+                                                    "elementwise_div"};
   int found_subgraph_count = 0;
   for (auto act1_type : support_act_type) {
     for (auto act2_type : support_act_type) {
       for (auto elementwise_type : support_elementwise_type) {
         for (auto act1_in_branch_x : {true, false}) {
-          found_subgraph_count += ApplyImpl(graph, act1_type, act2_type, elementwise_type, act1_in_branch_x);
+          found_subgraph_count += ApplyImpl(
+              graph, act1_type, act2_type, elementwise_type, act1_in_branch_x);
         }
       }
     }
@@ -388,18 +401,20 @@ void CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
-                                const std::string& act1_type,
-                                const std::string& act2_type,
-                                const std::string& elementwise_type,
-                                const bool act1_in_branch_x) const {
+int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(
+    ir::Graph* graph,
+    const std::string& act1_type,
+    const std::string& act2_type,
+    const std::string& elementwise_type,
+    const bool act1_in_branch_x) const {
   GraphPatternDetector gpd;
-  patterns::CustomSqueezeUnsqueezeEliminationPattern pattern(gpd.mutable_pattern(),
-                                     name_scope_,
-                                     act1_type,
-                                     act2_type,
-                                     elementwise_type,
-                                     act1_in_branch_x);
+  patterns::CustomSqueezeUnsqueezeEliminationPattern pattern(
+      gpd.mutable_pattern(),
+      name_scope_,
+      act1_type,
+      act2_type,
+      elementwise_type,
+      act1_in_branch_x);
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -423,9 +438,12 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
     std::unordered_set<const Node*> delete_nodes;
-    // Judge squeeze1 && squeeze2 op shape is same or not, if axes is same, the shape is same too.
-    std::vector<int> squeeze1_axes = PADDLE_GET_CONST(std::vector<int>, squeeze1->Op()->GetAttr("axes"));
-    std::vector<int> squeeze2_axes = PADDLE_GET_CONST(std::vector<int>, squeeze2->Op()->GetAttr("axes"));
+    // Judge squeeze1 && squeeze2 op shape is same or not, if axes is same, the
+    // shape is same too.
+    std::vector<int> squeeze1_axes =
+        PADDLE_GET_CONST(std::vector<int>, squeeze1->Op()->GetAttr("axes"));
+    std::vector<int> squeeze2_axes =
+        PADDLE_GET_CONST(std::vector<int>, squeeze2->Op()->GetAttr("axes"));
     bool elimination = (squeeze1_axes == squeeze2_axes);
     if (!elimination) return;
     // act1
@@ -440,7 +458,8 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
     auto elementwise_op_desc = elementwise->Op();
     std::string squeeze2_input_var_name = squeeze2_input->Var()->Name();
     std::string squeeze2_out_var_name = squeeze2_out->Var()->Name();
-    elementwise_op_desc->RenameInput(squeeze2_out_var_name, squeeze2_input_var_name);
+    elementwise_op_desc->RenameInput(squeeze2_out_var_name,
+                                     squeeze2_input_var_name);
     elementwise_out->Var()->SetShape(squeeze2_input->Var()->GetShape());
     elementwise_op_desc->Flush();
     IR_NODE_LINK_TO(squeeze2_input, elementwise);
@@ -451,7 +470,8 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
     for (auto out_link_node : act2_out_link_nodes) {
       auto op_desc = out_link_node->Op();
       if (op_desc->Type() == "unsqueeze2") {
-        std::vector<int> unsqueeze_axes = PADDLE_GET_CONST(std::vector<int>, op_desc->GetAttr("axes"));
+        std::vector<int> unsqueeze_axes =
+            PADDLE_GET_CONST(std::vector<int>, op_desc->GetAttr("axes"));
         elimination = elimination && (unsqueeze_axes == squeeze1_axes);
         if (elimination) {
           remove_nodes.push_back(out_link_node);
@@ -462,7 +482,8 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
     if (!elimination) return;
     act2_out->Var()->SetShape(elementwise_out->Var()->GetShape());
     for (auto unsqueeze_node : remove_nodes) {
-      std::string unsqueeze_out_var_name = unsqueeze_node->Op()->Output("Out")[0];
+      std::string unsqueeze_out_var_name =
+          unsqueeze_node->Op()->Output("Out")[0];
       for (auto unsqueeze_out_node : unsqueeze_node->outputs) {
         // find unsqueeze "Out" var node
         if (unsqueeze_out_node->Name() == unsqueeze_out_var_name) {
@@ -470,14 +491,15 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
           delete_nodes.insert(unsqueeze_out_node);
           for (auto next_node : unsqueeze_out_node->outputs) {
             auto next_op_desc = next_node->Op();
-            next_op_desc->RenameInput(unsqueeze_out_var_name, act2_out_var_name);
+            next_op_desc->RenameInput(unsqueeze_out_var_name,
+                                      act2_out_var_name);
             next_op_desc->Flush();
             IR_NODE_LINK_TO(act2_out, next_node);
           }
         }
       }
     }
-    
+
     if (elimination) {
       delete_nodes.insert(squeeze1);
       delete_nodes.insert(squeeze2);
@@ -495,5 +517,7 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(redundant_squeeze_unsqueeze_node_elimination_pass, paddle::framework::ir::RedundantSqueezeUnsqueezeEliminationPass);
-REGISTER_PASS(custom_squeeze_unsqueeze_elimination_pass, paddle::framework::ir::CustomSqueezeUnsqueezeEliminationPass);
+REGISTER_PASS(redundant_squeeze_unsqueeze_node_elimination_pass,
+              paddle::framework::ir::RedundantSqueezeUnsqueezeEliminationPass);
+REGISTER_PASS(custom_squeeze_unsqueeze_elimination_pass,
+              paddle::framework::ir::CustomSqueezeUnsqueezeEliminationPass);
