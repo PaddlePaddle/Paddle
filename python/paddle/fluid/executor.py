@@ -682,13 +682,11 @@ class _StandaloneExecutor:
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            if self._plan.micro_batch_num() <= 1:
-                return tensors
             return _merge_tensors(tensors, self._plan.micro_batch_num())
         else:
             if self._plan.micro_batch_num() > 1:
-                logging.warning(
-                    "`merge_tensor` dose not support when return_numpy is False."
+                raise RuntimeError(
+                    "`merge_tensor` does not support when return_numpy is False."
                 )
             return tensors
 
