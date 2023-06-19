@@ -182,6 +182,17 @@
     backend : x
     force_backend : force_cpu
 
+- op : exponential_
+  args : (Tensor x, float lam)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : exponential
+  inplace : (x -> out)
+  backward : exponential__grad
+
 - op : eye
   args : (Scalar(int64_t) num_rows, Scalar(int64_t) num_columns = -1, DataType dtype = DataType::FLOAT32)
   output : Tensor(out)
