@@ -26,7 +26,7 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from . import set_flags, get_flags
+from . import set_flags
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
