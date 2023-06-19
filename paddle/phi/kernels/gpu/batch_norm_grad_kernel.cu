@@ -1360,7 +1360,6 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
                    float,
-                   double,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
