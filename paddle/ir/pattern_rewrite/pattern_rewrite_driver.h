@@ -64,11 +64,9 @@ class GreedyRewriteConfig {
 /// convergence or the upper limit of iterations.
 ///
 /// Returns true if the iteration converges and no patterns can be applied.
-bool ApplyPatternsGreedily(
-    IrContext* ctx,  // TODO(wilber): Region should have a context interface.
-    Region& region,  // NOLINT
-    const FrozenRewritePatternSet& patterns,
-    GreedyRewriteConfig config = GreedyRewriteConfig());
+bool ApplyPatternsGreedily(Region& region,  // NOLINT
+                           const FrozenRewritePatternSet& patterns,
+                           GreedyRewriteConfig config = GreedyRewriteConfig());
 
 /// Perform a match and rewrite process for all regions of a given op.
 inline bool ApplyPatternsGreedily(
@@ -78,8 +76,7 @@ inline bool ApplyPatternsGreedily(
   bool failed = false;
   for (uint32_t i = 0; i < op->num_regions(); ++i) {
     Region& region = op->GetRegion(i);
-    failed |=
-        !ApplyPatternsGreedily(op->ir_context(), region, patterns, config);
+    failed |= !ApplyPatternsGreedily(region, patterns, config);
   }
   return !failed;
 }

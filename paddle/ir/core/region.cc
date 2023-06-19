@@ -14,6 +14,8 @@
 
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/operation.h"
 
 namespace ir {
 Region::~Region() { clear(); }
@@ -42,5 +44,12 @@ void Region::clear() {
     delete blocks_.back();
     blocks_.pop_back();
   }
+}
+
+IrContext *Region::ir_context() const {
+  if (parent_ == nullptr) {
+    IR_THROW("Region is not attached to a container.");
+  }
+  return parent_->ir_context();
 }
 }  // namespace ir

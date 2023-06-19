@@ -138,15 +138,7 @@ void RewriterBase::EraseOp(Operation* op) {
 
 /// Find uses of `from` and replace it with `to`
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // for (auto it = from.begin(); it != from.end(); ++it) {
-  //   auto operand = from.first_use();
-  //   operand.next_use();
-  // }
-  // for (mlir::OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
-  // {
-  //   Operation* op = operand.getOwner();
-  //   UpdateRootInPlace(op, [&]() { operand.set(to); });
-  // }
+  // TODO(wilber): ir support replace.
 }
 
 // TODO(wilber): iterator maybe should support modify inplace.

@@ -207,13 +207,12 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
 
 namespace ir {
 
-bool ApplyPatternsGreedily(IrContext* ctx,
-                           Region& region,  // NOLINT
+bool ApplyPatternsGreedily(Region& region,  // NOLINT
                            const FrozenRewritePatternSet& patterns,
                            GreedyRewriteConfig config) {
   if (!config.region) config.region = &region;
 
-  GreedyPatternRewriteDriver driver(ctx, patterns, config);
+  GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
   bool converged = driver.Simplify();
   if (!converged) {
     LOG(WARNING) << "The pattern rewrite did not converge after scaning "

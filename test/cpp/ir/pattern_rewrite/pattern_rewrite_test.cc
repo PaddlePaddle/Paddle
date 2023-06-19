@@ -160,7 +160,7 @@ class TestPass : public ir::Pass {
   void Run(ir::Operation *op) override {
     ir::RewritePatternSet ps(op->ir_context());
     ir::FrozenRewritePatternSet frozen_ps(std::move(ps));
-    ir::ApplyPatternsGreedily(op->ir_context(), op->GetRegion(0), frozen_ps);
+    ir::ApplyPatternsGreedily(op->GetRegion(0), frozen_ps);
   }
 
   bool CanApplyOn(ir::Operation *op) const override {
