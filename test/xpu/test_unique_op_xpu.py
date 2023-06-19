@@ -148,6 +148,90 @@ class XPUTestUniqueOp(XPUOpTestWrapper):
                 'Counts': np.ones([0], dtype=self.dtype),
             }
 
+    class TestUniqueOpAxis1(TestUniqueOp):
+        def init_config(self):
+            self.inputs = {
+                'X': (np.random.random([3, 8, 8]) * 100.0).astype(self.dtype)
+            }
+            unique, indices, inverse, counts = np.unique(
+                self.inputs['X'],
+                return_index=True,
+                return_inverse=True,
+                return_counts=True,
+                axis=1,
+            )
+            self.attrs = {
+                'dtype': int(core.VarDesc.VarType.INT32),
+                "return_index": True,
+                "return_inverse": True,
+                "return_counts": True,
+                "axis": [1],
+                "is_sorted": True,
+            }
+            self.outputs = {
+                'Out': unique,
+                'Indices': indices,
+                "Index": inverse,
+                "Counts": counts,
+            }
+
+    class TestUniqueOpAxis2(TestUniqueOp):
+        def init_config(self):
+            self.inputs = {
+                'X': (np.random.random([1, 10]) * 100.0).astype(self.dtype)
+            }
+
+            unique, indices, inverse, counts = np.unique(
+                self.inputs['X'],
+                return_index=True,
+                return_inverse=True,
+                return_counts=True,
+                axis=0,
+            )
+
+            self.attrs = {
+                'dtype': int(core.VarDesc.VarType.INT32),
+                "return_index": True,
+                "return_inverse": True,
+                "return_counts": True,
+                "axis": [0],
+                "is_sorted": True,
+            }
+
+            self.outputs = {
+                'Out': unique,
+                'Indices': indices,
+                "Index": inverse,
+                "Counts": counts,
+            }
+
+    class TestUniqueOpAxisNeg(TestUniqueOp):
+        def init_config(self):
+            self.inputs = {
+                'X': (np.random.random([6, 1, 8]) * 100.0).astype(self.dtype)
+            }
+            unique, indices, inverse, counts = np.unique(
+                self.inputs['X'],
+                return_index=True,
+                return_inverse=True,
+                return_counts=True,
+                axis=-1,
+            )
+            self.attrs = {
+                'dtype': int(core.VarDesc.VarType.INT32),
+                "return_index": True,
+                "return_inverse": True,
+                "return_counts": True,
+                "axis": [-1],
+                "is_sorted": True,
+            }
+            self.outputs = {
+                'Out': unique,
+                'Indices': indices,
+                "Index": inverse,
+                "Counts": counts,
+            }
+
 
 support_types = get_xpu_op_support_types("unique")
 for stype in support_types:
