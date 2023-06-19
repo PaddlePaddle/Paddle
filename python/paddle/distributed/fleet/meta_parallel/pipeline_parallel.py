@@ -163,10 +163,6 @@ class PipelineParallel(MetaParallelBase):
             "pp_configs"
         ].enable_timer
 
-        assert (
-            not self._dp_comm_overlap and not self._sharding_comm_overlap
-        ), "Comm overlap is not supported now."
-
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
 
@@ -269,6 +265,7 @@ class PipelineParallel(MetaParallelBase):
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
+
             parameter_list = [
                 p for p in model.parameters() if not p.stop_gradient
             ]
