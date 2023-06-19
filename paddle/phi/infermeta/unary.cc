@@ -1111,6 +1111,15 @@ void ExpandInferMeta(const MetaTensor& x,
   }
 }
 
+void FillAnyLikeInferMeta(const MetaTensor& x,
+                          const Scalar& value,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out->share_lod(x);
+}
+
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
   PADDLE_ENFORCE_NE(
