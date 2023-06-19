@@ -553,7 +553,7 @@ def _set_multi_precision(optimizer, multi_precision):
     )
 
     optimizer = (
-        optimizer._inner_optimizer
+        optimizer._inner_opt
         if isinstance(optimizer, DygraphShardingOptimizer)
         else optimizer
     )
