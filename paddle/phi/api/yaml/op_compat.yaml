@@ -901,9 +901,9 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : expand (expand_v2)
-  backward : expand_grad (expand_v2_grad)
+  backward : expand_grad (expand_v2_grad), expand_double_grad(expand_v2_double_grad)
   inputs :
-    x : x
+    x : X
   attrs :
    shape : shape
   outputs :
