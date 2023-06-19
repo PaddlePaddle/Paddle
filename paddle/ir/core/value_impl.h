@@ -94,6 +94,10 @@ class alignas(8) ValueImpl {
 
   bool use_empty() const { return first_use() == nullptr; }
 
+  bool HasOneValue() const {
+    return (first_use() != nullptr) && (first_use()->next_use() == nullptr);
+  }
+
   std::string print_ud_chain();
 
  protected:

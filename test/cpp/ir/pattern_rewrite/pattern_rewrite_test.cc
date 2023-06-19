@@ -18,22 +18,12 @@
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/op_info.h"
+#include "paddle/ir/pass/pass.h"
+#include "paddle/ir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/ir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
-
-TEST(PatternBenefit, PatternBenefit) {
-  ir::PatternBenefit benefit1(1);
-  EXPECT_EQ(benefit1.benefit(), 1U);
-  ir::PatternBenefit benefit2(2);
-  EXPECT_EQ(benefit2.benefit(), 2U);
-
-  EXPECT_TRUE(benefit2 > benefit1);
-  EXPECT_TRUE(benefit2 >= benefit1);
-  EXPECT_TRUE(benefit1 < benefit2);
-  EXPECT_TRUE(benefit1 <= benefit2);
-  EXPECT_TRUE(benefit1 != benefit2);
-  ir::PatternBenefit benefit3(2);
-  EXPECT_TRUE(benefit2 == benefit3);
-}
+#include "paddle/ir/pattern_rewrite/pattern_rewrite_driver.h"
 
 // Define op1.
 class Operation1 : public ir::Op<Operation1> {
@@ -91,6 +81,21 @@ class TestPatternRewrite2 : public ir::OpRewritePattern<Operation1> {
   }
 };
 
+TEST(PatternRewrite, PatternBenefit) {
+  ir::PatternBenefit benefit1(1);
+  EXPECT_EQ(benefit1.benefit(), 1U);
+  ir::PatternBenefit benefit2(2);
+  EXPECT_EQ(benefit2.benefit(), 2U);
+
+  EXPECT_TRUE(benefit2 > benefit1);
+  EXPECT_TRUE(benefit2 >= benefit1);
+  EXPECT_TRUE(benefit1 < benefit2);
+  EXPECT_TRUE(benefit1 <= benefit2);
+  EXPECT_TRUE(benefit1 != benefit2);
+  ir::PatternBenefit benefit3(2);
+  EXPECT_TRUE(benefit2 == benefit3);
+}
+
 TEST(RewritePattern, OpRewritePattern) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
@@ -114,3 +119,54 @@ TEST(RewritePattern, OpRewritePattern) {
   EXPECT_EQ(ps.native_patterns()[0]->benefit(), 2U);
   EXPECT_EQ(ps.native_patterns()[1]->benefit(), 2U);
 }
+
+// TODO(wilber): Add actual case.
+TEST(PatternRewrite, PatternApplicator) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+  test_dialect->RegisterOp<Operation1>();
+  ir::RewritePatternSet ps(ctx);
+  ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
+  ir::FrozenRewritePatternSet frozen_set(std::move(ps));
+  ir::PatternApplicator applicator(frozen_set);
+  applicator.ApplyDefaultCostModel();
+}
+
+// TODO(wilber): Add actual case.
+TEST(PatternRewrite, FrozenRewritePatternSet) {
+  ir::FrozenRewritePatternSet frozen_set;
+  EXPECT_TRUE(frozen_set.match_any_op_native_patterns().empty());
+  EXPECT_TRUE(frozen_set.op_specific_native_patterns().empty());
+
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+  auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+  test_dialect->RegisterOp<Operation1>();
+  ir::RewritePatternSet ps(ctx);
+  ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
+
+  ir::FrozenRewritePatternSet frozen_set2(std::move(ps));
+  EXPECT_TRUE(frozen_set2.match_any_op_native_patterns().empty());
+  const auto &pattern_maps = frozen_set2.op_specific_native_patterns();
+  EXPECT_EQ(pattern_maps.size(), 1U);
+  EXPECT_EQ(pattern_maps.at(ctx->GetRegisteredOpInfo("test.Operation1")).size(),
+            2U);
+}
+
+class TestPass : public ir::Pass {
+ public:
+  TestPass() : ir::Pass("TestPass", 1) {}
+  void Run(ir::Operation *op) override {
+    ir::RewritePatternSet ps(op->ir_context());
+    ir::FrozenRewritePatternSet frozen_ps(std::move(ps));
+    ir::ApplyPatternsGreedily(op->ir_context(), op->GetRegion(0), frozen_ps);
+  }
+
+  bool CanApplyOn(ir::Operation *op) const override {
+    return op->name() == "builtin.module" && op->num_regions() > 0;
+  }
+};
+
+// TODO(wilber): Add a normal test.
+TEST(PatternRewrite, GreedyPatternRewriteDriver) {}

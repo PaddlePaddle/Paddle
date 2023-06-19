@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <sys/types.h>
+#include <cstdint>
 #include <functional>
 #include <initializer_list>
 #include <memory>
@@ -257,15 +259,16 @@ class RewriterBase : public Builder {
  public:
   // TODO(wilber): Supplementary methods of block and region.
 
-  // TODO(wilber): Support ValueRange.
-  // virtual void ReplaceOpWithIf(Operation* op,
-  //                              ValueRange new_values,
-  //                              bool* all_uses_replaced,
-  //                              std::function<bool(OpOperand&)> functor);
-  // void ReplaceOpWithIf(Operation* op,
-  //                      ValueRange new_values,
-  //                      std::function<bool(OpOperand&)> functor);
-  // virtual void ReplaceOp(Operation* op, ValueRange new_values);
+  virtual void ReplaceOpWithIf(Operation* op,
+                               const std::vector<Value>& new_values,
+                               bool* all_uses_replaced,
+                               std::function<bool(OpOperand&)> functor);
+
+  void ReplaceOpWithIf(Operation* op,
+                       const std::vector<Value>& new_values,
+                       std::function<bool(OpOperand&)> functor);
+
+  virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
 
   // virtual void ReplaceOpWithNewOp()
 
@@ -293,9 +296,12 @@ class RewriterBase : public Builder {
 
   virtual ~RewriterBase();
 
-  // virtual void NotifyRootReplaced(Operation* op, ValueRange replacement) {}
+  virtual void NotifyRootReplaced(Operation* op,
+                                  const std::vector<Value>& replacement) {}
 
   virtual void NotifyOperationRemoved(Operation* op) {}
+
+  virtual void NotifyOperationInserted(Operation* op) {}
 
   // virtual bool NotifyMatchFailure()
 

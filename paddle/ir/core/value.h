@@ -150,6 +150,10 @@ class Value {
 
   OpOperand first_use() const;
 
+  bool use_empty() const;
+
+  bool HasOneValue() const;
+
   friend struct std::hash<Value>;
 
  protected:

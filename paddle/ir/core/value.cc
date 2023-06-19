@@ -76,6 +76,10 @@ Value::use_iterator Value::end() const { return Value::use_iterator(); }
 
 OpOperand Value::first_use() const { return impl()->first_use(); }
 
+bool Value::use_empty() const { return impl()->use_empty(); }
+
+bool Value::HasOneValue() const { return impl()->HasOneValue(); }
+
 // OpResult
 bool OpResult::classof(Value value) {
   return ir::isa<detail::OpResultImpl>(value.impl());

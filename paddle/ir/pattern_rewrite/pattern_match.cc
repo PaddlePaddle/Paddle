@@ -90,40 +90,59 @@ RewritePattern::~RewritePattern() = default;
 //===----------------------------------------------------------------------===//
 RewriterBase::~RewriterBase() = default;
 
-// TODO(wilber): value support replace method.
-// void RewriterBase::ReplaceOpWithIf(Operation* op,
-//                                    ValueRange new_values,
-//                                    bool* all_uses_replaced,
-//                                    std::function<bool(OpOperand&)> functor) {
-//   // assert(op->num_results() == new_values.size() && "incorrect number of
-//   values to replace operation"); NotifyRootReplaced(op, new_values); bool
-//   replace_all_uses = true; for (uint32_t i = 0; i < op->num_results(); ++i) {
-//     // op->result(0)
-//   }
-// }
-// void RewriterBase::ReplaceOpWithIf(Operation* op,
-//                        ValueRange new_values,
-//                        std::function<bool(OpOperand&)> functor) {
-//   ReplaceOpWithIf(op, new_values, nullptr, functor);
-// }
+void RewriterBase::ReplaceOpWithIf(Operation* op,
+                                   const std::vector<Value>& new_values,
+                                   bool* all_uses_replaced,
+                                   std::function<bool(OpOperand&)> functor) {
+  assert(op->num_results() == new_values.size() &&
+         "incorrect number of values to replace operation");
+  NotifyRootReplaced(op, new_values);
 
-// TODO(wilber): support erase.
-// void ReplaceOp(Operation* op, ValueRange new_values) {
-//   NotifyRootReplaced(op, new_values);
-//   assert(op->num_results() == new_values.size() && "incorrect # of
-//   replacement values"); op->ReplaceAllUsesWith(new_values);
-//   NotifyOperationRemoved(op);
-//   op->erase();
-// }
-void RewriterBase::EraseOp(Operation* op) {
-  //   assert(op->use_empty() && "expected 'op' to have no uses");
-  //   NotifyOperationRemoved(op);
-  //   op->erase();
+  // Replace each use of the results when the functor is true.
+  bool replace_all_uses = true;
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    auto src_res = op->result(i);
+    // TODO(wilber): value support replace method.
+    // src_res.ReplaceUsesWithIf(new_values[i], functor);
+    replace_all_uses &= src_res.use_empty();
+  }
+  if (replace_all_uses) {
+    *all_uses_replaced = replace_all_uses;
+  }
 }
 
+void RewriterBase::ReplaceOpWithIf(Operation* op,
+                                   const std::vector<Value>& new_values,
+                                   std::function<bool(OpOperand&)> functor) {
+  ReplaceOpWithIf(op, new_values, nullptr, functor);
+}
+
+void RewriterBase::ReplaceOp(Operation* op,
+                             const std::vector<Value>& new_values) {
+  NotifyRootReplaced(op, new_values);
+  assert(op->num_results() == new_values.size() &&
+         "incorrect # of replacement values");
+  // TODO(wilber): ir support replace method.
+  // op->ReplaceAllUsesWith(new_values);
+  NotifyOperationRemoved(op);
+  // TODO(wilber): ir support erase method.
+  // op->erase();
+}
+
+void RewriterBase::EraseOp(Operation* op) {
+  assert(op->use_empty() && "expected 'op' to have no uses");
+  NotifyOperationRemoved(op);
+  // TODO(wilber): ir support erase method.
+  // op->erase();
+}
+
+/// Find uses of `from` and replace it with `to`
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // from.
-  // for (OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
+  // for (auto it = from.begin(); it != from.end(); ++it) {
+  //   auto operand = from.first_use();
+  //   operand.next_use();
+  // }
+  // for (mlir::OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
   // {
   //   Operation* op = operand.getOwner();
   //   UpdateRootInPlace(op, [&]() { operand.set(to); });
@@ -135,8 +154,8 @@ void RewriterBase::ReplaceUseIf(Value from,
                                 Value to,
                                 std::function<bool(OpOperand&)> functor) {
   // for (auto it = from.begin(); it != from.end(); ++it) {
-  //   // TODO: need a lvalue.
-  //   if (functor(it.get())) {
+  // //   // TODO: need a lvalue.
+  //   if (functor(*it)) {
   //     UpdateRootInplace(it.owner(), [&](){it.get().set(to)});
   //   }
   // }
