@@ -25,6 +25,8 @@
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
@@ -93,6 +95,53 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 
 namespace paddle {
 namespace framework {
+
+class GpuPinnedVector {
+ public:
+  GpuPinnedVector() {}
+  void cpu_to_pinedcpu(void *buf, size_t len) {
+    mem_cpu_ = memory::Alloc(phi::GPUPinnedPlace(), len);
+    memcpy(reinterpret_cast<char *>(mem_cpu_->ptr()), buf, len);
+    len_ = len;
+  }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  void pinedcpu_to_gpu(paddle::gpuStream_t stream, phi::Place place) {
+    mem_gpu_ = memory::Alloc(place, len_);
+#ifdef PADDLE_WITH_CUDA
+    cudaMemcpyAsync(reinterpret_cast<char *>(mem_gpu_->ptr()),
+                    reinterpret_cast<char *>(mem_cpu_->ptr()),
+                    len_,
+                    cudaMemcpyHostToDevice,
+                    stream);
+#elif defined(PADDLE_WITH_HIP)
+    platform::GpuMemcpyAsync(reinterpret_cast<char *>(mem_gpu_->ptr()),
+                             reinterpret_cast<char *>(mem_cpu_->ptr()),
+                             len_,
+                             hipMemcpyHostToDevice,
+                             stream);
+#else
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Only supported GPU/ROCM, please compile with option WITH_GPU=ON or "
+        "WITH_ROCM=ON."));
+#endif
+  }
+#endif
+
+  template <typename Type>
+  Type *get_gpu_ptr() {
+    return reinterpret_cast<Type *>(mem_gpu_->ptr());
+  }
+  template <typename Type>
+  Type *get_cpu_ptr() {
+    return reinterpret_cast<Type *>(mem_cpu_->ptr());
+  }
+
+ private:
+  memory::allocation::AllocationPtr mem_cpu_;
+  memory::allocation::AllocationPtr mem_gpu_;
+  size_t len_;
+};
 
 const char *ToTypeName(int var_id);
 const std::type_index &VarTraitIdToTypeIndex(int var_id);
@@ -210,7 +259,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<int>,
     std::vector<float>,
     std::vector<std::string>,
-    RawTensor>;
+    RawTensor,
+    GpuPinnedVector>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");

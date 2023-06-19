@@ -70,18 +70,20 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       int batch_size = -1;
       auto inputs_tensor = ctx->GetInputVarPtrs("X");
+      uint64_t tmp_var_key = 0;
       for (size_t i = 0; i < num_inputs; ++i) {
         const auto dims = ins_dims[i];
         int rank = dims.size();
         int cur_batch_size = 0;
         framework::Variable* x_var =
             PADDLE_GET(framework::Variable*, inputs_tensor[i]);
-        const auto& x_tensor = x_var->Get<phi::DenseTensor>();
-        const auto& x_lod = x_tensor.lod();
+        const auto x_tensor = x_var->GetMutable<phi::DenseTensor>();
+        tmp_var_key += (uint64_t)(x_tensor);
+        const auto& x_lod = x_tensor->lod();
         if (x_lod.size() > 0) {
           cur_batch_size = x_lod[0].size() - 1;
         } else {
-          cur_batch_size = x_tensor.dims()[0];
+          cur_batch_size = x_tensor->dims()[0];
         }
         if (batch_size == -1) {
           batch_size = cur_batch_size;
@@ -103,6 +105,47 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
         }
         outs_dims[i] = phi::make_ddim(out_dim);
       }
+
+      // 准备lod的gpu数据，不然放到computer里面会拖垮性能
+      {
+        auto scope = ctx->GetScopePtr();
+        auto& child_scope = scope->NewScope();
+        std::string var_name = "FusedSeqpoolCVMOp_";
+        var_name.append(std::to_string(tmp_var_key));
+        auto var = child_scope.Var(var_name);
+        paddle::framework::GpuPinnedVector* pin_ptr =
+            var->GetMutable<paddle::framework::GpuPinnedVector>();
+
+        std::vector<size_t> mix_lods;
+        mix_lods.reserve(num_inputs * (batch_size + 1));
+        for (size_t i = 0; i < num_inputs; ++i) {
+          framework::Variable* x_var =
+              PADDLE_GET(framework::Variable*, inputs_tensor[i]);
+          const auto& x_tensor = x_var->Get<phi::DenseTensor>();
+          const auto& x_lod = x_tensor.lod();
+          if (x_lod.size() != 0) {
+            PADDLE_ENFORCE_EQ(x_lod.size(),
+                              1,
+                              platform::errors::PreconditionNotMet(
+                                  "The lod size of all input should be 1, "
+                                  "please cheack"));
+            PADDLE_ENFORCE_EQ(
+                x_lod[0].size(),
+                batch_size + 1,
+                platform::errors::PreconditionNotMet(
+                    "The lod[0] size of all input should be batch_size + 1, "
+                    "please cheack"));
+            mix_lods.insert(mix_lods.end(), x_lod[0].begin(), x_lod[0].end());
+          } else {
+            mix_lods.push_back(0);
+            for (int i = 0; i < x_tensor.dims()[0]; i++) {
+              mix_lods.push_back(i + 1);
+            }
+          }
+        }
+        pin_ptr->cpu_to_pinedcpu(mix_lods.data(),
+                                 mix_lods.size() * sizeof(size_t));
+      }
     } else {
       for (size_t i = 0; i < num_inputs; ++i) {
         const auto dims = ins_dims[i];
@@ -116,7 +159,6 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
                   "'X' tensor must be larger than 2.",
                   i));
         }
-        // input lod is not accessible here
         std::vector<int64_t> out_dim;
         if (use_cvm) {
           out_dim = {-1, dims[rank - 1]};
@@ -244,6 +286,70 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < x_dims.size(); ++i) {
       ctx->ShareLoD("X", framework::GradVarName("X"), i, i);
       ctx->ShareDim("X", framework::GradVarName("X"), i, i);
+    }
+
+    // 准备lod的gpu数据，不然放到computer里面会拖垮性能
+    if (ctx->IsRuntime()) {
+      auto inputs_tensor = ctx->GetOutputVarPtrs(framework::GradVarName("X"));
+      size_t num_inputs = inputs_tensor.size();
+      uint64_t tmp_var_key = 0;
+      framework::Variable* x_var =
+          PADDLE_GET(framework::Variable*, inputs_tensor[0]);
+      const phi::DenseTensor* x_tensor = x_var->GetMutable<phi::DenseTensor>();
+      int batch_size = x_tensor->lod().size() ? x_tensor->lod()[0].size() - 1
+                                              : x_tensor->dims()[0];
+
+      std::vector<size_t> mix_lods;
+      mix_lods.reserve(num_inputs * (batch_size + 1));
+      for (size_t i = 0; i < num_inputs; i++) {
+        x_var = PADDLE_GET(framework::Variable*, inputs_tensor[i]);
+        x_tensor = x_var->GetMutable<phi::DenseTensor>();
+        tmp_var_key += (uint64_t)(x_tensor);
+        const auto& x_lod = x_tensor->lod();
+        if (x_lod.size() != 0) {
+          PADDLE_ENFORCE_EQ(x_lod.size(),
+                            1,
+                            platform::errors::PreconditionNotMet(
+                                "The lod size of all in_grad should be 1, "
+                                "please cheack"));
+          PADDLE_ENFORCE_EQ(
+              x_lod[0].size(),
+              batch_size + 1,
+              platform::errors::PreconditionNotMet(
+                  "The lod[0] size of all in_grad should be batch_size + 1, "
+                  "please cheack"));
+          mix_lods.insert(mix_lods.end(), x_lod[0].begin(), x_lod[0].end());
+        } else {
+          mix_lods.push_back(0);
+          for (int i = 0; i < x_tensor->dims()[0]; i++) {
+            mix_lods.push_back(i + 1);
+          }
+        }
+        int cur_batch_size = x_tensor->lod().size()
+                                 ? x_tensor->lod()[0].size() - 1
+                                 : x_tensor->dims()[0];
+        PADDLE_ENFORCE_EQ(batch_size,
+                          cur_batch_size,
+                          platform::errors::PreconditionNotMet(
+                              "The batch size of all in_grad should be same, "
+                              "please cheack, last batchsize is %d, current "
+                              "batchsize is %d",
+                              batch_size,
+                              cur_batch_size));
+      }
+      PADDLE_ENFORCE_EQ(mix_lods.size(),
+                        num_inputs * (batch_size + 1),
+                        platform::errors::PreconditionNotMet("please cheack"));
+
+      std::string var_name = "FusedSeqpoolCVMGradOp_";
+      var_name.append(std::to_string(tmp_var_key));
+      auto scope = ctx->GetScopePtr();
+      auto& child_scope = scope->NewScope();
+      auto var = child_scope.Var(var_name);
+      paddle::framework::GpuPinnedVector* pin_ptr =
+          var->GetMutable<paddle::framework::GpuPinnedVector>();
+      pin_ptr->cpu_to_pinedcpu(mix_lods.data(),
+                               mix_lods.size() * sizeof(size_t));
     }
   }
 

@@ -191,6 +191,25 @@ std::string Scope::Rename(const std::string& origin_name) const {
   return new_name;
 }
 
+std::vector<Variable*> Scope::FindVarFromChild(const std::string& name) const {
+  std::vector<Variable*> ret;
+  {
+    SCOPE_VARS_READER_LOCK
+    auto it = vars_.find(name);
+    if (it != vars_.end()) {
+      ret.push_back(it->second.get());
+    }
+  }
+  {
+    SCOPE_KIDS_READER_LOCK
+    for (Scope* s : kids_) {
+      auto child_ret = s->FindVarFromChild(name);
+      ret.insert(ret.end(), child_ret.begin(), child_ret.end());
+    }
+  }
+  return ret;
+}
+
 Variable* Scope::VarInternal(const std::string& name) {
   auto* v = FindVarLocally(name);
   if (v != nullptr) return v;
