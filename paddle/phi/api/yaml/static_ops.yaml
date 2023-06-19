@@ -203,6 +203,16 @@
     param : [x, axis, keepdim, reduce_all]
   backward : frobenius_norm_grad
 
+- op : full_like
+  args : (Tensor x, Scalar value = 0.0, DataType dtype = DataType::UNDEFINED)
+  output: Tensor(out)
+  infer_meta :
+    func : FillAnyLikeInferMeta
+  kernel :
+    func : full_like
+    param : [x, value, dtype]
+    data_type : dtype > x
+
 - op : gaussian
   args : (IntArray shape = {}, float mean = .0f, float std = 1.0f, int seed = 0, DataType dtype = DataType::FLOAT32)
   output: Tensor(out)
