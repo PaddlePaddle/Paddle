@@ -261,7 +261,6 @@ endif()
 
 ########################### include third_party according to flags ###############################
 
-
 # cinn_only includes third-party libraries separately
 if(CINN_ONLY)
   include(external/zlib)

@@ -134,6 +134,7 @@ cinn_cc_library(
   ${cinnapi_src}
   DEPS
   glog
+  gflags
   ${llvm_libs}
   cinn_framework_proto
   param_proto
@@ -185,6 +186,7 @@ function(gen_cinncore LINKTYPE)
     ${core_src}
     DEPS
     glog
+    gflags
     ${llvm_libs}
     cinn_framework_proto
     param_proto
