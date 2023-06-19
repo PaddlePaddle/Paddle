@@ -3660,7 +3660,6 @@ function run_setup_mac(){
             else
                 exit 1
             fi
-        fi
         elif [ "$1" == "cp311-cp311" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.11" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.11/lib/
