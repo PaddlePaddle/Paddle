@@ -730,7 +730,7 @@ struct FeedOpTranscriber : public OpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     ir::AttributeMap attribute_map = {
-        {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
+        {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
     };
 
     return attribute_map;
@@ -754,7 +754,7 @@ struct FetchOpTranscriber : public OpTranscriber {
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     ir::AttributeMap attribute_map = {
-        {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
+        {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
     };
 
     return attribute_map;
