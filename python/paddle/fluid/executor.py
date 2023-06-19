@@ -697,24 +697,6 @@ class _StandaloneExecutor:
 
         return new_exe
 
-    def _check_fetch(self, fetch_list):
-        if fetch_list is None:
-            fetch_list = []
-
-        res = []
-        for fetch_var in fetch_list:
-            if isinstance(fetch_var, Variable):
-                fetch_var = fetch_var.name
-            elif not isinstance(fetch_var, str):
-                raise TypeError(
-                    "Required fetch_var shall be str|Variable, but received {}".format(
-                        type(fetch_var).__name__
-                    )
-                )
-
-            res.append(fetch_var)
-        return res
-
 
 class _ExecutorCache:
     class _CachedData:
