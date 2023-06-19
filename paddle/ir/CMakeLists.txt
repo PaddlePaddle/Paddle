@@ -33,11 +33,6 @@ function(ir_library TARGET_NAME)
   endif()
 endfunction()
 
-if(WIN32)
-  message("Now not support dll for windows.")
-  set(WITH_SHARED_IR OFF)
-endif()
-
 if(WITH_SHARED_IR)
   add_definitions(-DIR_DLL_EXPORT)
 endif()

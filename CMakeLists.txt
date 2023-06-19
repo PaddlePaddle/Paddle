@@ -308,6 +308,10 @@ option(WITH_CUDNN_FRONTEND
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
+if(WIN32)
+  message("Now not support dll for windows.")
+  set(WITH_SHARED_IR OFF)
+endif()
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
