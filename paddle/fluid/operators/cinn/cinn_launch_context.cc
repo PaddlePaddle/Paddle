@@ -188,6 +188,14 @@ void CinnLaunchContext::BuildVarNameMap(
           cinn2paddle_varmap_.size()));
 }
 
+std::unordered_set<std::string> CinnLaunchContext::GetVisibleVarNames() const {
+  std::unordered_set<std::string> remain_var_names;
+  for (const auto& pair : paddle2cinn_varmap_) {
+    remain_var_names.insert(this->RedirectVarName(pair.first));
+  }
+  return remain_var_names;
+}
+
 void CinnLaunchContext::UpdateCapturedEnv(const framework::Scope& scope,
                                           const platform::Place& place) {
   if (std::addressof(scope) == cached_scope_ &&
@@ -547,7 +555,8 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
   return interpreter_core_.get();
 }
 
-std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
+std::string CinnLaunchContext::RedirectVarName(
+    const std::string& var_name) const {
   auto pos = var_name.find(InplaceOutSuffix);
   if (pos == std::string::npos) {
     return var_name;
