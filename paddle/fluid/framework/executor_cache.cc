@@ -307,18 +307,11 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
 
   std::shared_ptr<InterpreterCore> core = nullptr;
   if (ir_program != nullptr) {
-    std::cerr << "using ir to build" << std::endl;
-    size_t t1 = ir_program->block()->size();
-    std::cerr << "size " << t1 << std::endl;
     core.reset(new InterpreterCore(place,
                                    program_desc.Block(0),
                                    scope,
                                    std::move(ir_program),
                                    execution_config));
-
-    std::cerr << "run 1 " << std::endl;
-    core->Run({});
-    std::cerr << "run 2 " << std::endl;
   } else {
     std::cerr << "usign program desc to build " << std::endl;
     core.reset(new InterpreterCore(

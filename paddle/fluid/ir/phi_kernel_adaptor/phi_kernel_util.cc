@@ -59,7 +59,6 @@ void BuildScope(ir::Block* block,
                       .dyn_cast<ir::StrAttribute>()
                       .data();
 
-      std::cerr << "get name  " << name << std::endl;
       (*name_map)[out] = name;
       continue;
     }
@@ -74,7 +73,6 @@ void BuildScope(ir::Block* block,
       auto var_name = name_map->at(in_value);
 
       // toto, it's danger here
-      std::cerr << "change name " << var_name << "\t" << new_name << std::endl;
       scope->Rename(var_name, new_name);
       (*name_map)[in_value] = new_name;
       continue;

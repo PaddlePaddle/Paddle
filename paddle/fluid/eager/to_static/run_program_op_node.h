@@ -130,7 +130,6 @@ static void ShareTensorsIntoScope(const std::vector<Tensor> &tensors,
     if (name == "Fake_var") {
       continue;
     }
-    std::cerr << "tensor name " << name << std::endl;
     auto *var = scope->Var(name);
     CheckInputVarStatus(tensors[i]);
     // share tensor
@@ -157,7 +156,6 @@ static void ShareTensorsFromScope(
     // because we can't find them in scope. So we skip sharing these vars or
     // var@GRAD if they don't appear in global block.
     auto &name = tensors[i]->name();
-    std::cerr << "out name " << name << std::endl;
     if (name == paddle::framework::kEmptyVarName || name == "Fake_var" ||
         !global_block.HasVar(name)) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
@@ -371,9 +369,6 @@ inline void RunProgramAPI(
     details::ShareTensorsIntoScope(params, global_inner_scope);
     // Step 2. create new interpretercore
 
-    for (auto t1 : x) {
-      std::cerr << "input " << t1.name() << std::endl;
-    }
     // translator here
 
     std::unique_ptr<::ir::Program> ir_program;
@@ -388,7 +383,6 @@ inline void RunProgramAPI(
       auto name2value = program_translator.Name2ValueMap();
 
       for (auto &name : output_names) {
-        std::cerr << "name " << name << std::endl;
         auto t = name2value.at(name);
 
         std::string set_parameter_op_name(ir::SetParameterOp::name());
@@ -403,12 +397,8 @@ inline void RunProgramAPI(
         program->block()->push_back(operation);
       }
 
-      program->Print(std::cout);
-
       ir_program.reset(
           paddle::dialect::PdOpLowerToKernelPass(program.get()).release());
-
-      ir_program->Print(std::cout);
     }
 
     interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
