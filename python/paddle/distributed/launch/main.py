@@ -299,8 +299,9 @@ def launch():
         import sys
         import time
 
+        from ..auto_tuner.recorder import History_recorder
         from ..auto_tuner.tuner import AutoTuner
-        from ..auto_tuner.utils import gen_new_args
+        from ..auto_tuner.utils import gen_new_args, read_log
         from . import controllers
 
         # read user defined tuner config json
@@ -323,7 +324,11 @@ def launch():
             gpus_per_node = 8
         else:
             gpus_per_node = len(ctx.args.devices.split(","))
-        tuner_cfg["nodes"] = int(ctx.args.nnodes)
+        nnodes = ctx.args.nnodes
+        if isinstance(nnodes, str):
+            tuner_cfg["nodes"] = int(nnodes.split(":")[0])
+        else:
+            tuner_cfg["nodes"] = int(nnodes)
         tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
 
         # build AutoTuner to get new config
@@ -333,12 +338,16 @@ def launch():
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
 
+        # build history recorder
+        recorder = History_recorder()
+
         job_id = 0
         while cur_cfg:
+            ctx.status._current_status = None
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],
-                cur_cfg["pp_degree"],
+                cur_cfg["mp_degree"],
                 cur_cfg["pp_degree"],
                 cur_cfg["sharding_degree"],
                 cur_cfg["sharding_stage"],
@@ -371,19 +380,47 @@ def launch():
             signal.alarm(max_time_per_task)
             c.run()
 
+            # Process generated result
+            metric, err = read_log(
+                path=ctx.args.log_dir,
+                file="workerlog.0",
+                target_metric=tuner_cfg["metric_cfg"]["name"],
+            )
+            if err:
+                ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
+                cur_cfg['time'] = None  # for pruner use.
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+            else:
+                cur_cfg['time'] = metric  # for pruner use.
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+                # record history
+            cur_cfg['job_id'] = job_id
+            recorder.add_cfg(**cur_cfg)
+            cur_best_cfgs, err = recorder.get_best(
+                metric=tuner_cfg['metric_cfg']['name'],
+                direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+            )
+            if not err:
+                ctx.logger.info(f"Current best config: {cur_best_cfgs}")
+                recorder.store_history(
+                    ctx.args.auto_tuner_json.split(".")[0] + "_history.csv"
+                )
+            else:
+                ctx.logger.info(
+                    "Get best config failed. Currently there are no appropriate configs."
+                )
+
             new_cfg = auto_tuner.search_once()
             if new_cfg:
                 c.finalize(exit=False)
             else:
                 c.finalize(exit=True)
 
-            # NOTE: The statistics and comparison function of task results will be implemented in the future.
-
             # per task launch interval
             time.sleep(5)
 
             cur_cfg = copy.deepcopy(new_cfg)
-
+        recorder.store_history()
     else:
         from . import controllers
 
