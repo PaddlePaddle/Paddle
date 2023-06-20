@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import platform
 import unittest
 
 import numpy as np
@@ -215,8 +216,8 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         return res
 
     def check_result(self, expected_result, actual_result):
-        # FIXME(Ruibiao): The output result of Encorder layers in cpu place is unstable.
-        if self.place.is_cpu_place():
+        # FIXME(Ruibiao): The output result of Encorder layers in windows CI is unstable.
+        if platform.system().lower() == "windows":
             np.testing.assert_allclose(
                 expected_result, actual_result, atol=1e-6, rtol=1e-6
             )
