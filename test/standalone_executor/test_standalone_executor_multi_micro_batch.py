@@ -214,6 +214,15 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
 
         return res
 
+    def check_result(self, expected_result, actual_result):
+        # FIXME(Ruibiao): The output result of Encorder layers in cpu place is unstable.
+        if self.place.is_cpu_place():
+            np.testing.assert_allclose(
+                expected_result, actual_result, atol=1e-6, rtol=1e-6
+            )
+        else:
+            np.testing.assert_equal(expected_result, actual_result)
+
     def test_multi_micro_batch_run(self):
         last_res = None
 
@@ -222,9 +231,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 res = self.run_train(split, micro_batch_num)
                 if last_res:
                     for i in range(len(res)):
-                        np.testing.assert_allclose(
-                            last_res[i], res[i], atol=1e-6, rtol=1e-6
-                        )
+                        self.check_result(last_res[i], res[i])
                 last_res = res
 
 
