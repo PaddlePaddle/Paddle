@@ -1582,7 +1582,7 @@
     out : Y
 
 - op : matmul (matmul_v2)
-  backward : matmul_grad (matmul_v2_grad)
+  backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
   inputs :
     {x : X, y : Y}
   attrs :
@@ -1591,6 +1591,7 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
