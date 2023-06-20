@@ -133,6 +133,11 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
           end_t - start_t);
       VLOG(1) << "Ends to compile at thread " << std::this_thread::get_id()
               << " , time cost : " << time_sec.count() << " ms";
+
+      const auto& visible_names =
+          cinn_compiled_object.launch_context->GetVisibleVarNames();
+      VLOG(1) << "These CINN variable can visible by Paddle: "
+              << string::join_strings(visible_names, ", ");
     }
     details::DebugCinnCompiledResult(cinn_compiled_object);
     auto* launch_context = cinn_compiled_object.launch_context.get();

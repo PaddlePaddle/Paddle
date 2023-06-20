@@ -97,12 +97,14 @@ class CinnLaunchContext {
   }
 
   // Redirect the name of a Paddle variable to the orignal if it was inplaced
-  std::string RedirectVarName(const std::string& var_name);
+  std::string RedirectVarName(const std::string& var_name) const;
 
   // Return internal variable names list
   const std::unordered_set<std::string>& GetInternalVarNames() const {
     return internal_var_names_;
   }
+
+  std::unordered_set<std::string> GetVisibleVarNames() const;
 
   // Finalize all execution arguments and return the name->argument map
   const std::map<std::string, cinn_pod_value_t>& FinalizeArguments() const {
