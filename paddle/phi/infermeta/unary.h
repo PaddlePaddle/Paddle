@@ -722,4 +722,6 @@ void UnStackInferMeta(const MetaTensor& x,
                       int num,
                       std::vector<MetaTensor*> outs);
 
+void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
+
 }  // namespace phi

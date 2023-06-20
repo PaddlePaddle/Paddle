@@ -202,6 +202,8 @@ from .tensor.manipulation import index_add_  # noqa: F401
 from .tensor.manipulation import index_put  # noqa: F401
 from .tensor.manipulation import index_put_  # noqa: F401
 from .tensor.manipulation import unflatten  # noqa: F401
+from .tensor.manipulation import as_strided  # noqa: F401
+from .tensor.manipulation import unfold  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -710,6 +712,8 @@ __all__ = [  # noqa
     'polar',
     'vander',
     'unflatten',
+    'as_strided',
+    'unfold',
     'nextafter',
     'i0',
     'i0e',

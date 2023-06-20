@@ -20,13 +20,13 @@ limitations under the License. */
 namespace phi {
 
 template <typename T>
-__global__ void StridedCopyFunc(const T* input_data,
-                                T* out_data,
-                                const int64_t* input_stride,
-                                const int64_t* output_stride,
-                                const int64_t* dims,
-                                const int rank,
-                                const int64_t numel) {
+void StridedCopyFunc(const T* input_data,
+                     T* out_data,
+                     const int64_t* input_stride,
+                     const int64_t* output_stride,
+                     const int64_t* dims,
+                     const int rank,
+                     const int64_t numel) {
   int64_t tid = core_id() * cluster_num() + cluster_id();
   int64_t nthreads = core_id() * cluster_num();
 
@@ -48,6 +48,7 @@ __global__ void StridedCopyFunc(const T* input_data,
 template <typename T, typename Context>
 void StridedCopyKernel(const Context& dev_ctx,
                        const DenseTensor& input,
+                       const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {

@@ -109,7 +109,7 @@
   args : (Tensor input, Tensor out_grad, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
   output : Tensor(input_grad)
   infer_meta :
-    func : UnchangedInferMeta
+    func : StridedUnChangedInferMeta
     param : [input]
   kernel :
     func : as_strided_grad
@@ -2221,6 +2221,16 @@
   kernel :
     func : temporal_shift_grad
     data_type : out_grad
+
+- backward_op : tensor_unfold_grad
+  forward : tensor_unfold (Tensor input, int64_t axis, int64_t size, int64_t step) -> Tensor(out)
+  args : (Tensor input, Tensor out_grad, int64_t axis, int64_t size, int64_t step)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : tensor_unfold_grad
 
 - backward_op : thresholded_relu_grad
   forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
