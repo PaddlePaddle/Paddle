@@ -253,6 +253,7 @@ def broadcast_sharding_parameters(model, hcg):
         model, sharding_parallel_group, src_rank, is_model_parallel=False
     )
 
+
 def _convert_object_to_tensor(state_dict):
     _pickler = pickle.Pickler
     f = io.BytesIO()
@@ -390,6 +391,7 @@ def dp_broadcast(
                     'rng_state': meta_state_dict['rng_state'],
                 }
             )
+
 
 def unwrap_optimizer(optimizer, optimizer_instances=()):
     _inner_opt = optimizer
