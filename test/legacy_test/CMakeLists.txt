@@ -996,6 +996,7 @@ set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
+set_tests_properties(test_paddlescience PROPERTIES TIMEOUT 120)
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_save_load_v2 PROPERTIES TIMEOUT 120)
