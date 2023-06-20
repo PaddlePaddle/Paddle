@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -42,7 +43,8 @@ class FillConstantPrimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddOutput("Y", "(Tensor), The output tensor of fill_constant_p op.");
-    AddAttr<float>("value", "(float) The value of output tensor.");
+    AddAttr<paddle::experimental::Scalar>(
+        "value", "(Scalar) The value of output tensor.");
     AddAttr<std::vector<int64_t>>(
         "shape", "(std::vector<int64_t>) The shape of output tensor.");
     AddAttr<int>("dtype", "(int) The dtype of output tensor.");
@@ -80,3 +82,11 @@ REGISTER_OPERATOR(fill_constant_p,
                   paddle::operators::FillConstantPrimOpMaker,
                   paddle::operators::FillConstantPrimOpShapeInference,
                   paddle::operators::FillConstantPrimOpVarTypeInference);
+
+REGISTER_OP_VERSION(fill_constant_p)
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade fill_constant_p, change the type of attribute [value] to Scalar
+      to support generic type)ROC",
+        paddle::framework::compatible::OpVersionDesc().ModifyAttr(
+            "value", "generic vale", 0.0));
