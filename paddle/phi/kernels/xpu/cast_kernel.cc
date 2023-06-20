@@ -33,12 +33,45 @@ void CastXPUKernelImpl(const Context& dev_ctx,
     return;
   }
 
+#if 0
+  if (x.dims().size() == 1 && x.dims()[0] <= 4) {
+    dev_ctx.Wait();
+    xpu_wait();
+    DenseTensor x_cpu(x.type());
+    phi::Copy(dev_ctx, x, phi::CPUPlace(), true, &x_cpu);
+    std::stringstream os;
+    for (size_t i = 0; i < x_cpu.numel(); i++) {
+      os << x_cpu.data<InT>()[i] << ",";
+    }
+    LOG(INFO) << "cast tid=" << gettid() << " x_dims=" << x.dims() << " x_type=" << typeid(InT).name() << "x_ptr=" << in_data << " x_data=[" << os.str() << "]"; // NOLINT
+  }
+#endif
+
   int r = xpu::cast<XPUInT, XPUOutT>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUInT*>(in_data),
                                      reinterpret_cast<XPUOutT*>(out_data),
                                      numel);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+#if 0
+  if (x.dims().size() == 1 && x.dims()[0] <= 4) {
+    dev_ctx.Wait();
+    xpu_wait();
+    DenseTensor out_cpu(out->type());
+    phi::Copy(dev_ctx, *out, phi::CPUPlace(), true, &out_cpu);
+    std::stringstream os;
+    for (size_t i = 0; i < out_cpu.numel(); i++) {
+      os << out_cpu.data<OutT>()[i] << ",";
+    }
+    LOG(INFO) << "cast tid=" << gettid() << " out_dims=" << out->dims() << " out_type="<< typeid(OutT).name() << " out_ptr=" << out_data << " out_data=[" << os.str() << "]"; // NOLINT
+  }
+#endif
+#if 0
+  dev_ctx.Wait();
+  LOG(INFO) << "check cast out tid=" << gettid();
+  phi::backends::xpu::xpu_mem_check(out_data, sizeof(OutT) * out->numel());
+#endif
 }
 
 template <typename T, typename Context>

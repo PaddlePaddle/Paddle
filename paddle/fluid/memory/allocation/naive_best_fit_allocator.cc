@@ -150,11 +150,13 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   void *p = nullptr;
 
   platform::XPUDeviceGuard guard(place.device);
-  int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+  int ret =
+      phi::backends::xpu::xpu_mem_alloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
     xpu_wait();
-    ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
+    ret =
+        phi::backends::xpu::xpu_mem_alloc(reinterpret_cast<void **>(&p), size);
   }
   PADDLE_ENFORCE_EQ(
       ret,
@@ -183,7 +185,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
   platform::XPUDeviceGuard guard(place.device);
-  xpu_free(p);
+  phi::backends::xpu::xpu_mem_free(p, size);
 #else
   PADDLE_THROW(
       platform::errors::PermissionDenied("'XPUPlace' is not supported."));

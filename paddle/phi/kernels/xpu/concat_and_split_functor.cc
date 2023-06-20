@@ -31,6 +31,7 @@ class ConcatFunctor<XPUContext, T> {
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
+    exit(-1);
     using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = context.GetPlace().GetDeviceId();
     XPUDeviceGuard guard(dev_id);
@@ -77,6 +78,7 @@ class SplitFunctor<XPUContext, T> {
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
+    exit(-1);
     using XPUType = typename XPUTypeTrait<T>::Type;
     int dev_id = context.GetPlace().GetDeviceId();
     XPUDeviceGuard guard(dev_id);

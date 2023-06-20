@@ -41,7 +41,7 @@ void InstanceNormKernel(const Context& dev_ctx,
   // scale
   const auto scale_ptr = scale.get_ptr();
   const float* scale_data_fp32 = nullptr;
-  DenseTensor scale_data;
+  static thread_local DenseTensor scale_data;
   if (scale_ptr == nullptr) {
     scale_data.Resize({c});
     dev_ctx.template Alloc<float>(&scale_data);
@@ -54,7 +54,7 @@ void InstanceNormKernel(const Context& dev_ctx,
   // bias
   const float* bias_data_fp32 = nullptr;
   const auto* bias_ptr = bias.get_ptr();
-  DenseTensor bias_data;
+  static thread_local DenseTensor bias_data;
   if (bias_ptr == nullptr) {
     bias_data.Resize({c});
     dev_ctx.template Alloc<float>(&bias_data);

@@ -26,12 +26,14 @@
 namespace phi {
 template <typename T>
 T* Alloc_l3(xpu::ctx_guard* RAII_GUARD, const int64_t n) {
+  exit(-1);
   T* ret = RAII_GUARD->alloc_l3<T>(n);
   return ret;
 }
 
 template <typename T, typename Context>
 T* Alloc_gm(const Context& dev_ctx, const int64_t n) {
+  exit(-1);
   DenseTensor ret_tensor;
   DDim d({n});
   ret_tensor.Resize(d);
@@ -43,12 +45,15 @@ template <typename Context, typename XPUT>
 XPUT* Alloc_l3_or_gm(const Context& dev_ctx,
                      xpu::ctx_guard* RAII_GUARD,
                      const int64_t n) {
-  XPUT* ret = Alloc_l3<XPUT>(RAII_GUARD, n);
+  /*XPUT* ret = Alloc_l3<XPUT>(RAII_GUARD, n);
   if (ret != nullptr) {
     return ret;
   }
   using T = typename XPUTypeToPhiType<XPUT>::Type;
   ret = reinterpret_cast<XPUT*>(Alloc_gm<T, Context>(dev_ctx, n));
+  return ret;*/
+  using T = typename XPUTypeToPhiType<XPUT>::Type;
+  XPUT* ret = reinterpret_cast<XPUT*>(RAII_GUARD->alloc_l3_or_gm<T>(n));
   return ret;
 }
 

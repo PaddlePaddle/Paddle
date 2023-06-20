@@ -14,11 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "xpu/bkcl.h"
 #endif
+#include <sys/syscall.h>
+#include <sys/types.h>
+#define gettid() syscall(__NR_gettid)
 
 namespace phi {
 namespace backends {
@@ -216,6 +220,118 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
       __THROW_ERROR_INTERNAL__(__summary__);                     \
     }                                                            \
   } while (0)
+
+#define XPU_CHECK_SIZE 4
+inline int xpu_mem_check(void* dev_ptr, uint64_t size) {
+#ifdef XPU_CHECK_SIZE
+  int ret = xpu_set_device(0);
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_set_device(0) failed(" << ret << ")!";
+  uint8_t* host_ptr = new uint8_t[2 * (size + XPU_CHECK_SIZE)];
+  memset(host_ptr, 1, size + XPU_CHECK_SIZE);
+  // usleep(50000);
+  ret = xpu_wait();
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_wait(0) failed(" << ret << ")!";
+  ret = xpu_memcpy(host_ptr,
+                   dev_ptr,
+                   size + XPU_CHECK_SIZE,
+                   XPUMemcpyKind::XPU_DEVICE_TO_HOST);
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_memcpy(d2h) failed(" << ret << ")!";
+  // usleep(50000);
+  ret = xpu_wait();
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_wait(0) failed(" << ret << ")!";
+  std::stringstream os;
+  for (int i = 0; i < 5 && i < size; i++) {
+    uint8_t val = host_ptr[i];
+    char str[255];
+    sprintf(str, "0x%X", val);  // NOLINT
+    os << str << ",";
+  }
+  os << " ";
+  int sum = 0;
+  for (int i = 0; i < XPU_CHECK_SIZE; i++) {
+    uint8_t val = host_ptr[size + i];
+    sum += static_cast<int32_t>(val);
+    char str[255];
+    sprintf(str, "0x%X", val);  // NOLINT
+    os << str << ",";
+  }
+  CHECK_EQ(sum, 0) << "tid=" << gettid() << ": xpu_mem_check(sum=" << sum
+                   << ") failed! dev_ptr=" << dev_ptr << " size=" << size
+                   << " data=[" << os.str() << "].";
+  // if(sum !=0) {
+  //   LOG(INFO) << "tid=" << gettid() << ": xpu_mem_check(sum=" << sum << ")
+  //   failed! dev_ptr=" << dev_ptr << " size=" << size <<  " data=[" <<
+  //   os.str() << "].";
+  // }
+  delete[] host_ptr;
+  return XPU_SUCCESS;
+#else
+  return XPU_SUCCESS;
+#endif
+}
+
+inline int xpu_mem_alloc(void** p_dev_ptr,
+                         uint64_t size,
+                         XPUMemoryKind kind = XPU_MEM_MAIN) {
+#ifdef XPU_CHECK_SIZE
+  int ret = xpu_set_device(0);
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_set_device(0) failed(" << ret << ")!";
+  ret = xpu_malloc(p_dev_ptr, size + XPU_CHECK_SIZE, kind);
+  if (ret != XPU_SUCCESS) {
+    LOG(WARNING) << "xpu memory malloc(" << size << ") failed, try again";
+    xpu_wait();
+    ret = xpu_malloc(p_dev_ptr, size + XPU_CHECK_SIZE);
+  }
+  CHECK_EQ(ret, XPU_SUCCESS) << "tid=" << gettid() << ": xpu_malloc(" << size
+                             << ") failed(" << ret << ")! no enough memory!";
+  LOG(INFO) << "tid=" << gettid() << ": xpu_mem_alloc(size=" << size
+            << ", dev_ptr=" << *p_dev_ptr << ")";
+  uint8_t* host_ptr = new uint8_t[size + XPU_CHECK_SIZE];
+  memset(host_ptr, 0, size + XPU_CHECK_SIZE);
+  // usleep(50000);
+  ret = xpu_wait();
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_wait(0) failed(" << ret << ")!";
+  ret = xpu_memcpy(*p_dev_ptr,
+                   host_ptr,
+                   size + XPU_CHECK_SIZE,
+                   XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_memcpy(h2d) failed(" << ret << ")!";
+  // usleep(50000);
+  ret = xpu_wait();
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_wait(0) failed(" << ret << ")!";
+  delete[] host_ptr;
+  return xpu_mem_check(*p_dev_ptr, size);
+#else
+  int ret = xpu_malloc(p_dev_ptr, size, kind);
+  // LOG(INFO) << "tid=" << gettid() <<  ": xpu_mem_alloc(size=" << size << ",
+  // dev_ptr=" << *p_dev_ptr << ")";
+  return ret;
+#endif
+}
+
+inline int xpu_mem_free(void* dev_ptr, uint64_t size) {
+#ifdef XPU_CHECK_SIZE
+  int ret = xpu_set_device(0);
+  CHECK_EQ(ret, XPU_SUCCESS)
+      << "tid=" << gettid() << ": xpu_set_device(0) failed(" << ret << ")!";
+  LOG(INFO) << "tid=" << gettid() << ": xpu_mem_free(size=" << size
+            << ", dev_ptr=" << dev_ptr << ")";
+  xpu_mem_check(dev_ptr, size);
+  return xpu_free(dev_ptr);
+#else
+  // LOG(INFO) << "tid=" << gettid() <<  ": xpu_mem_free(size=" << size << ",
+  // dev_ptr=" << dev_ptr << ")";
+  return xpu_free(dev_ptr);
+#endif
+}
 
 }  // namespace xpu
 }  // namespace backends

@@ -2044,6 +2044,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   /*For profiling/benchmark only*/
+  // dev_ctx->Wait();
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADLDE_WITH_ROCM)
@@ -2085,6 +2086,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // after run to avoid memory leak
   if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
     scope.DeleteScope(transfer_scope);
+    exit(-1);
   }
 }
 
@@ -2620,16 +2622,20 @@ Scope* OperatorWithKernel::PrepareData(
         if (new_expected_kernel_key) {
           if (kernel_type_for_var.backend() == phi::Backend::GPU ||
               kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+              kernel_type_for_var.backend() == phi::Backend::XPU ||
               new_expected_kernel_key->backend() == phi::Backend::GPU ||
-              new_expected_kernel_key->backend() == phi::Backend::GPUDNN) {
+              new_expected_kernel_key->backend() == phi::Backend::GPUDNN ||
+              new_expected_kernel_key->backend() == phi::Backend::XPU) {
             new_scope = TryCreateTransferScope(
                 kernel_type_for_var, *new_expected_kernel_key, &scope);
             enable_cache_transfer_scope_ = true;
           }
         } else if (kernel_type_for_var.backend() == phi::Backend::GPU ||
                    kernel_type_for_var.backend() == phi::Backend::GPUDNN ||
+                   kernel_type_for_var.backend() == phi::Backend::XPU ||
                    expected_kernel_key.backend() == phi::Backend::GPU ||
-                   expected_kernel_key.backend() == phi::Backend::GPUDNN) {
+                   expected_kernel_key.backend() == phi::Backend::GPUDNN ||
+                   expected_kernel_key.backend() == phi::Backend::XPU) {
           new_scope = TryCreateTransferScope(
               kernel_type_for_var, expected_kernel_key, &scope);
           enable_cache_transfer_scope_ = true;

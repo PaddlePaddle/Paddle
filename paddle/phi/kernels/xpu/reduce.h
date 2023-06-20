@@ -155,6 +155,7 @@ void XPUReduce(const DeviceContext& dev_ctx,
               dev_ctx, x, out, xdims, reduce_dims);
         }));
   } else {
+    exit(-1);
     // cast x tensor to out_dtype
     auto tmp_tensor = phi::Cast<T, DeviceContext>(dev_ctx, x, out_dtype);
 
