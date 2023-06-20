@@ -152,7 +152,7 @@ class Value {
 
   bool use_empty() const;
 
-  bool HasOneValue() const;
+  bool HasOneUse() const;
 
   friend struct std::hash<Value>;
 

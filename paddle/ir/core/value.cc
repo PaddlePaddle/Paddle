@@ -78,7 +78,7 @@ OpOperand Value::first_use() const { return impl()->first_use(); }
 
 bool Value::use_empty() const { return impl()->use_empty(); }
 
-bool Value::HasOneValue() const { return impl()->HasOneValue(); }
+bool Value::HasOneUse() const { return impl()->HasOneUse(); }
 
 // OpResult
 bool OpResult::classof(Value value) {
