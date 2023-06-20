@@ -5046,7 +5046,7 @@ def unfold(x, axis, size, step, name=None):
             out = paddle.unfold(0, 2, 4)
             print(out) # [[0, 1], [4, 5]]
     """
-    return _C_ops.unfold(x, axis, size, step)
+    return _C_ops.tensor_unfold(x, axis, size, step)
 
 
 # TODO(dev): We need avoid implementing it by this way.

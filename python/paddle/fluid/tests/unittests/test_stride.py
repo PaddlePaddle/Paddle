@@ -549,7 +549,7 @@ class TestStride(unittest.TestCase):
         self.assertTrue(np.allclose(x.numpy(), x_np))
 
         out = paddle.unfold(x, 0, 2, 4)
-        np_out = np.concatenate((x_np[0:2], x_np[4:6]))
+        np_out = np.stack((x_np[0:2], x_np[4:6]))
 
         self.assertTrue(np.allclose(out.numpy(), np_out))
 
@@ -584,6 +584,7 @@ class TestStride(unittest.TestCase):
         self.call_chunk()
         self.call_unbind()
         self.call_as_strided()
+        self.call_unfold()
 
 
 class TestStrideCPU(TestStride):
