@@ -51,7 +51,7 @@ requirements:
 
         self.requirement_run = r"""
   run:
-    - requests>=2.20.0
+    - httpx
     - numpy>=1.13
     - protobuf>=3.20.2, <4.22.5
     - Pillow
@@ -62,7 +62,7 @@ requirements:
 
         self.requirement_run_windows = r"""
   run:
-    - requests>=2.20.0
+    - httpx
     - numpy>=1.13
     - protobuf>=3.1.0, <=3.20.0
     - Pillow
