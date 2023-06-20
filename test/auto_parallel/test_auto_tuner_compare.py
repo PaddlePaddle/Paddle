@@ -21,7 +21,7 @@ import unittest
 
 
 class TestEngineAPI(unittest.TestCase):
-    def test_auto_tuner(self):
+    def test_auto_tuner_compare(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "engine_api_dp.py")
 
@@ -72,7 +72,6 @@ class TestEngineAPI(unittest.TestCase):
         test_json_path = os.path.join(tmp_dir.name, "test.json")
         with open(test_json_path, "w") as f:
             f.write(json_object)
-
         cmd = (
             [sys.executable, "-u"]
             + coverage_args

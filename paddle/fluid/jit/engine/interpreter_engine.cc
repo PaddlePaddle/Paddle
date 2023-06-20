@@ -20,6 +20,8 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
