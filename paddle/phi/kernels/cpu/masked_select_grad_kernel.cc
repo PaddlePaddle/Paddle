@@ -21,10 +21,42 @@ namespace phi {
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
-                            const DenseTensor& x UNUSED,
+                            const DenseTensor& x,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
+  auto input_dim = x.dims();
+  auto mask_dim = mask.dims();
+  auto out_grad_dims = out_grad.dims();
+  auto x_grad_dim = x_grad->dims();
+
+  VLOG(0) << "input_dim:" << input_dim;
+  VLOG(0) << "mask_dim:" << mask_dim;
+  VLOG(0) << "out_grad_dims:" << out_grad_dims;
+  VLOG(0) << "x_grad_dim:" << x_grad_dim;
+
+  PADDLE_ENFORCE_EQ(
+      input_dim,
+      mask_dim,
+      phi::errors::InvalidArgument(
+          "The dim size of input and mask in OP(masked_selected_grad) "
+          "must be equal, but got input dim:(%ld), mask dim: "
+          "(%ld). Please check input "
+          "value.",
+          input_dim,
+          mask_dim));
+
+  PADDLE_ENFORCE_EQ(
+      input_dim,
+      x_grad_dim,
+      phi::errors::InvalidArgument(
+          "The dim size of input and x_grad in OP(masked_selected_grad) "
+          "must be equal, but got input dim:(%ld), x_grad dim: "
+          "(%ld). Please check input "
+          "value.",
+          input_dim,
+          x_grad_dim));
+
   auto* mask_data = mask.data<bool>();
   auto* input_data = out_grad.data<T>();
 
