@@ -30,6 +30,7 @@ void AsStridedGradKernel(const Context& dev_ctx,
                          int64_t offset,
                          DenseTensor* input_grad) {
   dev_ctx.Alloc(input_grad, input_grad->dtype());
+  input_grad->set_stride(DenseTensorMeta::calc_stride(input_grad->dims()));
   PD_VISIT_ALL_TYPES(input_grad->dtype(), "AsStridedGradKernel", ([&] {
                        phi::FillKernel<data_t, Context>(
                            dev_ctx, *input_grad, 0, input_grad);
@@ -46,7 +47,6 @@ void AsStridedGradKernel(const Context& dev_ctx,
                            tmp.offset(),
                            &tmp);
                      }));
-  input_grad->set_stride(DenseTensorMeta::calc_stride(input_grad->dims()));
 }
 
 }  // namespace phi
