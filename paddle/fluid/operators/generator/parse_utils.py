@@ -29,6 +29,12 @@ def to_named_dict(items: List[Dict], is_op=False) -> Dict[str, Dict]:
             item["name"] = (
                 item["name"] if item["name"][-1] != '_' else item["name"][:-1]
             )
+            if "forward" in item:
+                item["forward"]["name"] = (
+                    item["forward"]["name"]
+                    if item["forward"]["name"][-1] != '_'
+                    else item["forward"]["name"][:-1]
+                )
             name = item["name"]
             named_dict[name] = item
     else:

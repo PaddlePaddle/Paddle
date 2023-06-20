@@ -932,6 +932,15 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exponential_
+  backward : exponential__grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    lam : lambda
+
 - op : eye
   outputs :
     out : Out
