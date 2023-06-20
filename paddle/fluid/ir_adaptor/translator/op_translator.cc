@@ -377,6 +377,17 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
 
+    // Specially process TensorArray, this because we cannot distinguish it with
+    // Vector<DenseTensor> by other conditions but we cannot support it like
+    // Vector<DenseTensor>
+    if (legacy_input_vars.size() == 1) {
+      VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+      if (var->GetType() ==
+          paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        is_vector = false;
+      }
+    }
+
     // if src type is Tensor
     if (!is_vector) {
       auto defining_info = (*param_map)[legacy_input_vars[0]];
@@ -431,6 +442,21 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
 
     const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
+
+    // Specially process TensorArray, this because we cannot distinguish it with
+    // Vector<DenseTensor> by other conditions but we cannot support it like
+    // Vector<DenseTensor>
+    if (legacy_output_vars.size() == 1) {
+      VarDesc* var = block->FindVarRecursive(legacy_output_vars[0]);
+      if (var->GetType() ==
+          paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        ir::Type translated_var_type =
+            type_translator[var->GetType()](ctx, *var);
+        op_output_types.push_back(translated_var_type);
+        arg_to_idx[var->Name()] = cur_output_idx;
+        continue;
+      }
+    }
 
     // if src type is Tensor
     if (!is_vector) {
@@ -524,8 +550,8 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
     for (const auto& arg_name : args) {
       auto idx_iter = arg_to_idx.find(arg_name);
       if (idx_iter == arg_to_idx.end()) {
-        VLOG(10) << "[output recording]"
-                 << "[" << op_desc.Type() << "][skip]" << arg_name;
+        VLOG(4) << "[output recording]"
+                << "[" << op_desc.Type() << "][skip]" << arg_name;
         continue;
       }
       auto idx = idx_iter->second;
@@ -534,6 +560,17 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
 
       ir::OpResult value = operation->result(idx);
       bool generated_by_vector = value.type().isa<ir::VectorType>();
+
+      // Specially process TensorArray, this because we cannot distinguish it
+      // with Vector<DenseTensor> by other conditions but we cannot support it
+      // like Vector<DenseTensor>
+      if (args.size() == 1) {
+        VarDesc* var = op_desc.Block()->FindVarRecursive(args[0]);
+        if (var->GetType() ==
+            paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+          generated_by_vector = false;
+        }
+      }
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
       idx_in_vector++;
@@ -557,6 +594,12 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
 
   auto op_inputs = this->GenerateOperationInput(
       ctx, param_map, program, op_desc, op_info.name(), input_infos);
+
+  for (auto v : op_inputs) {
+    std::stringstream ss;
+    v.type().Print(ss);
+    VLOG(0) << "[debug]" << ss.str();
+  }
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
@@ -612,6 +655,30 @@ struct EmbeddingOpTranscriber : public OpTranscriber {
     } else if (info.name == "sparse") {
       (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
     }
+  }
+};
+
+struct IncrementOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      std::string normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::AttributeMap attribute_map = {};
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr("step")) {
+      legacy_attr = op_desc.GetAttr("step");
+      VLOG(10) << "attribute in " << op_desc.Type() << " step: "
+               << " " << legacy_attr.index();
+      ir::Attribute new_attr = attribute_translator(legacy_attr);
+      attribute_map["value"] = new_attr;
+    } else {
+      attribute_map["value"] = ir::FloatAttribute::get(ctx, 1.0f);
+    }
+
+    return attribute_map;
   }
 };
 
@@ -782,6 +849,7 @@ OpTranslator::OpTranslator() {
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
+  special_handlers["increment"] = IncrementOpTranscriber();
 }
 
 }  // namespace translator

@@ -104,3 +104,35 @@
   data_transform: null
   invoke: {func: add_n_impl, args: inputs}
   backward: add_n_grad
+
+- name: write_to_array
+  inputs:
+  - typename: Tensor
+    name: i
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: 'Tensor[]', name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  backward: write_to_array_grad
+
+- name: lod_array_length
+  inputs:
+  - typename: Tensor[]
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs: []
+  outputs:
+  - {typename: 'Tensor', name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null

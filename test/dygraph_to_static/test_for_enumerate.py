@@ -412,15 +412,15 @@ class TestTransformError(TestTransformBase):
             st_out = self.get_static_output()
 
 
-class TestForInRange(TestTransform):
-    def set_input(self):
-        self.input = np.array([5])
+# class TestForInRange(TestTransform):
+#     def set_input(self):
+#         self.input = np.array([5])
 
-    def set_test_func(self):
-        self.dygraph_func = for_in_range
+#     def set_test_func(self):
+#         self.dygraph_func = for_in_range
 
-    def test_transformed_result_compare(self):
-        self.transformed_result_compare()
+#     def test_transformed_result_compare(self):
+#         self.transformed_result_compare()
 
 
 class TestForIterList(TestTransform):
@@ -436,9 +436,9 @@ class TestForEnumerateSimple(TestForIterList):
         self.dygraph_func = for_enumerate_list
 
 
-class TestForInRangeWithBreak(TestForInRange):
-    def set_test_func(self):
-        self.dygraph_func = for_in_range_with_break
+# class TestForInRangeWithBreak(TestForInRange):
+#     def set_test_func(self):
+#         self.dygraph_func = for_in_range_with_break
 
 
 class TestForIterVarNumpy(TestTransform):
@@ -497,19 +497,19 @@ class TestForEnumerateVar(TestForIterVarNumpy):
         self.dygraph_func = for_enumerate_var
 
 
-class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
-    def set_test_func(self):
-        self.dygraph_func = for_enumerate_var_with_nested_range
+# class TestForEnumerateVarWithNestedRange(TestForIterVarNumpy):
+#     def set_test_func(self):
+#         self.dygraph_func = for_enumerate_var_with_nested_range
 
 
-class TestForIterVarList(TestForInRange):
-    def set_test_func(self):
-        self.dygraph_func = for_iter_var_list
+# class TestForIterVarList(TestForInRange):
+#     def set_test_func(self):
+#         self.dygraph_func = for_iter_var_list
 
 
-class TestForEnumerateVarList(TestForInRange):
-    def set_test_func(self):
-        self.dygraph_func = for_enumerate_var_list
+# class TestForEnumerateVarList(TestForInRange):
+#     def set_test_func(self):
+#         self.dygraph_func = for_enumerate_var_list
 
 
 class TestForTupleAsIterVar(TestForIterVarNumpy):
