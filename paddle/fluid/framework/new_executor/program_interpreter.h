@@ -68,6 +68,11 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     hookfuncs_ = hookfuncs;
   }
 
+  const std::unordered_map<::ir::Value, std::string>& ValueMape() const {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Not support Get ValueMap in program interpreter"));
+  }
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);

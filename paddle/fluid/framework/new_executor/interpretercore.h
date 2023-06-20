@@ -73,7 +73,7 @@ class InterpreterCore {
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
   const std::unordered_map<::ir::Value, std::string>& ValueMape() const {
-    return value_2_var_name_map_;
+    return impl_->ValueMape();
   }
 
  private:

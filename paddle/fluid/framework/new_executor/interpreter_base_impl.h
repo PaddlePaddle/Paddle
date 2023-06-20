@@ -36,6 +36,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/backends/device_manager.h"
 
 DECLARE_bool(new_executor_serial_run);
@@ -89,6 +90,9 @@ class InterpreterBaseImpl {
   virtual const platform::Place& GetPlace() const = 0;
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
+
+  virtual const std::unordered_map<::ir::Value, std::string>& ValueMape()
+      const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

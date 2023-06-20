@@ -307,11 +307,8 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCoreInfoToCache(
 
   std::shared_ptr<InterpreterCore> core = nullptr;
   if (ir_program != nullptr) {
-    core.reset(new InterpreterCore(place,
-                                   program_desc.Block(0),
-                                   scope,
-                                   std::move(ir_program),
-                                   execution_config));
+    core.reset(new InterpreterCore(
+        place, std::move(ir_program), scope, execution_config));
   } else {
     std::cerr << "usign program desc to build " << std::endl;
     core.reset(new InterpreterCore(
