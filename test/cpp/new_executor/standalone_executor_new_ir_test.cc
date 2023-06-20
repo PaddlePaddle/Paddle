@@ -158,6 +158,7 @@ TEST(StandaloneExecutor, run_2) {
   EXPECT_EQ(res3, true);
 }
 
+#if defined(PADDLE_WITH_CUDA)
 TEST(StandaloneExecutor, data_transfer) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
@@ -233,6 +234,7 @@ TEST(StandaloneExecutor, data_transfer) {
   EXPECT_EQ(res2, true);
   EXPECT_EQ(res3, true);
 }
+#endif
 
 }  // namespace framework
 }  // namespace paddle
