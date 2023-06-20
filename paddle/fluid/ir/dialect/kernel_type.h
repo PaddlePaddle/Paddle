@@ -66,3 +66,5 @@ class AllocatedDenseTensorType : public ir::Type {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AllocatedDenseTensorType)

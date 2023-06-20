@@ -50,14 +50,14 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
   }
   // Construct OpInfoImpl.
   VLOG(4) << "Construct OpInfoImpl at " << base_ptr << " ......";
-  OpInfo op_info = new (base_ptr) OpInfoImpl(dialect,
-                                             op_id,
-                                             op_name,
-                                             interfaces_num,
-                                             traits_num,
-                                             attributes_num,
-                                             attributes_name,
-                                             verify);
+  OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(dialect,
+                                                    op_id,
+                                                    op_name,
+                                                    interfaces_num,
+                                                    traits_num,
+                                                    attributes_num,
+                                                    attributes_name,
+                                                    verify));
   return op_info;
 }
 void OpInfoImpl::Destroy(OpInfo info) {

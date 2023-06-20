@@ -26,9 +26,9 @@ class Type;
 class Attribute;
 class Dialect;
 
-class OpInfo {
+class IR_API OpInfo {
  public:
-  constexpr OpInfo() = default;
+  OpInfo() = default;
 
   OpInfo(const OpInfo &other) = default;
 
@@ -71,15 +71,15 @@ class OpInfo {
   typename Interface::Concept *GetInterfaceImpl() const;
 
   void *AsOpaquePointer() const { return impl_; }
-  static OpInfo RecoverFromOpaquePointer(void *impl) {
-    return static_cast<OpInfoImpl *>(impl);
+  static OpInfo RecoverFromOpaquePointer(void *pointer) {
+    return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
 
   friend class OpInfoImpl;
   friend struct std::hash<OpInfo>;
 
  private:
-  OpInfo(OpInfoImpl *impl) : impl_(impl) {}  // NOLINT
+  explicit OpInfo(OpInfoImpl *impl) : impl_(impl) {}
   void *GetInterfaceImpl(TypeId interface_id) const;
 
  private:

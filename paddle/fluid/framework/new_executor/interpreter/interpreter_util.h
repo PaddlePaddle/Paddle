@@ -93,6 +93,14 @@ void BuildOpFuncList(const platform::Place& place,
                      bool use_local_scope = true,
                      bool static_build = false);
 
+void BuildOpFuncList(
+    const platform::Place& place,
+    ::ir::Block* block,
+    std::vector<OpFuncNode>* vec_func_list,
+    framework::Scope* scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const ExecutionConfig& execution_config);
+
 void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);

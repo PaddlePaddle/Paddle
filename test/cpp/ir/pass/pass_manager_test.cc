@@ -46,6 +46,8 @@ class AddOp : public ir::Op<AddOp> {
     }
   }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
 class TestPass : public ir::Pass {
  public:
