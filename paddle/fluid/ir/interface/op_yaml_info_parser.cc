@@ -34,9 +34,12 @@ bool OpYamlInfoParser::IsTensorArrtibute(size_t index) const {
   return vec_op_input_info_[index].is_mutable_attribute;
 }
 
-int OpYamlInfoParser::InputTensorNumber() const { return input_tensor_number_; }
+size_t OpYamlInfoParser::InputTensorNumber() const {
+  return input_tensor_number_;
+}
 
-const std::string& OpYamlInfoParser::AttrTypeName(std::string name) const {
+const std::string& OpYamlInfoParser::AttrTypeName(
+    const std::string& name) const {
   auto it = map_attr_info_.find(name);
 
   PADDLE_ENFORCE_NE(
@@ -46,17 +49,18 @@ const std::string& OpYamlInfoParser::AttrTypeName(std::string name) const {
   return it->second.type_name;
 }
 
-const std::vector<std::string>& OpYamlInfoParser::InferMetaTensorParam() const {
-  return vec_infer_meta_tensor_param_;
+const std::vector<std::string>& OpYamlInfoParser::InferMetaTensorParams()
+    const {
+  return vec_infer_meta_tensor_params_;
 }
-const std::vector<std::string>& OpYamlInfoParser::InferMetaAttrParam() const {
-  return vec_infer_meta_attr_param_;
+const std::vector<std::string>& OpYamlInfoParser::InferMetaAttrParams() const {
+  return vec_infer_meta_attr_params_;
 }
-const std::vector<std::string>& OpYamlInfoParser::KernelFnTensorParam() const {
-  return vec_kernel_fn_tensor_param_;
+const std::vector<std::string>& OpYamlInfoParser::KernelFnTensorParams() const {
+  return vec_kernel_fn_tensor_params_;
 }
-const std::vector<std::string>& OpYamlInfoParser::KernelFnAttrParam() const {
-  return vec_kernel_fn_attr_param_;
+const std::vector<std::string>& OpYamlInfoParser::KernelFnAttrParams() const {
+  return vec_kernel_fn_attr_params_;
 }
 
 void OpYamlInfoParser::parse() {
@@ -89,17 +93,17 @@ void OpYamlInfoParser::parse() {
 
   for (auto& name : runtime_info.infer_meta_param) {
     if (map_name2id_.count(name)) {
-      vec_infer_meta_tensor_param_.push_back(name);
+      vec_infer_meta_tensor_params_.push_back(name);
     } else {
-      vec_infer_meta_attr_param_.push_back(name);
+      vec_infer_meta_attr_params_.push_back(name);
     }
   }
 
   for (auto& name : runtime_info.kernel_param) {
     if (map_name2id_.count(name)) {
-      vec_kernel_fn_tensor_param_.push_back(name);
+      vec_kernel_fn_tensor_params_.push_back(name);
     } else {
-      vec_kernel_fn_attr_param_.push_back(name);
+      vec_kernel_fn_attr_params_.push_back(name);
     }
   }
 }

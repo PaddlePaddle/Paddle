@@ -27,13 +27,8 @@ struct OpInputInfo {
   bool optional = false;
   bool no_need_buffer = false;
   bool is_mutable_attribute = false;
-  OpInputInfo() {}
-  OpInputInfo(const OpInputInfo& input_info)
-      : name(input_info.name),
-        type_name(input_info.type_name),
-        optional(input_info.optional),
-        no_need_buffer(input_info.no_need_buffer),
-        is_mutable_attribute(input_info.is_mutable_attribute) {}
+  OpInputInfo() = default;
+  OpInputInfo(const OpInputInfo& input_info) = default;
 
   OpInputInfo(std::string name,
               std::string type_name,
@@ -52,12 +47,8 @@ struct OpOutputInfo {
   std::string type_name;
   bool optional = false;
   bool intermediate = false;
-  OpOutputInfo() {}
-  OpOutputInfo(const OpOutputInfo& output_info)
-      : name(output_info.name),
-        type_name(output_info.type_name),
-        optional(output_info.optional),
-        intermediate(output_info.intermediate) {}
+  OpOutputInfo() = default;
+  OpOutputInfo(const OpOutputInfo& output_info) = default;
   OpOutputInfo(std::string name,
                std::string type_name,
                bool optional,
@@ -72,11 +63,8 @@ struct OpAttributeInfo {
   std::string name;
   std::string type_name;
   std::string data_type;
-  OpAttributeInfo() {}
-  OpAttributeInfo(const OpAttributeInfo& attr_info)
-      : name(attr_info.name),
-        type_name(attr_info.type_name),
-        data_type(attr_info.data_type) {}
+  OpAttributeInfo() = default;
+  OpAttributeInfo(const OpAttributeInfo& attr_info) = default;
   OpAttributeInfo(std::string name,
                   std::string type_name,
                   std::string data_type)

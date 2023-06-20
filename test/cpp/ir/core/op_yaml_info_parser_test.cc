@@ -55,10 +55,10 @@ TEST(ir_op_info_test, op_op_info_test) {
 
   paddle::dialect::OpYamlInfoParser op_yaml_info_parser(op_info_res);
 
-  auto infer_meta_tensor_param = op_yaml_info_parser.InferMetaTensorParam();
-  auto infer_meta_attr_param = op_yaml_info_parser.InferMetaAttrParam();
-  auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParam();
-  auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParam();
+  auto infer_meta_tensor_param = op_yaml_info_parser.InferMetaTensorParams();
+  auto infer_meta_attr_param = op_yaml_info_parser.InferMetaAttrParams();
+  auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParams();
+  auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParams();
 
   EXPECT_EQ(infer_meta_tensor_param.size(), 1u);
   EXPECT_EQ(infer_meta_attr_param.size(), 1u);
@@ -69,5 +69,5 @@ TEST(ir_op_info_test, op_op_info_test) {
             true);
   EXPECT_EQ(op_yaml_info_parser.IsTensorArrtibute(0), true);
 
-  EXPECT_EQ(op_yaml_info_parser.InputTensorNumber(), 0);
+  EXPECT_EQ(op_yaml_info_parser.InputTensorNumber(), 0u);
 }

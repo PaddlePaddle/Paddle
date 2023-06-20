@@ -26,14 +26,14 @@ class OpYamlInfoParser {
   explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple);
 
   bool IsTensorArrtibute(size_t index) const;
-  int InputTensorNumber() const;
+  size_t InputTensorNumber() const;
 
-  const std::string& AttrTypeName(std::string name) const;
+  const std::string& AttrTypeName(const std::string& name) const;
 
-  const std::vector<std::string>& InferMetaTensorParam() const;
-  const std::vector<std::string>& InferMetaAttrParam() const;
-  const std::vector<std::string>& KernelFnTensorParam() const;
-  const std::vector<std::string>& KernelFnAttrParam() const;
+  const std::vector<std::string>& InferMetaTensorParams() const;
+  const std::vector<std::string>& InferMetaAttrParams() const;
+  const std::vector<std::string>& KernelFnTensorParams() const;
+  const std::vector<std::string>& KernelFnAttrParams() const;
 
  private:
   void parse();
@@ -48,10 +48,10 @@ class OpYamlInfoParser {
   std::map<std::string, OpAttributeInfo> map_attr_info_;
   std::map<std::string, OpOutputInfo> map_output_info_;
 
-  std::vector<std::string> vec_infer_meta_tensor_param_;
-  std::vector<std::string> vec_infer_meta_attr_param_;
-  std::vector<std::string> vec_kernel_fn_tensor_param_;
-  std::vector<std::string> vec_kernel_fn_attr_param_;
+  std::vector<std::string> vec_infer_meta_tensor_params_;
+  std::vector<std::string> vec_infer_meta_attr_params_;
+  std::vector<std::string> vec_kernel_fn_tensor_params_;
+  std::vector<std::string> vec_kernel_fn_attr_params_;
 
   int input_tensor_number_{0};
 };
