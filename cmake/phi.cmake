@@ -136,8 +136,10 @@ function(kernel_declare TARGET_LIST)
         list(GET kernel_msg 1 kernel_backend)
         list(GET kernel_msg 2 kernel_layout)
       endif()
-      set(kernel_declare_id "${kernel_declare_id}PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});")
-      if ("${KERNEL_LIST}" STREQUAL "") 
+      set(kernel_declare_id
+          "${kernel_declare_id}PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});"
+      )
+      if("${KERNEL_LIST}" STREQUAL "")
         set(first_registry "")
       else()
         string(
@@ -149,7 +151,7 @@ function(kernel_declare TARGET_LIST)
       endif()
     endwhile()
     # append kernel declare into declarations.h
-    if (NOT kernel_declare_id STREQUAL "")
+    if(NOT kernel_declare_id STREQUAL "")
       file(APPEND ${kernel_declare_file} "${kernel_declare_id}\n")
     endif()
   endforeach()
@@ -215,7 +217,7 @@ function(prune_declaration_h)
   file(APPEND ${kernel_declare_file_prune}
        "#include \"paddle/phi/core/kernel_registry.h\"\n")
 
-  set (kernel_declare_list_prune)
+  set(kernel_declare_list_prune)
   foreach(kernel_registry IN LISTS kernel_registry_list)
     if(NOT "${kernel_registry}" EQUAL "")
       foreach(kernel_name IN LISTS kernel_list)
@@ -236,9 +238,9 @@ function(prune_declaration_h)
 
   list(REMOVE_DUPLICATES kernel_declare_list_prune)
   foreach(kernel_declare_prune IN LISTS kernel_declare_list_prune)
-      file(APPEND ${kernel_declare_file_prune} "${kernel_declare_prune};\n")
+    file(APPEND ${kernel_declare_file_prune} "${kernel_declare_prune};\n")
   endforeach()
-     
+
   file(WRITE ${kernel_declare_file} "")
   file(STRINGS ${kernel_declare_file_prune} kernel_registry_list_tmp)
   foreach(kernel_registry IN LISTS kernel_registry_list_tmp)
