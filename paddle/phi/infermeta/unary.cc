@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 
-DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 namespace detail {
@@ -1112,6 +1111,15 @@ void ExpandInferMeta(const MetaTensor& x,
   if (out_rank > 0 && out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
+}
+
+void FillAnyLikeInferMeta(const MetaTensor& x,
+                          const Scalar& value,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out->share_lod(x);
 }
 
 void FillDiagonalInferMeta(
@@ -2326,37 +2334,47 @@ void NanmedianInferMeta(const MetaTensor& x,
       for (int64_t i = 0; i < x_rank; i++) {
         out_dim.push_back(1);
       }
-    } else {
-      out_dim.push_back(1);
     }
   } else {
-    std::vector<int64_t> cleaned_axis;
+    std::vector<int64_t> formated_axis;
     for (auto& axis : axis_list) {
+      if (x_rank == 0) {
+        PADDLE_ENFORCE_EQ(axis == 0 || axis == -1,
+                          true,
+                          phi::errors::InvalidArgument(
+                              "When input 0D Tensor, each element of the axis "
+                              "can only be -1, 0, None"));
+      } else {
+        PADDLE_ENFORCE_LT(axis,
+                          x_rank,
+                          errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimesion = %d. But received axis = %d.",
+                              x_rank,
+                              axis));
+        PADDLE_ENFORCE_GE(axis,
+                          -x_rank,
+                          errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimesion = %d. But received axis = %d.",
+                              x_rank,
+                              axis));
+      }
       if (axis < 0) axis += x_rank;
-
-      PADDLE_ENFORCE_LT(
-          axis,
-          x_rank,
-          errors::InvalidArgument(
-              "Attr(axis) value should be in range [-R, R-1], R is "
-              "the rank of Input(X). But received axis: %d, R: %d. "
-              "Current Input(X)'s shape is=[%s].",
-              axis,
-              x_rank,
-              x_dim));
-
       PADDLE_ENFORCE_EQ(
-          std::find(cleaned_axis.begin(), cleaned_axis.end(), axis),
-          cleaned_axis.end(),
+          std::find(formated_axis.begin(), formated_axis.end(), axis),
+          formated_axis.end(),
           errors::InvalidArgument("Attr(axes) has duplicated elements: %d.",
                                   static_cast<int>(axis)));
 
-      cleaned_axis.push_back(axis);
+      formated_axis.push_back(axis);
     }
 
     for (int64_t i = 0; i < x_rank; i++) {
-      if (std::find(cleaned_axis.begin(), cleaned_axis.end(), i) ==
-          cleaned_axis.end()) {
+      if (std::find(formated_axis.begin(), formated_axis.end(), i) ==
+          formated_axis.end()) {
         out_dim.push_back(x_dim[i]);
       } else if (keep_dim) {
         out_dim.push_back(1);
@@ -3838,10 +3856,6 @@ void SqueezeInferMeta(const MetaTensor& x,
 
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
-    DDim stride;
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      stride = out->stride();
-    }
     std::vector<int32_t> tmp;
     tmp.reserve(axes.GetData().size());
     std::for_each(axes.GetData().begin(),
@@ -3849,9 +3863,6 @@ void SqueezeInferMeta(const MetaTensor& x,
                   [&tmp](const int64_t& t) { tmp.push_back(t); });
     auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, false);
     out->set_dims(out_dims);
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      out->set_stride(stride);
-    }
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -4912,15 +4923,8 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     out->set_dtype(x.dtype());
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
-    DDim stride;
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      stride = out->stride();
-    }
     auto out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
     out->set_dims(out_dims);
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      out->set_stride(stride);
-    }
     if (x_dims.size() > 0 && x_dims[0] == out_dims[0]) {
       out->share_lod(x);
     }

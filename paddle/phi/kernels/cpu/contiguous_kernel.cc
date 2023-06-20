@@ -27,6 +27,7 @@ void ContiguousKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
   meta.stride = meta.calc_stride(meta.dims, meta.layout);
+  meta.offset = 0;
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();

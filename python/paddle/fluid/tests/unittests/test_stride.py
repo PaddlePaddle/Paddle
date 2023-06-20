@@ -323,6 +323,140 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    def call_split(self):
+        x_np = np.random.random(size=[3, 9, 5]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
+        np_out0, np_out1, np_out2 = np.split(x_np, 3, 1)
+
+        self.assertTrue(np.allclose(out0.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+
+        self.assertFalse(out0.is_contiguous("NCHW"))
+        self.assertFalse(out1.is_contiguous("NCHW"))
+        self.assertFalse(out2.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out0))
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+
+        out0_c = out0.contiguous()
+        out1_c = out1.contiguous()
+        out2_c = out2.contiguous()
+
+        self.assertTrue(np.allclose(out0_c.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1_c.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+
+        self.assertFalse(out0_c._is_shared_buffer_with(out0))
+        self.assertFalse(out1_c._is_shared_buffer_with(out1))
+        self.assertFalse(out2_c._is_shared_buffer_with(out2))
+
+    def call_split2(self):
+        x_np = np.random.random(size=[3, 9, 5]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
+        out = np.split(x_np, [2, 5], 1)
+        np_out0 = out[0]
+        np_out1 = out[1]
+        np_out2 = out[2]
+
+        self.assertTrue(np.allclose(out0.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+
+        self.assertFalse(out0.is_contiguous("NCHW"))
+        self.assertFalse(out1.is_contiguous("NCHW"))
+        self.assertFalse(out2.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out0))
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+
+        out0_c = out0.contiguous()
+        out1_c = out1.contiguous()
+        out2_c = out2.contiguous()
+
+        self.assertTrue(np.allclose(out0_c.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1_c.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+
+        self.assertFalse(out0_c._is_shared_buffer_with(out0))
+        self.assertFalse(out1_c._is_shared_buffer_with(out1))
+        self.assertFalse(out2_c._is_shared_buffer_with(out2))
+
+    def call_split3(self):
+        x_np = np.random.random(size=[9, 3, 5]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=0)
+        np_out0, np_out1, np_out2 = np.split(x_np, 3, 0)
+
+        self.assertTrue(np.allclose(out0.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+
+        self.assertTrue(out0.is_contiguous("NCHW"))
+        self.assertTrue(out1.is_contiguous("NCHW"))
+        self.assertTrue(out2.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out0))
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+
+        out0_c = out0.contiguous()
+        out1_c = out1.contiguous()
+        out2_c = out2.contiguous()
+
+        self.assertTrue(np.allclose(out0_c.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1_c.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+
+        self.assertTrue(out0_c._is_shared_buffer_with(out0))
+        self.assertTrue(out1_c._is_shared_buffer_with(out1))
+        self.assertTrue(out2_c._is_shared_buffer_with(out2))
+
+    def call_split4(self):
+        x_np = np.random.random(size=[9, 3, 5]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out0, out1, out2 = paddle.split(x, num_or_sections=[2, 3, 4], axis=0)
+        out = np.split(x_np, [2, 5], 0)
+        np_out0 = out[0]
+        np_out1 = out[1]
+        np_out2 = out[2]
+
+        self.assertTrue(np.allclose(out0.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+
+        self.assertTrue(out0.is_contiguous("NCHW"))
+        self.assertTrue(out1.is_contiguous("NCHW"))
+        self.assertTrue(out2.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out0))
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+
+        out0_c = out0.contiguous()
+        out1_c = out1.contiguous()
+        out2_c = out2.contiguous()
+
+        self.assertTrue(np.allclose(out0_c.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1_c.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+
+        self.assertTrue(out0_c._is_shared_buffer_with(out0))
+        self.assertTrue(out1_c._is_shared_buffer_with(out1))
+        self.assertTrue(out2_c._is_shared_buffer_with(out2))
+
     def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
@@ -337,6 +471,10 @@ class TestStride(unittest.TestCase):
         self.call_flatten()
         self.call_squeeze()
         self.call_unsqueeze()
+        self.call_split()
+        self.call_split2()
+        self.call_split3()
+        self.call_split4()
 
 
 class TestStrideCPU(TestStride):

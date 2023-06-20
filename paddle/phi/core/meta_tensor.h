@@ -42,10 +42,15 @@ class MetaTensor {
   MetaTensor() : tensor_(nullptr) {}
 
   // supporting implicit construction is easier to use
-  MetaTensor(TensorBase* tensor) : tensor_(tensor) {}  // NOLINT
-  MetaTensor(const TensorBase& tensor)                 // NOLINT
-      : tensor_(const_cast<TensorBase*>(&tensor)) {}
-  MetaTensor(TensorBase& tensor) : tensor_(&tensor) {}  // NOLINT
+  MetaTensor(TensorBase* tensor, bool strided_kernel_used = false)  // NOLINT
+      : tensor_(tensor), strided_kernel_used_(strided_kernel_used) {}
+  MetaTensor(const TensorBase& tensor,
+             bool strided_kernel_used = false)
+      : tensor_(const_cast<TensorBase*>(&tensor)),  // NOLINT
+        strided_kernel_used_(strided_kernel_used) {}
+  MetaTensor(TensorBase& tensor, bool strided_kernel_used = false)  // NOLINT
+      : tensor_(&tensor),                                           // NOLINT
+        strided_kernel_used_(strided_kernel_used) {}
 
   MetaTensor(MetaTensor&&) = default;
   MetaTensor& operator=(MetaTensor&&) = default;
@@ -93,6 +98,7 @@ class MetaTensor {
   TensorBase* tensor() const;
 
   TensorBase* tensor_ = nullptr;
+  bool strided_kernel_used_ = false;
 };
 
 }  // namespace phi
