@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/compat/op_utils.h"
+#ifdef PADDLE_WITH_XPU
 
-namespace phi {
+#include "paddle/fluid/platform/dynload/xpti.h"
 
-KernelSignature FillAnyLikeOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("full_like", {"X"}, {"value", "dtype"}, {"Out"});
-}
+namespace paddle {
+namespace platform {
+namespace dynload {
 
-}  // namespace phi
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-PD_REGISTER_BASE_KERNEL_NAME(fill_any_like, full_like);
+XPTI_ROUTINE_EACH(DEFINE_WRAP);
 
-PD_REGISTER_ARG_MAPPING_FN(fill_any_like, phi::FillAnyLikeOpArgumentMapping);
+}  // namespace dynload
+}  // namespace platform
+}  // namespace paddle
+
+#endif  // PADDLE_WITH_XPU

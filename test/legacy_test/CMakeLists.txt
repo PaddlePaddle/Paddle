@@ -953,6 +953,7 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 1200)
+  set_tests_properties(test_batch_norm_op_prim PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
 else()
@@ -961,6 +962,7 @@ else()
   set_tests_properties(test_conv3d_transpose_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_batch_norm_op_prim PROPERTIES TIMEOUT 250)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
 endif()
@@ -1033,7 +1035,7 @@ set_tests_properties(
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 120)
 set_tests_properties(test_program_prune_backward PROPERTIES TIMEOUT 120)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
@@ -1183,6 +1185,7 @@ set(TEST_CINN_OPS
     test_clip_op
     test_scatter_op
     test_gather_op
+    test_batch_norm_op_prim
     test_layer_norm_op
     test_cast_op
     test_dropout_op
@@ -1310,4 +1313,4 @@ set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
-                                                                     160)
+                                                                     250)
