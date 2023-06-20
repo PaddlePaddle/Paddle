@@ -481,9 +481,9 @@ def pow_(x, y, name=None):
     Please refer to :ref:`api_tensor_pow`.
     """
     if isinstance(y, (int, float)):
-        return _C_ops.pow(x, y)
+        return _C_ops.pow_(x, y)
     elif isinstance(y, (paddle.Tensor, Variable)):
-        return _C_ops.elementwise_pow(x, y)
+        return _C_ops.elementwise_pow_(x, y)
     else:
         raise TypeError(
             'y must be scalar or tensor type, but received: %s ' % (y.dtype)
