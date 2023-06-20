@@ -72,7 +72,6 @@ class ScaleOpConverter : public OpConverter {
         is_scale_1 = scale == 1;
       }
 
-      is_scale_1 = false;
 
       std::vector<int32_t> scale_shapes(input->getDimensions().nbDims, 1);
       auto* scale_shapes_tensor = Add1DConstantLayer(scale_shapes);
