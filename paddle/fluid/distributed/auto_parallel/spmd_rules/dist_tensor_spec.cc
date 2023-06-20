@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
@@ -28,9 +29,9 @@ DistTensorSpec::DistTensorSpec(const std::vector<int64_t>& shape,
 }
 
 DistTensorSpec::DistTensorSpec(const DistTensorSpec& spec) {
-  std::vector<int64_t> spec_shape = spec.get_shape();
+  std::vector<int64_t> spec_shape = spec.shape();
   shape_.assign(spec_shape.begin(), spec_shape.end());
-  dist_attr_.copy_from(spec.get_dist_attr());
+  dist_attr_.copy_from(spec.dist_attr());
 }
 
 DistTensorSpec::~DistTensorSpec() {}
@@ -55,13 +56,13 @@ DistTensorSpec::DistTensorSpec(const Tensor& tensor) {
 }
 
 DistTensorSpec& DistTensorSpec::operator=(const DistTensorSpec& spec) {
-  std::vector<int64_t> spec_shape = spec.get_shape();
+  std::vector<int64_t> spec_shape = spec.shape();
   shape_ = spec_shape;
-  dist_attr_.copy_from(spec.get_dist_attr());
+  dist_attr_.copy_from(spec.dist_attr());
   return *this;
 }
 
-const std::vector<int64_t>& DistTensorSpec::get_dims_mapping() const {
+const std::vector<int64_t>& DistTensorSpec::dims_mapping() const {
   return dist_attr_.dims_mapping();
 }
 
@@ -70,7 +71,7 @@ void DistTensorSpec::set_dims_mapping(
   dist_attr_.set_dims_mapping(dims_mapping);
 }
 
-const ProcessMesh& DistTensorSpec::get_process_mesh() const {
+const ProcessMesh& DistTensorSpec::process_mesh() const {
   return dist_attr_.process_mesh();
 }
 
@@ -78,14 +79,12 @@ void DistTensorSpec::set_process_mesh(const ProcessMesh& process_mesh) {
   dist_attr_.set_process_mesh(process_mesh);
 }
 
-const std::vector<int64_t>& DistTensorSpec::get_shape() const { return shape_; }
+const std::vector<int64_t>& DistTensorSpec::shape() const { return shape_; }
 
 void DistTensorSpec::set_shape(const std::vector<int64_t>& shape) {
   shape_ = shape;
 }
-const TensorDistAttr& DistTensorSpec::get_dist_attr() const {
-  return dist_attr_;
-}
+const TensorDistAttr& DistTensorSpec::dist_attr() const { return dist_attr_; }
 
 void DistTensorSpec::set_dist_attr(const TensorDistAttr& dist_attr) {
   dist_attr_ = dist_attr;

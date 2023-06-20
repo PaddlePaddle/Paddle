@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
@@ -30,12 +31,12 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
       phi::errors::InvalidArgument(
           "The size of InputSpec of matmul should be 2, but got [%d].",
           input_specs_size));
-  auto x_shape = input_specs[0].get_shape();
-  auto y_shape = input_specs[1].get_shape();
+  auto x_shape = input_specs[0].shape();
+  auto y_shape = input_specs[1].shape();
   int x_ndim = x_shape.size();
   int y_ndim = y_shape.size();
-  auto x_dist_attr_src = input_specs[0].get_dist_attr();
-  auto y_dist_attr_src = input_specs[1].get_dist_attr();
+  auto x_dist_attr_src = input_specs[0].dist_attr();
+  auto y_dist_attr_src = input_specs[1].dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(

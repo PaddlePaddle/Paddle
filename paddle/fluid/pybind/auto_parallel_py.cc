@@ -295,12 +295,11 @@ void BindAutoParallel(py::module *m) {
       .def(py::init<>())
       .def(py::init<const DistTensorSpec &>())
       .def(py::init<const std::vector<int64_t> &, const TensorDistAttr &>())
-      .def("get_dims_mapping", &DistTensorSpec::get_dims_mapping)
+      .def("dims_mapping", &DistTensorSpec::dims_mapping)
       .def("set_dims_mapping", &DistTensorSpec::set_dims_mapping)
-      .def("get_process_mesh", &DistTensorSpec::get_process_mesh)
+      .def("process_mesh", &DistTensorSpec::process_mesh)
       .def("set_process_mesh", &DistTensorSpec::set_process_mesh)
-      .def_property(
-          "shape", &DistTensorSpec::get_shape, &DistTensorSpec::set_shape)
+      .def_property("shape", &DistTensorSpec::shape, &DistTensorSpec::set_shape)
       .def("__str__", &DistTensorSpec::to_string)
       .def("__copy__",
            [](const DistTensorSpec &self) { return DistTensorSpec(self); })

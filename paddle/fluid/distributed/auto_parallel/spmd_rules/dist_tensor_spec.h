@@ -45,22 +45,22 @@ class DistTensorSpec {
   DistTensorSpec& operator=(const DistTensorSpec& spec);
 
   // get dims_mapping from dist_attr_
-  const std::vector<int64_t>& get_dims_mapping() const;
+  const std::vector<int64_t>& dims_mapping() const;
 
   // set dims_mapping in dist_attr_
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
   // get process_mesh from dist_attr_
-  const ProcessMesh& get_process_mesh() const;
+  const ProcessMesh& process_mesh() const;
 
   // set process_mesh in dist_attr_
   void set_process_mesh(const ProcessMesh& process_mesh);
 
-  const TensorDistAttr& get_dist_attr() const;
+  const TensorDistAttr& dist_attr() const;
 
   void set_dist_attr(const TensorDistAttr& dist_attr);
 
-  const std::vector<int64_t>& get_shape() const;
+  const std::vector<int64_t>& shape() const;
 
   void set_shape(const std::vector<int64_t>& shape);
 

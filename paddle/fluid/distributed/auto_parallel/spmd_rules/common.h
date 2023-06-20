@@ -19,14 +19,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/fluid/framework/attribute.h"
-// #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/utils/flat_hash_map.h"
-
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 
 namespace paddle {
 namespace distributed {
