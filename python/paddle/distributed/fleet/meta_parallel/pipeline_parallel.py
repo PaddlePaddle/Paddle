@@ -10,10 +10,9 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+import os
 import time
 import warnings
-
-import os
 
 import paddle
 from paddle import framework
@@ -714,10 +713,7 @@ class PipelineParallel(MetaParallelBase):
             for data in micro_batch_data:
                 self._check_micro_batch_data_valid(data)
         elif micro_batch_data is not None:
-            micro_batch_size = micro_batch_data.shape[0]
-            assert (
-                micro_batch_size == self.micro_batch_size
-            ), f"expected micro_batch_size {self.micro_batch_size} but get {micro_batch_size}"
+            assert isinstance(micro_batch_data, paddle.Tensor)
 
     def _broadcast_final_loss(self):
         # Since the last backward run in interleave will set the virtual rank to 0,
