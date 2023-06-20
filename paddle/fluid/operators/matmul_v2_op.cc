@@ -364,11 +364,17 @@ class MatMulV2OpTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(matmul_v2,
+                            MatMulV2InferShapeFunctor,
+                            PD_INFER_META(phi::MatmulInferMeta));
+
 REGISTER_OPERATOR(matmul_v2,
                   ops::MatMulV2Op,
                   ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
-                  ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
+                  ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>,
+                  MatMulV2InferShapeFunctor);
 
 DECLARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad,
                             MatMulV2GradInferShapeFunctor,

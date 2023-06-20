@@ -2505,7 +2505,7 @@ def calc_gradient_helper(
                         "fill_any_like",
                         {"X": [var_name]},
                         {"Out": [grad_var_name]},
-                        {'value': 0, 'dtype': 5},
+                        {'value': 0, 'dtype': targets[0].dtype},
                     )
                     block.desc.append_op().copy_from(op_desc)
                     tmp_targets.append(block.var(var_name))
