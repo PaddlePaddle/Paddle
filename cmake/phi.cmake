@@ -136,11 +136,6 @@ function(kernel_declare TARGET_LIST)
         list(GET kernel_msg 1 kernel_backend)
         list(GET kernel_msg 2 kernel_layout)
       endif()
-      # append kernel declare into declarations.h
-      file(
-        APPEND ${kernel_declare_file}
-        "PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});\n"
-      )
       set(kernel_declare_id "${kernel_declare_id}PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});")
       if ("${KERNEL_LIST}" STREQUAL "") 
         set(first_registry "")
@@ -153,7 +148,8 @@ function(kernel_declare TARGET_LIST)
             "${kernel_impl}")
       endif()
     endwhile()
-    if (NOT kernel_declare_id STREQUAL "") 
+    # append kernel declare into declarations.h
+    if (NOT kernel_declare_id STREQUAL "")
       file(APPEND ${kernel_declare_file} "${kernel_declare_id}\n")
     endif()
   endforeach()
