@@ -666,6 +666,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
                     + "("
                     + out_name
+                    + ", kernel_result.is_stride_kernel"
                     + ");\n"
                 )
                 if len(kernel_output_names) == 1:
