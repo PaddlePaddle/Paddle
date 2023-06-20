@@ -32,29 +32,42 @@
 #include "paddle/fluid/ir/dialect/pd_op.h"
 
 TEST(ir_op_info_test, op_op_info_test) {
-  std::cerr << "1" << std::endl;
-  // ir::IrContext* ctx = ir::IrContext::Instance();
-  // ir::Program program(ctx);
+  ir::IrContext* ctx = ir::IrContext::Instance();
+  ir::Program program(ctx);
 
-  // ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  // ir::Builder builder(ctx, program.block());
+  ir::Builder builder(ctx, program.block());
 
-  // auto uniform1 =
-  //     builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
-  //                                               phi::DataType::FLOAT32,
-  //                                               0.0,
-  //                                               1.0,
-  //                                               2,
-  //                                               phi::CPUPlace());
+  auto uniform1 =
+      builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
+                                                phi::DataType::FLOAT32,
+                                                0.0,
+                                                1.0,
+                                                2,
+                                                phi::CPUPlace());
 
-  // uniform1->num_operands();
-  // paddle::dialect::OpYamlInfoInterface op_info_interface =
-  //         uniform1->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+  uniform1->num_operands();
+  paddle::dialect::OpYamlInfoInterface op_info_interface =
+      uniform1->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
 
-  // auto op_info_res = op_info_interface.GetOpInfo();
+  auto op_info_res = op_info_interface.GetOpInfo();
 
-  // paddle::dialect::OpYamlInfoParser op_yaml_info_parser( op_info_res);
+  paddle::dialect::OpYamlInfoParser op_yaml_info_parser(op_info_res);
 
-  // std::cerr << op_yaml_info_parser.InputTensorNumber() << std::endl;
+  auto infer_meta_tensor_param = op_yaml_info_parser.InferMetaTensorParam();
+  auto infer_meta_attr_param = op_yaml_info_parser.InferMetaAttrParam();
+  auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParam();
+  auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParam();
+
+  EXPECT_EQ(infer_meta_tensor_param.size(), 1u);
+  EXPECT_EQ(infer_meta_attr_param.size(), 1u);
+  EXPECT_EQ(kernel_fn_tensor_param.size(), 3u);
+  EXPECT_EQ(kernel_fn_attr_param.size(), 2u);
+
+  EXPECT_EQ((op_yaml_info_parser.AttrTypeName("seed") == "ir::Int32Attribute"),
+            true);
+  EXPECT_EQ(op_yaml_info_parser.IsTensorArrtibute(0), true);
+
+  EXPECT_EQ(op_yaml_info_parser.InputTensorNumber(), 0);
 }
