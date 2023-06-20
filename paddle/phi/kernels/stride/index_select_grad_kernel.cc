@@ -43,6 +43,7 @@ void IndexSelectGradStridedKernel(const Context& dev_ctx,
                            tmp.offset(),
                            &tmp);
                      }));
+  x_grad->set_stride(DenseTensorMeta::calc_stride(x_grad->dims()));
 }
 
 }  // namespace phi

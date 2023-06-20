@@ -41,6 +41,7 @@ void RealGradStridedKernel(const Context& dev_ctx,
                            tmp.offset(),
                            &tmp);
                      }));
+  dx->set_stride(DenseTensorMeta::calc_stride(dx->dims()));
 }
 
 template <typename Context>
@@ -64,6 +65,7 @@ void ImagGradStridedKernel(const Context& dev_ctx,
                            tmp.offset(),
                            &tmp);
                      }));
+  dx->set_stride(DenseTensorMeta::calc_stride(dx->dims()));
 }
 
 }  // namespace phi

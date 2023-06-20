@@ -55,6 +55,7 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                            tmp.offset(),
                            &tmp);
                      }));
+  input_grad->set_stride(DenseTensorMeta::calc_stride(input_grad->dims()));
 }
 
 }  // namespace phi
