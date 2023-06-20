@@ -267,6 +267,7 @@ class HogwildWorker : public CPUWorkerBase {
   struct OffLoadVarInfo {
     std::vector<std::string> copy_vars;
     std::vector<std::string> backup_vars;
+    std::vector<std::pair<std::string, std::string>> cast_vars;
     template<typename TCopyer>
     void CopyInputs(const Scope* root,
                     const platform::Place& place,
@@ -333,6 +334,10 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> offload_exts_;
   std::multiset<std::string> offload_names_;
   std::unordered_map<const OperatorBase*, OffLoadVarInfo> offload_vars_;
+  // enable MixedPrecision
+  std::unordered_map<std::string, std::string> cast_fp16_vars_;
+  std::unordered_map<std::string, std::string> param_cast_vars_;
+  std::unordered_map<std::string, std::string> need_cast_vars_;
 };
 
 class DownpourWorker : public HogwildWorker {

@@ -37,6 +37,7 @@ limitations under the License. */
 #endif
 #include "paddle/utils/string/string_helper.h"
 #include "paddle/fluid/framework/program_utils.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 
 PHI_DECLARE_bool(enable_exit_when_partial_worker);
 PHI_DECLARE_int32(enable_adjust_op_order);
@@ -65,6 +66,10 @@ PHI_DEFINE_EXPORTED_int32(
     gpugraph_parallel_stream_num,
     8,
     "offload parallel copy stream num");
+PADDLE_DEFINE_EXPORTED_bool(
+    gpugraph_enable_print_op_debug,
+    false,
+    "enable print op debug ,default false");
 
 namespace paddle {
 namespace framework {
@@ -162,6 +167,18 @@ void HogwildWorker::OffLoadVarInfo::CopyInputs(const Scope* root,
                     const platform::Place& place,
                     Scope* scope,
                     TCopyer *copyer) {
+  if (!cast_vars.empty()) {
+    for (auto &obj : cast_vars) {
+      auto src_var = root->FindLocalVar(obj.second);
+      PADDLE_ENFORCE(src_var != nullptr, "root scope not found var name=%s", obj.second.c_str());
+      auto& src_tensor = src_var->Get<phi::DenseTensor>();
+      auto dest_var = scope->FindLocalVar(obj.first);
+      PADDLE_ENFORCE(dest_var != nullptr, "dest name=%s is nullptr", obj.first.c_str());
+      auto* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
+      auto dtype = framework::TransToProtoVarType(dest_tensor->dtype());
+      framework::TransDataType(src_tensor, dtype, dest_tensor);
+    }
+  }
 #if defined(PADDLE_WITH_CUDA)
   if (copy_vars.empty()) {
     return;
@@ -303,6 +320,11 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
         size_t pos = name.find(".cast_fp16");
         if (pos != std::string::npos) {
           new_name = name.substr(0, pos);
+          cast_fp16_vars_.insert(std::make_pair(name, new_name));
+          param_cast_vars_.insert(std::make_pair(new_name, name));
+          if (root_id == nccl_rank_id_) {
+            need_cast_vars_.insert(std::make_pair(name, new_name));
+          }
         } else {
           new_name = name;
         }
@@ -343,28 +365,65 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
   }
   int total_broadcast = 0;
   int remove_broadcast = 0;
+  int remove_sync_stream = 0;
+  int remove_cast_op = 0;
   std::multiset<std::string> param2refs;
+  std::multiset<std::string> out2refs;
   for (auto &op_desc : all_desc) {
     bool find = false;
-    if (is_offload_communication_ && op_desc->Type() == "c_broadcast") {
+    if (op_desc->Type() == "c_sync_calc_stream") { // remove error sync
+      auto &inputs = op_desc->Input("X");
+      std::vector<std::string> removenames;
+      for (auto &name : inputs) {
+        auto it = out2refs.find(name);
+        if (it != out2refs.end()) {
+          removenames.push_back(name);
+          continue;
+        }
+        find = true;
+        ++remove_sync_stream;
+        break;
+      }
+      if (!removenames.empty()) {
+        for (auto &name : removenames) {
+          auto it = out2refs.find(name);
+          if (it == out2refs.end()) {
+            continue;
+          }
+          out2refs.erase(it);
+        }
+      }
+    } else if (!param_cast_vars_.empty() && op_desc->Type() == "cast") { // AMP
+      auto &inputs = op_desc->Input("X");
+      for (auto &name : inputs) {
+        auto it = param_cast_vars_.find(name);
+        if (it == param_cast_vars_.end()) {
+          break;
+        }
+        find = true;
+        ++remove_cast_op;
+        break;
+      }
+    } else if (is_offload_communication_ && op_desc->Type() == "c_broadcast") {
       ++total_broadcast;
       // single node p2p copy
-      if (!is_multi_node_) {
+      if (!is_multi_node_ && cast_fp16_vars_.empty()) {
         find = true;
         ++remove_broadcast;
       } else {
-        for (auto &o : op_desc->Inputs()) {
-          for (auto &name : o.second) {
-            if (param2refs.find(name) != param2refs.end()) {
-              find = true;
-              continue;
-            }
-            param2refs.insert(name);
-          }
-          if (find) {
-            ++remove_broadcast;
+        auto &inputs = op_desc->Input("X");
+        for (auto &name : inputs) {
+          if (cast_fp16_vars_.find(name) != cast_fp16_vars_.end()) {
             break;
           }
+          if (param2refs.find(name) != param2refs.end()) {
+            find = true;
+            continue;
+          }
+          param2refs.insert(name);
+        }
+        if (find) {
+          ++remove_broadcast;
         }
       }
     } else {
@@ -383,12 +442,21 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
     }
     if (find) {
       remove_ops_.insert(op_desc);
+    } else {
+      for (auto &o : op_desc->Outputs()) {
+        for (auto &name : o.second) {
+          out2refs.insert(name);
+        }
+      }
     }
   }
   // add offload
   if (is_offload_communication_) {
     for (auto &it : params2rootid_) {
       if (it.second == nccl_rank_id_) {
+        continue;
+      }
+      if (param_cast_vars_.find(it.first) != param_cast_vars_.end()) {
         continue;
       }
       offload_names_.insert(it.first);
@@ -439,7 +507,9 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
           << ", dump fields count=" << shard_dump_fields_.size()
           << ", offload var name count=" << offload_names_.size()
           << ", total_broadcast=" << total_broadcast
-          << ", remove_broadcast=" << remove_broadcast;
+          << ", remove_broadcast=" << remove_broadcast
+          << ", remove c_sync_calc_stream=" << remove_sync_stream
+          << ", remove cast_op=" << remove_cast_op;
 }
 size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
   // offload
@@ -616,7 +686,9 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
     } else {
       total_len += get_length_func(it->second.copy_vars, out_vars);
       it->second.copy_vars.clear();
-      if (it->second.copy_vars.empty() && it->second.backup_vars.empty()) {
+      if (it->second.copy_vars.empty()
+          && it->second.backup_vars.empty()
+          && it->second.cast_vars.empty()) {
         recyle_ops.push_back(it->first);
       }
     }
@@ -762,6 +834,27 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       GetUnusedVars(block, ops_, skip_vars_, &unpersist_vars_, sharding_mode_);
   // adjust offload ops
   size_t offload_cnt = AdjustOffloadOps(program);
+  // add cast ops
+  size_t cast_cnt = 0;
+  if (!need_cast_vars_.empty()) {
+    for (size_t op_id = 0; op_id < ops_.size(); ++op_id) {
+      auto &op = ops_[op_id];
+      if (op->Type() != "c_broadcast") {
+        continue;
+      }
+      for (auto &o : op->Inputs()) {
+        for (auto &name : o.second) {
+          auto it = need_cast_vars_.find(name);
+          if (it == need_cast_vars_.end()) {
+            continue;
+          }
+          ++cast_cnt;
+          offload_vars_[op.get()].cast_vars.push_back(
+              std::make_pair(it->first, it->second));
+        }
+      }
+    }
+  }
   // debug str
   if (FLAGS_enable_dump_main_program) {
     std::ostringstream str_os;
@@ -788,6 +881,13 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
           str_os << name << ",";
         }
         str_os << "]";
+        if (!itx->second.cast_vars.empty()) {
+          str_os << ", casts:[";
+          for (auto &obj : itx->second.cast_vars) {
+            str_os << obj.second << "->" << obj.first << ",";
+          }
+          str_os << "]";
+        }
       }
       str_os << "\n";
     }
@@ -802,7 +902,8 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
           << ", skip vars count=" << skip_vars_.size()
           << ", unused vars op count=" << unused_vars_.size()
           << ", offload op count=" << offload_vars_.size()
-          << ", offload input count=" << offload_cnt;
+          << ", offload input count=" << offload_cnt
+          << ", cast count=" << cast_cnt;
 }
 inline void PrintTensor(const std::string &name,
                         const std::string &info,
@@ -841,6 +942,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   int persist_share = 0;
   int persist_reset = 0;
   int pinned_param = 0;
+  int resize_var_cnt = 0;
+  int fp16_param = 0;
   std::vector<std::string> del_var_names;
   for (auto &var : block.AllVars()) {
     auto name = var->Name();
@@ -852,6 +955,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       continue;
     }
     all_param_.push_back(name);
+    auto var_dtype = phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
     if (var->Persistable()) {
       ++persist_total;
       if (stat_var_name_map_.find(name) != stat_var_name_map_.end()) {
@@ -885,6 +989,16 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         ++persist_param;
         phi::DenseTensor *root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
+        if (root_tensor->dtype() != var_dtype) {
+          phi::DenseTensor tmp_tensor;
+          tmp_tensor.Resize(root_tensor->dims());
+          tmp_tensor.set_layout(root_tensor->layout());
+          tmp_tensor.mutable_data(root_tensor->place(), var_dtype);
+          framework::TransDataType(*root_tensor, var->GetDataType(), &tmp_tensor);
+          auto holder = tmp_tensor.MoveMemoryHolder();
+          root_tensor->ResetHolderWithType(holder, var_dtype);
+          ++fp16_param;
+        }
         if (place_ == root_tensor->place()) {
           ++persist_share;
           continue;
@@ -922,17 +1036,30 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           del_var_names.push_back(name);
 //          VLOG(0) << "unpersist need delete var name=" << name;
         }
-        // sharding vars
-        auto *ptr = thread_scope_->Var(name);
-        InitializeVariable(ptr, var->GetType());
-        // set dims
-        auto dims = phi::make_ddim(var->GetShape());
-        ptr->GetMutable<phi::DenseTensor>()->Resize(dims);
+        auto it = param_cast_vars_.find(name);
+        if (it == param_cast_vars_.end()) {
+          // sharding vars
+          auto *ptr = thread_scope_->Var(name);
+          InitializeVariable(ptr, var->GetType());
+          // set dims
+          auto dims = phi::make_ddim(var->GetShape());
+          ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(var_dtype);
+        }
       }
 #endif
     } else {
       auto *ptr = thread_scope_->Var(name);
       InitializeVariable(ptr, var->GetType());
+      // amp
+      auto it = cast_fp16_vars_.find(name);
+      if (it != cast_fp16_vars_.end()) {
+        auto desc_var = block.FindVar(it->second);
+        if (desc_var != nullptr && desc_var->IsParameter()) {
+          auto dims = phi::make_ddim(desc_var->GetShape());
+          ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(var_dtype);
+          ++resize_var_cnt;
+        }
+      }
     }
   }
   // multi node delete unused vars
@@ -943,9 +1070,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           << ", total param count=" << all_param_.size()
           << ", persist count=" << persist_total
           << ", param=" << persist_param
+          << ", fp16=" << fp16_param
           << ", share=" << persist_share
           << ", reset=" << persist_reset
           << ", pinned=" << pinned_param
+          << ", resize_var=" << resize_var_cnt
           << ", need copy param count=" << need_copy_vars_.size()
           << ", delete vars count=" << del_var_names.size();
 }
@@ -1386,6 +1515,9 @@ void HogwildWorker::TrainFiles() {
           it->second.CopyInputs(root_scope_, place_, thread_scope_, copyer.get());
         }
 #endif
+        if (FLAGS_gpugraph_enable_print_op_debug) {
+          VLOG(0) << "thread id=" << thread_id_ << ", " << op->DebugStringEx(thread_scope_);
+        }
         op->Run(*thread_scope_, place_);
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
         // offload

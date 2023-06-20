@@ -2127,23 +2127,6 @@ class ThreadShardingOptimizer(ShardingOptimizer):
                 
         for var_name in var_names:
             block._remove_var(var_name, sync=False)
-            
-        if self.user_defined_strategy.amp:
-            # amp cast in broadcast
-            for idx, op in enumerate(block.ops):
-                if op.type != "c_broadcast":
-                    continue
-                for input_name in op.desc.input_arg_names():
-                    # amp cast
-                    pos = input_name.find(".cast_fp16")
-                    if pos <= 0:
-                        continue
-                    new_name = input_name[0 : pos]
-                    op.desc._rename_input(
-                        input_name, new_name
-                    )
-                    in_var = block.var(input_name)
-                    op._set_attr("out_dtype", in_var.dtype);
         
         print("remove broadcast param count=", len(var_names))
         block._sync_with_cpp()
