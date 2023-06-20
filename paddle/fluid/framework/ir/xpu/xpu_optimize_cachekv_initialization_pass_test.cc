@@ -128,15 +128,15 @@ TEST(ApplyOptimizeDataPass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
   auto scope = new Scope();
   graph->Set("__param_scope__", scope);
-  auto pass = PassRegistry::Instance().Get(
-      "xpu_optimize_data_preparation_for_fill_pass");
+  auto pass =
+      PassRegistry::Instance().Get("xpu_optimize_cachekv_initialization_pass");
   pass->Apply(graph.get());
   int shape_num_in_graph = GetOpNum(graph->GetSubGraph(0), "shape");
   PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "shape"),
                     1,
                     platform::errors::PreconditionNotMet(
                         "graph should have 1 shape after "
-                        "xpu_optimize_data_preparation_for_fill_pass, "
+                        "xpu_optimize_cachekv_initialization_pass, "
                         "but actually has %d.",
                         shape_num_in_graph));
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
@@ -144,7 +144,7 @@ TEST(ApplyOptimizeDataPass, basic) {
                     1,
                     platform::errors::PreconditionNotMet(
                         "graph should have 1 cast after "
-                        "xpu_optimize_data_preparation_for_fill_pass, "
+                        "xpu_optimize_cachekv_initialization_pass, "
                         "but actually has %d.",
                         cast_num_in_graph));
 }
@@ -153,4 +153,4 @@ TEST(ApplyOptimizeDataPass, basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(xpu_optimize_data_preparation_for_fill_pass);
+USE_PASS(xpu_optimize_cachekv_initialization_pass);

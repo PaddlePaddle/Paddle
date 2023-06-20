@@ -31,7 +31,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class XpuOptimizeDataPreparationForFillPass : public FusePassBase {
+class XpuMultiCachekvInitializationFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -86,7 +86,7 @@ class XpuOptimizeDataPreparationForFillPass : public FusePassBase {
 
   */
   int ApplyOptimizeDataPass(ir::Graph* graph) const;
-  const std::string name_scope_{"xpu_optimize_data_preparation_for_fill_pass"};
+  const std::string name_scope_{"xpu_optimize_cachekv_initialization_pass"};
 };
 
 }  // namespace ir

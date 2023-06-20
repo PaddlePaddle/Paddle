@@ -59,7 +59,7 @@ class XpuDeleteMulDataPreparationForFillPass : public FusePassBase {
              \               /
               \             /
                \           /
-                    fill
+              fill_constant
                      |
        fused_multi_transformer_dyquant_xpu
   ------------------------------------------------------
@@ -78,19 +78,19 @@ class XpuDeleteMulDataPreparationForFillPass : public FusePassBase {
             |            \    |
             |           elementwise_add
             |                 |
+            |\                |
+            |  \            scale
+            |    \         /  |
+            |      \    /     |
+            |        \/       |
+            |       /  \      |
+            |     /      \    |
+        fill_constant    fill_constant
             |                 |
-            |                scale
-            |                 |
-             \               /
-              \             /
-               \           /
-                     fill
-                     | |
           fused_multi_transformer_dyquant_xpu
   */
   int ApplyDeleteMulDataPrePass(ir::Graph* graph) const;
-  const std::string name_scope_{
-      "xpu_delete_mul_data_preparation_for_fill_pass"};
+  const std::string name_scope_{"xpu_multi_cachekv_initialization_fuse_pass"};
 };
 
 }  // namespace ir

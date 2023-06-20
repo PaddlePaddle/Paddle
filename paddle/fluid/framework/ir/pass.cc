@@ -69,6 +69,8 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "fused_multi_transformer_xpu_pass",
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
+    "xpu_optimize_cachekv_initialization_pass",
+    "xpu_multi_cachekv_initialization_fuse_pass",
 };
 
 Graph *Pass::Apply(Graph *graph) const {

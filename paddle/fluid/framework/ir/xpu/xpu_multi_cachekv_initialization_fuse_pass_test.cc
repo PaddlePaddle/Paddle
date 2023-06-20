@@ -91,6 +91,9 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
       Data(block, "scale_b_out", {1}, false, proto::VarType::INT32);
   auto* fill_constant_b_out = Data(
       block, "fill_constant_b_out", {2, 1, 16, 1, 64}, proto::VarType::FP16);
+  std::vector<int> axes = {0};
+  std::vector<int> starts = {0};
+  std::vector<int> ends = {1};
 
   // sub1
   OpDesc* shape_a = block->AppendOp();
@@ -102,11 +105,20 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
   slice0_a->SetType("slice");
   slice0_a->SetInput("X", {shape_a_out->Name()});
   slice0_a->SetOutput("Out", {slice0_a_out->Name()});
+  slice0_a->SetAttr("axes", axes);
+  slice0_a->SetAttr("starts", starts);
+  slice0_a->SetAttr("ends", ends);
 
+  axes = {0};
+  starts = {1};
+  ends = {2};
   OpDesc* slice1_a = block->AppendOp();
   slice1_a->SetType("slice");
   slice1_a->SetInput("X", {shape_a_out->Name()});
   slice1_a->SetOutput("Out", {slice1_a_out->Name()});
+  slice1_a->SetAttr("axes", axes);
+  slice1_a->SetAttr("starts", starts);
+  slice1_a->SetAttr("ends", ends);
 
   auto* cast_a_out = AddCast(block,
                              cast_a_in,
@@ -138,15 +150,27 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
   shape_b->SetInput("X", {shape_in->Name()});
   shape_b->SetOutput("Out", {shape_b_out->Name()});
 
+  axes = {0};
+  starts = {0};
+  ends = {1};
   OpDesc* slice0_b = block->AppendOp();
   slice0_b->SetType("slice");
   slice0_b->SetInput("X", {shape_b_out->Name()});
   slice0_b->SetOutput("Out", {slice0_b_out->Name()});
+  slice0_b->SetAttr("axes", axes);
+  slice0_b->SetAttr("starts", starts);
+  slice0_b->SetAttr("ends", ends);
 
+  axes = {0};
+  starts = {1};
+  ends = {2};
   OpDesc* slice1_b = block->AppendOp();
   slice1_b->SetType("slice");
   slice1_b->SetInput("X", {shape_b_out->Name()});
   slice1_b->SetOutput("Out", {slice1_b_out->Name()});
+  slice1_b->SetAttr("axes", axes);
+  slice1_b->SetAttr("starts", starts);
+  slice1_b->SetAttr("ends", ends);
 
   auto* cast_b_out = AddCast(block,
                              cast_b_in,
@@ -184,14 +208,14 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
   auto scope = new Scope();
   graph->Set("__param_scope__", scope);
   auto pass = PassRegistry::Instance().Get(
-      "xpu_delete_mul_data_preparation_for_fill_pass");
+      "xpu_multi_cachekv_initialization_fuse_pass");
   pass->Apply(graph.get());
   int shape_num_in_graph = GetOpNum(graph->GetSubGraph(0), "shape");
   PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "shape"),
                     1,
                     platform::errors::PreconditionNotMet(
                         "graph should have 1 shape after "
-                        "xpu_delete_mul_data_preparation_for_fill_pass, "
+                        "xpu_multi_cachekv_initialization_fuse_pass, "
                         "but actually has %d.",
                         shape_num_in_graph));
   int slice_num_in_graph = GetOpNum(graph->GetSubGraph(0), "slice");
@@ -199,7 +223,7 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
                     2,
                     platform::errors::PreconditionNotMet(
                         "graph should have 2 slice after "
-                        "xpu_delete_mul_data_preparation_for_fill_pass, "
+                        "xpu_multi_cachekv_initialization_fuse_pass, "
                         "but actually has %d.",
                         slice_num_in_graph));
   int elementwise_add_num_in_graph =
@@ -208,7 +232,7 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
                     1,
                     platform::errors::PreconditionNotMet(
                         "graph should have 1 elementwise_add after "
-                        "xpu_delete_mul_data_preparation_for_fill_pass, "
+                        "xpu_multi_cachekv_initialization_fuse_pass, "
                         "but actually has %d.",
                         elementwise_add_num_in_graph));
   int scale_num_in_graph = GetOpNum(graph->GetSubGraph(0), "scale");
@@ -216,22 +240,13 @@ TEST(ApplyDeleteMulDataPrePass, basic) {
                     1,
                     platform::errors::PreconditionNotMet(
                         "graph should have 1 scale after "
-                        "xpu_delete_mul_data_preparation_for_fill_pass, "
+                        "xpu_multi_cachekv_initialization_fuse_pass, "
                         "but actually has %d.",
                         scale_num_in_graph));
-  int fill_constant_num_in_graph =
-      GetOpNum(graph->GetSubGraph(0), "fill_constant");
-  PADDLE_ENFORCE_EQ(GetOpNum(graph->GetSubGraph(0), "fill_constant"),
-                    1,
-                    platform::errors::PreconditionNotMet(
-                        "graph should have 1 fill_constant after "
-                        "xpu_delete_mul_data_preparation_for_fill_pass, "
-                        "but actually has %d.",
-                        fill_constant_num_in_graph));
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(xpu_delete_mul_data_preparation_for_fill_pass);
+USE_PASS(xpu_multi_cachekv_initialization_fuse_pass);

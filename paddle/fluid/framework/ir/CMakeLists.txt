@@ -265,9 +265,9 @@ if(WITH_XPU)
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
-  pass_library(xpu_optimize_data_preparation_for_fill_pass inference DIR xpu
-               DEPS ${XPU_PASS_DEPS})
-  pass_library(xpu_delete_mul_data_preparation_for_fill_pass inference DIR xpu
+  pass_library(xpu_optimize_cachekv_initialization_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(xpu_multi_cachekv_initialization_fuse_pass inference DIR xpu
                DEPS ${XPU_PASS_DEPS})
 endif()
 
@@ -569,11 +569,11 @@ if(WITH_XPU)
     SRCS xpu/reshape2_matmul_xpu_fuse_pass_test.cc
     DEPS reshape2_matmul_xpu_fuse_pass)
   cc_test(
-    test_xpu_optimize_data_preparation_for_fill_pass
-    SRCS xpu/xpu_optimize_data_preparation_for_fill_pass_test.cc
-    DEPS xpu_optimize_data_preparation_for_fill_pass)
+    test_xpu_optimize_cachekv_initialization_pass
+    SRCS xpu/xpu_optimize_cachekv_initialization_pass_test.cc
+    DEPS xpu_optimize_cachekv_initialization_pass)
   cc_test(
-    test_xpu_delete_mul_data_preparation_for_fill_pass
-    SRCS xpu/xpu_delete_mul_data_preparation_for_fill_pass_test.cc
-    DEPS xpu_delete_mul_data_preparation_for_fill_pass)
+    test_xpu_multi_cachekv_initialization_fuse_pass
+    SRCS xpu/xpu_multi_cachekv_initialization_fuse_pass_test.cc
+    DEPS xpu_multi_cachekv_initialization_fuse_pass)
 endif()

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/xpu_optimize_data_preparation_for_fill_pass.h"
+#include "paddle/fluid/framework/ir/xpu/xpu_optimize_cachekv_initialization_pass.h"
 #include <string>
 #include "glog/logging.h"
 
@@ -151,7 +151,7 @@ OptimizeDataPattern::OptimizeDataPattern(PDPattern* pattern,
 }
 }  // namespace patterns
 
-int XpuOptimizeDataPreparationForFillPass::ApplyOptimizeDataPass(
+int XpuMultiCachekvInitializationFusePass::ApplyOptimizeDataPass(
     ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::OptimizeDataPattern pattern(gpd.mutable_pattern(), name_scope_);
@@ -214,14 +214,13 @@ int XpuOptimizeDataPreparationForFillPass::ApplyOptimizeDataPass(
   return found_subgraph_count;
 }
 
-void XpuOptimizeDataPreparationForFillPass::ApplyImpl(ir::Graph* graph) const {
+void XpuMultiCachekvInitializationFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
-    VLOG(3)
-        << "'xpu_optimize_data_preparation_for_fill_pass' needs info in all "
-           "graphs, so it "
-           "should be applied in the main graph.";
+    VLOG(3) << "'xpu_optimize_cachekv_initialization_pass' needs info in all "
+               "graphs, so it "
+               "should be applied in the main graph.";
     return;
   }
   Init(name_scope_, graph);
@@ -240,7 +239,7 @@ void XpuOptimizeDataPreparationForFillPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(xpu_optimize_data_preparation_for_fill_pass,
-              paddle::framework::ir::XpuOptimizeDataPreparationForFillPass);
+REGISTER_PASS(xpu_optimize_cachekv_initialization_pass,
+              paddle::framework::ir::XpuMultiCachekvInitializationFusePass);
 
-REGISTER_PASS_CAPABILITY(xpu_optimize_data_preparation_for_fill_pass);
+REGISTER_PASS_CAPABILITY(xpu_optimize_cachekv_initialization_pass);

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/xpu_delete_mul_data_preparation_for_fill_pass.h"
+#include "paddle/fluid/framework/ir/xpu/xpu_multi_cachekv_initialization_fuse_pass.h"
 #include <string>
 #include "glog/logging.h"
 
@@ -89,12 +89,35 @@ DeleteMulDataPrePattern::DeleteMulDataPrePattern(PDPattern* pattern,
                           ->assert_is_op_output("shape", "Out")
                           ->assert_is_op_input("slice", "X")
                           ->assert_is_op_input("slice", "X");
-  auto* slice0_a = pattern->NewNode(slice0_a_repr())->assert_is_op("slice");
+  auto* slice0_a =
+      pattern->NewNode(slice0_a_repr())
+          ->assert_is_op("slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{1};
+          });
+
   auto* slice0_a_out = pattern->NewNode(slice0_a_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("fill_constant", "X");
 
-  auto* slice1_a = pattern->NewNode(slice1_a_repr())->assert_is_op("slice");
+  auto* slice1_a =
+      pattern->NewNode(slice1_a_repr())
+          ->assert_is_op("slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{1} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{2};
+          });
   auto* slice1_a_out = pattern->NewNode(slice1_a_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("elementwise_add", "Y");
@@ -145,12 +168,34 @@ DeleteMulDataPrePattern::DeleteMulDataPrePattern(PDPattern* pattern,
                           ->assert_is_op_output("shape", "Out")
                           ->assert_is_op_input("slice", "X")
                           ->assert_is_op_input("slice", "X");
-  auto* slice0_b = pattern->NewNode(slice0_b_repr())->assert_is_op("slice");
+  auto* slice0_b =
+      pattern->NewNode(slice0_b_repr())
+          ->assert_is_op("slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{1};
+          });
   auto* slice0_b_out = pattern->NewNode(slice0_b_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("fill_constant", "X");
 
-  auto* slice1_b = pattern->NewNode(slice1_b_repr())->assert_is_op("slice");
+  auto* slice1_b =
+      pattern->NewNode(slice1_b_repr())
+          ->assert_is_op("slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{1} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{2};
+          });
   auto* slice1_b_out = pattern->NewNode(slice1_b_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("elementwise_add", "Y");
@@ -275,12 +320,14 @@ int XpuDeleteMulDataPreparationForFillPass::ApplyDeleteMulDataPrePass(
     GET_IR_NODE_FROM_SUBGRAPH(fused_multi_transformer_dyquant_xpu,
                               fused_multi_transformer_dyquant_xpu,
                               pattern);
-
-    fused_multi_transformer_dyquant_xpu->Op()->RenameInput(
-        fill_constant_b_out->Name(), fill_constant_a_out->Name());
-
-    IR_NODE_UNLINK(fill_constant_b_out, fused_multi_transformer_dyquant_xpu);
-    IR_NODE_LINK_TO(fill_constant_a_out, fused_multi_transformer_dyquant_xpu);
+    fill_constant_b->Op()->RenameInput(slice0_b_out->Name(),
+                                       slice0_a_out->Name());
+    fill_constant_b->Op()->RenameInput(scale_b_out->Name(),
+                                       scale_a_out->Name());
+    IR_NODE_UNLINK(slice0_b_out, fill_constant_b);
+    IR_NODE_UNLINK(scale_b_out, fill_constant_b);
+    IR_NODE_LINK_TO(slice0_a_out, fill_constant_b);
+    IR_NODE_LINK_TO(scale_a_out, fill_constant_b);
 
     std::unordered_set<const Node*> delete_nodes{shape_b,
                                                  slice0_b,
@@ -288,15 +335,13 @@ int XpuDeleteMulDataPreparationForFillPass::ApplyDeleteMulDataPrePass(
                                                  cast_b,
                                                  elementwise_add_b,
                                                  scale_b,
-                                                 fill_constant_b,
                                                  shape_b_out,
                                                  slice0_b_out,
                                                  slice1_b_out,
                                                  cast_b_in,
                                                  cast_b_out,
                                                  elementwise_add_b_out,
-                                                 scale_b_out,
-                                                 fill_constant_b_out};
+                                                 scale_b_out};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
@@ -309,10 +354,9 @@ void XpuDeleteMulDataPreparationForFillPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
-    VLOG(3)
-        << "'xpu_delete_mul_data_preparation_for_fill_pass' needs info in all "
-           "graphs, so it "
-           "should be applied in the main graph.";
+    VLOG(3) << "'xpu_multi_cachekv_initialization_fuse_pass' needs info in all "
+               "graphs, so it "
+               "should be applied in the main graph.";
     return;
   }
   Init(name_scope_, graph);
@@ -331,7 +375,7 @@ void XpuDeleteMulDataPreparationForFillPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(xpu_delete_mul_data_preparation_for_fill_pass,
+REGISTER_PASS(xpu_multi_cachekv_initialization_fuse_pass,
               paddle::framework::ir::XpuDeleteMulDataPreparationForFillPass);
 
-REGISTER_PASS_CAPABILITY(xpu_delete_mul_data_preparation_for_fill_pass);
+REGISTER_PASS_CAPABILITY(xpu_multi_cachekv_initialization_fuse_pass);
