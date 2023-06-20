@@ -68,7 +68,6 @@ def CreateGatherGemmScatterOperator(
         for tile_description in tile_descriptions:
             for alignment in alignment_constraints:
                 for complex_transform in complex_transforms:
-
                     alignment_c = min(8, alignment)
 
                     A = TensorDescription(
@@ -98,7 +97,6 @@ def CreateGatherGemmScatterOperator(
 
 
 def GenerateSM80_TensorOp_16816(manifest, cuda_version, debug=False):
-
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
@@ -211,7 +209,6 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version, debug=False):
 
         # Avoid emitting two kernels if the accumulator type does not differ from the input type (e.g. F16 accumulation)
         if math_inst.element_a != math_inst.element_accumulator:
-
             data_type_mixed = [
                 math_inst.element_a,
                 math_inst.element_b,
@@ -225,7 +222,6 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version, debug=False):
 
 
 def GenerateSM80_TensorOp_1688(manifest, cuda_version, debug=False):
-
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
@@ -341,7 +337,6 @@ def GenerateSM80_TensorOp_1688(manifest, cuda_version, debug=False):
 
 
 def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version, debug=False):
-
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
@@ -443,7 +438,6 @@ def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version, debug=False):
 def GenerateSM80_TensorOp_1688_fast_fp32_math(
     manifest, cuda_version, debug=False
 ):
-
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
@@ -525,7 +519,6 @@ def GenerateSM80_TensorOp_1688_fast_fp32_math(
 
 
 def GenerateSM75_TensorOp_1688(manifest, cuda_version, debug=False):
-
     if not CudaToolkitVersionSatisfies(cuda_version, 10, 2):
         return
 
@@ -649,7 +642,6 @@ class KernelCfg:
 
 
 if __name__ == "__main__":
-
     args = KernelCfg(
         architectures='80',
         build_dir=sys.argv[2],

@@ -77,7 +77,6 @@ class EncoderSubLayer(Layer):
         param_initializer=None,
         name="",
     ):
-
         super().__init__()
         self.name = name
         self._preprocess_cmd = preprocess_cmd
@@ -141,7 +140,6 @@ class EncoderLayer(Layer):
         param_initializer=None,
         name="",
     ):
-
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = []

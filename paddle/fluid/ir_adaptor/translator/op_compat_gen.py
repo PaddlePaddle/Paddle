@@ -14,7 +14,7 @@
 
 import argparse
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Set
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -46,8 +46,11 @@ def OpNameNormalizerInitialization(
 
     with open(op_compat_yaml_file, "r") as f:
         op_compat_infos = yaml.safe_load(f)
-    op_name_mappings = {}
-    op_arg_name_mappings = {}
+    op_name_mappings: Dict[str, str] = {}
+    op_arg_name_mappings: Dict[str, Dict[str, str]] = {}
+    op_mutable_attribues: Dict[str, Set[str]] = {}
+    op_mutable_attribute_infos: Dict[str, Dict[str, List[str]]] = {}
+
     for op_compat_item in op_compat_infos:
 
         def insert_new_mappings(op_name_str: str) -> str:
@@ -63,6 +66,25 @@ def OpNameNormalizerInitialization(
             if op_name not in op_arg_name_mappings:
                 op_arg_name_mappings[op_name] = {}
             op_arg_name_mappings[op_name].update(arg_mapping)
+
+        def insert_new_mutable_attributes(
+            op_name: str, mutable_attribute_infos: Dict[str, Dict[str, str]]
+        ):
+            if op_name not in op_mutable_attribues:
+                op_mutable_attribues[op_name] = set()
+            if op_name not in op_mutable_attribute_infos:
+                op_mutable_attribute_infos[op_name] = {}
+            for (
+                attribute_name,
+                mutable_attribute_info,
+            ) in mutable_attribute_infos.items():
+                op_mutable_attribues[op_name].add(attribute_name)
+                op_mutable_attribute_infos[op_name][attribute_name] = []
+                for k, v in mutable_attribute_info.items():
+                    if k == 'tensor_name' or k == 'tensors_name':
+                        op_mutable_attribute_infos[op_name][
+                            attribute_name
+                        ].append(v)
 
         _, legacy_name = insert_new_mappings(op_compat_item["op"])
         legacy_backward_op_names = []
@@ -88,6 +110,22 @@ def OpNameNormalizerInitialization(
             for backward_op in legacy_backward_op_names:
                 insert_new_arg_mappings(backward_op, op_compat_item["outputs"])
 
+        if "int_array" in op_compat_item:
+            insert_new_mutable_attributes(
+                legacy_name, op_compat_item["int_array"]
+            )
+
+        if "scalar" in op_compat_item:
+            insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
+
+        if "int_array" in op_compat_item:
+            insert_new_mutable_attributes(
+                legacy_name, op_compat_item["int_array"]
+            )
+
+        if "scalar" in op_compat_item:
+            insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
+
     # special op mappings
     op_name_mappings["fetch_v2"] = "fetch"
 
@@ -96,6 +134,8 @@ def OpNameNormalizerInitialization(
         op_compat_definition = op_name_normailzer_template.render(
             op_name_pairs=op_name_mappings,
             op_arg_name_pairs=op_arg_name_mappings,
+            op_mutable_attributes=op_mutable_attribues,
+            op_mutable_attribute_infos=op_mutable_attribute_infos,
         )
         f.write(op_compat_definition)
 

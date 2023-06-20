@@ -96,7 +96,6 @@ def init_process_groups(group_map, rank):
 
 
 def get_cpp_error_type(error):
-
     msg = str(error).splitlines()
     cpp_error_types = [
         'InvalidArgumentError',
@@ -123,7 +122,6 @@ def get_cpp_error_type(error):
 def create_dataloader(
     main_program, startup_program, profile_ctx, epochs=1, steps_per_epoch=None
 ):
-
     dataset = profile_ctx["dataset"]
     main_block = main_program.global_block()
     feed_list = []
@@ -274,7 +272,6 @@ def profiler(args):
         data_loader._inner_dataloader.reset()
 
     except Exception as e:
-
         error_type = get_cpp_error_type(e)
         result_dict = {
             "Throughtput": -1,

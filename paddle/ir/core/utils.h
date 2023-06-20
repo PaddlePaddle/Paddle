@@ -20,11 +20,13 @@
 #include <tuple>
 #include <type_traits>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 ///
 /// \brief Equivalent to boost::hash_combine.
 ///
-std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
+IR_API std::size_t hash_combine(std::size_t lhs, std::size_t rhs);
 
 ///
 /// \brief Aligned malloc and free functions.
@@ -119,5 +121,19 @@ template <template <typename> class BaseT, typename Tuple>
 struct Filter<BaseT, Tuple, true> {
   using Type = std::tuple<>;
 };
+
+template <typename ForwardIterator, typename UnaryFunctor, typename NullFunctor>
+void PrintInterleave(ForwardIterator begin,
+                     ForwardIterator end,
+                     UnaryFunctor print_func,
+                     NullFunctor between_func) {
+  if (begin == end) return;
+  print_func(*begin);
+  begin++;
+  for (; begin != end; begin++) {
+    between_func();
+    print_func(*begin);
+  }
+}
 
 }  // namespace ir

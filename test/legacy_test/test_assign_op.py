@@ -80,7 +80,6 @@ class TestAssignBFP16Op(eager_op_test.OpTest):
         self.public_python_api = paddle.assign
         self.op_type = "assign"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         x = np.random.uniform(0, 1, [100, 10]).astype(np.float32)
         x = convert_float_to_uint16(x)
         self.inputs = {'X': x}

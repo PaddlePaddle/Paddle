@@ -1336,7 +1336,6 @@ def insert_communicate_op(
     device,
     is_forward=True,
 ):
-
     if is_forward:
         next_heter_worker_endpoints = get_next_stage_trainers(role_maker)
         previous_heter_worker_endpoints = get_previous_stage_trainers(

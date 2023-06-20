@@ -295,7 +295,6 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
         )
 
         with fluid.program_guard(prog, startup_prog):
-
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )

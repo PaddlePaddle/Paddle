@@ -69,7 +69,6 @@ def parallel_manual_seed(seed):
 
 
 def determinate_rng(rank, dims_mapping, process_mesh):
-
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
     # instead of using offsets to coodinate seed across devices.
@@ -119,7 +118,6 @@ def determinate_rng(rank, dims_mapping, process_mesh):
 
 
 def init_auto_parallel_rng():
-
     if not is_enable_auto_rand_ctrl():
         return
 

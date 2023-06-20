@@ -231,7 +231,6 @@ class TestOptimizer(unittest.TestCase):
 
                             # Train 2 steps to check validity
                             for batch_i in range(2):
-
                                 res = exe.run(
                                     main_program, fetch_list=fetch_list
                                 )

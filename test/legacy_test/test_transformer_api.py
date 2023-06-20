@@ -285,7 +285,6 @@ class TestTransformer(unittest.TestCase):
             paddle.framework.random._manual_program_seed(2020)
             # self_attention|cross_attention, cache|No cache
             with fluid.dygraph.guard(fluid.CPUPlace()):
-
                 # generate params for multi_head_attention
                 (
                     batch_size,
@@ -399,7 +398,6 @@ class TestTransformer(unittest.TestCase):
         multihead_attention_test_helper(False, False)
 
     def test_transformer_encoder_layer(self):
-
         with fluid.dygraph.guard(fluid.CPUPlace()):
             paddle.framework.seed(2020)
             paddle.framework.random._manual_program_seed(2020)

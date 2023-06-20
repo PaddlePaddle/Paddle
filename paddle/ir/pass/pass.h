@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/pass/analysis_manager.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
 
 namespace ir {
@@ -68,7 +68,7 @@ struct PassInfo {
 }  // namespace detail
 
 /// We can access pass only from PassManager.
-class Pass {
+class IR_API Pass {
  public:
   explicit Pass(const std::string& name,
                 uint8_t opt_level,
@@ -77,7 +77,7 @@ class Pass {
 
   virtual ~Pass();
 
-  std::string name() { return pass_info().name; }
+  std::string name() const { return pass_info().name; }
 
   const detail::PassInfo& pass_info() const { return pass_info_; }
 
@@ -91,9 +91,8 @@ class Pass {
   AnalysisManager analysis_manager() { return pass_state().am; }
 
   detail::PassExecutionState& pass_state() {
-    PADDLE_ENFORCE_EQ(pass_state_.is_initialized(),
-                      true,
-                      phi::errors::Fatal("pass state was never initialized"));
+    IR_ENFORCE(pass_state_.is_initialized() == true,
+               "pass state was never initialized");
     return *pass_state_;
   }
 

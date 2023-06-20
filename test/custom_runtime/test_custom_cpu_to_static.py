@@ -25,7 +25,6 @@ BATCH_SIZE = 1024
 
 
 def train_func_base(epoch_id, train_loader, model, cost, optimizer):
-
     total_step = len(train_loader)
     epoch_start = time.time()
     for batch_id, (images, labels) in enumerate(train_loader()):
