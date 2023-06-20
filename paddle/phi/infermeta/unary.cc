@@ -5059,6 +5059,11 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
   values->set_dims(phi::make_ddim({3}));
 }
 
+void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->share_meta(x);
+  out->set_stride(x.stride());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

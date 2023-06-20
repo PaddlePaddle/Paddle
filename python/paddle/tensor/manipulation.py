@@ -4985,6 +4985,70 @@ def unflatten(x, axis, shape, name=None):
     return x
 
 
+@dygraph_only
+def as_strided(x, shape, stride, offset=0, name=None):
+    """
+    View x with specified shape, stride and offset.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        shape (list|tuple): Define the target shape. Each element of it should be integer.
+        stride (list|tuple): Define the target stride. Each element of it should be integer.
+        offset (int): Define the target Tensor's offset from x's holder. Default: 0.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A as_strided Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+
+            out = paddle.as_strided(x, [8, 6], [6, 1])
+            print(out)
+            # the shape is [8, 6].
+            # the stride is [6, 1].
+    """
+    return _C_ops.as_strided(x, shape, stride, offset)
+
+
+@dygraph_only
+def unfold(x, axis, size, step, name=None):
+    """
+    View x with specified shape, stride and offset, which contains all slices of size size from x in the dimension axis.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        axis (int): The axis along which the input is unfolded.
+        size (int): The size of each slice that is unfolded.
+        step (int): The step between each slice.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A unfold Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.arange(9, dtype="float64")
+
+            out = paddle.unfold(0, 2, 4)
+            print(out) # [[0, 1], [4, 5]]
+    """
+    return _C_ops.tensor_unfold(x, axis, size, step)
+
+
 # TODO(dev): We need avoid implementing it by this way.
 __METHODS = {
     'fill_': fill_,

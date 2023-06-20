@@ -457,6 +457,112 @@ class TestStride(unittest.TestCase):
         self.assertTrue(out1_c._is_shared_buffer_with(out1))
         self.assertTrue(out2_c._is_shared_buffer_with(out2))
 
+    def call_chunk(self):
+        x_np = np.random.random(size=[3, 9, 5]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
+        np_out0, np_out1, np_out2 = np.split(x_np, 3, 1)
+
+        self.assertTrue(np.allclose(out0.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+
+        self.assertFalse(out0.is_contiguous("NCHW"))
+        self.assertFalse(out1.is_contiguous("NCHW"))
+        self.assertFalse(out2.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out0))
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+
+        out0_c = out0.contiguous()
+        out1_c = out1.contiguous()
+        out2_c = out2.contiguous()
+
+        self.assertTrue(np.allclose(out0_c.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1_c.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+
+        self.assertFalse(out0_c._is_shared_buffer_with(out0))
+        self.assertFalse(out1_c._is_shared_buffer_with(out1))
+        self.assertFalse(out2_c._is_shared_buffer_with(out2))
+
+    def call_unbind(self):
+        x_np = np.random.random(size=[3, 9, 5]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out0, out1, out2 = paddle.unbind(x, axis=0)
+        np_out0 = x_np[0, 0:100, 0:100]
+        np_out1 = x_np[1, 0:100, 0:100]
+        np_out2 = x_np[2, 0:100, 0:100]
+
+        self.assertTrue(np.allclose(out0.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2.numpy(), np_out2))
+
+        self.assertTrue(out0.is_contiguous("NCHW"))
+        self.assertTrue(out1.is_contiguous("NCHW"))
+        self.assertTrue(out2.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out0))
+        self.assertTrue(x._is_shared_buffer_with(out1))
+        self.assertTrue(x._is_shared_buffer_with(out2))
+
+        out0_c = out0.contiguous()
+        out1_c = out1.contiguous()
+        out2_c = out2.contiguous()
+
+        self.assertTrue(np.allclose(out0_c.numpy(), np_out0))
+        self.assertTrue(np.allclose(out1_c.numpy(), np_out1))
+        self.assertTrue(np.allclose(out2_c.numpy(), np_out2))
+
+        self.assertTrue(out0_c._is_shared_buffer_with(out0))
+        self.assertTrue(out1_c._is_shared_buffer_with(out1))
+        self.assertTrue(out2_c._is_shared_buffer_with(out2))
+
+    def call_as_strided(self):
+        x_np = np.random.random(size=[2, 4, 6]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.as_strided(x, [8, 6], [6, 1])
+        np_out = x_np.reshape(8, 6)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_unfold(self):
+        x_np = np.random.random(size=[9]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.unfold(x, 0, 2, 4)
+        np_out = np.stack((x_np[0:2], x_np[4:6]))
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertFalse(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertFalse(out_c._is_shared_buffer_with(out))
+
     def call_stride(self):
         self.call_transpose()
         self.call_diagonal()
@@ -475,6 +581,10 @@ class TestStride(unittest.TestCase):
         self.call_split2()
         self.call_split3()
         self.call_split4()
+        self.call_chunk()
+        self.call_unbind()
+        self.call_as_strided()
+        self.call_unfold()
 
 
 class TestStrideCPU(TestStride):
