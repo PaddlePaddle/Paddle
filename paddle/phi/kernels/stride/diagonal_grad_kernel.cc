@@ -45,6 +45,7 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                            tmp.offset(),
                            &tmp);
                      }));
+  in_grad->set_stride(DenseTensorMeta::calc_stride(in_grad->dims()));
 }
 
 }  // namespace phi
