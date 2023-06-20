@@ -216,10 +216,10 @@ class TestPowerError(unittest.TestCase):
 
 class TestInplacePowerScalar(TestDygraphInplace):
     def inplace_api_processing(self, var):
-        return paddle.pow(var, 3)
+        return paddle.pow_(var, 3)
 
     def non_inplace_api_processing(self, var):
-        return paddle.pow_(var, 3)
+        return paddle.pow(var, 3)
 
 
 class TestInplacePowerTensor(TestDygraphInplace):
