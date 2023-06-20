@@ -65,6 +65,7 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   // }
   meta.dims = tmp_dim;
   meta.stride = DDim(output_stride.data(), output_stride.size());
+  meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }

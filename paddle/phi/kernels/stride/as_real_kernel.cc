@@ -31,6 +31,7 @@ void AsRealStridedKernel(const Context& dev_ctx,
         phi::errors::Unimplemented("as_real is not supported data type (%s).",
                                    DataTypeToString(x.dtype())));
   }
+  out->set_offset(x.offset());
   out->ResetHolder(x.Holder());
 }
 

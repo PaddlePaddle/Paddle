@@ -33,6 +33,7 @@ void AsComplexStridedKernel(const Context& dev_ctx,
         "as_complex is not supported data type (%s).",
         DataTypeToString(x.dtype())));
   }
+  out->set_offset(x.offset());
   out->ResetHolder(x.Holder());
 }
 

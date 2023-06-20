@@ -64,6 +64,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
     }
 
     auto meta = out->meta();
+    meta.offset = input.offset();
     meta.stride = DDim(output_stride.data(), output_stride.size());
     out->set_meta(meta);
     return;
@@ -104,6 +105,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   // }
   meta.dims = tmp_dim;
   meta.stride = DDim(output_stride.data(), output_stride.size());
+  meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }
