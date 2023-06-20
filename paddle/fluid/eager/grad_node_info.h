@@ -251,6 +251,10 @@ class GradNodeBase {
     return true;
   }
 
+  //增加一个方法 返回一个固定值1 作为测试
+  int64_t GetNextHookId() { return 1; }
+
+
   /**
    * Apply GradientHook
    * **/

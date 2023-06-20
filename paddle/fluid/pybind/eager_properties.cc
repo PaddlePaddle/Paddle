@@ -285,12 +285,56 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
+PyObject* tensor_properties_qiutest(TensorObject* self, void* closure) {
   EAGER_TRY
   int grad_fn_value = 1;
   return ToPyObject(grad_fn_value);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+
+
+PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
+    EAGER_TRY
+    if (!self->tensor.defined()) {
+        // Handle undefined tensors if necessary; otherwise, return nullptr or an appropriate PyObject.
+        // In this case, I will return Py_None.
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    // Get GradNode from the tensor
+    auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);    // If meta exists, get the GradNode
+
+    // 打印一下meta
+    std::cout << "meta is " << meta << std::endl;
+
+    if (meta) {
+        // Get the GradNode from meta
+        auto grad_node = meta->GradNode();        // Convert GradNode to a Python object
+        // The conversion will depend on the structure of GradNode.
+
+        // 实现一下将gradnode 对象转化成python对象
+        if (!grad_node) {
+            Py_INCREF(Py_None);
+            return Py_None;
+        }
+
+        //获取python 转换器
+        py::object py_obj = py::cast(grad_node, py::return_value_policy::reference);
+        py::handle py_handle = py::handle(py_obj);
+        PyObject* py_grad_node = py_handle.ptr();
+        Py_INCREF(py_grad_node);  // 增加引用计数，以确保在返回时不会被销毁
+
+
+
+        return py_grad_node;
+    } else {
+        // If meta does not exist, return an appropriate Python object (e.g., None or a special value).
+        Py_INCREF(Py_None);
+        return Py_None;
+    }    EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 
 
 
@@ -330,6 +374,7 @@ struct PyGetSetDef variable_properties[] = {
     {"type", (getter)tensor_properties_get_type, nullptr, nullptr, nullptr},
     {"is_leaf", (getter)tensor_properties_is_leaf, nullptr, nullptr, nullptr},
     {"grad_fn", (getter)tensor_properties_get_grad_fn, nullptr, nullptr, nullptr},
+    {"qiutest", (getter)tensor_properties_qiutest, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 // variable_properties for core.eager.StringTensor
@@ -349,5 +394,10 @@ struct PyGetSetDef string_tensor_variable_properties[] = {
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
+
 }  // namespace pybind
 }  // namespace paddle
+
+
+
+

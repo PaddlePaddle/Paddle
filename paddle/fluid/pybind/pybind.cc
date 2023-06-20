@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+#include "paddle/fluid/eager/grad_node_info.cc"
+
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -757,6 +759,12 @@ PYBIND11_MODULE(libpaddle, m) {
             param->ClearGradient(set_to_zero);
           }
         });
+
+
+  py::class_<egr::GradNodeBase>(m, "GradNodeBase")
+      //GetNextHookId 暴露一个函数 一直返回一个固定的值
+      .def("get_next_hook_id", &egr::GradNodeBase::GetNextHookId);
+
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::DnnVersion);
