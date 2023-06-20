@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.framework import set_default_dtype
 
@@ -27,6 +28,9 @@ default_main_program().random_seed = 42
 paddle.disable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class LinearTestCase(unittest.TestCase):
     def config(self):
         self.dtype = 'float16'
@@ -84,6 +88,9 @@ class LinearTestCase(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class LinearTestCase1(LinearTestCase):
     def config(self):
         super().config()
@@ -93,6 +100,9 @@ class LinearTestCase1(LinearTestCase):
         self.out_features = 64
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class LinearTestCase2(LinearTestCase):
     def config(self):
         super().config()
@@ -102,6 +112,9 @@ class LinearTestCase2(LinearTestCase):
         self.out_features = 64
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class LinearTestCase3(LinearTestCase):
     def config(self):
         super().config()
