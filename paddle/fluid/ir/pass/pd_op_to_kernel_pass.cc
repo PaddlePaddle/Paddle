@@ -69,7 +69,7 @@ phi::KernelKey GetKernelKey(
 
     auto attr_map = op->attributes();
     auto data_type_info = runtime_info.kernel_key_dtype;
-    if (data_type_info.size() > 0) {
+    if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
       if (input_map.count(slot_name)) {
