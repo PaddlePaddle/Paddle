@@ -35,28 +35,30 @@ class GlooCommContext final : public CommContext {
 
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
-                 int root);
+                 int root,
+                 uint32_t tag = 0);
   void AllReduce(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
-                 int reduce_type);
+                 int reduce_type,
+                 uint32_t tag = 0);
   void Reduce(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
               int reduce_type,
-              int root);
+              int root,
+              uint32_t tag = 0);
 
   void AllGather(phi::DenseTensor* out_tensor,
-                 const phi::DenseTensor& in_tensor);
+                 const phi::DenseTensor& in_tensor,
+                 uint32_t tag = 0);
 
   void Gather(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
-              int src);
-
-  void next_tag() { _tag++; }
+              int src,
+              uint32_t tag = 0);
 
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);
 
-  uint32_t _tag;
   std::shared_ptr<gloo::rendezvous::Context> gloo_context_;
 };
 

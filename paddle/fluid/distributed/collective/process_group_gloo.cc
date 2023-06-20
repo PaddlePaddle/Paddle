@@ -200,12 +200,14 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
                     int rank,
-                    int root)
+                    int root,
+                    uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::BROADCAST),
         _comm_context(comm_context),
         _root(root),
         _inputs(inputs),
-        _outputs(outputs) {}
+        _outputs(outputs),
+        _tag(tag) {}
 
   void Run() override { _do_broadcast(_inputs[0], _outputs[0]); }
 
@@ -214,9 +216,10 @@ class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {
   const int _root;
   std::vector<phi::DenseTensor> _inputs{};
   std::vector<phi::DenseTensor> _outputs{};
+  uint32_t _tag;
 
   void _do_broadcast(phi::DenseTensor& in, phi::DenseTensor& out) {  // NOLINT
-    _comm_context->Broadcast(&(out), in, _root);
+    _comm_context->Broadcast(&(out), in, _root, _tag);
   }
 };
 
@@ -245,9 +248,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     bool sync_op) {
   auto root = opts.source_rank;
   std::unique_ptr<BroadcastGlooTask> task;
+  auto tag = next_tag();
   auto comm_context = this->GetCommContext();
   task = std::make_unique<BroadcastGlooTask>(
-      comm_context, inputs, outputs, rank_, root);
+      comm_context, inputs, outputs, rank_, root, tag);
   task->Run();
   return task;
 }
@@ -359,12 +363,14 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
                     phi::distributed::GlooCommContext* comm_context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
                     std::vector<phi::DenseTensor>& outputs,  // NOLINT
-                    ReduceOp reduce_op)
+                    ReduceOp reduce_op,
+                    uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLREDUCE),
         _comm_context(comm_context),
         _inputs(inputs),
         _outputs(outputs),
-        _reduce_op(reduce_op) {}
+        _reduce_op(reduce_op),
+        _tag(tag) {}
 
   void Run() override { _do_allreduce(_inputs, _outputs); }
 
@@ -373,6 +379,7 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
   std::vector<phi::DenseTensor> _inputs;
   std::vector<phi::DenseTensor> _outputs;
   const ReduceOp _reduce_op;
+  uint32_t _tag;
 
   gloo::AllreduceOptions::Func _get_function(const phi::DataType type,
                                              const ReduceOp op) {
@@ -389,7 +396,8 @@ class AllreduceGlooTask : public ProcessGroupGloo::GlooTask {
 
   void _do_allreduce(std::vector<phi::DenseTensor>& ins,     // NOLINT
                      std::vector<phi::DenseTensor>& outs) {  // NOLINT
-    _comm_context->AllReduce(&(outs[0]), ins[0], static_cast<int>(_reduce_op));
+    _comm_context->AllReduce(
+        &(outs[0]), ins[0], static_cast<int>(_reduce_op), _tag);
   }
 };
 
@@ -416,9 +424,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op) {
   std::shared_ptr<GlooTask> task;
+  auto tag = next_tag();
   auto comm_context = this->GetCommContext();
   task = std::make_shared<AllreduceGlooTask>(
-      rank_, comm_context, inputs, outputs, opts.reduce_op);
+      rank_, comm_context, inputs, outputs, opts.reduce_op, tag);
   task->Run();
   return task;
 }
@@ -455,11 +464,13 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
   AllgatherGlooTask(int rank,
                     phi::distributed::GlooCommContext* comm_context,
                     std::vector<phi::DenseTensor>& inputs,   // NOLINT
-                    std::vector<phi::DenseTensor>& outputs)  // NOLINT
+                    std::vector<phi::DenseTensor>& outputs,  // NOLINT
+                    uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::ALLGATHER),
         _comm_context(comm_context),
         _inputs(inputs),
-        _outputs(outputs) {}
+        _outputs(outputs),
+        _tag(tag) {}
 
   void Run() override { _do_allgather(_inputs, _outputs); }
 
@@ -467,10 +478,11 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
   phi::distributed::GlooCommContext* _comm_context;
   std::vector<phi::DenseTensor> _inputs;
   std::vector<phi::DenseTensor> _outputs;
+  uint32_t _tag;
 
   void _do_allgather(std::vector<phi::DenseTensor>& in,     // NOLINT
                      std::vector<phi::DenseTensor>& out) {  // NOLINT
-    _comm_context->AllGather(&(out[0]), in[0]);
+    _comm_context->AllGather(&(out[0]), in[0], _tag);
   }
 };
 
@@ -496,9 +508,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     std::vector<phi::DenseTensor>& out_tensors,
     bool sync_op) {
   std::shared_ptr<AllgatherGlooTask> task;
+  auto tag = next_tag();
   auto comm_context = this->GetCommContext();
   task = std::make_shared<AllgatherGlooTask>(
-      rank_, comm_context, in_tensors, out_tensors);
+      rank_, comm_context, in_tensors, out_tensors, tag);
   task->Run();
   return task;
 }
@@ -510,13 +523,15 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
                  std::vector<phi::DenseTensor>& inputs,   // NOLINT
                  std::vector<phi::DenseTensor>& outputs,  // NOLINT
                  ReduceOp reduce_op,
-                 int dst)
+                 int dst,
+                 uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, inputs, CommType::REDUCE),
         _comm_context(comm_context),
         _inputs(inputs),
         _outputs(outputs),
         _reduce_op(reduce_op),
-        _dst(dst) {}
+        _dst(dst),
+        _tag(tag) {}
 
   void Run() override { _do_reduce(_inputs, _outputs, _dst); }
 
@@ -526,6 +541,7 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
   std::vector<phi::DenseTensor> _outputs;
   const ReduceOp _reduce_op;
   int _dst;
+  uint32_t _tag;
 
   gloo::ReduceOptions::Func _get_function(const phi::DataType type,
                                           const ReduceOp op) {
@@ -544,7 +560,7 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
                   std::vector<phi::DenseTensor>& outputs,  // NOLINT
                   int dst) {
     _comm_context->Reduce(
-        &(outputs[0]), inputs[0], static_cast<int>(_reduce_op), _dst);
+        &(outputs[0]), inputs[0], static_cast<int>(_reduce_op), _dst, _tag);
   }
 };
 
@@ -555,6 +571,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
     bool sync_op  // for compatibility, no use now
 ) {
   std::shared_ptr<ReduceGlooTask> task;
+  auto tag = next_tag();
   auto comm_context = this->GetCommContext();
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
@@ -563,7 +580,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
                                           in_wrapper,
                                           out_wrapper,
                                           opts.reduce_op,
-                                          opts.root_rank);
+                                          opts.root_rank,
+                                          tag);
   task->Run();
   return task;
 }
@@ -646,12 +664,14 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
                  phi::distributed::GlooCommContext* comm_context,
                  const phi::DenseTensor& input,  // NOLINT
                  phi::DenseTensor* output,       // NOLINT
-                 int src)
+                 int src,
+                 uint32_t tag)
       : ProcessGroupGloo::GlooTask(rank, {input}, CommType::GATHER),
         _comm_context(comm_context),
         _input(input),
         _output(*output),
-        _src(src) {}
+        _src(src),
+        _tag(tag) {}
 
   void Run() override { _do_gather(_input, _output, _src); }
 
@@ -660,11 +680,12 @@ class GatherGlooTask : public ProcessGroupGloo::GlooTask {
   phi::DenseTensor _input;
   phi::DenseTensor _output;
   int _src;
+  uint32_t _tag;
 
   void _do_gather(phi::DenseTensor& in,   // NOLINT
                   phi::DenseTensor& out,  // NOLINT
                   int src) {
-    _comm_context->Gather(&(out), in, src);
+    _comm_context->Gather(&(out), in, src, _tag);
   }
 };
 
@@ -679,9 +700,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
       true,
       platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
   std::shared_ptr<GatherGlooTask> task;
+  auto tag = next_tag();
   auto comm_context = this->GetCommContext();
   task = std::make_shared<GatherGlooTask>(
-      rank_, comm_context, in_tensor, out_tensor, opts.root_rank);
+      rank_, comm_context, in_tensor, out_tensor, opts.root_rank, tag);
   task->Run();
   return task;
 }
