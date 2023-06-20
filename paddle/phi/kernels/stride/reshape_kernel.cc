@@ -89,6 +89,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   DDim stride;
   if (ReshapeStride(x.dims(), x.stride(), out->dims(), stride)) {
+    out->set_offset(x.offset());
     out->set_stride(stride);
     out->ResetHolder(x.Holder());
   } else {

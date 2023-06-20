@@ -32,6 +32,7 @@ void RealStridedKernel(const Context& dev_ctx,
   for (int i = 0; i < stride.size(); i++) {
     stride[i] = x.stride()[i] * 2;
   }
+  out->set_offset(x.offset());
   out->set_stride(stride);
   out->ResetHolder(x.Holder());
 }
@@ -51,7 +52,7 @@ void ImagStridedKernel(const Context& dev_ctx,
     stride[i] = x.stride()[i] * 2;
   }
   out->set_stride(stride);
-  out->set_offset(phi::SizeOf(out->dtype()));
+  out->set_offset(x.offset() + phi::SizeOf(out->dtype()));
   out->ResetHolder(x.Holder());
 }
 

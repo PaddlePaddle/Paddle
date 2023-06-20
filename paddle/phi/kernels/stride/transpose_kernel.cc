@@ -39,6 +39,7 @@ void TransposeStridedKernel(const Context& ctx,
     meta.stride[i] = in_stride[formated_axis[i]];
     meta.dims[i] = in_dims[formated_axis[i]];
   }
+  meta.offset = x.offset();
 
   out->set_meta(meta);
   out->ResetHolder(x.Holder());
