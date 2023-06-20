@@ -94,9 +94,9 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   dq->Resize(dout_q.dims());
   // small size for broadcast
   auto batch_size = dout_q.dims()[0];
-  auto num_heads = dout_q.dims()[1];
-  auto head_dim = dout_q.dims()[2];
-  auto seq_len = dout_q.dims()[3];
+  auto num_heads = dout_q.dims()[2];
+  auto head_dim = dout_q.dims()[3];
+  auto seq_len = dout_q.dims()[1];
   PADDLE_ENFORCE_NE(head_dim % 2,
                     1,
                     phi::errors::InvalidArgument(
