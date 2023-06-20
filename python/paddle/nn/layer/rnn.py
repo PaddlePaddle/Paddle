@@ -24,7 +24,6 @@ from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.fluid.framework import (
-    _non_static_mode,
     default_startup_program,
     in_dygraph_mode,
     program_guard,
@@ -102,7 +101,7 @@ def rnn(
 
     """
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _rnn_dynamic_graph(
             cell,
             inputs,
@@ -293,7 +292,6 @@ def _rnn_static_graph(
     )
 
     with while_op.block():
-
         step_in = inputs[start_i]
         # step_in = paddle.fluid.layers.Print( step_in, message="step in")
         pre_state = paddle.utils.map_structure(
@@ -317,7 +315,6 @@ def _rnn_static_graph(
         paddle.tensor.array_write(outputs, start_i, out_array)
 
         with paddle.fluid.framework.device_guard("cpu"):
-
             start_i = paddle.tensor.increment(x=start_i, value=1)
         paddle.utils.map_structure(
             lambda x, y: paddle.tensor.array_write(x, start_i, y),

@@ -70,7 +70,7 @@ class TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id) = 0;
   virtual void InitDumpEnv() = 0;
   virtual void DumpWork(int tid);
-  virtual void ResetDataset(Dataset* dataset_ptr) {}
+  virtual void ResetDataset(Dataset* dataset_ptr UNUSED) {}
 
  protected:
   virtual std::string GetDumpPath(int tid) = 0;

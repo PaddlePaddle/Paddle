@@ -136,6 +136,17 @@ class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
         return x.scale_(scale, bias)
 
 
+class TestScaleOpZeroNumelVariable(unittest.TestCase):
+    def test_check_zero_numel_xpu(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.disable_static()
+            paddle.set_device('xpu')
+            data = paddle.ones([0, 1])
+            out = paddle.scale(data, 2)
+            self.assertEqual(out.shape, data.shape)
+            paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('scale')
 for stype in support_types:
     create_test_class(globals(), XPUTestScaleOp, stype)

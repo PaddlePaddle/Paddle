@@ -274,6 +274,7 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
   buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
   buffers[1] = reinterpret_cast<void *>(y_gpu_data);
 
+  engine_->SetAllNodesLowerToTrt(true);
   engine_->Execute(2, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";

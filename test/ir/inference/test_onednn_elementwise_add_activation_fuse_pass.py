@@ -118,17 +118,17 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                'elt_act_mkldnn_fuse_pass',
+                'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )
-        yield config, ['elementwise_add'], (1e-5, 1e-5)
+        yield config, ['fused_elementwise_add'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False,
             passes=[
-                'elt_act_mkldnn_fuse_pass',
+                'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )

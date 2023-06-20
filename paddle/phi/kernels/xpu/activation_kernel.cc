@@ -333,9 +333,15 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
 
     auto xpu_context = dev_ctx.x_context();
-    int r =
-        xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+    if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
+      int r = xpu::fast_swish(
+          xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+    } else {
+      int r =
+          xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+    }
   }
 };
 
@@ -534,9 +540,28 @@ PD_REGISTER_KERNEL(
     relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
-
-#define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
+PD_REGISTER_KERNEL(
+    sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(swish_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SwishRawKernel,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(hard_sigmoid,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::HardSigmoidKernel,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(leaky_relu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LeakyReluKernel,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    sqrt, XPU, ALL_LAYOUT, phi::SqrtKernel, float, phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
@@ -547,18 +572,22 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(relu6_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::Relu6RawKernel,
+                   float,
+                   phi::dtype::float16) {}
+
+#define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
+  PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
-PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
-PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
 PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)

@@ -62,9 +62,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
 - op : adamax_
@@ -85,15 +85,21 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
+- op : add_n (sum)
+  inputs:
+    {inputs : X}
+  outputs:
+    {out : Out}
 
 - op : addmm
   backward : addmm_grad
@@ -147,6 +153,42 @@
       data_type : std::string
       tensor_name : Atol
 
+- op : amax (reduce_amax)
+  backward : amax_grad (reduce_amax_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    amax_grad : GetReduceGradExpectedKernelType
+  manual_signature : [amax]
+
+- op : amin (reduce_amin)
+  backward : amin_grad (reduce_amin_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    amin_grad : GetReduceGradExpectedKernelType
+  manual_signature : [amin]
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -155,6 +197,23 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : any (reduce_any)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    any : GetReduceOpUseInputPlaceExpectedKernelType
+  manual_signature : [any]
 
 - op : arange(range)
   inputs :
@@ -373,6 +432,14 @@
   outputs :
     out : Out
 
+- op : check_finite_and_unscale_
+  inputs :
+    {x : X, scale: Scale}
+  outputs :
+    {out : Out, found_infinite: FoundInfinite}
+  get_expected_kernel_type :
+    check_finite_and_unscale_ : GetCheckFiniteAndUnscaleExpectedKernelType
+
 - op : cholesky
   inputs :
     x : X
@@ -413,6 +480,14 @@
   outputs :
     out : Out
 
+- op : coalesce_tensor
+  inputs :
+    {input : Input}
+  outputs :
+    {output : Output, fused_output : FusedOutput}
+  attrs :
+    {size_of_dtype : user_defined_size_of_dtype}
+
 - op : complex
   backward : complex_grad
   inputs :
@@ -447,11 +522,17 @@
     out : Out
 
 - op : conv2d
-  backward : conv2d_grad
+  backward : conv2d_grad, conv2d_grad_grad
+  inputs :
+    {input : Input, filter : Filter}
+  outputs :
+    out : Output
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
              bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+  get_expected_kernel_type :
+    conv2d : GetConvExpectedKernelType
 
 - op : conv2d_fusion
   extra :
@@ -463,23 +544,42 @@
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
 
 - op : conv2d_transpose
-  backward : conv2d_transpose_grad
+  backward : conv2d_transpose_grad, conv2d_transpose_double_grad (conv2d_transpose_grad_grad)
+  inputs :
+    {x : Input, filter : Filter, bias : Bias}
+  outputs :
+    out : Output
+  int_array :
+    output_size :
+      data_type : int
+      support_tensor : true
   extra :
+    inputs : [bias]
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
 - op : conv3d
-  backward : conv3d_grad
+  backward : conv3d_grad, conv3d_double_grad (conv3d_grad_grad)
+  inputs :
+    {input : Input, filter : Filter}
+  outputs :
+    out : Output
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
              bool use_addto = false, bool fuse_residual_connection = false, bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+  get_expected_kernel_type :
+    conv3d : GetConvExpectedKernelType
 
 - op : conv3d_transpose
   backward : conv3d_transpose_grad
+  inputs :
+    {x : Input, filter : Filter}
+  outputs :
+    out : Output
   extra :
     attrs : [bool use_cudnn = true, bool use_mkldnn = false, int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB()]
 
@@ -571,18 +671,33 @@
     out : Output
 
 - op : depthwise_conv2d
-  backward : depthwise_conv2d_grad
+  backward : depthwise_conv2d_grad, depthwise_conv2d_double_grad (depthwise_conv2d_grad_grad)
+  inputs :
+    {input : Input, filter : Filter}
+  outputs :
+    out : Output
   extra :
-    attrs : [bool is_test = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
+    attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f, bool use_addto = false,
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
              int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+  get_expected_kernel_type :
+    depthwise_conv2d : GetConvExpectedKernelType
 
 - op : depthwise_conv2d_transpose
   backward : depthwise_conv2d_transpose_grad
+  inputs :
+    {x : Input, filter : Filter, bias: Bias}
+  outputs :
+    out : Output
+  int_array :
+    output_size :
+      data_type : int
+      support_tensor : true
   extra :
+    inputs : [bias]
     attrs : [bool is_test = false, bool use_cudnn = false, bool use_mkldnn = false, bool force_fp32_output = false,
              str mkldnn_data_type = "float32", bool fuse_relu = false,
              str fuse_activation = "", float fuse_alpha = 0.0f, float fuse_beta = 0.0f,
@@ -647,7 +762,7 @@
   outputs :
     out: Out
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : dot
@@ -676,6 +791,16 @@
   backward : dropout_nd_grad
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+
+- op : edit_distance
+  inputs :
+    hyps : Hyps
+    refs : Refs
+    hypslength : HypsLength
+    refslength : RefsLength
+  outputs :
+    sequencenum : SequenceNum
+    out : Out
 
 - op : eig
   inputs :
@@ -709,7 +834,7 @@
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : elu
@@ -807,6 +932,15 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exponential_
+  backward : exponential__grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    lam : lambda
+
 - op : eye
   outputs :
     out : Out
@@ -856,6 +990,17 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill (fill_any)
+  backward : fill_grad (fill_any_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
+
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :
@@ -898,19 +1043,25 @@
 
 - op : floor_divide (elementwise_floordiv)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [fmax]
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : fold
@@ -953,8 +1104,10 @@
     x : X
   outputs :
     out : Out
-  attrs :
-    {value: value, dtype: dtype}
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
 
 - op : fused_conv2d
   extra :
@@ -1012,7 +1165,7 @@
 
 - op : grad_add
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : greater_equal
@@ -1076,9 +1229,10 @@
     x : X
   outputs :
     out : Out
-  backward : hard_swish_grad
+  backward : hardswish_grad (hard_swish_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+  manual_signature : [hardswish]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
@@ -1090,7 +1244,7 @@
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : histogram
@@ -1147,6 +1301,10 @@
     y : Y
     saved_mean : SavedMean
     saved_variance : SavedVariance
+  extra:
+    outputs: [ saved_mean, saved_variance ]
+  get_expected_kernel_type:
+    instance_norm: GetInstanceNormExpectedKernelType
 
 - op : inverse
   inputs :
@@ -1236,6 +1394,8 @@
     variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+  get_expected_kernel_type :
+    layer_norm : GetLayerNormExpectedKernelType
 
 - op : leaky_relu
   backward : leaky_relu_grad, leaky_relu_double_grad (leaky_relu_grad_grad)
@@ -1391,6 +1551,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : lstsq
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
+  scalar :
+    rcond :
+      data_type : float
+      support_tensor : true
+
 - op : lu_unpack
   backward : lu_unpack_grad
   inputs :
@@ -1412,7 +1582,7 @@
     out : Y
 
 - op : matmul (matmul_v2)
-  backward : matmul_grad (matmul_v2_grad)
+  backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
   inputs :
     {x : X, y : Y}
   attrs :
@@ -1421,6 +1591,7 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
@@ -1457,23 +1628,44 @@
     { axis : dim,  keepdim : keep_dim}
   outputs:
     out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
   int_array:
     axis :
       data_type : int
-  extra :
-    attrs : [bool use_mkldnn = false]
+      support_tensor : true
+  get_expected_kernel_type :
+    max : GetReduceExpectedKernelType
+    max_grad : GetReduceGradExpectedKernelType
+  manual_signature : [max]
+
+- op : max_pool2d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op : max_pool3d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
-
-- op : maximum (elementwise_min)
-  backward : maximum_grad (elementwise_min_grad)
-  extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
-             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [maximum]
 
 - op : maxout
   inputs :
@@ -1482,7 +1674,7 @@
     out : Out
 
 - op : mean (reduce_mean)
-  backward : reduce_mean_grad
+  backward : mean_grad (reduce_mean_grad)
   inputs :
     x : X
   outputs :
@@ -1535,6 +1727,31 @@
     out : Out
   drop_empty_grad : [inputs_grad]
 
+- op : min (reduce_min)
+  backward : min_grad (reduce_min_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    min : GetReduceExpectedKernelType
+    min_grad : GetReduceGradExpectedKernelType
+  manual_signature : [min]
+
+- op : minimum (elementwise_min)
+  backward : minimum_grad (elementwise_min_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
 - op : mish
   backward : mish_grad
   extra :
@@ -1561,6 +1778,12 @@
     out : Out
   drop_empty_grad : [x_grad]
 
+- op : multiclass_nms3
+  inputs :
+    {bboxes : BBoxes, scores : Scores, rois_num : RoisNum}
+  outputs :
+    {out : Out, index : Index, nms_rois_num : NmsRoisNum}
+
 - op : multinomial
   inputs :
     {x : X}
@@ -1586,7 +1809,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : mv
@@ -1685,7 +1908,17 @@
     attrs : [bool use_mkldnn = false]
 
 - op : pad3d
-  backward : pad3d_grad
+  backward : pad3d_grad, pad3d_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    paddings :
+      data_type : int
+      tensor_name : Paddings
+  attrs :
+    pad_value : value
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1708,15 +1941,38 @@
     out : Out
 
 - op : pool2d
-  backward : pool2d_grad
+  backward : pool2d_grad, pool2d_double_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  attrs :
+    {kernel_size : ksize}
+  int_array:
+    kernel_size :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    pool2d : GetPoolExpectedKernelType
+    pool2d_grad : GetPoolExpectedKernelType
+    pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false]
+              str mkldnn_data_type = "float32", bool is_test = false, bool use_cudnn = false]
 
 - op : pool3d
   backward : pool3d_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  attrs :
+    {kernel_size : ksize}
+  get_expected_kernel_type :
+    pool3d : GetPoolExpectedKernelType
+    pool3d_grad : GetPoolExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : pow
   backward : pow_grad, pow_double_grad, pow_triple_grad
@@ -1740,6 +1996,14 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : prior_box
+  inputs :
+    {input: Input, image: Image}
+  outputs :
+    {out: Boxes, var: Variances}
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+
 - op : prod (reduce_prod)
   backward : prod_grad (reduce_prod_grad)
   inputs:
@@ -1749,7 +2013,7 @@
   outputs:
     out : Out
   int_array:
-    axis :
+    dims :
       data_type : int
   extra :
     attrs : [bool use_mkldnn = false]
@@ -1806,25 +2070,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : reduce_amax
-  backward : reduce_amax_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_amin
-  backward : reduce_amin_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_any
-  extra :
-    attrs : [bool use_mkldnn = false]
-
-- op : reduce_min
-  backward : reduce_min_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
-
 - op : relu
   backward : relu_grad, relu_double_grad (relu_grad_grad)
   inputs :
@@ -1836,12 +2081,16 @@
 
 - op : relu6
   backward : relu6_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
 - op : remainder (elementwise_mod)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : renorm
@@ -1859,6 +2108,7 @@
     x : X
   outputs:
     out : Out
+    xshape: XShape
   int_array:
     shape :
       data_type : int
@@ -2013,6 +2263,12 @@
     attrs : [bool use_mkldnn=false]
 
 - op : shape
+  inputs :
+    input : Input
+  outputs :
+    out : Out
+
+- op : shape
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
@@ -2051,7 +2307,7 @@
     out : Out
 
 - op : silu
-  backward : silu_grad
+  backward : silu_grad, silu_double_grad
   inputs :
     x : X
   outputs :
@@ -2093,8 +2349,13 @@
   backward : softmax_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+  get_expected_kernel_type :
+    softmax : GetSoftmaxExpectedKernelType
+    softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
@@ -2192,6 +2453,30 @@
   outputs :
     out : Out
 
+- op : strided_slice
+  backward : strided_slice_grad
+  inputs :
+    x : Input
+  outputs :
+    out : Out
+  int_array :
+    starts :
+      data_type : int
+      tensor_name : StartsTensor
+      tensors_name : StartsTensorList
+    ends :
+      data_type : int
+      tensor_name : EndsTensor
+      tensors_name : EndsTensorList
+    strides :
+      data_type : int
+      tensor_name : StridesTensor
+      tensors_name : StridesTensorList
+  manual_signature : [strided_slice, strided_slice_grad]
+  get_expected_kernel_type :
+    strided_slice : GetStridedSliceExpectedKernelType
+    strided_slice_grad : GetStridedSliceGradExpectedKernelType
+
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
   inputs :
@@ -2199,22 +2484,27 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : sum (reduce_sum)
-  backward : (sum_grad) reduce_sum_grad
+  backward : sum_grad (reduce_sum_grad), sum_double_grad
   inputs:
     {x : X}
-  attrs:
-    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
   outputs:
     out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
+  extra :
+    attrs : [bool use_mkldnn = false]
   int_array:
       axis :
         data_type : int
-  extra :
-    attrs : [bool use_mkldnn = false]
+        support_tensor : true
+  get_expected_kernel_type :
+    sum : GetReduceExpectedKernelType
+    sum_grad : GetReduceGradExpectedKernelType
+  manual_signature : [sum]
 
 - op : svd
   backward : svd_grad
@@ -2225,6 +2515,10 @@
 
 - op : swish
   backward : swish_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2312,6 +2606,20 @@
     outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
 
+- op : triangular_solve
+  backward : triangular_solve_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : tril_triu
+  backward : tril_triu_grad
+  inputs :
+    {x: X}
+  outputs :
+    {out : Out}
+
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
   inputs :
@@ -2382,6 +2690,22 @@
   outputs :
     {out : Out, index : Index, counts : Counts}
 
+- op : unpool
+  inputs :
+    {x : X, indices: Indices}
+  outputs :
+    out : Out
+  int_array :
+    output_size:
+      data_type : int
+      support_tensor : true
+
+- op : unpool3d
+  inputs :
+    {x : X, indices: Indices}
+  outputs :
+    out : Out
+
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
   inputs :
@@ -2447,6 +2771,16 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op : yolo_loss (yolov3_loss)
+  backward: yolo_loss_grad (yolov3_loss_grad)
+  inputs :
+    {x : X,  gt_box : GTBox, gt_label : GTLabel ,gt_score : GTScore}
+  outputs :
+    {loss : Loss , objectness_mask : ObjectnessMask, gt_match_mask : GTMatchMask}
+  get_expected_kernel_type :
+    yolo_loss : GetYoloLossExpectedKernelType
+    yolo_loss_grad : GetYoloLossExpectedKernelType
 
 - op: lu
   backward: lu_grad

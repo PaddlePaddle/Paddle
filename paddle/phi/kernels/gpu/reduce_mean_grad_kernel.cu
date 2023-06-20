@@ -52,9 +52,9 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> inputs = {&new_out_grad};
   std::vector<DenseTensor*> outputs = {x_grad};
 
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  funcs::BroadcastKernel<phi::ElementwiseType::kUnary, T, T>(
-      dev_ctx, inputs, &outputs, 0, kps::DivideFunctor<T, MPType>(reduce_num));
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, kps::DivideFunctor<T, MPType>(reduce_num), 0);
 }
 
 }  // namespace phi
@@ -67,4 +67,6 @@ PD_REGISTER_KERNEL(mean_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

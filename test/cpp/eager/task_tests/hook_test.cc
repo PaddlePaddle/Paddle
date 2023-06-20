@@ -30,6 +30,8 @@
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 
+using eager_test::CreateTensorWithValue;
+
 namespace egr {
 
 paddle::Tensor hook_function(const paddle::Tensor& t) {
@@ -63,13 +65,12 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+  paddle::Tensor tensor = CreateTensorWithValue(ddim,
+                                                paddle::platform::CPUPlace(),
+                                                phi::DataType::FLOAT32,
+                                                phi::DataLayout::NCHW,
+                                                1.0 /*value*/,
+                                                false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 
@@ -139,13 +140,12 @@ TEST(RetainGrad, HookAfterRetainGrad) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+  paddle::Tensor tensor = CreateTensorWithValue(ddim,
+                                                paddle::platform::CPUPlace(),
+                                                phi::DataType::FLOAT32,
+                                                phi::DataLayout::NCHW,
+                                                1.0 /*value*/,
+                                                false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 

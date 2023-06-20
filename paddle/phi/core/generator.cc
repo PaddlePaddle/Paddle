@@ -277,11 +277,11 @@ uint64_t Generator::Random64() {
 }
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
-    uint64_t increament_offset) {
+    uint64_t increment_offset) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t cur_offset = this->state_.thread_offset;
-  this->state_.thread_offset += increament_offset;
+  this->state_.thread_offset += increment_offset;
   return std::make_pair(this->state_.current_seed, cur_offset);
 #else
   PADDLE_THROW(phi::errors::PermissionDenied(

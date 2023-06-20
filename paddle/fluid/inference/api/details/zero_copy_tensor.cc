@@ -124,16 +124,13 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
-    case static_cast<int>(PlaceType::kNPU): {
-      return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
-    }
     case static_cast<int>(PlaceType::kCUSTOM): {
       return tensor->mutable_data<T>(
           paddle::platform::CustomPlace(device_type_, device_));
     }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
+          "Only CPU / CUDA / XPU places is supported. The place `%d` is "
           "not supported.",
           static_cast<int>(place)));
       break;
@@ -264,7 +261,7 @@ void Tensor::CopyFromCpu(const T *data) {
                          dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+        "The analysis predictor supports CPU, GPU and XPU now."));
 #endif
   }
 }
@@ -471,7 +468,7 @@ void Tensor::CopyToCpuImpl(T *data,
     dev_ctx->GetStream()->Synchronize();
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+        "The analysis predictor supports CPU, GPU and XPU now."));
 #endif
   }
 }

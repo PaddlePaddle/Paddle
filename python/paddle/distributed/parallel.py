@@ -38,7 +38,11 @@ from paddle.distributed.collective import (
     _set_group_map_by_name,
     _valid_backend_list,
 )
-from paddle.distributed.communication.group import _add_new_group
+from paddle.distributed.communication.group import (
+    _add_new_group,
+    _get_global_group,
+    is_initialized,
+)
 from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
     wait_server_ready,
 )
@@ -47,7 +51,7 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.framework import core, in_dynamic_mode
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -101,7 +105,7 @@ def _reshape_inplace(x, shape):
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         for (
             coalesced_grad,
             origin_grad_vars,
@@ -115,21 +119,6 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 g_var.reshape_(shape=g_shape)
                 assert g_var.shape == g_shape
-
-
-def scale_loss(loss):
-    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
-    if not paddle.distributed.ParallelEnv().world_size > 1:
-        return loss
-
-    loss_scale = to_variable(
-        np.array([paddle.distributed.ParallelEnv().world_size]).astype(
-            "float32"
-        )
-    )
-    loss_scale.stop_gradient = True
-    scaled_loss = loss / loss_scale
-    return scaled_loss
 
 
 @imperative_base.no_grad
@@ -161,20 +150,18 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be Varbase or eager.Tensor"
-                % param.name
+                "The data type of '%s' must be core.eager.Tensor" % param.name
             )
 
-        # is_distributed param not need to sync when in mp mode
-        if isinstance(param, core.eager.Tensor):
-            if is_model_parallel:
-                if hasattr(param, "is_distributed") and param.is_distributed:
-                    continue
-
-            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-            # such as moe's expert parameters
-            if getattr(param, "no_sync", False):
+        if is_model_parallel:
+            if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
+
+        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+        # such as moe's expert parameters
+        if getattr(param, "no_sync", False):
+            continue
+
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
 
@@ -373,7 +360,7 @@ class DataParallel(layers.Layer):
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
-            in_dygraph_mode()
+            in_dynamic_mode()
         ), "It's not supported to construct DataParallel in static graph mode."
 
         self._layers = layers
@@ -398,7 +385,7 @@ class DataParallel(layers.Layer):
                 "constructing the DataParallel."
             )
 
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 self.group = (
                     paddle.distributed.collective._get_default_group()
                     if self.group is None
@@ -442,8 +429,7 @@ class DataParallel(layers.Layer):
                 params_set.add(param)
                 if not isinstance(param, self.var_dtype):
                     raise TypeError(
-                        "The data type of '%s' must be '%s'"
-                        % (param.name, self.var_dtype)
+                        f"The data type of '{param.name}' must be '{self.var_dtype}'"
                     )
                 if param.trainable:
                     layers_param.append((sublayer, param))
@@ -473,7 +459,7 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             self.group_indices = core.eager_assign_group_by_size(
                 trainable_parameters,
                 is_sparse_gradient,
@@ -489,14 +475,14 @@ class DataParallel(layers.Layer):
                 self.find_unused_parameters,
             )
 
-    def _find_varbase(self, obj):
+    def _find_tensor(self, obj):
         var_type = core.eager.Tensor
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
-            return itertools.chain(*map(self._find_varbase, obj))
+            return itertools.chain(*map(self._find_tensor, obj))
         if isinstance(obj, dict):
-            return itertools.chain(*map(self._find_varbase, obj.values()))
+            return itertools.chain(*map(self._find_tensor, obj.values()))
         return []
 
     @contextmanager
@@ -551,9 +537,7 @@ class DataParallel(layers.Layer):
             and framework._dygraph_tracer()._has_grad
             and self.grad_need_sync
         ):
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs))
-            )
+            self._reducer.prepare_for_backward(list(self._find_tensor(outputs)))
         return outputs
 
     @deprecated(
@@ -890,7 +874,6 @@ def _is_cpuonly(backend):
         backend in ['auto', 'nccl', 'bkcl', 'heter']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
-
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
@@ -1038,7 +1021,6 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
-    _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
@@ -1060,7 +1042,7 @@ def init_parallel_env():
 
     group = None
 
-    if backend in _valid_backend_list and in_dygraph_mode():
+    if backend in _valid_backend_list and in_dynamic_mode():
         if _default_group_name in _get_group_map_by_name():
             return _get_group_map_by_name()[_default_group_name]
         _set_default_backend(backend)
@@ -1231,7 +1213,7 @@ def get_rank(group=None):
             print("The rank is %d" % dist.get_rank())
             # The rank is 0
     """
-    if in_dygraph_mode() and group:
+    if in_dynamic_mode() and group:
         return group.rank
 
     assert group is None, "Only support group argument in eager mode."
@@ -1263,7 +1245,11 @@ def get_world_size(group=None):
             print("The world_size is %d" % dist.get_world_size())
             # The world_size is 1
     """
-    if in_dygraph_mode() and group:
+    if in_dynamic_mode() and (group is None):
+        if is_initialized():
+            group = _get_global_group()
+
+    if in_dynamic_mode() and group:
         return group.world_size
 
     assert group is None, "Only support group argument in eager mode."

@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void MeanAllGradKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
+                       const DenseTensor& x UNUSED,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   PADDLE_ENFORCE_EQ(out_grad.numel(),

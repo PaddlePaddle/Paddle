@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature SoftmaxMaskFuseGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "fused_softmax_mask_grad", {"Softmax", "Out@GRAD"}, {}, {"X@GRAD"});
 }

@@ -15,11 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/load_combine_op.h"
 
 namespace ops = paddle::operators;
-using XPUCtx = paddle::platform::XPUDeviceContext;
-
-REGISTER_OP_XPU_KERNEL(load_combine,
-                       ops::LoadCombineOpKernel<float, XPUCtx>,
-                       ops::LoadCombineOpKernel<double, XPUCtx>,
-                       ops::LoadCombineOpKernel<int, XPUCtx>,
-                       ops::LoadCombineOpKernel<int8_t, XPUCtx>,
-                       ops::LoadCombineOpKernel<int64_t, XPUCtx>);
+PD_REGISTER_STRUCT_KERNEL(load_combine,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::LoadCombineOpKernel,
+                          float,
+                          double,
+                          int,
+                          int8_t,
+                          int64_t) {}

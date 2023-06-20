@@ -191,7 +191,8 @@ inline void AppendKey(std::string* key, const std::vector<T>& dims) {
 }
 
 template <typename... ArgTypes>
-inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
+inline std::string CreateKey(const OneDNNContext& dev_ctx UNUSED,
+                             ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
   using expand_type = int[];

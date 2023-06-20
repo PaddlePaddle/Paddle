@@ -149,7 +149,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
 
-  platform::XPUDeviceGuard gurad(place.device);
+  platform::XPUDeviceGuard guard(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
@@ -182,7 +182,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
   VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
-  platform::XPUDeviceGuard gurad(place.device);
+  platform::XPUDeviceGuard guard(place.device);
   xpu_free(p);
 #else
   PADDLE_THROW(
@@ -379,6 +379,7 @@ template <>
 void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
                                        size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   auto *buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void *ptr = buddy_allocator->Alloc(size);
 
@@ -401,6 +402,7 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
                                      void *p,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -412,6 +414,7 @@ template <>
 uint64_t Release<platform::CUDAPinnedPlace>(
     const platform::CUDAPinnedPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  VLOG(10) << "Release on " << platform::Place(place);
   return GetCUDAPinnedBuddyAllocator()->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -555,7 +558,9 @@ size_t Used<platform::CustomPlace>(const platform::CustomPlace &place) {
 #endif
 }
 
-struct AllocVisitor : std::unary_function<const Place, void *> {
+struct AllocVisitor {
+  using argument_type = const Place;
+  using result_type = void *;
   inline explicit AllocVisitor(size_t size) : size_(size) {}
 
   template <typename Place>
@@ -567,7 +572,9 @@ struct AllocVisitor : std::unary_function<const Place, void *> {
   size_t size_;
 };
 
-struct FreeVisitor : public std::unary_function<const Place, void> {
+struct FreeVisitor {
+  using argument_type = const Place;
+  using result_type = void;
   inline explicit FreeVisitor(void *ptr, size_t size)
       : ptr_(ptr), size_(size) {}
 
@@ -581,7 +588,9 @@ struct FreeVisitor : public std::unary_function<const Place, void> {
   size_t size_;
 };
 
-struct ReleaseVisitor : std::unary_function<const Place, uint64_t> {
+struct ReleaseVisitor {
+  using argument_type = const Place;
+  using result_type = uint64_t;
   template <typename Place>
   inline uint64_t operator()(const Place &place) const {
     return Release<Place>(place);

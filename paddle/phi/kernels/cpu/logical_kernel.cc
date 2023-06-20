@@ -32,7 +32,7 @@ namespace phi {
                              DenseTensor* out) {                          \
     funcs::Logical##type##Functor<T> binary_func;                         \
     funcs::ElementwiseCompute<funcs::Logical##type##Functor<T>, T, bool>( \
-        dev_ctx, x, y, -1, binary_func, out);                             \
+        dev_ctx, x, y, binary_func, out);                                 \
   }
 
 DEFINE_LOGICAL_BINARY_KERNEL(And)

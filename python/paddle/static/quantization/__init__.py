@@ -64,3 +64,7 @@ from .post_training_quantization import (
 from .post_training_quantization import (
     WeightQuantization,
 )
+from .quanter import (
+    quant_aware,
+    convert,
+)

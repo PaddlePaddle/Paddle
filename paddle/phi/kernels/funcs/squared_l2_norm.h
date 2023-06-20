@@ -36,7 +36,7 @@ void SquaredL2Norm(const phi::CPUContext& ctx,
                    const T1* x,
                    T2* y,
                    size_t numel,
-                   memory_utils::Buffer* buffer = nullptr) {
+                   memory_utils::Buffer* buffer UNUSED = nullptr) {
   if (std::is_same<T1, T2>::value) {
     using EigenT = typename phi::EigenTensor<T1, 1>::Type;
     using ConstEigenT = typename phi::EigenTensor<T1, 1>::ConstType;

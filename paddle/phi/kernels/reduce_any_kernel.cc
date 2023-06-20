@@ -37,6 +37,10 @@ PD_REGISTER_KERNEL(any, CPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
 PD_REGISTER_KERNEL(any, GPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(any, KPS, ALL_LAYOUT, phi::AnyKernel, bool) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(any, XPU, ALL_LAYOUT, phi::AnyKernel, bool) {}
 #endif

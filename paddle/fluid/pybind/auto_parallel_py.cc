@@ -15,13 +15,13 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
-#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
-#include "paddle/fluid/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
+#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
 
 namespace py = pybind11;
@@ -29,19 +29,21 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-using paddle::distributed::auto_parallel::Device;
-using paddle::distributed::auto_parallel::DeviceCapability;
-using paddle::distributed::auto_parallel::DeviceMesh;
-using paddle::distributed::auto_parallel::DistributedMapper;
-using paddle::distributed::auto_parallel::kDefault;
-using paddle::distributed::auto_parallel::Link;
-using paddle::distributed::auto_parallel::LinkCapability;
-using paddle::distributed::auto_parallel::Machine;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
-using paddle::distributed::auto_parallel::ProcessMesh;
-using paddle::distributed::auto_parallel::TensorDistAttr;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
+using phi::distributed::auto_parallel::Device;
+using phi::distributed::auto_parallel::DeviceCapability;
+using phi::distributed::auto_parallel::DeviceMesh;
+using phi::distributed::auto_parallel::DistributedMapper;
+using phi::distributed::auto_parallel::kDefault;
+using phi::distributed::auto_parallel::Link;
+using phi::distributed::auto_parallel::LinkCapability;
+using phi::distributed::auto_parallel::Machine;
+using phi::distributed::auto_parallel::ProcessMesh;
+using phi::distributed::auto_parallel::TensorDistAttr;
+
+PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
@@ -225,9 +227,16 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::class_<TensorDistAttr>(*m, "TensorDistAttr")
-      .def(py::init<>())
-      .def(py::init<const VarDesc &>())
+  py::class_<TensorDistAttr, std::shared_ptr<TensorDistAttr>> py_dist_attr(
+      *m, "TensorDistAttr");
+  g_tensor_dist_attr_pytype =
+      reinterpret_cast<PyTypeObject *>(py_dist_attr.ptr());
+  py_dist_attr.def(py::init<>())
+      .def(py::init([](const VarDesc &var_desc) {
+        auto shape =
+            paddle::distributed::auto_parallel::get_tensor_shape(&var_desc);
+        return std::make_unique<TensorDistAttr>(shape);
+      }))
       .def(py::init<const TensorDistAttr &>())
       .def_property(
           "process_mesh", &get_tensor_process_mesh, &set_tensor_process_mesh)
@@ -246,9 +255,14 @@ void BindAutoParallel(py::module *m) {
       .def("is_annotated", &TensorDistAttr::is_annotated)
       .def("mark_annotated", &TensorDistAttr::mark_annotated)
       .def("clear_annotated", &TensorDistAttr::clear_annotated)
-      .def("verify",
-           &TensorDistAttr::verify,
-           py::arg("tensor") = static_cast<VarDesc *>(nullptr))
+      .def(
+          "verify",
+          [](TensorDistAttr &self, const VarDesc *tensor) {
+            auto shape =
+                paddle::distributed::auto_parallel::get_tensor_shape(tensor);
+            return self.verify(shape);
+          },
+          py::arg("tensor") = static_cast<VarDesc *>(nullptr))
       .def("reset", &reset_tensor_dist_attr)
       .def("serialize_to_string",
            [](TensorDistAttr &self) {
@@ -369,6 +383,14 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
+
+  // TODO(liuzhenhai): DistributedMapper is not used for now, but
+  // dist_mapper_test need the symbols forch DistributedMapper to be linked,
+  // remove it latter
+  m->def("touch_dist_mapper", []() {
+    DistributedMapper mapper;
+    return mapper.to_string();
+  });
 }
 
 }  // namespace pybind

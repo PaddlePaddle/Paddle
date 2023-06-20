@@ -49,8 +49,8 @@ void PNormKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  float porder,
                  int axis,
-                 float epsilon,
-                 bool keepdim,
+                 float epsilon UNUSED,
+                 bool keepdim UNUSED,
                  bool asvector,
                  DenseTensor* out) {
   auto* in_x = &x;

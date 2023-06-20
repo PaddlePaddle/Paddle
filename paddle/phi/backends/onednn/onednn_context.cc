@@ -83,6 +83,11 @@ void OneDNNContextThreadLocals::Body::log_lib_version(void) {
   }
 }
 
+OneDNNContextThreadLocals::Body& OneDNNContextThreadLocals::fetch() {
+  thread_local Body b;
+  return b;
+}
+
 struct OneDNNContext::Impl {
   Impl() : p_blobmap_() {
     p_blobmap_.reset(new BlobMap());
@@ -461,6 +466,8 @@ const std::vector<std::string>& OneDNNContext::GetOutputsName(
     const std::string& output) const {
   return impl_->GetOutputsName(output);
 }
+
+const char* OneDNNContext::name() { return "OneDNNContext"; }
 
 }  // namespace phi
 #endif

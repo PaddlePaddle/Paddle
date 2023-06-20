@@ -15,9 +15,9 @@
 import paddle
 from paddle import static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import CostEstimator
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.cost import CostEstimator
+from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
 

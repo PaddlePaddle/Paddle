@@ -446,8 +446,13 @@ void MultiDotGradKernel(const Context& ctx,
   } else {
     MultiDotGradMatChainOrder<Context, T>(
         ctx, dout, ins, dout_dim, ins_dims, &dx);
+    // if x's shape is: [3] [3, 4] [4]
+    // dx's shape will be: [1, 3] [3, 4] [4, 1]
     if (ins[n - 1]->dims().size() == 1) {
       dx[n - 1]->Resize({dx[n - 1]->dims()[0]});
+    }
+    if (ins[0]->dims().size() == 1) {
+      dx[0]->Resize({dx[0]->dims()[1]});
     }
   }
 }

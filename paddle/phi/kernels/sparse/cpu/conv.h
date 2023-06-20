@@ -136,7 +136,7 @@ void ProductRuleBook(const Context& dev_ctx,
 template <typename T, typename Context, typename IntT = int>
 void UpdateRulebookAndOutIndex(const Context& dev_ctx,
                                const SparseCooTensor& x,
-                               const int kernel_size,
+                               const int kernel_size UNUSED,
                                const int out_channels,
                                const DDim& out_dims,
                                DenseTensor* rulebook,

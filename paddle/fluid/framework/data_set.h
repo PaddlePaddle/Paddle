@@ -58,7 +58,7 @@ class Dataset {
                          const uint16_t start_sample_layer UNUSED,
                          const bool with_hierachy UNUSED,
                          const uint16_t seed_ UNUSED,
-                         const uint16_t sample_slot) {}
+                         const uint16_t sample_slot UNUSED) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num

@@ -22,6 +22,9 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
@@ -36,6 +39,9 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_log_memory_stats,
     false,
@@ -119,7 +125,8 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
-bool IsCommunicationOp(const std::string& op_name) {
+bool IsCommunicationOp(const OperatorBase* op) {
+  const std::string& op_name = op->Type();
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
@@ -131,11 +138,17 @@ bool IsCommunicationOp(const std::string& op_name) {
       special_comm_op_set.count(op_name)) {
     return true;
   }
+  if (op->HasAttr("ring_id")) {
+    return true;
+  }
   return false;
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
-  return IsCommunicationOp(instr.OpBase()->Type());
+  if (!instr.OpBaseValid()) {
+    return false;
+  }
+  return IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -400,6 +413,40 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
+    } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+      bool is_custom_device_op = false;
+      for (auto dev_type : device_types) {
+        if (op_device.find(dev_type) != std::string::npos) {
+          is_custom_device_op = true;
+          break;
+        }
+      }
+      PADDLE_ENFORCE_EQ(
+          is_custom_device_op,
+          true,
+          phi::errors::Unimplemented(
+              "Unsupported current device %s with Paddle CustomDevice ",
+              op_device));
+#else
+      VLOG(1) << string::Sprintf(
+          "Cannot use get_all_custom_device_type because you have installed"
+          "CPU/GPU version PaddlePaddle.\n"
+          "If you want to use get_all_custom_device_type, please try to "
+          "install CustomDevice version "
+          "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+      if (op_base->SupportCustomDevice()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1) << "Op(" << op_base->Type()
+                                << ") has no Custom Place implementation. It "
+                                   "will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported current place %s", op_device));
@@ -445,7 +492,7 @@ void BuildOpFuncList(const platform::Place& place,
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
 
-  VLOG(4) << "Static build: " << static_build;
+  VLOG(1) << "Static build: " << static_build;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -536,7 +583,7 @@ void BuildOpFuncList(const platform::Place& place,
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
     } else {
-      if (interpreter::IsCommunicationOp(op_type)) {
+      if (interpreter::IsCommunicationOp(op)) {
         // NOTE(Ruibiao): Dispatching computation before communication improves
         // multi-stream overlap when the time cost of communication less than
         // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
@@ -736,10 +783,6 @@ void BuildOpFuncList(const platform::Place& place,
         }
 
         // for debug nan/inf
-        if (FLAGS_check_nan_inf) {
-          VLOG(4) << "Check nan/inf";
-          framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
-        }
 
         vec_func_list->emplace_back(op_func_node);
 
@@ -811,6 +854,35 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
+    if (FLAGS_check_nan_inf) {
+      VLOG(4) << "Check nan/inf";
+      try {
+        framework::details::CheckOpHasNanOrInf(*op, *local_scope, place);
+      } catch (...) {
+        const std::vector<std::string>* callstack = nullptr;
+        auto attrs = op->Attrs();
+        auto iter =
+            attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+        if (iter != attrs.end()) {
+          callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+          if (callstack->empty()) callstack = nullptr;
+        }
+        std::ostringstream sout;
+        if (callstack) {
+          if (FLAGS_call_stack_level > 1) {
+            sout << "\n\n  Compile Traceback (most recent call last):";
+          } else {
+            sout << "In user code:\n";
+          }
+          for (auto& line : *callstack) {
+            sout << "\n  " << line;
+          }
+        }
+        std::cout << sout.str() << std::endl;
+        std::rethrow_exception(std::current_exception());
+      }
+    }
+
     VLOG(4) << "End run " << place << " "
             << op_func_node.operator_base_->DebugStringEx(local_scope);
 
@@ -843,6 +915,99 @@ void BuildOpFuncList(const platform::Place& place,
 
       interpreter::LogDeviceMemoryStats(place);
     }
+  }
+
+  // in the unused_var_map, we did not record the variable who are created in
+  // ApplyDataTransform. So we erase these variables here.
+  std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+      new std::deque<std::shared_ptr<memory::Allocation>>();
+  for (const auto& transferred_var : var_scope->DataTransferAddedVars()) {
+    const auto& var_name = transferred_var.first;
+    auto* var = local_scope->FindVar(var_name);
+    if (var == nullptr) continue;
+    VLOG(6) << "Erase variable " << var_name;
+    if (var->IsType<phi::DenseTensor>()) {
+      garbages->emplace_back(
+          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    }
+  }
+  delete garbages;
+}
+
+void BuildOpFuncList(
+    const platform::Place& place,
+    ::ir::Block* block,
+    std::vector<OpFuncNode>* vec_func_list,
+    framework::Scope* scope,
+    const std::unordered_map<::ir::Value, std::string>& value_2_name_map,
+    const ExecutionConfig& execution_config) {
+  vec_func_list->reserve(block->size());
+  ::ir::IrContext* ctx = ir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    OpFuncNode op_func_node;
+    auto attr_map = (*it)->attributes();
+
+    auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+
+    if (op_name == "pd.fetch" || op_name == "builtin.combine") {
+      VLOG(6) << "skip process pd.fetch op";
+      continue;
+    }
+    op_func_node.phi_op_name_ = op_name;
+
+    ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+
+    auto impl =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    auto yaml_info = impl->get_op_info_();
+
+    auto attr_info = std::get<1>(yaml_info);
+
+    op_func_node.infer_shape_interface_ =
+        op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
+
+    VLOG(6) << "op name" << op_func_node.phi_op_name_;
+
+    ::ir::BuildInferMetaContext((*it),
+                                value_2_name_map,
+                                scope,
+                                yaml_info,
+                                &(op_func_node.infer_meta_context_));
+
+    auto kernel_name =
+        attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
+    auto kernel_key = attr_map.at("kernel_key")
+                          .dyn_cast<paddle::dialect::KernelAttribute>()
+                          .data();
+
+    VLOG(6) << "finish process infer meta context";
+    auto t1 =
+        phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
+    op_func_node.phi_kernel_ = new phi::Kernel(t1);
+
+    PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
+                      true,
+                      "not found kernel for [%s]",
+                      kernel_name);
+    ::ir::BuildPhiKernelContext((*it),
+                                value_2_name_map,
+                                scope,
+                                yaml_info,
+                                &(op_func_node.kernel_context_),
+                                &(op_func_node.input_index),
+                                &(op_func_node.output_index));
+
+    VLOG(6) << "finish process kernel context";
+    op_func_node.kernel_context_.SetDeviceContext(
+        phi::DeviceContextPool::Instance().Get(
+            phi::TransToPhiPlace(kernel_key.backend())));
+    op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
+        phi::TransToPhiPlace(kernel_key.backend()));
+
+    vec_func_list->emplace_back(op_func_node);
   }
 }
 

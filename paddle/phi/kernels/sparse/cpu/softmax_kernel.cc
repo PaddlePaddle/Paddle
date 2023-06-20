@@ -18,7 +18,10 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/sparse/softmax.h"
+#include "paddle/phi/kernels/softmax_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
@@ -85,6 +88,90 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
       }));
 }
 
+template <typename T, typename IntT, typename Context>
+void SoftmaxCooCPUKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         int axis,
+                         SparseCooTensor* out) {
+  auto indices = x.indices();
+  auto values = x.values();
+  const auto x_dims = x.dims();
+  const auto sparse_dim = x.sparse_dim();
+  DenseTensor out_indices(indices);
+  DenseTensor out_values = EmptyLike<T, Context>(dev_ctx, values);
+  out->SetMember(out_indices, out_values, x.dims(), x.coalesced());
+
+  int dim = axis < 0 ? x_dims.size() + axis : axis;
+
+  /* If dim is greater than or equal to sparse_dim, the dense softmax is used.
+   */
+  if (dim >= sparse_dim) {
+    SoftmaxKernel<T, Context>(
+        dev_ctx, values, dim - sparse_dim + 1, &out_values);
+    return;
+  }
+
+  const std::vector<IntT> sizes = phi::vectorize<IntT>(x_dims);
+  std::map<IntT, std::vector<IntT>> pools;
+  IntT nvalues = std::accumulate(sizes.begin() + sparse_dim,
+                                 sizes.end(),
+                                 static_cast<IntT>(1),
+                                 std::multiplies<>());
+  phi::funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
+
+  auto values_ptr = values.data<T>();
+  auto out_values_ptr = out_values.data<T>();
+  for (size_t p = 0; p < pools.size(); p++) {
+    auto pool_indices = pools[p];
+    if (pool_indices.empty()) {
+      continue;
+    }
+
+    std::vector<T> mx_row(nvalues, -std::numeric_limits<T>::infinity());
+    std::vector<T> exp_sums_row(nvalues, 0);
+    IntT pool_size = static_cast<IntT>(pool_indices.size());
+
+    // Compute max for each pool
+    for (IntT i = 0; i < pool_size; i++) {
+      auto values_row = values_ptr + pool_indices[i] * nvalues;
+      for (IntT j = 0; j < nvalues; j++) {
+        mx_row[j] = std::max(mx_row[j], *(values_row + j));
+      }
+    }
+
+    // exp to (v - mx) and sum the results
+    for (IntT i = 0; i < pool_size; i++) {
+      auto values_row = values_ptr + pool_indices[i] * nvalues;
+      auto out_values_row = out_values_ptr + pool_indices[i] * nvalues;
+      for (IntT j = 0; j < nvalues; j++) {
+        auto v = std::exp(*(values_row + j) - mx_row[j]);
+        out_values_row[j] = v;
+        exp_sums_row[j] += v;
+      }
+    }
+
+    /* Normalize with the sum of exponents */
+    for (IntT i = 0; i < pool_size; i++) {
+      auto out_values_row = out_values_ptr + pool_indices[i] * nvalues;
+      for (IntT j = 0; j < nvalues; j++) {
+        out_values_row[j] *= 1.0 / exp_sums_row[j];
+      }
+    }
+  }
+}
+
+// cpu kerenel
+template <typename T, typename Context>
+void SoftmaxCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      int axis,
+                      SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "SoftmaxCooCPUKernel", ([&] {
+        SoftmaxCooCPUKernel<T, data_t, Context>(dev_ctx, x, axis, out);
+      }));
+}
+
 }  // namespace sparse
 }  // namespace phi
 
@@ -95,4 +182,13 @@ PD_REGISTER_KERNEL(softmax_csr,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
+}
+
+PD_REGISTER_KERNEL(softmax_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SoftmaxCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

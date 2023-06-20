@@ -75,7 +75,7 @@ void HeavisideKernel(const Context& dev_ctx,
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::ElementwiseHeavisideFunctor<T>, T>(
-      dev_ctx, x, y, -1, funcs::ElementwiseHeavisideFunctor<T>(), out);
+      dev_ctx, x, y, funcs::ElementwiseHeavisideFunctor<T>(), out);
 }
 
 }  // namespace phi
@@ -118,8 +118,19 @@ PD_REGISTER_KERNEL(remainder,
                    double,
                    int,
                    int64_t) {}
-PD_REGISTER_KERNEL(
-    floor_divide, CPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(floor_divide,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FloorDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    CPU,
                    ALL_LAYOUT,
@@ -129,7 +140,6 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
-
 PD_REGISTER_KERNEL(heaviside,
                    CPU,
                    ALL_LAYOUT,

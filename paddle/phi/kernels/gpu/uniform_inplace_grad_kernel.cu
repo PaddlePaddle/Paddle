@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/uniform_inplace_grad_kernel.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
@@ -41,4 +42,6 @@ PD_REGISTER_KERNEL(uniform_inplace_grad,
                    ALL_LAYOUT,
                    phi::UniformInplaceGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -30,11 +30,11 @@ void UnpoolGradKernel(const Context& dev_ctx,
                       const DenseTensor& indices,
                       const DenseTensor& out,
                       const DenseTensor& out_grad,
-                      const std::vector<int>& ksize,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings,
-                      const IntArray& output_size,
-                      const std::string& data_format,
+                      const std::vector<int>& ksize UNUSED,
+                      const std::vector<int>& strides UNUSED,
+                      const std::vector<int>& paddings UNUSED,
+                      const IntArray& output_size UNUSED,
+                      const std::string& data_format UNUSED,
                       DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* output_grad_data = out_grad.data<T>();
@@ -80,11 +80,11 @@ void Unpool3dGradKernel(const Context& dev_ctx,
                         const DenseTensor& indices,
                         const DenseTensor& out,
                         const DenseTensor& out_grad,
-                        const std::vector<int>& ksize,
+                        const std::vector<int>& ksize UNUSED,
                         const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& output_size,
-                        const std::string& data_format,
+                        const std::vector<int>& paddings UNUSED,
+                        const std::vector<int>& output_size UNUSED,
+                        const std::string& data_format UNUSED,
                         DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* output_grad_data = out_grad.data<T>();

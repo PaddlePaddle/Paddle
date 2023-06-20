@@ -17,6 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -129,6 +132,27 @@ class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class PadCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+
+    std::vector<int> paddings =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("paddings"));
+    float pad_value = static_cast<float>(this->Attr<float>("pad_value"));
+    VLOG(6) << "Runing add_grad composite func";
+
+    prim::pad_grad<prim::DescTensor>(x, out_grad, paddings, pad_value, dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
+  }
+};
+
 template <typename T>
 class PadOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -155,6 +179,7 @@ REGISTER_OPERATOR(pad,
                   ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::framework::OpDesc>,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>,
+                  ops::PadCompositeGradOpMaker,
                   PadInferShapeFunctor);
 REGISTER_OPERATOR(pad_grad,
                   ops::PadOpGrad,

@@ -45,7 +45,15 @@ def get_msg_dict(msg):
     res_dict = {}
     fields = msg.DESCRIPTOR.fields
     for f in fields:
-        res_dict[f.name] = getattr(msg, f.name)
+        v = getattr(msg, f.name)
+        # NOTE(zhiqiu): convert repeated filed to list to
+        # avoid segment fault when the process exit?
+        # WHY?
+        # I guess the type or value of protobuf item is NULL when
+        # dealloc.
+        if f.label == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED:
+            v = list(v)
+        res_dict[f.name] = v
     return res_dict
 
 
@@ -2388,7 +2396,7 @@ class DistributedStrategy:
         """
 
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
-        The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
+        The inner function of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
         Usually, large workspace size may lead to choose faster algorithms,
         but significant increasing memory workspace. Users need to trade-off between memory and speed.
         Default Value: 4000

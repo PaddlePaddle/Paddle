@@ -259,23 +259,6 @@ bool OnlyOneBeamSearchAndOneBeamSize(ir::Graph* graph) {
          beam_search_nodes[0]->Op()->GetAttrIfExists<int>("beam_size") == 1;
 }
 
-std::vector<Node*> FindOpNodeByInputName(Graph* graph,
-                                         const std::string& var_name) {
-  std::vector<Node*> ret;
-  for (auto* node : graph->Nodes()) {
-    if (!node->IsOp()) continue;
-    auto inputs = node->Op()->Inputs();
-    for (auto input : inputs) {
-      auto in_names = input.second;
-      if (std::count(in_names.begin(), in_names.end(), var_name) > 0) {
-        ret.push_back(node);
-        break;
-      }
-    }
-  }
-  return ret;
-}
-
 void OneBeamSizeFusePass::RemoveAssignGather(ir::Graph* graph) const {
   // detect assign + gather
   GraphPatternDetector gpd;

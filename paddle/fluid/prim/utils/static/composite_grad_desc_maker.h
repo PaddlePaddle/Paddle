@@ -350,10 +350,7 @@ class CompositeGradOpMakerBase {
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
     auto* var = this->SingleForwardOutput(name);
     if (!var) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "GetSingleOutputGrad for %s_grad faild, if it is Optional input,"
-          "please use GetOptionalSingleOutputGrad replaced. ",
-          name));
+      return nullptr;
     }
     auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
@@ -371,7 +368,7 @@ class CompositeGradOpMakerBase {
       return StaticCompositeContext::Instance().GetBlock()->FindVar(
           grad_var_name);
     } else {
-      return StaticCompositeContext::Instance().GetBlock()->Var(grad_var_name);
+      return nullptr;
     }
   }
 

@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/types.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"  // NOTE: this header is required somewhere
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -486,7 +486,7 @@ class ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>&,  // NOLINT
       std::vector<phi::DenseTensor>&,  // NOLINT
-      const ReduceOptions& opts) {
+      const ReduceOptions& opts UNUSED) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "ProcessGroup%s does not support reduce", GetBackendName()));
   }

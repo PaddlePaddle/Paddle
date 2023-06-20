@@ -1099,7 +1099,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
         WARPS_M_2 * THREADS_PER_ROW_2;     // 16 * 32 = 512
     const int ROWS_PER_CTA_2 = WARPS_M_2;  // 16
 
-    // #blocks: 32，#threads_per_block: 512
+    // #blocks: 32, #threads_per_block: 512
     // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
       PADDLE_THROW(

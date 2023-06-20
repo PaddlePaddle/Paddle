@@ -68,7 +68,6 @@ elif [ "$1" == "gcc122" ]; then
   make -j8 && make install
   cd .. && rm -rf temp_gcc122 gcc-12.2.0 gcc-12.2.0.tar.gz
   cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-  ln -s /usr/local/gcc-12.2/lib64/libgfortran.so.5 ${lib_so_5} && \
   ln -s /usr/local/gcc-12.2/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-12.2/lib64/libstdc++.so.6.0.30 ${lib_path}
 elif [ "$1" == "gcc121" ]; then
@@ -82,7 +81,6 @@ elif [ "$1" == "gcc121" ]; then
   make -j8 && make install
   cd .. && rm -rf temp_gcc122 gcc-12.1.0 gcc-12.1.0.tar.gz
   cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
-  ln -s /usr/local/gcc-12.1/lib64/libgfortran.so.5 ${lib_so_5} && \
   ln -s /usr/local/gcc-12.1/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-12.1/lib64/libstdc++.so.6.0.30 ${lib_path}
 fi

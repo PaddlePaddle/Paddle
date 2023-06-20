@@ -44,7 +44,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     PADDLE_ENFORCE_GT(
         momentum_ops.size(),
         static_cast<size_t>(0),
-        platform::errors::InvalidArgument("Momentum ops must not be empyt."));
+        platform::errors::InvalidArgument("Momentum ops must not be empty."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.

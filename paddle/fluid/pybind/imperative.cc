@@ -52,6 +52,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/xccl_context.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
@@ -63,6 +64,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/type_defs.h"
 
+PHI_DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 
@@ -143,8 +145,6 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
-  } else if (py::isinstance<platform::NPUPlace>(place_obj)) {
-    return place_obj.cast<platform::NPUPlace>();
   } else if (py::isinstance<platform::IPUPlace>(place_obj)) {
     return place_obj.cast<platform::IPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
@@ -154,7 +154,7 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"
         "CustomPlace"));
   }
 }
@@ -207,7 +207,7 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -288,7 +288,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (place == tensor.place()) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -312,7 +312,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (platform::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -481,7 +481,7 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The destion Tensor(%s) can not copy when it is not empty.",
+        "The destination Tensor(%s) can not copy when it is not empty.",
         dst.Name()));
   }
 }
@@ -538,7 +538,7 @@ void BindImperative(py::module *m_ptr) {
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
-          // 2. construcct LoDTensor
+          // 2. construct LoDTensor
           phi::DenseTensor t;
           SetTensorFromPyArray<platform::CPUPlace>(
               &t, array, platform::CPUPlace(), true);
@@ -578,7 +578,7 @@ void BindImperative(py::module *m_ptr) {
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"
                 "_generator' to locate the data causes this issue."));
-        // 2. construcct LoDTensor
+        // 2. construct LoDTensor
         phi::DenseTensor t;
         SetTensorFromPyArray<platform::CPUPlace>(
             &t, array, platform::CPUPlace(), true);
@@ -711,14 +711,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__",
-           &InitVarBaseFromNumpyWithArg<platform::NPUPlace>,
-           py::arg("value"),
-           py::arg("place"),
-           py::arg("persistable") = false,
-           py::arg("zero_copy") = false,
-           py::arg("name") = "",
-           py::arg("stop_gradient") = -1)
-      .def("__init__",
            &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
            py::arg("value"),
            py::arg("place"),
@@ -748,11 +740,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "")
       .def("__init__",
            &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("name") = "")
-      .def("__init__",
-           &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("name") = "")
@@ -800,7 +787,7 @@ void BindImperative(py::module *m_ptr) {
             // inplace operator for the VarBase self.
             self->BumpInplaceVersion();
 
-            // 1. Check argumnets
+            // 1. Check arguments
             bool parse_index = true;
 
             // Check whether _index can be parsed.
@@ -1064,34 +1051,63 @@ void BindImperative(py::module *m_ptr) {
                }
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
              }
-             if (!none_axes.empty()) {
-               if (!none_axes.empty()) {
-                 // Deal with cases that decrease_axes is not empty
-                 // For example:
-                 // # x.shape: (2,3,4)
-                 // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-                 for (auto &axis : none_axes) {
-                   int len = 0;
-                   for (int da : decrease_axis) {
-                     if (da < axis) {
-                       len++;
-                     }
-                   }
-                   axis -= len;
+
+             bool set_to_1d = FLAGS_set_to_1d;
+
+             if (set_to_1d) {
+               // NOTE(zoooo0820): When all axes are decreased, the output
+               // will be 1-D with FLAGS_set_to_1d=True. In this case, one
+               // `None` should be pop out, otherwise the output shape will be
+               // not correct.
+               if (static_cast<int>(decrease_axis.size()) ==
+                   tensor->dims().size()) {
+                 VLOG(1) << "Warning: In Tensor '__getitem__', if the number "
+                            "of scalar "
+                            "elements "
+                            "in the index is equal to the rank of the Tensor, "
+                            "the output "
+                            "should "
+                            "be 0-D. In order to be consistent with the "
+                            "behavior of previous "
+                            "versions, it will be processed to 1-D. But it is "
+                            "not correct and "
+                            "will be "
+                            "removed in release 2.6. "
+                            "If 1-D is still wanted, please modify the index "
+                            "element from "
+                            "scalar to slice "
+                            "(e.g. 'x[i]' => 'x[i:i+1]'). ";
+                 if (!none_axes.empty()) {
+                   none_axes.pop_back();
                  }
-
-                 imperative::NameVarBaseMap ins = {{"X", {out}}};
-                 framework::AttributeMap attrs = {{"axes", none_axes}};
-                 auto new_out = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 auto out_xshape = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 imperative::NameVarBaseMap outs = {{"Out", {new_out}},
-                                                    {"XShape", {out_xshape}}};
-                 tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
-
-                 return new_out;
                }
+             }
+             if (!none_axes.empty()) {
+               // Deal with cases that decrease_axes is not empty
+               // For example:
+               // # x.shape: (2,3,4)
+               // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+               for (auto &axis : none_axes) {
+                 int len = 0;
+                 for (int da : decrease_axis) {
+                   if (da < axis) {
+                     len++;
+                   }
+                 }
+                 axis -= len;
+               }
+
+               imperative::NameVarBaseMap ins = {{"X", {out}}};
+               framework::AttributeMap attrs = {{"axes", none_axes}};
+               auto new_out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto out_xshape = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {new_out}},
+                                                  {"XShape", {out_xshape}}};
+               tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
+
+               return new_out;
              }
 
              // the index is a list
@@ -1496,7 +1512,7 @@ void BindImperative(py::module *m_ptr) {
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
                      "Imperative SelectedRows allreduce is not supported when "
-                     "paddle is compiled with NCCL verison lower than v2.2.12. "
+                     "paddle is compiled with NCCL version lower than v2.2.12. "
                      "You can set is_sparse=False for the Layer containing "
                      "this argument, such as Embedding(is_sparse=False)."));
                }
@@ -1570,7 +1586,7 @@ void BindImperative(py::module *m_ptr) {
              This hook will be called every time the gradient of current Tensor has been fully calculated.
 
              There are two differences with `_register_grad_hook`:
-             1. This backward hook will be executed after the gradient accumulation completed across batchs,
+             1. This backward hook will be executed after the gradient accumulation completed across batches,
                 but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
                 completed in current batch.
              2. This backward hook function should have the following signature:
@@ -1839,18 +1855,6 @@ void BindImperative(py::module *m_ptr) {
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::CUDAPlace &place,
-             bool blocking) {
-            auto new_var = self->NewVarBase(place, blocking);
-            if (!blocking) {
-              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-            }
-            return new_var;
-          },
-          py::return_value_policy::copy)
-      .def(
-          "_copy_to",
-          [](const std::shared_ptr<imperative::VarBase> &self,
-             const platform::NPUPlace &place,
              bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
             if (!blocking) {
@@ -2139,6 +2143,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("OD", paddle::imperative::AmpLevel::OD)
       .value("O1", paddle::imperative::AmpLevel::O1)
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
@@ -2151,6 +2156,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_use_promote",
+                    &imperative::Tracer::GetUsePromote,
+                    &imperative::Tracer::SetUsePromote)
       .def_property("_amp_level",
                     &imperative::Tracer::GetAmpLevel,
                     &imperative::Tracer::SetAmpLevel)
@@ -2188,11 +2196,6 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::NPUPlace>(obj)) {
-              auto p = obj.cast<platform::NPUPlace *>();
-              self.SetExpectedPlace(*p);
-              VLOG(4) << "Tracer(" << &self << ")"
-                      << " set expected place " << *p;
             } else if (py::isinstance<platform::IPUPlace>(obj)) {
               auto p = obj.cast<platform::IPUPlace *>();
               self.SetExpectedPlace(*p);
@@ -2211,7 +2214,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, NPUPlace, IPUPlace"
+                  "CPUPlace, IPUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -2350,28 +2353,6 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
-              const platform::NPUPlace &place,
-              bool trace_backward,
-              const std::map<std::string, std::string> &inplace_map = {}) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp<imperative::VarBase>(type,
-                                                 std::move(ins_map),
-                                                 std::move(outs_map),
-                                                 std::move(attrs),
-                                                 place,
-                                                 trace_backward,
-                                                 inplace_map);
-             }
-           })
-      .def("trace",
-           [](imperative::Tracer &self,
-              const std::string &type,
-              const PyNameVarBaseMap &ins,
-              const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs,
               const platform::IPUPlace &place,
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
@@ -2457,7 +2438,6 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
 
   m.def(
@@ -2500,8 +2480,9 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2541,6 +2522,19 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  py::class_<imperative::XCCLParallelContext,
+             imperative::ParallelContext,
+             std::shared_ptr<imperative::XCCLParallelContext>>(
+      m, "XCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CustomPlace &>())
+      .def("init", [](imperative::XCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::XCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
 #if defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::BKCLParallelContext,
              imperative::ParallelContext,
@@ -2569,7 +2563,7 @@ void BindImperative(py::module *m_ptr) {
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<imperative::HeterParallelContext,
              imperative::ParallelContext,
              std::shared_ptr<imperative::HeterParallelContext>>(

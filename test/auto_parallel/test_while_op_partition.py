@@ -20,12 +20,12 @@ import paddle
 import paddle.nn.functional as F
 from paddle import fluid, nn, static
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import make_data_unshard
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.utils import make_data_unshard
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
@@ -85,7 +85,6 @@ class MLPLayer(nn.Layer):
         )
 
     def forward(self, input):
-
         auto.shard_tensor(self.norm.weight, _g_process_mesh, [None])
         auto.shard_tensor(self.norm.bias, _g_process_mesh, [None])
         auto.shard_tensor(self.linear0.weight, _g_process_mesh, [None, 'x'])
@@ -113,7 +112,6 @@ def get_program():
     train_program = static.Program()
     start_program = static.Program()
     with fluid.program_guard(train_program, start_program):
-
         # 循环计数器
         i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
         auto.shard_tensor(i, _g_process_mesh, [None])
@@ -136,7 +134,7 @@ def get_program():
 
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(
+        dataloader = fluid.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(
@@ -174,7 +172,6 @@ def get_program():
 
         while_op = paddle.static.nn.control_flow.While(cond=cond)
         with while_op.block():
-
             pre_input = paddle.tensor.array_read(array=input_array, i=i)
             auto.shard_tensor(pre_input, _g_process_mesh, [None, None, None])
 
@@ -206,7 +203,7 @@ def get_program():
         auto.shard_tensor(error_cost, _g_process_mesh, [None, None, None])
 
         loss = paddle.mean(error_cost)
-        auto.shard_tensor(loss, _g_process_mesh, [None])
+        auto.shard_tensor(loss, _g_process_mesh, [])
 
     return train_program, start_program, dataloader, i, loss
 
@@ -354,7 +351,6 @@ def completion(train_program, start_program, dist_context):
 
 
 def partition(train_program, start_program, dist_context):
-
     # optimizer = paddle.optimizer.SGD(learning_rate=0.00001)
     rank = paddle.distributed.get_rank()
     partitioner = Partitioner(dist_context, rank)
@@ -367,7 +363,6 @@ def partition(train_program, start_program, dist_context):
 
 class TestMLP(unittest.TestCase):
     def test_partitioner(self):
-
         train_program, start_program, dataloader, i, loss = get_program()
         dist_context = get_default_distributed_context()
         train_program, start_program = completion(

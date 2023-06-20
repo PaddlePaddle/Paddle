@@ -314,7 +314,7 @@ def strong_wolfe(
             paddle.assign(ls_func_calls + j, ls_func_calls)
 
         pred1 = ~done & (
-            (phi_2 > phi_0 + c1 * a2 * derphi_0) | ((phi_2 >= phi_0) & (i > 1))
+            (phi_2 > phi_0 + c1 * a2 * derphi_0) | ((phi_2 >= phi_1) & (i > 1))
         )
         paddle.assign(done | pred1, done)
         paddle.static.nn.cond(pred1, true_fn1, None)

@@ -21,19 +21,19 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void MvCsrKernel(const Context& dev_ctx,
-                 const SparseCsrTensor& x,
-                 const DenseTensor& vec,
-                 DenseTensor* out) {
+void MvCsrKernel(const Context& dev_ctx UNUSED,
+                 const SparseCsrTensor& x UNUSED,
+                 const DenseTensor& vec UNUSED,
+                 DenseTensor* out UNUSED) {
   PADDLE_THROW(
       phi::errors::Unimplemented("Not support CPU kernel of 'sparse.mv' now."));
 }
 
 template <typename T, typename Context>
-void MvCooKernel(const Context& dev_ctx,
-                 const SparseCooTensor& x,
-                 const DenseTensor& vec,
-                 DenseTensor* out) {
+void MvCooKernel(const Context& dev_ctx UNUSED,
+                 const SparseCooTensor& x UNUSED,
+                 const DenseTensor& vec UNUSED,
+                 DenseTensor* out UNUSED) {
   PADDLE_THROW(
       phi::errors::Unimplemented("Not support CPU kernel of 'sparse.mv' now."));
 }

@@ -75,9 +75,11 @@ def make_program_serial():
 
 
 def parallelizer(program_func, rank):
-    from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.dist_context import DistributedContext
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
+    from paddle.distributed.auto_parallel.static.completion import Completer
+    from paddle.distributed.auto_parallel.static.dist_context import (
+        DistributedContext,
+    )
+    from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 
     main_program, start_program, loss = program_func()
 
@@ -121,9 +123,19 @@ class TestDistPNormDP(TestDistPNorm):
             op_dist_attr = self.dist_context.get_op_dist_attr_for_program(op)
             if op.type == "p_norm":
                 assert op_dist_attr.impl_type == "p_norm"
-            if op.type in ["p_norm", "p_norm_grad"]:
                 for input_attr in op_dist_attr.inputs_dist_attrs.values():
                     assert set(input_attr.dims_mapping) == {-1}
+                for output_attr in op_dist_attr.outputs_dist_attrs.values():
+                    if len(output_attr.dims_mapping) == 0:
+                        assert output_attr.dims_mapping == []
+                    else:
+                        assert set(output_attr.dims_mapping) == {-1}
+            if op.type == "p_norm_grad":
+                for input_attr in op_dist_attr.inputs_dist_attrs.values():
+                    if len(input_attr.dims_mapping) == 0:
+                        assert input_attr.dims_mapping == []
+                    else:
+                        assert set(input_attr.dims_mapping) == {-1}
                 for output_attr in op_dist_attr.outputs_dist_attrs.values():
                     assert set(output_attr.dims_mapping) == {-1}
             if op.type == 'c_allgather':

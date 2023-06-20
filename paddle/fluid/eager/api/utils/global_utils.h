@@ -58,6 +58,9 @@ class Controller {
     return tracer_->GetAmpLevel();
   }
 
+  void SetUsePromote(bool use_promote) { tracer_->SetUsePromote(use_promote); }
+  bool GetUsePromote() const { return tracer_->GetUsePromote(); }
+
   bool UseLayoutAutoTune() {
     bool use_autotune = false;
 #if defined(PADDLE_WITH_CUDA)

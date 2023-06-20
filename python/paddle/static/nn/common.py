@@ -26,7 +26,7 @@ from paddle.common_ops_import import (
 )
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
-from paddle.fluid.framework import Variable, _non_static_mode, static_only
+from paddle.fluid.framework import Variable, in_dygraph_mode, static_only
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn.initializer import Constant, Normal
@@ -473,7 +473,7 @@ def data_norm(
     Args:
         input (Tensor): The input Tensor.
         act (str, optional): Activation type, linear|relu|prelu|... Default: None.
-        epsilon(float, optional): Whether to add small values ​in​to the variance during calculations
+        epsilon(float, optional): Whether to add small values into the variance during calculations
             to prevent division by zero. Default: 1e-05.
         param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`. Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
@@ -888,7 +888,7 @@ def conv2d(
     """
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'conv2d'
+        input, 'input', ['uint16', 'float16', 'float32', 'float64'], 'conv2d'
     )
     if len(input.shape) != 4:
         raise ValueError(
@@ -948,13 +948,6 @@ def conv2d(
     ):
         l_type = 'depthwise_conv2d'
 
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if core.is_compiled_with_custom_device('npu'):
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
-
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -964,7 +957,6 @@ def conv2d(
 
     # padding
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 4:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCHW"
@@ -1250,8 +1242,9 @@ def conv3d(
         if num_channels % groups != 0:
             raise ValueError(
                 "The number of input channels must be divisible by Attr(groups). "
-                "Received: number of channels(%s), groups(%s)."
-                % (str(num_channels), str(groups))
+                "Received: number of channels({}), groups({}).".format(
+                    str(num_channels), str(groups)
+                )
             )
         num_filter_channels = num_channels // groups
 
@@ -1260,7 +1253,6 @@ def conv3d(
     dilation = paddle.utils.convert_to_list(dilation, 3, 'dilation')
 
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 5:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCDHW"
@@ -1583,7 +1575,6 @@ def conv2d_transpose(
         raise ValueError("use_cudnn should be True or False")
 
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 4:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCHW"
@@ -1663,7 +1654,7 @@ def conv2d_transpose(
     if filter_size is None:
         if output_size is []:
             raise ValueError("output_size must be set when filter_size is None")
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             if isinstance(output_size, Variable) or paddle.utils._contain_var(
                 output_size
             ):
@@ -1954,7 +1945,6 @@ def conv3d_transpose(
         raise ValueError("use_cudnn should be True or False")
 
     def _update_padding(padding, data_format):
-
         if isinstance(padding, (list, tuple)) and len(padding) == 5:
             if isinstance(padding[0], (list, tuple)) and (
                 data_format == "NCDHW"
@@ -2749,12 +2739,15 @@ def batch_norm(
     helper = LayerHelper('batch_norm', **locals())
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'batch_norm'
+        input,
+        'input',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'batch_norm',
     )
     dtype = helper.input_dtype()
 
     # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16:
+    if dtype == core.VarDesc.VarType.FP16 or dtype == core.VarDesc.VarType.BF16:
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
@@ -2815,7 +2808,7 @@ def batch_norm(
     # variance and variance_out share the same memory
     variance_out = variance
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         inputs_has_MomemtumTensor = False
         attrs_has_momentum = False
         tmp_tensor_type = core.eager.Tensor
@@ -2993,7 +2986,6 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
 
     alpha_shape = [1]
     if mode == 'channel':
-
         true_data_format = [
             'NC',
             'NCL',
@@ -3485,7 +3477,7 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     )
     v.stop_gradient = True
 
-    if paddle.framework.in_dygraph_mode():
+    if in_dygraph_mode():
         return paddle._C_ops.spectral_norm(weight, u, v, dim, power_iters, eps)
 
     inputs = {'Weight': weight}
@@ -3590,7 +3582,7 @@ def layer_norm(
             print(output.shape)  # [8, 32, 32]
     """
     assert (
-        _non_static_mode() is not True
+        in_dygraph_mode() is not True
     ), "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     check_variable_and_dtype(

@@ -48,7 +48,7 @@ struct SequenceExpandGradFunctor {
 
 template <typename T>
 struct SequenceExpandFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& x,
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/

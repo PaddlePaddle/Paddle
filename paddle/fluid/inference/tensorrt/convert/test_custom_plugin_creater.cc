@@ -18,18 +18,19 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/test_custom_op_plugin.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/common/data_type.h"
 
 PD_BUILD_OP(custom_op)
     .Inputs({"Input"})
     .Outputs({"Output"})
     .Attrs({
-        "float_attr",
-        "int_attr",
-        "bool_attr",
-        "string_attr",
-        "ints_attr",
-        "floats_attr",
-        "bools_attr",
+        "float_attr: float",
+        "int_attr: int",
+        "bool_attr: bool",
+        "string_attr: std::string",
+        "ints_attr: std::vector<int>",
+        "floats_attr: std::vector<float>",
+        "bools_attr: std::vector<bool>",
     });
 
 namespace paddle {
@@ -174,7 +175,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
 
   engine_.reset(new TensorRTEngine(5,
                                    1 << 15,
-                                   AnalysisConfig::Precision::kFloat32,
+                                   phi::DataType::FLOAT32,
                                    nullptr,
                                    0,
                                    true,

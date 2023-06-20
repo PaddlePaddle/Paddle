@@ -413,7 +413,7 @@ def piecewise_decay(boundaries, values):
               optimizer = fluid.optimizer.Momentum(
                   momentum=0.9,
                   learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
-                  regularization=fluid.regularizer.L2Decay(1e-4))
+                  regularization=paddle.regularizer.L2Decay(1e-4))
 
 
     """
@@ -574,7 +574,6 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
-
         if in_dygraph_mode():
             lr = imperate_lr.LinearLrWarmup(
                 learning_rate, warmup_steps, start_lr, end_lr

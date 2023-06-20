@@ -26,7 +26,7 @@ namespace phi {
 
 template <typename Context, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const Context& ctx,
+  void operator()(const Context& ctx UNUSED,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,

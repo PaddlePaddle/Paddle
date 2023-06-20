@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -45,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
@@ -433,7 +435,7 @@ void SetTensorFromPyArrayT(
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use IPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
 #endif
   } else if (paddle::platform::is_custom_place(place)) {
@@ -1105,7 +1107,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use CustomPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use CustomPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with CustomPlace "
         "support."));
 #endif

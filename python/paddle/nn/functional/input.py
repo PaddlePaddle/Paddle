@@ -16,8 +16,8 @@ from paddle import _C_ops
 
 from ...common_ops_import import Variable
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
+from ...framework import in_dynamic_mode
 
 __all__ = []
 
@@ -85,7 +85,7 @@ def one_hot(x, num_classes, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.one_hot(x, num_classes)
     else:
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'one_hot_v2')
@@ -201,7 +201,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             )
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.embedding(x, weight, padding_idx, sparse)
     else:
         helper = LayerHelper('embedding', **locals())

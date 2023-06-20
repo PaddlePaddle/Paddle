@@ -107,11 +107,7 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   gpd.mutable_pattern()->NewNode(
       [&](Node* n) { return fused_external_ops.count(n->id()); }, "while");
 
-  if (!graph->Has(kGraphvizMarkedNodeAttr)) {
-    graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
-  }
-  auto& marked_nodes =
-      graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
+  auto& marked_nodes = GetMarkedNodes(graph);
 
   auto handle = [&](const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* g) {
