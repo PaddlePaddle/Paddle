@@ -38,21 +38,6 @@ DistTensorSpec::~DistTensorSpec() {}
 
 DistTensorSpec::DistTensorSpec(const Tensor& tensor) {
   shape_ = tensor.shape();
-
-  // std::vector<int64_t> pm_shape, pm_ids;
-  // pm_shape = {4};
-  // pm_ids = {0, 1, 2, 3};
-  // std::vector<std::string> dim_name = {"mp"};
-
-  // ProcessMesh pm(pm_shape, pm_ids, dim_name);
-  // std::vector<int64_t> dims_mapping = {-1, 0};
-  // TensorDistAttr dist_attr;
-  // dist_attr.set_process_mesh(pm);
-  // dist_attr.set_dims_mapping(dims_mapping);
-
-  // dist_attr_.copy_from(dist_attr);
-
-  // std::cout << dist_attr_;
 }
 
 DistTensorSpec& DistTensorSpec::operator=(const DistTensorSpec& spec) {

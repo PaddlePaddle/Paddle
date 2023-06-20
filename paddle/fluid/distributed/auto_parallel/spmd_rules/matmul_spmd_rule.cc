@@ -142,10 +142,6 @@ MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
   // step2.1: Sharding Merge
   std::pair<std::string, std::vector<int64_t>> x_pair(x_axes, x_dims_mapping);
   std::pair<std::string, std::vector<int64_t>> y_pair(y_axes, y_dims_mapping);
-  // std::vector<std::pair<const std::string, const std::vector<int64_t>>>
-  //     input_pairs;
-  // input_pairs.push_back(x_pair);
-  // input_pairs.push_back(y_pair);
   auto axis_to_dim_map = ShardingMergeForTensors({x_pair, y_pair});
 
   // step2.2: Infer Output's Dims Mapping.
