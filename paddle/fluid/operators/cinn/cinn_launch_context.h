@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
@@ -41,6 +40,7 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 class VarDesc;
+class InterpreterCore;
 
 namespace ir {
 class Graph;

@@ -73,13 +73,13 @@ class Builder {
   Block *block() const { return block_; }
 
   /// Creates an operation given the fields represented as an OperationState.
-  Operation *Build(OperationArgument &&argument);
+  IR_API Operation *Build(OperationArgument &&argument);
 
   /// Creates an operation with the given fields.
-  Operation *Build(const std::vector<ir::OpResult> &inputs,
-                   const AttributeMap &attribute,
-                   const std::vector<ir::Type> &output_types,
-                   ir::OpInfo op_info);
+  IR_API Operation *Build(const std::vector<ir::OpResult> &inputs,
+                          const AttributeMap &attribute,
+                          const std::vector<ir::Type> &output_types,
+                          ir::OpInfo op_info);
 
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>

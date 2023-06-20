@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
@@ -41,6 +42,8 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/utils/string/string_helper.h"
 
