@@ -97,8 +97,7 @@ class TestBatchNormOp(OpTest):
                 check_prim=True,
                 only_check_prim=True,
             )
-        elif self.data_format == "NCHW" and paddle.is_compiled_with_cuda():
-            # origin batch_norm cuda kernel differ in nhwc x_grad whether to calculate scale_grad and bias_grad
+        if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
                 core.CUDAPlace(0),
                 ["X"],
@@ -253,6 +252,21 @@ class TestBatchNormOpNCHWTestMode(TestBatchNormOp):
         self.use_global_stats = True
 
 
+class TestBatchNormOpNHWCTestMode(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-5
+        self.fw_comp_rtol = 1e-5
+        self.rev_comp_atol = 1e-5
+        self.rev_comp_rtol = 1e-5
+        self.dtype = "float32"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = True
+
+
 class TestBatchNormOpNCHWFp64(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-11
@@ -283,6 +297,21 @@ class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):
         self.use_global_stats = None
 
 
+class TestBatchNormOpNHWCTestModeFp64(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-15
+        self.fw_comp_rtol = 1e-15
+        self.rev_comp_atol = 1e-15
+        self.rev_comp_rtol = 1e-15
+        self.dtype = "float64"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
+        self.use_global_stats = None
+
+
 class TestBatchNormOpNCHWFp16(TestBatchNormOp):
     def initConfig(self):
         self.fw_comp_atol = 1e-3
@@ -310,6 +339,21 @@ class TestBatchNormOpNCHWTestModeFp16(TestBatchNormOp):
         self.momentum = 0.1
         self.epsilon = 1e-05
         self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+class TestBatchNormOpNHWCTestModeFp16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.dtype = "float16"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
         self.use_global_stats = None
 
 
@@ -354,6 +398,28 @@ class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
         self.momentum = 0.1
         self.epsilon = 1e-05
         self.data_format = "NCHW"
+        self.use_global_stats = None
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBatchNormOpNHWCTestModebf16(TestBatchNormOp):
+    def initConfig(self):
+        self.fw_comp_atol = 1e-3
+        self.fw_comp_rtol = 1e-3
+        self.rev_comp_atol = 1e-3
+        self.rev_comp_rtol = 1e-3
+        self.cinn_atol = 1e-3
+        self.cinn_rtol = 1e-3
+        self.dtype = "uint16"
+        self.shape = [16, 16, 16, 8]
+        self.training = False
+        self.momentum = 0.1
+        self.epsilon = 1e-05
+        self.data_format = "NHWC"
         self.use_global_stats = None
 
 

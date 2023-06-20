@@ -3265,6 +3265,7 @@ function build_pr_and_develop() {
         fi
 
         git checkout -b develop_base_pr upstream/$BRANCH
+        git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
