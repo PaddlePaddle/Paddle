@@ -474,6 +474,22 @@ def pow(x, y, name=None):
             )
 
 
+@inplace_apis_in_dygraph_only
+def pow_(x, y, name=None):
+    """
+    Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_pow`.
+    """
+    if isinstance(y, (int, float)):
+        return _C_ops.pow(x, y)
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        return _C_ops.elementwise_pow(x, y)
+    else:
+        raise TypeError(
+            'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+        )
+
+
 OP_NAMEMAPPING = {
     'elementwise_max': 'maximum',
     'elementwise_min': 'minimum',
