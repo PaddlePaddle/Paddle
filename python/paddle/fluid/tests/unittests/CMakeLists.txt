@@ -75,6 +75,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
+  list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)

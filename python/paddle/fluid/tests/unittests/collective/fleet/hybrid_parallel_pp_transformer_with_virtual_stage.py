@@ -148,6 +148,9 @@ class TestDistPPTraning(unittest.TestCase):
             "dp_degree": self.data_parallel_size,
             "mp_degree": self.model_parallel_size,
             "pp_degree": self.pipeline_parallel_size,
+            "pp_configs": {
+                "enable_timer": True,
+            },
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,

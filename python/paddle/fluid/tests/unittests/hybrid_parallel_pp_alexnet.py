@@ -145,6 +145,7 @@ class TestDistPPDelayScaleLoss(TestDistPPTraning):
             "pp_degree": self.pipeline_parallel_size,
             "pp_configs": {
                 "delay_scale_loss": True,
+                "enable_timer": True,
             },
         }
         strategy.pipeline_configs = {

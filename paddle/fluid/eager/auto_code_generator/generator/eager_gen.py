@@ -58,6 +58,8 @@ black_ops_list = [
     "add_n",
     "add_n_grad",
     "sync_batch_norm_",
+    "multiply",
+    "multiply_grad",
 ]
 
 
