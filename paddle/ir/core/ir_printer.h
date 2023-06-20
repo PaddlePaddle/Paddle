@@ -40,7 +40,7 @@ class BasicIrPrinter {
   std::ostream& os;
 };
 
-class IrPrinter : public BasicIrPrinter {
+class IR_API IrPrinter : public BasicIrPrinter {
  public:
   explicit IrPrinter(std::ostream& os) : BasicIrPrinter(os) {}
 

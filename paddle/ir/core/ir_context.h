@@ -18,6 +18,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 class IrContextImpl;
 class StorageManager;
@@ -37,7 +39,7 @@ using OpInfoMap = std::unordered_map<std::string, OpInfo>;
 /// \brief IrContext is a global parameterless class used to store and manage
 /// Type, Attribute and other related data structures.
 ///
-class IrContext {
+class IR_API IrContext {
  public:
   ///
   /// \brief Initializes a new instance of IrContext.
@@ -186,7 +188,8 @@ class IrContext {
 
  private:
   IrContext();
-  const std::unique_ptr<IrContextImpl> impl_;
+  ~IrContext();
+  IrContextImpl *impl_;
 };
 
 }  // namespace ir
