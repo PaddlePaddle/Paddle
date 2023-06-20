@@ -434,6 +434,8 @@ def _set_micro_batch_fetch(plan):
 
 
 def _merge_tensors(tensor, micro_batch_num):
+    if micro_batch_num <= 1:
+        return tensor
     assert len(tensor) % micro_batch_num == 0
     chunk_tensor = [
         tensor[i : i + micro_batch_num]
@@ -784,7 +786,6 @@ class _ExecutorCache:
 
     def _get_program_and_executor(self, cached_data):
         program = cached_data.program
-        pipeline_opt = program._pipeline_opt
         inner_program = (
             program._program
             if isinstance(program, compiler.CompiledProgram)
@@ -867,12 +868,15 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
-        if pipeline_opt:
+        if (
+            new_program._pipeline_opt
+            and "standalone_opt" in new_program._pipeline_opt
+        ):
             from paddle.distributed.passes.pipeline_scheduler_pass import (
                 apply_pass,
             )
 
-            standalone_opt = pipeline_opt["standalone_opt"]
+            standalone_opt = new_program._pipeline_opt["standalone_opt"]
             pass_name = standalone_opt["schedule_mode"]
             pass_attr = {
                 "num_micro_batches": standalone_opt["num_micro_batches"]
