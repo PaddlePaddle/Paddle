@@ -89,7 +89,7 @@ class TestLstm(unittest.TestCase):
             net, input_spec=[paddle.static.InputSpec(shape=[-1, 10, 12])]
         )
         model_path = os.path.join(self.temp_dir.name, 'simple_lstm')
-        paddle.jit.save(net, model_path)
+        paddle.jit.save(net, model_path, clip_extra=False)
 
         dygraph_out = net(x)
         # load saved model
@@ -160,7 +160,7 @@ class TestSaveInEvalMode(unittest.TestCase):
         )
 
         model_path = os.path.join(self.temp_dir.name, 'linear_net')
-        paddle.jit.save(net, model_path)
+        paddle.jit.save(net, model_path, clip_extra=False)
         # load saved model
         load_net = paddle.jit.load(model_path)
 
@@ -200,7 +200,7 @@ class TestEvalAfterSave(unittest.TestCase):
         dy_out = net(x)
         # save model
         model_path = os.path.join(self.temp_dir.name, 'jit.save/lstm')
-        paddle.jit.save(net, model_path, input_spec=[x])
+        paddle.jit.save(net, model_path, input_spec=[x], clip_extra=False)
         load_net = paddle.jit.load(model_path)
         load_out = load_net(x)
         np.testing.assert_allclose(dy_out.numpy(), load_out.numpy(), rtol=1e-05)
