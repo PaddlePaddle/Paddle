@@ -73,15 +73,14 @@ TEST(ApplyCastSoftmaxPass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
   auto scope = new Scope();
   graph->Set("__param_scope__", scope);
-  auto pass =
-      PassRegistry::Instance().Get("delete_xpu_unnecessary_cast_op_pass");
+  auto pass = PassRegistry::Instance().Get("xpu_delete_cast_op_pass");
   pass->Apply(graph.get());
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(
       GetOpNum(graph->GetSubGraph(0), "cast"),
       0,
       platform::errors::PreconditionNotMet(
-          "graph should have 0 cast after delete_xpu_unnecessary_cast_op_pass, "
+          "graph should have 0 cast after xpu_delete_cast_op_pass, "
           "but actually has %d.",
           cast_num_in_graph));
 }
@@ -101,15 +100,14 @@ TEST(ApplyCastLayerNormPass, basic) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
   auto scope = new Scope();
   graph->Set("__param_scope__", scope);
-  auto pass =
-      PassRegistry::Instance().Get("delete_xpu_unnecessary_cast_op_pass");
+  auto pass = PassRegistry::Instance().Get("xpu_delete_cast_op_pass");
   pass->Apply(graph.get());
   int cast_num_in_graph = GetOpNum(graph->GetSubGraph(0), "cast");
   PADDLE_ENFORCE_EQ(
       GetOpNum(graph->GetSubGraph(0), "cast"),
       0,
       platform::errors::PreconditionNotMet(
-          "graph should have 0 cast after delete_xpu_unnecessary_cast_op_pass, "
+          "graph should have 0 cast after xpu_delete_cast_op_pass, "
           "but actually has %d.",
           cast_num_in_graph));
 }
@@ -118,4 +116,4 @@ TEST(ApplyCastLayerNormPass, basic) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(delete_xpu_unnecessary_cast_op_pass);
+USE_PASS(xpu_delete_cast_op_pass);

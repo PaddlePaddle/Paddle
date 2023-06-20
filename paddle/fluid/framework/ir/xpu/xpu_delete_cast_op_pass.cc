@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/xpu/delete_xpu_unnecessary_cast_op_pass.h"
+#include "paddle/fluid/framework/ir/xpu/xpu_delete_cast_op_pass.h"
 #include <string>
 #include "glog/logging.h"
 
@@ -93,8 +93,7 @@ CastSoftmaxPattern::CastSoftmaxPattern(PDPattern* pattern,
 }
 }  // namespace patterns
 
-int DeleteXpuUnnecessaryCastOpPass::ApplyCastSoftmaxPass(
-    ir::Graph* graph) const {
+int XpuDeleteCastOpPass::ApplyCastSoftmaxPass(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::CastSoftmaxPattern pattern(gpd.mutable_pattern(), name_scope_);
 
@@ -184,8 +183,7 @@ CastLayerNormPattern::CastLayerNormPattern(PDPattern* pattern,
 }
 }  // namespace patterns
 
-int DeleteXpuUnnecessaryCastOpPass::ApplyCastLayerNormPass(
-    ir::Graph* graph) const {
+int XpuDeleteCastOpPass::ApplyCastLayerNormPass(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::CastLayerNormPattern pattern(gpd.mutable_pattern(), name_scope_);
 
@@ -216,11 +214,11 @@ int DeleteXpuUnnecessaryCastOpPass::ApplyCastLayerNormPass(
   return found_subgraph_count;
 }
 
-void DeleteXpuUnnecessaryCastOpPass::ApplyImpl(ir::Graph* graph) const {
+void XpuDeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   if (!graph->IsMainGraph()) {
-    VLOG(3) << "'delete_xpu_unnecessary_cast_op_pass' needs info in all "
+    VLOG(3) << "'xpu_delete_cast_op_pass' needs info in all "
                "graphs, so it "
                "should be applied in the main graph.";
     return;
@@ -250,10 +248,10 @@ void DeleteXpuUnnecessaryCastOpPass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(delete_xpu_unnecessary_cast_op_pass,
-              paddle::framework::ir::DeleteXpuUnnecessaryCastOpPass);
+REGISTER_PASS(xpu_delete_cast_op_pass,
+              paddle::framework::ir::XpuDeleteCastOpPass);
 
-REGISTER_PASS_CAPABILITY(delete_xpu_unnecessary_cast_op_pass)
+REGISTER_PASS_CAPABILITY(xpu_delete_cast_op_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "cast", 0));

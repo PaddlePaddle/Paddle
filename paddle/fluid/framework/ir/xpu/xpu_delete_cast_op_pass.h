@@ -31,7 +31,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class DeleteXpuUnnecessaryCastOpPass : public FusePassBase {
+class XpuDeleteCastOpPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -62,7 +62,7 @@ class DeleteXpuUnnecessaryCastOpPass : public FusePassBase {
   */
   int ApplyCastLayerNormPass(ir::Graph* graph) const;
 
-  const std::string name_scope_{"delete_xpu_unnecessary_cast_op_pass"};
+  const std::string name_scope_{"xpu_delete_cast_op_pass"};
 };
 
 }  // namespace ir
