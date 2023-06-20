@@ -83,7 +83,6 @@ class Gloo:
         need_init_all=False,
         kwargs=None,
     ):
-
         self._rendezvous = rendezvous
         self._role = role
         self._role_id = role_id
@@ -1176,7 +1175,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.framework.in_dynamic_mode():
+            if not paddle.in_dynamic_mode():
                 self._gloo_init()
 
 

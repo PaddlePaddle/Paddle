@@ -622,8 +622,6 @@ def cast_model_to_fp16(
         if amp_lists is not None:
             dtype = get_low_precision_dtypestr(dest_type)
             amp_lists = AutoMixedPrecisionLists(dtype)
-
-        amp_lists.white_list = {"conv2d", "matmul_v2"}
         amp_lists.black_list = amp_lists.all_list - amp_lists.white_list
 
     global_block = program.global_block()

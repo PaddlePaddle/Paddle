@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid import core, framework, unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable, name_scope
 from paddle.fluid.layer_helper import LayerHelper
@@ -129,7 +129,7 @@ class DistributedFusedLamb(Optimizer):
         name=None,
     ):
         assert (
-            not framework._non_static_mode()
+            not paddle.in_dynamic_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
         super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
 

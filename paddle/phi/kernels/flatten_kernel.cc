@@ -35,7 +35,7 @@ void FlattenInferKernel(const Context& dev_ctx,
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate
-// Output Tensor，
+// Output Tensor,
 // is there a more flexible way to deal with this case?
 template <typename T, typename Context>
 void FlattenKernel(const Context& dev_ctx,

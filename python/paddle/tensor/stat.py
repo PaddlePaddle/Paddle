@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
@@ -79,7 +79,7 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -144,7 +144,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
         )
@@ -212,7 +212,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.       2.081666]
 
     """
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
@@ -242,7 +242,7 @@ def numel(x, name=None):
 
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.numel(x)
     else:
         if not isinstance(x, Variable):
@@ -255,7 +255,7 @@ def numel(x, name=None):
         return out
 
 
-def nanmedian(x, axis=None, keepdim=True, name=None):
+def nanmedian(x, axis=None, keepdim=False, name=None):
     r"""
     Compute the median along the specified axis, while ignoring NaNs.
 
@@ -273,7 +273,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is True.
+            the output Tensor is squeezed in ``axis`` . Default is False.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -287,16 +287,16 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
             x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
 
             y1 = x.nanmedian()
-            # y1 is [[2.]]
+            # y1 is 2.
 
             y2 = x.nanmedian(0)
-            # y2 is [[0.,  1.5, 2.5]]
+            # y2 is [0., 1.5, 2.5]
 
-            y3 = x.nanmedian(0, keepdim=False)
-            # y3 is [0.,  1.5, 2.5]
+            y3 = x.nanmedian(0, keepdim=True)
+            # y3 is [[0.,  1.5, 2.5]]
 
             y4 = x.nanmedian((0, 1))
-            # y4 is [[2.]]
+            # y4 is 2.
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
@@ -304,7 +304,6 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
 
-    dims = len(x.shape)
     if axis is None:
         axis = []
     elif isinstance(axis, tuple):
@@ -312,25 +311,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
     elif isinstance(axis, int):
         axis = [axis]
 
-    if not isinstance(axis, list):
-        raise ValueError(
-            "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-        )
-
-    for i in range(len(axis)):
-        if not isinstance(axis[i], int) or not (
-            axis[i] < dims and axis[i] >= -dims
-        ):
-            raise ValueError(
-                "Axis should be None, int, or a list, element should in range [-rank(x), rank(x))."
-            )
-        if axis[i] < 0:
-            axis[i] += dims
-
-    if len(axis) != len(set(axis)):
-        raise ValueError("Axis has duplicated elements.")
-
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.nanmedian(x, axis, keepdim)
     else:
         check_variable_and_dtype(
@@ -549,7 +530,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     for q_num in q:
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))

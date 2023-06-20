@@ -258,7 +258,7 @@ struct AMaxOrAMinGradFunctor {
     // reduce_all
     if (size == static_cast<int>(x_numel)) {
       auto equal_number = mask.sum()
-                              .reshape(Eigen::array<int, 1>({1}))
+                              .reshape(Eigen::array<int, 1>({{1}}))
                               .broadcast(Eigen::array<int, 1>({size}));
       dx->device(place) =
           dy->broadcast(dim).reshape(x->dimensions()) * mask / equal_number;

@@ -130,7 +130,7 @@ void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
 #ifdef __AVX__
   __m256 r_value_update_gate, r_value_update_gate_last = _mm256_set1_ps(0.0f);
   __m256 r_value_reset_gate, r_value_reset_gate_last = _mm256_set1_ps(0.0f);
-  __m256 r_value_reset_output;
+  __m256 r_value_reset_output = _mm256_setzero_ps();
   __m256 r_prev_out = _mm256_set1_ps(0.0f),
          r_prev_out_last = _mm256_set1_ps(0.0f);
   __m256 r_reset_bias = _mm256_set1_ps(0.0f);

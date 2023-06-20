@@ -358,7 +358,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
-  // variables，otherwise, errors will be caused under multithreading
+  // variables, otherwise, errors will be caused under multithreading
   // conditions.
   auto graph = argument->main_graph_ptr();
 

@@ -59,6 +59,8 @@ BuddyAllocator::BuddyAllocator(
 #endif
   }
 #endif
+  VLOG(1) << "min_chunk_size_: " << min_chunk_size_
+          << ", max_chunk_size_:" << max_chunk_size_;
 }
 
 BuddyAllocator::~BuddyAllocator() {
@@ -228,7 +230,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
   size_t index = 0;
   void* p = system_allocator_->Alloc(&index, size);
 
-  VLOG(10) << "Allocated " << p << " from system allocator.";
+  VLOG(8) << "Allocated " << p << " size " << size << " from system allocator.";
 
   if (p == nullptr) return nullptr;
 
@@ -258,8 +260,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 
   if (p == nullptr) return pool_.end();
 
-  VLOG(10) << "Creating and inserting new block " << p
-           << " from system allocator";
+  VLOG(8) << "Creating and inserting new block " << p << " size "
+          << allocate_bytes << " from system allocator";
 
   static_cast<MemoryBlock*>(p)->Init(&cache_,
                                      MemoryBlock::FREE_CHUNK,

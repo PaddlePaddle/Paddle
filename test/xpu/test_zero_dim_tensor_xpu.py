@@ -2256,6 +2256,33 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.shape, [])
         self.assertEqual(out2, 2.5)
 
+    def test_matmul(self):
+        # 1) no transpose
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out1 = paddle.matmul(x, y)
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(y.grad.shape, [10])
+
+        # 2) transpose x and y
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out2 = paddle.matmul(x, y, True, True)
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(y.grad.shape, [10])
+
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])

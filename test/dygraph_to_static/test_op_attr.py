@@ -109,7 +109,7 @@ class CheckOpAttr(unittest.TestCase):
                         expect_vals = [expect_vals]
                         op_vals = [op_vals]
 
-                    for (op_val, expect_val) in zip(op_vals, expect_vals):
+                    for op_val, expect_val in zip(op_vals, expect_vals):
                         if isinstance(op_val, float):
                             # C++ vs python: 3.799999952316284 ~= 3.8
                             self.assertAlmostEqual(op_val, expect_val)

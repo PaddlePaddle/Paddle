@@ -20,7 +20,7 @@ import unittest
 
 import paddle
 import paddle.vision.transforms as T
-from paddle.distributed.auto_parallel.callbacks import config_callbacks
+from paddle.distributed.auto_parallel.static.callbacks import config_callbacks
 from paddle.distributed.fleet import auto
 from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST

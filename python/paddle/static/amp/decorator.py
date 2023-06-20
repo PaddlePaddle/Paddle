@@ -804,7 +804,7 @@ def decorate(
 
 
 @overload(key=FunctionType.COMMON)
-def decorate(
+def decorate(  # noqa: F811
     optimizer,
     amp_lists=None,
     level='O1',
@@ -916,8 +916,6 @@ def decorate(
             warnings.warn(
                 "If the Amp level is set to OD, the amp list will not be used."
             )
-
-        amp_lists.white_list = {"conv2d", "matmul_v2"}
         amp_lists.black_list = amp_lists.all_list - amp_lists.white_list
 
     if use_dynamic_loss_scaling is None:

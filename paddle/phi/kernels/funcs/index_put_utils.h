@@ -74,57 +74,50 @@ std::vector<const phi::DenseTensor*> DealWithBoolIndices(
     std::vector<phi::DenseTensor>* tmp_indices_v) {
   std::vector<const phi::DenseTensor*> res(indices_v.begin(), indices_v.end());
   bool contains_bool_tensor = false;
+
   for (size_t i = 0; i < indices_v.size(); ++i) {
     if (indices_v[i]->dtype() == phi::DataType::BOOL) {
       contains_bool_tensor = true;
+      int rank = indices_v[i]->dims().size();
+      PADDLE_ENFORCE_GE(
+          rank,
+          1UL,
+          phi::errors::InvalidArgument("the only bool tensor in indices should "
+                                       "have number of dimension at least 1"));
+      phi::DenseTensor nonzero_indices(phi::DataType::INT64);
+      nonzero_indices.Resize(phi::make_ddim({-1, rank}));
+      NonZeroKernel<bool, Context>(dev_ctx, *indices_v[i], &nonzero_indices);
+
+      std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
+      const int tmp_ix = tmp_indices_v->size();
+      for (int i = 0; i < rank; ++i) {
+        tmp_indices_v->emplace_back(
+            DenseTensor(phi::DataType::INT64)
+                .Resize(phi::make_ddim({nonzero_indices.dims()[0]})));
+      }
+      for (int i = 0; i < rank; ++i) {
+        integer_indices[i] = &((*tmp_indices_v)[i + tmp_ix]);
+      }
+      SplitWithNumKernel<int64_t, Context>(
+          dev_ctx, nonzero_indices, rank, 1, integer_indices);
+
     } else if ((indices_v[i]->dtype() == phi::DataType::INT64) ||
                (indices_v[i]->dtype() == phi::DataType::INT32)) {
-      PADDLE_ENFORCE_EQ(
-          contains_bool_tensor,
-          false,
-          phi::errors::InvalidArgument(
-              "indices contains bool tensor and int32/int64 tensor at the same "
-              "time"));
+      tmp_indices_v->emplace_back(*indices_v[i]);
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "data type of tensor in indices must be int32, int64 or bool"));
     }
   }
-
   if (contains_bool_tensor) {
-    if (indices_v.size() != 1) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "the size of indices must be 1 when it containts bool tensor"));
-    }
-    int rank = indices_v[0]->dims().size();
-    PADDLE_ENFORCE_GE(
-        rank,
-        1UL,
-        phi::errors::InvalidArgument("the only bool tensor in indices should "
-                                     "have number of dimension at least 1"));
-    phi::DenseTensor nonzero_indices(phi::DataType::INT64);
-    nonzero_indices.Resize(phi::make_ddim({-1, rank}));
-    NonZeroKernel<bool, Context>(dev_ctx, *indices_v[0], &nonzero_indices);
-
-    std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
-    for (int i = 0; i < rank; ++i) {
-      tmp_indices_v->emplace_back(
-          DenseTensor(phi::DataType::INT64)
-              .Resize(phi::make_ddim({nonzero_indices.dims()[0]})));
-    }
-    for (int i = 0; i < rank; ++i) {
-      integer_indices[i] = &((*tmp_indices_v)[i]);
-    }
-    SplitWithNumKernel<int64_t, Context>(
-        dev_ctx, nonzero_indices, rank, 1, integer_indices);
-
-    std::vector<const phi::DenseTensor*> res_tmp(integer_indices.size(),
+    std::vector<const phi::DenseTensor*> res_tmp(tmp_indices_v->size(),
                                                  nullptr);
-    for (int i = 0; i < rank; ++i) {
+    for (size_t i = 0; i < res_tmp.size(); ++i) {
       res_tmp[i] = &((*tmp_indices_v)[i]);
     }
     res.swap(res_tmp);
   }
+
   return res;
 }
 

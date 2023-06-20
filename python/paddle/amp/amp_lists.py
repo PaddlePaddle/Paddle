@@ -85,7 +85,6 @@ FP16_EXTRA_BLACK_LIST = {
     'lookup_table',
     'lookup_table_v2',
     'scatter',
-    'depthwise_conv2d',
 }
 
 BF16_WHITE_LIST = {'conv2d', 'einsum', 'matmul_v2'}

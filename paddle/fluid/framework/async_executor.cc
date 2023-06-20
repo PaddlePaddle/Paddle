@@ -113,14 +113,14 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   }
 
   /*
-    readerDesc: protobuf description for reader initlization
+    readerDesc: protobuf description for reader initialization
     argument: class_name, batch_size, use_slot, queue_size, buffer_size,
     padding_index
 
     reader:
     1) each thread has a reader, reader will read input data and
     put it into input queue
-    2) each reader has a Next() iterface, that can fetch an instance
+    2) each reader has a Next() interface, that can fetch an instance
     from the input queue
    */
   // todo: should be factory method for creating datafeed

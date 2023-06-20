@@ -79,7 +79,7 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
 class CCommInitMultiTrainerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
+    AddInput("X", "Raw variable contains a NCCL UniqueId instances.");
     AddComment(R"DOC(
 CCommInitMultiTrainer operator
 

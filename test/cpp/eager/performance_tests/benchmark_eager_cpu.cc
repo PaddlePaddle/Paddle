@@ -44,6 +44,8 @@ PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
+using eager_test::CreateTensorWithValue;
+
 TEST(Benchmark, EagerScaleCPU) {
   // Prepare Device Contexts
   eager_test::InitEnv(paddle::platform::CPUPlace());

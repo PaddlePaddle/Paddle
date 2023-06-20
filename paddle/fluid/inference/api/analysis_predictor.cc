@@ -72,7 +72,7 @@
 #endif
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -91,6 +91,10 @@
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
 #endif
 
 namespace paddle {
@@ -389,25 +393,20 @@ bool AnalysisPredictor::Init(
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (config_.use_xpu_ && config_.use_external_stream_) {
+  if (config_.use_xpu_ && !config_.use_lite_) {
     private_context_ = true;
-  }
-  if (private_context_) {
-    if (!status_is_cloned_) {
+    if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
     }
-    // NOTE: If the external_stream equals to global_device_contexts's stream,
-    // then fallback.
-    auto global_stream =
-        static_cast<phi::XPUContext *>(
-            platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
-    if (predictor_stream_ != global_stream) {
-      InitResourceManager(predictor_stream_);
-      InitDeviceContexts();
+    if (predictor_stream_ == nullptr) {
+      auto *global_context = static_cast<phi::XPUContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
+      predictor_stream_ = global_context->stream();
     }
+    InitDeviceContexts();
   }
 #endif
+
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
@@ -441,6 +440,7 @@ void AnalysisPredictor::InitPlace() {
 #endif  // LITE_SUBGRAPH_WITH_XPU
     } else {
 #ifdef PADDLE_WITH_XPU
+      phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
       place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
@@ -492,15 +492,12 @@ void AnalysisPredictor::InitResourceManager(void *stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   predictor_stream_ =
       ResourceManager::Instance().InitGPUResource(place_, stream);
-#elif defined(PADDLE_WITH_XPU)
-  predictor_stream_ =
-      ResourceManager::Instance().InitXPUResource(place_, stream);
 #endif
 }
 
 void AnalysisPredictor::InitDeviceContexts() {
-// Init GPUContext.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Init GPUContext.
   if (place_.GetType() == phi::AllocationType::GPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
@@ -512,14 +509,13 @@ void AnalysisPredictor::InitDeviceContexts() {
         }));
   }
 #endif
-#if defined(PADDLE_WITH_XPU)
+#ifdef PADDLE_WITH_XPU
   if (place_.GetType() == phi::AllocationType::XPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
-          auto *xpu_resource =
-              ResourceManager::Instance().GetXPUResource(predictor_stream_);
           auto &instance = memory::allocation::AllocatorFacade::Instance();
-          auto *xpu_context = new InferXPUContext(place_);
+          auto *xpu_context =
+              new InferXPUContext(place_, config_.xpu_config().context_gm_size);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -530,15 +526,11 @@ void AnalysisPredictor::InitDeviceContexts() {
               instance.GetZeroAllocator(place_).get());
           xpu_context->SetHostZeroAllocator(
               instance.GetZeroAllocator(platform::CPUPlace()).get());
-          xpu_context->SetStream(xpu_resource->GetStream());
-          xpu_context->SetDriverVersion(xpu_resource->GetDriverVersion());
-          xpu_context->SetRuntimeVersion(xpu_resource->GetRuntimeVersion());
-          xpu_context->SetXpuVersion(xpu_resource->GetXpuVersion());
+          xpu_context->SetStream(predictor_stream_);
           return std::unique_ptr<phi::DeviceContext>(xpu_context);
         }));
   }
 #endif
-  // TODO(Inference): Support other backends.
 }
 
 void *AnalysisPredictor::GetExecStream() const {
@@ -591,6 +583,11 @@ const void *AnalysisPredictor::GetDeviceContexts() const {
 
 bool AnalysisPredictor::PrepareScope(
     const std::shared_ptr<framework::Scope> &parent_scope) {
+#ifdef PADDLE_WITH_XPU
+  // Set "XPU_PADDLE_L3_SIZE" to "0" to avoid malloc l3 cache when xpu_context
+  // init.
+  setenv("XPU_PADDLE_L3_SIZE", "0", 0);
+#endif
   if (parent_scope) {
     PADDLE_ENFORCE_NOT_NULL(
         parent_scope,
@@ -1129,7 +1126,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -1193,7 +1190,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -1371,7 +1368,8 @@ void AnalysisPredictor::PrepareArgument() {
   // For JITLayer
   argument_->SetSkipLoadParams(config_.skip_load_params_);
 
-  argument_->SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  argument_->SetTensorRtPrecisionMode(static_cast<int>(
+      paddle::ConvertPrecision(config_.tensorrt_precision_mode_)));
   argument_->SetTensorRtUseOSS(config_.trt_use_varseqlen_);
   argument_->SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
   argument_->SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
@@ -1412,25 +1410,21 @@ void AnalysisPredictor::PrepareArgument() {
         config_.dlnne_disable_nodes_by_outputs_);
     argument_->SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
     argument_->SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
-    argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
+    argument_->SetDlnnePrecisionMode(static_cast<int>(
+        paddle::ConvertPrecision(config_.dlnne_precision_mode_)));
   }
 
   argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
-    argument_->SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_->SetLitePrecisionMode(static_cast<int>(
+        paddle::ConvertPrecision(config_.lite_precision_mode_)));
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
-    argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-    argument_->SetXpuLocked(config_.xpu_locked_);
-    argument_->SetXpuAutotune(config_.xpu_autotune_);
-    argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-    argument_->SetXpuPrecision(config_.xpu_precision_);
-    argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-    argument_->SetXpuDeviceId(config_.xpu_device_id_);
-    argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+    argument_->SetXpuLocked(config_.xpu_lite_l3_locked_);
+    argument_->SetXpuEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
     argument_->SetUseOpenCL(config_.use_opencl_);
     // NNAdapter related
     argument_->SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
@@ -1510,21 +1504,39 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
-#ifdef PADDLE_WITH_XPU
+
   argument_->SetUseXpu(config_.use_xpu_);
-  argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
-  argument_->SetXpuLocked(config_.xpu_locked_);
-  argument_->SetXpuAutotune(config_.xpu_autotune_);
-  argument_->SetXpuAutotuneFile(config_.xpu_autotune_file_);
-  argument_->SetXpuPrecision(config_.xpu_precision_);
-  argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
-  argument_->SetXpuDeviceId(config_.xpu_device_id_);
-  argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
-  argument_->SetXpuQuantPostDynamicWeightBits(
-      config_.xpu_quant_post_dynamic_weight_bits_);
+  argument_->SetXpuDeviceId(config_.xpu_config_.device_id);
+  argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
+  argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
+  argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuContextGmSize(config_.xpu_config_.context_gm_size);
+  argument_->SetXpuContext(config_.xpu_config_.context);
+  argument_->SetXpuStream(config_.xpu_config_.stream);
+  argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
+  argument_->SetXpuConvAutotuneFile(config_.xpu_config_.conv_autotune_file);
+  argument_->SetXpuConvAutotuneFileWriteback(
+      config_.xpu_config_.conv_autotune_file_writeback);
+  argument_->SetXpuFcAutotuneLevel(config_.xpu_config_.fc_autotune_level);
+  argument_->SetXpuFcAutotuneFile(config_.xpu_config_.fc_autotune_file);
+  argument_->SetXpuFcAutotuneFileWriteback(
+      config_.xpu_config_.fc_autotune_file_writeback);
+  argument_->SetXpuGemmComputePrecision(
+      config_.xpu_config_.gemm_compute_precision);
+  argument_->SetXpuTransformerSoftmaxOptimizeLevel(
+      config_.xpu_config_.transformer_softmax_optimize_level);
+  argument_->SetXpuTransformerEncoderAdaptiveSeqlen(
+      config_.xpu_config_.transformer_encoder_adaptive_seqlen);
+  argument_->SetXpuQuantPostStaticGeluOutThreshold(
+      config_.xpu_config_.quant_post_static_gelu_out_threshold);
+  argument_->SetXpuQuantPostDynamicActivationMethod(
+      config_.xpu_config_.quant_post_dynamic_activation_method);
+  argument_->SetXpuQuantPostDynamicWeightPrecision(
+      config_.xpu_config_.quant_post_dynamic_weight_precision);
   argument_->SetXpuQuantPostDynamicOpTypes(
-      config_.xpu_quant_post_dynamic_op_types_);
-#endif
+      config_.xpu_config_.quant_post_dynamic_op_types);
+  argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
+  argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
 
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
@@ -1561,18 +1573,18 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
-      LOG(INFO)
-          << "This model run in Paddle-GPU mixed precision mode with no ir "
-             "optimization.";
+      LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
+                   "optimization.";
     } else {
-      LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
+      LOG(INFO)
+          << "Ir optimization is turned off, no ir pass will be executed.";
     }
   } else {
     if (config_.ir_debug_) {
       pass_builder->TurnOnDebug();
     }
     if (config_.enable_gpu_mixed_) {
-      LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
+      LOG(INFO) << "This model run in GPU mixed precision mode.";
     }
   }
 
@@ -1595,6 +1607,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+  argument_->SetEnableLowPrecisionIO(config_.enable_low_precision_io_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
@@ -2079,8 +2092,39 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_ && !config_.use_lite_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
+
   executor_->Run();
   inference::DisplayMemoryInfo(place_, "after run");
+
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && !config_.use_lite_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+#endif
 
   if (config_.shape_range_info_collected()) {
     CollectShapeRangeInfo();
@@ -2103,7 +2147,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // Frees unused memory allocated by the Intel® MKL Memory Allocator to
   // avoid memory leak. See:
   // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
-  platform::dynload::MKL_Free_Buffers();
+  phi::dynload::MKL_Free_Buffers();
 #endif
   return true;
 }
@@ -2149,28 +2193,32 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 }
 #endif
 
-bool AnalysisPredictor::ExpRunWithExternalStream(void *stream) {
-#if defined(PADDLE_WITH_XPU)
-  if (!private_context_) {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Please use config.SetExecStream to init resources, and then we "
-        "will bind resources to execution stream."));
-  }
-  if (stream != predictor_stream_) {
+bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
+#ifdef PADDLE_WITH_XPU
+  auto xpu_runtime_config =
+      reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
+
+  config_.xpu_config_.context = xpu_runtime_config->context;
+  auto *stream = xpu_runtime_config->stream;
+  if (stream != nullptr && stream != predictor_stream_) {
     paddle::platform::XPUStreamSync(
         static_cast<paddle::xpuStream>(predictor_stream_));
-    ResourceManager::Instance().XpuResourceReBindStream(predictor_stream_,
-                                                        stream);
     predictor_stream_ = stream;
-
-    auto *dev_ctxs = reinterpret_cast<const std::map<
-        phi::Place,
-        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
-        this->GetDeviceContexts());
-    auto *dev_ctx =
-        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
-    dev_ctx->SetStream(stream);
   }
+
+  auto l3_size = xpu_runtime_config->l3_size;
+  auto l3_autotune_size = xpu_runtime_config->l3_autotune_size;
+  PADDLE_ENFORCE_LE(
+      l3_autotune_size,
+      l3_size,
+      phi::errors::InvalidArgument(
+          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
+          l3_autotune_size,
+          l3_size));
+  config_.xpu_config_.l3_size = l3_size;
+  config_.xpu_config_.l3_ptr = xpu_runtime_config->l3_ptr;
+  config_.xpu_config_.l3_autotune_size = l3_autotune_size;
+
   return ZeroCopyRun();
 #endif
   return false;
@@ -2539,10 +2587,6 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (predictor_stream_ != nullptr) {
     ResourceManager::Instance().DestroyGPUResource(predictor_stream_);
   }
-#elif defined(PADDLE_WITH_XPU)
-  if (predictor_stream_ != nullptr) {
-    ResourceManager::Instance().DestroyXPUResource(predictor_stream_);
-  }
 #endif
 
   if (place_.GetType() != phi::AllocationType::UNDEFINED) {
@@ -2578,6 +2622,14 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
   x->Init(scope_, inference_program_);
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
+#endif
+#ifdef PADDLE_WITH_LITE
+#ifdef LITE_SUBGRAPH_WITH_XPU
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_,
+                                config_.xpu_config_.stream);
+#else
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_, nullptr);
+#endif
 #endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
@@ -2625,23 +2677,26 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void AnalysisPredictor::RegisterOutputHook(
+    const OutputTensorHookFunc &hookfunc) {
   static std::once_flag register_hook_flag;
   std::call_once(register_hook_flag, [this] {
-    executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
-      for (auto &output : op->Outputs()) {
-        for (auto &var_name : output.second) {
-          auto *var = this->sub_scope_->FindVar(var_name);
-          if (!var || !var->IsType<phi::DenseTensor>()) continue;
-          auto dense_tensor = var->Get<phi::DenseTensor>();
-          if (!dense_tensor.initialized()) continue;
-          auto tensor = this->GetOutputTensor(var_name);
-          for (auto &hookfunc : this->hookfuncs_) {
-            hookfunc(op->Type(), var_name, *tensor);
+    executor_->RegisterOutputHook(
+        [this](framework::OperatorBase *op, framework::Scope *scope) {
+          for (auto &output : op->Outputs()) {
+            for (auto &var_name : output.second) {
+              auto *var = scope->FindVar(var_name);
+              if (!var || !var->IsType<phi::DenseTensor>()) continue;
+              auto dense_tensor = var->Get<phi::DenseTensor>();
+              if (!dense_tensor.initialized()) continue;
+              auto tensor = paddle::Tensor(
+                  std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
+              for (auto &hookfunc : this->hookfuncs_) {
+                hookfunc(op->Type(), var_name, tensor);
+              }
+            }
           }
-        }
-      }
-    });
+        });
   });
   hookfuncs_.push_back(hookfunc);
 }
@@ -2854,7 +2909,7 @@ Predictor::Predictor(const Config &config) {
                       "and it falls back to use Paddle Inference.";
     } else if (!paddle::CheckConvertToONNX(config)) {
       LOG(WARNING)
-          << "Paddle2ONNX do't support convert the Model， fall back to using "
+          << "Paddle2ONNX do't support convert the Model, fall back to using "
              "Paddle Inference.";
     } else {
       predictor_ =
@@ -2927,7 +2982,7 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
+void Predictor::RegisterOutputHook(const OutputTensorHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
 
@@ -3053,10 +3108,11 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
 #endif
   return false;
 }
-bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
-                                          void *stream) {
+
+bool InternalUtils::RunWithRuntimeConfig(paddle_infer::Predictor *p,
+                                         void *config) {
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ExpRunWithExternalStream(stream);
+  return pred->ExpRunWithRuntimeConfig(config);
 }
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,
