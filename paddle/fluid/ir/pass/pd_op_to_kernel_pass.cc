@@ -34,82 +34,90 @@ phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
-  paddle::dialect::OpYamlInfoInterface op_info_interface =
-      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-  auto op_info_res = op_info_interface.GetOpInfo();
-
-  auto input_info = std::get<0>(op_info_res);
-
-  // only suppurt non vector input for now
-  std::map<std::string, int> input_map;
-  int index = 0;
-  int tensor_input_number = 0;
-  for (auto& t : input_info) {
-    // todo filter attribute tensor
-    input_map[t.name] = index++;
-
-    if (!t.is_mutable_attribute) {
-      tensor_input_number += 1;
-    }
-  }
-
-  std::map<std::string, std::string> attr_type_map;
-  auto attr_info = std::get<1>(op_info_res);
-  for (auto& t : attr_info) {
-    VLOG(6) << t.name << "\t" << t.type_name;
-    attr_type_map[t.name] = t.type_name;
-  }
-  auto runtime_info = std::get<3>(op_info_res);
-
-  // get dtype infomation
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
 
-  auto attr_map = op->attributes();
-  auto data_type_info = runtime_info.kernel_key_dtype;
-  if (data_type_info.size() > 0 && data_type_info[0] != "") {
-    // only support single input and attribute
-    auto slot_name = data_type_info[0];
-    if (input_map.count(slot_name)) {
-      // parse from input
-      int in_index = input_map.at(slot_name);
+  paddle::dialect::OpYamlInfoInterface op_info_interface =
+      op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+  std::vector<paddle::dialect::OpInputInfo> input_info;
+  if (op_info_interface) {
+    auto op_info_res = op_info_interface.GetOpInfo();
 
-      dialect::DenseTensorType type =
-          op->operand(in_index)
-              .source()
-              .type()
-              .dyn_cast<paddle::dialect::DenseTensorType>();
-      kernel_data_type = TransToPhiDataType(type.dtype());
-    } else {
-      PADDLE_ENFORCE_EQ(
-          attr_type_map.count(slot_name),
-          true,
-          phi::errors::PreconditionNotMet("[%s] MUST in attr map", slot_name));
-      kernel_data_type = attr_map.at(slot_name)
-                             .dyn_cast<paddle::dialect::DataTypeAttribute>()
-                             .data();
+    input_info = std::get<0>(op_info_res);
+
+    // only suppurt non vector input for now
+    std::map<std::string, int> input_map;
+    int index = 0;
+    int tensor_input_number = 0;
+    for (auto& t : input_info) {
+      // todo filter attribute tensor
+      input_map[t.name] = index++;
+
+      if (!t.is_mutable_attribute) {
+        tensor_input_number += 1;
+      }
+    }
+
+    std::map<std::string, std::string> attr_type_map;
+    auto attr_info = std::get<1>(op_info_res);
+    for (auto& t : attr_info) {
+      VLOG(6) << t.name << "\t" << t.type_name;
+      attr_type_map[t.name] = t.type_name;
+    }
+    auto runtime_info = std::get<3>(op_info_res);
+
+    auto attr_map = op->attributes();
+    auto data_type_info = runtime_info.kernel_key_dtype;
+    if (data_type_info.size() > 0 && data_type_info[0] != "") {
+      // only support single input and attribute
+      auto slot_name = data_type_info[0];
+      if (input_map.count(slot_name)) {
+        // parse from input
+        int in_index = input_map.at(slot_name);
+
+        dialect::DenseTensorType type =
+            op->operand(in_index)
+                .source()
+                .type()
+                .dyn_cast<paddle::dialect::DenseTensorType>();
+        kernel_data_type = TransToPhiDataType(type.dtype());
+      } else {
+        PADDLE_ENFORCE_EQ(attr_type_map.count(slot_name),
+                          true,
+                          phi::errors::PreconditionNotMet(
+                              "[%s] MUST in attr map", slot_name));
+        kernel_data_type = attr_map.at(slot_name)
+                               .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                               .data();
+      }
+    }
+
+    // parse all the input tensor
+    if (tensor_input_number == 0 || op->name() == "pd.full_") {
+      // all the information have to get from attribute and context
+      kernel_backend = paddle::experimental::ParseBackend(place);
     }
   }
 
-  // parse all the input tensor
-
-  if (tensor_input_number == 0 || op->name() == "pd.full_") {
-    // all the information have to get from attribute and context
-    kernel_backend = paddle::experimental::ParseBackend(place);
-
-  } else {
+  if (op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
-    for (size_t i = 0; i < input_info.size(); ++i) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
       // todo filter attribute tensor
-      if (input_info[i].is_mutable_attribute) {
+      if ((input_info.size() > i) && input_info[i].is_mutable_attribute) {
         continue;
       }
       auto input_tmp = op->operand(i).source();
       auto new_input_tmp = map_value_pair.at(input_tmp);
-      dialect::AllocatedDenseTensorType type =
-          new_input_tmp.type().dyn_cast<dialect::AllocatedDenseTensorType>();
+      auto input_type = new_input_tmp.type();
+      dialect::AllocatedDenseTensorType type;
+      if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
+        type = input_type.dyn_cast<dialect::AllocatedDenseTensorType>();
+      } else if (input_type.isa<ir::VectorType>()) {
+        type = input_type.dyn_cast<ir::VectorType>()[0]
+                   .dyn_cast<dialect::AllocatedDenseTensorType>();
+      }
 
       // fake tensor here
       auto ptr = new phi::Allocation(nullptr, 0, type.place());
@@ -164,7 +172,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   for (auto it = block->begin(); it != block->end(); ++it) {
     VLOG(6) << "op name " << (*it)->name();
     auto kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
-
+    VLOG(6) << "kernel type " << kernel_key;
     // create new Op
 
     // only for single output
@@ -172,14 +180,35 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
-      // filter tensor attribute
-      auto allocated_dense_tensor_dtype =
-          paddle::dialect::AllocatedDenseTensorType::get(
-              ctx,
-              phi::TransToPhiPlace(kernel_key.backend()),
-              (*it)->result(0).type().dyn_cast<dialect::DenseTensorType>());
-      op_output_types.push_back(allocated_dense_tensor_dtype);
+      auto result_type = (*it)->result(0).type();
+      if (result_type.isa<dialect::DenseTensorType>()) {
+        auto allocated_dense_tensor_dtype =
+            paddle::dialect::AllocatedDenseTensorType::get(
+                ctx,
+                phi::TransToPhiPlace(kernel_key.backend()),
+                result_type.dyn_cast<dialect::DenseTensorType>());
+        op_output_types.push_back(allocated_dense_tensor_dtype);
+      } else if (result_type.isa<ir::VectorType>()) {
+        auto pos1 = result_type.dyn_cast<ir::VectorType>().data()[0];
+
+        if (pos1.isa<dialect::DenseTensorType>()) {
+          auto allocated_dense_tensor_dtype =
+              paddle::dialect::AllocatedDenseTensorType::get(
+                  ctx,
+                  phi::TransToPhiPlace(kernel_key.backend()),
+                  pos1.dyn_cast<dialect::DenseTensorType>());
+          op_output_types.push_back(allocated_dense_tensor_dtype);
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "only support dense tensor in vector type for now"));
+        }
+
+        ir::Type t1 = ir::VectorType::get(ctx, op_output_types);
+        op_output_types.clear();
+        op_output_types.push_back(t1);
+      }
     }
+
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
 
@@ -194,13 +223,16 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     paddle::dialect::OpYamlInfoInterface op_info_interface =
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-    auto op_info_res = op_info_interface.GetOpInfo();
-    auto runtime_info = std::get<3>(op_info_res);
+    std::string kernel_fn_str;
+    if (op_info_interface) {
+      auto op_info_res = op_info_interface.GetOpInfo();
+      auto runtime_info = std::get<3>(op_info_res);
+      kernel_fn_str = runtime_info.kernel_func[0];
+    }
 
     std::unordered_map<std::string, ir::Attribute> op1_attribute{
         {"op_name", ir::StrAttribute::get(ctx, (*it)->name())},
-        {"kernel_name",
-         ir::StrAttribute::get(ctx, runtime_info.kernel_func[0])},
+        {"kernel_name", ir::StrAttribute::get(ctx, kernel_fn_str)},
         {"kernel_key", dialect::KernelAttribute::get(ctx, kernel_key)}};
 
     auto op_attr_map = (*it)->attributes();
