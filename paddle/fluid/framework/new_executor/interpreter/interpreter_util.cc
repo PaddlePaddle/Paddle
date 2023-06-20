@@ -948,7 +948,7 @@ void BuildOpFuncList(
 
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
 
-    if (op_name == "pd.fetch") {
+    if (op_name == "pd.fetch" || op_name == "builtin.combine") {
       VLOG(6) << "skip process pd.fetch op";
       continue;
     }
