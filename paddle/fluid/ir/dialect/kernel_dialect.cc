@@ -70,3 +70,5 @@ void PaddleKernelDialect::PrintAttribute(ir::Attribute attr,
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)
