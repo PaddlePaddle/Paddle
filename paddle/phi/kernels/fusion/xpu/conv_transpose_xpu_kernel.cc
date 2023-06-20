@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -51,9 +49,6 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   bool is_nchw;
   is_nchw = (data_format == "NHWC") ? false : true;
 
-  auto xxx = out->dims();
-  for (int i = 0; i < xxx.size(); i++) VLOG(1) << xxx[i];
-
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());  // hw
   DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
   std::vector<int> ksize = vectorize<int>(filter_data_dims);
@@ -67,7 +62,6 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   const int img_xc = static_cast<int>(out->dims()[1]);
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
-
   auto act = xpu::Activation_t::LINEAR;
   if (with_act) {
     if (act_type == "relu") {
@@ -83,7 +77,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
   int r = xpu::conv2d_transpose_fusion_v2<XPUT, int16_t, XPUT, int16_t>(
       ctx.x_context(),
       reinterpret_cast<const XPUT*>(x.data<T>()),
-      filter.data<int16_t>(),
+      filter_.data<int16_t>(),
       reinterpret_cast<XPUT*>(out->data<T>()),
       batch_size,
       img_yc,

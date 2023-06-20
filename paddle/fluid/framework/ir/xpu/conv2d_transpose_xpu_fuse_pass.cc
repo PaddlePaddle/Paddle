@@ -70,8 +70,8 @@ struct Conv2dTransposeXPUPattern : public PatternBase {
 
  private:
   std::string act_type_;
-  bool with_ew_bias_;
   bool with_bn_;
+  bool with_ew_bias_;
 };
 
 Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(
