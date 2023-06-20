@@ -52,10 +52,28 @@ void SplitWithNumKernel(const Context& dev_ctx,
                         const Scalar& axis_scalar,
                         std::vector<DenseTensor*> outs) {
   int axis_value = axis_scalar.to<int>();
-  auto input_axis_dim = x.dims().at(axis_value);
+  int64_t input_axis_dim = x.dims().at(axis_value);
   std::vector<int64_t> sections_vec;
+  if (num > input_axis_dim) {
+    // if num > input_axis_dim, take num = input_axis_dim, the dim after split
+    // is 1.
+    num = input_axis_dim;
+  }
+
+  int64_t last_split_size = 0;
+  if (input_axis_dim % num > 0) {
+    // increase the processing of non-divisible numbers.
+    last_split_size = input_axis_dim % num;
+    num = num - 1;
+    input_axis_dim = input_axis_dim - last_split_size;
+  }
+
   for (int i = 0; i < num; ++i) {
     sections_vec.push_back(input_axis_dim / num);
+  }
+  if (last_split_size > 0) {
+    // place the remainder at the end of Tensor.
+    sections_vec.push_back(last_split_size);
   }
   IntArray sections(sections_vec);
   SplitKernel<T, Context>(dev_ctx, x, sections, axis_scalar, outs);

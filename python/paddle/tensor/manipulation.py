@@ -3112,6 +3112,11 @@ def chunk(x, chunks, axis=0, name=None):
             # out2.shape [3, 3, 5]
     """
     check_type(chunks, 'chunks', (int), 'chunk')
+    x_axis = x.shape[axis]
+    if chunks > x_axis:
+        chunks = x_axis
+    if x_axis % chunks > 0:
+        chunks = int(np.ceil(x_axis / chunks))
     return split(x, num_or_sections=chunks, axis=axis, name=name)
 
 
