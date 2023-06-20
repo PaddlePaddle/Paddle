@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 
@@ -82,6 +83,7 @@ class TestNestLayerHook(unittest.TestCase):
         out = net(self.x)
         return float(out)
 
+    @ast_only_test
     def test_hook(self):
         dy_out = self.train_net(to_static=False)
         st_out = self.train_net(to_static=True)
