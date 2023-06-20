@@ -108,14 +108,7 @@ OptimizeDataPattern::OptimizeDataPattern(PDPattern* pattern,
       pattern->NewNode(elementwise_add_out_repr())
           ->assert_is_op_output("elementwise_add", "Out")
           ->assert_is_op_input("scale", "X");
-  auto* scale = pattern->NewNode(scale_repr())
-                    ->assert_is_op("scale")
-                    ->assert_more([](Node* node) {
-                      auto* op_desc = node->Op();
-                      auto scale = op_desc->GetAttrIfExists<float>("scale");
-                      auto bias = op_desc->GetAttrIfExists<float>("bias");
-                      return scale == 1.0f && bias == 64.0f;
-                    });
+  auto* scale = pattern->NewNode(scale_repr())->assert_is_op("scale");
 
   auto* scale_out = pattern->NewNode(scale_out_repr())
                         ->assert_is_op_output("scale", "Out")

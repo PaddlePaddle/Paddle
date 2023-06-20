@@ -89,35 +89,13 @@ DeleteMulDataPrePattern::DeleteMulDataPrePattern(PDPattern* pattern,
                           ->assert_is_op_output("shape", "Out")
                           ->assert_is_op_input("slice", "X")
                           ->assert_is_op_input("slice", "X");
-  auto* slice0_a =
-      pattern->NewNode(slice0_a_repr())
-          ->assert_is_op("slice")
-          ->assert_more([&](Node* node) {
-            auto* op_desc = node->Op();
-            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
-                       std::vector<int>{0} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
-                       std::vector<int>{0} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
-                       std::vector<int>{1};
-          });
+  auto* slice0_a = pattern->NewNode(slice0_a_repr())->assert_is_op("slice");
 
   auto* slice0_a_out = pattern->NewNode(slice0_a_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("fill_constant", "X");
 
-  auto* slice1_a =
-      pattern->NewNode(slice1_a_repr())
-          ->assert_is_op("slice")
-          ->assert_more([&](Node* node) {
-            auto* op_desc = node->Op();
-            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
-                       std::vector<int>{0} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
-                       std::vector<int>{1} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
-                       std::vector<int>{2};
-          });
+  auto* slice1_a = pattern->NewNode(slice1_a_repr())->assert_is_op("slice");
   auto* slice1_a_out = pattern->NewNode(slice1_a_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("elementwise_add", "Y");
@@ -143,14 +121,7 @@ DeleteMulDataPrePattern::DeleteMulDataPrePattern(PDPattern* pattern,
       pattern->NewNode(elementwise_add_a_out_repr())
           ->assert_is_op_output("elementwise_add", "Out")
           ->assert_is_op_input("scale", "X");
-  auto* scale_a = pattern->NewNode(scale_a_repr())
-                      ->assert_is_op("scale")
-                      ->assert_more([](Node* node) {
-                        auto* op_desc = node->Op();
-                        auto scale = op_desc->GetAttrIfExists<float>("scale");
-                        auto bias = op_desc->GetAttrIfExists<float>("bias");
-                        return scale == 1.0f && bias == 64.0f;
-                      });
+  auto* scale_a = pattern->NewNode(scale_a_repr())->assert_is_op("scale");
 
   auto* scale_a_out = pattern->NewNode(scale_a_out_repr())
                           ->assert_is_op_output("scale", "Out")
@@ -168,34 +139,12 @@ DeleteMulDataPrePattern::DeleteMulDataPrePattern(PDPattern* pattern,
                           ->assert_is_op_output("shape", "Out")
                           ->assert_is_op_input("slice", "X")
                           ->assert_is_op_input("slice", "X");
-  auto* slice0_b =
-      pattern->NewNode(slice0_b_repr())
-          ->assert_is_op("slice")
-          ->assert_more([&](Node* node) {
-            auto* op_desc = node->Op();
-            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
-                       std::vector<int>{0} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
-                       std::vector<int>{0} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
-                       std::vector<int>{1};
-          });
+  auto* slice0_b = pattern->NewNode(slice0_b_repr())->assert_is_op("slice");
   auto* slice0_b_out = pattern->NewNode(slice0_b_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("fill_constant", "X");
 
-  auto* slice1_b =
-      pattern->NewNode(slice1_b_repr())
-          ->assert_is_op("slice")
-          ->assert_more([&](Node* node) {
-            auto* op_desc = node->Op();
-            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
-                       std::vector<int>{0} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
-                       std::vector<int>{1} &&
-                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
-                       std::vector<int>{2};
-          });
+  auto* slice1_b = pattern->NewNode(slice1_b_repr())->assert_is_op("slice");
   auto* slice1_b_out = pattern->NewNode(slice1_b_out_repr())
                            ->assert_is_op_output("slice", "Out")
                            ->assert_is_op_input("elementwise_add", "Y");
@@ -221,14 +170,7 @@ DeleteMulDataPrePattern::DeleteMulDataPrePattern(PDPattern* pattern,
       pattern->NewNode(elementwise_add_b_out_repr())
           ->assert_is_op_output("elementwise_add", "Out")
           ->assert_is_op_input("scale", "X");
-  auto* scale_b = pattern->NewNode(scale_b_repr())
-                      ->assert_is_op("scale")
-                      ->assert_more([](Node* node) {
-                        auto* op_desc = node->Op();
-                        auto scale = op_desc->GetAttrIfExists<float>("scale");
-                        auto bias = op_desc->GetAttrIfExists<float>("bias");
-                        return scale == 1.0f && bias == 64.0f;
-                      });
+  auto* scale_b = pattern->NewNode(scale_b_repr())->assert_is_op("scale");
 
   auto* scale_b_out = pattern->NewNode(scale_b_out_repr())
                           ->assert_is_op_output("scale", "Out")
@@ -320,30 +262,44 @@ int XpuDeleteMulDataPreparationForFillPass::ApplyDeleteMulDataPrePass(
     GET_IR_NODE_FROM_SUBGRAPH(fused_multi_transformer_dyquant_xpu,
                               fused_multi_transformer_dyquant_xpu,
                               pattern);
-    fill_constant_b->Op()->RenameInput(slice0_b_out->Name(),
-                                       slice0_a_out->Name());
-    fill_constant_b->Op()->RenameInput(scale_b_out->Name(),
-                                       scale_a_out->Name());
-    IR_NODE_UNLINK(slice0_b_out, fill_constant_b);
-    IR_NODE_UNLINK(scale_b_out, fill_constant_b);
-    IR_NODE_LINK_TO(slice0_a_out, fill_constant_b);
-    IR_NODE_LINK_TO(scale_a_out, fill_constant_b);
 
-    std::unordered_set<const Node*> delete_nodes{shape_b,
-                                                 slice0_b,
-                                                 slice1_b,
-                                                 cast_b,
-                                                 elementwise_add_b,
-                                                 scale_b,
-                                                 shape_b_out,
-                                                 slice0_b_out,
-                                                 slice1_b_out,
-                                                 cast_b_in,
-                                                 cast_b_out,
-                                                 elementwise_add_b_out,
-                                                 scale_b_out};
-    GraphSafeRemoveNodes(graph, delete_nodes);
-    found_subgraph_count++;
+    if (slice0_a->Op()->GetAttrIfExists<std::vector<int>>("axes") ==
+            slice0_b->Op()->GetAttrIfExists<std::vector<int>>("axes") &&
+        slice0_a->Op()->GetAttrIfExists<std::vector<int>>("starts") ==
+            slice0_b->Op()->GetAttrIfExists<std::vector<int>>("starts") &&
+        slice0_a->Op()->GetAttrIfExists<std::vector<int>>("ends") ==
+            slice0_b->Op()->GetAttrIfExists<std::vector<int>>("ends") &&
+        slice1_a->Op()->GetAttrIfExists<std::vector<int>>("axes") ==
+            slice1_b->Op()->GetAttrIfExists<std::vector<int>>("axes") &&
+        slice1_a->Op()->GetAttrIfExists<std::vector<int>>("starts") ==
+            slice1_b->Op()->GetAttrIfExists<std::vector<int>>("starts") &&
+        slice1_a->Op()->GetAttrIfExists<std::vector<int>>("ends") ==
+            slice1_b->Op()->GetAttrIfExists<std::vector<int>>("ends")) {
+      fill_constant_b->Op()->RenameInput(slice0_b_out->Name(),
+                                         slice0_a_out->Name());
+      fill_constant_b->Op()->RenameInput(scale_b_out->Name(),
+                                         scale_a_out->Name());
+      IR_NODE_UNLINK(slice0_b_out, fill_constant_b);
+      IR_NODE_UNLINK(scale_b_out, fill_constant_b);
+      IR_NODE_LINK_TO(slice0_a_out, fill_constant_b);
+      IR_NODE_LINK_TO(scale_a_out, fill_constant_b);
+
+      std::unordered_set<const Node*> delete_nodes{shape_b,
+                                                   slice0_b,
+                                                   slice1_b,
+                                                   cast_b,
+                                                   elementwise_add_b,
+                                                   scale_b,
+                                                   shape_b_out,
+                                                   slice0_b_out,
+                                                   slice1_b_out,
+                                                   cast_b_in,
+                                                   cast_b_out,
+                                                   elementwise_add_b_out,
+                                                   scale_b_out};
+      GraphSafeRemoveNodes(graph, delete_nodes);
+      found_subgraph_count++;
+    }
   };
 
   gpd(graph, handler);
