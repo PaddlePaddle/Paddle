@@ -135,6 +135,7 @@ void AdanInferMeta(const MetaTensor& param,
                    const MetaTensor& pre_grad,
                    const MetaTensor& moment1,
                    const MetaTensor& moment2,
+                   const MetaTensor& moment3,
                    const MetaTensor& beta1_pow,
                    const MetaTensor& beta2_pow,
                    const MetaTensor& beta3_pow,
@@ -151,11 +152,12 @@ void AdanInferMeta(const MetaTensor& param,
                    MetaTensor* pre_grad_out,
                    MetaTensor* moment1_out,
                    MetaTensor* moment2_out,
+                   MetaTensor* moment3_out,
                    MetaTensor* beta1_pow_out,
                    MetaTensor* beta2_pow_out,
                    MetaTensor* beta3_pow_out,
                    MetaTensor* master_param_outs);
-                   
+
 void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());

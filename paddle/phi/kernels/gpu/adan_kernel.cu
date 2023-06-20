@@ -22,6 +22,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -30,109 +31,72 @@
 namespace phi {
 
 template <typename T, typename TG, typename MT>
-// __global__ void AdanKernelMEM(MT beta1,
-//                               MT beta2,
-//                               MT beta3,
-//                               MT epsilon,
-//                               MT weight_decay,
-//                               MT beta1_pow_,
-//                               MT beta2_pow_,
-//                               MT beta3_pow_,
-//                               bool no_prox,
-//                               const MT* moment1,
-//                               MT* moment1_out,
-//                               const MT* moment2,
-//                               MT* moment2_out,
-//                               const MT* lr_,
-//                               const TG* grad,
-//                               const TG* pre_grad,
-//                               TG* pre_grad_out,
-//                               const T* param,
-//                               T* param_out,
-//                               const MT* master_param,
-//                               MT* master_param_out,
-//                               int ndim) {
-//   // printf("I am In");
-//   // MT lr = *lr_;
-//   // MT beta1_pow = beta1_pow_;
-//   // MT beta2_pow = beta2_pow_;
-//   // MT beta3_pow = beta3_pow_;
+__global__ void AdanKernelMEM(MT beta1,
+                              MT beta2,
+                              MT beta3,
+                              MT epsilon,
+                              MT weight_decay,
+                              const MT* beta1_pow_,
+                              const MT* beta2_pow_,
+                              const MT* beta3_pow_,
+                              bool no_prox,
+                              const MT* moment1,
+                              MT* moment1_out,
+                              const MT* moment2,
+                              MT* moment2_out,
+                              const MT* moment3,
+                              MT* moment3_out,
+                              const MT* lr_,
+                              const TG* grad,
+                              const TG* pre_grad,
+                              TG* pre_grad_out,
+                              const T* param,
+                              T* param_out,
+                              const MT* master_param,
+                              MT* master_param_out,
+                              int ndim) {
+  MT lr = *lr_;
+  MT beta1_pow = *beta1_pow_;
+  MT beta2_pow = *beta2_pow_;
+  MT beta3_pow = *beta3_pow_;
+  MT one = static_cast<MT>(1.0);
 
-//   // int id = blockIdx.x * blockDim.x + threadIdx.x;
-//   // for (; id < ndim; id += gridDim.x * blockDim.x) {
-//   //   MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
-//   //   MT g = static_cast<MT>(grad[id]);
-//   //   MT pre_g = static_cast<MT>(pre_grad[id]);
-//   //   MT g_diff = g - pre_g;
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (; id < ndim; id += gridDim.x * blockDim.x) {
+    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+    MT g = static_cast<MT>(grad[id]);
+    MT pre_g = static_cast<MT>(pre_grad[id]);
+    MT g_diff = g - pre_g;
+    MT update = g + beta2 * g_diff;
 
-//   //   MT mom1 = static_cast<MT>(moment1[id]);
-//   //   MT mom2 = static_cast<MT>(moment2[id]);
+    MT mom1 = static_cast<MT>(moment1[id]);
+    MT mom2 = static_cast<MT>(moment2[id]);
+    MT mom3 = static_cast<MT>(moment3[id]);
 
-//   //   mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
-//   //   mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
+    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
+    mom3 = beta3 * mom2 + (static_cast<MT>(1.0) - beta3) * update * update;
 
-//   //   MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta3_pow_)) + epsilon;
-//   //   MT update = (mom1 / (1.0 - beta1_pow_) + beta2 * mom2 / (1.0 - beta2_pow_)) / (denom);
+    MT denom = (sqrt(mom2) / sqrt(one - beta3_pow)) + epsilon;
+    update =
+        (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
 
-//   //   if (no_prox){
-//   //     p = p - update * (1 - lr * weight_decay);
-//   //     p = p - (update * lr);
-//   //   }else
-//   //   {
-//   //     p = p - (update * lr);
-//   //     p = p - update * (1 - lr * weight_decay);
-//   //   }
-   
-//   //   moment1_out[id] = mom1;
-//   //   moment2_out[id] = mom2;
-//   //   pre_grad_out[id] = g;
-//   //   param_out[id] = static_cast<T>(p);
-//   //   if (master_param_out) {
-//   //     master_param_out[id] = p;
-//   //   }
-//   // }
-// }
+    if (no_prox) {
+      p = p * (one - lr * weight_decay) - update * lr;
+    } else {
+      p = p - (update * lr);
+      p = p / (one + lr * weight_decay);
+    }
 
-__global__ void AdanKernelMEM(int ndim) {
-  printf("I am In");
-  // MT lr = *lr_;
-  // MT beta1_pow = beta1_pow_;
-  // MT beta2_pow = beta2_pow_;
-  // MT beta3_pow = beta3_pow_;
-
-  // int id = blockIdx.x * blockDim.x + threadIdx.x;
-  // for (; id < ndim; id += gridDim.x * blockDim.x) {
-  //   MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
-  //   MT g = static_cast<MT>(grad[id]);
-  //   MT pre_g = static_cast<MT>(pre_grad[id]);
-  //   MT g_diff = g - pre_g;
-
-  //   MT mom1 = static_cast<MT>(moment1[id]);
-  //   MT mom2 = static_cast<MT>(moment2[id]);
-
-  //   mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
-  //   mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
-
-  //   MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta3_pow_)) + epsilon;
-  //   MT update = (mom1 / (1.0 - beta1_pow_) + beta2 * mom2 / (1.0 - beta2_pow_)) / (denom);
-
-  //   if (no_prox){
-  //     p = p - update * (1 - lr * weight_decay);
-  //     p = p - (update * lr);
-  //   }else
-  //   {
-  //     p = p - (update * lr);
-  //     p = p - update * (1 - lr * weight_decay);
-  //   }
-   
-  //   moment1_out[id] = mom1;
-  //   moment2_out[id] = mom2;
-  //   pre_grad_out[id] = g;
-  //   param_out[id] = static_cast<T>(p);
-  //   if (master_param_out) {
-  //     master_param_out[id] = p;
-  //   }
-  // }
+    moment1_out[id] = mom1;
+    moment2_out[id] = mom2;
+    moment3_out[id] = mom3;
+    pre_grad_out[id] = grad[id];
+    param_out[id] = static_cast<T>(p);
+    if (master_param_out) {
+      master_param_out[id] = p;
+    }
+  }
 }
 
 template <typename T>
@@ -144,8 +108,7 @@ __global__ void UpdateBetaPow(T beta1,
                               const T* beta3_pow_,
                               T* beta1_pow_out,
                               T* beta2_pow_out,
-                              T* beta3_pow_out
-                              ) {
+                              T* beta3_pow_out) {
   *beta1_pow_out = beta1 * beta1_pow_[0];
   *beta2_pow_out = beta2 * beta2_pow_[0];
   *beta3_pow_out = beta2 * beta3_pow_[0];
@@ -159,6 +122,7 @@ void AdanDenseKernel(const Context& dev_ctx,
                      const DenseTensor& pre_grad,
                      const DenseTensor& moment1,
                      const DenseTensor& moment2,
+                     const DenseTensor& moment3,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
                      const DenseTensor& beta3_pow,
@@ -175,6 +139,7 @@ void AdanDenseKernel(const Context& dev_ctx,
                      DenseTensor* pre_grad_out,
                      DenseTensor* moment1_out,
                      DenseTensor* moment2_out,
+                     DenseTensor* moment3_out,
                      DenseTensor* beta1_pow_out,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* beta3_pow_out,
@@ -225,36 +190,32 @@ void AdanDenseKernel(const Context& dev_ctx,
   int threads = 512;
   int blocks = (param.numel() + threads - 1) / threads;
 
+  AdanKernelMEM<T, float, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+      beta1_,
+      beta2_,
+      beta3_,
+      epsilon_,
+      weight_decay_,
+      beta1_pow.data<MPDType>(),
+      beta2_pow.data<MPDType>(),
+      beta3_pow.data<MPDType>(),
+      no_prox,
+      moment1.data<MPDType>(),
+      dev_ctx.template Alloc<MPDType>(moment1_out),
+      moment2.data<MPDType>(),
+      dev_ctx.template Alloc<MPDType>(moment2_out),
+      moment3.data<MPDType>(),
+      dev_ctx.template Alloc<MPDType>(moment3_out),
+      learning_rate.data<MPDType>(),
+      grad.data<float>(),
+      pre_grad.data<float>(),
+      dev_ctx.template Alloc<float>(pre_grad_out),
+      param.data<T>(),
+      dev_ctx.template Alloc<T>(param_out),
+      master_in_data,
+      master_out_data,
+      param.numel());
 
-  VLOG(3) << grad_type <<"-----------------";
-  // AdanKernelMEM<T, float, MPDType>
-  //     <<<blocks, threads, 0, dev_ctx.stream()>>>(
-  //         beta1_,
-  //         beta2_,
-  //         beta3_,
-  //         epsilon_,
-  //         weight_decay_,
-  //         *beta1_pow.data<MPDType>(),
-  //         *beta2_pow.data<MPDType>(),
-  //         *beta3_pow.data<MPDType>(),
-  //         no_prox,
-  //         moment1.data<MPDType>(),
-  //         dev_ctx.template Alloc<MPDType>(moment1_out),
-  //         moment2.data<MPDType>(),
-  //         dev_ctx.template Alloc<MPDType>(moment2_out),
-  //         learning_rate.data<MPDType>(),
-  //         grad.data<float>(),
-  //         pre_grad.data<float>(),
-  //         dev_ctx.template Alloc<float>(pre_grad_out),
-  //         param.data<T>(),
-  //         dev_ctx.template Alloc<T>(param_out),
-  //         master_in_data,
-  //         master_out_data,
-  //         param.numel());
-
-  AdanKernelMEM<T, float, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(param.numel());
-  
-  VLOG(3) << "-----------------";
   if (!use_global_beta_pow) {
     // Update with gpu
     UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
@@ -280,10 +241,10 @@ PD_REGISTER_KERNEL(adan,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  // Skip beta1_pow, beta2_pow, beta3_pow data transform
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
@@ -294,9 +255,9 @@ PD_REGISTER_KERNEL(adan,
     kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(8).SetDataType(phi::DataType::FLOAT32);
   }
-  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(6).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(7).SetBackend(phi::Backend::UNDEFINED);
 }
-

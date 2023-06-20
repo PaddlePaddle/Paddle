@@ -11,45 +11,42 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
- 
-import math
+
 import warnings
 from collections import defaultdict
-from collections.abc import Callable
- 
+
 import paddle
- 
 from paddle import _C_ops
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import Parameter, Variable
 from paddle.nn.clip import GradientClipBase
-from paddle.optimizer.lr import LRScheduler
 from paddle.optimizer import Optimizer
- 
+from paddle.optimizer.lr import LRScheduler
+
 __all__ = []
- 
- 
+
+
 class Adan(Optimizer):
     r"""
     The AdamW optimizer is implemented based on the AdamW Optimization
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
     it can resolves the problem of L2 regularization failure in the Adam optimizer.
- 
+
     .. math::
- 
+
         t & = t + 1
- 
+
         moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
- 
+
         moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
- 
+
         learning\_rate & = learning\_rate *
             \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
- 
+
         param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
- 
- 
+
+
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
@@ -93,20 +90,20 @@ class Adan(Optimizer):
             The default value is None.
     Notes:
         **Currently, AdamW doesn't support sparse parameter optimization.**
- 
+
     Examples:
         .. code-block:: python
- 
+
             import paddle
- 
+
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand([10,10], dtype="float32")
             out = linear(inp)
             loss = paddle.mean(out)
- 
+
             beta1 = paddle.to_tensor([0.9], dtype="float32")
             beta2 = paddle.to_tensor([0.99], dtype="float32")
- 
+
             opt = paddle.optimizer.AdamW(learning_rate=0.1,
                     parameters=linear.parameters(),
                     beta1=beta1,
@@ -115,8 +112,8 @@ class Adan(Optimizer):
             loss.backward()
             opt.step()
             opt.clear_grad()
- 
- 
+
+
             #Note that the learning_rate of linear_2 is 0.01.
             linear_1 = paddle.nn.Linear(10, 10)
             linear_2 = paddle.nn.Linear(10, 10)
@@ -139,9 +136,9 @@ class Adan(Optimizer):
             loss.backward()
             opt.step()
             opt.clear_grad()
- 
+
     """
- 
+
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _moment3_acc_str = "moment3"
@@ -149,7 +146,7 @@ class Adan(Optimizer):
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
     _beta3_pow_acc_str = "beta3_pow_acc"
- 
+
     def __init__(
         self,
         learning_rate=0.001,
@@ -182,7 +179,7 @@ class Adan(Optimizer):
             weight_decay, framework.Variable
         ):
             raise TypeError("weight_decay should be float or Tensor.")
- 
+
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
@@ -203,14 +200,14 @@ class Adan(Optimizer):
             self._parameter_list = list(parameters)
         else:
             self._parameter_list = None
- 
+
         self._name = name
         if framework.in_dygraph_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
                 )
- 
+
         if not isinstance(learning_rate, (float, LRScheduler)):
             raise TypeError(
                 "learning rate should be float or LRScheduler, got %s here"
@@ -221,7 +218,7 @@ class Adan(Optimizer):
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
- 
+
         self._dtype = None
         # Infer the dtype form parameter
         if self._parameter_list:
@@ -233,7 +230,7 @@ class Adan(Optimizer):
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
- 
+
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
         self._learning_rate_map = {}
@@ -247,7 +244,7 @@ class Adan(Optimizer):
         self._accumulators_holder = {}
         self._param_device_map = {}
         self.clear_gradients = self.clear_grad
- 
+
         self.type = "adan"
         self._learning_rate = learning_rate
         self._params_name = set()
@@ -261,7 +258,7 @@ class Adan(Optimizer):
         self._epsilon = epsilon
         self._multi_precision = multi_precision
         self._master_weights = {}
- 
+
         self._default_dict = {
             'weight_decay': weight_decay,
             'beta1': beta1,
@@ -271,39 +268,39 @@ class Adan(Optimizer):
             'epsilon': epsilon,
             'grad_clip': grad_clip,
         }
- 
+
         self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
             for param_group in self._parameter_list:
                 self._add_param_group(param_group.copy())
         else:
             self._param_groups = self._parameter_list
- 
+
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
- 
+
         self._create_master_grad_states()
- 
+
     def _create_master_grad_states(self):
         # master gradients states
         self._master_grads = {}
         self._master_grad = False
- 
+
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
- 
+
     def _get_auxiliary_var(self, key):
         if key in self._auxiliary_vars:
             return self._auxiliary_vars[key]
         else:
             return None
- 
+
     def _add_param_group(self, param_group):
         """
         Add a param group to parameter_list.
- 
+
         Args:
             param_group (dict): The group of Tensors to be optimzed with
             different optimization options.
@@ -318,27 +315,27 @@ class Adan(Optimizer):
             )
         else:
             param_group['params'] = list(params)
- 
+
         # Update optimization options for each groups
         for k, v in self._default_dict.items():
             param_group.setdefault(k, v)
- 
+
         param_set = set()
         for group in self._param_groups:
             param_set.update(set(group['params']))
- 
+
         if not param_set.isdisjoint(set(param_group['params'])):
             raise ValueError(
                 "some parameters appear in more than one parameter group"
             )
- 
+
         for param in param_group['params']:
             param.optimize_attr['learning_rate'] = param_group.get(
                 'learning_rate', 1.0
             )
- 
+
         self._param_groups.append(param_group)
- 
+
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
@@ -355,7 +352,7 @@ class Adan(Optimizer):
             if isinstance(self._beta1, Variable)
             else self._beta1,
             shape=[1],
-            type=acc_dtype
+            type=acc_dtype,
         )
         self._add_accumulator(
             name=self._beta2_pow_acc_str,
@@ -365,7 +362,7 @@ class Adan(Optimizer):
             if isinstance(self._beta2, Variable)
             else self._beta2,
             shape=[1],
-            type=acc_dtype
+            type=acc_dtype,
         )
         self._add_accumulator(
             name=self._beta3_pow_acc_str,
@@ -375,14 +372,14 @@ class Adan(Optimizer):
             if isinstance(self._beta3, Variable)
             else self._beta3,
             shape=[1],
-            type=acc_dtype
+            type=acc_dtype,
         )
- 
+
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
- 
+
         # Create accumulator tensors for first and second moments
         for p in parameters:
             if p.name in self._already_create_accumulater:
@@ -402,7 +399,7 @@ class Adan(Optimizer):
                 )
             self._add_moments_pows(p)
             self._already_create_accumulater.add(p.name)
- 
+
     def _set_accumulator_master(self, name, param, val, deep_copy=True):
         if self._name is not None:
             name = self._name + "_" + name
@@ -426,13 +423,13 @@ class Adan(Optimizer):
             self._accumulators[name][target_name].copy_(val, False)
         else:
             self._accumulators[name][target_name] = val
- 
+
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
         param, grad = param_and_grad
- 
+
         # Whether we should do weight decay for the parameter.
         _weight_decay = self._weight_decay
         if (
@@ -440,7 +437,7 @@ class Adan(Optimizer):
             and not self._apply_decay_param_fun(param.name)
         ):
             _weight_decay = 0.0
- 
+
         pre_grad = self._get_accumulator_master(
             self._pre_grad_str, param_and_grad[0]
         )
@@ -471,10 +468,9 @@ class Adan(Optimizer):
             else None
         )
         lr = self._create_param_lr(param_and_grad)
- 
+
         # create the adamw optimize op
         if framework.in_dygraph_mode():
- 
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -490,13 +486,14 @@ class Adan(Optimizer):
                 if not isinstance(self._beta2, Variable)
                 else self._beta2.item(0)
             )
-            _, _, _, _, _, _, _, _ = _C_ops.adan_(
+            _, _, _, _, _, _, _, _, _ = _C_ops.adan_(
                 param_and_grad[0],
                 param_and_grad[1],
                 lr,
                 pre_grad,
                 moment1,
                 moment2,
+                moment3,
                 beta1_pow_acc,
                 beta2_pow_acc,
                 beta3_pow_acc,
@@ -511,24 +508,24 @@ class Adan(Optimizer):
                 False,
             )
             return None
- 
+
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
- 
+
     @imperative_base.no_grad
     @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
- 
+
         Returns:
             None
- 
+
         Examples:
             .. code-block:: python
- 
+
                 import paddle
- 
+
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
@@ -542,7 +539,7 @@ class Adan(Optimizer):
         if paddle.fluid.dygraph.base.in_declarative_mode():
             self._declarative_step()
             return
- 
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -569,7 +566,7 @@ class Adan(Optimizer):
                                 "AdamW don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
- 
+
             optimize_ops = self._apply_optimize(
                 loss=None, startup_program=None, params_grads=params_grads
             )
@@ -607,7 +604,7 @@ class Adan(Optimizer):
                 self._apply_optimize(
                     loss=None, startup_program=None, params_grads=params_grads
                 )
- 
+
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
@@ -618,6 +615,5 @@ class Adan(Optimizer):
             'weight_decay', self._default_dict['weight_decay']
         )
         parameters = parameters.get('params')
- 
+
         return parameters
- 
