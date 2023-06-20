@@ -14,28 +14,14 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/parameter.h"
-
-namespace paddle {
-namespace dialect {
-
-class PaddleKernelDialect : public ir::Dialect {
- public:
-  explicit PaddleKernelDialect(ir::IrContext* context);
-
-  static const char* name() { return "pd_kernel"; }
-
-  void PrintType(ir::Type type, std::ostream& os) const override;
-
-  void PrintAttribute(ir::Attribute attr, std::ostream& os) const override;
-
- private:
-  void initialize();
-};
-
-}  // namespace dialect
-}  // namespace paddle
-
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleKernelDialect)
+#if defined(_WIN32)
+#ifndef IR_API
+#ifdef IR_DLL_EXPORT
+#define IR_API __declspec(dllexport)
+#else
+#define IR_API __declspec(dllimport)
+#endif  // IR_DLL_EXPORT
+#endif  // IR_API
+#else
+#define IR_API
+#endif  // _WIN32

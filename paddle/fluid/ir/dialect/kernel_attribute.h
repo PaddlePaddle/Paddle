@@ -36,3 +36,5 @@ class KernelAttribute : public ir::Attribute {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::KernelAttribute)

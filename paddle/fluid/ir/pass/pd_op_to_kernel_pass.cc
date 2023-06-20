@@ -304,11 +304,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       }
     }
 
-    // if( kernel_key.backend() == phi::Backend::GPUDNN )
-    // {
-    //   kernel_key.set_backend( phi::Backend::GPU);
-    // }
-
     std::unordered_map<std::string, ir::Attribute> op1_attribute{
         {"op_name", ir::StrAttribute::get(ctx, (*it)->name())},
         {"kernel_name", ir::StrAttribute::get(ctx, kernel_fn_str)},

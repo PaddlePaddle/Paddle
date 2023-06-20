@@ -12,20 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/core/builtin_type.h"
+#include "paddle/fluid/ir/dialect/kernel_attribute.h"
 
-namespace ir {
-std::vector<Type> VectorType::data() const { return storage()->GetAsKey(); }
-
-}  // namespace ir
-
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int8Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::VectorType)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::BFloat16Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Float16Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Float32Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Float64Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int16Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int32Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::Int64Type)
-IR_DEFINE_EXPLICIT_TYPE_ID(ir::BoolType)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelAttribute)
