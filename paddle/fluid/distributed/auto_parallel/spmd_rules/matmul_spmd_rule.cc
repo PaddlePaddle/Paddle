@@ -20,9 +20,9 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 using phi::distributed::auto_parallel::str_join;
-std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
-    const std::vector<DistTensorSpec>& input_specs,
-    const paddle::framework::AttributeMap& attrs) {
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+MatmulSPMDRule::InferForward(const std::vector<DistTensorSpec>& input_specs,
+                             const paddle::framework::AttributeMap& attrs) {
   // step0: verify input args based on matmul logic
   auto input_specs_size = input_specs.size();
   PADDLE_ENFORCE_EQ(
@@ -182,7 +182,7 @@ std::vector<TensorDistAttr> MatmulSPMDRule::InferForward(
           << "]; Output dims_mapping: [" << str_join(out_dims_mapping)
           << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
 
-  return {x_dist_attr_dst, y_dist_attr_dst, output_dist_attr_dst};
+  return {{x_dist_attr_dst, y_dist_attr_dst}, {output_dist_attr_dst}};
 }
 
 TensorDistAttr GetInferedDistAttr(
@@ -218,9 +218,9 @@ TensorDistAttr GetInferedDistAttr(
   return dist_attr_;
 }
 
-std::vector<TensorDistAttr> MatmulSPMDRule::InferBackward(
-    const std::vector<DistTensorSpec>& output_specs,
-    const paddle::framework::AttributeMap& attrs) {
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+MatmulSPMDRule::InferBackward(const std::vector<DistTensorSpec>& output_specs,
+                              const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "InferBackward of MatmulSPMDRule is NOT implemented yet."));
 

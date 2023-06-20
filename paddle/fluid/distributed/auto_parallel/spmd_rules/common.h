@@ -36,28 +36,31 @@ class SPMDRuleBase {
  public:
   virtual ~SPMDRuleBase() {}
 
-  // Merge the DistAttr of input tensors and infer the DistAttr of the output
-  // tensors from the merged input information. The input are DistAttr and Shape
-  // (wrapp as DistTensorSpec) of the input tensors (tensors follow the same
-  // order defined in Op's Phi API) and Op Attribue of the current op. The ouput
-  // are the Merged DistAttr of input tensors and the infered DistAttr of the
-  // output tensors. The Merged DistAttr might be different from the original
-  // Intput DistAttrs, which means that the corressponding input tensor need to
-  // be reshard.
-  virtual std::vector<TensorDistAttr> InferForward(
-      const std::vector<DistTensorSpec>& input_specs,
-      const paddle::framework::AttributeMap& attrs);
+  // Based on the information of Input Tensors and Op Attribute:
+  // 1. Merge the Sharding (dims_mapping) among Input Tensors.
+  // 2. Infer the Sharding (dims_mapping) for Output Tensors.
+  // The Info of input tensors (Shape and DistAttr) are wrapped as
+  // DistTensorSpec, and  op attribtue should be given as AttributeMap. The
+  // Output is a pair consist of two vectors:
+  // 1. The first vector: the merged DistAttr of input tensors.
+  // 2. The infered DistAttr of output tensors.
+  // The Merged DistAttr might be different from the original Intput DistAttrs,
+  // which means that the corressponding input tensor need to be reshard.
+  virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+  InferForward(const std::vector<DistTensorSpec>& input_specs,
+               const paddle::framework::AttributeMap& attrs);
 
-  // Merge the DistAttr of output tensors and infer the DistAttr of the input
-  // tensors from the merged output information. The input are DistAttr and
-  // Shape (wrapp as DistTensorSpec) of the input tensors and Op Attribue of the
-  // current op. The ouput are the Merged DistAttr of output tensors and the
-  // infered DistAttr of the input tensors. This function will be use in Static
-  // Graph mode only, where we have the whole computation graph for sharding
-  // propogation.
-  virtual std::vector<TensorDistAttr> InferBackward(
-      const std::vector<DistTensorSpec>& output_specs,
-      const paddle::framework::AttributeMap& attrs);
+  // Based on the information of Output Tensors and Op Attribute:
+  // 1. Merge the Sharding (dims_mapping) among Output Tensors.
+  // 2. Infer the Sharding (dims_mapping) for Input Tensors.
+  // The Info of output tensors (Shape and DistAttr) are wrapped as
+  // DistTensorSpec, and  op attribtue should be given as AttributeMap. The
+  // Output is a pair consist of two vectors:
+  // 1. The first vector: the merged DistAttr of output tensors.
+  // 2. The infered DistAttr of Input tensors.
+  virtual std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+                const paddle::framework::AttributeMap& attrs);
 
   template <typename T>
   inline const T ExtractAttr(

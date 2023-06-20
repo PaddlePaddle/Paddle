@@ -57,15 +57,20 @@ TEST(MatmulSPMDRule, Ctor) {
   SPMDRuleBase* matmul_rule = SPMDRuleMap::Instance().Get("matmul");
 
   // mk[1, -1],kn[-1, -1] --> mk[1, -1],kn[-1, -1] = nm[1, -1] partial[]
-  std::vector<TensorDistAttr> infered_dist_attrs = matmul_rule->InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  size_t nreturn = 3;
-  EXPECT_EQ(infered_dist_attrs.size(), nreturn);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+      infered_dist_attrs = matmul_rule->InferForward(
+          {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+
+  size_t input_size = 2;
+  size_t output_size = 1;
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
+
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
   VLOG(4) << "test1 done." << std::endl << std::endl << std::endl;
 
@@ -74,11 +79,11 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({-1, 0});
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({-1, 0}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, 0}));
   VLOG(4) << "test2 done." << std::endl << std::endl << std::endl;
 
@@ -87,10 +92,11 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(), std::vector<int64_t>({1, 0}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
+            std::vector<int64_t>({1, 0}));
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({0, -1}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1}));
   VLOG(4) << "test3 done." << std::endl << std::endl << std::endl;
 
@@ -99,10 +105,11 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({1, 0});
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, 1}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(), std::vector<int64_t>({1, 0}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
+            std::vector<int64_t>({1, 0}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, 0}));
   VLOG(4) << "test4 done." << std::endl << std::endl << std::endl;
 
@@ -113,11 +120,11 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1, -1}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1, -1}));
   VLOG(4) << "test5 done." << std::endl << std::endl << std::endl;
 
@@ -127,11 +134,11 @@ TEST(MatmulSPMDRule, Ctor) {
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, 0}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({0, -1}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, -1}));
   VLOG(4) << "test6 done." << std::endl << std::endl << std::endl;
 
@@ -142,11 +149,11 @@ TEST(MatmulSPMDRule, Ctor) {
   attrs["trans_x"] = true;
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({1, -1, -1, 0}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({-1, -1}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({1, -1, 0, -1}));
   VLOG(4) << "test7 done." << std::endl << std::endl << std::endl;
 
@@ -158,10 +165,11 @@ TEST(MatmulSPMDRule, Ctor) {
   attrs["trans_y"] = true;
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, -1, 0}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(), std::vector<int64_t>({1, 0}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
+            std::vector<int64_t>({1, 0}));
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, -1, 1}));
   VLOG(4) << "test8 done." << std::endl << std::endl << std::endl;
 
@@ -173,11 +181,11 @@ TEST(MatmulSPMDRule, Ctor) {
   attrs["trans_x"] = true;
   infered_dist_attrs = matmul_rule->InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs[0].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 0, 1}));
-  EXPECT_EQ(infered_dist_attrs[1].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
             std::vector<int64_t>({-1, 0}));
-  EXPECT_EQ(infered_dist_attrs[2].dims_mapping(),
+  EXPECT_EQ(infered_dist_attrs.second[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 1, -1}));
   VLOG(4) << "test9 done." << std::endl << std::endl << std::endl;
 

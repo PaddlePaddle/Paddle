@@ -22,17 +22,17 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-std::vector<TensorDistAttr> SPMDRuleBase::InferForward(
-    const std::vector<DistTensorSpec>& input_specs,
-    const paddle::framework::AttributeMap& attrs) {
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+SPMDRuleBase::InferForward(const std::vector<DistTensorSpec>& input_specs,
+                           const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(
       phi::errors::Unimplemented("InferForward should be called from a "
                                  "derived class of SPMDRuleBase !"));
 }
 
-std::vector<TensorDistAttr> SPMDRuleBase::InferBackward(
-    const std::vector<DistTensorSpec>& output_specs,
-    const paddle::framework::AttributeMap& attrs) {
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& output_specs,
+                            const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(
       phi::errors::Unimplemented("InferBackward should be called from a "
                                  "derived class of SPMDRuleBase !"));

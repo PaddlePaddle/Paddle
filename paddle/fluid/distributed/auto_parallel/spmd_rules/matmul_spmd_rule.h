@@ -34,13 +34,13 @@ TensorDistAttr GetInferedDistAttr(
 
 class MatmulSPMDRule : public SPMDRuleBase {
  public:
-  std::vector<TensorDistAttr> InferForward(
-      const std::vector<DistTensorSpec>& input_specs,
-      const paddle::framework::AttributeMap& attrs) override;
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+  InferForward(const std::vector<DistTensorSpec>& input_specs,
+               const paddle::framework::AttributeMap& attrs) override;
 
-  std::vector<TensorDistAttr> InferBackward(
-      const std::vector<DistTensorSpec>& output_specs,
-      const paddle::framework::AttributeMap& attrs) override;
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+  InferBackward(const std::vector<DistTensorSpec>& output_specs,
+                const paddle::framework::AttributeMap& attrs) override;
 };
 }  // namespace auto_parallel
 }  // namespace distributed
