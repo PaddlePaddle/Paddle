@@ -1,0 +1,60 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
+
+namespace paddle {
+namespace dialect {
+
+class OpYamlInfoParser {
+ public:
+  OpYamlInfoParser() = delete;
+
+  explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple);
+
+  bool IsTensorArrtibute(size_t index) const;
+  int InputTensorNumber() const;
+
+  const std::string& AttrTypeName(std::string name) const;
+
+  const std::vector<std::string>& InferMetaTensorParam() const;
+  const std::vector<std::string>& InferMetaAttrParam() const;
+  const std::vector<std::string>& KernelFnTensorParam() const;
+  const std::vector<std::string>& KernelFnAttrParam() const;
+
+ private:
+  void parse();
+
+  const OpInfoTuple& op_info_tuple_;
+
+  const std::vector<OpInputInfo>& vec_op_input_info_;
+
+  std::map<std::string, int> map_name2id_;
+
+  std::map<std::string, OpInputInfo> map_input_info_;
+  std::map<std::string, OpAttributeInfo> map_attr_info_;
+  std::map<std::string, OpOutputInfo> map_output_info_;
+
+  std::vector<std::string> vec_infer_meta_tensor_param_;
+  std::vector<std::string> vec_infer_meta_attr_param_;
+  std::vector<std::string> vec_kernel_fn_tensor_param_;
+  std::vector<std::string> vec_kernel_fn_attr_param_;
+
+  int input_tensor_number_{0};
+};
+
+}  // namespace dialect
+}  // namespace paddle

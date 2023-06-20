@@ -18,6 +18,7 @@
 // paddle/fluid/ir/dialect/CMakeLists.txt.
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/pd_type_storage.h"

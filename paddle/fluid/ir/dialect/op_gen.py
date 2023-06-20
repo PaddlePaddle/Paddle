@@ -36,6 +36,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/fluid/ir/dialect/utils.h"
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/framework/infershape_utils.h"
