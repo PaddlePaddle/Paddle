@@ -108,9 +108,18 @@ class TestBatchNormOp(OpTest):
             )
 
     def test_check_grad_scale_bias(self):
-        self.enable_cinn = False
-        self.rev_comp_atol = 1e-3
-        self.rev_comp_rtol = 1e-3
+        if self.data_format == "NCHW":
+            self.enable_cinn = False
+        if self.dtype == "float32":
+            self.rev_comp_atol = 1e-3
+            self.rev_comp_rtol = 1e-3
+            self.cinn_atol = 1e-3
+            self.cinn_rtol = 1e-3
+        elif self.dtype == "float64":
+            self.rev_comp_atol = 1e-12
+            self.rev_comp_rtol = 1e-12
+            self.cinn_atol = 1e-12
+            self.cinn_rtol = 1e-12
         if self.dtype not in ("uint16", "float16"):
             self.check_grad_with_place(
                 core.CPUPlace(),
