@@ -229,10 +229,10 @@ class TestInplacePowerTensor(TestDygraphInplace):
         self.y = paddle.ones_like([10, 20, 1]) * 2
 
     def inplace_api_processing(self, var):
-        return paddle.pow(var, self.y)
+        return paddle.pow_(var, self.y)
 
     def non_inplace_api_processing(self, var):
-        return paddle.pow_(var, self.y)
+        return paddle.pow(var, self.y)
 
 
 if __name__ == '__main__':
