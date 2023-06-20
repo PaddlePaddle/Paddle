@@ -109,7 +109,8 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,
-                           gpuStream_t stream) {
+                           gpuStream_t stream,
+                           ncclComm_t comm) {
   phi::distributed::CommStaticCheck::CheckShape(in_tensor, rank_, size_);
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -130,7 +131,8 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int64_t& count,
                            const int& peer,
-                           gpuStream_t stream) {
+                           gpuStream_t stream,
+                           ncclComm_t comm) {
   phi::distributed::CommStaticCheck::CheckShape(*out_tensor, rank_, size_);
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
@@ -200,11 +202,9 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
 }
 
 void NCCLCommContext::GroupStart() {
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
+  NCCL_CHECK(phi::dynload::ncclGroupStart());
 }
-void NCCLCommContext::GroupEnd() {
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
-}
+void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
 
 }  // namespace distributed
 }  // namespace phi

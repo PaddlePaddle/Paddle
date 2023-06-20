@@ -52,11 +52,12 @@ void AllToAllKernel(const Context& dev_ctx,
   size_t offset = 0;
 
   for (auto i = 0; i < nranks; ++i) {
-      auto send_buf = phi::distributed::GetPartialTensor(x, offset, send_numel);
-      comm_ctx->Send(send_buf, i, stream);
-      auto recv_buf = phi::distributed::GetPartialTensor(*out, offset, send_numel);
-      comm_ctx->Recv(&recv_buf, i, stream);
-      offset += send_numel;
+    auto send_buf = phi::distributed::GetPartialTensor(x, offset, send_numel);
+    comm_ctx->Send(send_buf, send_numel, i, stream);
+    auto recv_buf =
+        phi::distributed::GetPartialTensor(*out, offset, send_numel);
+    comm_ctx->Recv(&recv_buf, send_numel, i, stream);
+    offset += send_numel;
   }
   comm_ctx->GroupEnd();
 #else
