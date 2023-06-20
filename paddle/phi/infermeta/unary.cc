@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 
-DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 namespace detail {
@@ -3857,10 +3856,6 @@ void SqueezeInferMeta(const MetaTensor& x,
 
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
-    DDim stride;
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      stride = out->stride();
-    }
     std::vector<int32_t> tmp;
     tmp.reserve(axes.GetData().size());
     std::for_each(axes.GetData().begin(),
@@ -3868,9 +3863,6 @@ void SqueezeInferMeta(const MetaTensor& x,
                   [&tmp](const int64_t& t) { tmp.push_back(t); });
     auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, false);
     out->set_dims(out_dims);
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      out->set_stride(stride);
-    }
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -4931,15 +4923,8 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     out->set_dtype(x.dtype());
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
-    DDim stride;
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      stride = out->stride();
-    }
     auto out_dims = funcs::GetUnsqueezeShape(axes.GetData(), x_dims);
     out->set_dims(out_dims);
-    if (FLAGS_use_stride_kernel && config.is_runtime) {
-      out->set_stride(stride);
-    }
     if (x_dims.size() > 0 && x_dims[0] == out_dims[0]) {
       out->share_lod(x);
     }
