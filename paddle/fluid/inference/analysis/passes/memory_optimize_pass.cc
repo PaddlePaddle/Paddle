@@ -112,8 +112,8 @@ void MemoryOptimizePass::CollectLifeCycle(
 
     ++max_lifecycle;
   }
-  LOG(INFO) << "The whole model's persistable params are : "
-            << (persis_byte / (1 << 30)) << "GB";
+  LOG(INFO) << "The persistable params in main graph are : "
+            << (persis_byte / (1 << 20)) << "MB";
 }
 
 void MemoryOptimizePass::CollectVarMemorySize(
