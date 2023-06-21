@@ -64,6 +64,7 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
     "multi_encoder_xpu_slice_fuse_pass",
     "fused_multi_transformer_cachekv_layout_trans_pass",
+    "xpu_optimize_cachekv_initialization_pass",
     "one_beam_size_fuse_pass",
     "stack_fuse_pass",
     "fused_multi_transformer_xpu_pass",
