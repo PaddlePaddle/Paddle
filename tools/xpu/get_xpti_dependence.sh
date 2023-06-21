@@ -19,6 +19,10 @@ set -ex
 XPTI_URL=$1
 XPTI_DIR_NAME=$2
 
+if [ -n "$WITH_XPTI" ]; then
+  exit 1
+fi
+
 wget --no-check-certificate ${XPTI_URL} -c -q -O xpti.tar.gz
 if [[ $? -ne 0  ]]; then
   echo "downloading failed: ${XPTI_URL}"
