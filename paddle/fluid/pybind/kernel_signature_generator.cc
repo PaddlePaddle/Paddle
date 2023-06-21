@@ -47,8 +47,8 @@ int main(int argc, char **argv) {
   std::string kernel_signature_map_str{"{"};
   for (const auto &op_kernel_pair : kernel_factory.kernels()) {
     std::string op_name = op_kernel_pair.first;
-    const paddle::flat_hash_map<std::string, std::string> &kernel_name_map =
-        phi::OpUtilsMap::Instance().fluid_op_to_phi_kernel();
+    const ankerl::unordered_dense::map<std::string, std::string>
+        &kernel_name_map = phi::OpUtilsMap::Instance().fluid_op_to_phi_kernel();
     for (auto &it : kernel_name_map) {
       if (it.second == op_name) {
         op_name = it.first;

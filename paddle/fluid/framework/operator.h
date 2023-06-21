@@ -46,7 +46,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/unordered_dense.h"
 
 namespace paddle {
 namespace framework {
@@ -746,9 +746,10 @@ class OperatorWithKernel : public OperatorBase {
 
   virtual ~OperatorWithKernel();
 
-  static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
+  static ankerl::unordered_dense::map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
-    static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
+    static ankerl::unordered_dense::map<std::string, OpKernelMap>
+        g_all_op_kernels;
     return g_all_op_kernels;
   }
 

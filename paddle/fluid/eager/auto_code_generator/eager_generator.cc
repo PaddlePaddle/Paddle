@@ -3134,7 +3134,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
 
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
-  paddle::flat_hash_map<std::string, OpInfo> op_info_map_need_gen;
+  ankerl::unordered_dense::map<std::string, OpInfo> op_info_map_need_gen;
 
   for (auto& pair : op_info_map) {
     const OpInfo& op_info = pair.second;

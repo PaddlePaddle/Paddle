@@ -16,7 +16,7 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/unordered_dense.h"
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/expect.h"
@@ -377,7 +377,8 @@ struct OneDNNContext::Impl {
   // For onednn, in addition to extra attrs, there are also extra inputs,
   // but the number is small. Hope that the implementation can be optimized
   // to remove this member in the future.
-  static thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
+  static thread_local ankerl::unordered_dense::map<std::string,
+                                                   const DenseTensor*>
       dnn_inputs_;
 
   // Onednn need get input and output's name in current Kernel for generating
@@ -387,7 +388,7 @@ struct OneDNNContext::Impl {
 };
 
 thread_local AttributeMap OneDNNContext::Impl::dnn_attrs_ = {};
-thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
+thread_local ankerl::unordered_dense::map<std::string, const DenseTensor*>
     OneDNNContext::Impl::dnn_inputs_ = {};
 thread_local TensorNameMap OneDNNContext::Impl::inputs_name_ = {};
 thread_local TensorNameMap OneDNNContext::Impl::outputs_name_ = {};

@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/type_defs.h"
-#include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/unordered_dense.h"
 
 namespace phi {
 
@@ -122,7 +122,7 @@ class DefaultKernelSignatureMap {
  private:
   DefaultKernelSignatureMap() = default;
 
-  paddle::flat_hash_map<std::string, KernelSignature> map_;
+  ankerl::unordered_dense::map<std::string, KernelSignature> map_;
 
   DISABLE_COPY_AND_ASSIGN(DefaultKernelSignatureMap);
 };
@@ -187,12 +187,12 @@ class OpUtilsMap {
     }
   }
 
-  const paddle::flat_hash_map<std::string, std::string>&
+  const ankerl::unordered_dense::map<std::string, std::string>&
   fluid_op_to_phi_kernel() const {
     return fluid_op_to_phi_kernel_;
   }
 
-  const paddle::flat_hash_map<std::string, std::string>&
+  const ankerl::unordered_dense::map<std::string, std::string>&
   phi_kernel_to_fluid_op() const {
     return phi_kernel_to_fluid_op_;
   }
@@ -200,11 +200,14 @@ class OpUtilsMap {
  private:
   OpUtilsMap() = default;
 
-  paddle::flat_hash_map<std::string, std::string> fluid_op_to_phi_kernel_;
+  ankerl::unordered_dense::map<std::string, std::string>
+      fluid_op_to_phi_kernel_;
 
-  paddle::flat_hash_map<std::string, std::string> phi_kernel_to_fluid_op_;
+  ankerl::unordered_dense::map<std::string, std::string>
+      phi_kernel_to_fluid_op_;
 
-  paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
+  ankerl::unordered_dense::map<std::string, ArgumentMappingFn>
+      arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
