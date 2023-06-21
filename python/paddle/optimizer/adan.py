@@ -482,9 +482,9 @@ class Adan(Optimizer):
                 else self._beta2.item(0)
             )
             _beta3 = (
-                self._beta2
-                if not isinstance(self._beta2, Variable)
-                else self._beta2.item(0)
+                self._beta3
+                if not isinstance(self._beta3, Variable)
+                else self._beta3.item(0)
             )
             _, _, _, _, _, _, _, _, _ = _C_ops.adan_(
                 param_and_grad[0],
