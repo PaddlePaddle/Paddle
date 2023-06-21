@@ -130,7 +130,7 @@ void Operation::Destroy() {
     detail::OpOperandImpl *first_use =
         reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
     while (first_use != nullptr) {
-      first_use->remove_from_ud_chain();
+      first_use->RemoveFromUdChain();
       first_use =
           reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
     }
