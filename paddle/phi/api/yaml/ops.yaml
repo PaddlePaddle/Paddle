@@ -929,6 +929,18 @@
     data_type: x
   backward : gather_grad
 
+- op : full_int_array
+  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output: Tensor(out)
+  infer_meta :
+    func : CreateIntArrayInferMeta
+    param : [value, dtype]
+  kernel :
+    func : full_int_array
+    param : [value, dtype]
+    data_type : dtype
+    backend : place
+
 - op : gather_nd
   args : (Tensor x, Tensor index)
   output : Tensor
