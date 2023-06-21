@@ -3801,10 +3801,10 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     auto input_axis_dim = x.dims().at(axis_value);
     // step1: get formated sections
     std::vector<int64_t> sections_vec;
-    PADDLE_ENFORCE_NE(
-        num,
-        0,
-        phi::errors::InvalidArgument("Attr(num_or_sections) should not be 0."));
+    PADDLE_ENFORCE_LE(0,
+                      num,
+                      phi::errors::InvalidArgument(
+                          "Attr(num_or_sections) should be larger than 0."));
 
     if (num > input_axis_dim) {
       // if num > input_axis_dim, take num = input_axis_dim, the dim after split
@@ -3815,7 +3815,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     int64_t last_split_size = 0;
     if (input_axis_dim % num > 0) {
       // increase the processing of non-divisible numbers.
-      int64_t chunk_size = std::ceil(input_axis_dim / num);
+      int64_t chunk_size = std::ceil(input_axis_dim / static_cast<float>(num));
       last_split_size = input_axis_dim % chunk_size;
       num = num - 1;
       input_axis_dim = input_axis_dim - last_split_size;
