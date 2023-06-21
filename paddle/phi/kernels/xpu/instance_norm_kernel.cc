@@ -38,29 +38,64 @@ void InstanceNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_var);
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+
   // scale
   const auto scale_ptr = scale.get_ptr();
   const float* scale_data_fp32 = nullptr;
-  DenseTensor scale_data;
   if (scale_ptr == nullptr) {
-    scale_data.Resize({c});
-    dev_ctx.template Alloc<float>(&scale_data);
-    phi::funcs::set_constant(dev_ctx, &scale_data, static_cast<float>(1));
-    scale_data_fp32 = scale_data.data<float>();
+    float* scale_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(c);
+    std::unique_ptr<float[]> data_cpu(new float[c]);
+    std::fill(data_cpu.get(), data_cpu.get() + c, static_cast<float>(1));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       scale_data_temp,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       c * sizeof(float));
+    scale_data_fp32 = scale_data_temp;
+  } else if (scale_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+    float* scale_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(scale_ptr->data<T>()),
+        scale_data_temp,
+        scale_ptr->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    scale_data_fp32 = scale_data_temp;
   } else {
     // no need to cast
     scale_data_fp32 = scale_ptr->data<float>();
   }
+
   // bias
   const float* bias_data_fp32 = nullptr;
   const auto* bias_ptr = bias.get_ptr();
-  DenseTensor bias_data;
   if (bias_ptr == nullptr) {
-    bias_data.Resize({c});
-    dev_ctx.template Alloc<float>(&bias_data);
-    phi::funcs::set_constant(dev_ctx, &bias_data, static_cast<float>(0));
-    bias_data_fp32 = bias_data.data<float>();
+    float* bias_data_temp =
+        RAII_GUARD.alloc_l3_or_gm<float>(c);
+    std::unique_ptr<float[]> data_cpu(new float[c]);
+    std::fill(data_cpu.get(), data_cpu.get() + c, static_cast<float>(0));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       bias_data_temp,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       c * sizeof(float));
+  } else if (bias_ptr->dtype() ==
+             phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
+    float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
+    int r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(bias_ptr->data<T>()),
+        bias_data_temp,
+        bias_ptr->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    bias_data_fp32 = bias_data_temp;
   } else {
+    // no need to cast
     bias_data_fp32 = bias_ptr->data<float>();
   }
 
