@@ -1355,6 +1355,7 @@ def swish(x, name=None):
             type='swish',
             inputs={'X': x},
             outputs={'Out': out},
+            attrs={'beta': 1.0},
         )
         return out
 

@@ -541,12 +541,8 @@ PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(swish,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SwishKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(hard_sigmoid,
                    XPU,
                    ALL_LAYOUT,

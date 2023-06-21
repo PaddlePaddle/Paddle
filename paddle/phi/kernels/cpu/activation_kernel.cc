@@ -147,7 +147,8 @@ void SwishKernel(const Context& dev_ctx,
   funcs::SwishFunctor<T> functor;
   auto attrs = functor.GetAttrs();
   *(attrs[0].second) = 1.0;
-  ActivationImpl<T, Context, funcs::SwishFunctor<T>>(dev_ctx, x, out, functor);
+  ActivationImpl<T, T, Context, funcs::SwishFunctor<T>>(
+      dev_ctx, x, out, functor);
 }
 }  // namespace phi
 PD_REGISTER_KERNEL(relu, CPU, ALL_LAYOUT, phi::ReluKernel, float, double) {}
