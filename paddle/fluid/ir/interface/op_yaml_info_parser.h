@@ -37,10 +37,11 @@ class OpYamlInfoParser {
 
  private:
   void parse();
+  inline const std::vector<OpInputInfo>& InputInfo() const {
+    return std::get<0>(op_info_tuple_);
+  }
 
   const OpInfoTuple& op_info_tuple_;
-
-  const std::vector<OpInputInfo>& vec_op_input_info_;
 
   std::map<std::string, int> map_name2id_;
 

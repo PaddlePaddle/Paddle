@@ -30,8 +30,8 @@ struct OpInputInfo {
   OpInputInfo() = default;
   OpInputInfo(const OpInputInfo& input_info) = default;
 
-  OpInputInfo(std::string name,
-              std::string type_name,
+  OpInputInfo(const std::string& name,
+              const std::string& type_name,
               bool optional,
               bool no_need_buffer,
               bool is_mutable_attribute)
@@ -49,8 +49,8 @@ struct OpOutputInfo {
   bool intermediate = false;
   OpOutputInfo() = default;
   OpOutputInfo(const OpOutputInfo& output_info) = default;
-  OpOutputInfo(std::string name,
-               std::string type_name,
+  OpOutputInfo(const std::string& name,
+               const std::string& type_name,
                bool optional,
                bool intermediate)
       : name(name),
@@ -65,9 +65,9 @@ struct OpAttributeInfo {
   std::string data_type;
   OpAttributeInfo() = default;
   OpAttributeInfo(const OpAttributeInfo& attr_info) = default;
-  OpAttributeInfo(std::string name,
-                  std::string type_name,
-                  std::string data_type)
+  OpAttributeInfo(const std::string& name,
+                  const std::string& type_name,
+                  const std::string& data_type)
       : name(name), type_name(type_name), data_type(data_type) {}
 };
 
@@ -79,13 +79,13 @@ struct OpRunTimeInfo {
   std::vector<std::string> kernel_key_dtype;
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
-  OpRunTimeInfo(std::string infer_meta_func,
-                std::vector<std::string> infer_meta_param,
-                std::vector<std::string> kernel_func,
-                std::vector<std::string> kernel_param,
-                std::vector<std::string> dtype,
-                std::vector<std::pair<std::string, std::string>> inplace,
-                std::vector<std::pair<std::string, std::string>> view)
+  OpRunTimeInfo(const std::string& infer_meta_func,
+                const std::vector<std::string>& infer_meta_param,
+                const std::vector<std::string>& kernel_func,
+                const std::vector<std::string>& kernel_param,
+                const std::vector<std::string>& dtype,
+                const std::vector<std::pair<std::string, std::string>>& inplace,
+                const std::vector<std::pair<std::string, std::string>>& view)
       : infer_meta_func(infer_meta_func),
         infer_meta_param(infer_meta_param),
         kernel_func(kernel_func),

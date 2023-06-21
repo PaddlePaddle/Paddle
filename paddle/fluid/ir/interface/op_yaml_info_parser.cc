@@ -18,20 +18,19 @@ namespace paddle {
 namespace dialect {
 
 OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
-    : op_info_tuple_(op_info_tuple),
-      vec_op_input_info_(std::get<0>(op_info_tuple)) {
+    : op_info_tuple_(op_info_tuple) {
   parse();
 }
 
 bool OpYamlInfoParser::IsTensorArrtibute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
-      vec_op_input_info_.size(),
+      InputInfo().size(),
       phi::errors::OutOfRange("Input index [%d] large than op input size [d]",
                               index,
-                              vec_op_input_info_.size()));
+                              InputInfo().size()));
 
-  return vec_op_input_info_[index].is_mutable_attribute;
+  return InputInfo()[index].is_mutable_attribute;
 }
 
 size_t OpYamlInfoParser::InputTensorNumber() const {
