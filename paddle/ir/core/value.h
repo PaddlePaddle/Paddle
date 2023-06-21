@@ -31,7 +31,7 @@ class OpResultImpl;
 /// \brief OpOperand class represents the operand of operation. This class only
 /// provides interfaces, for specific implementation, see Impl class.
 ///
-class OpOperand {
+class IR_API OpOperand {
  public:
   OpOperand() = default;
 
@@ -55,9 +55,9 @@ class OpOperand {
 
   Value source() const;
 
-  Operation *owner() const;
+  void set_source(Value value);
 
-  //  detail::OpOperandImpl *impl() const { return impl_;}
+  Operation *owner() const;
 
  private:
   detail::OpOperandImpl *impl_{nullptr};
@@ -80,9 +80,9 @@ class ValueUseIterator {
 
   ir::Operation *owner() const { return current_.owner(); }
 
-  OperandType get() const { return current_; }
+  OperandType &operator*() { return current_; }
 
-  OperandType operator*() const { return get(); }
+  OperandType *operator->() { return &operator*(); }
 
   ValueUseIterator<OperandType> &operator++() {
     current_ = current_.next_use();
@@ -103,7 +103,7 @@ class ValueUseIterator {
 /// \brief Value class represents the SSA value in the IR system. This class
 /// only provides interfaces, for specific implementation, see Impl class.
 ///
-class Value {
+class IR_API Value {
  public:
   Value() = default;
 
@@ -129,15 +129,13 @@ class Value {
     return ir::dyn_cast<U>(*this);
   }
 
-  detail::ValueImpl *impl() const;
+  Type type() const;
 
-  ir::Type type() const;
-
-  void SetType(ir::Type type);
+  void set_type(Type type);
 
   Operation *GetDefiningOp() const;
 
-  std::string print_ud_chain();
+  std::string PrintUdChain();
 
   ///
   /// \brief Provide iterator interface to access Value use chain.
@@ -156,6 +154,16 @@ class Value {
 
   friend struct std::hash<Value>;
 
+  bool use_empty() const;
+
+  void ReplaceUsesWithIf(
+      Value new_value,
+      const std::function<bool(OpOperand)> &should_replace) const;
+
+  // The interface shoule ensure impl_ isn't nullptr.
+  // if the user can accept impl_ is nullptr, shoule use impl_ member directly.
+  detail::ValueImpl *impl() const;
+
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
@@ -165,7 +173,7 @@ class Value {
 /// This class only provides interfaces, for specific implementation, see Impl
 /// class.
 ///
-class OpResult : public Value {
+class IR_API OpResult : public Value {
  public:
   using Value::Value;
 

@@ -122,7 +122,7 @@ class TestSumOp1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
-        self.set_enable_cinn()
+        self.if_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
         if self.dtype == np.uint16:
@@ -141,7 +141,7 @@ class TestSumOp1(OpTest):
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
 
-    def set_enable_cinn(self):
+    def if_enable_cinn(self):
         pass
 
     def set_attrs_input_output(self):
@@ -221,7 +221,7 @@ class TestSumOpExclusive1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
-        self.set_enable_cinn()
+        self.if_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
         if self.dtype == np.uint16:
@@ -240,7 +240,7 @@ class TestSumOpExclusive1(OpTest):
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
 
-    def set_enable_cinn(self):
+    def if_enable_cinn(self):
         pass
 
     def set_attrs_input_output(self):
@@ -346,7 +346,7 @@ class TestSumOpReverseExclusive(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
-        self.set_enable_cinn()
+        self.if_enable_cinn()
         self.init_dtype()
         self.attrs = {
             'axis': 2,
@@ -378,7 +378,7 @@ class TestSumOpReverseExclusive(OpTest):
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
 
-    def set_enable_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -387,7 +387,7 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
         def init_dtype(self):
             self.dtype = self.dtype_ = np.float16
 
-        def set_enable_cinn(self):
+        def if_enable_cinn(self):
             pass
 
         def test_check_output(self):
@@ -430,7 +430,7 @@ def create_test_bf16_class(parent):
             self.dtype = np.uint16
             self.dtype_ = np.float32
 
-        def set_enable_cinn(self):
+        def if_enable_cinn(self):
             self.enable_cinn = False
 
         def test_check_output(self):
@@ -439,7 +439,9 @@ def create_test_bf16_class(parent):
 
         def test_check_grad(self):
             place = paddle.CUDAPlace(0)
-            self.check_grad_with_place(place, ["X"], "Out", check_prim=True)
+            self.check_grad_with_place(
+                place, ["X"], "Out", check_prim=True, numeric_grad_delta=0.05
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestCumsumBF16Op.__name__ = cls_name

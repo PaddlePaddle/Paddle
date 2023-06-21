@@ -38,7 +38,7 @@ class DialectInterface;
 /// compilers only need to combine existing dialects and add their own
 /// extensions or customizations.
 ///
-class Dialect {
+class IR_API Dialect {
  public:
   Dialect(std::string name, IrContext *context, TypeId id);
 

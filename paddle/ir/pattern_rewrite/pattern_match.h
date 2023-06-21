@@ -57,7 +57,7 @@ class PatternBenefit {
 // This class contains all of the data related to a Pattern, but not contains
 // any methods for the matching. This class is used to interface with the
 // metadata of a pattern, such as benefit or root operation.
-class Pattern {
+class IR_API Pattern {
   enum class RootKind {
     // The pattern root matches "any" operation.
     Any,
@@ -155,7 +155,7 @@ class Pattern {
 
 class PatternRewriter;
 
-class RewritePattern : public Pattern {
+class IR_API RewritePattern : public Pattern {
  public:
   virtual ~RewritePattern();
 
