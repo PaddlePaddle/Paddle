@@ -538,3 +538,9 @@ void RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
 
 REGISTER_PASS(redundant_squeeze_unsqueeze_elimination_pass,
               paddle::framework::ir::RedundantSqueezeUnsqueezeEliminationPass);
+REGISTER_PASS_CAPABILITY(redundant_squeeze_unsqueeze_elimination_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("squeeze2", 0)
+            .LE("leaky_relu", 1)
+            .EQ("unsqueeze2", 0));
