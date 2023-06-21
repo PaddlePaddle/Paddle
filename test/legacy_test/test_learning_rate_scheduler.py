@@ -211,8 +211,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             )
             adam_test.set_dict(opt_state)
             self.assertEqual(
-                adam_test._learning_rate.best_loss,
-                adam3._learning_rate.best_loss,
+                adam_test._learning_rate.best,
+                adam3._learning_rate.best,
                 "best_loss is different before and after set_dict",
             )
             self.assertEqual(
@@ -226,8 +226,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 "num_bad_epochs is different before and after set_dict",
             )
             self.assertEqual(
-                adam_test._learning_rate.epoch_num,
-                adam3._learning_rate.epoch_num,
+                adam_test._learning_rate.last_epoch,
+                adam3._learning_rate.last_epoch,
                 "epoch is different before and after set_dict",
             )
             self.assertEqual(
