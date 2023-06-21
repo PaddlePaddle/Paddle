@@ -269,18 +269,18 @@ CustomSqueezeUnsqueezeEliminationPattern::
 
 }  // namespace patterns
 
-class RedundantSqueezeUnsqueezeEliminationPass : public FusePassBase {
- protected:
+class SqueezeActivationUnsqueezeEliminationPass : public FusePassBase {
+ public:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
   int ApplyImpl(ir::Graph* graph, const std::string& act_type) const;
 
   const std::string name_scope_{
-      "redundant_squeeze_unsqueeze_node_elimination_pass"};
+      "squeeze_activation_unsqueeze_elimination_pass"};
 };
 
-void RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
+void SqueezeActivationUnsqueezeEliminationPass::ApplyImpl(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
@@ -301,7 +301,7 @@ void RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
   AddStatis(found_subgraph_count);
 }
 
-int RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
+int SqueezeActivationUnsqueezeEliminationPass::ApplyImpl(
     ir::Graph* graph, const std::string& act_type) const {
   GraphPatternDetector gpd;
   patterns::SqueezeActivationUnsqueezeEliminationPattern pattern(
@@ -357,7 +357,7 @@ int RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
 }
 
 class CustomSqueezeUnsqueezeEliminationPass : public FusePassBase {
- protected:
+ public:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
@@ -513,11 +513,28 @@ int CustomSqueezeUnsqueezeEliminationPass::ApplyImpl(
   return found_subgraph_count;
 }
 
+class RedundantSqueezeUnsqueezeEliminationPass : public FusePassBase {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  const std::string name_scope_{"redundant_squeeze_unsqueeze_elimination_pass"};
+};
+
+void RedundantSqueezeUnsqueezeEliminationPass::ApplyImpl(
+    ir::Graph* graph) const {
+  VLOG(4) << "handle redundant squeeze unsqueeze elimination.";
+  SqueezeActivationUnsqueezeEliminationPass
+      squeeze_activation_unsqueeze_elimination_pass;
+  squeeze_activation_unsqueeze_elimination_pass.ApplyImpl(graph);
+  CustomSqueezeUnsqueezeEliminationPass
+      custom_squeeze_unsqueeze_elimination_pass;
+  custom_squeeze_unsqueeze_elimination_pass.ApplyImpl(graph);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(redundant_squeeze_unsqueeze_node_elimination_pass,
+REGISTER_PASS(redundant_squeeze_unsqueeze_elimination_pass,
               paddle::framework::ir::RedundantSqueezeUnsqueezeEliminationPass);
-REGISTER_PASS(custom_squeeze_unsqueeze_elimination_pass,
-              paddle::framework::ir::CustomSqueezeUnsqueezeEliminationPass);
