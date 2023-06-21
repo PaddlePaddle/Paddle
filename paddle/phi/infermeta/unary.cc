@@ -3815,13 +3815,14 @@ void SplitWithNumInferMeta(const MetaTensor& x,
     int64_t last_split_size = 0;
     if (input_axis_dim % num > 0) {
       // increase the processing of non-divisible numbers.
-      last_split_size = input_axis_dim % num;
+      int64_t chunk_size = std::ceil(input_axis_dim / num);
+      last_split_size = input_axis_dim % chunk_size;
       num = num - 1;
       input_axis_dim = input_axis_dim - last_split_size;
     }
 
     for (int i = 0; i < num; ++i) {
-      sections_vec.push_back(input_axis_dim / num);
+      sections_vec.push_back(std::ceil(input_axis_dim / num));
     }
     if (last_split_size > 0) {
       // place the remainder at the end of Tensor.
