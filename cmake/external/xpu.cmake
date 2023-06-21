@@ -9,9 +9,13 @@ set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 
-set(XPU_BASE_DATE "20230602")
+if(NOT DEFINED XPU_BASE_DATE)
+  set(XPU_BASE_DATE "20230602")
+endif()
 set(XPU_XCCL_BASE_VERSION "1.0.49.2")
-set(XPU_XFT_BASE_VERSION "latest")
+if(NOT DEFINED XPU_XFT_BASE_VERSION)
+  set(XPU_XFT_BASE_VERSION "20230602")
+endif()
 set(XPU_XPTI_BASE_VERSION "0.0.1")
 
 if(NOT DEFINED XPU_BASE_URL)
@@ -94,9 +98,6 @@ set(XPU_PACK_DEPENCE_URL
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
-set(XPU_XPTI_GET_DEPENCE_URL
-    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xpti_dependence.sh"
-    CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -136,8 +137,9 @@ ExternalProject_Add(
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
     ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} && wget ${XPU_XPTI_GET_DEPENCE_URL} && bash
-    get_xpti_dependence.sh ${XPU_XPTI_URL} ${XPU_XPTI_DIR_NAME}
+    ${XPU_XFT_DIR_NAME} [ -n "$WITH_XPTI" ] && bash
+    ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
+    ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -165,9 +167,9 @@ if(WITH_XPU_XFT)
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 
-if(WITH_XPU_XPTI)
+if(WITH_XPTI)
   message(STATUS "Compile with XPU XPTI!")
-  add_definitions(-DPADDLE_WITH_XPU_XPTI)
+  add_definitions(-DPADDLE_WITH_XPTI)
   set(XPU_XPTI_LIB "${XPU_LIB_DIR}/${XPU_XPTI_LIB_NAME}")
 endif()
 
@@ -182,7 +184,7 @@ else()
   target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
 endif()
 
-if(WITH_XPU_XPTI)
+if(WITH_XPTI)
   target_link_libraries(xpulib ${XPU_XPTI_LIB})
 endif()
 

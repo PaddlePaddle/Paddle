@@ -1215,10 +1215,14 @@ set(TEST_CINN_OPS
     test_assign_op
     test_flatten_contiguous_range_op)
 
-foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
+foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
-    set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
-    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 200)
+    set_tests_properties(${TEST_CINN_OP} PROPERTIES LABELS "RUN_TYPE=CINN")
+
+    get_test_property(${TEST_CINN_OP} TIMEOUT ORIGIN_TIME_OUT)
+    if((NOT ${ORIGIN_TIME_OUT}) OR (${ORIGIN_TIME_OUT} LESS 200))
+      set_tests_properties(${TEST_CINN_OP} PROPERTIES TIMEOUT 200)
+    endif()
   endif()
 endforeach()
 
