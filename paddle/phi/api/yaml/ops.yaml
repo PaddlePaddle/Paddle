@@ -919,16 +919,6 @@
     func : frame
   backward : frame_grad
 
-- op : gather
-  args : (Tensor x, Tensor index, Scalar axis=0)
-  output : Tensor(out)
-  infer_meta :
-    func : GatherInferMeta
-  kernel :
-    func : gather
-    data_type: x
-  backward : gather_grad
-
 - op : full_int_array
   args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
@@ -940,6 +930,16 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
+
+- op : gather
+  args : (Tensor x, Tensor index, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+    data_type: x
+  backward : gather_grad
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
