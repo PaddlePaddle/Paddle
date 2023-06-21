@@ -16,7 +16,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#if defined(PADDLE_WITH_CUTLASS)
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/fpA_intB_gemm_template.h"
+#endif
 
 namespace phi {
 
@@ -26,6 +28,7 @@ void WeightOnlyMatMulKernel(const Context& dev_ctx,
                             const DenseTensor& weight,
                             const DenseTensor& weight_scale,
                             DenseTensor* out) {
+#if defined(PADDLE_WITH_CUTLASS)
   dev_ctx.template Alloc<T>(out);
   const auto x_dims = x.dims();
   const auto w_dims = weight.dims();
@@ -57,6 +60,9 @@ void WeightOnlyMatMulKernel(const Context& dev_ctx,
       mixgemm_workspace_data,
       mixgemm_workspace_size_bytes,
       dev_ctx.stream());
+#else
+  LOG(ERROR) << "Please compile with cutlass to EnableUseCutlass()";
+#endif
 }
 }  // namespace phi
 
