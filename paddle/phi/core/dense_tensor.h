@@ -29,6 +29,11 @@ limitations under the License. */
 namespace phi {
 
 class DenseTensorUtils;
+namespace distributed {
+namespace auto_parallel {
+class DistTensor;
+}  // namespace auto_parallel
+}  // namespace distributed
 
 /// \brief The Dense tensor stores values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
@@ -181,6 +186,7 @@ class DenseTensor : public TensorBase,
 
  private:
   friend class DenseTensorUtils;
+  friend class phi::distributed::auto_parallel::DistTensor;
 
  protected:
   DenseTensorMeta meta_;
@@ -268,8 +274,8 @@ class DenseTensor : public TensorBase,
   };
 
  protected:
-  std::shared_ptr<InplaceVersion> inplace_version_counter_{
-      std::make_shared<InplaceVersion>()};
+  std::shared_ptr<InplaceVersion> inplace_version_counter_ =
+      std::make_shared<InplaceVersion>();
 
 /* @jim19930609: This is a hack
 In general, it is badly designed to fuse MKLDNN-specific objects into a

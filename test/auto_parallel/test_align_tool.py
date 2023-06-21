@@ -20,7 +20,9 @@ import numpy as np
 
 import paddle
 from paddle import fluid, nn, optimizer, static
-from paddle.distributed.auto_parallel.auto_align_tool import AutoAlignTool
+from paddle.distributed.auto_parallel.static.auto_align_tool import (
+    AutoAlignTool,
+)
 from paddle.vision.datasets import MNIST
 
 warnings.filterwarnings("ignore")

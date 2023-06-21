@@ -137,8 +137,9 @@ void DoInsertCastOp(Graph* graph,
   if (cache->count(var_node) == 0) {
     // insert cast op between var_node and op_node
     std::string cast_input_name = var_node->Var()->Name();
-    std::string cast_output_name =
-        var_node->Var()->Name() + "_cast.tmp_" + std::to_string((*suffix)++);
+    std::string cast_output_name = var_node->Var()->Name() +
+                                   "_cast_auto_mixed.tmp_" +
+                                   std::to_string((*suffix)++);
     framework::OpDesc cast_op_desc(block_desc);
     update_cast_desc(cast_op_desc,
                      cast_input_name,

@@ -93,7 +93,6 @@ class IntermediateLayerGetter(nn.LayerDict):
     def forward(self, x):
         out = OrderedDict()
         for name, module in self.items():
-
             if (isinstance(module, nn.Linear) and x.ndim == 4) or (
                 len(module.sublayers()) > 0
                 and isinstance(module.sublayers()[0], nn.Linear)

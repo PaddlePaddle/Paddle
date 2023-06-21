@@ -68,7 +68,6 @@ class Gumbel(TransformedDistribution):
     """
 
     def __init__(self, loc, scale):
-
         if not isinstance(loc, (numbers.Real, framework.Variable)):
             raise TypeError(
                 f"Expected type of loc is Real|Variable, but got {type(loc)}"

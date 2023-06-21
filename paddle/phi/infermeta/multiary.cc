@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -2060,6 +2061,7 @@ void LambInferMeta(const MetaTensor& param,
                    float beta1,
                    float beta2,
                    float epsilon,
+                   bool always_adapt,
                    bool multi_precision,
                    MetaTensor* param_out,
                    MetaTensor* moment1_out,
@@ -2161,32 +2163,32 @@ void LogspaceInferMeta(const MetaTensor& start,
                        MetaTensor* out) {
   auto s_dims = start.dims();
   PADDLE_ENFORCE_EQ(
-      (s_dims.size() == 1) && (s_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
-                                   "but received input shape is [%s].",
-                                   s_dims));
+      phi::product(s_dims),
+      1,
+      phi::errors::InvalidArgument("The size of Input(Start) must be 1,"
+                                   "but received input size is %s.",
+                                   phi::product(s_dims)));
   auto e_dims = stop.dims();
   PADDLE_ENFORCE_EQ(
-      (e_dims.size() == 1) && (e_dims[0] == 1),
+      phi::product(e_dims),
       true,
-      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
-                                   "but received input shape is [%s].",
-                                   e_dims));
+      phi::errors::InvalidArgument("The size of Input(Stop) must be 1,"
+                                   "but received input size is %s.",
+                                   phi::product(e_dims)));
   auto num_dims = number.dims();
   PADDLE_ENFORCE_EQ(
-      (num_dims.size() == 1) && (num_dims[0] == 1),
+      phi::product(num_dims),
       true,
-      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
-                                   "but received input shape is [%s].",
-                                   num_dims));
+      phi::errors::InvalidArgument("The size of Input(Num) must be 1,"
+                                   "but received input size is %s.",
+                                   phi::product(num_dims)));
   auto b_dims = base.dims();
-  PADDLE_ENFORCE_EQ(
-      (b_dims.size() == 1) && (b_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Base) must be [1],"
-                                   "but received input shape is [%s].",
-                                   b_dims));
+  PADDLE_ENFORCE_EQ(phi::product(b_dims),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The size of Input(Base) must be 1,"
+                        "but received input size is phi::product(b_dims).",
+                        phi::product(b_dims)));
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(dtype);
 }
@@ -3318,6 +3320,34 @@ void FusedAdamInferMeta(
       master_params_out[i]->set_dtype(master_params.get()[i]->dtype());
     }
   }
+}
+
+void FusedConvInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const MetaTensor& bias,
+                        const MetaTensor& residual_param,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations,
+                        int groups,
+                        const std::string& data_format,
+                        const std::string& mkldnn_data_type,
+                        const std::string& fuse_activation,
+                        bool fuse_residual_conn,
+                        bool force_fp32_output,
+                        MetaTensor* out,
+                        MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                padding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
 }
 
 void MoeInferMeta(const MetaTensor& x,

@@ -1,3 +1,6 @@
+if(WITH_CINN)
+  set(CINN_DEPS cinn_compiler python)
+endif()
 if(WITH_GPU OR WITH_ROCM)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
@@ -11,7 +14,7 @@ if(WITH_GPU OR WITH_ROCM)
     cc_test(
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc
-      DEPS conv_op
+      DEPS generated_op
            depthwise_conv
            tensor
            op_registry

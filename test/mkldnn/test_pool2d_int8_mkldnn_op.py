@@ -15,13 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
+from test_pool2d_op import TestPool2D_Op, max_pool2D_forward_naive
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_pool2d_op import (
-    TestPool2D_Op,
-    max_pool2D_forward_naive,
-)
 
 
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):

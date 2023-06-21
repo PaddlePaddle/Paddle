@@ -1681,7 +1681,7 @@ class Variable(metaclass=VariableMetaClass):
         if self.persistable:
             var_str = "persist " + var_str
 
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             get_default_distributed_context,
         )
 
@@ -2734,7 +2734,6 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
-
             self.block = block
             self.desc = desc
             # note: not add self.attrs here:
@@ -3137,7 +3136,7 @@ class Operator:
             if i != len(attr_names) - 1:
                 attrs_str += ", "
 
-        from paddle.distributed.auto_parallel.dist_context import (
+        from paddle.distributed.auto_parallel.static.dist_context import (
             get_default_distributed_context,
         )
 
@@ -6722,7 +6721,6 @@ class Program:
             return False
 
         def condition(var):
-
             if mode == 'param':
                 return is_parameter(var)
             elif mode == 'opt':
@@ -7621,7 +7619,6 @@ def _get_paddle_place(place):
 
 
 def _get_paddle_place_list(places):
-
     if not isinstance(places, (list, tuple)):
         raise TypeError("places must to be List or Tuple")
 

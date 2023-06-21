@@ -13,15 +13,12 @@
 # limitations under the License.
 
 import random
-import sys
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-
-sys.path.append("../../python/paddle/fluid/tests/unittests")
-from eager_op_test import OpTest
 
 
 def seqconv(

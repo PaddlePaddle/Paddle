@@ -695,14 +695,14 @@ endif()
 cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
-  DEPS scope
+  DEPS while_op_helper
+       recurrent_op_helper
+       conditional_block_op_helper
+       scope
        proto_desc
        operator
        garbage_collector
-       op_registry
-       while_op_helper
-       recurrent_op_helper
-       conditional_block_op_helper)
+       op_registry)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(
@@ -729,7 +729,9 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS fleet_wrapper
+           recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -737,7 +739,6 @@ if(WITH_DISTRIBUTE)
            glog
            fs
            shell
-           fleet_wrapper
            heter_wrapper
            ps_gpu_wrapper
            box_wrapper
@@ -753,7 +754,6 @@ if(WITH_DISTRIBUTE)
            timer
            monitor
            heter_service_proto
-           fleet_executor
            ${BRPC_DEP})
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -806,7 +806,8 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -835,7 +836,6 @@ if(WITH_DISTRIBUTE)
            fleet
            heter_server
            brpc
-           fleet_executor
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -883,7 +883,8 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -904,8 +905,7 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor
-           fleet_executor)
+           monitor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -944,7 +944,8 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS op_registry
+    DEPS recurrent_op_helper
+         op_registry
          device_context
          scope
          framework_proto
@@ -965,7 +966,6 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
-         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -992,7 +992,8 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS op_registry
+    DEPS recurrent_op_helper
+         op_registry
          device_context
          scope
          framework_proto
@@ -1012,8 +1013,7 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor
-         fleet_executor)
+         monitor)
 endif()
 
 target_link_libraries(executor while_op_helper executor_gc_helper

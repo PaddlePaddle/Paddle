@@ -393,10 +393,16 @@ def hardswish(x, name=None):
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardswish'
         )
 
+        threshold = 6.0
+        scale = 6.0
+        offset = 3.0
         helper = LayerHelper('hardswish', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
-            type='hard_swish', inputs={'X': x}, outputs={'Out': out}
+            type='hard_swish',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs={'threshold': threshold, 'scale': scale, 'offset': offset},
         )
         return out
 
