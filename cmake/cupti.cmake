@@ -2,9 +2,15 @@ if(NOT WITH_GPU AND NOT WITH_ROCM)
   return()
 endif()
 
-set(CUPTI_ROOT
-    "/usr"
-    CACHE PATH "CUPTI ROOT")
+if(WITH_ROCM)
+  set(CUPTI_ROOT
+      "${ROCM_PATH}/CUPTI"
+      CACHE PATH "CUPTI ROOT")
+else()
+  set(CUPTI_ROOT
+      "/usr"
+      CACHE PATH "CUPTI ROOT")
+endif()
 find_path(
   CUPTI_INCLUDE_DIR cupti.h
   PATHS ${CUPTI_ROOT}
