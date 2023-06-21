@@ -91,6 +91,9 @@ void MemoryOptimizePass::CollectLifeCycle(
           if (is_break) continue;
 
           auto in_shape = node->Var()->GetShape();
+          for (auto i : in_shape) {
+            CHECK_GT(i, 0);
+          }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),
                                            (int64_t)1,
