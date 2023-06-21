@@ -474,6 +474,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_use_explicit_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
@@ -830,6 +831,11 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
+void AnalysisConfig::EnableTensorRtExplicit() {
+  trt_use_explicit_ = true;
+  Update();
+}
+
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
@@ -904,6 +910,13 @@ void AnalysisConfig::Update() {
     for (const auto &pass : kTRTSubgraphPasses) {
       if (tensorrt_precision_mode_ == Precision::kInt8 &&
           (pass == "conv_bn_fuse_pass")) {
+        continue;
+      }
+      // The following two IR pass will remove QDQ nodes. For explicit
+      // quantization, they are unnecessary.
+      if (trt_use_explicit_ &&
+          (pass == "trt_delete_weight_dequant_linear_op_pass" ||
+           pass == "delete_quant_dequant_linear_op_pass")) {
         continue;
       }
       pass_builder()->AppendPass(pass);

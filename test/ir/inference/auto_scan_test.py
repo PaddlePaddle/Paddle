@@ -716,7 +716,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
             dic["use_trt"] = False
         return str(dic)
 
-    def run_test(self, quant=False, skip_baseline=False, *args, **kwargs):
+    def run_test(
+        self, quant=False, explicit=False, skip_baseline=False, *args, **kwargs
+    ):
         all_passes = True
 
         def random_to_skip():
@@ -783,6 +785,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 )
                 if (not is_fp8 and quant) or (is_fp8 and not quant):
                     continue
+                
+                if explicit:
+                    pred_config.enable_tensorrt_explicit()
 
                 ignore_flag = False
                 for teller, reason, note in self.ignore_cases:
