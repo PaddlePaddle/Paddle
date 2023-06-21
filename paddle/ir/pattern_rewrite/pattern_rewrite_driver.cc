@@ -166,7 +166,7 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
     // operation to the worklist.
     // This is based on the fact that zero use operations may be deleted, and
     // that single use values often have more canonicalization opportunities.
-    if (!operand || (!operand.use_empty() && !operand.HasOneValue())) return;
+    if (!operand || (!operand.use_empty() && !operand.HasOneUse())) return;
 
     if (auto* def_op = operand.GetDefiningOp()) AddToWorklist(def_op);
   }

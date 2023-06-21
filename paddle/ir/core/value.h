@@ -154,8 +154,6 @@ class IR_API Value {
 
   friend struct std::hash<Value>;
 
-  bool use_empty() const;
-
   void ReplaceUsesWithIf(
       Value new_value,
       const std::function<bool(OpOperand)> &should_replace) const;

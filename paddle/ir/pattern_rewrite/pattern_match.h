@@ -260,11 +260,11 @@ class RewriterBase : public Builder {
   virtual void ReplaceOpWithIf(Operation* op,
                                const std::vector<Value>& new_values,
                                bool* all_uses_replaced,
-                               std::function<bool(OpOperand&)> functor);
+                               const std::function<bool(OpOperand)>& functor);
 
   void ReplaceOpWithIf(Operation* op,
                        const std::vector<Value>& new_values,
-                       std::function<bool(OpOperand&)> functor);
+                       const std::function<bool(OpOperand)>& functor);
 
   virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
 

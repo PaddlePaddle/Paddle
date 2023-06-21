@@ -90,10 +90,11 @@ RewritePattern::~RewritePattern() = default;
 //===----------------------------------------------------------------------===//
 RewriterBase::~RewriterBase() = default;
 
-void RewriterBase::ReplaceOpWithIf(Operation* op,
-                                   const std::vector<Value>& new_values,
-                                   bool* all_uses_replaced,
-                                   std::function<bool(OpOperand&)> functor) {
+void RewriterBase::ReplaceOpWithIf(
+    Operation* op,
+    const std::vector<Value>& new_values,
+    bool* all_uses_replaced,
+    const std::function<bool(OpOperand)>& functor) {
   IR_ENFORCE(op->num_results() == new_values.size(),
              "incorrect number of values to replace operation");
   NotifyRootReplaced(op, new_values);
@@ -102,8 +103,7 @@ void RewriterBase::ReplaceOpWithIf(Operation* op,
   bool replace_all_uses = true;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     auto src_res = op->result(i);
-    // TODO(wilber): value support replace method.
-    // src_res.ReplaceUsesWithIf(new_values[i], functor);
+    src_res.ReplaceUsesWithIf(new_values[i], functor);
     replace_all_uses &= src_res.use_empty();
   }
   if (replace_all_uses) {
@@ -111,9 +111,10 @@ void RewriterBase::ReplaceOpWithIf(Operation* op,
   }
 }
 
-void RewriterBase::ReplaceOpWithIf(Operation* op,
-                                   const std::vector<Value>& new_values,
-                                   std::function<bool(OpOperand&)> functor) {
+void RewriterBase::ReplaceOpWithIf(
+    Operation* op,
+    const std::vector<Value>& new_values,
+    const std::function<bool(OpOperand)>& functor) {
   ReplaceOpWithIf(op, new_values, nullptr, functor);
 }
 
