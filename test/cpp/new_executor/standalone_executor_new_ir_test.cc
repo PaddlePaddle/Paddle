@@ -158,7 +158,7 @@ TEST(StandaloneExecutor, run_2) {
   EXPECT_EQ(res3, true);
 }
 
-#if defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
 TEST(StandaloneExecutor, data_transfer) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
