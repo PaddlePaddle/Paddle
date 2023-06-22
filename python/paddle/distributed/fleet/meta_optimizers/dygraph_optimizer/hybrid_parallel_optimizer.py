@@ -121,7 +121,6 @@ class ChunkNormer:
         chunk_sum_square = paddle.concat(
             [chunk_sum_square_dist, chunk_sum_square_not_dist], axis=0
         )
-        print(chunk_sum_square)
         return chunk_sum_square
 
     def get_raw_numpy(self):
@@ -185,7 +184,7 @@ class LocalNormGather:
             )
             pp_degree = self._hcg.get_pipe_parallel_world_size()
             pp_rank = self._hcg.get_stage_id()
-            chunk_sum_squares.paddle.reshape(
+            chunk_sum_squares = paddle.reshape(
                 chunk_sum_squares, [pp_degree, num_chunks, 2, 3]
             )[pp_rank]
         sum_squares = paddle.sum(chunk_sum_squares, axis=0)
@@ -207,16 +206,6 @@ class LocalNormGather:
         )
         # chunk -> rank
         chunk_list = [list(e) for e in zip(*chunk_list)]
-
-        def print_list(l):
-            shape = []
-            while l:
-                if isinstance(l, list):
-                    shape.append(len(l))
-                    l = l[0]
-                else:
-                    break
-            return shape
 
         def flat_list(l):
             flatted_list = []
@@ -459,20 +448,6 @@ class HybridParallelClipGrad:
         global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(
             params_grads
         )
-        """
-
-        (
-            global_norm_var_dist_v1,
-            global_norm_var_not_dist_v1,
-        ) = self._global_norm(params_grads)
-
-        print(
-            f"global_norm_var_dist {global_norm_var_dist_v1} global_norm_var_not_dist {global_norm_var_not_dist_v1}"
-        )
-        print(
-            f"global_norm_var_dist_v2 {global_norm_var_dist} global_norm_var_not_dist_v2 {global_norm_var_not_dist}"
-        )
-        """
 
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
