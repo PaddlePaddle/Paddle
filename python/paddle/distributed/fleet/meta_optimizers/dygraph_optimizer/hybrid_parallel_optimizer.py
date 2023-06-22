@@ -120,7 +120,7 @@ class ChunkNormer:
                 return paddle.to_tensor([0.0], dtype=dtype).cpu().numpy()
 
         result_list.append(transform(self.sum_square_dist_fp16, paddle.float16))
-        result_list.append(transform(self.sum_square_dist_bp16, paddle.bfloat16))
+        result_list.append(transform(self.sum_square_dist_bf16, paddle.bfloat16))
         result_list.append(transform(self.sum_square_dist_fp32, paddle.float32))
         result_list.append(transform(self.sum_square_not_dist_fp16, paddle.float16))
         result_list.append(transform(self.sum_square_not_dist_bf16, paddle.bfloat16))
@@ -176,11 +176,22 @@ class LocalNormGather:
             return self.get_result()
         numpy_chunks = [v.get_raw_numpy() for (k, v) in self.chunks.items()]  
         # rank -> chunk
-        chunks_list = []
-        paddle.distributed.all_gather_object(chunks_list, numpy_chunks, self._hcg.get_pipe_parallel_group()) 
+        chunk_list = []
+        paddle.distributed.all_gather_object(chunk_list, numpy_chunks, self._hcg.get_pipe_parallel_group()) 
         # chunk -> rank
-        chunk_list = [list(e) for e in zip(*chunks_list)]
-        
+        chunk_list = [list(e) for e in zip(*chunk_list)]
+
+        def print_list(l):
+            shape = []
+            while l:
+                if isinstance(l, list):
+                    shape.append(len(l))
+                    l = l[0]    
+                else:
+                    break
+            return shape            
+
+    
         def flat_list(l):
             flatted_list = []
             for sublist in l:
@@ -192,12 +203,24 @@ class LocalNormGather:
         pp_rank = self._hcg.get_stage_id()
         # chunk*pp_gegree
         chunk_list = flat_list(chunk_list)
+        print(f"206 {print_list(chunk_list)}")
         assert len(chunk_list) ==  num_chunk*pp_degree
         # chunk -> list of numpy
         chunk_list = chunk_list[pp_rank*num_chunk:(pp_rank+1)*num_chunk]
-        chunk_list = [list(e) for e in zip(*chunks_list)]
+        print(f"210 {print_list(chunk_list)}")
+        print(f"210 {print_list(chunk_list[0])}")
+        print(f"210 {print_list(chunk_list[1])}")
+        print(chunk_list[0])
+        chunk_list = list(zip(*chunk_list))
+        print(chunk_list[0])
+        print(f"211 {print_list(chunk_list)}")
+        chunk_list = [list(e) for e in chunk_list]
+        print(f"212 {print_list(chunk_list)}")
         # convert to paddle tensor
-        sum_squares_list = [paddle.sum(paddle.concat([paddle.to_tensor(e) for e in l])) for l in chunk_list]
+        print(f"214 {print_list(chunk_list[0])}")
+        sum_squares_list = [[paddle.to_tensor(e) for e in l] for l in chunk_list]
+        sum_squares_list = [paddle.concat(l) for l in sum_squares_list]
+        sum_squares_list = [paddle.sum(l) for l in sum_squares_list]
         sum_squares_list = [paddle.cast(e, dtype=paddle.float32) for e in sum_squares_list]
         assert len(sum_squares_list) ==  6
         sum_squares = paddle.concat(sum_squares_list, axis=0)
@@ -413,11 +436,11 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
-        global_norm_var_dist, global_norm_var_not_dist = self._global_norm(params_grads)
-        global_norm_var_dist_v2, global_norm_var_not_dist_v2 = self._global_norm_v2(params_grads)
+        global_norm_var_dist_v1, global_norm_var_not_dist_v1 = self._global_norm(params_grads)
+        global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(params_grads)
 
-        print(f"global_norm_var_dist {global_norm_var_dist} global_norm_var_not_dist {global_norm_var_not_dist}")
-        print(f"global_norm_var_dist_v2 {global_norm_var_dist_v2} global_norm_var_not_dist_v2 {global_norm_var_not_dist_v2}")
+        print(f"global_norm_var_dist {global_norm_var_dist_v1} global_norm_var_not_dist {global_norm_var_not_dist_v1}")
+        print(f"global_norm_var_dist_v2 {global_norm_var_dist} global_norm_var_not_dist_v2 {global_norm_var_not_dist}")
        
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
