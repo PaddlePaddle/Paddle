@@ -455,13 +455,16 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
+
+        global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(
+            params_grads
+        )
+        """
+
         (
             global_norm_var_dist_v1,
             global_norm_var_not_dist_v1,
         ) = self._global_norm(params_grads)
-        global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(
-            params_grads
-        )
 
         print(
             f"global_norm_var_dist {global_norm_var_dist_v1} global_norm_var_not_dist {global_norm_var_not_dist_v1}"
@@ -469,6 +472,7 @@ class HybridParallelClipGrad:
         print(
             f"global_norm_var_dist_v2 {global_norm_var_dist} global_norm_var_not_dist_v2 {global_norm_var_not_dist}"
         )
+        """
 
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
