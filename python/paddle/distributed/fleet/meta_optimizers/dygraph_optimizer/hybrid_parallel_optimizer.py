@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from collections import OrderedDict
+
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
@@ -33,12 +35,11 @@ from ...utils.hybrid_parallel_util import (
 )
 from ...utils.log_util import logger
 from ...utils.mix_precision_utils import MixPrecisionOptimizer
-from collections import OrderedDict
 
 __all__ = []
 
-class ChunkNormer:
 
+class ChunkNormer:
     def __init__(self):
         self.sum_square_dist_fp16 = []
         self.sum_square_dist_bf16 = []
@@ -79,13 +80,11 @@ class ChunkNormer:
                     self.sum_square_not_dist_bf16.append(sum_square)
                 elif g.dtype == paddle.float32:
                     self.sum_square_not_dist_fp32.append(sum_square)
-    
+
     def get_norm(self):
         def transform(sum_square_list, cast=True):
             if len(sum_square_list) == 0:
-                sum_square = paddle.to_tensor(
-                [0.0], dtype=paddle.float32
-            )
+                sum_square = paddle.to_tensor([0.0], dtype=paddle.float32)
             else:
                 sum_square = paddle.concat(sum_square_list)
                 sum_square = paddle.sum(sum_square)
@@ -93,26 +92,41 @@ class ChunkNormer:
                     sum_square = paddle.cast(sum_square, dtype=paddle.float32)
             return sum_square
 
-        sum_square_dist_fp16 = transform(self.sum_square_dist_fp16) 
+        sum_square_dist_fp16 = transform(self.sum_square_dist_fp16)
         sum_square_dist_bf16 = transform(self.sum_square_dist_bf16)
         sum_square_dist_fp32 = transform(self.sum_square_dist_fp32, False)
 
-        sum_square_not_dist_fp16 = transform(self.sum_square_not_dist_fp16) 
+        sum_square_not_dist_fp16 = transform(self.sum_square_not_dist_fp16)
         sum_square_not_dist_bf16 = transform(self.sum_square_not_dist_bf16)
-        sum_square_not_dist_fp32 = transform(self.sum_square_not_dist_fp32, False)
+        sum_square_not_dist_fp32 = transform(
+            self.sum_square_not_dist_fp32, False
+        )
 
-        chunk_sum_square_dist = paddle.concat([sum_square_dist_fp16, sum_square_dist_bf16, sum_square_dist_fp32])
-        chunk_sum_square_not_dist = paddle.concat([sum_square_not_dist_fp16, sum_square_not_dist_bf16, sum_square_not_dist_fp32])
+        chunk_sum_square_dist = paddle.concat(
+            [sum_square_dist_fp16, sum_square_dist_bf16, sum_square_dist_fp32]
+        )
+        chunk_sum_square_not_dist = paddle.concat(
+            [
+                sum_square_not_dist_fp16,
+                sum_square_not_dist_bf16,
+                sum_square_not_dist_fp32,
+            ]
+        )
 
         chunk_sum_square_dist = paddle.unsqueeze(chunk_sum_square_dist, axis=0)
-        chunk_sum_square_not_dist = paddle.unsqueeze(chunk_sum_square_not_dist, axis=0)
+        chunk_sum_square_not_dist = paddle.unsqueeze(
+            chunk_sum_square_not_dist, axis=0
+        )
         # two dim: dist or not -> datatype
-        chunk_sum_square = paddle.concat([chunk_sum_square_dist, chunk_sum_square_not_dist], axis=0)
+        chunk_sum_square = paddle.concat(
+            [chunk_sum_square_dist, chunk_sum_square_not_dist], axis=0
+        )
         print(chunk_sum_square)
         return chunk_sum_square
 
     def get_raw_numpy(self):
         result_list = []
+
         def transform(l, dtype):
             if l:
                 return paddle.concat(l).cpu().numpy()
@@ -120,17 +134,23 @@ class ChunkNormer:
                 return paddle.to_tensor([0.0], dtype=dtype).cpu().numpy()
 
         result_list.append(transform(self.sum_square_dist_fp16, paddle.float16))
-        result_list.append(transform(self.sum_square_dist_bf16, paddle.bfloat16))
+        result_list.append(
+            transform(self.sum_square_dist_bf16, paddle.bfloat16)
+        )
         result_list.append(transform(self.sum_square_dist_fp32, paddle.float32))
-        result_list.append(transform(self.sum_square_not_dist_fp16, paddle.float16))
-        result_list.append(transform(self.sum_square_not_dist_bf16, paddle.bfloat16))
-        result_list.append(transform(self.sum_square_not_dist_fp32, paddle.float32))
+        result_list.append(
+            transform(self.sum_square_not_dist_fp16, paddle.float16)
+        )
+        result_list.append(
+            transform(self.sum_square_not_dist_bf16, paddle.bfloat16)
+        )
+        result_list.append(
+            transform(self.sum_square_not_dist_fp32, paddle.float32)
+        )
         return result_list
-        
 
 
 class LocalNormGather:
-
     def __init__(self, hcg):
         self.chunks = OrderedDict()
         self._hcg = hcg
@@ -138,7 +158,7 @@ class LocalNormGather:
     def add_grad(self, p, g, chunk_id=0):
         if chunk_id not in self.chunks:
             self.chunks[chunk_id] = ChunkNormer()
-        self.chunks[chunk_id].add(p, g)    
+        self.chunks[chunk_id].add(p, g)
 
     def get_result(self):
         assert len(self.chunks), "no chunks"
@@ -148,23 +168,28 @@ class LocalNormGather:
             # three dim: chunk -> dist or not -> datatype
             chunk_sum_square = paddle.unsqueeze(chunk_sum_square, axis=0)
             chunk_sum_squares.append(chunk_sum_square)
-        chunk_sum_squares = paddle.concat(chunk_sum_squares, axis=0)   
+        chunk_sum_squares = paddle.concat(chunk_sum_squares, axis=0)
         num_chunks = len(self.chunks)
         if num_chunks > 1:
             # redistribute chunks results among pipe line
             chunk_list = []
-            paddle.distributed.all_gather(chunks_list, chunk_sum_squares, self._hcg.get_pipe_parallel_group())
+            paddle.distributed.all_gather(
+                chunk_list,
+                chunk_sum_squares,
+                self._hcg.get_pipe_parallel_group(),
+            )
             chunk_list = [paddle.unsqueeze(x, axis=0) for x in chunk_list]
             chunk_sum_squares = paddle.concat(chunk_list, axis=0)
-            chunk_sum_squares = paddle.transpose(chunk_sum_squares, [1, 0, 2, 3])
-            pp_degree = self._hcg.get_pipe_parallel_world_size()    
+            chunk_sum_squares = paddle.transpose(
+                chunk_sum_squares, [1, 0, 2, 3]
+            )
+            pp_degree = self._hcg.get_pipe_parallel_world_size()
             pp_rank = self._hcg.get_stage_id()
-            chunk_sum_squares.paddle.reshape(chunk_sum_squares, [pp_degree, num_chunks, 2, 3])[pp_rank]
-        print(f" 163  {chunk_sum_squares}")   
-        sum_squares = paddle.sum(chunk_sum_squares, axis=0)   
-        print(f" 165  {sum_squares}") 
-        sum_squares = paddle.sum(sum_squares, axis=-1) 
-        print(f" 167  {sum_squares}") 
+            chunk_sum_squares.paddle.reshape(
+                chunk_sum_squares, [pp_degree, num_chunks, 2, 3]
+            )[pp_rank]
+        sum_squares = paddle.sum(chunk_sum_squares, axis=0)
+        sum_squares = paddle.sum(sum_squares, axis=-1)
         sum_square_dist = sum_squares[0]
         sum_square_not_dist = sum_squares[1]
         return sum_square_dist, sum_square_not_dist
@@ -174,10 +199,12 @@ class LocalNormGather:
         num_chunk = len(self.chunks)
         if num_chunk == 1:
             return self.get_result()
-        numpy_chunks = [v.get_raw_numpy() for (k, v) in self.chunks.items()]  
+        numpy_chunks = [v.get_raw_numpy() for (k, v) in self.chunks.items()]
         # rank -> chunk
         chunk_list = []
-        paddle.distributed.all_gather_object(chunk_list, numpy_chunks, self._hcg.get_pipe_parallel_group()) 
+        paddle.distributed.all_gather_object(
+            chunk_list, numpy_chunks, self._hcg.get_pipe_parallel_group()
+        )
         # chunk -> rank
         chunk_list = [list(e) for e in zip(*chunk_list)]
 
@@ -186,12 +213,11 @@ class LocalNormGather:
             while l:
                 if isinstance(l, list):
                     shape.append(len(l))
-                    l = l[0]    
+                    l = l[0]
                 else:
                     break
-            return shape            
+            return shape
 
-    
         def flat_list(l):
             flatted_list = []
             for sublist in l:
@@ -199,33 +225,28 @@ class LocalNormGather:
                     flatted_list.append(item)
             return flatted_list
 
-        pp_degree = self._hcg.get_pipe_parallel_world_size()    
+        pp_degree = self._hcg.get_pipe_parallel_world_size()
         pp_rank = self._hcg.get_stage_id()
         # chunk*pp_gegree
         chunk_list = flat_list(chunk_list)
-        print(f"206 {print_list(chunk_list)}")
-        assert len(chunk_list) ==  num_chunk*pp_degree
+        assert len(chunk_list) == num_chunk * pp_degree
         # chunk -> list of numpy
-        chunk_list = chunk_list[pp_rank*num_chunk:(pp_rank+1)*num_chunk]
-        print(f"210 {print_list(chunk_list)}")
-        print(f"210 {print_list(chunk_list[0])}")
-        print(f"210 {print_list(chunk_list[1])}")
-        print(chunk_list[0])
+        chunk_list = chunk_list[pp_rank * num_chunk : (pp_rank + 1) * num_chunk]
         chunk_list = list(zip(*chunk_list))
-        print(chunk_list[0])
-        print(f"211 {print_list(chunk_list)}")
         chunk_list = [list(e) for e in chunk_list]
-        print(f"212 {print_list(chunk_list)}")
         # convert to paddle tensor
-        print(f"214 {print_list(chunk_list[0])}")
-        sum_squares_list = [[paddle.to_tensor(e) for e in l] for l in chunk_list]
+        sum_squares_list = [
+            [paddle.to_tensor(e) for e in l] for l in chunk_list
+        ]
         sum_squares_list = [paddle.concat(l) for l in sum_squares_list]
         sum_squares_list = [paddle.sum(l) for l in sum_squares_list]
-        sum_squares_list = [paddle.cast(e, dtype=paddle.float32) for e in sum_squares_list]
-        assert len(sum_squares_list) ==  6
+        sum_squares_list = [
+            paddle.cast(e, dtype=paddle.float32) for e in sum_squares_list
+        ]
+        assert len(sum_squares_list) == 6
         sum_squares = paddle.concat(sum_squares_list, axis=0)
         sum_squares = paddle.reshape(sum_squares, [2, 3])
-        sum_squares = paddle.sum(sum_squares, axis=-1) 
+        sum_squares = paddle.sum(sum_squares, axis=-1)
         sum_square_dist = sum_squares[0]
         sum_square_not_dist = sum_squares[1]
         return sum_square_dist, sum_square_not_dist
@@ -236,7 +257,6 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
-
 
     def _global_norm(self, params_grads):
         sum_square_dist_fp16 = []
@@ -385,18 +405,19 @@ class HybridParallelClipGrad:
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),
             )
-        return global_norm_var_dist, global_norm_var_not_dist    
-
-
+        return global_norm_var_dist, global_norm_var_not_dist
 
     def _global_norm_v2(self, params_grads):
-        
+
         local_norm = LocalNormGather(self._hcg)
         for p, g in params_grads:
             chunk_id = getattr(p, "chunk_id", 0)
             local_norm.add_grad(p, g, chunk_id)
 
-        global_norm_var_dist,  global_norm_var_not_dist = local_norm.get_strict_result() 
+        (
+            global_norm_var_dist,
+            global_norm_var_not_dist,
+        ) = local_norm.get_strict_result()
 
         # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
@@ -430,18 +451,25 @@ class HybridParallelClipGrad:
                 group=self._hcg.get_pipe_parallel_group(),
             )
 
-        return global_norm_var_dist, global_norm_var_not_dist    
-
-
+        return global_norm_var_dist, global_norm_var_not_dist
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
-        global_norm_var_dist_v1, global_norm_var_not_dist_v1 = self._global_norm(params_grads)
-        global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(params_grads)
+        (
+            global_norm_var_dist_v1,
+            global_norm_var_not_dist_v1,
+        ) = self._global_norm(params_grads)
+        global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(
+            params_grads
+        )
 
-        print(f"global_norm_var_dist {global_norm_var_dist_v1} global_norm_var_not_dist {global_norm_var_not_dist_v1}")
-        print(f"global_norm_var_dist_v2 {global_norm_var_dist} global_norm_var_not_dist_v2 {global_norm_var_not_dist}")
-       
+        print(
+            f"global_norm_var_dist {global_norm_var_dist_v1} global_norm_var_not_dist {global_norm_var_not_dist_v1}"
+        )
+        print(
+            f"global_norm_var_dist_v2 {global_norm_var_dist} global_norm_var_not_dist_v2 {global_norm_var_not_dist}"
+        )
+
         global_norm_var_fp32 = paddle.sqrt(
             global_norm_var_dist + global_norm_var_not_dist
         )
