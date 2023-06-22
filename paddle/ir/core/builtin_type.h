@@ -38,7 +38,7 @@ namespace ir {
 // NOTE(dev): Currently Int8 are not considered as a cached member
 // in IrContextImpl because it is not widely used.
 
-class VectorType : public Type {
+class IR_API VectorType : public Type {
  public:
   using Type::Type;
 
@@ -54,7 +54,7 @@ class VectorType : public Type {
 };
 
 #define DECLARE_BUILTIN_TYPE(__name)                         \
-  class __name##Type : public Type {                         \
+  class IR_API __name##Type : public Type {                  \
    public:                                                   \
     using Type::Type;                                        \
                                                              \
@@ -81,3 +81,14 @@ FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 #undef DECLARE_BUILTIN_TYPE
 
 }  // namespace ir
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int8Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::VectorType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BFloat16Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Float16Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Float32Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Float64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int16Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)

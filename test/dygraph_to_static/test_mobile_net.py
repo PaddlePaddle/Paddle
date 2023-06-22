@@ -568,7 +568,9 @@ def train_mobilenet(args, to_static):
                 t_last = time.time()
                 if batch_id > args.train_step:
                     if to_static:
-                        paddle.jit.save(net, args.model_save_prefix)
+                        paddle.jit.save(
+                            net, args.model_save_prefix, clip_extra=False
+                        )
                     else:
                         paddle.save(
                             net.state_dict(),

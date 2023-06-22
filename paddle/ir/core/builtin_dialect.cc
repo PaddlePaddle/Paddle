@@ -55,3 +55,5 @@ void BuiltinDialect::initialize() {
 }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::BuiltinDialect)
