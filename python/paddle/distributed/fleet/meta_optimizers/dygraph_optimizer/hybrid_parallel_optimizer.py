@@ -109,7 +109,9 @@ class HybridParallelClipGrad:
         pp_stage = self._hcg.get_stage_id()
         for i, metas in enumerate(all_sum_square_metas):
             for layer_id, is_distributed, sum_square in metas:
-                if layer_id // chunk_num != pp_rank:
+                rank = layer_id // chunk_num
+                assert rank < pp_size
+                if rank != pp_rank:
                     continue
                 if is_distributed:
                     sum_square_dist_fp32.append(sum_square)
