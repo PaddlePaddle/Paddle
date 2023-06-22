@@ -106,7 +106,13 @@ class LocalNormGather:
 
             sum_square_dist = paddle.concat([sum_square_dist_fp16, sum_square_dist_bf16, sum_square_dist_fp32])
             sum_square_not_dist = paddle.concat([sum_square_not_dist_fp16, sum_square_not_dist_bf16, sum_square_not_dist_fp32])
-            return sum_square_dist, sum_square_dist
+
+            chunk_sum_square_dist = paddle.unsqueeze(chunk_sum_square_dist, axis=0)
+            chunk_sum_square_not_dist = paddle.unsqueeze(chunk_sum_square_not_dist, axis=0)
+            # two dim: dist or not -> datatype
+            chunck_sum_square = paddle.concat([chunk_sum_square_dist, chunk_sum_square_not_dist])
+
+            return chunck_sum_square
 
         def get_raw_numpy(self):
             result_list = []
@@ -138,11 +144,7 @@ class LocalNormGather:
         assert len(self.chunks), "no chunks"
         chunck_sum_squares = []
         for (k, v) in self.chunks.items():
-            chunk_sum_square_dist, chunk_sum_square_not_dist = v.get_norm()
-            chunk_sum_square_dist = paddle.unsqueeze(chunk_sum_square_dist, axis=0)
-            chunk_sum_square_not_dist = paddle.unsqueeze(chunk_sum_square_not_dist, axis=0)
-            # two dim: dist or not -> datatype
-            chunck_sum_square = paddle.concat([chunk_sum_square_dist, chunk_sum_square_not_dist])
+            chunck_sum_square = v.get_norm()
             # three dim: chunk -> dist or not -> datatype
             chunck_sum_square = paddle.unsqueeze(chunck_sum_square, axis=0)
             chunk_sum_squares.append(chunck_sum_square)
@@ -151,7 +153,7 @@ class LocalNormGather:
         if num_chunks > 1:
             # redistribute chunks results among pipe line
             chunk_list = []
-            all_gather.(chunks_list, chunk_sum_squares, self._hcg.get_pipe_parallel_group())
+            paddle.distributed.all_gather(chunks_list, chunk_sum_squares, self._hcg.get_pipe_parallel_group())
             chunk_list = [paddle.unsqueeze(x, axis=0) for x in chunk_list]
             chunk_sum_squares = paddle.concat(chunk_list, axis=0)
             chunk_sum_squares = paddle.transpose(chunk_sum_squares, [1, 0, 2, 3])
