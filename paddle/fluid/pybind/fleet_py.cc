@@ -428,10 +428,10 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("release_graph_node", &GraphGpuWrapper::release_graph_node)
       .def("finalize", &GraphGpuWrapper::finalize)
       .def("set_node_iter_from_file",
-          py::overload_cast<std::string, std::string, int, bool>(
+          py::overload_cast<std::string, std::string, int, bool, bool>(
               &GraphGpuWrapper::set_node_iter_from_file))
       .def("set_node_iter_from_graph",
-          py::overload_cast<bool>(&GraphGpuWrapper::set_node_iter_from_graph));
+          py::overload_cast<bool, bool>(&GraphGpuWrapper::set_node_iter_from_graph));
 }
 #endif
 
