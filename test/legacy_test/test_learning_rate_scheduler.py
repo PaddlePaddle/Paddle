@@ -247,13 +247,14 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 right_result = noam_decay(
                     step, d_model, warmup_steps, learning_rate
                 )
+                lr.step()
                 fluid_result = lr()
 
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result[0],
+                    fluid_result,
                     msg='Failed lr scheduler in step {}, Python result is {}, Fluid result is {}'.format(
-                        step, right_result, fluid_result[0]
+                        step, right_result, fluid_result
                     ),
                 )
 

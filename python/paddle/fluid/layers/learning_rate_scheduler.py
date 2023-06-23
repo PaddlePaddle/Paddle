@@ -105,7 +105,7 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NoamDecay(
+            decay = paddle.optimizer.lr.NoamDecay(
                 d_model, warmup_steps, learning_rate=learning_rate
             )
             return decay

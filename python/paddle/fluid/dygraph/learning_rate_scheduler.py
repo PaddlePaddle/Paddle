@@ -22,7 +22,6 @@ from ..framework import Variable
 from ..data_feeder import check_type
 
 __all__ = [
-    'NoamDecay',
     'PiecewiseDecay',
     'NaturalExpDecay',
     'ExponentialDecay',
@@ -504,78 +503,6 @@ class CosineDecay(LearningRateDecay):
             * (paddle.cos(cur_epoch * math.pi / self.epochs) + 1)
         )
         return decayed_lr
-
-
-class NoamDecay(LearningRateDecay):
-    r"""
-    :api_attr: imperative
-
-    Applies Noam decay to the initial learning rate.
-
-    The algorithm can be described as following.
-
-    .. math::
-
-        decayed\_learning\_rate = learning\_rate * d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
-
-    Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_
-
-    Parameters:
-        d$_{model}$(Variable|int): The dimensionality of input and output feature vector of model. If type is Variable,
-            it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
-        warmup_steps(Variable|int): The number of warmup steps. A super parameter. If type is Variable,
-            it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
-        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The step size used to calculate the new global_step in the description above.
-            The default value is 1.
-        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            'float32', 'float64'. The default value is 'float32'.
-        learning_rate(Variable|float|int): The initial learning rate. If the type
-            is Variable, it's a tensor with shape [1], the data type can be
-            float32 or float64. It also can be set to python int number. Default 1.0
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle
-          warmup_steps = 100
-          learning_rate = 0.01
-          with fluid.dygraph.guard():
-              emb = paddle.nn.Embedding(10, 10)
-              optimizer  = fluid.optimizer.SGD(
-                  learning_rate = fluid.dygraph.NoamDecay(
-                         1/(warmup_steps *(learning_rate ** 2)),
-                         warmup_steps),
-                  parameter_list = emb.parameters())
-    """
-
-    def __init__(
-        self,
-        d_model,
-        warmup_steps,
-        begin=1,
-        step=1,
-        dtype='float32',
-        learning_rate=1.0,
-    ):
-        super().__init__(begin, step, dtype)
-        self.learning_rate = learning_rate
-        self.d_model = d_model
-        self.warmup_steps = warmup_steps
-
-    def step(self):
-        from .. import layers
-
-        a = self.create_lr_var(self.step_num**-0.5)
-        b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
-        lr_value = (
-            self.learning_rate * (self.d_model**-0.5) * paddle.minimum(a, b)
-        )
-        return lr_value
 
 
 class _LearningRateEpochDecay(LearningRateDecay):

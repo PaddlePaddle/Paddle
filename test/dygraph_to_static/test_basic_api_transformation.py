@@ -368,9 +368,9 @@ def dyfunc_NaturalExpDecay():
 
 
 def dyfunc_NoamDecay():
-    noam_decay = fluid.dygraph.NoamDecay(100, 100)
+    noam_decay = paddle.optimizer.lr.NoamDecay(100, 100)
     lr = noam_decay()
-    return lr
+    return paddle.to_tensor(lr)
 
 
 def dyfunc_PiecewiseDecay():
@@ -389,7 +389,7 @@ def dyfunc_PolynomialDecay():
         start_lr, total_step, end_lr, power=1.0
     )
     lr = pd()
-    return lr
+    return paddle.to_tensor(lr)
 
 
 class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
