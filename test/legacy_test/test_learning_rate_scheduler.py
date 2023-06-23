@@ -259,23 +259,22 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
     def test_LinearLrWarmup(self):
         with fluid.dygraph.guard():
-            lr = fluid.layers.polynomial_decay(
+            lr = paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=1.0,
                 decay_steps=10,
-                end_learning_rate=0.0,
+                end_lr=0.0,
                 power=1.0,
             )
-            lr = fluid.layers.linear_lr_warmup(
+            lr.step()
+            lr = paddle.optimizer.lr.LinearWarmup(
                 learning_rate=lr, warmup_steps=2, start_lr=0.0, end_lr=1.0
             )
-
+            lr.step()
             right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
             for i in range(5):
                 t = lr()
-
-                np.testing.assert_allclose(
-                    t.numpy().item(), right_result[i], rtol=1e-05
-                )
+                lr.step()
+                np.testing.assert_allclose(t, right_result[i], rtol=1e-05)
 
             with self.assertRaises(TypeError):
                 lr = fluid.layers.linear_lr_warmup(

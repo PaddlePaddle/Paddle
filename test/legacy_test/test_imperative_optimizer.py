@@ -359,17 +359,17 @@ class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
 
 class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.polynomial_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=0.1, decay_steps=5, cycle=self.cycle
             ),
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = SGDOptimizer(
-            learning_rate=fluid.layers.polynomial_decay(
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=paddle.optimizer.lr.PolynomialDecay(
                 learning_rate=0.1, decay_steps=5, cycle=self.cycle
             )
         )

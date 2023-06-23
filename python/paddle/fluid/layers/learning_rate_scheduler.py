@@ -343,7 +343,7 @@ def polynomial_decay(
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.PolynomialDecay(
+            decay = paddle.optimizer.lr.PolynomialDecay(
                 learning_rate, decay_steps, end_learning_rate, power, cycle
             )
             return decay

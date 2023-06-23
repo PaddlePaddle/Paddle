@@ -836,7 +836,7 @@ class LinearWarmup(LRScheduler):
             ) / float(self.warmup_steps) + self.start_lr
         else:
             if isinstance(self.learning_rate, LRScheduler):
-                self.learning_rate.step(self.last_epoch - self.warmup_steps)
+                self.learning_rate.step(self.last_epoch - self.warmup_steps + 1)
                 return self.learning_rate()
 
             return self.learning_rate

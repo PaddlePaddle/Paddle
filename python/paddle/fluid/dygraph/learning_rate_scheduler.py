@@ -27,7 +27,6 @@ __all__ = [
     'NaturalExpDecay',
     'ExponentialDecay',
     'InverseTimeDecay',
-    'PolynomialDecay',
     'CosineDecay',
     'LinearLrWarmup',
     'StepDecay',
@@ -442,106 +441,6 @@ class InverseTimeDecay(LearningRateDecay):
 
         decayed_lr = self.learning_rate / (1 + self.decay_rate * div_res)
 
-        return decayed_lr
-
-
-class PolynomialDecay(LearningRateDecay):
-    r"""
-    :api_attr: imperative
-
-    Applies polynomial decay to the initial learning rate.
-
-    The algorithm can be described as following.
-
-    If cycle is set to True, then:
-
-    .. math::
-
-        decay\_steps & = decay\_steps * math.ceil(\\frac{global\_step}{decay\_steps})
-
-        decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
-
-    If cycle is set to False, then:
-
-    .. math::
-
-        global\_step & = min(global\_step, decay\_steps)
-
-        decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
-
-    Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type
-            is Variable, it's a tensor with shape [1], the data type can be
-            float32 or float64. It also can be set to python int number.
-        decay_steps(int): The decay step size. It determines the decay cycle.
-        end_learning_rate(float, optional): The minimum final learning rate. The default value is 0.0001.
-        power(float, optional): Power of polynomial. The default value is 1.0.
-        cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
-        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The step size used to calculate the new global_step in the description above.
-            The default value is 1.
-        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            'float32', 'float64'. The default value is 'float32'.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle
-          start_lr = 0.01
-          total_step = 5000
-          end_lr = 0
-          with fluid.dygraph.guard():
-              emb = paddle.nn.Embedding(10, 10)
-              optimizer  = fluid.optimizer.SGD(
-                  learning_rate = fluid.dygraph.PolynomialDecay(
-                  start_lr, total_step, end_lr, power=1.0),
-                  parameter_list = emb.parameters())
-
-    """
-
-    def __init__(
-        self,
-        learning_rate,
-        decay_steps,
-        end_learning_rate=0.0001,
-        power=1.0,
-        cycle=False,
-        begin=0,
-        step=1,
-        dtype='float32',
-    ):
-        super().__init__(begin, step, dtype)
-        self.learning_rate = learning_rate
-        self.decay_steps = decay_steps
-        self.end_learning_rate = end_learning_rate
-        self.power = power
-        self.cycle = cycle
-
-    def step(self):
-        tmp_step_num = self.step_num
-        tmp_decay_steps = self.decay_steps
-        if self.cycle:
-            div_res = paddle.ceil(
-                self.create_lr_var(tmp_step_num / float(self.decay_steps))
-            )
-
-            if tmp_step_num == 0:
-                div_res = self.create_lr_var(1.0)
-            tmp_decay_steps = self.decay_steps * div_res
-        else:
-            tmp_step_num = self.create_lr_var(
-                tmp_step_num
-                if tmp_step_num < self.decay_steps
-                else self.decay_steps
-            )
-
-        decayed_lr = (self.learning_rate - self.end_learning_rate) * (
-            (1 - tmp_step_num / tmp_decay_steps) ** self.power
-        ) + self.end_learning_rate
         return decayed_lr
 
 
