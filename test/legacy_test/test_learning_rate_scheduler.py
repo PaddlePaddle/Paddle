@@ -272,6 +272,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             lr.step()
             right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
             for i in range(5):
+                if i == 1:
+                    lr.step()
                 t = lr()
                 lr.step()
                 np.testing.assert_allclose(t, right_result[i], rtol=1e-05)

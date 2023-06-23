@@ -94,11 +94,11 @@ def train(to_static):
         learning_rate = cfg.learning_rate
         values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
 
-        lr = fluid.dygraph.PiecewiseDecay(
-            boundaries=boundaries, values=values, begin=0
+        lr = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=boundaries, values=values, last_epoch=0
         )
 
-        lr = fluid.layers.linear_lr_warmup(
+        lr = paddle.optimizer.lr.LinearWarmup(
             learning_rate=lr,
             warmup_steps=cfg.warm_up_iter,
             start_lr=0.0,
