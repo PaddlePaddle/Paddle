@@ -734,6 +734,11 @@ void GraphGpuWrapper::load_node_and_edge(
                                                   false);
 }
 
+void GraphGpuWrapper::calc_edge_type_limit() {
+  reinterpret_cast<GpuPsGraphTable *>(graph_table)
+    ->cpu_graph_table_->calc_edge_type_limit();
+}
+
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
                                           std::string feat_name,
                                           std::string feat_dtype,
@@ -1131,9 +1136,12 @@ int GraphGpuWrapper::get_feature_of_nodes(int gpu_id,
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample(
     int gpu_id, uint64_t *device_keys, int walk_degree, int len) {
   platform::CUDADeviceGuard guard(gpu_id);
+  auto &edge_neighbor_size_limit = get_type_to_neighbor_limit();
+  auto neighbor_size_limit = edge_neighbor_size_limit[0];
+  VLOG(0) << "use edge type 0 set neighbor size limit";
   auto neighbor_sample_res =
       reinterpret_cast<GpuPsGraphTable *>(graph_table)
-          ->graph_neighbor_sample(gpu_id, device_keys, walk_degree, len);
+          ->graph_neighbor_sample(gpu_id, device_keys, walk_degree, len, neighbor_size_limit);
 
   return neighbor_sample_res;
 }
@@ -1154,12 +1162,15 @@ std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
              key.size() * sizeof(uint64_t),
              cudaMemcpyHostToDevice);
   VLOG(0) << "key_size: " << key.size();
+  auto &edge_neighbor_size_limit = get_type_to_neighbor_limit();
+  auto neighbor_size_limit = edge_neighbor_size_limit[idx];
   auto neighbor_sample_res = reinterpret_cast<GpuPsGraphTable *>(graph_table)
                                  ->graph_neighbor_sample_v2(gpu_id,
                                                             idx,
                                                             cuda_key,
                                                             sample_size,
                                                             key.size(),
+                                                            neighbor_size_limit,
                                                             false,
                                                             true,
                                                             false);
@@ -1241,6 +1252,11 @@ std::vector<uint64_t> &GraphGpuWrapper::get_graph_total_keys() {
 std::vector<std::vector<uint64_t>> &GraphGpuWrapper::get_graph_type_keys() {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->graph_type_keys_;
+}
+
+std::unordered_map<int, int> &GraphGpuWrapper::get_type_to_neighbor_limit() {
+  return reinterpret_cast<GpuPsGraphTable *>(graph_table)
+    ->cpu_graph_table_->type_to_neighbor_limit_;
 }
 
 std::unordered_map<int, int> &GraphGpuWrapper::get_graph_type_to_index() {

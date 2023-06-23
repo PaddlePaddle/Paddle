@@ -867,6 +867,19 @@ PHI_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
 
 /**
  * Distributed related FLAG
+ * Name: FLAGS_graph_neighbor_size_percent
+ * Since Version: 2.2.0
+ * Value Range: double, default=1.0
+ * Example:
+ * Note: Control whether load graph node and edge with multi threads parallely
+ *       If it is not set, load graph data with one thread
+ */
+PADDLE_DEFINE_EXPORTED_double(graph_neighbor_size_percent,
+                            1.0,
+                            "It controls whether precent of neighbor_size.");
+
+/**
+ * Distributed related FLAG
  * Name: FLAGS_graph_metapath_split_opt
  * Since Version: 2.2.0
  * Value Range: bool, default=false

@@ -37,6 +37,7 @@ PHI_DECLARE_bool(graph_get_neighbor_id);
 PHI_DECLARE_int32(gpugraph_storage_mode);
 PHI_DECLARE_uint64(gpugraph_slot_feasign_max_num);
 PHI_DECLARE_bool(graph_metapath_split_opt);
+PHI_DECLARE_double(graph_neighbor_size_percent);
 
 PHI_DEFINE_EXPORTED_bool(graph_edges_split_only_by_src_id,
                             false,
@@ -3118,6 +3119,80 @@ void GraphTable::build_graph_total_keys() {
       graph_total_keys_.end(), keys[0].begin(), keys[0].end());
 
   VLOG(0) << "finish insert edge to graph_total_keys";
+}
+
+void GraphTable::calc_edge_type_limit() {
+  std::vector<uint64_t> graph_type_keys_;
+  std::vector<int> graph_type_keys_neighbor_size_;
+  std::vector<std::vector<int>> neighbor_size_array;
+  neighbor_size_array.resize(task_pool_size_);
+
+  int max_neighbor_size;
+  int neighbor_size_limit;
+  size_t size_limit;
+  double neighbor_size_percent = FLAGS_graph_neighbor_size_percent;
+  for (auto &it: this->edge_to_id) {
+    graph_type_keys_.clear();
+    graph_type_keys_neighbor_size_.clear();
+    for (int i = 0; i < task_pool_size_; i++) {
+      neighbor_size_array[i].clear();
+    }
+    auto edge_type = it.first;
+    auto edge_idx = it.second;
+    std::vector<std::vector<uint64_t>> keys;
+    this->get_all_id(GraphTableType::EDGE_TABLE, edge_idx, 1, &keys);
+    graph_type_keys_ = std::move(keys[0]);
+
+    std::vector<std::vector<uint64_t>> bags(task_pool_size_);
+    for (int i = 0; i < task_pool_size_; i++) {
+      auto predsize = graph_type_keys_.size() / task_pool_size_;
+      bags[i].reserve(predsize * 1.2);
+    }
+    for (auto x: graph_type_keys_) {
+      int location = x % task_pool_size_;
+      bags[location].push_back(x);
+    }
+
+    std::vector<std::future<int>> tasks;
+    for (size_t i = 0; i < bags.size(); i++) {
+      if (bags[i].size() > 0) {
+        tasks.push_back(_shards_task_pool[i]->enqueue([&, i, edge_idx, this]() -> int {
+              neighbor_size_array[i].reserve(bags[i].size());
+              for (size_t j = 0; j < bags[i].size(); j++) {
+                auto node_id = bags[i][j];
+                Node *v = find_node(GraphTableType::EDGE_TABLE, edge_idx, node_id);
+                if (v != nullptr) {
+                  int neighbor_size = v->get_neighbor_size();
+                  neighbor_size_array[i].push_back(neighbor_size);
+                } else {
+                  VLOG(0) << "node id:" << node_id << ", not find in type: " << edge_idx;
+                }
+              }
+              return 0;
+            }));
+      }
+    }
+    for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+    for (int i = 0; i < task_pool_size_; i++) {
+      graph_type_keys_neighbor_size_.insert(graph_type_keys_neighbor_size_.end(),
+          neighbor_size_array[i].begin(), neighbor_size_array[i].end());
+    }
+    std::sort(graph_type_keys_neighbor_size_.begin(), graph_type_keys_neighbor_size_.end());
+    if (graph_type_keys_neighbor_size_.size() > 0) {
+      max_neighbor_size = graph_type_keys_neighbor_size_[graph_type_keys_neighbor_size_.size() - 1];
+      size_limit = graph_type_keys_neighbor_size_.size() * neighbor_size_percent;
+      if (size_limit < (graph_type_keys_neighbor_size_.size() - 1)) {
+        neighbor_size_limit = graph_type_keys_neighbor_size_[size_limit];
+      } else {
+        neighbor_size_limit = max_neighbor_size;
+      }
+    } else {
+      neighbor_size_limit = 0;
+    }
+    type_to_neighbor_limit_[edge_idx] = neighbor_size_limit;
+    VLOG(0) << "edge_type: " << edge_type << ", edge_idx[" << edge_idx << "] max neighbor_size: "
+              << max_neighbor_size << ", neighbor_size_limit: " << neighbor_size_limit;
+  }
 }
 
 void GraphTable::build_graph_type_keys() {

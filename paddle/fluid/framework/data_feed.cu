@@ -2702,6 +2702,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
   // 获取全局采样状态
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   auto &type_to_index = gpu_graph_ptr->get_graph_type_to_index();
+  auto &edge_neighbor_size_limit = gpu_graph_ptr->get_type_to_neighbor_limit();
   auto &cursor = gpu_graph_ptr->cursor_[conf.thread_id];
   size_t node_type_len = first_node_type.size();
   int remain_size = conf.buf_size - conf.walk_degree *
@@ -2798,11 +2799,11 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
         // end sampling current epoch
         cursor = 0;
         *epoch_finish_ptr = true;
-        VLOG(0) << "sample epoch finish!";
+        VLOG(1) << "sample epoch finish!";
         break;
       } else if (sample_command == EVENT_WALKBUF_FULL) {
         // end sampling current pass
-        VLOG(0) << "sample pass finish!";
+        VLOG(1) << "sample pass finish!";
         break;
       } else if (sample_command == EVENT_CONTINUE_SAMPLE) {
         // continue sampling
@@ -2822,11 +2823,18 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
     }
 
     NeighborSampleQuery q;
+    if (edge_neighbor_size_limit.find(path[0]) == edge_neighbor_size_limit.end()) {
+      VLOG(0) << "Fail to find edge[" << path[0] << "] in edge_neighbor_size_limit";
+      assert(false);
+      break;
+    }
+    auto neighbor_size_limit = edge_neighbor_size_limit[path[0]];
     q.initialize(conf.gpuid,
                  path[0],
                  (uint64_t)(d_type_keys + start),
                  conf.walk_degree,
                  tmp_len,
+                 neighbor_size_limit,
                  step);
     auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(
         q, false, true, conf.weighted_sample);
@@ -2861,7 +2869,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
                       table,
                       host_vec_ptr,
                       stream) != 0) {
-        VLOG(2) << "gpu:" << conf.gpuid
+        VLOG(0) << "gpu:" << conf.gpuid
                 << " in step 0, insert key stage, table is full";
         update = false;
         assert(false);
@@ -2876,7 +2884,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
                       table,
                       host_vec_ptr,
                       stream) != 0) {
-        VLOG(2) << "gpu:" << conf.gpuid
+        VLOG(0) << "gpu:" << conf.gpuid
                 << " in step 0, insert sample res, table is full";
         update = false;
         assert(false);
@@ -2936,11 +2944,18 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
         sample_keys_ptr = reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
       }
       int edge_type_id = path[(step - 1) % path_len];
+      if (edge_neighbor_size_limit.find(edge_type_id) == edge_neighbor_size_limit.end()) {
+        VLOG(0) << "Fail to find edge[" << path[0] << "] in edge_neighbor_size_limit";
+        assert(false);
+        break;
+      }
+      neighbor_size_limit = edge_neighbor_size_limit[edge_type_id];
       q.initialize(conf.gpuid,
                    edge_type_id,
                    (uint64_t)sample_keys_ptr,
                    1,
                    sample_res.total_sample_size,
+                   neighbor_size_limit,
                    step);
       int sample_key_len = sample_res.total_sample_size;
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(
@@ -3098,6 +3113,7 @@ int FillWalkBufMultiPath(
 
   // 获取全局采样状态
   auto &cur_metapath = gpu_graph_ptr->cur_metapath_;
+  auto &edge_neighbor_size_limit = gpu_graph_ptr->get_type_to_neighbor_limit();
   auto &path = gpu_graph_ptr->cur_parse_metapath_;
   auto &cur_metapath_start = gpu_graph_ptr->cur_metapath_start_[conf.gpuid];
   auto &type_to_index = gpu_graph_ptr->get_graph_type_to_index();
@@ -3138,11 +3154,13 @@ int FillWalkBufMultiPath(
     VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
 
     NeighborSampleQuery q;
+    auto neighbor_size_limit = edge_neighbor_size_limit[path[0]];
     q.initialize(conf.gpuid,
                  path[0],
                  (uint64_t)(d_type_keys + start),
                  conf.walk_degree,
                  tmp_len,
+                 neighbor_size_limit,
                  step);
     auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(
         q, false, true, conf.weighted_sample);
@@ -3225,11 +3243,13 @@ int FillWalkBufMultiPath(
           reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
       int edge_type_id = path[(step - 1) % path_len];
       VLOG(2) << "sample edge type: " << edge_type_id << " step: " << step;
+      neighbor_size_limit = edge_neighbor_size_limit[edge_type_id];
       q.initialize(conf.gpuid,
                    edge_type_id,
                    (uint64_t)sample_keys_ptr,
                    1,
                    sample_res.total_sample_size,
+                   neighbor_size_limit,
                    step);
       int sample_key_len = sample_res.total_sample_size;
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(
