@@ -44,7 +44,7 @@ def send_u_recv(
     to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor
     in different reduce ops, like sum, mean, max, or min. Besides, we can use `out_size` to set necessary output shape.
 
-    .. code-block:: text
+    .. code-block:: python
         :name: example1
 
            Given:
@@ -198,7 +198,7 @@ def send_ue_recv(
     update the corresponding position of output tensor in different reduce ops, like sum, mean, max, or min.
     Besides, we can use `out_size` to set necessary output shape.
 
-    .. code-block:: text
+    .. code-block:: python
         :name: example1
 
            Given:
