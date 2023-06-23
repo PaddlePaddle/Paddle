@@ -575,7 +575,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            lr = imperate_lr.LinearLrWarmup(
+            lr = paddle.optimizer.lr.LinearWarmup(
                 learning_rate, warmup_steps, start_lr, end_lr
             )
             return lr
