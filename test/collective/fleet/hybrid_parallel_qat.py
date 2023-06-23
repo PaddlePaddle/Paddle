@@ -184,7 +184,6 @@ class SimpleDPNet(nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
-
         super().__init__()
         self.linear1 = paddle.nn.Linear(
             hidden_size,
@@ -310,9 +309,7 @@ class TestDistMPTraning(unittest.TestCase):
         return model_a, optimizer_a, model_b, optimizer_b
 
     def train(self, model_a, optimizer_a, model_b, optimizer_b):
-
         for epoch in range(5):
-
             np_data = np.random.randint(
                 0,
                 vocab_size,

@@ -364,18 +364,50 @@ class XPUTestGeluOP(XPUOpTestWrapper):
         self.op_name = 'gelu'
         self.use_dynamic_create_class = False
 
-    class XPUTestGelu(TestActivationOPBase):
+    class XPUTestGeluBase(TestActivationOPBase):
         def set_case(self):
             self.op_type = "gelu"
             self.dtype = self.in_type
 
-            approximate = False
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-            out = gelu(x, approximate)
+            self.init_config()
+            out = gelu(self.x, self.approximate)
 
-            self.inputs = {'X': x}
+            self.inputs = {'X': self.x}
             self.outputs = {'Out': out}
-            self.attrs = {"approximate": approximate, 'use_xpu': True}
+            self.attrs = {"approximate": self.approximate, 'use_xpu': True}
+
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestGelu_ZeroDim(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+
+    class XPUTestGelu1(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = True
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestGelu2(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
+
+    class XPUTestGelu3(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = True
+            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestGelu4(XPUTestGeluBase):
+        def init_config(self):
+            self.approximate = False
+            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
 
 
 support_types = get_xpu_op_support_types('gelu')

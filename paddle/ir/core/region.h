@@ -17,12 +17,14 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 
 class Block;
 class Operation;
 
-class Region {
+class IR_API Region {
  public:
   using iterator = std::list<Block *>::iterator;
   using reverse_iterator = std::list<Block *>::reverse_iterator;
@@ -35,6 +37,8 @@ class Region {
 
   iterator begin() { return blocks_.begin(); }
   iterator end() { return blocks_.end(); }
+  const_iterator begin() const { return blocks_.begin(); }
+  const_iterator end() const { return blocks_.end(); }
   reverse_iterator rbegin() { return blocks_.rbegin(); }
   reverse_iterator rend() { return blocks_.rend(); }
 
@@ -48,7 +52,7 @@ class Region {
 
   void TakeBody(Region &&other);
 
-  Operation *GetParentOp() const { return parent_; }
+  Operation *GetParent() const { return parent_; }
 
  private:
   Region(Region &) = delete;

@@ -15,14 +15,12 @@
 include(ExternalProject)
 
 set(CUTLASS_PREFIX_DIR ${THIRD_PARTY_PATH}/cutlass)
-
-set(CUTLASS_REPOSITORY https://github.com/NVIDIA/cutlass.git)
 set(CUTLASS_TAG v2.11.0)
+set(CUTLASS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cutlass)
 
-include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/")
-include_directories("${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/include/")
-include_directories(
-  "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/util/include/")
+include_directories("${CUTLASS_SOURCE_DIR}/")
+include_directories("${CUTLASS_SOURCE_DIR}/include/")
+include_directories("${CUTLASS_SOURCE_DIR}/tools/util/include/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
 add_definitions("-DSPCONV_WITH_CUTLASS=0")
@@ -33,9 +31,8 @@ endif()
 
 ExternalProject_Add(
   extern_cutlass
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${CUTLASS_REPOSITORY}
-  GIT_TAG "${CUTLASS_TAG}"
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${CUTLASS_SOURCE_DIR}
   PREFIX ${CUTLASS_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
@@ -61,7 +58,7 @@ add_custom_target(
   COMMAND
     ${PYTHON_EXECUTABLE} -B
     ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/gather_gemm_scatter_generator.py
-    "${THIRD_PARTY_PATH}/cutlass/src/extern_cutlass/tools/library/scripts/"
+    "${CUTLASS_SOURCE_DIR}/tools/library/scripts/"
     "${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator"
     "${CMAKE_CUDA_COMPILER_VERSION}"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_gemm_operations_file}

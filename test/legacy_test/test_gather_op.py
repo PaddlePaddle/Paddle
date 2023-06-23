@@ -517,7 +517,6 @@ class TestGathertError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
@@ -548,7 +547,6 @@ class TestGathertError(unittest.TestCase):
 
     def test_error2(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             index = paddle.static.data(shape=shape, dtype='int32', name='mask')
@@ -570,7 +568,6 @@ class TestGathertError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int32', name='x')
             axis = paddle.static.data(shape=[1], dtype='int32', name='axis')

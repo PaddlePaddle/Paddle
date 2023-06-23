@@ -672,7 +672,6 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
-pip install requests
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
@@ -696,7 +695,7 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
 %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin;%THIRD_PARTY_PATH:/=\%\install\warpctc\bin;^
 %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib;%THIRD_PARTY_PATH:/=\%\install\paddle2onnx\lib;^
-%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;^
+%work_dir%\%BUILD_DIR%\paddle\fluid\inference;%work_dir%\%BUILD_DIR%\paddle\fluid\inference\capi_exp;%work_dir%\%BUILD_DIR%\paddle\ir;^
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib

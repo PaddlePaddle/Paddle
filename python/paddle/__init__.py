@@ -212,6 +212,8 @@ from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cummax  # noqa: F401
+from .tensor.math import cummin  # noqa: F401
 from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import logcumsumexp  # noqa: F401
 from .tensor.math import logit  # noqa: F401
@@ -301,6 +303,7 @@ from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
+from .tensor.math import ldexp  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
@@ -446,6 +449,8 @@ __all__ = [  # noqa
     'empty_like',
     'eye',
     'cumsum',
+    'cummax',
+    'cummin',
     'cumprod',
     'logaddexp',
     'logcumsumexp',
@@ -699,6 +704,7 @@ __all__ = [  # noqa
     'triu_indices',
     'take',
     'frexp',
+    'ldexp',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',

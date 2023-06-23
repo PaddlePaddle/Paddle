@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle import fluid
@@ -31,6 +35,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
         self.config_dtype()
+        self.if_enable_cinn()
         if self.dtype == np.float64:
             target_dtype = "float64"
         elif self.dtype == np.float16:
@@ -44,6 +49,9 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
             output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        pass
 
     def config_dtype(self):
         self.dtype = np.float64
@@ -85,6 +93,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.python_api = paddle.gather_nd
         self.public_python_api = paddle.gather_nd
         self.config_dtype()
+        self.if_enable_cinn()
         if self.dtype == np.float64:
             target_dtype = "float64"
         elif self.dtype == np.float16:
@@ -99,6 +108,9 @@ class TestGatherNdOpWithIndex1(OpTest):
             output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': index}
         self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        pass
 
     def config_dtype(self):
         self.dtype = np.float64
@@ -189,7 +201,9 @@ class TestGatherNdOpWithLowIndexBF16(TestGatherNdOpWithLowIndex):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, numeric_grad_delta=0.5
+        )
 
 
 class TestGatherNdOpIndex1(OpTest):
@@ -208,6 +222,8 @@ class TestGatherNdOpIndex1(OpTest):
         else:
             target_dtype = "float32"
         xnp = np.random.uniform(0, 100, (10, 10)).astype(target_dtype)
+        if self.dtype == np.uint16:
+            xnp = convert_uint16_to_float(convert_float_to_uint16(xnp))
         index = np.array([1, 2]).astype("int32")
         output = xnp[tuple(index.T)]
         if self.dtype == np.uint16:
@@ -215,6 +231,9 @@ class TestGatherNdOpIndex1(OpTest):
             output = convert_float_to_uint16(output)
         self.inputs = {'X': xnp, 'Index': index}
         self.outputs = {'Out': output}
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
         # the outputs are 0D-tensor, CINN not support
         self.enable_cinn = False
 
@@ -225,7 +244,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, numeric_grad_delta=0.05)
 
 
 class TestGatherNdOpIndex1FP16(TestGatherNdOpIndex1):
@@ -248,7 +267,9 @@ class TestGatherNdOpIndex1BF16(TestGatherNdOpIndex1):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, numeric_grad_delta=0.5
+        )
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
@@ -304,7 +325,9 @@ class TestGatherNdOpWithSameIndexAsXBF16(TestGatherNdOpWithSameIndexAsX):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, numeric_grad_delta=0.5
+        )
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
@@ -477,7 +500,6 @@ class TestGatherNdError(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='float32', name='x')
             index = paddle.static.data(shape=shape, dtype='bool', name='index')

@@ -91,7 +91,6 @@ class DataParallelOptimizationPass(PassBase):
         return PassType.COMM_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-
         self.dist_context = self.get_attr("dist_context")
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
@@ -110,7 +109,6 @@ class DataParallelOptimizationPass(PassBase):
                 self.summary(grad_group)
 
     def _prune_grad_scaling(self):
-
         if not self._could_be_prune():
             return
 
@@ -128,7 +126,6 @@ class DataParallelOptimizationPass(PassBase):
         self._calc_wait_comms()
 
     def _fuse_allreduce(self):
-
         if not self._could_be_fuse():
             return []
 
@@ -149,7 +146,6 @@ class DataParallelOptimizationPass(PassBase):
         scaled_grads = []
 
         for op in ops:
-
             if is_data_parallel_reduce_op(op):
                 grad_name = op.output_arg_names[0]
                 if grad_name in self._grad_name_to_group_map:
@@ -198,7 +194,6 @@ class DataParallelOptimizationPass(PassBase):
         return len(self._group_to_grad_name_map) > 0
 
     def _could_be_prune(self):
-
         return self.dist_context.gradient_scale and (
             self._support_rescale_grad or self._all_dp_groups_same_degree()
         )
@@ -215,7 +210,6 @@ class DataParallelOptimizationPass(PassBase):
         )
 
     def _scale_backward_initial_grad(self):
-
         block = default_main_program().global_block()
         dp_degree = len(list(self._group_to_grad_name_map.keys())[0].ranks)
 
@@ -241,7 +235,6 @@ class DataParallelOptimizationPass(PassBase):
         block._sync_with_cpp()
 
     def _update_opt_rescale_grad(self):
-
         block = default_main_program().global_block()
         scaled_grads = set()
 
@@ -313,7 +306,6 @@ class DataParallelOptimizationPass(PassBase):
         block._sync_with_cpp()
 
     def _calc_wait_comms(self):
-
         return
 
         block = default_main_program().global_block()
@@ -365,7 +357,6 @@ class DataParallelOptimizationPass(PassBase):
         # here we try to wait for all kernel in that comm stream to be finish which is not that optimized.
         for i in sorted(indices, reverse=True):
             for ring_id in op_idx_to_sync_ring_id_map[i]:
-
                 block._insert_op_without_sync(
                     i,
                     type='c_wait_comm',
@@ -451,13 +442,11 @@ class DataParallelOptimizationPass(PassBase):
         return grad_groups
 
     def _update_program(self, grad_groups):
-
         block = default_main_program().global_block()
 
         remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
 
         for i, group in enumerate(grad_groups[::-1]):
-
             # skip unfused big tensor
             if len(group.gradients) <= 1:
                 group.coalesce_var = group.gradients[0]

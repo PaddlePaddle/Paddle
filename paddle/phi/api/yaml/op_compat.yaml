@@ -62,9 +62,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
 - op : adamax_
@@ -85,9 +85,9 @@
     beta2 :
       data_type : float
       tensor_name : Beta2Tensor
-    episilon :
+    epsilon :
       data_type : float
-      tensor_name : EpisilonTensor
+      tensor_name : EpsilonTensor
 
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
@@ -932,6 +932,15 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exponential_
+  backward : exponential__grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    lam : lambda
+
 - op : eye
   outputs :
     out : Out
@@ -981,6 +990,17 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : fill (fill_any)
+  backward : fill_grad (fill_any_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
+
 - op : fill_diagonal
   backward : fill_diagonal_grad
   inputs :
@@ -1028,9 +1048,15 @@
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [fmax]
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
@@ -1078,8 +1104,10 @@
     x : X
   outputs :
     out : Out
-  attrs :
-    {value: value, dtype: dtype}
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
 
 - op : fused_conv2d
   extra :
@@ -1554,7 +1582,7 @@
     out : Y
 
 - op : matmul (matmul_v2)
-  backward : matmul_grad (matmul_v2_grad)
+  backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
   inputs :
     {x : X, y : Y}
   attrs :
@@ -1563,6 +1591,7 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
@@ -1628,9 +1657,15 @@
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [maximum]
 
 - op : maxout
   inputs :
@@ -1691,6 +1726,25 @@
   outputs :
     out : Out
   drop_empty_grad : [inputs_grad]
+
+- op : min (reduce_min)
+  backward : min_grad (reduce_min_grad)
+  inputs:
+    x : X
+  outputs:
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  extra :
+    attrs : [bool use_mkldnn = false]
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    min : GetReduceExpectedKernelType
+    min_grad : GetReduceGradExpectedKernelType
+  manual_signature : [min]
 
 - op : minimum (elementwise_min)
   backward : minimum_grad (elementwise_min_grad)
@@ -1942,6 +1996,14 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
+- op : prior_box
+  inputs :
+    {input: Input, image: Image}
+  outputs :
+    {out: Boxes, var: Variances}
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+
 - op : prod (reduce_prod)
   backward : prod_grad (reduce_prod_grad)
   inputs:
@@ -1951,7 +2013,7 @@
   outputs:
     out : Out
   int_array:
-    axis :
+    dims :
       data_type : int
   extra :
     attrs : [bool use_mkldnn = false]
@@ -2007,11 +2069,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_min
-  backward : reduce_min_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : relu
   backward : relu_grad, relu_double_grad (relu_grad_grad)
