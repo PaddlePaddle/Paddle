@@ -45,6 +45,7 @@ def send_u_recv(
     in different reduce ops, like sum, mean, max, or min. Besides, we can use `out_size` to set necessary output shape.
 
     .. code-block:: text
+        :name: example1
 
            Given:
 
@@ -87,6 +88,7 @@ def send_u_recv(
 
     Examples:
         .. code-block:: python
+            :name: example2
 
             import paddle
 
@@ -197,6 +199,7 @@ def send_ue_recv(
     Besides, we can use `out_size` to set necessary output shape.
 
     .. code-block:: text
+        :name: example1
 
            Given:
 
@@ -246,6 +249,7 @@ def send_ue_recv(
 
     Examples:
         .. code-block:: python
+            :name: example2
 
             import paddle
 
@@ -383,7 +387,8 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
     the destination node feature tensor. Then we use `src_index` and `dst_index` to gather the corresponding data,
     and then compute the edge features in different message_ops like `add`, `sub`, `mul`, `div`.
 
-    .. code-block:: text
+    .. code-block:: python
+        :name: example1
 
            Given:
 
@@ -424,6 +429,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
     Examples:
 
         .. code-block:: python
+            :name: example2
 
             import paddle
 
