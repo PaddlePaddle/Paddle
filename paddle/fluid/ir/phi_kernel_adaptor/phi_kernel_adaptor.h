@@ -73,8 +73,10 @@ class PhiKernelAdaptor {
       paddle::dialect::InferShapeInterface interface =
           (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
       phi::InferMetaContext ctx;
+      std::cerr << "build infer meta" << std::endl;
 
       ir::BuildInferMetaContext((*it), name_map, scope_, op_info_res, &ctx);
+      std::cerr << "fin infer meta" << std::endl;
 
       interface.InferShape(&ctx);
 
@@ -100,9 +102,11 @@ class PhiKernelAdaptor {
       } else {
         phi::KernelContext kernel_ctx(dev_ctx);
 
+        std::cerr << "build kernel context" << std::endl;
         ir::BuildPhiKernelContext(
             (*it), name_map, scope_, op_info_res, &kernel_ctx);
         found_it->second(&kernel_ctx);
+        std::cerr << "after run " << std::endl;
 
         auto out_value = (*it)->result(0);
         out_name = name_map[out_value];

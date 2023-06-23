@@ -239,8 +239,10 @@ void BuildInferMetaContext(
   }
 
   // update here, support fetch list for now
-  if (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
-      "pd.fetch") {
+  // [todo update here]
+  if (op->attributes().count("op_name") &&
+      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
+       "pd.fetch")) {
     // process fetch op
     std::cerr << "process fetch op";
     auto fetch_var = scope->Var("fetch");
@@ -249,7 +251,9 @@ void BuildInferMetaContext(
     ctx->EmplaceBackOutput(out_tensor);
   } else {
     ir::Value out_ptr = op->result(0);
+    std::cerr << "here 1" << std::endl;
     auto name = name_map.at(out_ptr);
+    std::cerr << "11 " << std::endl;
     ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
   }
 }
@@ -370,8 +374,9 @@ void BuildPhiKernelContext(
     }
   }
 
-  if (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
-      "pd.fetch") {
+  if (op->attributes().count("op_name") &&
+      (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
+       "pd.fetch")) {
     // process fetch op
     std::cerr << "process fetch op";
     auto fetch_var = scope->Var("fetch");
