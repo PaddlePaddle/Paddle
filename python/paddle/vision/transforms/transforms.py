@@ -134,7 +134,8 @@ class BaseTransform:
 
     calling logic:
 
-    .. code-block:: text
+    .. code-block:: python
+        :name: example1
 
         if keys is None:
             _get_params -> _apply_image()
@@ -165,6 +166,7 @@ class BaseTransform:
     Examples:
 
         .. code-block:: python
+            :name: example2
 
             import numpy as np
             from PIL import Image
