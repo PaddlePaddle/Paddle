@@ -122,6 +122,31 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+    // xpu::conv2d_transpose_v2 do not support int_with_ll now
+    // use xpu::conv2d_transpose
+    int img_yh = static_cast<int>(x.dims()[2]);
+    int img_yw = static_cast<int>(x.dims()[3]);
+    int r = xpu::conv2d_transpose<XPUT, XPUT, XPUT, int_with_ll_t>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUT*>(x.data<T>()),
+        reinterpret_cast<const XPUT*>(filter.data<T>()),
+        reinterpret_cast<XPUT*>(out->data<T>()),
+        batch_size,
+        img_yc,
+        img_yh,
+        img_yw,
+        img_xc,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
   } else {
     int r = xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, int16_t>(
         ctx.x_context(),
