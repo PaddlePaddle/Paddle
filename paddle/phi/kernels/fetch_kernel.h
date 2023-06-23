@@ -19,11 +19,10 @@
 namespace phi {
 
 /**
- * @brief This kernel is used to perform elementwise digamma for x.
- *        $$out = \Psi(x) = \frac{ \Gamma^{'}(x) }{ \Gamma(x) }$$
+ * @brief This kernel is used to fetch tensor from scope
  * @param  ctx     device context
- * @param  x       the input tensor of digamma
- * @param  out     the output tensor of digamma
+ * @param  x       the input tensor of fetch
+ * @param  out     the output tensor of fetch
  */
 template <typename T, typename Context>
 void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);

@@ -35,6 +35,7 @@
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/phi/core/enforce.h"
 
 #include "glog/logging.h"
 
@@ -57,18 +58,10 @@ void BuildScope(ir::Block* block,
     if (op_name == "pd.fetch") {
       // fetch is a very special op, with no output
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
-        auto var_name = attr_map.at("name").dyn_cast<ir::StrAttribute>().data();
-
-        PADDLE_ENFORCE_EQ(
-            name_map->count(ptr),
-            true,
-            phi::errors::PreconditionNotMet(
-                "input of fetch op should in name mape, var_name is [%s]",
-                var_name));
-
-        scope->Rename(name_map->at(ptr), var_name);
-        (*name_map)[ptr] = var_name;
+        auto var = scope->Var("fetch");
+        auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
+        // for now only support one fetch
+        fetch_list->resize(1);
       }
       continue;
     }
@@ -245,10 +238,20 @@ void BuildInferMetaContext(
     }
   }
 
-  ir::Value out_ptr = op->result(0);
-  auto name = name_map.at(out_ptr);
-
-  ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+  // update here, support fetch list for now
+  if (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
+      "pd.fetch") {
+    // process fetch op
+    std::cerr << "process fetch op";
+    auto fetch_var = scope->Var("fetch");
+    auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
+    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
+    ctx->EmplaceBackOutput(out_tensor);
+  } else {
+    ir::Value out_ptr = op->result(0);
+    auto name = name_map.at(out_ptr);
+    ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+  }
 }
 
 void BuildPhiKernelContext(
@@ -367,17 +370,26 @@ void BuildPhiKernelContext(
     }
   }
 
-  ir::Value out_ptr = op->result(0);
-  auto name = name_map.at(out_ptr);
+  if (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
+      "pd.fetch") {
+    // process fetch op
+    std::cerr << "process fetch op";
+    auto fetch_var = scope->Var("fetch");
+    auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
+    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
+    ctx->EmplaceBackOutput(out_tensor);
+  } else {
+    ir::Value out_ptr = op->result(0);
+    auto name = name_map.at(out_ptr);
+    ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
+        &(scope->Var(name)->Get<phi::DenseTensor>())));
 
-  ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
-      &(scope->Var(name)->Get<phi::DenseTensor>())));
-
-  if (output_map != nullptr) {
-    // only deal with single input for now, [todo] need support multi input like
-    // concat
-    size_t tmp_id = std::atol(name.substr(4, 100).c_str());
-    (*output_map)["out"].push_back(tmp_id);
+    if (output_map != nullptr) {
+      // only deal with single input for now, [todo] need support multi input
+      // like concat
+      size_t tmp_id = std::atol(name.substr(4, 100).c_str());
+      (*output_map)["out"].push_back(tmp_id);
+    }
   }
 }
 
