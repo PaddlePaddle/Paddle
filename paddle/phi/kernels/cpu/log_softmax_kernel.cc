@@ -43,13 +43,18 @@ struct LogSoftmaxFunctor {
                   const DenseTensor* X,
                   DenseTensor* Y,
                   const int axis) {
-    const auto& in_dims = X->dims();
-    int axis_dim = in_dims[axis];
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
+    constexpr int kAxisDim = 1;
 
-    const int num_classes = in_dims[kClassDim];
-    const int batch_size = in_dims[kBatchDim];
+    const auto& in_dims = X->dims();
+    int axis_dim = in_dims[axis];
+    const int n = funcs::SizeToAxis(axis, in_dims);
+    const int d = funcs::SizeFromAxis(axis, in_dims);
+    phi::DDim dim_2d{n, d};
+
+    const int batch_size = dim_2d[kBatchDim];
+    const int num_classes = dim_2d[kClassDim];
     const int num_remain = num_classes / axis_dim;
 
     if (num_remain == 1 &&
@@ -73,11 +78,6 @@ struct LogSoftmaxFunctor {
       }
       return;
     }
-
-    constexpr int kAxisDim = 1;
-    const int n = funcs::SizeToAxis(axis, in_dims);
-    const int d = funcs::SizeFromAxis(axis, in_dims);
-    phi::DDim dim_2d{n, d};
 
     auto logits = EigenMatrixTemplate<T>::From(*X, dim_2d);
     auto log_softmax = EigenMatrixTemplate<T>::From(*Y, dim_2d);
