@@ -1855,6 +1855,7 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
             self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
 
 
+# `cross_entropy_loss_1d`, the function defined in this file, clips softmax value to -64, hence we only need to compare cpu and gpu result
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -1878,7 +1879,6 @@ class TestCrossEntropyNumericalStability(unittest.TestCase):
         )
         self.assertTrue(gpu_loss.place.is_gpu_place())
 
-        # cross_entropy_loss_1d clip softmax value to -64, hence we can only compare cpu and gpu result
         np.testing.assert_allclose(cpu_loss.numpy(), gpu_loss.numpy())
 
 

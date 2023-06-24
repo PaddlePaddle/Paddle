@@ -57,6 +57,7 @@ struct LogSoftmaxFunctor {
     const int num_classes = dim_2d[kClassDim];
     const int num_remain = num_classes / axis_dim;
 
+    // Note: To accelerate the performance of CPU scenario, support avx here
     if (num_remain == 1 &&
         phi::backends::cpu::MayIUse(phi::backends::cpu::avx)) {
       const T* in_data = X->data<T>();
