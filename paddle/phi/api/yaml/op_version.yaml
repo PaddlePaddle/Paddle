@@ -19,6 +19,15 @@
         - add_input : SkipUpdate
           comment : If the value is true, Adam will skip the update.
 
+- op : add
+  version :
+    - checkpoint : Register elementwise_add for adding the attribute of
+       Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_add.
+          default : 1.0
+
 - op : affine_grid
   version :
     - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].
