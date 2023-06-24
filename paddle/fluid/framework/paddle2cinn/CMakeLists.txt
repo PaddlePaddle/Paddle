@@ -63,7 +63,6 @@ if(WITH_TESTING)
     op_registry
     mul_op
     activation_op
-    elementwise_add_op
     generated_op
     generated_static_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
@@ -78,8 +77,8 @@ if(WITH_TESTING)
     build_cinn_pass
     cinn_compiler
     op_registry
-    elementwise_add_op
-    generated_op)
+    generated_op
+    generated_static_op)
   set_tests_properties(cinn_zero_tensor_trick_pass_test
                        PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
@@ -110,7 +109,7 @@ if(WITH_TESTING)
   #   cinn
   #   mul_op
   #   activation_op
-  #   elementwise_add_op
-  #   generated_op)
+  #   generated_op
+  #   generated_static_op)
   # set_tests_properties(cinn_compiler_test PROPERTIES LABELS "RUN_TYPE=CINN")
 endif()

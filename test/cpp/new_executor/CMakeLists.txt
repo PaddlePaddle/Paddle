@@ -17,7 +17,6 @@ set(OPS
     slice_op
     concat_op
     matmul_op
-    elementwise_add_op
     elementwise_mul_op
     softmax_with_cross_entropy_op
     reduce_mean_op

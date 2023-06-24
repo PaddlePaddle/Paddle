@@ -41,8 +41,8 @@ endif()
 cc_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
-  DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op
-       elementwise_add_op phi generated_static_op)
+  DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op phi
+       generated_static_op)
 cc_test(
   gather_test
   SRCS gather_test.cc
@@ -83,7 +83,7 @@ if(WITH_GPU)
   nv_test(
     feed_forward_test
     SRCS feed_forward_test.cu
-    DEPS fleet_executor elementwise_add_op matmul_op tensor phi ${CINN_DEPS})
+    DEPS fleet_executor matmul_op tensor generated_static_op phi ${CINN_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test
@@ -116,7 +116,7 @@ if(WITH_CINN)
     cinn_compiler
     recurrent_op_helper
     recurrent_op
-    elementwise_add_op
+    generated_static_op
     ${COMMON_OP_DEPS}
     python)
 else()
@@ -129,7 +129,7 @@ else()
     fleet_executor
     recurrent_op_helper
     recurrent_op
-    elementwise_add_op
+    generated_static_op
     ${COMMON_OP_DEPS})
 endif()
 

@@ -3,7 +3,6 @@ cc_test(
   SRCS test_mkldnn_op_inplace.cc
   DEPS executor
        op_registry
-       elementwise_add_op
        activation_op
        phi
        scope
@@ -14,7 +13,6 @@ cc_test(
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
     elementwise_mul_op
-    elementwise_add_op
     activation_op
     phi
     scope

@@ -195,39 +195,7 @@ class ElementwiseAddCompositeTripleGradOpMaker
 }  // namespace operators
 }  // namespace paddle
 
-// REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
-// REGISTER_OPERATOR(elementwise_add,
-//                   ::paddle::operators::ElementwiseOp,
-//                   ::paddle::operators::ElementwiseAddOpMaker,
-//                   ::paddle::operators::ElementwiseOpInferVarType,
-//                   elementwise_addGradMaker<::paddle::framework::OpDesc>,
-//                   elementwise_addGradMaker<::paddle::imperative::OpBase>,
-//                   ::paddle::operators::ElementwiseAddCompositeGradOpMaker,
-//                   ::paddle::operators::ElementwiseOpInplaceInferer);
-
 namespace ops = paddle::operators;
-
-// REGISTER_OPERATOR(
-//     elementwise_add_grad,
-//     ops::ElementwiseOpGrad,
-//     ops::ElementwiseGradOpInplaceInferer,
-//     ops::ElementwiseGradNoBufVarsInferer,
-//     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
-//     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>,
-//     ops::ElementwiseAddCompositeDoubleGradOpMaker);
-
-// REGISTER_OPERATOR(
-//     elementwise_add_grad_grad,
-//     ops::ElementwiseOpDoubleGradWithoutDXDY,
-//     ops::ElementwiseDoubleGradOpInplaceInferer,
-//     ops::ElementwiseDoubleGradNoBufVarsInferer,
-//     ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
-//     ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);
-
-// REGISTER_OPERATOR(elementwise_add_triple_grad,
-//                   ops::ElementwiseOpTripleGrad,
-//                   ops::ElementwiseTripleGradOpInplaceInferer,
-//                   ops::ElementwiseTripleGradNoBufVarsInferer);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
