@@ -333,11 +333,11 @@ class TestDygraphBasicApi_Prelu(TestDygraphBasicApi):
 # 2. test Apis that inherit from LearningRateDecay
 def dyfunc_CosineDecay():
     base_lr = 0.1
-    CosineDecay = fluid.dygraph.CosineDecay(
-        learning_rate=base_lr, step_each_epoch=10000, epochs=120
+    CosineDecay = paddle.optimizer.lr.CosineAnnealingDecay(
+        learning_rate=base_lr, T_max=120
     )
     lr = CosineDecay()
-    return lr
+    return paddle.to_tensor(lr)
 
 
 def dyfunc_ExponentialDecay():
