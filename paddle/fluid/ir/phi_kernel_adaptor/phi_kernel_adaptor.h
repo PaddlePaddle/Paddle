@@ -55,15 +55,14 @@ class PhiKernelAdaptor {
   void run(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    std::cerr << "run here" << std::endl;
+
     ir::BuildScope(block, scope_, &name_map);
-    std::cerr << "after buid scope" << std::endl;
+
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
     for (auto it = block->begin(); it != block->end(); ++it) {
       VLOG(6) << "begin to run op " << (*it)->name();
 
-      std::cerr << (*it)->name() << std::endl;
       auto attr_map = (*it)->attributes();
 
       paddle::dialect::OpYamlInfoInterface op_info_interface =
@@ -73,10 +72,8 @@ class PhiKernelAdaptor {
       paddle::dialect::InferShapeInterface interface =
           (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
       phi::InferMetaContext ctx;
-      std::cerr << "build infer meta" << std::endl;
 
       ir::BuildInferMetaContext((*it), name_map, scope_, op_info_res, &ctx);
-      std::cerr << "fin infer meta" << std::endl;
 
       interface.InferShape(&ctx);
 
@@ -93,20 +90,14 @@ class PhiKernelAdaptor {
       }
       auto found_it = phi_kernels.find(kernel_key);
       if (found_it == phi_kernels.end()) {
-        std::cerr << "kernel name " << runtime_info.kernel_func[0] << std::endl;
-        std::cerr << "kernel key " << kernel_key.backend() << "\t"
-                  << kernel_key.dtype() << "\t" << kernel_key.layout()
-                  << std::endl;
         PADDLE_THROW(paddle::platform::errors::NotFound(
             "can not found kerenl for [%s]", (*it)->name()));
       } else {
         phi::KernelContext kernel_ctx(dev_ctx);
 
-        std::cerr << "build kernel context" << std::endl;
         ir::BuildPhiKernelContext(
             (*it), name_map, scope_, op_info_res, &kernel_ctx);
         found_it->second(&kernel_ctx);
-        std::cerr << "after run " << std::endl;
 
         auto out_value = (*it)->result(0);
         out_name = name_map[out_value];

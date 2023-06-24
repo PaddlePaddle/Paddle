@@ -244,16 +244,13 @@ void BuildInferMetaContext(
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
     // process fetch op
-    std::cerr << "process fetch op";
     auto fetch_var = scope->Var("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
     auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
     ir::Value out_ptr = op->result(0);
-    std::cerr << "here 1" << std::endl;
     auto name = name_map.at(out_ptr);
-    std::cerr << "11 " << std::endl;
     ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
   }
 }
@@ -378,7 +375,6 @@ void BuildPhiKernelContext(
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
     // process fetch op
-    std::cerr << "process fetch op";
     auto fetch_var = scope->Var("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
     auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));

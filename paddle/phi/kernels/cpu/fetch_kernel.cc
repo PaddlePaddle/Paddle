@@ -23,8 +23,6 @@ template <typename T, typename Context>
 void FetchKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
-  // paddle::framework::TensorCopySync(x, paddle::platform::CPUPlace(), out);
-  std::cerr << "fetch here" << std::endl;
   phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
 }
 }  // namespace phi
