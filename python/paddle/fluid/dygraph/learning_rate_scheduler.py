@@ -28,7 +28,6 @@ __all__ = [
     'ExponentialDecay',
     'InverseTimeDecay',
     'PolynomialDecay',
-    'CosineDecay',
     'LinearLrWarmup',
     'ReduceLROnPlateau',
     'StepDecay',
@@ -543,69 +542,6 @@ class PolynomialDecay(LearningRateDecay):
         decayed_lr = (self.learning_rate - self.end_learning_rate) * (
             (1 - tmp_step_num / tmp_decay_steps) ** self.power
         ) + self.end_learning_rate
-        return decayed_lr
-
-
-class CosineDecay(LearningRateDecay):
-    r"""
-    :api_attr: imperative
-
-    Applies cosine decay to the learning rate.
-
-    The algorithm can be described as following.
-
-    .. math::
-
-        decayed\_learning\_rate = learning\_rate * 0.5 * (math.cos(global\_step * \\frac{math.pi}{step\_each\_epoch} ) + 1)
-
-    Parameters:
-        learning_rate(Variable|float): The initial learning rate. If the type
-            is Variable, it's a tensor with shape [1], the data type can be
-            float32 or float64. It also can be set to python int number.
-        step_each_epoch(int): The number of steps in an epoch.
-        epochs(int): The number of epochs.
-        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
-        step(int, optional): The step size used to calculate the new global_step in the description above.
-            The default value is 1.
-        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            'float32', 'float64'. The default value is 'float32'.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-            base_lr = 0.1
-            with fluid.dygraph.guard():
-                optimizer  = fluid.optimizer.SGD(
-                    learning_rate = fluid.dygraph.CosineDecay(
-                            base_lr, 10000, 120) )
-    """
-
-    def __init__(
-        self,
-        learning_rate,
-        step_each_epoch,
-        epochs,
-        begin=0,
-        step=1,
-        dtype='float32',
-    ):
-        super().__init__(begin, step, dtype)
-        self.learning_rate = learning_rate
-        self.step_each_epoch = step_each_epoch
-        self.epochs = epochs
-
-    def step(self):
-        cur_epoch = paddle.floor(
-            self.create_lr_var(self.step_num / self.step_each_epoch)
-        )
-        decayed_lr = (
-            self.learning_rate
-            * 0.5
-            * (paddle.cos(cur_epoch * math.pi / self.epochs) + 1)
-        )
         return decayed_lr
 
 

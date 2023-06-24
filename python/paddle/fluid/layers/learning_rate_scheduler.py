@@ -495,8 +495,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.CosineDecay(
-                learning_rate, step_each_epoch, epochs
+            decay = paddle.optimizer.lr.CosineAnnealingDecay(
+                learning_rate, epochs
             )
             return decay
         else:
