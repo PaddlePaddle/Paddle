@@ -41,6 +41,7 @@ class TestCallbacks(unittest.TestCase):
         steps = 5
         freq = 2
         eval_steps = 2
+        checkpoint_meta = {}
 
         inputs_spec = [InputSpec([None, 1, 28, 28], 'float32', 'image')]
         strategy = auto.Strategy()
@@ -54,6 +55,7 @@ class TestCallbacks(unittest.TestCase):
             batch_size=128,
             epochs=epochs,
             steps=steps,
+            latest_checkpoint_meta=checkpoint_meta,
             log_freq=freq,
             verbose=self.verbose,
             metrics=['loss', 'acc'],

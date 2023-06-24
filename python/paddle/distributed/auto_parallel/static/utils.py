@@ -10,11 +10,13 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License
+# limitations under the License.
 
 import copy
+import functools
 import logging
 import os
+import shutil
 import threading
 import warnings
 from functools import reduce
@@ -32,6 +34,8 @@ from .dist_attribute import OperatorDistAttr, TensorDistAttr
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+CheckpointMetaName = "latest_checkpoint.pdmeta"
 
 __no_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -2367,3 +2371,105 @@ def _dygraph_guard_(func):
 
 
 dygraph_guard = wrap_decorator(_dygraph_guard_)
+
+
+def is_complete_checkpoint(file_list, rank_size, file_prefix="default"):
+    for rank in range(rank_size):
+        if f"{file_prefix}_serial.pdmodel" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdmodel" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdparams" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdattr" not in file_list:
+            return False
+        if f"{file_prefix}_dist{rank}.pdopt" not in file_list:
+            return False
+    return True
+
+
+def _get_checkpoint_directory(file_dir):
+    checkpoint_dir_list = os.listdir(file_dir)
+    checkpoint_dir_list = list(
+        filter(lambda x: x != CheckpointMetaName, checkpoint_dir_list)
+    )
+    if len(checkpoint_dir_list) == 0:
+        return None
+    return checkpoint_dir_list
+
+
+def _get_checkpoint_prefix(file_dir):
+    file_list = os.listdir(file_dir)
+    file_prefix_map = {}
+    for file_name in file_list:
+        if file_name in ["rank_mapping.csv"]:
+            continue
+        file_name_split = file_name.split("_")
+        file_name_prefix = "_".join(file_name_split[:-1])
+        if file_name_prefix not in file_prefix_map:
+            file_prefix_map[file_name_prefix] = []
+        file_prefix_map[file_name_prefix].append(file_name)
+    return file_prefix_map
+
+
+def get_latest_checkpoint_prefix(file_dir, rank_size):
+    checkpoint_dir_list = _get_checkpoint_directory(file_dir)
+    if checkpoint_dir_list is None:
+        return None
+    checkpoint_dir_list.sort(reverse=True)
+    for checkpoint_dir in checkpoint_dir_list:
+        checkpoint_dir_path = os.path.join(file_dir, checkpoint_dir)
+        checkpoint_prefix_map = _get_checkpoint_prefix(checkpoint_dir_path)
+        for prefix, files in checkpoint_prefix_map.items():
+            if is_complete_checkpoint(files, rank_size, "default"):
+                return os.path.join(checkpoint_dir_path, prefix)
+    return None
+
+
+def update_checkpoint_filelist(file_dir, latest_path, keep_checkpoint_max_num):
+    def sort_by_epoch_step(x, y):
+        def get_epoch_step(e):
+            e = e.split("_")
+            epoch = int(e[0].split("epoch")[1])
+            step = int(e[1].split("step")[1])
+            return epoch, step
+
+        x_epoch, x_step = get_epoch_step(x)
+        y_epoch, y_step = get_epoch_step(y)
+        if x_epoch < y_epoch:
+            return 1
+        elif x_epoch > y_epoch:
+            return -1
+        else:
+            if x_step < y_step:
+                return 1
+            elif x_step > y_step:
+                return -1
+            return 0
+        return 0
+
+    checkpoint_dir_list = _get_checkpoint_directory(file_dir)
+    checkpoint_dir_list.sort(key=functools.cmp_to_key(sort_by_epoch_step))
+    reserved_dir_list = []
+    keep = False
+    for checkpoint_dir in checkpoint_dir_list:
+        if not keep and checkpoint_dir not in latest_path:
+            rmdir = os.path.join(file_dir, checkpoint_dir)
+            shutil.rmtree(rmdir)
+        else:
+            keep = True
+            reserved_dir_list.append(checkpoint_dir)
+    checkpoint_dir_list = reserved_dir_list
+    if (
+        checkpoint_dir_list is None
+        or len(checkpoint_dir_list) <= keep_checkpoint_max_num
+    ):
+        return None
+    for checkpoint_dir in checkpoint_dir_list[keep_checkpoint_max_num:]:
+        rmdir = os.path.join(file_dir, checkpoint_dir)
+        shutil.rmtree(rmdir)
+    return True
+
+
+def get_checkpoint_meta_path(checkpoint_meta_dir):
+    return os.path.join(checkpoint_meta_dir, CheckpointMetaName)

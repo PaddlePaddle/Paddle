@@ -17,6 +17,7 @@ import json
 import logging
 import numbers
 import os
+import pickle
 import random
 
 import numpy as np
@@ -25,6 +26,7 @@ import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.distributed import fleet
+from paddle.distributed.auto_parallel import dist_checkpoint
 from paddle.fluid.executor import _to_name_str
 from paddle.framework import IrGraph
 from paddle.framework import _current_expected_place as _get_device
@@ -239,6 +241,8 @@ class Engine:
             self._acc_steps = self._strategy.gradient_merge.k_steps
         elif self._strategy.pipeline.enable:
             self._acc_steps = self._strategy.pipeline.accumulate_steps
+        self._checkpoint_meta = {}
+        self._rng_state = None
 
         self.history = None
 
@@ -804,6 +808,47 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
+    def _init_checkpoint(self, load_dir):
+        checkpoint_meta_path = dist_checkpoint.get_checkpoint_meta_path(
+            load_dir
+        )
+        # TODO currently user guarantees alignment of checkpoint versions on multiple machines,
+        # support automatic alignment in the future
+        if os.path.exists(checkpoint_meta_path):
+            with open(checkpoint_meta_path, "rb") as robj:
+                checkpoint_meta = pickle.load(robj)
+                self._checkpoint_meta.update(checkpoint_meta)
+
+        local_rank_size = os.getenv("PADDLE_LOCAL_SIZE")
+        if local_rank_size is not None:
+            local_rank_size = int(local_rank_size)
+
+        rank_size = self._checkpoint_meta.get("rank_size", local_rank_size)
+        checkpoint_path = dist_checkpoint.get_latest_checkpoint_prefix(
+            load_dir, rank_size
+        )
+
+        start_epoch = 0
+        start_step = 0
+        if checkpoint_path is not None:
+            self.load(checkpoint_path)
+
+            def get_step_epoch(file_path):
+                file_dir = file_path.strip().split("/")
+                file_dir = file_dir[-2]
+                file_dir = file_dir.split("_")
+                epoch = int(file_dir[0].split("epoch")[1])
+                step = int(file_dir[1].split("step")[1])
+                return epoch, step
+
+            start_epoch, start_step = get_step_epoch(checkpoint_path)
+            self._checkpoint_meta["epochs"] = start_epoch
+            self._checkpoint_meta[
+                "steps"
+            ] = start_step + self._checkpoint_meta.get(
+                "save_checkpoint_every_n_step", 0
+            )
+
     def _initialize(self, mode):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
@@ -811,10 +856,41 @@ class Engine:
                 paddle.distributed.ParallelEnv().dev_id
             )
 
-        if self._strategy.seed:
+        def load_rng_state():
+            rng_state = self._checkpoint_meta.get("rng_state", None)
+            if rng_state is not None:
+                if "paddle_rng_state" not in rng_state:
+                    return False
+                paddle_rng_state = rng_state.get("paddle_rng_state", None)
+                paddle.set_rng_state(paddle_rng_state)
+
+                if "cuda_rng_state" not in rng_state:
+                    return False
+                cuda_rng_state = rng_state.get("cuda_rng_state")
+                paddle.set_cuda_rng_state(cuda_rng_state)
+
+                if "np_rng_state" not in rng_state:
+                    return False
+                np_rng_state = rng_state.get("np_rng_state")
+                np.random.set_state(np_rng_state)
+
+                if "random_rng_state" not in rng_state:
+                    return False
+                random_rng_state = rng_state.get("random_rng_state")
+                random.setstate(random_rng_state)
+                return True
+            return False
+
+        if self._strategy.seed and not load_rng_state():
             paddle.seed(self._strategy.seed + self._dp_ranks[0])
             np.random.seed(self._strategy.seed + self._dp_ranks[0])
             random.seed(self._strategy.seed + self._dp_ranks[0])
+            self._checkpoint_meta["rng_state"] = {
+                "paddle_rng_state": paddle.get_rng_state(),
+                "cuda_rng_state": paddle.get_cuda_rng_state(),
+                "np_rng_state": np.random.get_state(),
+                "random_rng_state": random.getstate(),
+            }
 
         dist_context = self._dist_contexts[mode]
         if self._dygraph_mode:
@@ -860,6 +936,9 @@ class Engine:
         log_freq=10,
         save_dir=None,
         save_freq=1,
+        save_checkpoint_every_n_step=None,
+        keep_checkpoint_max_num=1,
+        load_dir=None,
         valid_data=None,
         valid_sample_split=None,
         valid_freq=1,
@@ -934,6 +1013,19 @@ class Engine:
                            epochs=2,
                            batch_size=64)
         """
+        if load_dir is not None:
+            self._init_checkpoint(load_dir)
+            self._checkpoint_meta.update(
+                {
+                    "keep_checkpoint_max_num": keep_checkpoint_max_num,
+                    "save_checkpoint_every_n_step": save_checkpoint_every_n_step,
+                    "save_checkpoint_every_n_epoch": save_freq,
+                    "save_dir": save_dir,
+                }
+            )
+        start_epoch = self._checkpoint_meta.get("epochs", 0)
+        start_step = self._checkpoint_meta.get("steps", 0)
+
         self._mode = 'train'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             train_data, train_sample_split, batch_size
@@ -964,6 +1056,7 @@ class Engine:
             steps=train_dataloader._steps,
             log_freq=log_freq,
             save_freq=save_freq,
+            latest_checkpoint_meta=self._checkpoint_meta,
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
@@ -974,8 +1067,15 @@ class Engine:
         for epoch in range(epochs):
             logs = {}
             cbks.on_epoch_begin(epoch)
+            if epoch < start_epoch:
+                cbks.on_epoch_end(epoch, logs)
+                continue
+
             for step, _ in enumerate(train_dataloader):
                 cbks.on_batch_begin('train', step, logs)
+                if epoch == start_epoch and step < start_step:
+                    cbks.on_batch_end('train', step, logs)
+                    continue
                 try:
                     outs = self._executor.run(
                         self.main_program,
