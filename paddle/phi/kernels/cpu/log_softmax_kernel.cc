@@ -64,14 +64,24 @@ struct LogSoftmaxFunctor {
       for (int bs = 0; bs < batch_size; ++bs) {
         T max_val = *std::max_element(in_data, in_data + num_classes);
         max_val *= static_cast<T>(-1);
+        // output[i] = input[i] - max_val
         funcs::vec_add_bias<T, phi::backends::cpu::avx>(
             num_classes, max_val, in_data, out_data);
+        // output[i] = exp(input[i] - max_val)
         funcs::vec_exp<T>(num_classes, out_data, out_data);
 
         T sum = 0;
+        // sum = \sum(exp(input[i] - max_val))
         funcs::vec_sum<T, phi::backends::cpu::avx>(num_classes, out_data, &sum);
+        // output[i] = log(exp(input[i] - max_val)) = input[i] - max_val
+        // input data X and output data Y may share buffer, hence we have to
+        // recompute out_data here
+        for (int j = 0; j < num_classes; j++) {
+          out_data[j] = std::log(out_data[j]);
+        }
+        // output[i] = input[i] - max_val - log(sum)
         funcs::vec_add_bias<T, phi::backends::cpu::avx>(
-            num_classes, max_val - std::log(sum), in_data, out_data);
+            num_classes, -std::log(sum), out_data, out_data);
 
         in_data += num_classes;
         out_data += num_classes;
