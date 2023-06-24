@@ -315,7 +315,7 @@ class TestAdagradOptimizer(unittest.TestCase):
 
 
 class TestAdamOptimizer(unittest.TestCase):
-    class MockAdam(optimizer.AdamOptimizer):
+    class MockAdam(paddle.optimizer.Adam):
         def get_accumulators(self):
             return self._accumulators
 
@@ -382,7 +382,7 @@ class TestAdamOptimizer(unittest.TestCase):
         init_ops = init_program.global_block().ops
         self.assertEqual(len(init_ops), 5)
         self.assertEqual(init_ops[-1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[-1].attr('value'), learning_rate)
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
 
 
 class TestAdamaxOptimizer(unittest.TestCase):

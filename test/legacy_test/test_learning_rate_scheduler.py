@@ -297,8 +297,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 learning_rate, milestones, decay_rate
             )
 
-            adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=scheduler, parameter_list=linear.parameters()
+            adam = paddle.optimizer.Adam(
+                learning_rate=scheduler, parameters=linear.parameters()
             )
             for epoch in range(10):
                 right_result = multi_step_decay(

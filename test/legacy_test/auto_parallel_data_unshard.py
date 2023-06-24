@@ -66,7 +66,7 @@ class TestDataUnshard(unittest.TestCase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,
@@ -147,7 +147,7 @@ class TestDataUnshard(unittest.TestCase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,

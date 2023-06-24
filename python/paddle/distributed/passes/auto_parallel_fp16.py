@@ -926,7 +926,7 @@ class FP16Pass(AMPPass):
 
             if self.target_dtype == "fp16":
                 if isinstance(
-                    base_opt, (paddle.static.Adam, paddle.optimizer.AdamW)
+                    base_opt, (paddle.opimizer.Adam, paddle.optimizer.AdamW)
                 ):
                     with main_program._optimized_guard([]):
                         # found_inf = paddle.tensor.creation._memcpy(

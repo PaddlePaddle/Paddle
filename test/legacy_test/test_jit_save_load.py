@@ -671,8 +671,8 @@ class TestJitSaveLoadConfig(unittest.TestCase):
 
     def test_output_spec(self):
         train_layer = LinearNetReturnLoss(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.1, parameters=train_layer.parameters()
         )
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32')
@@ -779,8 +779,8 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
     def train_and_save(self):
         train_layer = LinearNetReturnHidden(8, 8)
-        adam = fluid.optimizer.AdamOptimizer(
-            learning_rate=0.1, parameter_list=train_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.1, parameters=train_layer.parameters()
         )
         x = fluid.dygraph.to_variable(
             np.random.random((4, 8)).astype('float32')

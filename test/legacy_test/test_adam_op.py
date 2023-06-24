@@ -988,9 +988,7 @@ class TestAdamOptimizer(unittest.TestCase):
             )
             avg_cost = paddle.mean(cost)
 
-            adam = fluid.optimizer.AdamOptimizer(
-                0.01, flatten_param_grads=True, align_size=256
-            )
+            adam = paddle.optimizer.Adam(0.01)
             adam.minimize(avg_cost)
             paddle.disable_static()
 

@@ -14,7 +14,7 @@
 import logging
 
 import paddle
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.optimizer import Adam
 
 from .meta_optimizer_base import MetaOptimizerBase
 
@@ -38,7 +38,7 @@ class LambOptimizer(MetaOptimizerBase):
         )
 
         opt = self.inner_opt
-        if not isinstance(opt, AdamOptimizer):
+        if not isinstance(opt, Adam):
             return
 
         configs = self.user_defined_strategy.lamb_configs
@@ -72,7 +72,7 @@ class LambOptimizer(MetaOptimizerBase):
             return False
 
         if self.user_defined_strategy.lamb:
-            if not isinstance(self.inner_opt, AdamOptimizer):
+            if not isinstance(self.inner_opt, Adam):
                 logging.warn(
                     "lamb need the inner optimizer to be AdamOptimizer optimizer but got {}.".format(
                         self.inner_opt.type

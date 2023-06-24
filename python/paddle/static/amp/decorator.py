@@ -483,7 +483,7 @@ class OptimizerWithMixedPrecision:
             real_optimizer = real_optimizer.inner_opt
         if isinstance(
             real_optimizer,
-            (paddle.fluid.optimizer.Adam, paddle.optimizer.AdamW),
+            (paddle.optimizer.Adam, paddle.optimizer.AdamW),
         ):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we
             # copy it in advance to avoid multiple time copies.

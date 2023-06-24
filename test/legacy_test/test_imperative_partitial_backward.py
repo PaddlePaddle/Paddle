@@ -39,8 +39,8 @@ class TestImperativePartitialBackward(unittest.TestCase):
             for param in linear2.parameters():
                 self.assertIsNone(param._grad_ivar())
 
-            optimizer = fluid.optimizer.AdamOptimizer(
-                parameter_list=(linear1.parameters() + linear2.parameters())
+            optimizer = paddle.optimizer.Adam(
+                parameters=(linear1.parameters() + linear2.parameters())
             )
             _, params_grads = optimizer.minimize(loss)
 
