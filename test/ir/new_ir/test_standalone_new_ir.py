@@ -37,13 +37,7 @@ class TestNewIr(unittest.TestCase):
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
-        self.assertEqual(
-            np.array_equal(
-                out[0],
-                gold_res,
-            ),
-            True,
-        )
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
 class TestCombineOp(unittest.TestCase):
@@ -61,13 +55,7 @@ class TestCombineOp(unittest.TestCase):
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
-        self.assertEqual(
-            np.array_equal(
-                out[0],
-                gold_res,
-            ),
-            True,
-        )
+        np.testing.assert_array_equal(out[0], gold_res)
 
 
 if __name__ == "__main__":
