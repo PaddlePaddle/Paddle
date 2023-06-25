@@ -3798,14 +3798,14 @@ void SplitWithNumInferMeta(const MetaTensor& x,
       }
     }
   } else {
-    auto input_axis_dim = x.dims().at(axis_value);
+    int64_t input_axis_dim = x.dims().at(axis_value);
     // step1: get formated sections
     std::vector<int64_t> sections_vec;
-    PADDLE_ENFORCE_LE(0,
-                      num,
-                      phi::errors::InvalidArgument(
-                          "Attr(num_or_sections) should be larger than 0."));
-
+    PADDLE_ENFORCE_GT(
+        num,
+        0,
+        phi::errors::InvalidArgument(
+            "Attr(num_or_sections) [%d] should be larger than 0.", num));
     if (num > input_axis_dim) {
       // if num > input_axis_dim, take num = input_axis_dim, the dim after split
       // is 1.
