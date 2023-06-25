@@ -283,6 +283,10 @@ def save_inference_model(
 
     origin_program = main_program.clone()
 
+    print('[before export]', flush=True)
+    print(main_program)
+    print('[before export][print end]', flush=True)
+
     if export_for_deployment:
         main_program = main_program.clone()
         global_block = main_program.global_block()
@@ -296,10 +300,15 @@ def save_inference_model(
             global_block._remove_op(index)
 
         main_program.desc.flush()
-
+        print('[before _prune_with_input]', flush=True)
+        print(main_program)
+        print('[before _prune_with_input][print end]', flush=True)
         main_program = main_program._prune_with_input(
             feeded_var_names=feeded_var_names, targets=target_vars
         )
+        print('[before _inference_optimize]', flush=True)
+        print(main_program)
+        print('[before _inference_optimize][print end]', flush=True)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 

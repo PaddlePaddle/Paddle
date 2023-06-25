@@ -67,7 +67,8 @@ using InputHandleFn = std::function<ir::OpResult(const OpDesc&,
                                                  ir::IrContext*,
                                                  TranslationContext*,
                                                  ir::Program*)>;
-static const char kTargetDialectPrefix[] = "pd.";
+constexpr char kTargetDialectPrefix[] = "pd.";
+constexpr char kEmptyVarName[] = "@EMPTY@";
 
 static const std::unordered_set<std::string> special_inplace_ops = {
     "batch_norm",
@@ -459,7 +460,14 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       continue;
     }
 
-    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
+    const auto& origin_legacy_output_vars = op_desc.Output(legacy_output_name);
+    std::vector<std::string> legacy_output_vars;
+    std::copy_if(
+        origin_legacy_output_vars.begin(),
+        origin_legacy_output_vars.end(),
+        std::back_inserter(legacy_output_vars),
+        [](const auto& var_name) { return var_name != kEmptyVarName; });
+
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
 
     // Specially process TensorArray, this because we cannot distinguish it with
@@ -481,7 +489,8 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
     if (!is_vector) {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " :"
-               << info.type_name << " " << legacy_output_name;
+               << info.type_name << " " << legacy_output_name << " "
+               << legacy_output_vars.size();
       if (legacy_output_vars.size() == 0) {
         op_output_types.push_back(ir::Type(nullptr));
         continue;
@@ -567,6 +576,9 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
     auto& args = n.second;
     size_t idx_in_vector = 0;
     for (const auto& arg_name : args) {
+      if (arg_name == kEmptyVarName) {
+        continue;
+      }
       auto idx_iter = arg_to_idx.find(arg_name);
       if (idx_iter == arg_to_idx.end()) {
         VLOG(4) << "[output recording]"
