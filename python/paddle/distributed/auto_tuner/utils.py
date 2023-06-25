@@ -331,7 +331,13 @@ def read_log(
         return (0.0, True)
     with open(target_file, "r") as f:
         # read file
-        re_metric_pattern = r'speed: (\d+(\.\d*)?) *' + target_metric
+        re_metric_pattern = (
+            r'(\d+(\.\d*)?) *'
+            + target_metric
+            + '|'
+            + target_metric
+            + r' *: *(\d+(\.\d*)?)'
+        )
 
         metric_list = []
         lines = f.readlines()
