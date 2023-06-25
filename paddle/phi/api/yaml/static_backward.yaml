@@ -23,6 +23,7 @@
     param : [x, y]
   kernel :
     func : add_grad
+    backend : x
   no_need_buffer : x, y
   composite : add_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : add_double_grad
