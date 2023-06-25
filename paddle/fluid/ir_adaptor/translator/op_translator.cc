@@ -54,14 +54,20 @@ using BlockDesc = paddle::framework::BlockDesc;
 using VarDesc = paddle::framework::VarDesc;
 using OpOutputTypeList = std::vector<ir::Type>;
 using OpOutputMapping = std::unordered_map<std::string, ResultIdx>;
-using OpInputInfo = paddle::dialect::OpInputInfo;
-using OpInputInfoList = std::vector<paddle::dialect::OpInputInfo>;
-using OpAttributeInfo = paddle::dialect::OpAttributeInfo;
-using OpAttributeInfoList = std::vector<paddle::dialect::OpAttributeInfo>;
-using OpOutputInfo = paddle::dialect::OpOutputInfo;
-using OpOutputInfoList = std::vector<paddle::dialect::OpOutputInfo>;
-
-static const char kTargetDialectPrefix[] = "pd.";
+using OpInputInfo = dialect::OpInputInfo;
+using OpInputInfoList = std::vector<dialect::OpInputInfo>;
+using OpAttributeInfo = dialect::OpAttributeInfo;
+using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
+using OpOutputInfo = dialect::OpOutputInfo;
+using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
+using InputHandleFn = std::function<ir::OpResult(const OpDesc&,
+                                                 const std::string&,
+                                                 const OpInputInfo&,
+                                                 ir::IrContext*,
+                                                 TranslationContext*,
+                                                 ir::Program*)>;
+constexpr char kTargetDialectPrefix[] = "pd.";
+constexpr char kEmptyVarName[] = "@EMPTY@";
 
 static const std::unordered_set<std::string> special_inplace_ops = {
     "batch_norm",
@@ -174,7 +180,7 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
     dtype = phi::DataType::BOOL;
   }
   ir::Builder builder(ctx, program->block());
-  paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+  dialect::FullOp full_op = builder.Build<dialect::FullOp>(
       std::vector<int64_t>{1}, data, dtype, phi::CPUPlace());
 
   return full_op.operation();
@@ -182,16 +188,15 @@ inline ir::Operation* InsertFullOperationForAttributeInput(ir::IrContext* ctx,
 
 inline ir::Operation* InsertFullArrayOperationForAttributeInput(
     ir::IrContext* ctx, ir::Program* program, ir::Attribute attr) {
-  IR_ENFORCE(attr.isa<paddle::dialect::IntArrayAttribute>(),
+  IR_ENFORCE(attr.isa<dialect::IntArrayAttribute>(),
              "Encounter non IntArray type when trying to insert IntArray "
              "mutable attribute");
 
-  phi::IntArray int_array =
-      attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data();
+  phi::IntArray int_array = attr.dyn_cast<dialect::IntArrayAttribute>().data();
 
   ir::Builder builder(ctx, program->block());
-  paddle::dialect::FullIntArrayOp full_int_array_op =
-      builder.Build<paddle::dialect::FullIntArrayOp>(
+  dialect::FullIntArrayOp full_int_array_op =
+      builder.Build<dialect::FullIntArrayOp>(
           int_array.GetData(), phi::DataType::INT64, phi::CPUPlace());
   return full_int_array_op.operation();
 }
@@ -233,8 +238,7 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
 }  // namespace
 
 /// @brief This class is used to translate a OpDesc, it's a functor class and
-/// should have no data member,
-///        we expected it's stateless.
+/// should have no non-static data member, since we expected it's stateless.
 struct OpTranscriber {
  public:
   virtual ir::Operation* operator()(ir::IrContext* ctx,
@@ -272,6 +276,11 @@ struct OpTranscriber {
                                      const OpDesc& op_desc,
                                      ir::Operation* operation,
                                      const OpOutputMapping& arg_to_idx);
+
+ public:
+  virtual InputHandleFn GetSpecialInputHandlers(std::string input_name) {
+    return nullptr;
+  }
 };
 
 ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
@@ -300,6 +309,8 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     const OpDesc& op_desc,
     const std::string& normalized_op_name,
     const OpInputInfoList& input_infos) {
+  VLOG(10) << "[op:" << op_desc.Type() << "][input] entrance";
+
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
@@ -320,12 +331,21 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     }
   }
 
+  VLOG(10) << "[op:" << op_desc.Type() << "][input] start";
+
   std::vector<ir::OpResult> op_inputs;
   auto& op_normalizer = OpNameNormalizer::instance();
   const auto* mutable_attributes =
       op_normalizer.GetMutableAttributes(op_desc.Type());
 
   for (const auto& info : input_infos) {
+    if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
+      ir::OpResult ret = special_handler(
+          op_desc, normalized_op_name, info, ctx, param_map, program);
+      op_inputs.push_back(ret);
+      continue;
+    }
+
     std::string legacy_input_name =
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
@@ -376,6 +396,17 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
 
+    // Specially process TensorArray, this because we cannot distinguish it with
+    // Vector<DenseTensor> by other conditions but we cannot support it like
+    // Vector<DenseTensor>
+    if (legacy_input_vars.size() == 1) {
+      VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+      if (var->GetType() ==
+          paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        is_vector = false;
+      }
+    }
+
     // if src type is Tensor
     if (!is_vector) {
       auto defining_info = (*param_map)[legacy_input_vars[0]];
@@ -423,14 +454,37 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       continue;
     }
 
-    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
+    const auto& origin_legacy_output_vars = op_desc.Output(legacy_output_name);
+    std::vector<std::string> legacy_output_vars;
+    std::copy_if(
+        origin_legacy_output_vars.begin(),
+        origin_legacy_output_vars.end(),
+        std::back_inserter(legacy_output_vars),
+        [](const auto& var_name) { return var_name != kEmptyVarName; });
+
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
+
+    // Specially process TensorArray, this because we cannot distinguish it with
+    // Vector<DenseTensor> by other conditions but we cannot support it like
+    // Vector<DenseTensor>
+    if (legacy_output_vars.size() == 1) {
+      VarDesc* var = block->FindVarRecursive(legacy_output_vars[0]);
+      if (var->GetType() ==
+          paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        ir::Type translated_var_type =
+            type_translator[var->GetType()](ctx, *var);
+        op_output_types.push_back(translated_var_type);
+        arg_to_idx[var->Name()] = cur_output_idx;
+        continue;
+      }
+    }
 
     // if src type is Tensor
     if (!is_vector) {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "]" << info.name << " :"
-               << info.type_name << " " << legacy_output_name;
+               << info.type_name << " " << legacy_output_name << " "
+               << legacy_output_vars.size();
       if (legacy_output_vars.size() == 0) {
         op_output_types.push_back(ir::Type(nullptr));
         continue;
@@ -516,10 +570,13 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
     auto& args = n.second;
     size_t idx_in_vector = 0;
     for (const auto& arg_name : args) {
+      if (arg_name == kEmptyVarName) {
+        continue;
+      }
       auto idx_iter = arg_to_idx.find(arg_name);
       if (idx_iter == arg_to_idx.end()) {
-        VLOG(10) << "[output recording]"
-                 << "[" << op_desc.Type() << "][skip]" << arg_name;
+        VLOG(4) << "[output recording]"
+                << "[" << op_desc.Type() << "][skip]" << arg_name;
         continue;
       }
       auto idx = idx_iter->second;
@@ -528,6 +585,17 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
 
       ir::OpResult value = operation->result(idx);
       bool generated_by_vector = value.type().isa<ir::VectorType>();
+
+      // Specially process TensorArray, this because we cannot distinguish it
+      // with Vector<DenseTensor> by other conditions but we cannot support it
+      // like Vector<DenseTensor>
+      if (args.size() == 1) {
+        VarDesc* var = op_desc.Block()->FindVarRecursive(args[0]);
+        if (var->GetType() ==
+            paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+          generated_by_vector = false;
+        }
+      }
       (*param_map)[arg_name] = VariableDefiningInfo(
           value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
       idx_in_vector++;
@@ -541,7 +609,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
                                          const OpDesc& op_desc) {
   auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
   auto* op_info_concept =
-      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+      op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
 
   OpInputInfoList input_infos;
   OpAttributeInfoList attr_infos;
@@ -609,8 +677,32 @@ struct EmbeddingOpTranscriber : public OpTranscriber {
   }
 };
 
-// the `assign_value` in static_ops.yaml is different from the one in
-// `legacy_ops.yaml` for this op we simulate the logic in
+struct IncrementOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      std::string normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::AttributeMap attribute_map = {};
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr("step")) {
+      legacy_attr = op_desc.GetAttr("step");
+      VLOG(10) << "attribute in " << op_desc.Type() << " step: "
+               << " " << legacy_attr.index();
+      ir::Attribute new_attr = attribute_translator(legacy_attr);
+      attribute_map["value"] = new_attr;
+    } else {
+      attribute_map["value"] = ir::FloatAttribute::get(ctx, 1.0f);
+    }
+
+    return attribute_map;
+  }
+};
+
+// The `assign_value` in static_ops.yaml is different from the one in
+// `legacy_ops.yaml`. For this op we simulate the logic in
 // python/paddle/tensor/creation.py::assign(x, output)
 struct AssignValueOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
@@ -631,7 +723,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     VLOG(10) << "[op assign_value] start transcribing";
     auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
     auto* op_info_concept =
-        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+        op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
     OpInputInfoList input_infos;
     OpAttributeInfoList attr_infos;
     OpOutputInfoList output_infos;
@@ -665,7 +757,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     attribute_map["dtype"] = attr_dtype;
 
     ir::Attribute attr_place =
-        paddle::dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
+        dialect::PlaceAttribute::get(ctx, phi::CPUPlace());
     attribute_map["place"] = attr_place;
 
     if (op_desc.HasAttr("bool_values")) {
@@ -691,10 +783,10 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     std::vector<int64_t> target_shape(src_shape.begin(), src_shape.end());
 
     ir::Builder builder(ctx, program->block());
-    paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
+    dialect::FullOp full_op = builder.Build<dialect::FullOp>(
         target_shape,
         0.0f,
-        attr_dtype.dyn_cast<paddle::dialect::DataTypeAttribute>().data(),
+        attr_dtype.dyn_cast<dialect::DataTypeAttribute>().data(),
         phi::CPUPlace());
 
     std::vector<ir::OpResult> op_inputs = {full_op->result(0)};
@@ -715,6 +807,61 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 
     return operation;
   }
+};
+
+// This input `dropout_state_in` does not exist in static version definition
+// So we generate an input by `full` with same type of output `DropoutState` of
+// OpDesc And we still should be aware that `DropoutState` is an optional output
+// in static graph.
+ir::OpResult TranslateDropOutStateIn(const OpDesc& op_desc,
+                                     const std::string& normalized_op_name,
+                                     const OpInputInfo& input_info,
+                                     ir::IrContext* ctx,
+                                     TranslationContext* param_map,
+                                     ir::Program* program) {
+  const std::string legacy_output_name = "DropoutState";
+  std::vector<std::string> legacy_output_vars;
+  if (op_desc.HasOutput(legacy_output_name)) {
+    legacy_output_vars = op_desc.Output(legacy_output_name);
+  }
+
+  if (legacy_output_vars.size() == 0) {
+    VLOG(3) << "[input translating] not find output variable: DropoutState";
+    return ir::OpResult(nullptr);
+  }
+
+  // `DropoutState` is a tensor
+  VarDesc* dropout_state =
+      op_desc.Block()->FindVarRecursive(legacy_output_vars[0]);
+  if (dropout_state == nullptr) {
+    IR_THROW("Unexpected: Rnn Op should have a non-empty DropoutState");
+  }
+  auto& type_translator = TypeTranslator::instance();
+  ir::Type translated_var_type =
+      type_translator[dropout_state->GetType()](ctx, *dropout_state);
+  IR_ENFORCE(
+      translated_var_type.isa<dialect::DenseTensorType>(),
+      "Unexpected: Rnn Op's output DropoutState should be a DenseTensor");
+  auto tensor_type = translated_var_type.dyn_cast<dialect::DenseTensorType>();
+
+  ir::Builder builder(ctx, program->block());
+  dialect::FullOp full_op = builder.Build<dialect::FullOp>(
+      phi::vectorize(tensor_type.dims()),
+      0.0f,
+      dialect::TransToPhiDataType(tensor_type.dtype()),
+      phi::CPUPlace());
+
+  return full_op->result(0);
+}
+
+// `rnn` has an aditional input in dynamic graph
+struct RnnOpTranscriber : public OpTranscriber {
+  InputHandleFn GetSpecialInputHandlers(std::string input_name) override {
+    if (input_name != "dropout_state_in") {
+      return nullptr;
+    }
+    return TranslateDropOutStateIn;
+  };
 };
 
 struct FeedOpTranscriber : public OpTranscriber {
@@ -776,6 +923,8 @@ OpTranslator::OpTranslator() {
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
+  special_handlers["increment"] = IncrementOpTranscriber();
+  special_handlers["rnn"] = RnnOpTranscriber();
 }
 
 }  // namespace translator

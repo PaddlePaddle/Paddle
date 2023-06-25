@@ -191,6 +191,11 @@ class DataTypeAttributeVisitor : public AttributeVisitor {
     auto phi_dtype = phi::TransToPhiDataType(i);
     return paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype);
   }
+
+  virtual ir::Attribute operator()(const paddle::blank& blank) {
+    VLOG(10) << "translating paddle::blank to DataType::UNDEFINED";
+    return paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType());
+  }
 };
 
 class PlaceAttributeVisitor : public AttributeVisitor {
@@ -198,8 +203,8 @@ class PlaceAttributeVisitor : public AttributeVisitor {
   using AttributeVisitor::AttributeVisitor;
 
   ir::Attribute operator()(const paddle::blank& blank) override {
-    VLOG(10) << "translating paddle::blank";
-    phi::Place data(phi::AllocationType::CPU);
+    VLOG(10) << "translating paddle::blank to Place::UNDEFINED";
+    phi::Place data(phi::AllocationType::UNDEFINED);
     return paddle::dialect::PlaceAttribute::get(ctx, data);
   }
 };

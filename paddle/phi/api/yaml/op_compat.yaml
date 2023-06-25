@@ -297,6 +297,7 @@
     out : Out
 
 - op : atan2
+  backward : atan2_grad
   inputs :
     {x : X1, y : X2}
   outputs :
@@ -756,7 +757,7 @@
     attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
-  backward : divide_grad (elementwise_div)
+  backward : divide_grad (elementwise_div_grad)
   inputs :
     {x: X, y : Y}
   outputs :
@@ -1754,6 +1755,8 @@
 
 - op : mish
   backward : mish_grad
+  inputs:
+    lambda:  threshold
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2781,6 +2784,8 @@
   get_expected_kernel_type :
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
+
+- op: full_batch_size_like (fill_constant_batch_size_like)
 
 - op: lu
   backward: lu_grad
