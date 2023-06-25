@@ -2,6 +2,22 @@ set(CINN_THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(DOWNLOAD_MODEL_DIR "${CINN_THIRD_PARTY_PATH}/model")
 
+string(REGEX MATCH "-std=(c\\+\\+[^ ]+)" STD_FLAG "${CMAKE_CXX_FLAGS}")
+if (NOT STD_FLAG)
+  if (NOT CMAKE_CXX_STANDARD)
+    message(STATUS "STD_FLAG and CMAKE_CXX_STANDARD not found, using default flag: -std=c++17")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_CXX_STANDARD 17)
+  else()
+    message(STATUS "Got CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}, append -std=c++${CMAKE_CXX_STANDARD} to CMAKE_CXX_FLAGS")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD}")
+  endif()
+else()
+  string(REGEX MATCH "([0-9]+)" STD_VALUE "${STD_FLAG}")
+  message(STATUS "Got STD_FLAG=${STD_FLAG}, set CMAKE_CXX_STANDARD=${STD_VALUE}")
+  set(CMAKE_CXX_STANDARD ${STD_VALUE})
+endif()
+
 if(NOT DEFINED ENV{runtime_include_dir})
   message(
     STATUS
@@ -54,6 +70,7 @@ if(WITH_GPU)
 
   cuda_select_nvcc_arch_flags(ARCH_FLAGS Auto)
   list(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
+  set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
   message(
     STATUS
@@ -64,14 +81,10 @@ if(WITH_GPU)
 
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
                                          REQUIRED)
-  find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib REQUIRED)
-  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib
-                                       REQUIRED)
-  find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib REQUIRED)
-  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                             /usr/lib REQUIRED)
+  find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
+  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
+  find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
+  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
 endif()
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)

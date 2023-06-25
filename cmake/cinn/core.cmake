@@ -151,7 +151,7 @@ function(cinn_nv_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS})
+    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS "-std=c++${CMAKE_CUDA_STANDARD}")
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
