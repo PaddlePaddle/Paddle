@@ -18,16 +18,14 @@ namespace phi {
 
 KernelSignature ElementwiseAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("add_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  }
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
   if (axis == -1) {
     return KernelSignature("add", {"X", "Y"}, {}, {"Out"});
   }
   return KernelSignature("add_raw", {"X", "Y"}, {"axis"}, {"Out"});
-}
-
-KernelSignature ElementwiseGradAddOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("grad_add", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwiseSubOpArgumentMapping(
@@ -271,4 +269,3 @@ PD_REGISTER_ARG_MAPPING_FN(elementwise_heaviside_grad,
                            phi::ElementwiseHeavisideGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(elementwise_pow_grad,
                            phi::ElementwisePowGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(grad_add, phi::ElementwiseGradAddOpArgumentMapping);
