@@ -58,6 +58,7 @@ class TrtConvertTopKV2Test(TrtLayerAutoScanTest):
                             for sort in [True, False]:
                                 self.dims = dims
                                 self.sort = sort
+                                self.axis = axis
                                 dics = [
                                     {
                                         "k": k,
@@ -133,7 +134,7 @@ class TrtConvertTopKV2Test(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape and self.dims == 1:
+            if not dynamic_shape and (self.dims == 1 or self.axis == 0):
                 return 0, 4
             if not self.sort:
                 return 0, 4
