@@ -32,6 +32,7 @@ def clip_grad_value_(
             :math:`\left[\text{-clip\_value}, \text{clip\_value}\right]`
     Example:
         .. code-block:: python
+
             import paddle
             x = paddle.uniform([10, 10], min=-10.0, max=10.0, dtype='float32')
             clip_value = float(5.0)
