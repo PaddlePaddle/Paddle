@@ -28,6 +28,10 @@ phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetElementwiseOpGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetReduceGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);

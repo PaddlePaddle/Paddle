@@ -85,6 +85,14 @@ phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
+phi::KernelKey GetElementwiseOpGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(
+      ctx, framework::GradVarName("Out"));
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
 phi::KernelKey GetReduceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {

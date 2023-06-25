@@ -100,6 +100,8 @@
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
   complex_promote : [X, Y]
   manual_signature : [add]
+  get_expected_kernel_type :
+    add_grad : GetElementwiseOpGradExpectedKernelType
 
 - op : add_n (sum)
   inputs:
