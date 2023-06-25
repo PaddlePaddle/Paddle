@@ -39,6 +39,7 @@ if(WITH_TESTING)
     SRCS
     cinn_instruction_run_op_test.cc
     DEPS
+    fleet_executor
     cinn_compiler
     cinn_launch_op
     cinn_instruction_run_op
