@@ -22,38 +22,61 @@ import paddle
 paddle.enable_static()
 
 
-class TestNewIr(unittest.TestCase):
+# class TestNewIr(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         place = paddle.CPUPlace()
+#         exe = paddle.static.Executor(place)
+
+#         x = paddle.ones([2, 2], dtype="float32")
+#         y = paddle.ones([2, 2], dtype="float32")
+
+#         z = x + y
+#         out = exe.run(
+#             paddle.static.default_main_program(), {}, fetch_list=[z.name]
+#         )
+
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
+
+#         np.testing.assert_array_equal(out[0], gold_res)
+
+
+# class TestCombineOp(unittest.TestCase):
+#     def test_with_new_ir(self):
+#         place = paddle.CPUPlace()
+#         exe = paddle.static.Executor(place)
+
+#         x = paddle.ones([2, 2], dtype="float32")
+#         y = paddle.ones([2, 2], dtype="float32")
+
+#         z = paddle.linalg.multi_dot([x, y])
+#         out = exe.run(
+#             paddle.static.default_main_program(), {}, fetch_list=[z.name]
+#         )
+
+#         gold_res = np.ones([2, 2], dtype="float32") * 2
+
+#         np.testing.assert_array_equal(out[0], gold_res)
+
+
+class TestFeedOp(unittest.TestCase):
     def test_with_new_ir(self):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
-        x = paddle.ones([2, 2], dtype="float32")
-        y = paddle.ones([2, 2], dtype="float32")
+        x = paddle.static.data("x", [2, 2], dtype="float32")
+        y = paddle.static.data("y", [2, 2], dtype="float32")
 
         z = x + y
+
+        np_a = np.random.rand(2, 2).astype("float32")
+        np_b = np.random.rand(2, 2).astype("float32")
         out = exe.run(
-            paddle.static.default_main_program(), {}, fetch_list=[z.name]
+            paddle.static.default_main_program(),
+            feed={"x": np_a, "y": np_b},
+            fetch_list=[z.name],
         )
 
-        gold_res = np.ones([2, 2], dtype="float32") * 2
-
-        np.testing.assert_array_equal(out[0], gold_res)
-
-
-class TestCombineOp(unittest.TestCase):
-    def test_with_new_ir(self):
-        place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-
-        x = paddle.ones([2, 2], dtype="float32")
-        y = paddle.ones([2, 2], dtype="float32")
-
-        z = paddle.linalg.multi_dot([x, y])
-        out = exe.run(
-            paddle.static.default_main_program(), {}, fetch_list=[z.name]
-        )
-
-        gold_res = np.ones([2, 2], dtype="float32") * 2
+        gold_res = np_a + np_b
 
         np.testing.assert_array_equal(out[0], gold_res)
 

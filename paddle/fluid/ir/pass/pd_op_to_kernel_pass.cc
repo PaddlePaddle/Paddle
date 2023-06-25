@@ -35,6 +35,9 @@ phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
+  if (op->name() == "pd.feed") {
+    return {phi::Backend::CPU, phi::DataLayout::ANY, phi::DataType::FLOAT32};
+  }
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;

@@ -192,9 +192,12 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  local_scope_,
                                  value_2_var_name_map_,
                                  execution_config_);
-    SetFeedVarsInplaceSkip(feed_names);
+    std::cerr << "after build op func list" << std::endl;
+    // SetFeedVarsInplaceSkip(feed_names);
+    std::cerr << "inpalce" << std::endl;
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    std::cerr << "convert" << std::endl;
     UpdateSyncOpNum();
     if (static_build_) {
       VLOG(4) << "RUN impl";
@@ -962,9 +965,12 @@ void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
     if (instr_node.PreDefineContext()) {
       VLOG(5) << "run new ir selected kernel";
       auto op_func_node = const_cast<OpFuncNode*>((instr_node.OpFunc()));
+      std::cerr << "name " << op_func_node->phi_op_name_ << std::endl;
       op_func_node->infer_shape_interface_->infer_shape_(
           &(op_func_node->infer_meta_context_));
+      std::cerr << "fater infer meat" << std::endl;
       (*(op_func_node->phi_kernel_))(&(op_func_node->kernel_context_));
+      std::cerr << "fin kenrel" << std::endl;
     } else if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
       CheckGC(instr_node);
