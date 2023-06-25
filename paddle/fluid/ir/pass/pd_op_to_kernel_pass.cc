@@ -254,52 +254,58 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       input_info = std::get<0>(op_info_res);
     }
 
-    if ((*it)->name() != "pd.full" && (*it)->num_operands() > 0) {
+    if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i).source();
         auto new_in = map_value_pair.at(cur_in);
 
-        auto new_in_type = new_in.type();
-        auto kernel_result =
-            phi::KernelFactory::Instance().SelectKernelOrThrowError(
-                kernel_fn_str, kernel_key);
-        const auto& kernel = kernel_result.kernel;
+        // auto new_in_type = new_in.type();
 
-        if (new_in_type.isa<dialect::AllocatedDenseTensorType>()) {
-          // allocated type
-          auto place =
-              new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>().place();
+        // auto & kernel = phi::KernelFactory::Instance().SelectKernel(
+        //         kernel_fn_str, kernel_key);
 
-          if ((i < input_info.size()) &&
-              (!input_info[i].is_mutable_attribute) &&
-              (place != phi::TransToPhiPlace(kernel_key.backend()))) {
-            if (paddle::experimental::NeedTransformPlace(
-                    place, kernel.InputAt(i).backend, {})) {
-              std::cerr << "need trans  " << place << "\t "
-                        << kernel_key.backend() << std::endl;
-              // build memcopy op
-              auto copy_kernel_key = kernel_key;
-              copy_kernel_key.set_backend(phi::Backend::GPU);
-              std::unordered_map<std::string, ir::Attribute> op1_attribute{
-                  {"op_name", ir::StrAttribute::get(ctx, "pd.memcpy_h2d")},
-                  {"kernel_name", ir::StrAttribute::get(ctx, "memcpy_h2d")},
-                  {"kernel_key",
-                   dialect::KernelAttribute::get(ctx, copy_kernel_key)},
-                  {"dst_place_type", ir::Int32Attribute::get(ctx, 1)}};
+        // if (kernel.IsValid() )
+        // {
+        //   if(  new_in_type.isa<dialect::AllocatedDenseTensorType>()) {
+        //     // allocated type
+        //     auto place =
+        //         new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>().place();
 
-              ir::Operation* op1 = ir::Operation::Create(
-                  {new_in}, op1_attribute, {new_in_type}, op1_info);
+        //     if ((i < input_info.size()) &&
+        //         (!input_info[i].is_mutable_attribute) &&
+        //         (place != phi::TransToPhiPlace(kernel_key.backend()))) {
+        //       if (paddle::experimental::NeedTransformPlace(
+        //               place, kernel.InputAt(i).backend, {})) {
+        //         std::cerr << "need trans  " << place << "\t "
+        //                   << kernel_key.backend() << std::endl;
+        //         // build memcopy op
+        //         auto copy_kernel_key = kernel_key;
+        //         copy_kernel_key.set_backend(phi::Backend::GPU);
+        //         std::unordered_map<std::string, ir::Attribute> op1_attribute{
+        //             {"op_name", ir::StrAttribute::get(ctx, "pd.memcpy_h2d")},
+        //             {"kernel_name", ir::StrAttribute::get(ctx,
+        //             "memcpy_h2d")},
+        //             {"kernel_key",
+        //             dialect::KernelAttribute::get(ctx, copy_kernel_key)},
+        //             {"dst_place_type", ir::Int32Attribute::get(ctx, 1)}};
 
-              program->block()->push_back(op1);
+        //         ir::Operation* op1 = ir::Operation::Create(
+        //             {new_in}, op1_attribute, {new_in_type}, op1_info);
 
-              new_in = op1->result(0);
-            }
-          }
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
-              "only support allocated dense tensor type for now"));
-        }
+        //         program->block()->push_back(op1);
 
+        //         new_in = op1->result(0);
+        //       }
+        //     }
+        //   } else if (new_in_type.isa<ir::VectorType>()) {
+        //     // [ todo need update here, support combine data transfomer]
+        //   }
+        //   else
+        //   {
+        //     PADDLE_THROW(phi::errors::Unimplemented(
+        //         "only support allocated dense tensor type for now"));
+        //   }
+        // }
         vec_inputs.push_back(new_in);
       }
     }

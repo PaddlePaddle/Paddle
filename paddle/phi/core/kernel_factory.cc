@@ -82,12 +82,25 @@ bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
   return false;
 }
 
-const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
-                                          const KernelKey& kernel_key) const {
+const Kernel& KernelFactory::SelectKernel(
+    const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   if (iter == kernels_.end()) {
     return empty_kernel;
   }
+  KernelKey kernel_key = KernelKey(const_kernel_key);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (kernel_key.backend() == Backend::GPUDNN) {
+    auto kernel_iter = iter->second.find(
+        {Backend::GPUDNN, phi::DataLayout::ALL_LAYOUT, kernel_key.dtype()});
+    if (kernel_iter != iter->second.end()) {
+      return kernel_iter->second;
+    }
+    kernel_key =
+        KernelKey(Backend::GPU, kernel_key.layout(), kernel_key.dtype());
+  }
+#endif
+
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
@@ -95,6 +108,7 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
         kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
+
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
   if (kernel_iter == iter->second.end() &&
       kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
