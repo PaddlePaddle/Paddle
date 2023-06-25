@@ -111,7 +111,6 @@ void BuildScope(ir::Block* block,
                           phi::errors::PreconditionNotMet(
                               "can not found input of combine op"));
 
-        std::cerr << "combine in " << name_map->at(ptr) << std::endl;
         tensor_array->emplace_back(
             &(scope->Var(name_map->at(ptr))->Get<phi::DenseTensor>()));
       }
@@ -278,10 +277,10 @@ void BuildPhiKernelContext(
 
   auto attr_map = op->attributes();
 
-  auto& vec_infer_meta_tensor_params = op_yaml_info.KernelFnTensorParams();
+  auto& vec_kernel_fn_tensor_params = op_yaml_info.KernelFnTensorParams();
 
   auto& name2id = op_yaml_info.Name2Id();
-  for (auto& t : vec_infer_meta_tensor_params) {
+  for (auto& t : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
@@ -317,8 +316,8 @@ void BuildPhiKernelContext(
     }
   }
 
-  auto& vec_infer_meta_attr_params = op_yaml_info.KernelFnAttrParams();
-  for (auto& t : vec_infer_meta_attr_params) {
+  auto& vec_kernel_fn_attr_params = op_yaml_info.KernelFnAttrParams();
+  for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
       // tensor attribute, get information from input
       ir::Value ptr = op->operand(name2id.at(t)).source();
@@ -330,7 +329,7 @@ void BuildPhiKernelContext(
         // construct input_index and output_here,  should remove input_index and
         // output_index from OpFuncNode Each in_var_name named "inner_var_" +
         // index, len("inner_var_") = 10
-        std::cerr << "in var name " << in_var_name << std::endl;
+
         size_t tmp_id = std::atol(in_var_name.substr(4, 100).c_str());
         (*input_map)[std::to_string(name2id.at(t))].push_back(tmp_id);
       }
@@ -403,7 +402,7 @@ void BuildPhiKernelContext(
         // construct input_index and output_here,  should remove input_index and
         // output_index from OpFuncNode Each in_var_name named "inner_var_" +
         // index, len("inner_var_") = 10
-        std::cerr << "out var name " << name << std::endl;
+
         size_t tmp_id = std::atol(name.substr(4, 100).c_str());
         (*output_map)["out"].push_back(tmp_id);
       }

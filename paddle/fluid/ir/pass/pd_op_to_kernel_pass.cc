@@ -120,7 +120,7 @@ phi::KernelKey GetKernelKey(
       }
     }
   }
-  std::cerr << "11" << std::endl;
+
   if (op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
@@ -131,9 +131,9 @@ phi::KernelKey GetKernelKey(
       }
 
       auto input_tmp = op->operand(i).source();
-      std::cerr << "12" << std::endl;
+
       auto new_input_tmp = map_value_pair.at(input_tmp);
-      std::cerr << "13" << std::endl;
+
       auto input_type = new_input_tmp.type();
       dialect::AllocatedDenseTensorType type;
       if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
