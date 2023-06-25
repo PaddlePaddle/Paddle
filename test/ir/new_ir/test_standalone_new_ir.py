@@ -27,13 +27,15 @@ class TestNewIr(unittest.TestCase):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
-        x = paddle.ones([2, 2], dtype="float32")
-        y = paddle.ones([2, 2], dtype="float32")
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones([2, 2], dtype="float32")
+                y = paddle.ones([2, 2], dtype="float32")
 
-        z = x + y
-        out = exe.run(
-            paddle.static.default_main_program(), {}, fetch_list=[z.name]
-        )
+                z = x + y
+            out = exe.run(main_program, {}, fetch_list=[z.name])
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
@@ -45,13 +47,15 @@ class TestCombineOp(unittest.TestCase):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
 
-        x = paddle.ones([2, 2], dtype="float32")
-        y = paddle.ones([2, 2], dtype="float32")
+        main_program = paddle.static.Program()
+        new_scope = paddle.static.Scope()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones([2, 2], dtype="float32")
+                y = paddle.ones([2, 2], dtype="float32")
 
-        z = paddle.linalg.multi_dot([x, y])
-        out = exe.run(
-            paddle.static.default_main_program(), {}, fetch_list=[z.name]
-        )
+                z = paddle.linalg.multi_dot([x, y])
+            out = exe.run(main_program, {}, fetch_list=[z.name])
 
         gold_res = np.ones([2, 2], dtype="float32") * 2
 
