@@ -2727,7 +2727,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       auto operand_inputs = desc.Input("Operands");
-      auto input_size = operand_inputs.size();
       if (operand_inputs.size() > 2) {
         VLOG(3) << "TensorRT currently supports up to 2 input tensors"
                 << "to einsum but operation had" << operand_inputs.size()

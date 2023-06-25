@@ -27,10 +27,10 @@ class EinsumOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto operand_inputs = op_desc.Input("Operands");
     auto equation = PADDLE_GET_CONST(std::string, op_desc.GetAttr("equation"));
-
     std::vector<nvinfer1::ITensor*> input_tensors;
     for (auto input_name : operand_inputs) {
-      input_tensors.push_back(engine_->GetITensor(input_name))
+      auto tmp_tensor = engine_->GetITensor(input_name);
+      input_tensors.push_back(tmp_tensor);
     }
 
     int32_t input_num = static_cast<int32_t>(operand_inputs.size());
