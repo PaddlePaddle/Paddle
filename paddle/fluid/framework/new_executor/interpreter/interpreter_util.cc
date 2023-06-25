@@ -125,7 +125,8 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
-bool IsCommunicationOp(const std::string& op_name) {
+bool IsCommunicationOp(const OperatorBase* op) {
+  const std::string& op_name = op->Type();
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
@@ -137,6 +138,9 @@ bool IsCommunicationOp(const std::string& op_name) {
       special_comm_op_set.count(op_name)) {
     return true;
   }
+  if (op->HasAttr("ring_id")) {
+    return true;
+  }
   return false;
 }
 
@@ -144,7 +148,7 @@ bool IsCommunicationOp(const Instruction& instr) {
   if (!instr.OpBaseValid()) {
     return false;
   }
-  return IsCommunicationOp(instr.OpBase()->Type());
+  return IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -579,7 +583,7 @@ void BuildOpFuncList(const platform::Place& place,
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
     } else {
-      if (interpreter::IsCommunicationOp(op_type)) {
+      if (interpreter::IsCommunicationOp(op)) {
         // NOTE(Ruibiao): Dispatching computation before communication improves
         // multi-stream overlap when the time cost of communication less than
         // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
@@ -948,10 +952,11 @@ void BuildOpFuncList(
 
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
 
-    if (op_name == "pd.fetch") {
+    if (op_name == "builtin.combine") {
       VLOG(6) << "skip process pd.fetch op";
       continue;
     }
+
     op_func_node.phi_op_name_ = op_name;
 
     ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -965,6 +970,8 @@ void BuildOpFuncList(
     op_func_node.infer_shape_interface_ =
         op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
 
+    VLOG(6) << "op name" << op_func_node.phi_op_name_;
+
     ::ir::BuildInferMetaContext((*it),
                                 value_2_name_map,
                                 scope,
@@ -976,6 +983,8 @@ void BuildOpFuncList(
     auto kernel_key = attr_map.at("kernel_key")
                           .dyn_cast<paddle::dialect::KernelAttribute>()
                           .data();
+
+    VLOG(6) << "finish process infer meta context";
     auto t1 =
         phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
     op_func_node.phi_kernel_ = new phi::Kernel(t1);
@@ -992,6 +1001,7 @@ void BuildOpFuncList(
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));
 
+    VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(
         phi::DeviceContextPool::Instance().Get(
             phi::TransToPhiPlace(kernel_key.backend())));

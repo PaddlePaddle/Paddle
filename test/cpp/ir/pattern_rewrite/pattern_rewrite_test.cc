@@ -58,6 +58,8 @@ class Operation1 : public ir::Op<Operation1> {
 };
 const char *Operation1::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
+IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
+IR_DEFINE_EXPLICIT_TYPE_ID(Operation1)
 
 // Define a dialect, op1 and op2 will be registered by this dialect.
 class TestDialect : public ir::Dialect {
@@ -71,6 +73,8 @@ class TestDialect : public ir::Dialect {
  private:
   void initialize() { RegisterOps<Operation1>(); }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 // TODO(wilber): Add logical when ir support erase, replace or update.
 class TestPatternRewrite : public ir::OpRewritePattern<Operation1> {

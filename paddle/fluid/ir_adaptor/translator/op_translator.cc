@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cctype>
 #include <numeric>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -412,11 +411,6 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
         op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
     // return empty type if this arg is optional and not shown in OpDesc
-    std::stringstream ss;
-    for (auto name : op_desc.OutputNames()) {
-      ss << name << " ";
-    }
-    VLOG(10) << ss.str();
     if (!op_desc.HasOutput(legacy_output_name)) {
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "] optional " << info.name << " :"

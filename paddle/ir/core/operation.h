@@ -26,7 +26,7 @@ class Program;
 class OpOperand;
 class OpResult;
 
-class alignas(8) Operation final {
+class IR_API alignas(8) Operation final {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
