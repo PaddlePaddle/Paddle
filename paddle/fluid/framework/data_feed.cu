@@ -2579,10 +2579,16 @@ std::shared_ptr<phi::Allocation> GetNodeDegree(
                           phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   auto edge_to_id = gpu_graph_ptr->edge_to_id;
+  int* node_degree_ptr = reinterpret_cast<int*>(node_degree->ptr());
   for (auto &iter : edge_to_id) {
     int edge_idx = iter.second;
-    gpu_graph_ptr->get_node_degree(
-        conf.gpuid, edge_idx, node_ids, len, node_degree);
+    auto sub_node_degree = gpu_graph_ptr->get_node_degree(
+        conf.gpuid, edge_idx, node_ids, len);
+    int* sub_node_degree_ptr = reinterpret_cast<int*>(sub_node_degree->ptr());
+    cudaMemcpy(node_degree_ptr + edge_idx * len,
+               sub_node_degree_ptr,
+               sizeof(int) * len,
+               cudaMemcpyDeviceToDevice);
   }
   return node_degree;
 }

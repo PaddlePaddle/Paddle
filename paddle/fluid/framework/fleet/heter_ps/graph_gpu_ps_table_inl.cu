@@ -3019,18 +3019,84 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
   return result;
 }
 
-void GpuPsGraphTable::get_node_degree(
+std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree(
     int gpu_id,
     int edge_idx,
     uint64_t* key,
-    int len,
-    std::shared_ptr<phi::Allocation> node_degree) {
-  int* node_degree_ptr =
-      reinterpret_cast<int*>(node_degree->ptr()) + edge_idx * len;
+    int len) {
+  if (multi_node_ && FLAGS_enable_graph_multi_node_sampling) {
+    // multi node mode
+    auto node_degree = get_node_degree_all2all(
+        gpu_id,
+        edge_idx,
+        key,
+        len);
+    return node_degree;
+  } else {
+    auto node_degree = get_node_degree_single(
+        gpu_id,
+        edge_idx,
+        key,
+        len);
+    return node_degree;
+  }
+}
+
+std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_all2all(
+    int gpu_id,
+    int edge_idx,
+    uint64_t* key,
+    int len) {
+  platform::CUDADeviceGuard guard(gpu_id);
+  auto &loc = storage_[gpu_id];
+  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  auto stream = resource_->local_stream(gpu_id, 0);
+
+  loc.alloc(len, sizeof(int));
+
+  // all2all mode begins, init resource, partition keys, pull vals by all2all.
+
+  auto pull_size = gather_inter_keys_by_all2all(gpu_id, len, key, stream);
+  VLOG(2) << "gather_inter_keys_by_all2all sage get_degree finish, pull_size=" << pull_size << ", len=" << len;
+
+  // do single-node multi-card get_node_degree
+  auto result = get_node_degree_single(gpu_id,
+                                       edge_idx,
+                                       loc.d_merged_keys,
+                                       pull_size);
+
+  auto node_degree =
+      memory::AllocShared(place,
+                          len * sizeof(int),
+                          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+
+  // all2all mode finish, scatter degree values by all2all
+  scatter_inter_vals_by_all2all_common(gpu_id,
+                                 len,
+                                 sizeof(int), //value_bytes
+                                 reinterpret_cast<const int*>(result->ptr()), // in
+                                 reinterpret_cast<int*>(node_degree->ptr()), // out
+                                 reinterpret_cast<int*>(loc.d_merged_vals), // tmp hbm
+                                 stream);
+  return node_degree;
+}
+
+std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_single(
+    int gpu_id,
+    int edge_idx,
+    uint64_t* key,
+    int len) {
   int total_gpu = resource_->total_device();
   platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   auto stream = resource_->local_stream(gpu_id, 0);
+
+  auto node_degree =
+      memory::AllocShared(place,
+                          len * sizeof(int),
+                          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  int* node_degree_ptr = reinterpret_cast<int*>(node_degree->ptr());
+
   int grid_size = (len - 1) / block_size_ + 1;
   int h_left[total_gpu];   // NOLINT
   int h_right[total_gpu];  // NOLINT
@@ -3142,6 +3208,7 @@ void GpuPsGraphTable::get_node_degree(
     destroy_storage(gpu_id, i);
   }
   device_mutex_[gpu_id]->unlock();
+  return node_degree;
 }
 
 NodeQueryResult GpuPsGraphTable::graph_node_sample(int gpu_id,
