@@ -180,18 +180,19 @@ class TransposePatternRewrite
 
   bool MatchAndRewrite(paddle::dialect::TransposeOp op,
                        ir::PatternRewriter &rewriter) const override {
-    auto prev_op = op->operand(0).owner();
+    auto prev_op = op->operand(0).source().GetDefiningOp();
     std::vector<int> axis_last = GetAxis(op);
-    if (auto prev_trans_op =
-            prev_op->dyn_cast<paddle::dialect::TransposeOp>()) {
+    auto prev_trans_op = prev_op->dyn_cast<paddle::dialect::TransposeOp>();
+    if (prev_trans_op) {
       std::vector<int> axis_first = GetAxis(prev_trans_op);
       IR_ENFORCE(axis_first.size() == axis_last.size(),
                  "tranpose op's perm rank should be same.");
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.SetInsertionPoint(op);
       auto new_op = rewriter.Build<paddle::dialect::TransposeOp>(
-          prev_op->operand(0).owner()->result(0), new_perm);
+          prev_op->operand(0).source().GetDefiningOp()->result(0), new_perm);
       rewriter.ReplaceOp(op, {new_op.out()});
+      return true;
     }
 
     return false;
@@ -231,7 +232,10 @@ class TestPass : public ir::Pass {
     ir::RewritePatternSet ps(op->ir_context());
     ps.Add<TransposePatternRewrite>(op->ir_context());
     ir::FrozenRewritePatternSet frozen_ps(std::move(ps));
-    ir::ApplyPatternsGreedily(op->GetRegion(0), frozen_ps);
+    ir::GreedyRewriteConfig cfg;
+    cfg.use_top_down_traversal = true;
+    cfg.max_iterations = 1;
+    ir::ApplyPatternsGreedily(op->GetRegion(0), frozen_ps, cfg);
   }
 
   bool CanApplyOn(ir::Operation *op) const override {

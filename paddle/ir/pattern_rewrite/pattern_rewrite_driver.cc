@@ -62,7 +62,7 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
       if (iteration++ >= config_.max_iterations &&
           config_.max_iterations != ir::GreedyRewriteConfig::kNoLimit)
         break;
-
+      VLOG(6) << "Iteration[" << iteration << "] for PatternRewrite";
       worklist_.clear();
       worklist_map_.clear();
 
@@ -79,11 +79,13 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
       }
       for (size_t i = 0; i < worklist_.size(); ++i) {
         worklist_map_[worklist_[i]] = i;
+        VLOG(6) << "worklist[" << i << "] is " << worklist_[i]->name();
       }
 
       changed = ProcessWorklist();
     } while (changed);
-    return changed;
+
+    return !changed;
   }
 
  private:
@@ -98,6 +100,7 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
             config_.max_num_rewrites == ir::GreedyRewriteConfig::kNoLimit)) {
       auto* op = PopFromWorklist();
       if (op == nullptr) continue;
+      VLOG(6) << "PopFromWorklist, get op: " << op->name();
 
       // TODO(wilber): ir is dead.
       // ...
