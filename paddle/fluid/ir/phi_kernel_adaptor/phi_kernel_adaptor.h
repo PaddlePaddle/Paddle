@@ -21,6 +21,7 @@
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/infershape.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/ir/core/builtin_attribute.h"
 #include "paddle/ir/core/builtin_dialect.h"
 #include "paddle/ir/core/builtin_op.h"
@@ -73,7 +74,9 @@ class PhiKernelAdaptor {
           (*it)->dyn_cast<paddle::dialect::InferShapeInterface>();
       phi::InferMetaContext ctx;
 
-      ir::BuildInferMetaContext((*it), name_map, scope_, op_info_res, &ctx);
+      paddle::dialect::OpYamlInfoParser op_yaml_info_parser(op_info_res);
+      ir::BuildInferMetaContext(
+          (*it), name_map, scope_, op_yaml_info_parser, &ctx);
 
       interface.InferShape(&ctx);
 
@@ -133,7 +136,9 @@ class PhiKernelAdaptor {
 
       phi::InferMetaContext ctx;
 
-      ir::BuildInferMetaContext((*it), name_map, scope_, yaml_info, &ctx);
+      paddle::dialect::OpYamlInfoParser op_yaml_info_parser(yaml_info);
+      ir::BuildInferMetaContext(
+          (*it), name_map, scope_, op_yaml_info_parser, &ctx);
 
       infer_shape_impl->infer_shape_(&ctx);
 

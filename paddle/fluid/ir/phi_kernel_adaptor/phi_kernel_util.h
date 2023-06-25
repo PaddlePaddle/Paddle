@@ -33,6 +33,7 @@
 
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
 #include "glog/logging.h"
@@ -47,7 +48,7 @@ void BuildInferMetaContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
-    const OpInfoTuple& op_yaml_info,
+    const paddle::dialect::OpYamlInfoParser&,
     phi::InferMetaContext* ctx);
 
 void BuildPhiKernelContext(

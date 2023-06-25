@@ -29,6 +29,7 @@ class OpYamlInfoParser {
   size_t InputTensorNumber() const;
 
   const std::string& AttrTypeName(const std::string& name) const;
+  const std::string& TensorAttrTypeName(const std::string& name) const;
 
   const std::vector<std::string>& InferMetaTensorParams() const;
   const std::vector<std::string>& InferMetaAttrParams() const;
@@ -43,7 +44,7 @@ class OpYamlInfoParser {
     return std::get<0>(op_info_tuple_);
   }
 
-  const OpInfoTuple& op_info_tuple_;
+  OpInfoTuple op_info_tuple_;
 
   std::map<std::string, int> map_name2id_;
 

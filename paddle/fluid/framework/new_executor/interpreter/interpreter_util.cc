@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -963,19 +964,16 @@ void BuildOpFuncList(
 
     auto impl =
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-    auto yaml_info = impl->get_op_info_();
-
-    auto attr_info = std::get<1>(yaml_info);
 
     op_func_node.infer_shape_interface_ =
         op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
-
+    dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
     ::ir::BuildInferMetaContext((*it),
                                 value_2_name_map,
                                 scope,
-                                yaml_info,
+                                op_yaml_info_parser,
                                 &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
@@ -996,7 +994,7 @@ void BuildOpFuncList(
     ::ir::BuildPhiKernelContext((*it),
                                 value_2_name_map,
                                 scope,
-                                yaml_info,
+                                impl->get_op_info_(),
                                 &(op_func_node.kernel_context_),
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));

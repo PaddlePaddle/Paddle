@@ -48,6 +48,21 @@ const std::string& OpYamlInfoParser::AttrTypeName(
   return it->second.type_name;
 }
 
+const std::string& OpYamlInfoParser::TensorAttrTypeName(
+    const std::string& name) const {
+  auto it = map_input_info_.find(name);
+
+  PADDLE_ENFORCE_NE(it,
+                    map_input_info_.end(),
+                    phi::errors::NotFound("Not found [%s] in input map", name));
+
+  PADDLE_ENFORCE_EQ(
+      it->second.is_mutable_attribute,
+      true,
+      phi::errors::PreconditionNotMet("[%s] MUST be a tensor attribute", name));
+  return it->second.type_name;
+}
+
 const std::vector<std::string>& OpYamlInfoParser::InferMetaTensorParams()
     const {
   return vec_infer_meta_tensor_params_;
