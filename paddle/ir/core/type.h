@@ -26,11 +26,11 @@ namespace ir {
 /// Float32Type, etc. are all derived classes of Type, but no new member
 /// variables will be added.
 ///
-class Type {
+class IR_API Type {
  public:
   using Storage = TypeStorage;
 
-  constexpr Type() = default;
+  Type() = default;
 
   Type(const Storage *storage)  // NOLINT
       : storage_(const_cast<Storage *>(storage)) {}
@@ -89,7 +89,7 @@ class Type {
   const Storage *storage_{nullptr};
 };
 
-std::ostream &operator<<(std::ostream &os, Type type);
+IR_API std::ostream &operator<<(std::ostream &os, Type type);
 
 }  // namespace ir
 
