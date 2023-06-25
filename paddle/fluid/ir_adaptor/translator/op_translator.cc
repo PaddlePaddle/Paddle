@@ -572,6 +572,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
       {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
   };
 
+  op_output_types.push_back(op_inputs[0].type());
   ir::Operation* operation =
       ir::Operation::Create(op_inputs, attribute_map, op_output_types, op_info);
   program->block()->push_back(operation);
