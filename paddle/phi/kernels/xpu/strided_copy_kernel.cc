@@ -61,7 +61,7 @@ void StridedCopyKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
-  const int64_t* dims = input.dims().Get();
+  const int64_t* input_dims = input.dims().Get();
   const int64_t* input_stride = input.stride().Get();
   const int64_t* output_stride = meta.stride.Get();
   auto numel = input.numel();
@@ -70,7 +70,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   int64_t* tmp_data =
       reinterpret_cast<int64_t*>(malloc(sizeof(int64_t) * rank * 3));
-  std::memcpy(tmp_data, dims, sizeof(int64_t) * rank);
+  std::memcpy(tmp_data, input_dims, sizeof(int64_t) * rank);
   std::memcpy(tmp_data + rank, input_stride, sizeof(int64_t) * rank);
   std::memcpy(tmp_data + rank + rank, output_stride, sizeof(int64_t) * rank);
 
