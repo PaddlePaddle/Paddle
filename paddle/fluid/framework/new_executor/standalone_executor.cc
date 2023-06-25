@@ -72,7 +72,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       base_progrm->Print(std::cout);
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_progrm.get());
-
       kernel_program->Print(std::cout);
       interpretercores_.emplace_back(std::make_unique<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));

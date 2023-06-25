@@ -39,6 +39,9 @@ phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
+  if (op->name() == "pd.feed") {
+    return {phi::Backend::CPU, phi::DataLayout::ANY, phi::DataType::FLOAT32};
+  }
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
@@ -130,7 +133,7 @@ phi::KernelKey GetKernelKey(
       }
     }
   }
-
+  std::cerr << "11" << std::endl;
   if (op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
@@ -140,7 +143,9 @@ phi::KernelKey GetKernelKey(
         continue;
       }
       auto input_tmp = op->operand(i).source();
+      std::cerr << "12" << std::endl;
       auto new_input_tmp = map_value_pair.at(input_tmp);
+      std::cerr << "13" << std::endl;
       auto input_type = new_input_tmp.type();
       dialect::AllocatedDenseTensorType type;
       if (input_type.isa<dialect::AllocatedDenseTensorType>()) {
@@ -212,32 +217,34 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
-      auto result_type = (*it)->result(0).type();
-      if (result_type.isa<dialect::DenseTensorType>()) {
-        auto allocated_dense_tensor_dtype =
-            paddle::dialect::AllocatedDenseTensorType::get(
-                ctx,
-                phi::TransToPhiPlace(kernel_key.backend()),
-                result_type.dyn_cast<dialect::DenseTensorType>());
-        op_output_types.push_back(allocated_dense_tensor_dtype);
-      } else if (result_type.isa<ir::VectorType>()) {
-        auto pos1 = result_type.dyn_cast<ir::VectorType>().data()[0];
-
-        if (pos1.isa<dialect::DenseTensorType>()) {
+      for (size_t i = 0; i < (*it)->num_results(); ++i) {
+        auto result_type = (*it)->result(i).type();
+        if (result_type.isa<dialect::DenseTensorType>()) {
           auto allocated_dense_tensor_dtype =
               paddle::dialect::AllocatedDenseTensorType::get(
                   ctx,
                   phi::TransToPhiPlace(kernel_key.backend()),
-                  pos1.dyn_cast<dialect::DenseTensorType>());
+                  result_type.dyn_cast<dialect::DenseTensorType>());
           op_output_types.push_back(allocated_dense_tensor_dtype);
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
-              "only support dense tensor in vector type for now"));
-        }
+        } else if (result_type.isa<ir::VectorType>()) {
+          auto pos1 = result_type.dyn_cast<ir::VectorType>().data()[0];
 
-        ir::Type t1 = ir::VectorType::get(ctx, op_output_types);
-        op_output_types.clear();
-        op_output_types.push_back(t1);
+          if (pos1.isa<dialect::DenseTensorType>()) {
+            auto allocated_dense_tensor_dtype =
+                paddle::dialect::AllocatedDenseTensorType::get(
+                    ctx,
+                    phi::TransToPhiPlace(kernel_key.backend()),
+                    pos1.dyn_cast<dialect::DenseTensorType>());
+            op_output_types.push_back(allocated_dense_tensor_dtype);
+          } else {
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "only support dense tensor in vector type for now"));
+          }
+
+          ir::Type t1 = ir::VectorType::get(ctx, op_output_types);
+          op_output_types.clear();
+          op_output_types.push_back(t1);
+        }
       }
     }
 
@@ -326,7 +333,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     // only deal with single output
     if ((*it)->num_results() > 0) {
-      map_value_pair[(*it)->result(0)] = op1->result(0);
+      for (size_t i = 0; i < (*it)->num_results(); ++i) {
+        map_value_pair[(*it)->result(i)] = op1->result(i);
+      }
     }
 
     program->block()->push_back(op1);

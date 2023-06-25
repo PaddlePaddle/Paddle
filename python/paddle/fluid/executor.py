@@ -357,6 +357,7 @@ def _add_feed_fetch_ops(
     global_block = tmp_program.global_block()
 
     if feed_var_name in global_block.vars:
+        print("feed var name in gloabl block", feed_var_name)
         feed_var = global_block.var(feed_var_name)
     else:
         feed_var = global_block.create_var(
@@ -378,6 +379,7 @@ def _add_feed_fetch_ops(
     if not has_feed_operators(global_block, feed, feed_var_name):
         for i, name in enumerate(feed):
             if global_block.has_var(name):
+                print("feed name", name, i)
                 out = global_block.var(name)
                 global_block._prepend_op(
                     type='feed',
@@ -1056,6 +1058,7 @@ class Executor:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
+                print("feed target name", feed_target_name)
                 var = global_block.var(feed_target_name)
                 if var.dtype != core.VarDesc.VarType.STRINGS:
                     if not isinstance(cur_feed, core.LoDTensor):
@@ -1624,6 +1627,12 @@ class Executor:
                         stored_flag[flag] = bool(value)
                     set_flags({f: True for f in schedule_flag})
 
+            print("feed data here")
+            print(feed)
+            print(feed_var_name)
+            print(program)
+
+            print("feed fin")
             program, new_exe = self._executor_cache.get_program_and_executor(
                 program,
                 feed,
@@ -1635,6 +1644,7 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
