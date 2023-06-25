@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
 DECLARE_bool(new_executor_use_local_scope);
-
-namespace ir {
-class Program;
-}  // namespace ir
 
 namespace ir {
 class Program;
