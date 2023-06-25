@@ -1876,8 +1876,8 @@ def linear(x, weight, bias=None, name=None):
         return res
 
 
-def quant(x, bits=8, layout="weight_only"):
-    return _C_ops.quant(x, bits, layout)
+def quant_for_compress(x, bits=8, layout="weight_only"):
+    return _C_ops.quant_for_compress(x, bits, layout)
 
 
 def linear_compress(

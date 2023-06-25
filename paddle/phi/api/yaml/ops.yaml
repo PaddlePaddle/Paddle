@@ -1855,13 +1855,13 @@
     func : qr
   backward : qr_grad
 
-- op : quant
+- op : quant_for_compress
   args : (Tensor x, int bits = 8, str layout = "weight_only")
   output : Tensor(out), Tensor(scale)
   infer_meta :
-    func : QuantInferMeta
+    func : QuantForCompressInferMeta
   kernel :
-    func : quant
+    func : quant_for_compress
     data_type: x
 
 - op : real

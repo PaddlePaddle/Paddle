@@ -295,7 +295,7 @@ class LinearCompress(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             if not self.is_weight_quanted:
-                weight_tensor, weight_scale_tensor = F.quant(
+                weight_tensor, weight_scale_tensor = F.quant_for_compress(
                     self.weight, self.bits, self.layout
                 )
                 weight_attr = paddle.framework.ParamAttr(

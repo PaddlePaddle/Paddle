@@ -82,15 +82,12 @@ class LinearTestCase(unittest.TestCase):
     def test_linear_compress(self):
         out_real = self.get_linear_compress_out()
         out_expect = self.get_linear_out()
-        print("real:", out_real.shape, "expect:", out_expect.shape)
+        # print("real:", out_real.shape, "expect:", out_expect.shape)
         np.testing.assert_allclose(
             out_real, out_expect, rtol=self.rtol, atol=self.atol
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class LinearTestCase1(LinearTestCase):
     def config(self):
         super().config()
@@ -100,9 +97,6 @@ class LinearTestCase1(LinearTestCase):
         self.out_features = 64
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class LinearTestCase2(LinearTestCase):
     def config(self):
         super().config()
@@ -112,9 +106,6 @@ class LinearTestCase2(LinearTestCase):
         self.out_features = 64
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class LinearTestCase3(LinearTestCase):
     def config(self):
         super().config()

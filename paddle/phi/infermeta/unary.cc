@@ -5055,11 +5055,11 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
   values->set_dims(phi::make_ddim({3}));
 }
 
-void QuantInferMeta(const MetaTensor& x,
-                    int bits,
-                    const std::string& layout,
-                    MetaTensor* out,
-                    MetaTensor* scale) {
+void QuantForCompressInferMeta(const MetaTensor& x,
+                               int bits,
+                               const std::string& layout,
+                               MetaTensor* out,
+                               MetaTensor* scale) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
