@@ -2,8 +2,9 @@ add_subdirectory(garbage_collector)
 add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
-set(STANDALONE_EXECUTOR_SRCS feed_fetch_utils.cc interpretercore.cc
-                             new_executor_defs.cc standalone_executor.cc)
+set(STANDALONE_EXECUTOR_SRCS
+    feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
+    standalone_executor.cc program_interpreter.cc new_ir_interpreter.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
     interpreter
@@ -13,7 +14,7 @@ set(STANDALONE_EXECUTOR_DEPS
     pd_op_to_kernel_pass
     phi_kernel_adaptor
     program_translator
-    new_ir)
+    ir)
 
 cc_library(
   standalone_executor
