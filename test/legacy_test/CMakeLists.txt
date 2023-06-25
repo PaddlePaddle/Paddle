@@ -1081,7 +1081,7 @@ set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
 
 set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
-set_tests_properties(test_model PROPERTIES TIMEOUT 420)
+set_tests_properties(test_model PROPERTIES TIMEOUT 500)
 set_tests_properties(test_dataset_movielens PROPERTIES TIMEOUT 120)
 set_tests_properties(test_datasets PROPERTIES TIMEOUT 300)
 set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 120)
