@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
@@ -22,7 +23,7 @@ namespace ir {
 
 /// This enum will control which ops will be added to the worklist during the
 /// match rewrite process
-enum class GreedyRewriteStrictness {
+enum class IR_API GreedyRewriteStrictness {
   /// No restrictions wrt. any ops are processed.
   AnyOp,
   /// Only pre-existing and newly created ops are processed.
@@ -32,7 +33,7 @@ enum class GreedyRewriteStrictness {
 };
 
 /// Control over how the GreedyPatternRewriteDriver works.
-class GreedyRewriteConfig {
+class IR_API GreedyRewriteConfig {
  public:
   /// Control the way op is added to the worklist: bottom-up or top-down.
   bool use_top_down_traversal = false;
@@ -64,12 +65,13 @@ class GreedyRewriteConfig {
 /// convergence or the upper limit of iterations.
 ///
 /// Returns true if the iteration converges and no patterns can be applied.
-bool ApplyPatternsGreedily(Region& region,  // NOLINT
-                           const FrozenRewritePatternSet& patterns,
-                           GreedyRewriteConfig config = GreedyRewriteConfig());
+bool IR_API
+ApplyPatternsGreedily(Region& region,  // NOLINT
+                      const FrozenRewritePatternSet& patterns,
+                      GreedyRewriteConfig config = GreedyRewriteConfig());
 
 /// Perform a match and rewrite process for all regions of a given op.
-inline bool ApplyPatternsGreedily(
+inline IR_API bool ApplyPatternsGreedily(
     Operation* op,
     const FrozenRewritePatternSet& patterns,
     GreedyRewriteConfig config = GreedyRewriteConfig()) {

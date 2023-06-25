@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
@@ -36,7 +37,7 @@ namespace ir {
 
 // This class reprensents the benefit of a pattern. The most common
 // unit to use is the `numver of operations` in the pattern.
-class PatternBenefit {
+class IR_API PatternBenefit {
  public:
   PatternBenefit() = default;
   PatternBenefit(uint32_t val) : val_(val) {}  // NOLINT
