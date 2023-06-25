@@ -70,7 +70,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
     Examples:
 
-        .. code-block:: python
+        .. code-block:: python:name :code-example1
 
             import paddle
             from paddle.distribution import Bernoulli
@@ -154,7 +154,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example2
 
                 import paddle
                 from paddle.distribution import Bernoulli
@@ -209,7 +209,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example3
 
                 import paddle
                 from paddle.distribution import Bernoulli
@@ -306,7 +306,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example4
 
                 import paddle
                 from paddle.distribution import Bernoulli
@@ -344,7 +344,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example5
 
                 import paddle
                 from paddle.distribution import Bernoulli
@@ -383,7 +383,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example6
 
                 import paddle
                 from paddle.distribution import Bernoulli
@@ -413,7 +413,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example7
 
                 import paddle
                 from paddle.distribution import Bernoulli
@@ -446,7 +446,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
         Examples:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example8
 
                 import paddle
                 from paddle.distribution import Bernoulli
