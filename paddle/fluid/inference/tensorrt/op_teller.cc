@@ -2379,6 +2379,14 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {
+      if (desc.HasAttr("axis")) {
+        int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+        if (!with_dynamic_shape && axis == 0) {
+          VLOG(3) << "top_k_v2 does not support axis == 0 in "
+                     "tensorrt static shape.";
+          return false;
+        }
+      }
       if (desc.HasAttr("sorted")) {
         bool sorted = PADDLE_GET_CONST(bool, desc.GetAttr("sorted"));
         if (!sorted) {
