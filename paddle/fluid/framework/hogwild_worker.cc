@@ -955,7 +955,6 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       continue;
     }
     all_param_.push_back(name);
-    auto var_dtype = phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
     if (var->Persistable()) {
       ++persist_total;
       if (stat_var_name_map_.find(name) != stat_var_name_map_.end()) {
