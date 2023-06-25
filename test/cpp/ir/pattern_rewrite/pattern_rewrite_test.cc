@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
@@ -269,8 +270,11 @@ TEST(PatternRewrite, GreedyPatternRewriteDriver) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  program.Print(std::cout);
+  std::stringstream o1, o2;
+  program.Print(o1);
+  LOG(INFO) << o1.str();
   pm.Run(&program);
   LOG(INFO) << "After Pass.";
-  program.Print(std::cout);
+  program.Print(o2);
+  LOG(INFO) << o2.str();
 }
