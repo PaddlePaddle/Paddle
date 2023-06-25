@@ -22,19 +22,36 @@ from paddle.nn.utils.clip_grad_value_ import clip_grad_value_
 
 class TestClipGradValue(unittest.TestCase):
     def test_basic(self):
-        run_test_equal(
+        run_test_equal_np(
             self,
             shape=[16, 16],
             dtype=np.float32,
             clip_value=1,
         )
-        run_test_equal(
+        run_test_equal_np(
             self,
             shape=(100,),
             dtype=np.float32,
-            clip_value=3.5,
+            clip_value=0.1,
         )
-        run_test_equal(self, shape=[4, 8, 16], dtype=np.float32, clip_value=0)
+        run_test_equal_np(
+            self, shape=[4, 8, 16], dtype=np.float32, clip_value=0
+        )
+        run_test_equal_ClipGradByValue(
+            self,
+            shape=[16, 16],
+            dtype=np.float32,
+            clip_value=1,
+        )
+        run_test_equal_ClipGradByValue(
+            self,
+            shape=(100,),
+            dtype=np.float32,
+            clip_value=0.1,
+        )
+        run_test_equal_ClipGradByValue(
+            self, shape=[4, 8, 16], dtype=np.float32, clip_value=0
+        )
 
     def test_errors(self):
         def TestValueError():
@@ -62,7 +79,7 @@ class TestClipGradValue(unittest.TestCase):
         self.assertRaises(RuntimeError, TestRuntimeErrorStaticMode)
 
 
-def run_test_equal(
+def run_test_equal_np(
     self,
     shape,
     dtype,
@@ -81,6 +98,33 @@ def run_test_equal(
 
     np.testing.assert_allclose(
         input_pd.grad.numpy(),
+        output,
+        rtol=1e-05,
+        atol=1e-05,
+        equal_nan=False,
+    )
+
+
+def run_test_equal_ClipGradByValue(
+    self,
+    shape,
+    dtype,
+    clip_value,
+):
+    input = np.random.random(shape).astype(dtype)
+    grad = np.random.random(shape).astype(dtype)
+    input_pd = paddle.to_tensor(input)
+    input_pd.grad = paddle.to_tensor(grad)
+
+    clip = paddle.nn.ClipGradByValue(max=clip_value, min=-clip_value)
+    output = clip([(input_pd, input_pd.grad)])[0][1]
+    clip_grad_value_(
+        input_pd,
+        clip_value=clip_value,
+    )
+
+    np.testing.assert_allclose(
+        input_pd.grad,
         output,
         rtol=1e-05,
         atol=1e-05,
