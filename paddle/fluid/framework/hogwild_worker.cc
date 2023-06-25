@@ -989,6 +989,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         ++persist_param;
         phi::DenseTensor *root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
+        auto var_dtype = phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
         if (root_tensor->dtype() != var_dtype) {
           phi::DenseTensor tmp_tensor;
           tmp_tensor.Resize(root_tensor->dims());
@@ -1043,6 +1044,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           InitializeVariable(ptr, var->GetType());
           // set dims
           auto dims = phi::make_ddim(var->GetShape());
+          auto var_dtype = phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
           ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(var_dtype);
         }
       }
@@ -1056,6 +1058,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
         auto desc_var = block.FindVar(it->second);
         if (desc_var != nullptr && desc_var->IsParameter()) {
           auto dims = phi::make_ddim(desc_var->GetShape());
+          auto var_dtype = phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
           ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(var_dtype);
           ++resize_var_cnt;
         }
