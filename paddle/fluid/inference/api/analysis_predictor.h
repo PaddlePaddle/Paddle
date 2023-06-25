@@ -499,7 +499,7 @@ class AnalysisPredictor : public PaddlePredictor {
  private:
   void StatisticShapeRangeInfo();
   void CollectShapeRangeInfo();
-
+  void HookCollectShapeRangeInfo();
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);

@@ -2092,6 +2092,10 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    HookCollectShapeRangeInfo();
+  }
+
 #ifdef PADDLE_WITH_XPU
   InferXPUContext *infer_xpu_ctx = nullptr;
   if (config_.use_xpu_ && !config_.use_lite_) {
@@ -2192,6 +2196,89 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
   return ZeroCopyRun();
 }
 #endif
+
+void AnalysisPredictor::HookCollectShapeRangeInfo() {
+  auto hook = [&](const std::string &op_type,
+                  const std::string &input_name,
+                  const paddle::Tensor &var) -> void {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    if (config_.use_gpu()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      auto *dev_ctx = pool.Get(place_);
+      auto stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+#ifdef PADDLE_WITH_HIP
+      hipStreamSynchronize(stream);
+#else
+      cudaStreamSynchronize(stream);
+#endif
+#endif
+    }
+
+    std::vector<std::string> var_names = {input_name};
+    for (const auto &name : var_names) {
+      auto *var = sub_scope_->GetVar(name);
+      if (!var->IsType<phi::DenseTensor>()) {
+        continue;
+      }
+      auto tensor = var->Get<phi::DenseTensor>();
+      if (!tensor.initialized()) continue;
+      framework::DDim dim = tensor.dims();
+      std::vector<int32_t> shape(dim.size());
+      for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
+      if (shape.size() >= 1) {
+        shape_info_[name].emplace_back(shape);
+      }
+
+      // We need collect value range for shape tensor for Paddle-TRT's use.
+      // To be noticed, this method to identify all shape tensors is based on
+      // assumption that all shape tensors in the model have numbers <= 7.
+      // This is a simple method to identify all shape tensors with some
+      // mistakes, but it doesn't matter.
+      auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+      if ((tensor.dtype() == phi::DataType::INT32 ||
+           tensor.dtype() == phi::DataType::INT64) &&
+          is_shape_tensor) {
+        std::vector<int> int32_host(tensor.numel());
+
+        if (platform::is_cpu_place(tensor.place())) {
+          auto &int32_tensor = tensor;
+          if (tensor.dtype() == phi::DataType::INT64) {
+            auto *cpu_ctx = pool.Get(platform::CPUPlace());
+            int32_tensor = phi::funcs::TransDataType(
+                reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
+                tensor,
+                DataType::INT32);
+          }
+          paddle::memory::Copy(platform::CPUPlace(),
+                               int32_host.data(),
+                               platform::CPUPlace(),
+                               int32_tensor.data<int>(),
+                               int32_tensor.numel() * sizeof(int));
+        } else if (platform::is_gpu_place(tensor.place())) {
+#if defined(PADDLE_WITH_CUDA)
+          auto *dev_ctx = pool.Get(tensor.place());
+          auto &int32_tensor = tensor;
+          if (tensor.dtype() == phi::DataType::INT64) {
+            int32_tensor = phi::funcs::TransDataType(
+                reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+                tensor,
+                DataType::INT32);
+          }
+          paddle::memory::Copy(platform::CPUPlace(),
+                               int32_host.data(),
+                               int32_tensor.place(),
+                               int32_tensor.data<int>(),
+                               int32_tensor.numel() * sizeof(int),
+                               nullptr);
+#endif
+        }
+        shape_tensor_value_[name].emplace_back(int32_host);
+      }
+    }
+  };
+  RegisterOutputHook(hook);
+}
 
 bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
 #ifdef PADDLE_WITH_XPU
