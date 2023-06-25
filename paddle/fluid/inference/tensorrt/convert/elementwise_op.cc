@@ -102,7 +102,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
     int right_one_num = dims_x.nbDims - axis - dims_y.nbDims;
     nvinfer1::IShuffleLayer* reshape_layer;
     nvinfer1::ITensor* reshape_y_tensor;
-    if (left_one_num > 0 || right_one_num > 0) {
+    if (dims_x.nbDims != dims_y.nbDims &&
+        (left_one_num > 0 || right_one_num > 0)) {
       if (engine_->with_dynamic_shape()) {
         auto* y_shape_tensor = Shape(Y);
         auto* new_y_shape_tensor = y_shape_tensor;

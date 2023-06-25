@@ -10,7 +10,7 @@ exclude: |
 repos:
 # Common hooks
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.1.0
+    rev: v4.4.0
     hooks:
     -   id: check-added-large-files
     -   id: check-merge-conflict
@@ -22,7 +22,7 @@ repos:
     -   id: trailing-whitespace
         files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
-    rev: v1.1.14
+    rev: v1.5.1
     hooks:
     -   id: remove-crlf
     -   id: remove-tabs
@@ -33,11 +33,9 @@ repos:
         name: Tabs remover (Python)
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
         args: [--whitespaces-count, '4']
-        # Exclude the fluid directory.
-        # And exclude some unit test files that require tabs.
+        # Exclude some unit test files that require tabs.
         exclude: |
             (?x)^(
-                python/paddle/fluid/.+|
                 test/dygraph_to_static/test_error.py
             )$
 -   repo: local

@@ -48,3 +48,6 @@ class PaddleDialect : public ir::Dialect {
 
 }  // namespace dialect
 }  // namespace paddle
+
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::PaddleDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ParameterConvertInterface)
