@@ -226,7 +226,7 @@ class TestInplacePowerTensor(TestDygraphInplace):
     def init_data(self):
         self.input_var_numpy = np.random.uniform(-5, 5, [10, 20, 1])
         self.dtype = "float32"
-        self.y = paddle.ones_like([10, 20, 1]) * 2
+        self.y = paddle.ones([10, 20, 1]) * 2
 
     def inplace_api_processing(self, var):
         return paddle.pow_(var, self.y)
