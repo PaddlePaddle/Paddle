@@ -1,5 +1,3 @@
-set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY TRUE)
-
 set(CINN_THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(DOWNLOAD_MODEL_DIR "${CINN_THIRD_PARTY_PATH}/model")
@@ -134,7 +132,6 @@ cinn_cc_library(
   ${cinnapi_src}
   DEPS
   glog
-  gflags
   ${llvm_libs}
   cinn_framework_proto
   param_proto
@@ -186,7 +183,6 @@ function(gen_cinncore LINKTYPE)
     ${core_src}
     DEPS
     glog
-    gflags
     ${llvm_libs}
     cinn_framework_proto
     param_proto

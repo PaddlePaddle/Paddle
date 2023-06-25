@@ -1025,7 +1025,7 @@ def get_package_data_and_package_dir():
         )
         shutil.copy(
             env_dict.get("CINN_INCLUDE_DIR")
-            + '/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
+            + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
         package_data['paddle.libs'] += ['libcinnapi.so']
