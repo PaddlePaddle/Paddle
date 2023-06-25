@@ -22,7 +22,6 @@ from seresnext_test_base import DeviceType
 from simple_nets import init_data
 
 import paddle
-from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)
@@ -181,8 +180,8 @@ def SE_ResNeXt50Small(use_feed):
 
 def optimizer(learning_rate=0.01):
     optimizer = paddle.optimizer.Momentum(
-        learning_rate=cosine_decay(
-            learning_rate=learning_rate, step_each_epoch=2, epochs=1
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=learning_rate, T_max=1
         ),
         momentum=0.9,
         weight_decay=paddle.regularizer.L2Decay(1e-4),

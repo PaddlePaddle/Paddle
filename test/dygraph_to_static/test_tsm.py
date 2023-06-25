@@ -279,7 +279,9 @@ def create_optimizer(cfg, params):
     momentum = cfg.momentum
 
     optimizer = paddle.optimizer.Momentum(
-        learning_rate=fluid.layers.piecewise_decay(boundaries=bd, values=lr),
+        learning_rate=paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=bd, values=lr
+        ),
         momentum=momentum,
         weight_decay=paddle.regularizer.L2Decay(l2_weight_decay),
         parameters=params,

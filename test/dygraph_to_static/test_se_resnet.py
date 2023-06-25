@@ -78,8 +78,8 @@ def optimizer_setting(params, parameter_list):
     lr = params["lr"]
     num_epochs = params["num_epochs"]
     optimizer = paddle.optimizer.Momentum(
-        learning_rate=fluid.layers.cosine_decay(
-            learning_rate=lr, step_each_epoch=step, epochs=num_epochs
+        learning_rate=paddle.optimizer.lr.CosineAnnealingDecay(
+            learning_rate=lr, T_max=num_epochs
         ),
         momentum=momentum_rate,
         weight_decay=paddle.regularizer.L2Decay(l2_decay),
