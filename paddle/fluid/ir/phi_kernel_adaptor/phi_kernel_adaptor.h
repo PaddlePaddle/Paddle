@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_op.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"

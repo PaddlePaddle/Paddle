@@ -527,6 +527,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "matmul_weight_trans_pass",
       "map_matmulv2_to_matmul_xpu_pass",
       "reshape2_matmul_xpu_fuse_pass",
+      "redundant_squeeze_unsqueeze_elimination_pass",
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "add_activation_xpu_fuse_pass",
@@ -534,6 +535,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",
+      "xpu_delete_cast_op_pass",
   });
   use_xpu_ = true;
 }
