@@ -98,7 +98,7 @@ def train_static(args, batch_generator):
             learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
                 args.d_model, args.warmup_steps, args.learning_rate
             )
-            optimizer = fluid.optimizer.Adam(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=learning_rate,
                 beta1=args.beta1,
                 beta2=args.beta2,
@@ -212,12 +212,12 @@ def train_dygraph(args, batch_generator):
             args.d_model, args.warmup_steps, args.learning_rate
         )
         # define optimizer
-        optimizer = fluid.optimizer.Adam(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=learning_rate,
             beta1=args.beta1,
             beta2=args.beta2,
             epsilon=float(args.eps),
-            parameter_list=transformer.parameters(),
+            parameters=transformer.parameters(),
         )
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(

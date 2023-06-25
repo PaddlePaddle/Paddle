@@ -77,7 +77,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                 )
             )
 
-            optimizer = fluid.optimizer.Adam()
+            optimizer = paddle.optimizer.Adam()
             optimizer.minimize(loss)
     return startup_prog, main_prog, py_reader, loss
 

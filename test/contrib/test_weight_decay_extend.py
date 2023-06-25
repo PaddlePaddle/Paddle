@@ -146,7 +146,7 @@ class TestWeightDecay(unittest.TestCase):
             )
             avg_cost = model(data, label, self.word_dict_len)
             AdamW = fluid.contrib.extend_with_decoupled_weight_decay(
-                fluid.optimizer.Adam
+                paddle.optimizer.Adam
             )
 
             optimizer = AdamW(
@@ -173,7 +173,7 @@ class TestWeightDecay(unittest.TestCase):
 
             avg_cost = model(data, label, self.word_dict_len)
 
-            optimizer = fluid.optimizer.Adam(learning_rate=self.learning_rate)
+            optimizer = paddle.optimizer.Adam(learning_rate=self.learning_rate)
 
             params_grads = optimizer.backward(avg_cost)
 

@@ -63,7 +63,7 @@ class TestGradientScale(unittest.TestCase):
                 cost = self.mlp(input_x=input_x, input_y=input_y)
                 output_name = cost.name
                 optimizer = fleet.distributed_optimizer(
-                    fluid.optimizer.Adam(), strategy
+                    paddle.optimizer.Adam(), strategy
                 )
                 optimizer.minimize(cost)
 

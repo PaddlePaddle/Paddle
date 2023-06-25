@@ -30,7 +30,7 @@ class TestExecutor(unittest.TestCase):
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
-        opt = fluid.optimizer.Adam(learning_rate=lr)
+        opt = paddle.optimizer.Adam(learning_rate=lr)
         opt.minimize(avg_cost)
 
         return lr, avg_cost

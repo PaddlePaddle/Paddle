@@ -76,7 +76,7 @@ class TestFeedData(unittest.TestCase):
             )
         )
 
-        optimizer = fluid.optimizer.Adam()
+        optimizer = paddle.optimizer.Adam()
         optimizer.minimize(loss)
         return in_data, label, loss
 

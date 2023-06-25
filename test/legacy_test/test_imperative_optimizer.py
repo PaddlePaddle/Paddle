@@ -438,9 +438,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             loss = paddle.mean(b)
 
-            adam = fluid.optimizer.Adam(
-                0.001, parameter_list=linear.parameters()
-            )
+            adam = paddle.optimizer.Adam(0.001, parameters=linear.parameters())
 
             np.testing.assert_allclose(
                 adam.current_step_lr(), 0.001, rtol=1e-06, atol=0.0
@@ -467,9 +465,9 @@ class TestOptimizerLearningRate(unittest.TestCase):
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
 
-            adam = fluid.optimizer.Adam(
-                fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                parameter_list=linear.parameters(),
+            adam = paddle.optimizer.Adam(
+                paddle.optimizer.lr.PiecewiseDecay(bd, value, 0),
+                parameters=linear.parameters(),
             )
 
             np.testing.assert_allclose(
@@ -496,12 +494,10 @@ class TestOptimizerLearningRate(unittest.TestCase):
             loss = paddle.mean(b)
             base_lr = 1.0
 
-            adam = fluid.optimizer.Adam(
-                fluid.dygraph.NaturalExpDecay(
+            adam = paddle.optimizer.Adam(
+                paddle.optimizer.lr.NaturalExpDecay(
                     learning_rate=base_lr,
-                    decay_steps=3,
-                    decay_rate=0.5,
-                    staircase=True,
+                    gamma=0.5,
                 ),
                 parameter_list=linear.parameters(),
             )
@@ -529,7 +525,7 @@ class TestOptimizerLearningRate(unittest.TestCase):
 
             loss = paddle.mean(b)
 
-            adam = fluid.optimizer.Adam(0.1, parameter_list=linear.parameters())
+            adam = paddle.optimizer.Adam(0.1, parameters=linear.parameters())
 
             lr_list = [0.2, 0.3, 0.4, 0.5, 0.6]
             for i in range(5):
@@ -547,14 +543,12 @@ class TestOptimizerLearningRate(unittest.TestCase):
             np.testing.assert_allclose(lr, 0.7, rtol=1e-06, atol=0.0)
 
             with self.assertRaises(RuntimeError):
-                adam = fluid.optimizer.Adam(
-                    fluid.dygraph.NaturalExpDecay(
+                adam = paddle.optimizer.Adam(
+                    paddle.optimizer.lr.NaturalExpDecay(
                         learning_rate=0.1,
-                        decay_steps=3,
-                        decay_rate=0.5,
-                        staircase=True,
+                        gamma=0.5,
                     ),
-                    parameter_list=linear.parameters(),
+                    parameters=linear.parameters(),
                 )
                 adam.set_lr(0.01)
 

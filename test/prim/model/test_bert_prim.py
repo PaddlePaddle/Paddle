@@ -73,7 +73,7 @@ def train(to_static, enable_prim, enable_cinn):
     bert = Bert(to_static, enable_cinn)
     criterion = BertPretrainingCriterion()
 
-    optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
+    optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
 
     losses = []
     for step, batch in enumerate(train_data_loader):

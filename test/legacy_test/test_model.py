@@ -149,8 +149,8 @@ def compute_acc(pred, label):
 
 
 def dynamic_train(model, dataloader):
-    optim = fluid.optimizer.Adam(
-        learning_rate=0.001, parameter_list=model.parameters()
+    optim = paddle.optimizer.Adam(
+        learning_rate=0.001, parameters=model.parameters()
     )
     model.train()
     for inputs, labels in dataloader:
@@ -280,8 +280,8 @@ class TestModel(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
-        optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim_new = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
         )
         model = Model(net, inputs=self.inputs, labels=self.labels)
         model.prepare(
@@ -346,8 +346,8 @@ class TestModel(unittest.TestCase):
         paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
-        optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=net.parameters()
+        optim_new = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
         )
         model = Model(net, inputs=tuple(self.inputs), labels=tuple(self.labels))
         model.prepare(
@@ -595,8 +595,8 @@ class TestModelFunction(unittest.TestCase):
                     learning_rate=0.001, parameters=net.parameters()
                 )
             else:
-                optim = fluid.optimizer.Adam(
-                    learning_rate=0.001, parameter_list=net.parameters()
+                optim = paddle.optimizer.Adam(
+                    learning_rate=0.001, parameters=net.parameters()
                 )
             model = Model(net, inputs, labels)
             model.prepare(
@@ -881,8 +881,8 @@ class TestModelFunction(unittest.TestCase):
         for initial in ["fit", "train_batch", "eval_batch", "predict_batch"]:
             net = LeNet()
             model = Model(net)
-            optim = fluid.optimizer.Adam(
-                learning_rate=0.001, parameter_list=model.parameters()
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=model.parameters()
             )
             model.prepare(
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum")
@@ -912,8 +912,8 @@ class TestModelFunction(unittest.TestCase):
         net = LeNet()
         inputs = InputSpec([None, 1, 28, 28], 'float32', 'x')
         model = Model(net, inputs)
-        optim = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters()
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=model.parameters()
         )
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)

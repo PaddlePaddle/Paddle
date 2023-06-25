@@ -1187,7 +1187,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                     name="y", shape=[-1, 1], dtype='int64'
                 )
                 drop_res, prediction, cost = mlp(input_x, input_y)
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([prediction])
                 sgd.minimize(cost)
@@ -1252,7 +1252,7 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                     name="y", shape=[-1, 1], dtype='int64'
                 )
                 drop_res, prediction, cost = mlp(input_x, input_y)
-                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = paddle.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
                 sgd._set_checkpoints([prediction])
                 sgd.minimize(cost)

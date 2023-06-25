@@ -178,8 +178,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
         dy_layer = DygraphLayer()
-        adam = fluid.optimizer.Adam(
-            learning_rate=LR, parameter_list=dy_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=LR, parameters=dy_layer.parameters()
         )
         sgd = fluid.optimizer.SGD(
             learning_rate=LR, parameter_list=dy_layer.parameters()

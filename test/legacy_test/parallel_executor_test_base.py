@@ -49,7 +49,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         fuse_all_optimizer_ops=False,
         fuse_all_reduce_ops=False,
         fuse_relu_depthwise_conv=False,
-        optimizer=fluid.optimizer.Adam,
+        optimizer=paddle.optimizer.Adam,
         use_fast_executor=False,
         enable_sequential_execution=False,
     ):
@@ -167,7 +167,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         fuse_all_optimizer_ops=False,
         fuse_all_reduce_ops=False,
         fuse_relu_depthwise_conv=False,
-        optimizer=fluid.optimizer.Adam,
+        optimizer=paddle.optimizer.Adam,
         use_fast_executor=True,
         enable_sequential_execution=False,
     ):

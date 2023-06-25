@@ -36,7 +36,7 @@ def test_trainable():
 
 class TestTrainable(unittest.TestCase):
     def check_trainable(
-        self, model, feed_dict, op_count, optimizer=fluid.optimizer.Adam()
+        self, model, feed_dict, op_count, optimizer=paddle.optimizer.Adam()
     ):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -74,7 +74,7 @@ class TestTrainable(unittest.TestCase):
             test_trainable,
             feed_dict,
             op_count={'adamax': 1, 'scale': 1, 'mul_grad': 0},
-            optimizer=fluid.optimizer.Adamax(learning_rate=0.2),
+            optimizer=paddle.optimizer.Adamax(learning_rate=0.2),
         )
 
 

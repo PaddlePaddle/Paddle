@@ -529,8 +529,8 @@ class Args:
 
 def optimizer_setting(parameters):
     lr = 0.0002
-    optimizer = fluid.optimizer.Adam(
-        learning_rate=fluid.layers.piecewise_decay(
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=paddle.optimizer.lr.PiecewiseDecay(
             boundaries=[
                 100 * step_per_epoch,
                 120 * step_per_epoch,
@@ -540,7 +540,7 @@ def optimizer_setting(parameters):
             ],
             values=[lr, lr * 0.8, lr * 0.6, lr * 0.4, lr * 0.2, lr * 0.1],
         ),
-        parameter_list=parameters,
+        parameters=parameters,
         beta1=0.5,
     )
     return optimizer

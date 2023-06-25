@@ -879,45 +879,21 @@ class TestAdamOptimizer(unittest.TestCase):
                         persistable=True,
                         name="epsilon",
                     )
-                    if use_fluid_api:
-                        adam = fluid.optimizer.Adam(
-                            learning_rate=0.01,
-                            beta1=beta1,
-                            beta2=beta2,
-                            epsilon=epsilon,
-                            use_global_beta_pow=use_global_beta_pow,
-                            flatten_param_grads=flatten_param_grads,
-                            align_size=256,
-                            grad_clip=clip,
-                        )
-                    else:
-                        adam = paddle.optimizer.Adam(
-                            learning_rate=0.01,
-                            beta1=beta1,
-                            beta2=beta2,
-                            epsilon=epsilon,
-                            grad_clip=clip,
-                        )
+                    adam = paddle.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epsilon=epsilon,
+                        grad_clip=clip,
+                    )
                 else:
-                    if use_fluid_api:
-                        adam = fluid.optimizer.Adam(
-                            learning_rate=0.01,
-                            beta1=beta1_init,
-                            beta2=beta2_init,
-                            epsilon=epsilon_init,
-                            use_global_beta_pow=use_global_beta_pow,
-                            flatten_param_grads=flatten_param_grads,
-                            align_size=256,
-                            grad_clip=clip,
-                        )
-                    else:
-                        adam = fluid.optimizer.Adam(
-                            learning_rate=0.01,
-                            beta1=beta1_init,
-                            beta2=beta2_init,
-                            epsilon=epsilon_init,
-                            grad_clip=clip,
-                        )
+                    adam = paddle.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1_init,
+                        beta2=beta2_init,
+                        epsilon=epsilon_init,
+                        grad_clip=clip,
+                    )
 
                 adam.minimize(loss)
 
@@ -1010,7 +986,7 @@ class TestAdamOptimizer(unittest.TestCase):
             input=prediction, label=label, reduction='none', use_softmax=False
         )
         loss = paddle.mean(cost)
-        adam = fluid.optimizer.Adam(use_global_beta_pow=True)
+        adam = paddle.optimizer.Adam()
         adam.minimize(loss)
         self.assertRaises(Exception, adam._get_global_accumulator, 'tmp')
         adam._add_global_accumulator(
@@ -1036,10 +1012,9 @@ class TestAdamOptimizer(unittest.TestCase):
         scheduler = paddle.optimizer.lr.NoamDecay(
             d_model=0.01, warmup_steps=100, verbose=True
         )
-        adam = paddle.fluid.optimizer.Adam(
+        adam = paddle.optimizer.Adam(
             learning_rate=scheduler,
-            parameter_list=linear.parameters(),
-            use_global_beta_pow=True,
+            parameters=linear.parameters(),
         )
         adam.minimize(b)
         state_dict = adam.state_dict()
@@ -1065,10 +1040,9 @@ class TestAdamOptimizer(unittest.TestCase):
                 scheduler = paddle.optimizer.lr.NoamDecay(
                     d_model=0.01, warmup_steps=100, verbose=True
                 )
-                adam = paddle.fluid.optimizer.Adam(
+                adam = paddle.optimizer.Adam(
                     learning_rate=scheduler,
-                    parameter_list=linear.parameters(),
-                    use_global_beta_pow=True,
+                    parameters=linear.parameters(),
                 )
                 adam.minimize(b)
                 return adam
