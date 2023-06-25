@@ -466,7 +466,12 @@ class OpConverter {
                              nvinfer1::ITensor* newShape,
                              const std::string& name = "") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    shuffle->setInput(1, *newShape);
+    if (engine_->with_dynamic_shape()) {
+      shuffle->setInput(1, *newShape);
+    } else {
+      auto shape = newShape->getDimensions();
+      shuffle->setReshapeDimensions(shape);
+    }
     if (name != "") {
       shuffle->setName(name.c_str());
     }

@@ -31,6 +31,10 @@ class TrtConvertTopKV2Test(TrtLayerAutoScanTest):
         ]
         if len(inputs['input_data'].shape) <= attrs[0]['axis']:
             return False
+        axis = attrs[0]['axis']
+        axis = axis if axis >= 0 else axis + len(inputs['input_data'].shape)
+        if inputs['input_data'].shape[axis] <= attrs[0]['k']:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -120,7 +124,7 @@ class TrtConvertTopKV2Test(TrtLayerAutoScanTest):
                     "input_data": [4, 32, 32, 32]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 32, 32]
+                    "input_data": [4, 3, 32, 32]
                 }
 
         def clear_dynamic_shape():

@@ -54,7 +54,7 @@ class TopKOpConverter : public OpConverter {
     auto input_rank = input_dims.nbDims;
     // 1d needs expand to 2d
     bool expand_to_2d = (input_rank == 1);
-    if (expand_to_2d) {
+    if (engine_->with_dynamic_shape() && expand_to_2d) {
       input_tensor = Unsqueeze(input_tensor, std::vector<int32_t>{1});
     }
 
@@ -66,7 +66,10 @@ class TopKOpConverter : public OpConverter {
     }
 
     nvinfer1::ITopKLayer* layer = nullptr;
-    axis = (axis < 0) ? axis + input_rank : axis;
+    if (axis > 0 && !engine_->with_dynamic_shape()) {
+      axis -= 1;
+    }
+    if (axis < 0) axis += input_rank;
 
     layer =
         TRT_ENGINE_ADD_LAYER(engine_, TopK, *input_tensor, flag, k, 1 << axis);
@@ -75,7 +78,7 @@ class TopKOpConverter : public OpConverter {
     nvinfer1::ITensor* indices = layer->getOutput(1);
 
     // un-expand to 1d
-    if (expand_to_2d) {
+    if (engine_->with_dynamic_shape() && expand_to_2d) {
       values = Squeeze(values, std::vector<int32_t>{1});
       indices = Squeeze(indices, std::vector<int32_t>{1});
     }
