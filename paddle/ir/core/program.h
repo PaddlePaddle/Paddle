@@ -36,7 +36,7 @@ class IrContext;
 /// concepts such as basic blocks, closures, and functions will be introduced to
 /// continuously improve Program's ability to represent computational graphs.
 ///
-class Program {
+class IR_API Program {
  public:
   using ParameterMap =
       std::unordered_map<std::string, std::unique_ptr<Parameter>>;

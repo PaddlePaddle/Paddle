@@ -2569,7 +2569,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-    if (op_type == "lookup_table") {
+    if (op_type == "lookup_table" || op_type == "lookup_table_v2") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
                    "static shape yet";
@@ -2720,7 +2720,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if !IS_TRT_VERSION_GE(8200)
       VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
       return false;
-#endif
+#else
       if (!with_dynamic_shape) {
         VLOG(3) << "the einsum does not support "
                    "static shape yet";
@@ -2746,6 +2746,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "TensorRT currently does not support ellipses !";
         return false;
       }
+#endif
     }
 
     if (use_no_calib_int8) {

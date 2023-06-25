@@ -23,6 +23,7 @@ class EinsumOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8200)
     VLOG(3) << "convert a einsum op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     auto operand_inputs = op_desc.Input("Operands");
@@ -39,6 +40,9 @@ class EinsumOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "einsum", {output_name}, test_mode);
+#else
+    VLOG(3) << "Einsum is not supported when TensorRT < 8.2.0";
+#endif
   }
 };
 
