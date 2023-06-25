@@ -48,13 +48,6 @@ void InstanceNormKernel(const Context& dev_ctx,
     float* scale_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(c);
     int r = xpu::constant<float>(dev_ctx.x_context(), scale_data_temp, c, 1.f);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    // std::unique_ptr<float[]> data_cpu(new float[c]);
-    // std::fill(data_cpu.get(), data_cpu.get() + c, static_cast<float>(1));
-    // memory_utils::Copy(dev_ctx.GetPlace(),
-    //                    scale_data_temp,
-    //                    phi::CPUPlace(),
-    //                    static_cast<void*>(data_cpu.get()),
-    //                    c * sizeof(float));
     scale_data_fp32 = scale_data_temp;
   } else if (scale_ptr->dtype() ==
              phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
@@ -79,13 +72,6 @@ void InstanceNormKernel(const Context& dev_ctx,
     float* bias_data_temp = RAII_GUARD.alloc_l3_or_gm<float>(c);
     int r = xpu::constant<float>(dev_ctx.x_context(), bias_data_temp, c, 1.f);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    // std::unique_ptr<float[]> data_cpu(new float[c]);
-    // std::fill(data_cpu.get(), data_cpu.get() + c, static_cast<float>(0));
-    // memory_utils::Copy(dev_ctx.GetPlace(),
-    //                    bias_data_temp,
-    //                    phi::CPUPlace(),
-    //                    static_cast<void*>(data_cpu.get()),
-    //                    c * sizeof(float));
     bias_data_fp32 = bias_data_temp;
   } else if (bias_ptr->dtype() ==
              phi::CppTypeToDataType<phi::dtype::float16>::Type()) {
