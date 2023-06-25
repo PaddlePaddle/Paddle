@@ -114,7 +114,8 @@ void OpYamlInfoParser::parse() {
   auto runtime_info = std::get<3>(op_info_tuple_);
 
   for (auto& name : runtime_info.infer_meta_param) {
-    if (map_name2id_.count(name)) {
+    if (map_name2id_.count(name) &&
+        !map_input_info_[name].is_mutable_attribute) {
       vec_infer_meta_tensor_params_.push_back(name);
     } else {
       vec_infer_meta_attr_params_.push_back(name);
@@ -122,7 +123,8 @@ void OpYamlInfoParser::parse() {
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (map_name2id_.count(name)) {
+    if (map_name2id_.count(name) &&
+        !map_input_info_[name].is_mutable_attribute) {
       vec_kernel_fn_tensor_params_.push_back(name);
     } else {
       vec_kernel_fn_attr_params_.push_back(name);

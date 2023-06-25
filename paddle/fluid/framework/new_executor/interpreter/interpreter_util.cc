@@ -994,7 +994,7 @@ void BuildOpFuncList(
     ::ir::BuildPhiKernelContext((*it),
                                 value_2_name_map,
                                 scope,
-                                impl->get_op_info_(),
+                                op_yaml_info_parser,
                                 &(op_func_node.kernel_context_),
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));

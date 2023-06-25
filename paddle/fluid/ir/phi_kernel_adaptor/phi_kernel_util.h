@@ -48,14 +48,14 @@ void BuildInferMetaContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
-    const paddle::dialect::OpYamlInfoParser&,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     phi::InferMetaContext* ctx);
 
 void BuildPhiKernelContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
-    const OpInfoTuple& op_yaml_info,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
     phi::KernelContext* ctx,
     std::map<std::string, std::vector<int>>* input_map = nullptr,
     std::map<std::string, std::vector<int>>* output_map = nullptr);

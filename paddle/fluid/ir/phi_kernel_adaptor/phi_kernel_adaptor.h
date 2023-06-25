@@ -99,7 +99,7 @@ class PhiKernelAdaptor {
         phi::KernelContext kernel_ctx(dev_ctx);
 
         ir::BuildPhiKernelContext(
-            (*it), name_map, scope_, op_info_res, &kernel_ctx);
+            (*it), name_map, scope_, op_yaml_info_parser, &kernel_ctx);
         found_it->second(&kernel_ctx);
 
         auto out_value = (*it)->result(0);
@@ -154,7 +154,7 @@ class PhiKernelAdaptor {
       phi::KernelContext kernel_ctx(dev_ctx);
 
       ir::BuildPhiKernelContext(
-          (*it), name_map, scope_, yaml_info, &kernel_ctx);
+          (*it), name_map, scope_, op_yaml_info_parser, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 
       auto out_value = (*it)->result(0);

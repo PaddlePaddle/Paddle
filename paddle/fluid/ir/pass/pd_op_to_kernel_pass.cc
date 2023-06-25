@@ -50,18 +50,17 @@ phi::KernelKey GetKernelKey(
 
   std::cerr << op->name() << std::endl;
   if (op_info_parser != nullptr) {
-    std::cerr << "op info parser not null ptr" << std::endl;
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
 
     auto attr_map = op->attributes();
     auto& data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
-    std::cerr << "21" << std::endl;
+
     if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
       auto& input_map = op_info_parser->Name2Id();
-      std::cerr << "20" << slot_name << std::endl;
+
       if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
@@ -73,12 +72,11 @@ phi::KernelKey GetKernelKey(
                 .dyn_cast<paddle::dialect::DenseTensorType>();
         kernel_data_type = TransToPhiDataType(type.dtype());
       } else {
-        std::cerr << "22" << std::endl;
         PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                           true,
                           phi::errors::PreconditionNotMet(
                               "[%s] MUST in attribute map", slot_name));
-        std::cerr << "23" << std::endl;
+
         auto attr_type = op_info_parser->AttrTypeName(slot_name);
         PADDLE_ENFORCE_EQ(attr_type,
                           "paddle::dialect::DataTypeAttribute",
