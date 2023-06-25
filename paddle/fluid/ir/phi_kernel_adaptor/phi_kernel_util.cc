@@ -110,7 +110,6 @@ void BuildScope(ir::Block* block,
                           phi::errors::PreconditionNotMet(
                               "can not found input of combine op"));
 
-        std::cerr << "combine in " << name_map->at(ptr) << std::endl;
         tensor_array->emplace_back(
             &(scope->Var(name_map->at(ptr))->Get<phi::DenseTensor>()));
       }
@@ -326,7 +325,7 @@ void BuildPhiKernelContext(
         // construct input_index and output_here,  should remove input_index and
         // output_index from OpFuncNode Each in_var_name named "inner_var_" +
         // index, len("inner_var_") = 10
-        std::cerr << "in var name " << in_var_name << std::endl;
+
         size_t tmp_id = std::atol(in_var_name.substr(4, 100).c_str());
         (*input_map)[std::to_string(input_index_map.at(t))].push_back(tmp_id);
       }
@@ -367,7 +366,7 @@ void BuildPhiKernelContext(
           for (size_t i = 0; i < tensor_array.size(); ++i) {
             inputs.emplace_back(tensor_array[i]);
           }
-          std::cerr << "is tensor ref " << std::endl;
+
           ctx->EmplaceBackInputs(std::move(inputs));
         } else if (var->IsType<paddle::framework::FeedList>()) {
           auto feed_list = var->Get<paddle::framework::FeedList>();
@@ -431,7 +430,7 @@ void BuildPhiKernelContext(
         // construct input_index and output_here,  should remove input_index and
         // output_index from OpFuncNode Each in_var_name named "inner_var_" +
         // index, len("inner_var_") = 10
-        std::cerr << "out var name " << name << std::endl;
+
         size_t tmp_id = std::atol(name.substr(4, 100).c_str());
         (*output_map)["out"].push_back(tmp_id);
       }
