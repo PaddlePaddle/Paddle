@@ -272,9 +272,11 @@ void BuildInferMetaContext(
     auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
-    ir::Value out_ptr = op->result(0);
-    auto name = name_map.at(out_ptr);
-    ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      ir::Value out_ptr = op->result(i);
+      auto name = name_map.at(out_ptr);
+      ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+    }
   }
 }
 
@@ -415,21 +417,23 @@ void BuildPhiKernelContext(
     auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
-    ir::Value out_ptr = op->result(0);
-    auto name = name_map.at(out_ptr);
-    ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
-        &(scope->Var(name)->Get<phi::DenseTensor>())));
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      ir::Value out_ptr = op->result(i);
+      auto name = name_map.at(out_ptr);
+      ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
+          &(scope->Var(name)->Get<phi::DenseTensor>())));
 
-    if (output_map != nullptr) {
-      // only deal with single input for now, [todo] need support multi input
-      // like concat
-      // TODO(phlrain): OpFuncNode need input_index and output_index, construct
-      // input_index and output_here,  should remove input_index and
-      // output_index from OpFuncNode Each in_var_name named "inner_var_" +
-      // index, len("inner_var_") = 10
-      std::cerr << "out var name " << name << std::endl;
-      size_t tmp_id = std::atol(name.substr(10, 100).c_str());
-      (*output_map)["out"].push_back(tmp_id);
+      if (output_map != nullptr) {
+        // only deal with single input for now, [todo] need support multi input
+        // like concat
+        // TODO(phlrain): OpFuncNode need input_index and output_index,
+        // construct input_index and output_here,  should remove input_index and
+        // output_index from OpFuncNode Each in_var_name named "inner_var_" +
+        // index, len("inner_var_") = 10
+        std::cerr << "out var name " << name << std::endl;
+        size_t tmp_id = std::atol(name.substr(10, 100).c_str());
+        (*output_map)["out"].push_back(tmp_id);
+      }
     }
   }
 }

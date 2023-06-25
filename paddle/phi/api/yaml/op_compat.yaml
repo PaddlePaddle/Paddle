@@ -297,6 +297,7 @@
     out : Out
 
 - op : atan2
+  backward : atan2_grad
   inputs :
     {x : X1, y : X2}
   outputs :

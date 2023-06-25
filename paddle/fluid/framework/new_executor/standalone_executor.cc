@@ -68,6 +68,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
+      // std::string out_str = program->Proto()->DebugString();
+      // std::cerr << "program proto " << out_str << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
       base_program->Print(std::cout);
       auto kernel_program =
