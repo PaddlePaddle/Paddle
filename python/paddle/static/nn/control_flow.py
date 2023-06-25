@@ -898,7 +898,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         regardless of which branch is selected at runtime. This has frequently
         surprised users who expected a lazy semantics. For example:
 
-        .. code-block:: python
+        .. code-block:: python:name : code-example1
 
             import paddle
 
@@ -932,7 +932,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         predicate ``pred`` is true else ``false_fn()`` .
 
     Examples:
-        .. code-block:: python
+        .. code-block:: python:name : code-example2
 
             import paddle
 

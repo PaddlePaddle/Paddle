@@ -1259,7 +1259,7 @@ class Variable(metaclass=VariableMetaClass):
     Examples:
         In Static Graph Mode:
 
-        .. code-block:: python
+        .. code-block:: python:name :code-example1
 
             import paddle.fluid as fluid
             cur_program = fluid.Program()
@@ -1408,7 +1408,7 @@ class Variable(metaclass=VariableMetaClass):
              ( :ref:`api_guide_Variable_en` | dtype is same as current Variable), The detached Variable.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example4
 
                 import paddle
 
@@ -1708,7 +1708,7 @@ class Variable(metaclass=VariableMetaClass):
             str: The debug string.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example2
 
                 import paddle.fluid as fluid
                 import paddle
@@ -2058,7 +2058,7 @@ class Variable(metaclass=VariableMetaClass):
             Variable, The cloned Variable.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example3
 
                 import paddle
 
@@ -2308,7 +2308,7 @@ class Variable(metaclass=VariableMetaClass):
             Tensor, the value in given scope.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example6
 
                 import paddle
                 import paddle.static as static
@@ -2373,7 +2373,7 @@ class Variable(metaclass=VariableMetaClass):
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example7
 
                 import paddle
                 import paddle.static as static
@@ -2470,7 +2470,7 @@ class Variable(metaclass=VariableMetaClass):
             Variable, the number of elements for current Variable
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example8
 
                 import paddle
 
@@ -5229,7 +5229,7 @@ class Program:
         Program: An empty Program.
 
     Examples:
-        .. code-block:: python
+        .. code-block:: python:name :code-example1
 
             import paddle
             import paddle.static as static
@@ -5657,7 +5657,7 @@ class Program:
             ValueError: If any of required fields is not set and throw_on_error is True.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example2
 
                 import paddle
                 import paddle.static as static
@@ -5744,7 +5744,7 @@ class Program:
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         For Example:
-          ::
+          .. code-block:: python:name :code-example3
 
             import paddle
             import paddle.static as static
@@ -5777,7 +5777,7 @@ class Program:
                 print Program Descs inorder to make sure you have same print result
                 after :code:`clone`:
 
-            .. code-block:: python
+            .. code-block:: python:name :code-example4
 
                 import paddle
 
@@ -5794,7 +5794,7 @@ class Program:
 
 
             1. To clone a test program, the sample code is:
-                .. code-block:: python
+                .. code-block:: python:name :code-example5
 
                     import paddle
                     import paddle.static as static
@@ -5846,7 +5846,7 @@ class Program:
 
 
             2. The clone method can be avoid if you create program for training and program for testing individually.
-                .. code-block:: python
+                .. code-block:: python:name :code-example6
 
                     import paddle
                     import paddle.static as static
@@ -6239,7 +6239,7 @@ class Program:
             Program: A deserialized Program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example7
 
                 import paddle
                 import paddle.static as static
@@ -6298,7 +6298,7 @@ class Program:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example9
 
                 import paddle
                 import paddle.static as static
@@ -6336,7 +6336,7 @@ class Program:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example8
 
                 import paddle
                 import paddle.static as static
@@ -6376,7 +6376,7 @@ class Program:
 
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example10
 
                 import paddle
                 import paddle.static as static
@@ -6404,7 +6404,7 @@ class Program:
             :ref:`api_guide_Block_en`: The :code:`index` block
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example11
 
                 import paddle
                 import paddle.static as static
@@ -6429,7 +6429,7 @@ class Program:
              :ref:`api_guide_Block_en`: The :code:`index`  :ref:`api_guide_Block_en`
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example12
 
                 import paddle
                 import paddle.static as static
@@ -6581,7 +6581,7 @@ class Program:
             iterable Tensors: The Generator will yield every Tensor in this program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example13
 
                 import paddle
                 import paddle.static as static
@@ -6609,7 +6609,7 @@ class Program:
             list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example14
 
                 import paddle
                 import paddle.static as static
@@ -6662,7 +6662,7 @@ class Program:
             dict: a dict contains the parameters and persistable buffers.
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example15
 
                 import paddle
                 import paddle.static as static
@@ -6769,7 +6769,7 @@ class Program:
             None
 
         Examples:
-            .. code-block:: python
+            .. code-block:: python:name :code-example16
 
                 import paddle
                 import paddle.static as static
@@ -7233,7 +7233,7 @@ def program_guard(main_program, startup_program=None):
             Default: None.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: python:name :code-example1
 
           import paddle
 
@@ -7248,7 +7248,7 @@ def program_guard(main_program, startup_program=None):
     to construct either of startup program or main program.
 
     Examples:
-       .. code-block:: python
+       .. code-block:: python:name :code-example2
 
           import paddle
 
