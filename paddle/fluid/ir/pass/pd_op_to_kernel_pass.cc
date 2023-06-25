@@ -25,6 +25,7 @@
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
@@ -38,7 +39,8 @@ const int init_on_gpu_threashold = 1000;
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
     const phi::Place& place,
-    const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
+    const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
+    const dialect::OpYamlInfoParser* op_info_parser = nullptr) {
   if (op->name() == "pd.feed") {
     return {phi::Backend::CPU, phi::DataLayout::ANY, phi::DataType::FLOAT32};
   }
@@ -48,38 +50,18 @@ phi::KernelKey GetKernelKey(
 
   paddle::dialect::OpYamlInfoInterface op_info_interface =
       op->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-  std::vector<paddle::dialect::OpInputInfo> input_info;
-  if (op_info_interface) {
+  if (op_info_parser != nullptr) {
     auto op_info_res = op_info_interface.GetOpInfo();
 
-    input_info = std::get<0>(op_info_res);
-
     // only suppurt non vector input for now
-    std::map<std::string, int> input_map;
-    int index = 0;
-    int tensor_input_number = 0;
-    for (auto& t : input_info) {
-      // todo filter attribute tensor
-      input_map[t.name] = index++;
-
-      if (!t.is_mutable_attribute) {
-        tensor_input_number += 1;
-      }
-    }
-
-    std::map<std::string, std::string> attr_type_map;
-    auto attr_info = std::get<1>(op_info_res);
-    for (auto& t : attr_info) {
-      VLOG(6) << t.name << "\t" << t.type_name;
-      attr_type_map[t.name] = t.type_name;
-    }
-    auto runtime_info = std::get<3>(op_info_res);
+    int tensor_input_number = op_info_parser->InputTensorNumber();
 
     auto attr_map = op->attributes();
-    auto data_type_info = runtime_info.kernel_key_dtype;
+    auto data_type_info = op_info_parser->OpRuntimeInfo().kernel_key_dtype;
     if (data_type_info.size() > 0 && data_type_info[0] != "") {
       // only support single input and attribute
       auto slot_name = data_type_info[0];
+      auto& input_map = op_info_parser->Name2Id();
       if (input_map.count(slot_name)) {
         // parse from input
         int in_index = input_map.at(slot_name);
@@ -91,10 +73,15 @@ phi::KernelKey GetKernelKey(
                 .dyn_cast<paddle::dialect::DenseTensorType>();
         kernel_data_type = TransToPhiDataType(type.dtype());
       } else {
-        PADDLE_ENFORCE_EQ(attr_type_map.count(slot_name),
+        PADDLE_ENFORCE_EQ(attr_map.count(slot_name),
                           true,
                           phi::errors::PreconditionNotMet(
-                              "[%s] MUST in attr map", slot_name));
+                              "[%s] MUST in attribute map", slot_name));
+        auto attr_type = op_info_parser->AttrTypeName(slot_name);
+        PADDLE_ENFORCE_EQ(attr_type,
+                          "paddle::dialect::DataTypeAttribute",
+                          phi::errors::PreconditionNotMet(
+                              "Type of [%s] should be DataType", slot_name));
         kernel_data_type = attr_map.at(slot_name)
                                .dyn_cast<paddle::dialect::DataTypeAttribute>()
                                .data();
@@ -138,10 +125,11 @@ phi::KernelKey GetKernelKey(
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
-      // todo filter attribute tensor
-      if ((input_info.size() > i) && input_info[i].is_mutable_attribute) {
+      // NOTE, only op with OpYamlInfo can have TensorArr
+      if (op_info_parser != nullptr && op_info_parser->IsTensorAttribute(i)) {
         continue;
       }
+
       auto input_tmp = op->operand(i).source();
       std::cerr << "12" << std::endl;
       auto new_input_tmp = map_value_pair.at(input_tmp);
@@ -208,7 +196,14 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
   for (auto it = block->begin(); it != block->end(); ++it) {
     VLOG(6) << "op name " << (*it)->name();
-    auto kernel_key = GetKernelKey(*it, cpu_place, map_value_pair);
+    paddle::dialect::OpYamlInfoInterface op_info_interface =
+        (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+    OpYamlInfoParser* op_info_parser = nullptr;
+    if (op_info_interface) {
+      op_info_parser = new OpYamlInfoParser(op_info_interface.GetOpInfo());
+    }
+    auto kernel_key =
+        GetKernelKey(*it, cpu_place, map_value_pair, op_info_parser);
     VLOG(6) << "kernel type " << kernel_key;
     // create new Op
 
@@ -251,15 +246,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
 
-    paddle::dialect::OpYamlInfoInterface op_info_interface =
-        (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
     std::string kernel_fn_str;
-    std::vector<paddle::dialect::OpInputInfo> input_info;
-    if (op_info_interface) {
-      auto op_info_res = op_info_interface.GetOpInfo();
-      auto runtime_info = std::get<3>(op_info_res);
-      kernel_fn_str = runtime_info.kernel_func[0];
-      input_info = std::get<0>(op_info_res);
+    if (op_info_parser != nullptr) {
+      kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
     }
 
     if ((*it)->num_operands() > 0) {
@@ -279,8 +268,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
                 new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>()
                     .place();
 
-            if ((i < input_info.size()) &&
-                (!input_info[i].is_mutable_attribute) &&
+            if ((op_info_parser != nullptr &&
+                 !op_info_parser->IsTensorAttribute(i)) &&
                 (place != phi::TransToPhiPlace(kernel_key.backend()))) {
               if (paddle::experimental::NeedTransformPlace(
                       place, kernel.InputAt(i).backend, {})) {

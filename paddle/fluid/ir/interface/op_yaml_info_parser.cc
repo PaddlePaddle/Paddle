@@ -22,7 +22,7 @@ OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
   parse();
 }
 
-bool OpYamlInfoParser::IsTensorArrtibute(size_t index) const {
+bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       InputInfo().size(),
@@ -60,6 +60,14 @@ const std::vector<std::string>& OpYamlInfoParser::KernelFnTensorParams() const {
 }
 const std::vector<std::string>& OpYamlInfoParser::KernelFnAttrParams() const {
   return vec_kernel_fn_attr_params_;
+}
+
+const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
+  return std::get<3>(op_info_tuple_);
+}
+
+const std::map<std::string, int>& OpYamlInfoParser::Name2Id() const {
+  return map_name2id_;
 }
 
 void OpYamlInfoParser::parse() {

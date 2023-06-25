@@ -67,7 +67,7 @@ TEST(ir_op_info_test, op_op_info_test) {
 
   EXPECT_EQ((op_yaml_info_parser.AttrTypeName("seed") == "ir::Int32Attribute"),
             true);
-  EXPECT_EQ(op_yaml_info_parser.IsTensorArrtibute(0), true);
+  EXPECT_EQ(op_yaml_info_parser.IsTensorAttribute(0), true);
 
   EXPECT_EQ(op_yaml_info_parser.InputTensorNumber(), 0u);
 }
