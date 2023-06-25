@@ -31,7 +31,8 @@ void AllToAllKernel(const Context& dev_ctx,
                     DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2703
-  out->Resize(x.dims());
+  auto x_dims = x.dims();
+  out->Resize(x_dims);
   dev_ctx.template Alloc<T>(out);
 
   auto comm_ctx =
@@ -49,8 +50,15 @@ void AllToAllKernel(const Context& dev_ctx,
   int send_numel = x.numel() / nranks;
   size_t offset = 0;
 
-  VLOG(0) << "all to all kernel group start";
-  VLOG(0) << "nranks " << nranks << ", send_numel " << send_numel;
+  PADDLE_ENFORCE_EQ(
+      x_dims[0] % nranks,
+      0,
+      errors::InvalidArgument(
+          "The first dimension size (%d) of the input tensor must be "
+          "divisible by the number of ranks (%d).",
+          x_dims[0],
+          nranks));
+
   comm_ctx->GroupStart();
 
   const auto* send_buf = x.data<T>();

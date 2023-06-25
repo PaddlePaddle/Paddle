@@ -37,8 +37,6 @@ def alltoall_new(
     nranks = dist.get_world_size()
     helper = framework.LayerHelper(op_type, **locals())
 
-    with open("debug.log", "a") as wobj:
-        wobj.write(f"raw in tensor: {in_tensor_or_tensor_list}\n")
     in_tensor = in_tensor_or_tensor_list
     if isinstance(in_tensor_or_tensor_list, list):
         if len(in_tensor_or_tensor_list) == 0:
@@ -48,10 +46,6 @@ def alltoall_new(
             in_tensor = paddle.stack(in_tensor_or_tensor_list, axis=0)
         else:
             in_tensor = paddle.concat(in_tensor_or_tensor_list, axis=0)
-            with open("debug.log", "a") as wobj:
-                wobj.write(
-                    f"after concat in tensor: {in_tensor_or_tensor_list}\n"
-                )
 
     out_tensor = out_tensor_or_tensor_list
     if isinstance(out_tensor_or_tensor_list, list):
