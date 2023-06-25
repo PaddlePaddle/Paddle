@@ -60,11 +60,11 @@ using OpAttributeInfo = dialect::OpAttributeInfo;
 using OpAttributeInfoList = std::vector<dialect::OpAttributeInfo>;
 using OpOutputInfo = dialect::OpOutputInfo;
 using OpOutputInfoList = std::vector<dialect::OpOutputInfo>;
-using InputHandleFn = std::function<ir::OpResult(const OpDesc&,
+using InputHandleFn = std::function<ir::OpResult(ir::IrContext*,
+                                                 TranslationContext*,
+                                                 const OpDesc&,
                                                  const std::string&,
                                                  const OpInputInfo&,
-                                                 ir::IrContext*,
-                                                 TranslationContext*,
                                                  ir::Program*)>;
 constexpr char kTargetDialectPrefix[] = "pd.";
 constexpr char kEmptyVarName[] = "@EMPTY@";
@@ -241,34 +241,37 @@ inline ir::OpResult GetAttributeAsInput(ir::IrContext* ctx,
 /// should have no non-static data member, since we expected it's stateless.
 struct OpTranscriber {
  public:
+  virtual ~OpTranscriber() = default;
+
+ public:
   virtual ir::Operation* operator()(ir::IrContext* ctx,
                                     TranslationContext* param_map,
-                                    ir::Program* program,
-                                    const OpDesc& op_desc);
+                                    const OpDesc& op_desc,
+                                    ir::Program* program);
 
  public:
   virtual ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc);
   virtual std::vector<ir::OpResult> GenerateOperationInput(
       ir::IrContext* ctx,
       TranslationContext* param_map,
-      ir::Program* program,
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos);
+      const OpInputInfoList& input_infos,
+      ir::Program* program);
   virtual std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
       ir::IrContext* ctx,
       const OpDesc& op_desc,
       const OpOutputInfoList& output_infos);
-  virtual void HandleNonexistedAttribute(ir::IrContext*,
-                                         ir::AttributeMap* attribute_map,
-                                         const OpAttributeInfo& info) {
+  virtual void HandleNonexistentAttribute(ir::IrContext*,
+                                          ir::AttributeMap* attribute_map,
+                                          const OpAttributeInfo& info) {
     auto& attribute_translator = AttributeTranslator::instance();
     (*attribute_map)[info.name] =
         attribute_translator(info.type_name, paddle::framework::Attribute());
   }
   virtual ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
-      std::string normalized_op_name,
+      const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc);
 
@@ -305,10 +308,10 @@ ir::OpInfo OpTranscriber::LoopkUpOpInfo(ir::IrContext* ctx,
 std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     ir::IrContext* ctx,
     TranslationContext* param_map,
-    ir::Program* program,
     const OpDesc& op_desc,
     const std::string& normalized_op_name,
-    const OpInputInfoList& input_infos) {
+    const OpInputInfoList& input_infos,
+    ir::Program* program) {
   VLOG(10) << "[op:" << op_desc.Type() << "][input] entrance";
 
   // scan all inputs to see if any of them is generated as a vector<Tensor>
@@ -341,7 +344,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
       ir::OpResult ret = special_handler(
-          op_desc, normalized_op_name, info, ctx, param_map, program);
+          ctx, param_map, op_desc, normalized_op_name, info, program);
       op_inputs.push_back(ret);
       continue;
     }
@@ -526,7 +529,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
 
 ir::AttributeMap OpTranscriber::TranslateOpAttribute(
     ir::IrContext* ctx,
-    std::string normalized_op_name,
+    const std::string& normalized_op_name,
     const OpAttributeInfoList& op_attr_infos,
     const OpDesc& op_desc) {
   auto& attribute_translator = AttributeTranslator::instance();
@@ -552,7 +555,7 @@ ir::AttributeMap OpTranscriber::TranslateOpAttribute(
     } else {
       VLOG(10) << "attribute in " << op_desc.Type()
                << " name: " << legacy_attr_name << " doesn't exist";
-      this->HandleNonexistedAttribute(ctx, &attribute_map, info);
+      this->HandleNonexistentAttribute(ctx, &attribute_map, info);
     }
   }
 
@@ -605,8 +608,8 @@ void OpTranscriber::RecordOpResultMapping(TranslationContext* param_map,
 
 ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
                                          TranslationContext* param_map,
-                                         ir::Program* program,
-                                         const OpDesc& op_desc) {
+                                         const OpDesc& op_desc,
+                                         ir::Program* program) {
   auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
   auto* op_info_concept =
       op_info.GetInterfaceImpl<dialect::OpYamlInfoInterface>();
@@ -618,7 +621,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
       op_info_concept->get_op_info_();
 
   auto op_inputs = this->GenerateOperationInput(
-      ctx, param_map, program, op_desc, op_info.name(), input_infos);
+      ctx, param_map, op_desc, op_info.name(), input_infos, program);
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
@@ -643,7 +646,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
 struct CastOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext*,
-      std::string normalized_op_name,
+      const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     auto& attribute_translator = AttributeTranslator::instance();
@@ -666,9 +669,9 @@ struct CastOpTranscriber : public OpTranscriber {
 };
 
 struct EmbeddingOpTranscriber : public OpTranscriber {
-  void HandleNonexistedAttribute(ir::IrContext* ctx,
-                                 ir::AttributeMap* attribute_map,
-                                 const OpAttributeInfo& info) override {
+  void HandleNonexistentAttribute(ir::IrContext* ctx,
+                                  ir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
     if (info.name == "padding_idx") {
       (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
     } else if (info.name == "sparse") {
@@ -680,7 +683,7 @@ struct EmbeddingOpTranscriber : public OpTranscriber {
 struct IncrementOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
-      std::string normalized_op_name,
+      const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     auto& attribute_translator = AttributeTranslator::instance();
@@ -707,7 +710,7 @@ struct IncrementOpTranscriber : public OpTranscriber {
 struct AssignValueOpTranscriber : public OpTranscriber {
   ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) override {
     std::string target_op_name = "pd.assign_value_";
-    auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW(
           "Op assign_value should have corresponding OpInfo pd.assign_value_");
@@ -718,8 +721,8 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 
   ir::Operation* operator()(ir::IrContext* ctx,
                             TranslationContext* param_map,
-                            ir::Program* program,
-                            const OpDesc& op_desc) override {
+                            const OpDesc& op_desc,
+                            ir::Program* program) override {
     VLOG(10) << "[op assign_value] start transcribing";
     auto op_info = this->LoopkUpOpInfo(ctx, op_desc);
     auto* op_info_concept =
@@ -813,11 +816,11 @@ struct AssignValueOpTranscriber : public OpTranscriber {
 // So we generate an input by `full` with same type of output `DropoutState` of
 // OpDesc And we still should be aware that `DropoutState` is an optional output
 // in static graph.
-ir::OpResult TranslateDropOutStateIn(const OpDesc& op_desc,
+ir::OpResult TranslateDropOutStateIn(ir::IrContext* ctx,
+                                     TranslationContext* param_map,
+                                     const OpDesc& op_desc,
                                      const std::string& normalized_op_name,
                                      const OpInputInfo& input_info,
-                                     ir::IrContext* ctx,
-                                     TranslationContext* param_map,
                                      ir::Program* program) {
   const std::string legacy_output_name = "DropoutState";
   std::vector<std::string> legacy_output_vars;
@@ -867,7 +870,7 @@ struct RnnOpTranscriber : public OpTranscriber {
 struct FeedOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
-      std::string normalized_op_name,
+      const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     ir::AttributeMap attribute_map = {
@@ -880,10 +883,10 @@ struct FeedOpTranscriber : public OpTranscriber {
   std::vector<ir::OpResult> GenerateOperationInput(
       ir::IrContext* ctx,
       TranslationContext* param_map,
-      ir::Program* program,
       const OpDesc& op_desc,
       const std::string& normalized_op_name,
-      const OpInputInfoList& input_infos) override {
+      const OpInputInfoList& input_infos,
+      ir::Program* program) override {
     return {};
   }
 };
@@ -891,7 +894,7 @@ struct FeedOpTranscriber : public OpTranscriber {
 struct FetchOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext* ctx,
-      std::string normalized_op_name,
+      const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
     ir::AttributeMap attribute_map = {
