@@ -18,7 +18,7 @@ set -ex
 workspace=$(cd $(dirname ${BASH_SOURCE[0]})/../..; pwd)
 build_dir_name=${cinn_build:-build_ci}
 build_dir=$workspace/${build_dir_name}
-py_version=${py_version:-3.7}
+py_version=${py_version:-3.8}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl
 
 
@@ -133,7 +133,8 @@ function cmake_ {
     cd $build_dir
     set -x
     cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
-      -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config}  -DPY_VERSION=${py_version}
+      -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config}  -DCINN_WITH_CUDNN=${cudnn_config} \
+      -DPY_VERSION=${py_version}
     set +x
 
 }

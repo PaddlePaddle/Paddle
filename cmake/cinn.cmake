@@ -94,6 +94,9 @@ include(cmake/cinn/external/ginac.cmake)
 include(cmake/cinn/external/openmp.cmake)
 include(cmake/cinn/external/jitify.cmake)
 
+if(CINN_ONLY)
+  LINK_LIBRARIES(gflags)
+endif()
 
 set(LINK_FLAGS
     "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cinn/export.map"

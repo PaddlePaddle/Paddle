@@ -145,7 +145,7 @@ function(cinn_nv_binary TARGET_NAME)
 endfunction(cinn_nv_binary)
 
 function(cinn_nv_test TARGET_NAME)
-  if(WITH_GPU AND WITH_TESTING AND ONLY_CINN)
+  if(WITH_GPU AND WITH_TESTING AND CINN_ONLY)
     set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
@@ -185,7 +185,7 @@ endfunction(cinn_nv_test)
 
 # Add dependency that TARGET will depend on test result of DEP, this function executes the DEP during make.
 function(add_run_test_dependency TARGET_NAME DEP_NAME)
-  if(WITH_TESTING AND ONLY_CINN)
+  if(WITH_TESTING AND CINN_ONLY)
     set(custom_target_name ${TARGET_NAME}_TEST_OUTPUT_DEPENDENCY_ON_${DEP_NAME})
     add_custom_target(
       ${custom_target_name}
@@ -195,7 +195,7 @@ function(add_run_test_dependency TARGET_NAME DEP_NAME)
       COMMAND cd ${CMAKE_BINARY_DIR}
       DEPENDS ${DEP_NAME})
     add_dependencies(${TARGET_NAME} ${DEP_NAME} ${custom_target_name})
-  endif(WITH_TESTING)
+  endif(WITH_TESTING AND CINN_ONLY)
 endfunction(add_run_test_dependency)
 
 # find all third_party modules is used for paddle static library

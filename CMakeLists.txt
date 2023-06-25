@@ -64,6 +64,7 @@ option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
 option(CINN_ONLY "Compile CINN only in Paddle" OFF)
+option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 
 find_package(Git REQUIRED)
 
@@ -581,11 +582,15 @@ if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
   include(cmake/cinn.cmake)
   add_definitions(-DPADDLE_WITH_CINN)
+  # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
+  #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   if(WITH_GPU)
     set(WITH_CUDA ${WITH_GPU})
-    set(WITH_CUDNN ${WITH_GPU})
     add_definitions(-DCINN_WITH_CUDA)
-    add_definitions(-DCINN_WITH_CUDNN)
+    set(WITH_CUDNN ${CINN_WITH_CUDNN})
+    if(WITH_CUDNN)
+      add_definitions(-DCINN_WITH_CUDNN)
+    endif()
   endif()
 
   if(CINN_ONLY)
