@@ -105,6 +105,79 @@ void XPUElementwise(const XPUContext& dev_ctx,
 }
 
 template <typename T, typename XPUType>
+void XPUElementwise(const XPUContext& dev_ctx,
+                    const T* x_data,
+                    const DDim& x_dims,
+                    const T* y_data,
+                    const DDim& y_dims,
+                    int axis,
+                    T* z_data,
+                    std::function<int(xpu::Context*,
+                                      const XPUType*,
+                                      const XPUType*,
+                                      XPUType*,
+                                      const std::vector<int>&,
+                                      const std::vector<int>&)> func) {
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+
+  PADDLE_ENFORCE_GE(
+      axis,
+      0,
+      errors::InvalidArgument(
+          "Axis should be great than or equal to 0, but received axis is %d.",
+          axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
+  std::vector<int> x_dims_vec(max_dim, 1);
+  std::vector<int> y_dims_vec(max_dim, 1);
+  if (x_dims.size() == max_dim) {
+    for (int i = 0; i < max_dim; i++) {
+      x_dims_vec[i] = x_dims[i];
+    }
+  } else {
+    for (int i = 0; i < x_dims.size(); i++) {
+      x_dims_vec[i + axis] = x_dims[i];
+    }
+  }
+  if (y_dims.size() == max_dim) {
+    for (int i = 0; i < max_dim; i++) {
+      y_dims_vec[i] = y_dims[i];
+    }
+  } else {
+    for (int i = 0; i < y_dims.size(); i++) {
+      y_dims_vec[i + axis] = y_dims[i];
+    }
+  }
+
+  int ret = xpu::SUCCESS;
+
+  // For [2, 3] + [] --> [2, 3] + [1, 1]
+  // For [] + [2, 3] --> [1, 1] + [2, 3]
+  // For [] + [], Use [1] + [1] to replace [], because xpu not support []
+  if (x_dims_vec.size() == 0) {
+    x_dims_vec = std::vector<int>({1});
+  }
+
+  if (y_dims_vec.size() == 0) {
+    y_dims_vec = std::vector<int>({1});
+  }
+
+  ret = func(dev_ctx.x_context(),
+             reinterpret_cast<const XPUType*>(x_data),
+             reinterpret_cast<const XPUType*>(y_data),
+             reinterpret_cast<XPUType*>(z_data),
+             x_dims_vec,
+             y_dims_vec);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
+}
+
+template <typename T, typename XPUType>
 void XPUElementwiseGrad(const XPUContext& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& y,
