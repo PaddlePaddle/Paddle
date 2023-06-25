@@ -1552,7 +1552,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       cc_test(
         test_mkldnn_quantizer
         SRCS mkldnn_quantizer_tester.cc
-        DEPS paddle_inference_shared python dnnl ARGS
+        DEPS paddle_inference_shared python ARGS
              --dirname=${WORD2VEC_MODEL_DIR})
     elseif(WIN32)
       cc_test(
