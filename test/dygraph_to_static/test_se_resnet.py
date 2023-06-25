@@ -455,6 +455,7 @@ class TestSeResnet(unittest.TestCase):
                                 self.model_save_prefix,
                                 [img],
                                 output_spec=[pred],
+                                clip_extra=False,
                             )
                         else:
                             paddle.save(

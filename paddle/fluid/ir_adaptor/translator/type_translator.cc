@@ -76,6 +76,13 @@ TypeTranslator::TypeTranslator() {
 
          return ir::VectorType::get(ctx, std::vector<ir::Type>{});
        }},
+      {VarType::SELECTED_ROWS,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         VLOG(10) << "[vartype translating]"
+                  << "[" << var_desc.Name() << "] from LOD_TENSOR_ARRAY";
+
+         return this->operator[](VarType::LOD_TENSOR)(ctx, var_desc);
+       }},
   };
 }
 

@@ -757,7 +757,7 @@
     attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
-  backward : divide_grad (elementwise_div)
+  backward : divide_grad (elementwise_div_grad)
   inputs :
     {x: X, y : Y}
   outputs :
@@ -1755,6 +1755,8 @@
 
 - op : mish
   backward : mish_grad
+  inputs:
+    lambda:  threshold
   extra :
     attrs : [bool use_mkldnn = false]
 

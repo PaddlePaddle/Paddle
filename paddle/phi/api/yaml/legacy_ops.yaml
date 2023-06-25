@@ -84,6 +84,7 @@
   kernel :
     func : assign
   backward : assign_grad
+  inplace : (x -> out)
 
 - op : assign_out_
   args : (Tensor x, Tensor output)
