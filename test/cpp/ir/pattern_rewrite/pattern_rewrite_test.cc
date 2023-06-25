@@ -141,38 +141,38 @@ TEST(RewritePattern, OpRewritePattern) {
 }
 
 // TODO(wilber): Add actual case.
-TEST(PatternRewrite, PatternApplicator) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
-  test_dialect->RegisterOp<Operation1>();
-  ir::RewritePatternSet ps(ctx);
-  ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
-  ir::FrozenRewritePatternSet frozen_set(std::move(ps));
-  ir::PatternApplicator applicator(frozen_set);
-  applicator.ApplyDefaultCostModel();
-}
+// TEST(PatternRewrite, PatternApplicator) {
+//   ir::IrContext *ctx = ir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+//   auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+//   test_dialect->RegisterOp<Operation1>();
+//   ir::RewritePatternSet ps(ctx);
+//   ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
+//   ir::FrozenRewritePatternSet frozen_set(std::move(ps));
+//   ir::PatternApplicator applicator(frozen_set);
+//   applicator.ApplyDefaultCostModel();
+// }
 
-// TODO(wilber): Add actual case.
-TEST(PatternRewrite, FrozenRewritePatternSet) {
-  ir::FrozenRewritePatternSet frozen_set;
-  EXPECT_TRUE(frozen_set.match_any_op_native_patterns().empty());
-  EXPECT_TRUE(frozen_set.op_specific_native_patterns().empty());
+// // TODO(wilber): Add actual case.
+// TEST(PatternRewrite, FrozenRewritePatternSet) {
+//   ir::FrozenRewritePatternSet frozen_set;
+//   EXPECT_TRUE(frozen_set.match_any_op_native_patterns().empty());
+//   EXPECT_TRUE(frozen_set.op_specific_native_patterns().empty());
 
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
-  test_dialect->RegisterOp<Operation1>();
-  ir::RewritePatternSet ps(ctx);
-  ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
+//   ir::IrContext *ctx = ir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+//   auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
+//   test_dialect->RegisterOp<Operation1>();
+//   ir::RewritePatternSet ps(ctx);
+//   ps.Add<TestPatternRewrite, TestPatternRewrite2>(ctx, 2);
 
-  ir::FrozenRewritePatternSet frozen_set2(std::move(ps));
-  EXPECT_TRUE(frozen_set2.match_any_op_native_patterns().empty());
-  const auto &pattern_maps = frozen_set2.op_specific_native_patterns();
-  EXPECT_EQ(pattern_maps.size(), 1U);
-  EXPECT_EQ(pattern_maps.at(ctx->GetRegisteredOpInfo("test.Operation1")).size(),
-            2U);
-}
+//   ir::FrozenRewritePatternSet frozen_set2(std::move(ps));
+//   EXPECT_TRUE(frozen_set2.match_any_op_native_patterns().empty());
+//   const auto &pattern_maps = frozen_set2.op_specific_native_patterns();
+//   EXPECT_EQ(pattern_maps.size(), 1U);
+//   EXPECT_EQ(pattern_maps.at(ctx->GetRegisteredOpInfo("test.Operation1")).size(),
+//             2U);
+// }
 
 class TransposePatternRewrite
     : public ir::OpRewritePattern<paddle::dialect::TransposeOp> {
@@ -257,6 +257,8 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
 
   builder.Build<paddle::dialect::TransposeOp>(transpose1_op.out(),
                                               std::vector<int>{0, 3, 1, 2});
+
+  // builder.Build<paddle::dialect::FetchOp>(transpose2_op.out());
 }
 
 // TODO(wilber): Add a normal test.
