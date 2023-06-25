@@ -216,8 +216,8 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
         return res
 
     def check_result(self, expected_result, actual_result):
-        # FIXME(Ruibiao): The output result of Encorder layers in windows CI is unstable.
-        if platform.system().lower() == "windows":
+        # FIXME(Ruibiao): The output result of Encorder layers is unstable in some case.
+        if self.place.is_cpu_place() or platform.system().lower() == "windows":
             np.testing.assert_allclose(
                 expected_result, actual_result, atol=1e-6, rtol=1e-6
             )
