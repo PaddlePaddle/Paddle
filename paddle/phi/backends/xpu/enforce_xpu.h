@@ -221,8 +221,8 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
     }                                                            \
   } while (0)
 
-#define XPU_CHECK_SIZE 4
-inline int xpu_mem_check(void* dev_ptr, uint64_t size) {
+// #define XPU_CHECK_SIZE 4
+inline int xpu_mem_check(const void* dev_ptr, uint64_t size) {
 #ifdef XPU_CHECK_SIZE
   int ret = xpu_set_device(0);
   CHECK_EQ(ret, XPU_SUCCESS)
@@ -308,7 +308,7 @@ inline int xpu_mem_alloc(void** p_dev_ptr,
   CHECK_EQ(ret, XPU_SUCCESS)
       << "tid=" << gettid() << ": xpu_wait(0) failed(" << ret << ")!";
   delete[] host_ptr;
-  return xpu_mem_check(*p_dev_ptr, size);
+  return ret;
 #else
   int ret = xpu_malloc(p_dev_ptr, size, kind);
   // LOG(INFO) << "tid=" << gettid() <<  ": xpu_mem_alloc(size=" << size << ",
@@ -324,7 +324,6 @@ inline int xpu_mem_free(void* dev_ptr, uint64_t size) {
       << "tid=" << gettid() << ": xpu_set_device(0) failed(" << ret << ")!";
   LOG(INFO) << "tid=" << gettid() << ": xpu_mem_free(size=" << size
             << ", dev_ptr=" << dev_ptr << ")";
-  xpu_mem_check(dev_ptr, size);
   return xpu_free(dev_ptr);
 #else
   // LOG(INFO) << "tid=" << gettid() <<  ": xpu_mem_free(size=" << size << ",

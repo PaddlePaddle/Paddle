@@ -63,6 +63,7 @@ void GatherKernel(const Context& dev_ctx,
         os << x_cpu.data<T>()[i] << ",";
       }
       LOG(INFO) << "gather " << " tid=" << gettid() << " x_dims=" << x.dims() << " x_type=" << typeid(T).name() << " x_ptr=" << x.data<T>() << " x_data=[" << os.str() << "]"; // NOLINT
+      phi::backends::xpu::xpu_mem_check(x.data<T>(), sizeof(T) * x.numel()); // NOLINT
     }
     {
       DenseTensor index_cpu(index.type());
@@ -73,11 +74,13 @@ void GatherKernel(const Context& dev_ctx,
           os << index_cpu.data<int>()[i] << ",";
         }
         LOG(INFO) << "gather " << " tid=" << gettid() << " index_dims=" << index.dims() << "(" << index.numel()<< ") index_type="<< index_type << " index_ptr=" << index.data<int>() << " index_data=[" << os.str() << "]"; // NOLINT
+        phi::backends::xpu::xpu_mem_check(index.data<int>(), sizeof(int) * index.numel()); // NOLINT
       } else if (index_type == DataType::INT64) {
         for (size_t i = 0; i < index.numel() && i < 10; i++) {
           os << index_cpu.data<int64_t>()[i] << ",";
         }
         LOG(INFO) << "gather " << " tid=" << gettid() << " index_dims=" << index.dims() << "(" << index.numel()<< ") index_type="<< index_type << " index_ptr=" << index.data<int64_t>() << " index_data=[" << os.str() << "]"; // NOLINT
+        phi::backends::xpu::xpu_mem_check(index.data<int64_t>(), sizeof(int64_t) * index.numel()); // NOLINT
       } else {
         LOG(INFO) << "unknown index type " << index_type;
         exit(-1);
@@ -127,12 +130,13 @@ void GatherKernel(const Context& dev_ctx,
       os << out_cpu.data<T>()[i] << ",";
     }
     LOG(INFO) << "gather " << " tid=" << gettid()  << " axis=" << axis_v << " out_dims=" << out->dims() << " out_type=" << typeid(T).name() << " out_ptr=" << out->data<T>() << " out_data=[" << os.str() << "]"; // NOLINT
+    phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * out->numel()); // NOLINT
   }
 #endif
 #if 0
   dev_ctx.Wait();
   LOG(INFO) << "check gather tid=" << gettid();
-  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * product(out->dims())); // NOLINT
+  phi::backends::xpu::xpu_mem_check(out->data<T>(), sizeof(T) * out->numel()); // NOLINT
 #endif
 }
 

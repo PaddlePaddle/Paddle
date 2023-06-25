@@ -1675,6 +1675,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
+  // LOG(INFO) << "tid=" << gettid() << " run op " << Type() <<  " ...";
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
   phi::KernelKey phi_cpu_kernel_key;
@@ -2088,6 +2089,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     scope.DeleteScope(transfer_scope);
     exit(-1);
   }
+  // LOG(INFO) << "tid=" << gettid() << " run op " << Type() <<  " done!";
 }
 
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
