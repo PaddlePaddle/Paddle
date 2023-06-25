@@ -54,6 +54,9 @@ class IR_API alignas(8) Operation final {
 
   OpOperand operand(uint32_t index) const;
 
+  /// Returns the region held by this operation at position 'index'.
+  Region &region(unsigned index);
+
   void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
@@ -95,10 +98,9 @@ class IR_API alignas(8) Operation final {
 
   Program *GetParentProgram();
 
-  /// Returns the region held by this operation at position 'index'.
-  Region &GetRegion(unsigned index);
-
   operator Block::iterator() { return position_; }
+
+  operator Block::const_iterator() const { return position_; }
 
  private:
   Operation(const AttributeMap &attribute,
