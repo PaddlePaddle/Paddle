@@ -107,6 +107,7 @@ pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(transfer_layout_elim_pass inference)
+pass_library(relu6_fuse_pass inference)
 pass_library(silu_fuse_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -434,6 +435,10 @@ cc_test(
   test_delete_cast_op_pass
   SRCS delete_cast_op_pass_test.cc
   DEPS delete_cast_op_pass)
+cc_test(
+  test_relu6_fuse_pass
+  SRCS relu6_fuse_pass_test.cc
+  DEPS relu6_fuse_pass)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
