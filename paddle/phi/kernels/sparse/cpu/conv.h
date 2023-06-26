@@ -46,8 +46,9 @@ void ProductRuleBook(const Context& dev_ctx,
   const int64_t non_zero_num = x.nnz();
   const auto& indices = x.indices();
   const IntT* indices_ptr = indices.data<IntT>();
-  int kernel_size = is2D == true ? kernel_sizes[0] * kernel_sizes[1] :
-                                   kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
+  int kernel_size = is2D == true
+                        ? kernel_sizes[0] * kernel_sizes[1]
+                        : kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   memset(counter_per_kernel, 0, kernel_size * sizeof(int));
 
   int rulebook_len = 0;
@@ -60,7 +61,7 @@ void ProductRuleBook(const Context& dev_ctx,
   int pdim0, pdim1, pdim2, pdim3;
   int sdim0, sdim1, sdim2, sdim3;
   int ddim0, ddim1, ddim2, ddim3;
-  
+
   xdim0 = x_dims[0];
   xdim1 = is2D == true ? x_dims[2] : x_dims[3];
   xdim2 = is2D == true ? x_dims[1] : x_dims[2];
@@ -103,10 +104,10 @@ void ProductRuleBook(const Context& dev_ctx,
     for (int i = 0; i < non_zero_num; i++) {
       IntT batch = indices_ptr[i];
       IntT in_z = is2D == true ? 0 : indices_ptr[i + non_zero_num];
-      IntT in_y = is2D == true ? indices_ptr[i + non_zero_num] :
-                                 indices_ptr[i + 2 * non_zero_num];
-      IntT in_x = is2D == true ? indices_ptr[i + 2 * non_zero_num] :
-                                 indices_ptr[i + 3 * non_zero_num];
+      IntT in_y = is2D == true ? indices_ptr[i + non_zero_num]
+                               : indices_ptr[i + 2 * non_zero_num];
+      IntT in_x = is2D == true ? indices_ptr[i + 2 * non_zero_num]
+                               : indices_ptr[i + 3 * non_zero_num];
       IntT index = phi::funcs::sparse::PointToIndex<Dims4D>(
           batch, in_x, in_y, in_z, c_x_dims);
       hash_in.insert(index);
@@ -125,17 +126,20 @@ void ProductRuleBook(const Context& dev_ctx,
           for (int64_t i = 0; i < non_zero_num; i++) {
             IntT batch = indices_ptr[i];
             IntT in_z = is2D == true ? 0 : indices_ptr[i + non_zero_num];
-            IntT in_y = is2D == true ? indices_ptr[i + non_zero_num] :
-                                      indices_ptr[i + 2 * non_zero_num];
-            IntT in_x = is2D == true ? indices_ptr[i + 2 * non_zero_num] :
-                                      indices_ptr[i + 3 * non_zero_num];
+            IntT in_y = is2D == true ? indices_ptr[i + non_zero_num]
+                                     : indices_ptr[i + 2 * non_zero_num];
+            IntT in_x = is2D == true ? indices_ptr[i + 2 * non_zero_num]
+                                     : indices_ptr[i + 3 * non_zero_num];
             // IntT in_z = indices_ptr[i + non_zero_num];
             // IntT in_y = indices_ptr[i + 2 * non_zero_num];
             // IntT in_x = indices_ptr[i + 3 * non_zero_num];
-            // IntT out_z = (in_z + paddings[0] - kz * dilations[0]) / strides[0];
+            // IntT out_z = (in_z + paddings[0] - kz * dilations[0]) /
+            // strides[0];
             IntT out_z = 0;
-            IntT out_y = (in_y + c_paddings[2] - ky * c_dilations[2]) / c_strides[2];
-            IntT out_x = (in_x + c_paddings[3] - kx * c_dilations[3]) / c_strides[3];
+            IntT out_y =
+                (in_y + c_paddings[2] - ky * c_dilations[2]) / c_strides[2];
+            IntT out_x =
+                (in_x + c_paddings[3] - kx * c_dilations[3]) / c_strides[3];
             if (phi::funcs::sparse::Check(c_x_dims,
                                           c_kernel_dims,
                                           c_paddings,
@@ -201,7 +205,8 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   }
 
   int out_non_zero_num = out_indexs.size();
-  const int64_t sparse_dim = 3;
+  int tmpidx = is2D == true ? 3 : 4;
+  const int64_t sparse_dim = tmpidx;
   DenseTensorMeta indices_meta(phi::CppTypeToDataType<IntT>::Type(),
                                {sparse_dim, out_non_zero_num},
                                DataLayout::NCHW);
@@ -211,7 +216,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
   IntT* out_indices_ptr = out_indices.data<IntT>();
   int i = 0;
-  
+
   int odim0, odim1, odim2, odim3;
   odim0 = out_dims[0];
   odim1 = is2D == true ? out_dims[2] : out_dims[3];
@@ -222,13 +227,13 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   for (auto it = out_indexs.begin(); it != out_indexs.end(); it++, i++) {
     const IntT index = *it;
     IntT batch, x, y, z;
-    phi::funcs::sparse::IndexToPoint<Dims4D>(index, c_out_dims, &batch, &x, &y, &z);
+    phi::funcs::sparse::IndexToPoint<Dims4D>(
+        index, c_out_dims, &batch, &x, &y, &z);
     out_indices_ptr[i] = batch;
     if (is2D) {
       out_indices_ptr[i + out_non_zero_num] = y;
       out_indices_ptr[i + out_non_zero_num * 2] = x;
-    }
-    else {
+    } else {
       out_indices_ptr[i + out_non_zero_num] = z;
       out_indices_ptr[i + out_non_zero_num * 2] = y;
       out_indices_ptr[i + out_non_zero_num * 3] = x;
