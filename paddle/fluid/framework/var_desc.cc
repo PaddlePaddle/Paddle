@@ -441,7 +441,8 @@ TensorDistAttr *VarDesc::MutableDistAttr() {
   if (dist_attr_) {
     return dist_attr_.get();
   } else {
-    dist_attr_.reset(new TensorDistAttr(*this));
+    auto shape = paddle::distributed::auto_parallel::get_tensor_shape(this);
+    dist_attr_.reset(new TensorDistAttr(shape));
     return dist_attr_.get();
   }
   need_updated_ = true;

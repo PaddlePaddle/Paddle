@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import unittest
 
-sys.path.append('../../python/paddle/fluid/tests/unittests')
+import unittest
 
 from get_test_cover_info import record_op_test
 

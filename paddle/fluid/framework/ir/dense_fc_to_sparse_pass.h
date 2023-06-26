@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 
 namespace paddle {
 namespace framework {

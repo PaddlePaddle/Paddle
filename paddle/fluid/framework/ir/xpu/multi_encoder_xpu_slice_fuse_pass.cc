@@ -74,15 +74,12 @@ MultiEncoderXPUSlicePattern::MultiEncoderXPUSlicePattern(
           ->assert_more([](Node* node) {
             std::vector<int> axes =
                 PADDLE_GET_CONST(std::vector<int>, node->Op()->GetAttr("axes"));
-            std::vector<int> decrease_axis = PADDLE_GET_CONST(
-                std::vector<int>, node->Op()->GetAttr("decrease_axis"));
             std::vector<int> starts = PADDLE_GET_CONST(
                 std::vector<int>, node->Op()->GetAttr("starts"));
             std::vector<int> ends =
                 PADDLE_GET_CONST(std::vector<int>, node->Op()->GetAttr("ends"));
-            return axes.size() == 1 && axes[0] == 1 &&
-                   decrease_axis.size() == 1 && decrease_axis[0] == 1 &&
-                   starts.size() == 1 && starts[0] == 0 &&  //
+            return axes.size() == 1 && axes[0] == 1 && starts.size() == 1 &&
+                   starts[0] == 0 &&  //
                    ends.size() == 1 && ends[0] == 1;
           });
   auto* slice_out = pattern->NewNode(slice_out_repr())

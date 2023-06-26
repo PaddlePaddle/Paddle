@@ -64,9 +64,11 @@ def make_program():
 
 
 def parallelizer(program_func, rank):
-    from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.dist_context import DistributedContext
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
+    from paddle.distributed.auto_parallel.static.completion import Completer
+    from paddle.distributed.auto_parallel.static.dist_context import (
+        DistributedContext,
+    )
+    from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 
     main_program, start_program = program_func()
 
@@ -127,7 +129,6 @@ class TestFp16Assign(unittest.TestCase):
                 assert block.vars[name].dtype == paddle.float16
 
     def test_fp16_assign(self):
-
         dist_main_prog, dist_context = parallelizer(make_program, 0)
         block = dist_main_prog.global_block()
         for op in block.ops:

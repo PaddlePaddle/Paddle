@@ -15,7 +15,6 @@
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 from .utils import ast_to_source_code
 
 __all__ = []
@@ -27,12 +26,8 @@ class TensorShapeTransformer(BaseTransformer):
     All 'xxx.shape' will be converted int '_jst.Shape(x)'.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of TensorShapeTransformer."
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)

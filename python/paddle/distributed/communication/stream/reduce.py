@@ -131,7 +131,7 @@ def reduce(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         dst_rank_in_group = _get_or_throw_group_rank(dst, group)
         return _reduce_in_dygraph(

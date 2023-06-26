@@ -20,7 +20,7 @@ import paddle
 from paddle import static
 from paddle.distributed import fleet
 
-sys.path.append("..")
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
@@ -151,7 +151,7 @@ def train():
                 },
                 fetch_list=[loss],
             )
-            print(f"step: {step}, loss: {loss_print[0]:f}")
+            print(f"step: {step}, loss: {loss_print:f}")
         else:
             exe.run(
                 distributed_main_program,

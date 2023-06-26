@@ -14,12 +14,13 @@
 
 import unittest
 
-import paddle
-from paddle.fluid.tests.unittests.c_embedding_op_base import (
+from c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,
     TestCEmbeddingOpFP32,
 )
+
+import paddle
 
 paddle.enable_static()
 

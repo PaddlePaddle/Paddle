@@ -67,6 +67,7 @@ ops_to_fill_zero_for_empty_grads = {
     "multiply_grad",
     "divide_grad",
     "matmul_grad",
+    "unbind_grad",
 }
 
 # For API dispatch used at python-level

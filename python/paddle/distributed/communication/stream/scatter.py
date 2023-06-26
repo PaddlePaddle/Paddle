@@ -201,7 +201,7 @@ def scatter(
             )
         tensor_or_tensor_list = []
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         src_rank_in_group = _get_or_throw_group_rank(src, group)
         if paddle.is_tensor(tensor_or_tensor_list):

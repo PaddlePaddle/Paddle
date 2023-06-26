@@ -301,7 +301,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.reduce_ = strategy;
           },
@@ -332,7 +332,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.gradient_scale_ = strategy;
           },
@@ -384,7 +384,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.debug_graphviz_path_ = path;
           },
@@ -412,7 +412,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.enable_sequential_execution_ = b;
           },
@@ -439,7 +439,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.remove_unnecessary_lock_ = b;
           },
@@ -515,7 +515,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, "
+                                  "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.build_cinn_pass_ = b;
           },
@@ -544,7 +544,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_elewise_add_act_ops_ = b;
           },
@@ -570,7 +570,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_gemm_epilogue_ = b;
           },
@@ -596,7 +596,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_adamw_ = b;
           },
@@ -618,7 +618,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fused_attention_ = b;
           },
@@ -644,7 +644,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fused_feedforward_ = b;
           },
@@ -670,7 +670,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.sequential_run_ = b;
           },
@@ -695,7 +695,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_bn_act_ops_ = b;
           },
@@ -721,7 +721,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_bn_add_act_ops_ = b;
           },
@@ -747,7 +747,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.enable_auto_fusion_ = b;
           },
@@ -776,7 +776,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_relu_depthwise_conv_ = b;
           },
@@ -807,7 +807,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, "
+                                  "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.fuse_broadcast_ops_ = b;
           },
@@ -839,7 +839,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, "
+                                  "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.fuse_all_optimizer_ops_ = b;
           })
@@ -850,7 +850,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy has been finlaized, cannot be "
+                                  "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.sync_batch_norm_ = b;
           },

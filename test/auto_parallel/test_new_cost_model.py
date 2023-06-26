@@ -20,10 +20,10 @@ import unittest
 from test_cluster import cluster_json
 
 import paddle
-import paddle.distributed.auto_parallel.cost as cost_model
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import CommContext
-from paddle.distributed.auto_parallel.cost.base_cost import (
+import paddle.distributed.auto_parallel.static.cost as cost_model
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.cost import CommContext
+from paddle.distributed.auto_parallel.static.cost.base_cost import (
     build_comp_desc_from_op,
     build_comp_desc_str_for_predict,
     calc_time_by_modeling,

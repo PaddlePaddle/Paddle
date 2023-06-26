@@ -52,8 +52,8 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fued linear epilogue type should be one of {none, relu, gelu}."
-          "But received activation is %s, please check",
+          "fused_gemm_epilogue's activate should be one of {none, relu, gelu},"
+          " but received %s, please check",
           activation));
     }
   }
@@ -90,9 +90,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
 
-    void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
     auto fused_type =
         GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
+    void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
 
     VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
             << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N

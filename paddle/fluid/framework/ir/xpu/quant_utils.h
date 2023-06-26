@@ -25,6 +25,8 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
 void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
+void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
+
 // 1. Quant weight from fp32 to int16/int31
 // 2. Weight data is in-place update.
 // 3. Generate weight max tensor

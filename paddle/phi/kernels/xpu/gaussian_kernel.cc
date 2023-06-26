@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/gaussian_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -29,30 +28,19 @@ void GaussianKernel(const Context& ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  std::normal_distribution<float> dist(mean, std);
-  int64_t size = out->numel();
-  ctx.template Alloc<T>(out);
-  auto* data = out->data();
-  uint64_t seed_v = static_cast<uint64_t>(seed);
-  // TODO(pangyoki): implement GetXPURandomEngine to set different seeds on
-  // corresponding XPU device.
-  std::shared_ptr<std::mt19937_64> engine;
-  if (seed_v) {
-    engine = std::make_shared<std::mt19937_64>();
-    engine->seed(seed_v);
-  } else {
-    engine = ctx.GetGenerator()->GetCPUEngine();
-  }
+  out->Resize(phi::make_ddim(shape.GetData()));
+  T* data = ctx.template Alloc<T>(out);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  int64_t real_seed = seed != 0 ? seed : ctx.GetGenerator()->Random64();
 
-  std::unique_ptr<T[]> data_cpu(new T[size]);
-  for (int64_t i = 0; i < size; ++i) {
-    data_cpu[i] = dist(*engine);
-  }
-  memory_utils::Copy(ctx.GetPlace(),
-                     data,
-                     phi::CPUPlace(),
-                     reinterpret_cast<void*>(data_cpu.get()),
-                     size * sizeof(T));
+  // int normal(Context* ctx, T* x, T mean, T std, int64_t len, int64_t seed);
+  int r = xpu::normal<XPUType>(ctx.x_context(),
+                               reinterpret_cast<XPUType*>(data),
+                               mean,
+                               std,
+                               out->numel(),
+                               real_seed);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "normal");
 }
 
 }  // namespace phi

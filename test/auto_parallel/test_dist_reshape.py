@@ -37,9 +37,11 @@ def make_program_dp2():
 
 
 def parallelizer(program_func, rank):
-    from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.dist_context import DistributedContext
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
+    from paddle.distributed.auto_parallel.static.completion import Completer
+    from paddle.distributed.auto_parallel.static.dist_context import (
+        DistributedContext,
+    )
+    from paddle.distributed.auto_parallel.static.partitioner import Partitioner
 
     main_program, start_program = program_func()
 
@@ -58,7 +60,6 @@ def parallelizer(program_func, rank):
 
 class TestDistReshape(unittest.TestCase):
     def test_dist_reshape_mp2(self):
-
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops

@@ -8,16 +8,15 @@ if(WITH_TESTING AND NOT WIN32)
     WORKING_DIRECTORY "${CC_TESTS_DIR}")
   set(JIT_DEPS
       phi
-      phi_api
       elementwise_add_op
-      matmul_v2_op
       activation_op
       reduce_mean_op
       feed_op
       fetch_op
       generated_op
       transfer_layout_op
-      jit_layer)
+      jit_layer
+      generated_static_op)
   cc_test(
     layer_test
     SRCS layer_test.cc

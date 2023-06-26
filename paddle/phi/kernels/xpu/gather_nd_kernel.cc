@@ -25,18 +25,47 @@ void GatherNdKernel(const Context &ctx,
                     const DenseTensor &index,
                     DenseTensor *out) {
   ctx.template Alloc<T>(out);
-  const auto &index_type = index.dtype();
 
-  if (x.numel() == 0) return;
-
-  if (index.numel() == 0) {
-    out->Resize(x.dims());
-    ctx.template Alloc<T>(out);
-    int r = xpu::copy(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  if (x.numel() == 0) {
     return;
   }
 
+  if (index.numel() == 0) {
+    auto index_dims = index.dims();
+    auto index_dims_size = index_dims.size();
+    // final dim
+    int64_t end_size = index_dims[index_dims_size - 1];
+    PADDLE_ENFORCE_EQ(
+        end_size,
+        0,
+        phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
+    // remain dim
+    auto remain_ddim = phi::slice_ddim(index_dims, 0, index_dims_size - 1);
+    int64_t remain_numel = phi::product(remain_ddim);
+
+    int64_t x_numel = x.numel();
+    int64_t y_numel = out->numel();
+    PADDLE_ENFORCE_EQ(
+        x_numel * remain_numel,
+        y_numel,
+        phi::errors::InvalidArgument(
+            "x_numel[%d] * remain_numel[%d] should match y_numel[%d]",
+            x_numel,
+            remain_numel,
+            y_numel));
+
+    // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int>&
+    // xshape, const std::vector<int>& yshape)
+    int r = xpu::broadcast(ctx.x_context(),
+                           x.data<T>(),
+                           out->data<T>(),
+                           {1, x_numel},
+                           {remain_numel, x_numel});
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+    return;
+  }
+
+  const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(

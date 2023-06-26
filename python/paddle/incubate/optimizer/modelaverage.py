@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid import framework
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.framework import Program, in_dygraph_mode
+from paddle.fluid.framework import Program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.framework import in_dynamic_mode
 from paddle.optimizer import Optimizer
 
 __all__ = []
@@ -183,7 +184,7 @@ class ModelAverage(Optimizer):
         self.max_average_window = max_average_window
         self.type = "average_accumulates"
 
-        if not framework._non_static_mode():
+        if not in_dynamic_mode():
             global_block = framework.default_main_program().global_block()
             all_parameters = (
                 parameters if parameters else global_block.all_parameters()
@@ -235,7 +236,7 @@ class ModelAverage(Optimizer):
         )
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             _, _, _, _, _, _ = _C_ops.average_accumulates_(
                 param_and_grad[0],
                 sum_1,
@@ -247,29 +248,6 @@ class ModelAverage(Optimizer):
                 self.average_window,
                 self.max_average_window,
                 self.min_average_window,
-            )
-            return None
-        elif framework._non_static_mode():
-            _, _, _, _, _, _ = _legacy_C_ops.average_accumulates(
-                param_and_grad[0],
-                sum_1,
-                sum_2,
-                sum_3,
-                num_accumulates,
-                old_num_accumulates,
-                num_updates,
-                sum_1,
-                sum_2,
-                sum_3,
-                num_accumulates,
-                old_num_accumulates,
-                num_updates,
-                'average_window',
-                self.average_window,
-                'min_average_window',
-                self.min_average_window,
-                'max_average_window',
-                self.max_average_window,
             )
             return None
 
@@ -358,7 +336,7 @@ class ModelAverage(Optimizer):
                 modelaverage.clear_grad()
 
         """
-        if framework._non_static_mode():
+        if in_dynamic_mode():
             self.step()
 
     @framework.dygraph_only
@@ -443,7 +421,7 @@ class ModelAverage(Optimizer):
                 for param in linear.parameters():
                     print(param)
         """
-        if framework._non_static_mode():
+        if in_dynamic_mode():
             for param in self._parameter_list:
                 num_accumulates = self._get_accumulator(
                     'num_accumulates', param
@@ -522,7 +500,7 @@ class ModelAverage(Optimizer):
                 for param in linear.parameters():
                     print(param)
         """
-        if framework._non_static_mode():
+        if in_dynamic_mode():
             for param in self._parameter_list:
                 param_restore = self._get_accumulator('restore', param)
                 paddle.assign(param_restore, param)

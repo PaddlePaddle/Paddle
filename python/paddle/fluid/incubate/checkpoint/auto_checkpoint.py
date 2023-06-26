@@ -24,7 +24,7 @@ from contextlib import contextmanager
 
 from paddle.fluid import unique_name, compiler
 from .checkpoint_saver import SerializableBase, CheckpointSaver, PaddleModel
-from paddle.fluid.framework import _non_static_mode, Program
+from paddle.fluid.framework import in_dygraph_mode, Program
 
 g_train_epoch_range = None
 g_checker = None
@@ -138,7 +138,7 @@ class AutoCheckpointChecker:
         return self._save_checkpoint_inter
 
     def valid(self):
-        if _non_static_mode():
+        if in_dygraph_mode():
             return False
 
         return (
@@ -489,7 +489,6 @@ class TrainEpochRange(SerializableBase):
     def save_checkpoint(self):
         # not save last one because exe and program can't be restored.
         if self._checker.trainer_id == 0:
-
             if (
                 time.time() - self._last_checkpoint_time
                 >= self._save_checkpoint_inter

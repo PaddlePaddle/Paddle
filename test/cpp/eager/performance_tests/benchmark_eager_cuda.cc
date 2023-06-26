@@ -45,6 +45,8 @@ PD_DECLARE_KERNEL(add_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sum_grad, GPU, ALL_LAYOUT);
 
+using eager_test::CreateTensorWithValue;
+
 TEST(Benchmark, EagerScaleCUDA) {
   eager_test::InitEnv(paddle::platform::CUDAPlace());
 

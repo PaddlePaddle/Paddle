@@ -58,7 +58,6 @@ def gather(
     sync_op=True,
     use_calc_stream=False,
 ):
-
     """
 
     Gather tensors from all participators.
@@ -99,7 +98,7 @@ def gather(
     """
 
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "gather doesn't support static graph mode yet."
 
     if _warn_cur_rank_not_in_group(group):
@@ -120,7 +119,6 @@ def gather(
             )
         gather_list = []
     else:
-
         assert (
             gather_list is not None
         ), "gather_list must not be none for dst rank"

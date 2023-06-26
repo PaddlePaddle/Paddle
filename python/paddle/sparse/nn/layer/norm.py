@@ -73,7 +73,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: A SparseCooTensor with layout = 'NDHWC'.
+        - x: A SparseCooTensor with layout = 'NDHWC' or 'NHWC'.
         - output: SparseCooTensor with same shape as input x.
 
     Returns:
@@ -119,8 +119,10 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         )
 
     def _check_data_format(self, input):
-        if input != "NDHWC":
-            raise ValueError('sparse BatchNorm only support layout of "NDHWC"')
+        if input not in ["NDHWC", "NHWC"]:
+            raise ValueError(
+                'sparse BatchNorm only support layout of "NDHWC" and "NHWC"'
+            )
 
     def forward(self, input):
         self._check_data_format(self._data_format)

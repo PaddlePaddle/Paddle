@@ -1,4 +1,1 @@
-cc_library(
-  blas
-  SRCS blas.cc
-  DEPS cblas framework_proto phi_backends)
+collect_srcs(kernels_srcs SRCS blas.cc)

@@ -187,7 +187,7 @@ class Hessian(Jacobian):
 class _Jacobian:
     """The base class for computing Jacobian matrix.
 
-    ``_Jacobian`` implementes the core logic of multidimensional index and lazy
+    ``_Jacobian`` implements the core logic of multidimensional index and lazy
     evaluation for Jacobian matrix, subclass only need to overwrite following
     methods:
 
@@ -436,7 +436,7 @@ def _multi_index(indexes, shape):
                     index.start + shape[i] if index.start < 0 else index.start,
                     index.stop + shape[i] if index.stop < 0 else index.stop,
                     # Negative step means index backward, no need to convert to
-                    # positive interger.
+                    # positive integer.
                     index.step,
                 )
             )
@@ -689,10 +689,10 @@ def _grad_for_jacobian(ys, xs, v=None):
             Tensor is the sum of gradients of outputs with respect to the i-th
             inputs.
     """
-    if paddle.fluid._non_static_mode():
-        # paddle.grad returns a list though the inputs is a signle Tensor. The
+    if paddle.in_dynamic_mode():
+        # paddle.grad returns a list though the inputs is a single Tensor. The
         # follow code snippet fixes the problem by return the first element of
-        # xs_grad when the xs is a signle Tensor.
+        # xs_grad when the xs is a single Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
             isinstance(xs, paddle.fluid.framework.Variable)

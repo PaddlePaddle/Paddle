@@ -409,7 +409,7 @@ def scaled_dot_product_attention(
     queries, keys, values, num_heads=1, dropout_rate=0.0
 ):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     This interface Multi-Head Attention using scaled dot product.
     Attention mechanism can be seen as mapping a query and a set of key-value

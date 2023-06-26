@@ -81,7 +81,7 @@ def _math_attention(
 
 
 def _select_sdp_cuda(head_dim):
-    if head_dim < 128:
+    if head_dim <= 128:
         return "flash_attn"
     else:
         return "mem_efficient"
@@ -194,7 +194,10 @@ def flash_attention(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_mode():
-            (result_attention, result_softmax,) = _C_ops.flash_attn(
+            (
+                result_attention,
+                result_softmax,
+            ) = _C_ops.flash_attn(
                 query,
                 key,
                 value,
@@ -345,7 +348,10 @@ def flash_attn_unpadded(
             print(output)
     """
     if in_dynamic_mode():
-        (result_attention, result_softmax,) = _C_ops.flash_attn_unpadded(
+        (
+            result_attention,
+            result_softmax,
+        ) = _C_ops.flash_attn_unpadded(
             query,
             key,
             value,

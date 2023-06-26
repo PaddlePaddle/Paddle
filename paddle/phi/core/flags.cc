@@ -542,7 +542,7 @@ PHI_DEFINE_EXPORTED_double(
 // NOTE(zhiqiu): better to share the flags, otherwise we will have too many
 // flags.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
 
 /**
  * Memory related FLAG
@@ -1044,6 +1044,18 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
                          false,
                          "Use CUDA Graph in new executor");
 
+/*
+ * Executor related FLAG
+ * Name: FLAGS_executor_log_deps_every_microseconds
+ * Since Version: 2.5
+ * Value Range: uint64, default=0
+ * Example: FLAGS_executor_log_deps_every_microseconds=n (n>0) would
+ * allow new executor log deps every n microseconds.
+ */
+PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
+                           0,
+                           "Enable new executor log deps every n microseconds");
+
 DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
@@ -1244,3 +1256,15 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
+
+/**
+ * Using new IR in executor  FLAG
+ * Name: enable_new_ir_in_executor
+ * Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If Ture, executor will use new IR
+ */
+PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
+                         false,
+                         "Enable new IR in executor");
