@@ -66,7 +66,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
   std::vector<std::string> blacklist{"feed", "fetch", "ms_deform_attn", "matrix_multiply", "save"};
 
-  int fold_op_num = 0;
+  int folded_op_num = 0;
 
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
@@ -142,7 +142,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
       }
       op->Run(*local_scope, platform::CPUPlace());
-      fold_op_num ++;
+      folded_op_num ++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable
         if (out_node->outputs.size() == 0L) continue;
@@ -168,7 +168,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
-  AddStatis(fold_op_num);
+  LOG(INFO) << folded_op_num <<" Ops are folded";
 }
 
 }  // namespace ir
