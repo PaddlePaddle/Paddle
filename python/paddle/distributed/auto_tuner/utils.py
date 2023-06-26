@@ -38,7 +38,7 @@ def dist_degree(mode, num_gpus, num_nodes):
     assert mode in ["dp", "mp", "pp", "sharding"]
     results = []
     if mode == "dp":
-        results = divisor(num_gpus, reverse=True)
+        results = divisor(num_gpus, reverse=False)
 
     elif mode == "pp":
         if num_nodes > 1:
@@ -133,7 +133,7 @@ def default_candidates(tuner_cfg):
 def search_all(tuner_cfg):
     """Permutate the candidates of all hyper params."""
     candidates = tuner_cfg["candidates"]
-    # Order: dp -> mp -> pp -> mbs -> sharding-> recompute
+    # Order: dp -> sharding -> mbs -> pp -> mp  -> recompute
     dp_degree_candidates = candidates["dp_degree"]
     mp_degree_candidates = candidates["mp_degree"]
     pp_degree_candidates = candidates["pp_degree"]
@@ -145,22 +145,22 @@ def search_all(tuner_cfg):
     all_cfgs = list(
         itertools.product(
             dp_degree_candidates,
-            mp_degree_candidates,
-            pp_degree_candidates,
-            mbs_candidates,
             sharding_degree_candidates,
             sharding_stage_candidates,
+            mbs_candidates,
+            pp_degree_candidates,
+            mp_degree_candidates,
             use_recompute_candidates,
             recompute_granularity_candidates,
         )
     )
     mapping = {
         0: "dp_degree",
-        1: "mp_degree",
-        2: "pp_degree",
+        1: "sharding_degree",
+        2: "sharding_stage",
         3: "micro_batch_size",
-        5: "sharding_stage",
-        4: "sharding_degree",
+        4: "pp_degree",
+        5: "mp_degree",
         6: "use_recompute",
         7: "recompute_granularity",
     }
