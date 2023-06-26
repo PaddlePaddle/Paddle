@@ -21,6 +21,7 @@ class QuantizeLinearOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_model) override {
+#if IS_TRT_VERSION_GE(8000)
     VLOG(4) << "convert a quantize_linear op to tensorrt IQuantizeLayer";
 
     // Declare inputs and attributes
@@ -40,7 +41,7 @@ class QuantizeLinearOpConverter : public OpConverter {
     for (int i = 0; i < n_scale; ++i) {
       scale_data[i] = scale_t->data<float>()[i] / 127.0f;
     }
-    nvinfer1::Dims scale_dim{1, {n_scale}};
+    nvinfer1::Dims scale_dim{1, { n_scale }};
     auto* scale = AddConstantLayer(scale_data.data(), scale_dim);
 
     // Add quantize layer
@@ -49,6 +50,11 @@ class QuantizeLinearOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(
         layer, "quantize_linear", {output_name}, test_model);
+#else
+    PADDLE_THROW(
+        platform::errors::Fatal("Paddle-TRT explicit quantization does not "
+                                "support Paddle compiled with TRT < 8.0"));
+#endif
   }
 };
 

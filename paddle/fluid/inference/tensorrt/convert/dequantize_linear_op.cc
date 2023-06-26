@@ -20,6 +20,7 @@ class DequantizeLinearOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_model) override {
+#if IS_TRT_VERSION_GE(8000)
     VLOG(4) << "convert a dequantize_linear op to tensorrt IDequantizeLayer";
 
     // Declare inputs and attributes
@@ -39,7 +40,7 @@ class DequantizeLinearOpConverter : public OpConverter {
     for (int i = 0; i < n_scale; ++i) {
       scale_data[i] = scale_t->data<float>()[i] / 127.0f;
     }
-    nvinfer1::Dims scale_dim{1, {n_scale}};
+    nvinfer1::Dims scale_dim{1, { n_scale }};
     auto* scale = AddConstantLayer(scale_data.data(), scale_dim);
 
     // Add dequantize layer
@@ -48,6 +49,11 @@ class DequantizeLinearOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(
         layer, "dequantize_linear", {output_name}, test_model);
+#else
+    PADDLE_THROW(
+        platform::errors::Fatal("Paddle-TRT explicit quantization does not "
+                                "support Paddle compiled with TRT < 8.0"));
+#endif
   }
 };
 
