@@ -398,7 +398,7 @@ def launch():
             if err:
                 ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
                 # for pruner use
-                cur_cfg['time'] = None
+                cur_cfg['time'] = -1
                 cur_cfg[tuner_cfg['metric_cfg']['name']] = None
             else:
                 # for pruner use
