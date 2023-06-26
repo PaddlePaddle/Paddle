@@ -22,4 +22,7 @@ PD_REGISTER_KERNEL(pow2_decay_with_linear_warmup,
                    ALL_LAYOUT,
                    phi::Pow2DecayWithLinearWarmupKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

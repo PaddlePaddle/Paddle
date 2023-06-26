@@ -54,8 +54,12 @@ class IR_API GetParameterOp : public ir::Op<GetParameterOp> {
   static const char *name() { return "builtin.get_parameter"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::string &name,
+                    Type type);
+  static void Verify(const std::vector<OpResult> &inputs,
+                     const std::vector<Type> &outputs,
                      const ir::AttributeMap &attributes);
 };
 
@@ -69,6 +73,10 @@ class IR_API SetParameterOp : public ir::Op<SetParameterOp> {
   static const char *name() { return "builtin.set_parameter"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    OpResult parameter,
+                    const std::string &name);
   static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
@@ -86,6 +94,10 @@ class IR_API CombineOp : public ir::Op<CombineOp> {
   static constexpr uint32_t attributes_num = 0;
 
   static constexpr const char **attributes_name = nullptr;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::vector<ir::OpResult> &inputs);
 
   static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
