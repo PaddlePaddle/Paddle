@@ -108,7 +108,10 @@ int tensor_properties_set_data(TensorObject* self,
   auto src = CastPyArg2Tensor(value, 0);
   self->tensor = src;
   phi::DenseTensor tmp;
-  self->tensor.ShareInplaceVersionCounterWith(tmp);
+  auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor) {
+    dense_tensor->ShareInplaceVersionCounterWith(tmp);
+  }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
