@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature FusedConv2dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_conv2d",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {"strides",
@@ -34,7 +34,7 @@ KernelSignature FusedConv2dOpArgumentMapping(
 }
 
 KernelSignature FusedConv3dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_conv3d",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {"strides",

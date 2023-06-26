@@ -55,16 +55,16 @@ class Geometric(distribution.Distribution):
             geom = Geometric(0.5)
 
             geom.mean
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [2.])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        2.)
 
             geom.variance
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [2.])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        2.)
 
             geom.stddev
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [1.41421354])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        1.41421354)
     """
 
     def __init__(self, probs):
@@ -145,8 +145,8 @@ class Geometric(distribution.Distribution):
 
                 geom = Geometric(0.5)
                 geom.pmf(2)
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.25000000])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.25000000)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.pow((1.0 - self.probs), k - 1.0) * self.probs
@@ -176,8 +176,8 @@ class Geometric(distribution.Distribution):
 
                 geom = Geometric(0.5)
                 geom.log_pmf(2)
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [-1.38629436])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        -1.38629436)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.log(self.pmf(k))
@@ -266,8 +266,8 @@ class Geometric(distribution.Distribution):
 
                 geom = Geometric(0.5)
                 geom.entropy()
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [1.38629436])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        1.38629436)
         """
         x = (1.0 - self.probs) * paddle.log(1.0 - self.probs)
         y = self.probs * paddle.log(self.probs)
@@ -296,8 +296,8 @@ class Geometric(distribution.Distribution):
 
                 geom = Geometric(0.5)
                 geom.cdf(4)
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.93750000])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.93750000)
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return 1.0 - paddle.pow((1.0 - self.probs), k)
@@ -329,8 +329,8 @@ class Geometric(distribution.Distribution):
                 geom_p = Geometric(0.5)
                 geom_q = Geometric(0.1)
                 geom_p.kl_divergence(geom_q)
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.51082563])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.51082563)
         """
         if isinstance(other, Geometric):
             p, q = self.probs, other.probs

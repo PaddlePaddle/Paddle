@@ -141,6 +141,7 @@ std::vector<paddle::Tensor> RunBackward(
   std::deque<GradNodeBase*> orig_queue;
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
+  std::unordered_set<GradNodeBase*> visited;
   for (size_t i = 0; i < tensors.size(); i++) {
     const paddle::Tensor& tensor = tensors[i];
 
@@ -215,6 +216,10 @@ std::vector<paddle::Tensor> RunBackward(
     }
 
     // Prepare queue, potential startup_nodes
+    if (visited.count(grad_node)) {
+      continue;
+    }
+    visited.insert(grad_node);
     queue.push_back(grad_node);
   }
 

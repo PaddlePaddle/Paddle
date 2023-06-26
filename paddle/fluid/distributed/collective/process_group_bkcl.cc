@@ -381,7 +381,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
                                                      phi::AllocationType::XPU);
   return Collective(
       out_tensor,
-      in_tensor,
+      in_tensor_maybe_partial,
       [&](phi::DenseTensor* output,
           const phi::DenseTensor& input,
           BKCLContext_t comm,

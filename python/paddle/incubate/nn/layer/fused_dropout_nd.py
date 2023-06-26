@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 
 
 class FusedDropout(paddle.nn.Layer):
@@ -104,7 +104,7 @@ class FusedDropout(paddle.nn.Layer):
         if self.p == 0:
             return input
 
-        if self.axis is not None and _non_static_mode():
+        if self.axis is not None and in_dynamic_mode():
             seed = None
             if paddle.static.default_main_program().random_seed != 0:
                 seed = paddle.static.default_main_program().random_seed

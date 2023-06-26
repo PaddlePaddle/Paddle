@@ -7,7 +7,7 @@ cc_library(
 cc_library(
   cinn_launch_context
   SRCS cinn_launch_context.cc
-  DEPS ddim
+  DEPS phi
        lod_tensor
        scope
        proto_desc

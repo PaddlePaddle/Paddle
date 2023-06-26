@@ -56,7 +56,7 @@ class TestCallbacks(unittest.TestCase):
     def test_earlystopping(self):
         paddle.seed(2020)
         for dynamic in [True, False]:
-            paddle.enable_static if not dynamic else None
+            paddle.enable_static() if not dynamic else None
             device = paddle.set_device('cpu')
             sample_num = 100
             train_dataset = MnistDataset(mode='train', sample_num=sample_num)

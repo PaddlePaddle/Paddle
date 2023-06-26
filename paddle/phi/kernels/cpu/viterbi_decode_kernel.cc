@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename Context, typename T, typename IndType>
 struct Argmax {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& input,
                   DenseTensor* out_idx,
                   DenseTensor* out,

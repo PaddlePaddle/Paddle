@@ -15,6 +15,11 @@
 import copy
 import logging
 
+from paddle.amp.amp_lists import (
+    FP16_BLACK_LIST,
+    FP16_EXTRA_BLACK_LIST,
+    FP16_WHITE_LIST,
+)
 from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
 
@@ -22,17 +27,9 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
-# lookup_table fp16 is slower than fp32, though fp16 is supported.
-_extra_black_list = {
-    'lookup_table',
-    'lookup_table_v2',
-    'scatter',
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
+black_list = FP16_BLACK_LIST
+_extra_black_list = FP16_EXTRA_BLACK_LIST
+white_list = FP16_WHITE_LIST
 
 
 def check_amp_dtype(dtype):
@@ -99,7 +96,7 @@ def _get_sys_unsupported_list(dtype):
         device = 'XPU'
     else:
         device = 'GPU'
-    _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
+    all_ops, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
 
     # sys_unsupported_list will include the following ops.
     supported_fp16_list = {
@@ -114,13 +111,13 @@ def _get_sys_unsupported_list(dtype):
     }
     sys_unsupported_list -= supported_fp16_list
 
-    return device, sys_unsupported_list
+    return device, sys_unsupported_list, all_ops
 
 
 def _get_unsupported_list(dtype):
     # The set of ops that don't support fp16 calculation
-    _, _sys_unsupported_list = _get_sys_unsupported_list(dtype)
-    return _sys_unsupported_list
+    _, _sys_unsupported_list, _sys_all_list = _get_sys_unsupported_list(dtype)
+    return _sys_unsupported_list, _sys_all_list
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all
@@ -131,45 +128,17 @@ def _get_unsupported_list(dtype):
 
 _only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
 
-white_list = {
-    'conv2d',
-    'einsum',
-    'matmul',
-    'matmul_v2',
-    'mul',
-}
-
 
 def _get_white_list(dtype):
-    white_list_for_dtype = copy.copy(white_list)
+    white_list_for_dtype = copy.copy(FP16_WHITE_LIST)
     if dtype == 'float16':
         white_list_for_dtype = white_list_for_dtype | _only_supported_fp16_list
     return white_list_for_dtype
 
 
-# The set of ops that support fp16 calculation and are considered numerically-
-# dangerous and whose effects may also be observed in downstream ops.
-black_list = {
-    'exp',
-    'square',
-    'log',
-    'mean',
-    'sum',
-    'cos_sim',
-    'softmax',
-    'softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
-    'c_softmax_with_cross_entropy',
-    'cross_entropy',
-    'cross_entropy2',
-    # default fp32 can avoid return inf when the sum value large than 65504
-    'reduce_sum',
-}
-
-
 def _get_black_list():
-    _black_list = copy.copy(black_list)
-    _black_list = _black_list | _extra_black_list
+    _black_list = copy.copy(FP16_BLACK_LIST)
+    _black_list = _black_list | FP16_EXTRA_BLACK_LIST
     return _black_list
 
 
@@ -200,7 +169,9 @@ class AutoMixedPrecisionLists:
         self.white_list = copy.copy(_get_white_list(self.amp_dtype))
         self.black_list = copy.copy(_get_black_list())
         self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
+        unsupported_list, sys_all_list = _get_unsupported_list(self.amp_dtype)
+        self.unsupported_list = copy.copy(unsupported_list)
+        self.all_list = copy.copy(sys_all_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -232,7 +203,9 @@ class AutoMixedPrecisionLists:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
                 self.unsupported_list.add(op_name)
-        device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
+        device, sys_unsupported_list, _ = _get_sys_unsupported_list(
+            self.amp_dtype
+        )
         actual_unsupported_list = []
         for op_name in sys_unsupported_list:
             if op_name in self.white_list:

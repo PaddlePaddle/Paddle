@@ -53,8 +53,9 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            if os.path.exists(self.path + "_opt_cache"):
-                shutil.rmtree(self.path + "_opt_cache")
+            opt_path = os.path.join(self.path, '_opt_cache')
+            if os.path.exists(opt_path):
+                shutil.rmtree(opt_path)
             if (
                 self.trt_parameters.precision
                 == AnalysisConfig.Precision.Float32

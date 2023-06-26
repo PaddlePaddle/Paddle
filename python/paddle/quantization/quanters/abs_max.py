@@ -212,7 +212,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         return quant_out
 
     def forward(self, input):
-        if paddle.framework.in_dynamic_mode():
+        if paddle.in_dynamic_mode():
             return self.dynamic_forward(input)
         else:
             return self.static_forward(input)

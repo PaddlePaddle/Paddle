@@ -111,7 +111,6 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "1: dst is on CUDAPlace. "
                  "2: dst is on CUDAPinnedPlace. "
                  "3: dst is on XPUPlace. "
-                 "4: dst is on NPUPinnerPlace. "
                  "5: dst is on CustomDevicePlace");
     AddComment(R"DOC(
     Memcpy Operator.

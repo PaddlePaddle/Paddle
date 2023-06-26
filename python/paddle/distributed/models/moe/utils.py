@@ -14,7 +14,7 @@
 
 from paddle import _legacy_C_ops
 from paddle.common_ops_import import check_variable_and_dtype
-from paddle.framework import LayerHelper, in_dygraph_mode
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def _number_count(numbers, upper_range):
@@ -39,7 +39,7 @@ def _number_count(numbers, upper_range):
             number_count = paddle.distributed.utils.number_count(numbers, upper_range)
             print(number_count) # the result: [2, 0, 2, 0, 0, 0]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.number_count(numbers, 'upper_range', upper_range)
     else:
         op_type = 'number_count'
@@ -86,7 +86,7 @@ def _assign_pos(x, cum_count):
             pos = paddle.distributed.utils.assign_pos(x=numbers, cum_count=num_cum)
             print(pos) # the result: (2, 0, 3, 1)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.assign_pos(x, cum_count, cum_count[-1])
     else:
         op_type = 'assign_pos'
@@ -121,7 +121,7 @@ def _random_routing(topk_idx, topk_value, prob, topk=2):
         prob: random prob, shape=(topk_idx.shape[0],)
     """
     if topk == 2:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _legacy_C_ops.random_routing(prob, topk_value, topk_idx)
         else:
             raise RuntimeError("Not supporting static graph mode now")
@@ -150,7 +150,7 @@ def _limit_by_capacity(expert_count, capacity, n_worker):
             out = paddle.distributed.utils.limit_by_capacity(expert_count, capacity, n_work)
             print(out) # the result: [1, 2, 2, 4, 3, 3]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.limit_by_capacity(
             expert_count, capacity, 'n_worker', n_worker
         )
@@ -178,7 +178,7 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     Args:
         gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
         expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32, int64.
-        n_worker(int，optional): The number of workers on the trainer with type int64.
+        n_worker(int, optional): The number of workers on the trainer with type int64.
 
     Returns:
         new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.
@@ -195,7 +195,7 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
             # Tensor(shape=[8], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
               [1, 3, 3, 3, -1, 2, 1, 1])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.prune_gate_by_capacity(
             gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker
         )

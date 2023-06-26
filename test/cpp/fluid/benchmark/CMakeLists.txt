@@ -11,7 +11,7 @@ cc_test(
        scope
        ${GLOB_OP_LIB}
        ${GLOB_OPERATOR_DEPS}
-       eigen_function)
+       phi)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

@@ -228,4 +228,52 @@ ChebyshevCoefficientsI1e_B() {
   return std::make_tuple(coeff, 7);
 }
 
+template <typename T>
+struct CudaI1Functor {
+  __device__ __forceinline__ T operator()(const T _x) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      MT y = (x / MT{2.0}) - MT{2.0};
+      const T out = std::exp(x) * x * Chbevl<MT>(y, A, len);
+      return (mp_x < MT{0.0}) ? -out : out;
+    }
+    auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
+    const T out = (std::exp(x) * Chbevl<MT>(y, B, len)) / std::sqrt(x);
+    return (mp_x < MT{0.0}) ? -out : out;
+  }
+};
+
+template <typename T>
+struct CudaI1eFunctor {
+  __device__ __forceinline__ T operator()(const T _x) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      MT y = (x / MT{2.0}) - MT{2.0};
+
+      const T out = static_cast<T>(Chbevl<T>(y, A, len) * x);
+      return (mp_x < MT{0.0}) ? -out : out;
+    }
+    auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
+
+    const T out = static_cast<T>(Chbevl<T>(y, B, len) / std::sqrt(x));
+    return (mp_x < MT{0.0}) ? -out : out;
+  }
+};
+
 }  // namespace phi

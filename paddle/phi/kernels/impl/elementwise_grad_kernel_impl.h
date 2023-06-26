@@ -127,9 +127,9 @@ struct DivGradDX {
 template <typename T>
 struct DivGradDX<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> x UNUSED,
       phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> out UNUSED,
       phi::dtype::complex<T> dout) const {
     phi::dtype::complex<T> y_conj(y.real, -y.imag);
     return dout / y_conj;
@@ -146,7 +146,7 @@ struct DivGradDY {
 template <typename T>
 struct DivGradDY<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> x UNUSED,
       phi::dtype::complex<T> y,
       phi::dtype::complex<T> out,
       phi::dtype::complex<T> dout) const {
@@ -383,9 +383,9 @@ struct MulGradDX<bool> {
 template <typename T>
 struct MulGradDX<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
-      phi::dtype::complex<T> x,
+      phi::dtype::complex<T> x UNUSED,
       phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> out UNUSED,
       phi::dtype::complex<T> dout) const {
     phi::dtype::complex<T> y_conj(y.real, -y.imag);
     return dout * y_conj;
@@ -420,8 +420,8 @@ template <typename T>
 struct MulGradDY<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
       phi::dtype::complex<T> x,
-      phi::dtype::complex<T> y,
-      phi::dtype::complex<T> out,
+      phi::dtype::complex<T> y UNUSED,
+      phi::dtype::complex<T> out UNUSED,
       phi::dtype::complex<T> dout) const {
     phi::dtype::complex<T> x_conj(x.real, -x.imag);
     return dout * x_conj;

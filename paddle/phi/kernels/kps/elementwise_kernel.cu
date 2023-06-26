@@ -119,8 +119,19 @@ PD_REGISTER_KERNEL(remainder,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(
-    floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(floor_divide,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FloorDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,

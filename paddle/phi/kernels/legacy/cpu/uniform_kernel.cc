@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void UniformRawKernel(const Context &dev_ctx,
                       const IntArray &shape,
-                      DataType dtype,
+                      DataType dtype UNUSED,
                       const Scalar &min,
                       const Scalar &max,
                       int seed,

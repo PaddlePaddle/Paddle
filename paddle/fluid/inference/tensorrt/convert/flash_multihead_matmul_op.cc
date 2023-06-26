@@ -13,6 +13,7 @@ the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -27,7 +28,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                "network structure";
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+    if (engine_->precision() == phi::DataType::INT8) {
       with_fp16 = true;
     }
     PADDLE_ENFORCE_EQ(

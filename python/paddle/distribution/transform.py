@@ -66,7 +66,7 @@ class Transform:
 
     Suppose :math:`X` is a K-dimensional random variable with probability
     density function :math:`p_X(x)`. A new random variable :math:`Y = f(X)` may
-    be defined by transforming :math:`X` with a suitably well-behaved funciton
+    be defined by transforming :math:`X` with a suitably well-behaved function
     :math:`f`. It suffices for what follows to note that if `f` is one-to-one and
     its inverse :math:`f^{-1}` have a well-defined Jacobian, then the density of
     :math:`Y` is
@@ -435,8 +435,8 @@ class AffineTransform(Transform):
             # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 2.])
             print(affine.forward_log_det_jacobian(x))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.)
     """
     _type = Type.BIJECTION
 
@@ -856,8 +856,8 @@ class ReshapeTransform(Transform):
             #        [[[1., 1., 1.],
             #          [1., 1., 1.]]])
             print(reshape_transform.forward_log_det_jacobian(x))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.)
     """
     _type = Type.BIJECTION
 
@@ -945,8 +945,7 @@ class ReshapeTransform(Transform):
         )
 
     def _forward_log_det_jacobian(self, x):
-        # TODO(zhouwei): should not set shape to [1], which is []
-        shape = x.shape[: x.dim() - len(self._in_event_shape)] or [1]
+        shape = x.shape[: x.dim() - len(self._in_event_shape)]
         return paddle.zeros(shape, dtype=x.dtype)
 
 
@@ -1189,8 +1188,8 @@ class StickBreakingTransform(Transform):
             # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [0.99999988, 2.        , 2.99999881])
             print(t.forward_log_det_jacobian(x))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-9.10835075])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        -9.10835075)
     """
 
     _type = Type.BIJECTION

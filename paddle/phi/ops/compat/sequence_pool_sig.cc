@@ -14,7 +14,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature SequencePoolOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("sequence_pool",
                          {"X"},
                          {"is_test", "pooltype", "pad_value"},
@@ -22,7 +22,7 @@ KernelSignature SequencePoolOpArgumentMapping(
 }
 
 KernelSignature SequencePoolGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("sequence_pool_grad",
                          {"X", "MaxIndex", "Out@GRAD"},
                          {"is_test", "pooltype", "pad_value"},

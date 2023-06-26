@@ -23,10 +23,10 @@ from paddle import fluid
 from paddle.fluid.core import PassVersionChecker
 
 
-class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
+class ElementwiseActivationOneDNNFusePassTest(InferencePassTest):
     act_alpha = None
     act_beta = None
-    pass_name = 'elt_act_mkldnn_fuse_pass'
+    pass_name = 'elementwise_act_onednn_fuse_pass'
 
     def setUp(self):
         self.set_params()
@@ -65,24 +65,24 @@ class ElementwiseActivationMkldnnFusePassTest(InferencePassTest):
         self.assertTrue(PassVersionChecker.IsCompatible(self.pass_name))
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Relu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Relu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = F.relu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Tanh(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Tanh(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.tanh
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_LeakyRelu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_LeakyRelu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
@@ -90,40 +90,40 @@ class ElementwiseActivationMkldnnFusePassTest_Add_LeakyRelu(
         self.act = paddle.nn.functional.leaky_relu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Swish(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Swish(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.nn.functional.swish
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_HardSwish(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_HardSwish(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.nn.functional.hardswish
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_SQRT(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_SQRT(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.sqrt
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_ABS(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_ABS(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.abs
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Clip(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Clip(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
@@ -132,16 +132,16 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Clip(
         self.act_beta = 10.0
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Gelu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Gelu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.nn.functional.gelu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Gelu_Tanh(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Gelu_Tanh(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
@@ -149,40 +149,40 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Gelu_Tanh(
         self.act_alpha = True
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Relu6(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Relu6(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.nn.functional.relu6
 
 
-class ElementwiseActivationMkldnnFusePassTest_Add_Sigmoid(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Add_Sigmoid(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
         self.act = paddle.nn.functional.sigmoid
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Relu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Relu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = F.relu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Tanh(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Tanh(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.tanh
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_LeakyRelu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_LeakyRelu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
@@ -190,32 +190,32 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_LeakyRelu(
         self.act = paddle.nn.functional.leaky_relu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Swish(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Swish(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.nn.functional.swish
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_HardSwish(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_HardSwish(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.nn.functional.hardswish
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_ABS(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_ABS(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.abs
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Clip(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Clip(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
@@ -224,16 +224,16 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Clip(
         self.act_beta = 10.0
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Gelu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.nn.functional.gelu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu_Tanh(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Gelu_Tanh(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
@@ -241,40 +241,40 @@ class ElementwiseActivationMkldnnFusePassTest_Sub_Gelu_Tanh(
         self.act_alpha = True
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Relu6(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Relu6(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.nn.functional.relu6
 
 
-class ElementwiseActivationMkldnnFusePassTest_Sub_Sigmoid(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Sub_Sigmoid(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
         self.act = paddle.nn.functional.sigmoid
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Relu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Relu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = F.relu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Tanh(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Tanh(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.tanh
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_LeakyRelu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_LeakyRelu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
@@ -282,40 +282,40 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_LeakyRelu(
         self.act = paddle.nn.functional.leaky_relu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Swish(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Swish(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.nn.functional.swish
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_HardSwish(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_HardSwish(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.nn.functional.hardswish
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_SQRT(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_SQRT(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.sqrt
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_ABS(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_ABS(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.abs
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Clip(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Clip(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
@@ -324,16 +324,16 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Clip(
         self.act_beta = 10.0
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Gelu(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.nn.functional.gelu
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu_Tanh(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Gelu_Tanh(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
@@ -341,16 +341,16 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Gelu_Tanh(
         self.act_alpha = True
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Relu6(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Relu6(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
         self.act = paddle.nn.functional.relu6
 
 
-class ElementwiseActivationMkldnnFusePassTest_Mul_Sigmoid(
-    ElementwiseActivationMkldnnFusePassTest
+class ElementwiseActivationOneDNNFusePassTest_Mul_Sigmoid(
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
@@ -358,7 +358,7 @@ class ElementwiseActivationMkldnnFusePassTest_Mul_Sigmoid(
 
 
 class ElementwiseScaleOneDNNFusePassTest_Add(
-    ElementwiseActivationMkldnnFusePassTest
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.add
@@ -367,7 +367,7 @@ class ElementwiseScaleOneDNNFusePassTest_Add(
 
 
 class ElementwiseScaleOneDNNFusePassTest_Sub(
-    ElementwiseActivationMkldnnFusePassTest
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.subtract
@@ -376,7 +376,7 @@ class ElementwiseScaleOneDNNFusePassTest_Sub(
 
 
 class ElementwiseScaleOneDNNFusePassTest_Mul(
-    ElementwiseActivationMkldnnFusePassTest
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.multiply
@@ -385,7 +385,7 @@ class ElementwiseScaleOneDNNFusePassTest_Mul(
 
 
 class ElementwiseScaleOneDNNFusePassTest_Div(
-    ElementwiseActivationMkldnnFusePassTest
+    ElementwiseActivationOneDNNFusePassTest
 ):
     def set_params(self):
         self.operand = paddle.divide

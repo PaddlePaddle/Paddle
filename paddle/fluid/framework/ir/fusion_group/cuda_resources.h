@@ -35,7 +35,7 @@ __device__ inline double Sqrt(double x) { return sqrt(x); }
 
 )";
 
-// List some bulit-in functions of __half implemented in cuda_fp16.hpp
+// List some built-in functions of __half implemented in cuda_fp16.hpp
 static constexpr char predefined_cuda_functions_fp16[] = R"(
 #define __HALF_TO_US(var) *(reinterpret_cast<unsigned short *>(&(var)))
 #define __HALF_TO_CUS(var) *(reinterpret_cast<const unsigned short *>(&(var)))

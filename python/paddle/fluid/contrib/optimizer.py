@@ -229,7 +229,7 @@ class Momentum(Optimizer):
             else None
         )
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             _, _, _ = _legacy_C_ops.momentum(
                 param_and_grad[0],
                 param_and_grad[1],

@@ -22,13 +22,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+void MaxKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const IntArray& dims,
+               bool keep_dim,
+               DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::MaxFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
@@ -37,4 +36,4 @@ void MaxRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    max_raw, CPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
+    max, CPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}

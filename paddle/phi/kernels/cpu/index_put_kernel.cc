@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T>
 void index_put_kernel(const int64_t N,
-                      const T* x,
+                      const T* x UNUSED,
                       const T* vals,
                       const int64_t** indices,
                       const phi::DDim& stride,

@@ -177,7 +177,8 @@ PD_REGISTER_KERNEL(depthwise_conv2d_transpose,
                    XPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConv2dTransposeKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(conv2d_transpose,
                    XPU,

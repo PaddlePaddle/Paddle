@@ -31,7 +31,9 @@ static const std::vector<T> &ToVector(const std::vector<T> &vec) {
 }
 
 template <typename T>
-static std::vector<T> ToVector(const T *x, size_t n, const phi::Place &place) {
+static std::vector<T> ToVector(const T *x,
+                               size_t n,
+                               const phi::Place &place UNUSED) {
 #ifdef __NVCC__
   if (place.GetType() == phi::AllocationType::GPU) {
     using CopyT = typename std::

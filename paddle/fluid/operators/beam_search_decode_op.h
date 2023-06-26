@@ -34,13 +34,10 @@ struct BeamSearchDecodeFunctor {
         id_tensor_(id_tensor),
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
-    tensor_on_npu_ = false;
     // First make a copy of GPU data on CPU
     if (platform::is_gpu_place(step_ids_origin_[0].place())) {
       if (platform::is_gpu_place(step_ids_origin_[0].place())) {
         tensor_on_gpu_ = true;
-      } else {
-        tensor_on_npu_ = true;
       }
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -63,8 +60,6 @@ struct BeamSearchDecodeFunctor {
     if (platform::is_gpu_place(step_scores_origin_[0].place())) {
       if (platform::is_gpu_place(step_scores_origin_[0].place())) {
         tensor_on_gpu_ = true;
-      } else {
-        tensor_on_npu_ = true;
       }
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -96,7 +91,7 @@ struct BeamSearchDecodeFunctor {
     } else {
       BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
       // Check if the tensor is on GPU. If so, use the CPU copy instead
-      if (tensor_on_gpu_ || tensor_on_npu_) {
+      if (tensor_on_gpu_) {
         beam_search_decoder.Backtrace(
             step_ids_, step_scores_, id_tensor_, score_tensor_);
       } else {
@@ -107,7 +102,6 @@ struct BeamSearchDecodeFunctor {
   }
 
   bool tensor_on_gpu_;
-  bool tensor_on_npu_;
   size_t beam_size_;
   int end_id_;
   // TODO(Superjomn) Here might result serious performance issue in the

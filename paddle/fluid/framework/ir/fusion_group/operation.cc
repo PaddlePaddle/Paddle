@@ -134,7 +134,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 
   // cast:
   //  out = static_cast<T>(x)
-  // TODO(wangchaochaohu): This is not the compelete definition of
+  // TODO(wangchaochaohu): This is not the complete definition of
   //  cast Op, We need refine it later.
   insert_handler("cast", "${0}", {});
 

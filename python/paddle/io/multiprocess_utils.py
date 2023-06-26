@@ -45,7 +45,7 @@ def _clear_multiprocess_queue_set():
 def _cleanup():
     # NOTE: inter-process Queue shared memory objects clear function
     _clear_multiprocess_queue_set()
-    # NOTE: main process memory map files clear funciton
+    # NOTE: main process memory map files clear function
     core._cleanup_mmap_fds()
 
 

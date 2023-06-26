@@ -76,7 +76,7 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 
   void AddInputY() override { AddInput("Y", "(Variable), The exponents."); }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "First tensor elements raised to powers from the second tensor, "
            "element-wise.";
   }

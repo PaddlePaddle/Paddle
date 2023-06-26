@@ -288,7 +288,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (place == tensor.place()) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -312,7 +312,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (platform::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -481,7 +481,7 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The destion Tensor(%s) can not copy when it is not empty.",
+        "The destination Tensor(%s) can not copy when it is not empty.",
         dst.Name()));
   }
 }
@@ -538,7 +538,7 @@ void BindImperative(py::module *m_ptr) {
                   "lists with different lengths.\n  * Check the reader "
                   "function passed to 'set_(sample/sample_list/batch)"
                   "_generator' to locate the data causes this issue."));
-          // 2. construcct LoDTensor
+          // 2. construct LoDTensor
           phi::DenseTensor t;
           SetTensorFromPyArray<platform::CPUPlace>(
               &t, array, platform::CPUPlace(), true);
@@ -578,7 +578,7 @@ void BindImperative(py::module *m_ptr) {
                 "lists with different lengths.\n  * Check the reader "
                 "function passed to 'set_(sample/sample_list/batch)"
                 "_generator' to locate the data causes this issue."));
-        // 2. construcct LoDTensor
+        // 2. construct LoDTensor
         phi::DenseTensor t;
         SetTensorFromPyArray<platform::CPUPlace>(
             &t, array, platform::CPUPlace(), true);
@@ -787,7 +787,7 @@ void BindImperative(py::module *m_ptr) {
             // inplace operator for the VarBase self.
             self->BumpInplaceVersion();
 
-            // 1. Check argumnets
+            // 1. Check arguments
             bool parse_index = true;
 
             // Check whether _index can be parsed.
@@ -1512,7 +1512,7 @@ void BindImperative(py::module *m_ptr) {
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
                      "Imperative SelectedRows allreduce is not supported when "
-                     "paddle is compiled with NCCL verison lower than v2.2.12. "
+                     "paddle is compiled with NCCL version lower than v2.2.12. "
                      "You can set is_sparse=False for the Layer containing "
                      "this argument, such as Embedding(is_sparse=False)."));
                }
@@ -1586,7 +1586,7 @@ void BindImperative(py::module *m_ptr) {
              This hook will be called every time the gradient of current Tensor has been fully calculated.
 
              There are two differences with `_register_grad_hook`:
-             1. This backward hook will be executed after the gradient accumulation completed across batchs,
+             1. This backward hook will be executed after the gradient accumulation completed across batches,
                 but the hook registered by `_register_grad_hook` will be executed the gradient accumulation
                 completed in current batch.
              2. This backward hook function should have the following signature:

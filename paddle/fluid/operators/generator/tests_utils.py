@@ -54,10 +54,15 @@ def is_base_op(op):
     return "kernel" in op and "infer_meta" in op
 
 
+# this func describe a op that only has composite implementation，
+# without kernel implementation. kernel implementation include
+# other op (invoke) or c++ kernel (kernel + infermeta)
 def is_only_composite_op(op):
     return "composite" in op and "kernel" not in op and "invoke" not in op
 
 
+# this func describe a op that has composite implementation，
+# maybe also has kernel implementation.
 def is_composite_op(op):
     return "composite" in op
 

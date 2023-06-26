@@ -87,4 +87,80 @@ struct CudaI0eGradFunctor {
   }
 };
 
+template <typename T>
+struct CudaI1GradFunctor {
+  __device__ __forceinline__ T operator()(const T _x,
+                                          const T _out,
+                                          const T _out_grad) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    const MT mp_out = static_cast<MT>(_out);
+    const MT mp_out_grad = static_cast<MT>(_out_grad);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<MT>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      MT y = (x / MT{2.0}) - MT{2.0};
+      MT eps = static_cast<MT>(std::numeric_limits<T>::epsilon());
+
+      if (x <= eps) {
+        MT out = (MT{0.5}) * mp_out_grad;
+        return static_cast<T>(out);
+      } else {
+        return static_cast<T>(
+            (std::exp(x) * Chbevl<MT>(y, A, len) - mp_out / mp_x) *
+            mp_out_grad);
+      }
+    }
+    auto coeff_pair_B = ChebyshevCoefficientsI0e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
+
+    return static_cast<T>(
+        (std::exp(x) * Chbevl<MT>(y, B, len) / std::sqrt(x) - mp_out / mp_x) *
+        mp_out_grad);
+  }
+};
+
+template <typename T>
+struct CudaI1eGradFunctor {
+  __device__ __forceinline__ T operator()(const T _x,
+                                          const T _out,
+                                          const T _out_grad) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    const MT mp_out = static_cast<MT>(_out);
+    const MT mp_out_grad = static_cast<MT>(_out_grad);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<MT>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      MT y = (x / MT{2.0}) - MT{2.0};
+      MT eps = static_cast<MT>(std::numeric_limits<T>::epsilon());
+
+      if (x <= eps) {
+        MT out = (MT{0.5}) * mp_out_grad;
+        return static_cast<T>(out);
+      } else {
+        MT out = (Chbevl<MT>(y, A, len) -
+                  mp_out * (std::copysign(MT{1.0}, mp_x) + (MT{1.0}) / mp_x)) *
+                 mp_out_grad;
+        return static_cast<T>(out);
+      }
+    }
+    auto coeff_pair_B = ChebyshevCoefficientsI0e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
+
+    return static_cast<T>(
+        (Chbevl<T>(y, B, len) / std::sqrt(x) -
+         mp_out * (std::copysign(MT{1.0}, mp_x) + (MT{1.0}) / mp_x)) *
+        mp_out_grad);
+  }
+};
+
 }  // namespace phi

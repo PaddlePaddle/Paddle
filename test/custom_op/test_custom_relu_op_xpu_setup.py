@@ -46,9 +46,7 @@ def custom_relu_static(
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)
-            x.stop_gradient = False
             out = func(x) if use_func else paddle.nn.functional.relu(x)
-            static.append_backward(out)
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
