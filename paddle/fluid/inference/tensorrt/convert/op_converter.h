@@ -685,6 +685,7 @@ std::cout << op_desc.InputNames().size() << std::endl;
         0,
         platform::errors::InvalidArgument(
             "Errors occures in Paddle-TRT layers with output name: %s", output_tensor_names[i].c_str()));
+    
     std::cout << output_tensor_names[i] ;
     for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
       std::cout << "输出维度: " << layer->getOutput(i)->getDimensions().d[ii] ;

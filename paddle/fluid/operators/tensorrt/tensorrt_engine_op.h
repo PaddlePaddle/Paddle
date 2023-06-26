@@ -594,6 +594,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
+      // 这个tensor是一个0维tensor哦！
+      if(t_shape.size() == 0) {
+        t_shape.push_back(1);
+      }
+
       // Get index of profile 0 first, then plus binding offset
       const int bind_index =
           engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
@@ -643,8 +648,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
+
+//std::cout << "888888888" << std::endl;
+//std::cout <<t_shape.size() << std::endl;
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+//std::cout << "99999" << std::endl;
+
         // If this x is a shape tensor, we need call setInputShapeBinding
         if (engine->engine()->isShapeBinding(bind_index) &&
             engine->engine()->bindingIsInput(bind_index)) {
