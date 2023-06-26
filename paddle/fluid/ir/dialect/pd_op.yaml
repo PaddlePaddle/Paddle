@@ -2,6 +2,7 @@
   inputs: []
   attrs:
   - {typename: str, name: name}
+  - {typename: int, name: col}
   outputs:
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
@@ -17,8 +18,20 @@
     data_transform: {}
   attrs:
   - {typename: str, name: name}
-  outputs: []
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: [fetch]
+    param: [x]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {fetch: null}
+    force_backend: null
   inplace: null
   backward: null

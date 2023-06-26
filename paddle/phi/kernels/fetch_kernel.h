@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-KernelSignature BincountOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("bincount", {"X", "Weights"}, {"minlength"}, {"Out"});
-}
+/**
+ * @brief This kernel is used to fetch tensor from scope
+ * @param  ctx     device context
+ * @param  x       the input tensor of fetch
+ * @param  out     the output tensor of fetch
+ */
+template <typename T, typename Context>
+void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(bincount, phi::BincountOpArgumentMapping);

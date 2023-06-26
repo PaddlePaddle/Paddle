@@ -90,6 +90,13 @@ def parse_args():
     )
 
     base_group.add_argument(
+        "--enable_gpu_log",
+        type=strtobool,
+        default=True,
+        help="enable capture gpu log while running. Default True",
+    )
+
+    base_group.add_argument(
         "--nnodes",
         type=str,
         default="1",
