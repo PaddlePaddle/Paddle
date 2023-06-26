@@ -455,10 +455,6 @@ def launch():
             # generate a new config
             new_cfg = auto_tuner.search_once()
             cur_cfg = copy.deepcopy(new_cfg)
-<<<<<<< HEAD
-            auto_tuner.add_cfg(cur_cfg)
-=======
->>>>>>> efdb222f61 (distribute best cfg)
 
             # per task launch interval
             time.sleep(3)
@@ -466,10 +462,6 @@ def launch():
 
         # get best config to run
         best_cfg = None
-<<<<<<< HEAD
-        ctx = copy.deepcopy(raw_ctx)
-=======
->>>>>>> efdb222f61 (distribute best cfg)
         if nnodes > 1:
             import socket
 
@@ -514,7 +506,7 @@ def launch():
                 )
         assert best_cfg
 
-<<<<<<< HEAD
+
         end_time = time.time()
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
@@ -525,14 +517,6 @@ def launch():
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
         ctx.args.log_dir = "best_cfg"
         # run best cfg
-=======
-        # launch best cfg
-        ctx.status._current_status = None
-        new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
-        ctx.args.training_script_args = new_args
-        ctx.args.job_id = "best_cfg"
-        ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
->>>>>>> efdb222f61 (distribute best cfg)
         c = controllers.init(ctx)
         c.run()
         c.finalize(exit=True)

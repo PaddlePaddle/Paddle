@@ -330,11 +330,7 @@ def read_log(
     with open(target_file, "r") as f:
         # read file
         re_metric_pattern = (
-            r'(\d+(\.\d*)?) *'
-            + target_metric
-            + '|'
-            + target_metric
-            + r' *: *(\d+(\.\d*)?)'
+            target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
 
         metric_list = []
