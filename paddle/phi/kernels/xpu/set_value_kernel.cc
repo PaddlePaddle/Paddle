@@ -392,24 +392,37 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<T> assign_values;
-  assign_values.reserve(std::max(shape, values.size()));
-  for (int i = 0; i < values.size(); i++) {
-    assign_values[i] = values[i].to<T>();
+  assign_values.reserve(values.size());
+  for (const auto& val : values) {
+    assign_values.push_back(val.to<T>());
   }
 
-  SetValueKernelImpl<T, Context>(
-      dev_ctx,
-      x,
-      reinterpret_cast<const T*>(assign_values.data()),
-      phi::make_ddim(shape),
-      starts,
-      ends,
-      steps,
-      axes,
-      decrease_axes,
-      none_axes,
-      out);
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  auto value_dims = phi::make_ddim(shape);
+  XPUType* value_data =
+      RAII_GUARD.alloc_l3_or_gm<XPUType>(phi::product(value_dims));
+
+  phi::CPUPlace src_place;
+  auto dst_place = dev_ctx.GetPlace();
+  memory_utils::Copy(dst_place,
+                     value_data,
+                     src_place,
+                     assign_values.data(),
+                     assign_values.size() * sizeof(T));
+
+  SetValueKernelImpl<T, Context>(dev_ctx,
+                                 x,
+                                 reinterpret_cast<const T*>(value_data),
+                                 value_dims,
+                                 starts,
+                                 ends,
+                                 steps,
+                                 axes,
+                                 decrease_axes,
+                                 none_axes,
+                                 out);
 }
 
 }  // namespace phi
