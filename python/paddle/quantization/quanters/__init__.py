@@ -13,5 +13,9 @@
 # limitations under the License.
 
 from .abs_max import FakeQuanterWithAbsMaxObserver
+from .channel_wise_abs_max import FakeQuanterChannelWiseAbsMaxObserver
 
-__all__ = ["FakeQuanterWithAbsMaxObserver"]
+__all__ = [
+    "FakeQuanterWithAbsMaxObserver",
+    "FakeQuanterChannelWiseAbsMaxObserver",
+]
