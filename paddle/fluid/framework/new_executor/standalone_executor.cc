@@ -72,12 +72,11 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get());
-
-      interpretercores_.emplace_back(std::make_unique<InterpreterCore>(
+      interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
           place_, std::move(kernel_program), scope_, execution_config));
     } else {
       interpretercores_.emplace_back(
-          std::make_unique<InterpreterCore>(place_,
+          std::make_shared<InterpreterCore>(place_,
                                             program->Block(0),
                                             micro_batch_scopes_[micro_batch_id],
                                             execution_config));
@@ -100,6 +99,17 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   const auto& jobs = plan_.JobList();
+
+  if (!is_interpretercore_build_result_shared_) {
+    for (size_t job_idx = 1; job_idx < jobs.size(); ++job_idx) {
+      interpretercores_[job_idx]->ShareWorkQueueFrom(interpretercores_[0]);
+      // TODO(Ruibiao): Share other build result, e.g., kernel choosing, data
+      // transfer, op dependency, thread scheduling, GC, event analyzer, and so
+      // on.
+    }
+    is_interpretercore_build_result_shared_ = true;
+  }
+
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
