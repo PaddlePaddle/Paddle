@@ -5019,6 +5019,48 @@ def as_strided(x, shape, stride, offset=0, name=None):
 
 
 @dygraph_only
+def view(x, shape_or_dtype, name=None):
+    """
+    View x with specified shape or dtype.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        shape_or_dtype (list|tuple|np.dtype|str|VarType): Define the target shape or dtype. If list or tuple, shape_or_dtype represents shape, each element of it should be integer. If np.dtype or str or VarType, shape_or_dtype represents dtype, it can be bool, float16, float32, float64, int8, int32, int64, uint8.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A viewed Tensor with the same data as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+
+            out = paddle.view(x, [8, 6])
+            print(out)
+
+
+            import paddle
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+
+            out = paddle.view(x, "uint8")
+            print(out)
+    """
+    if isinstance(shape_or_dtype, (list, tuple)):
+        return _C_ops.view_shape(x, shape_or_dtype)
+    else:
+        if not isinstance(shape_or_dtype, core.VarDesc.VarType):
+            shape_or_dtype = convert_np_dtype_to_dtype_(shape_or_dtype)
+        return _C_ops.view_dtype(x, shape_or_dtype)
+
+
+@dygraph_only
 def unfold(x, axis, size, step, name=None):
     """
     View x with specified shape, stride and offset, which contains all slices of size size from x in the dimension axis.
