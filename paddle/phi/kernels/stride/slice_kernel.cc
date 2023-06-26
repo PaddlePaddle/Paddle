@@ -27,7 +27,7 @@ namespace phi {
 template <typename Context>
 void SliceStridedKernel(const Context& ctx,
                         const DenseTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int64_t>& axes,
                         const IntArray& starts_arr,
                         const IntArray& ends_arr,
                         const std::vector<int64_t>& infer_flags,
@@ -37,24 +37,24 @@ void SliceStridedKernel(const Context& ctx,
   std::vector<int64_t> ends = ends_arr.GetData();
   auto in_dims = input.dims();
 
-  auto new_axis = axis;
-  for (auto& item : new_axis) {
+  auto new_axes = axes;
+  for (auto& item : new_axes) {
     if (item < 0) {
       item = std::max(int64_t(0), item + int64_t(in_dims.size()));
     }
   }
 
   phi::funcs::CheckAndUpdateSliceAttrs<int64_t>(
-      in_dims, new_axis, &starts, &ends, nullptr, nullptr);
+      in_dims, new_axes, &starts, &ends, nullptr, nullptr);
 
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
   int64_t output_offset = input.offset();
 
-  for (size_t i = 0; i < new_axis.size(); ++i) {
-    output_offset = output_offset + starts[i] * output_stride[new_axis[i]] *
+  for (size_t i = 0; i < new_axes.size(); ++i) {
+    output_offset = output_offset + starts[i] * output_stride[new_axes[i]] *
                                         SizeOf(out->dtype());
-    output_dims[new_axis[i]] = ends[i] - starts[i];
+    output_dims[new_axes[i]] = ends[i] - starts[i];
   }
 
   std::vector<uint8_t> decrease_flag(output_dims.size(), 0);

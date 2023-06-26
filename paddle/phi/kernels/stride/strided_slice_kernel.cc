@@ -24,7 +24,7 @@ namespace phi {
 template <typename Context>
 void StridedSliceRawStridedKernel(const Context& dev_ctx,
                                   const DenseTensor& input,
-                                  const std::vector<int>& axis,
+                                  const std::vector<int>& axes,
                                   const IntArray& starts_arr,
                                   const IntArray& ends_arr,
                                   const IntArray& strides_arr,
@@ -38,8 +38,8 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
   std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
   int64_t output_offset = input.offset();
-  for (size_t i = 0; i < axis.size(); ++i) {
-    int64_t axis_size = input.dims()[axis[i]];
+  for (size_t i = 0; i < axes.size(); ++i) {
+    int64_t axis_size = input.dims()[axes[i]];
 
     if (axis_size < 0) {
       continue;
@@ -79,9 +79,9 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
       starts[i] = (strides[i] < 0) ? axis_size - 1 : axis_size;
     }
 
-    output_offset += starts[i] * output_stride[axis[i]] * SizeOf(out->dtype());
-    output_dims[axis[i]] = dim;
-    output_stride[axis[i]] *= strides[i];
+    output_offset += starts[i] * output_stride[axes[i]] * SizeOf(out->dtype());
+    output_dims[axes[i]] = dim;
+    output_stride[axes[i]] *= strides[i];
   }
 
   // generate new shape
@@ -121,15 +121,15 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
 template <typename Context>
 void StridedSliceStridedKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const std::vector<int>& axis,
+                               const std::vector<int>& axes,
                                const IntArray& starts,
                                const IntArray& ends,
                                const IntArray& strides,
                                DenseTensor* out) {
-  std::vector<int> infer_flags(axis.size(), 1);
+  std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;
   StridedSliceRawStridedKernel<Context>(
-      dev_ctx, x, axis, starts, ends, strides, infer_flags, decrease_axis, out);
+      dev_ctx, x, axes, starts, ends, strides, infer_flags, decrease_axis, out);
 }
 }  // namespace phi
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
