@@ -17,82 +17,84 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
 
 namespace phi {
-
-bool ReshapeStride(const DDim& old_dims,
-                   const DDim& old_stride,
-                   const DDim& new_dims,
-                   DDim& new_stride) {  // NOLINT
-  int64_t numel = product(old_dims);
-  if (numel < 0) {
-    int64_t tmp[2];
-    tmp[0] = 1;
-    tmp[1] = new_dims.size();
-    new_stride = DDim(tmp, 2);
-    return true;
-  } else if (numel == 0) {
-    if (old_dims == new_dims) {
-      new_stride = old_stride;
-    } else {
-      new_stride = new_dims;
-      new_stride[new_dims.size() - 1] = 1;
-      for (int i = new_dims.size() - 2; i >= 0; i--) {
-        new_stride[i] = new_stride[i + 1] *
-                        std::max(static_cast<int64_t>(1), new_dims[i + 1]);
-      }
-    }
-    return true;
-  } else {
-    int64_t old_numel = 1;
-    int64_t new_numel = 1;
-    int64_t old_stride_lastvalue = old_stride[old_stride.size() - 1];
-    int new_stride_index = new_dims.size() - 1;
-    new_stride = new_dims;
-    for (int old_dims_index = old_dims.size() - 1; old_dims_index >= 0;
-         old_dims_index--) {
-      old_numel *= old_dims[old_dims_index];
-      if ((old_dims_index == 0) || (old_dims[old_dims_index - 1] != 1 &&
-                                    old_stride[old_dims_index - 1] !=
-                                        old_numel * old_stride_lastvalue)) {
-        while (new_stride_index >= 0 &&
-               (new_numel < old_numel || new_dims[new_stride_index] == 1)) {
-          new_stride[new_stride_index] = new_numel * old_stride_lastvalue;
-          new_numel *= new_dims[new_stride_index];
-          new_stride_index--;
-        }
-        if (new_numel != old_numel) {
-          return false;
-        }
-        if (old_dims_index > 0) {
-          old_numel = 1;
-          new_numel = 1;
-          old_stride_lastvalue = old_stride[old_dims_index - 1];
-        }
-      }
-    }
-    if (new_stride_index != -1) {
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
 
 template <typename Context>
 void ReshapeStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& shape,
                           DenseTensor* out,
-                          DenseTensor* xshape UNUSED) {
+                          DenseTensor* xshape) {
+  std::cout << "x.dims() = " << x.dims() << ", x.stride() = " << x.stride()
+            << ", x.offset() = " << x.offset() << ", x.dtype() = " << x.dtype()
+            << ", x.numel() = " << x.numel()
+            << ", x.holder() = " << x.Holder()->ptr()
+            << ", x.holder().size() = " << x.Holder()->size() << std::endl;
+  if (out->Holder()) {
+    std::cout << "out.dims() = " << out->dims()
+              << ", out.stride() = " << out->stride()
+              << ", out.offset() = " << out->offset()
+              << ", out.dtype() = " << out->dtype()
+              << ", out.numel() = " << out->numel()
+              << ", out.holder() = " << out->Holder()->ptr()
+              << ", out.holder().size() = " << out->Holder()->size()
+              << std::endl;
+  } else {
+    std::cout << "out.dims() = " << out->dims()
+              << ", out.stride() = " << out->stride()
+              << ", out.offset() = " << out->offset()
+              << ", out.dtype() = " << out->dtype()
+              << ", out.numel() = " << out->numel() << std::endl;
+  }
+  if (xshape) {
+    std::cout << "xshape.dims() = " << xshape->dims()
+              << ", xshape.stride() = " << xshape->stride()
+              << ", xshape.offset() = " << xshape->offset()
+              << ", xshape.dtype() = " << xshape->dtype()
+              << ", xshape.numel() = " << xshape->numel() << std::endl;
+  }
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
+  DDim x_dims = x.dims();
+  DDim x_stride = x.stride();
+  size_t x_offset = x.offset();
   DDim stride;
-  if (ReshapeStride(x.dims(), x.stride(), out->dims(), stride)) {
-    out->set_offset(x.offset());
+  if (ReshapeStride(x_dims, x_stride, out->dims(), stride)) {
+    out->set_offset(x_offset);
     out->set_stride(stride);
+    std::cout << "2 x.dims() = " << x.dims() << ", x.stride() = " << x.stride()
+              << ", x.offset() = " << x.offset()
+              << ", x.dtype() = " << x.dtype() << ", x.numel() = " << x.numel()
+              << ", x.holder() = " << x.Holder()->ptr()
+              << ", x.holder().size() = " << x.Holder()->size() << std::endl;
+    if (out->Holder()) {
+      std::cout << "2 out.dims() = " << out->dims()
+                << ", out.stride() = " << out->stride()
+                << ", out.offset() = " << out->offset()
+                << ", out.dtype() = " << out->dtype()
+                << ", out.numel() = " << out->numel()
+                << ", out.holder() = " << out->Holder()->ptr()
+                << ", out.holder().size() = " << out->Holder()->size()
+                << std::endl;
+    } else {
+      std::cout << "2 out.dims() = " << out->dims()
+                << ", out.stride() = " << out->stride()
+                << ", out.offset() = " << out->offset()
+                << ", out.dtype() = " << out->dtype()
+                << ", out.numel() = " << out->numel() << std::endl;
+    }
+    if (xshape) {
+      std::cout << "2 xshape.dims() = " << xshape->dims()
+                << ", xshape.stride() = " << xshape->stride()
+                << ", xshape.offset() = " << xshape->offset()
+                << ", xshape.dtype() = " << xshape->dtype()
+                << ", xshape.numel() = " << xshape->numel() << std::endl;
+    }
     out->ResetHolder(x.Holder());
   } else {
+    std::cout << "reshape else!!!" << std::endl;
     DenseTensor tmp;
     tmp.set_meta(x.meta());
     PD_VISIT_ALL_TYPES(x.dtype(), "ReshapeStridedKernel", ([&] {

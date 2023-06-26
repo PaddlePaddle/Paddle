@@ -3582,6 +3582,10 @@ def reshape(x, shape, name=None):
             if new_shape == x.shape:
                 out = x
             else:
+                print("x.shape = ", x.shape, flush=True)
+                print("x.stride = ", x.stride, flush=True)
+                print("x.offset = ", x.offset, flush=True)
+                print("new_shape = ", new_shape, flush=True)
                 out = _C_ops.reshape(x, new_shape)
         elif isinstance(shape, core.eager.Tensor):
             shape.stop_gradient = True
