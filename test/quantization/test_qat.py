@@ -21,9 +21,15 @@ import paddle.nn.functional as F
 from paddle.io import Dataset
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization import QAT, QuantConfig
-from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+from paddle.quantization.quanters import (
+    FakeQuanterChannelWiseAbsMaxObserver,
+    FakeQuanterWithAbsMaxObserver,
+)
 from paddle.quantization.quanters.abs_max import (
     FakeQuanterWithAbsMaxObserverLayer,
+)
+from paddle.quantization.quanters.channel_wise_abs_max import (
+    FakeQuanterChannelWiseAbsMaxObserverLayer,
 )
 
 
@@ -79,17 +85,22 @@ class TestQAT(unittest.TestCase):
             num_workers=0,
         )
         model = Model()
-        quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
-        q_config = QuantConfig(activation=quanter, weight=quanter)
+        act_quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+        weight_quanter = FakeQuanterChannelWiseAbsMaxObserver()
+        q_config = QuantConfig(activation=act_quanter, weight=weight_quanter)
         qat = QAT(q_config)
         print(model)
         quant_model = qat.quantize(model)
         print(quant_model)
-        quanter_count = 0
+        act_quanter_count = 0
+        weight_quanter_count = 0
         for _layer in quant_model.sublayers(True):
             if isinstance(_layer, FakeQuanterWithAbsMaxObserverLayer):
-                quanter_count += 1
-        self.assertEqual(quanter_count, 14)
+                act_quanter_count += 1
+            if isinstance(_layer, FakeQuanterChannelWiseAbsMaxObserverLayer):
+                weight_quanter_count += 1
+        self.assertEqual(act_quanter_count, 9)
+        self.assertEqual(weight_quanter_count, 5)
 
         for _, data in enumerate(loader):
             out = quant_model(data)

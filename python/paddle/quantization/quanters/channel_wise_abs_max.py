@@ -103,7 +103,6 @@ class FakeQuanterChannelWiseAbsMaxObserverLayer(BaseQuanter):
                     self._quant_axis = CHANNEL_AXIS[key]
                     break
         self._channel_num = layer.weight.shape[self._quant_axis]
-        self._reduce_type = 'max'
 
         scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         self._scale_name = unique_name.generate(scale_prefix)
@@ -120,7 +119,7 @@ class FakeQuanterChannelWiseAbsMaxObserverLayer(BaseQuanter):
     def dynamic_forward(self, input):
         attrs = (
             'bit_length',
-            self._quant_bits,
+            self._bit_length,
             'quant_axis',
             self._quant_axis,
         )
@@ -133,7 +132,7 @@ class FakeQuanterChannelWiseAbsMaxObserverLayer(BaseQuanter):
         )
 
         out_scale = self._scale
-        if self._reduce_type == "max":
+        if paddle.distributed.is_initialized():
             paddle.distributed.all_reduce(
                 out_scale, op=paddle.distributed.ReduceOp.MAX
             )
@@ -150,7 +149,7 @@ class FakeQuanterChannelWiseAbsMaxObserverLayer(BaseQuanter):
         check_variable_and_dtype(
             input, 'input', ['float32'], "FakeQuantChannelWiseAbsMax"
         )
-        attrs = {'bit_length': self._quant_bits, 'quant_axis': self._quant_axis}
+        attrs = {'bit_length': self._bit_length, 'quant_axis': self._quant_axis}
         inputs = {"X": [input]}
         quant_out = self._helper.create_variable(
             name=f"{input.name}.quantized.dequantized",
