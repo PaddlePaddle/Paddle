@@ -47,7 +47,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program =
         std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
-    SetColAttrForFetchOps(*job, program);
 
     int64_t micro_batch_id = job->MicroBatchId();
     PADDLE_ENFORCE(
@@ -59,11 +58,12 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
-    // TODO(Ruibiao): hack skip gc all vars for multiple jobs, improve it later
-    if (jobs.size() > 1) {
-      for (VarDesc* var : program->Block(0).AllVars()) {
-        execution_config.skip_gc_vars.insert(var->Name());
-      }
+
+    if (micro_batch_num > 1) {
+      SetColAttrForFetchOps(program, micro_batch_num, micro_batch_id);
+      std::set<std::string> skip_vars = job->SkipGcVars();
+      execution_config.skip_gc_vars =
+          std::set<std::string>(skip_vars.begin(), skip_vars.end());
     }
 
     if (FLAGS_enable_new_ir_in_executor) {

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
@@ -31,6 +33,94 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
+
+
+class OpInfo:
+    def __init__(self, op):
+        self.op = op
+        self.no_need_buffer_slots = set()
+        self.other_arg_names_set = set()
+
+    def get_op_attrs(self):
+        inputs = {}
+        for input_name in self.op.input_names:
+            inputs[input_name] = self.op.input(input_name)
+        outputs = {}
+        for output_name in self.op.output_names:
+            outputs[output_name] = self.op.output(output_name)
+        attrs = {}
+        for attr_name in self.op.attr_names:
+            attrs[attr_name] = self.op.attr(attr_name)
+
+        return inputs, outputs, attrs
+
+    def build_op_info(self):
+        inputs, outputs, attrs = self.get_op_attrs()
+        self.no_need_buffer_slots = core.infer_no_need_buffer_slots(
+            self.op.type, inputs, outputs, attrs
+        )
+        if len(self.no_need_buffer_slots) == 0:
+            return
+
+        for slot_name in self.op.input_names:
+            if slot_name in self.no_need_buffer_slots:
+                continue
+
+            for in_name in self.op.input(slot_name):
+                self.other_arg_names_set.add(in_name)
+
+        for slot_name in self.op.output_names:
+            for out_name in self.op.output(slot_name):
+                self.other_arg_names_set.add(out_name)
+
+    def is_needed(self, arg_name):
+        return (
+            len(self.no_need_buffer_slots) == 0
+            or arg_name in self.other_arg_names_set
+        )
+
+
+def get_skip_gc_vars(program_list: List[Program]):
+    """
+    Get `skip_gc_vars` for every sub_program of program_list.
+
+    A whole_program is split up into sub_programs according to the schedule mode,
+    thus a sub_program's vars might be used as the op's input of the later sub_program,
+    and these vars cannot be gc after executing current sub_program.
+    """
+
+    vars_list = [
+        {
+            var.name
+            for var in filter(
+                lambda var: not var.persistable, program.list_vars()
+            )
+        }
+        for program in program_list
+    ]
+
+    intersection_vars_list = [set()] * len(program_list)
+    for idx, vars_set in enumerate(vars_list):
+        union_set = set().union(*vars_list[idx + 1 :])
+        intersection_vars_list[idx] = vars_set & union_set
+
+    skip_gc_vars = [set() for _ in range(len(program_list))]
+    for idx in range(len(program_list) - 1):
+        if len(intersection_vars_list[idx]) == 0:
+            continue
+
+        for program in program_list[idx + 1 :]:
+            for op in program.global_block().ops:
+                op_info = OpInfo(op)
+                op_info.build_op_info()
+
+                for in_name in op.input_arg_names:
+                    if in_name not in intersection_vars_list[idx]:
+                        continue
+                    if op_info.is_needed(in_name):
+                        skip_gc_vars[idx].add(in_name)
+
+    return skip_gc_vars
 
 
 def _create_param(dst_block, src_var):
@@ -249,11 +339,20 @@ def _program_for_fthenb_and_1f1b(program):
     bwd_prog._rollback()
     opt_prog._rollback()
 
+    lr_vars, fwd_vars, bwd_vars, opt_vars = get_skip_gc_vars(
+        [lr_prog, fwd_prog, bwd_prog, opt_prog]
+    )
+
     return {
         "lr": lr_prog.desc,
         "forward": fwd_prog.desc,
         "backward": bwd_prog.desc,
         "optimizer": opt_prog.desc,
+    }, {
+        "lr": lr_vars,
+        "forward": fwd_vars,
+        "backward": bwd_vars,
+        "optimizer": opt_vars,
     }
 
 
@@ -268,21 +367,25 @@ class PipelineFThenBPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_job_list(self):
+    def _create_job_list(self, type_to_skip_vars):
         job_list = []
         lr_job = core.Job("lr")
+        lr_job.set_skip_gc_vars(type_to_skip_vars["lr"])
         job_list.append(lr_job)
         for i in range(self._num_micro_batches):
             forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(i)
+            forward_job.set_skip_gc_vars(type_to_skip_vars["forward"])
             job_list.append(forward_job)
 
         for i in range(self._num_micro_batches):
             backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(i)
+            backward_job.set_skip_gc_vars(type_to_skip_vars["backward"])
             job_list.append(backward_job)
 
         opt_job = core.Job("optimizer")
+        opt_job.set_skip_gc_vars(type_to_skip_vars["optimizer"])
         job_list.append(opt_job)
         return job_list
 
@@ -291,8 +394,10 @@ class PipelineFThenBPass(PassBase):
         self._program = main_program
 
         _insert_sync_for_fthenb_1f1b(self._program)
-        type_to_program = _program_for_fthenb_and_1f1b(self._program)
-        job_list = self._create_job_list()
+        type_to_program, type_to_skip_vars = _program_for_fthenb_and_1f1b(
+            self._program
+        )
+        job_list = self._create_job_list(type_to_skip_vars)
 
         plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)
