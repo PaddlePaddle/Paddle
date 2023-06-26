@@ -156,9 +156,8 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
 
   Gemm gemm;
   if (gemm.get_workspace_size(args) > workspace_bytes) {
-    std::cout << "Requested split-k but workspace size insufficient. Falling "
-                 "back to non-split-k implementation."
-              << std::endl;
+    VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
+                 "back to non-split-k implementation.";
     // If requested split-k factor will require more workspace bytes, revert to
     // standard gemm.
     args.batch_count = 1;
@@ -169,7 +168,7 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
     std::string err_msg =
         "fpA_intB cutlass kernel will fail for params. Error: " +
         std::string(cutlassGetStatusString(can_implement));
-    throw std::runtime_error("[FT Error][fpA_intB Runner] " + err_msg);
+    throw std::runtime_error("[fpA_intB Runner] " + err_msg);
   }
 
   auto init_status = gemm.initialize(args, workspace, stream);
@@ -177,14 +176,14 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
     std::string err_msg =
         "Failed to initialize cutlass fpA_intB gemm. Error: " +
         std::string(cutlassGetStatusString(init_status));
-    throw std::runtime_error("[FT Error][fpA_intB Runner] " + err_msg);
+    throw std::runtime_error("[fpA_intB Runner] " + err_msg);
   }
 
   auto run_status = gemm.run(stream);
   if (run_status != cutlass::Status::kSuccess) {
     std::string err_msg = "Failed to run cutlass fpA_intB gemm. Error: " +
                           std::string(cutlassGetStatusString(run_status));
-    throw std::runtime_error("[FT Error][fpA_intB Runner] " + err_msg);
+    throw std::runtime_error("[fpA_intB Runner] " + err_msg);
   }
 }
 
@@ -214,7 +213,7 @@ struct dispatch_stages {
     std::string err_msg = "Cutlass fpA_intB gemm. Not instantiates for arch " +
                           std::to_string(arch::kMinComputeCapability) +
                           " with stages set to " + std::to_string(Stages);
-    throw std::runtime_error("[FT Error][dispatch_stages::dispatch] " +
+    throw std::runtime_error("[dispatch_stages::dispatch] " +
                              err_msg);
   }
 };
@@ -407,7 +406,7 @@ void dispatch_gemm_config(const T* A,
     default:
       std::string err_msg = "dispatch_gemm_config does not support stages " +
                             std::to_string(gemm_config.stages);
-      throw std::runtime_error("[FT Error][dispatch_gemm_config] " + err_msg);
+      throw std::runtime_error("[dispatch_gemm_config] " + err_msg);
       break;
   }
 }
@@ -539,17 +538,17 @@ void dispatch_gemm_to_cutlass(const T* A,
       break;
     case CutlassTileConfig::Undefined:
       throw std::runtime_error(
-          "[FT Error][fpA_intB][dispatch_gemm_to_cutlass] gemm config "
+          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config "
           "undefined.");
       break;
     case CutlassTileConfig::ChooseWithHeuristic:
       throw std::runtime_error(
-          "[FT Error][fpA_intB][dispatch_gemm_to_cutlass] gemm config should "
+          "[fpA_intB][dispatch_gemm_to_cutlass] gemm config should "
           "have already been set by heuristic.");
       break;
     default:
       throw std::runtime_error(
-          "[FT Error][fpA_intB][dispatch_gemm_to_cutlass] Config is invalid "
+          "[fpA_intB][dispatch_gemm_to_cutlass] Config is invalid "
           "for mixed type GEMM.");
       break;
   }
@@ -617,7 +616,7 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
         occupancy);
   } else {
     throw std::runtime_error(
-        "[FT Error][CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported "
+        "[CutlassFpAIntBGemmRunner][GEMM Dispatch] Arch unsupported "
         "for CUTLASS mixed type GEMM");
   }
 }

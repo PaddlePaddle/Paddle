@@ -16,7 +16,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifndef PADDLE_WITH_ROCM
 #include "paddle/phi/kernels/impl/llm_int8_mat_mul_kernel_impl.h"
+#endif
 
 namespace phi {
 
@@ -27,6 +29,9 @@ void llm_int8_compute(const Context& dev_ctx,
                       const DenseTensor& weight_scale,
                       const float threshold,
                       DenseTensor* out) {
+#if defined(PADDLE_WITH_ROCM)
+  LOG(ERROR) << "Please compile with cublaslt, ROCM platform isn't support it";
+#else
   DenseTensor cublaslt_workspace;
   cublaslt_workspace.Resize({{3000000}});
   dev_ctx.template Alloc<int8_t>(&cublaslt_workspace);
@@ -47,6 +52,7 @@ void llm_int8_compute(const Context& dev_ctx,
                        m,
                        k,
                        n);
+#endif
 }
 
 template <typename T, typename Context>
