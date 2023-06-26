@@ -310,6 +310,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
             "Variance": convert_float_to_uint16(variance),
         }
 
+
 @unittest.skipIf(
     paddle.is_compiled_with_rocm(),
     "ROCm doesn't support fp64 LayerNormOpByOp currently",
@@ -334,6 +335,7 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = False
         self.has_bias = False
+
 
 @unittest.skipIf(
     paddle.is_compiled_with_rocm(),
@@ -378,6 +380,7 @@ class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = False
+
 
 @unittest.skipIf(
     paddle.is_compiled_with_rocm(),
