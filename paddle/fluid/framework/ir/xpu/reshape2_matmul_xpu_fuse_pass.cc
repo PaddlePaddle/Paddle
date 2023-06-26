@@ -97,10 +97,10 @@ Reshape2MatmulPattern::Reshape2MatmulPattern(PDPattern* pattern,
           ->assert_more([](Node* node) {
             auto reshape2_in_x_shape = node->Var()->GetShape();
             size_t reshape2_in_rank = reshape2_in_x_shape.size();
-            bool nice_shape =
-                (reshape2_in_x_shape[2] == 1 && reshape2_in_x_shape[3] == 1) ||
-                (reshape2_in_x_shape[1] == 1 && reshape2_in_x_shape[3] == 1);
-            return (reshape2_in_rank == 4 && nice_shape);
+            return reshape2_in_rank == 4 && ((reshape2_in_x_shape[2] == 1 &&
+                                              reshape2_in_x_shape[3] == 1) ||
+                                             (reshape2_in_x_shape[1] == 1 &&
+                                              reshape2_in_x_shape[3] == 1));
           });
   auto* reshape2 =
       pattern->NewNode(reshape2_repr())
