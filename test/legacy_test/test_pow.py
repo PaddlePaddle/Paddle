@@ -240,6 +240,14 @@ class TestInplacePowerTensor(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.pow(var, self.y)
 
+    def test_type_error(self):
+        var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
+        with self.assertRaisesRegex(
+            TypeError,
+            'y must be scalar or tensor type, but received: %s ' % (type([2])),
+        ):
+            paddle.pow_(var, [2])
+
 
 if __name__ == '__main__':
     unittest.main()

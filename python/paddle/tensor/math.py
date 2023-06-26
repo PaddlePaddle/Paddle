@@ -486,7 +486,7 @@ def pow_(x, y, name=None):
         return _C_ops.elementwise_pow_(x, y)
     else:
         raise TypeError(
-            'y must be scalar or tensor type, but received: %s ' % (y.dtype)
+            'y must be scalar or tensor type, but received: %s ' % (type(y))
         )
 
 
