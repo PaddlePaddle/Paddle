@@ -46,10 +46,6 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              ir::OpInfo op_info,
                              size_t num_regions) {
-  // 0. Verify
-  if (op_info) {
-    op_info.Verify(inputs, output_types, attributes);
-  }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -99,6 +95,11 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
       new (base_ptr) Region(op);
       base_ptr += sizeof(Region);
     }
+  }
+
+  // 0. Verify
+  if (op_info) {
+    op_info.Verify(op);
   }
   return op;
 }
