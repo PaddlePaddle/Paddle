@@ -48,7 +48,6 @@ phi::KernelKey GetKernelKey(
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
   phi::DataType kernel_data_type = phi::DataType::UNDEFINED;
 
-  std::cerr << op->name() << std::endl;
   if (op_info_parser != nullptr) {
     // only suppurt non vector input for now
     int tensor_input_number = op_info_parser->InputTensorNumber();
@@ -198,14 +197,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
         (*it)->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
     OpYamlInfoParser* op_info_parser = nullptr;
     if (op_info_interface) {
-      std::cerr << "12" << std::endl;
       op_info_parser = new OpYamlInfoParser(op_info_interface.GetOpInfo());
-      std::cerr << "13" << std::endl;
     }
     auto kernel_key =
         GetKernelKey(*it, cpu_place, map_value_pair, op_info_parser);
     VLOG(6) << "kernel type " << kernel_key;
-    std::cerr << "15" << std::endl;
     // create new Op
 
     // only for single output
@@ -247,7 +243,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
 
-    std::cerr << "22" << std::endl;
     std::string kernel_fn_str;
     if (op_info_parser != nullptr) {
       kernel_fn_str = op_info_parser->OpRuntimeInfo().kernel_func[0];
