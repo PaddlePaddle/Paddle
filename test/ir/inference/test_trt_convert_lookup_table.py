@@ -29,15 +29,25 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
 
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
             if dims == 1:
-                return np.array([32, 2, 19]).astype(np.int64)
+                return np.array([[32], [2], [19]]).astype(np.int64)
             elif dims == 2:
-                return np.array([[3, 16, 24], [6, 4, 47]]).astype(np.int64)
+                return np.array([[[3], [16], [24]], [[6], [4], [47]]]).astype(
+                    np.int64
+                )
             else:
                 return np.array(
                     [
-                        [[3, 16, 24], [30, 16, 14], [2, 6, 24]],
-                        [[3, 26, 34], [3, 16, 24], [3, 6, 4]],
-                        [[3, 16, 24], [53, 16, 54], [30, 1, 24]],
+                        [
+                            [[3], [16], [24]],
+                            [[30], [16], [14]],
+                            [[2], [6], [24]],
+                        ],
+                        [[[3], [26], [34]], [[3], [16], [24]], [[3], [6], [4]]],
+                        [
+                            [[3], [16], [24]],
+                            [[53], [16], [54]],
+                            [[30], [1], [24]],
+                        ],
                     ]
                 ).astype(np.int64)
 
@@ -49,7 +59,7 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
 
             ops_config = [
                 {
-                    "op_type": "lookup_table_v2",
+                    "op_type": "lookup_table",
                     "op_inputs": {"Ids": ["indices"], "W": ["data"]},
                     "op_outputs": {"Out": ["out_data"]},
                     "op_attrs": {},
@@ -80,43 +90,41 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
-                    "indices": [
-                        1,
-                    ],
-                    "data": [64, 4],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "indices": [16],
-                    "data": [64, 4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "indices": [8],
-                    "data": [64, 4],
-                }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
                     "indices": [1, 1],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "indices": [16, 32],
+                    "indices": [16, 1],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "indices": [2, 16],
+                    "indices": [8, 1],
                     "data": [64, 4],
                 }
-            else:
+            elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "indices": [1, 1, 1],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "indices": [16, 16, 16],
+                    "indices": [16, 32, 1],
                     "data": [64, 4],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "indices": [2, 8, 8],
+                    "indices": [2, 16, 1],
+                    "data": [64, 4],
+                }
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "indices": [1, 1, 1, 1],
+                    "data": [64, 4],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "indices": [16, 16, 16, 1],
+                    "data": [64, 4],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "indices": [2, 8, 8, 1],
                     "data": [64, 4],
                 }
 
