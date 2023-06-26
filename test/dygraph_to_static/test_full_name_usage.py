@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test
 
 import paddle
 from paddle import fluid
-from paddle.jit import to_static
 
 
 @paddle.jit.to_static
@@ -48,7 +48,7 @@ def decorated_call_decorated(x):
 
 class DoubleDecorated:
     @classmethod
-    @to_static
+    @paddle.jit.to_static
     def double_decorated_func1(self, x):
         return dygraph_decorated_func(x)
 
@@ -59,6 +59,7 @@ class DoubleDecorated:
 
 
 class TestFullNameDecorator(unittest.TestCase):
+    @ast_only_test
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")

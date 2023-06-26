@@ -18,6 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from predictor_utils import PredictorTools
 
 import paddle
@@ -637,6 +638,7 @@ def val_bmn(model, args):
     return loss_data
 
 
+@dy2static_unittest
 class TestTrain(unittest.TestCase):
     def setUp(self):
         self.args = Args()
@@ -667,6 +669,7 @@ class TestTrain(unittest.TestCase):
             local_random = np.random.RandomState(SEED)
 
             bmn = BMN(args)
+            bmn = paddle.jit.to_static(bmn)
             adam = optimizer(args, parameter_list=bmn.parameters())
 
             train_reader = fake_data_reader(args, 'train')
@@ -749,6 +752,7 @@ class TestTrain(unittest.TestCase):
                         break
             return np.array(loss_data)
 
+    @ast_only_test
     def test_train(self):
 
         static_res = self.train_bmn(self.args, self.place, to_static=True)

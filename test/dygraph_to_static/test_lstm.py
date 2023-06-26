@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle import nn
@@ -44,6 +45,7 @@ class Net(nn.Layer):
         return x
 
 
+@dy2static_unittest
 class TestLstm(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -69,6 +71,7 @@ class TestLstm(unittest.TestCase):
         static_out = self.run_lstm(to_static=True)
         np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
+    @ast_only_test
     def test_save_in_eval(self, with_training=True):
         paddle.jit.enable_to_static(True)
         net = Net(12, 2)
@@ -133,6 +136,7 @@ class LinearNet(nn.Layer):
         return y
 
 
+@dy2static_unittest
 class TestSaveInEvalMode(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -140,6 +144,7 @@ class TestSaveInEvalMode(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @ast_only_test
     def test_save_in_eval(self):
         paddle.jit.enable_to_static(True)
         net = LinearNet()
@@ -178,6 +183,7 @@ class TestSaveInEvalMode(unittest.TestCase):
         )
 
 
+@dy2static_unittest
 class TestEvalAfterSave(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -185,6 +191,7 @@ class TestEvalAfterSave(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @ast_only_test
     def test_eval_after_save(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         net = Net(12, 2)
