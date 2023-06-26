@@ -161,7 +161,7 @@ void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out) {
   HardSwishOneDNNFunctor<T> functor;
-  functor(dev_ctx, x, 6, 0, out);
+  functor(dev_ctx, x, 1.0 / 6.0, 1.0 / 2.0, out);
 }
 
 template <typename T, typename Context>
