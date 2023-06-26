@@ -192,13 +192,19 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     std::vector<ir::Type> op_output_types;
     if ((*it)->num_results() > 0) {
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
+        std::cerr << "i  " << i << std::endl;
         auto result_type = (*it)->result(i).type();
+        std::stringstream ss;
+        result_type.Print(ss);
+        std::cerr << "get type " << ss.str() << std::endl;
         if (result_type.isa<dialect::DenseTensorType>()) {
+          std::cerr << "is densetensr" << std::endl;
           auto allocated_dense_tensor_dtype =
               paddle::dialect::AllocatedDenseTensorType::get(
                   ctx,
                   phi::TransToPhiPlace(kernel_key.backend()),
                   result_type.dyn_cast<dialect::DenseTensorType>());
+          std::cerr << "after dense tensor type" << std::endl;
           op_output_types.push_back(allocated_dense_tensor_dtype);
         } else if (result_type.isa<ir::VectorType>()) {
           std::vector<ir::Type> vec_inner_types;
@@ -226,6 +232,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       }
     }
 
+    VLOG(6) << "Finish process output type";
     // constuct input
     std::vector<ir::OpResult> vec_inputs;
 
@@ -260,7 +267,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     ir::Operation* op1 = ir::Operation::Create(
         vec_inputs, op1_attribute, op_output_types, op1_info);
-
+    VLOG(6) << "Finish create operation";
     map_op_pair[*it] = op1;
 
     // only deal with single output
