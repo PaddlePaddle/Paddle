@@ -85,11 +85,14 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           const IntArray& shape,
                           DenseTensor* out,
                           DenseTensor* xshape UNUSED) {
+  DDim x_dims = x.dims();
+  DDim x_stride = x.stride();
+  size_t x_offset = x.offset();
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   DDim stride;
-  if (ReshapeStride(x.dims(), x.stride(), out->dims(), stride)) {
-    out->set_offset(x.offset());
+  if (ReshapeStride(x_dims, x_stride, out->dims(), stride)) {
+    out->set_offset(x_offset);
     out->set_stride(stride);
     out->ResetHolder(x.Holder());
   } else {

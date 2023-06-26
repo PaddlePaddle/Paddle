@@ -819,6 +819,25 @@ static PyObject* tensor_method_detach(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_detach_(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE_EQ(
+      self->tensor.defined(),
+      true,
+      platform::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                        self->tensor.name()));
+
+  auto autograd_meta = std::make_shared<egr::AutogradMeta>();
+  autograd_meta->SetPersistable(
+      egr::EagerUtils::autograd_meta(&(self->tensor))->Persistable());
+  self->tensor.set_autograd_meta(autograd_meta);
+
+  return reinterpret_cast<PyObject*>(self);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
                                                     PyObject* args,
                                                     PyObject* kwargs) {
@@ -2207,6 +2226,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"detach",
      (PyCFunction)(void (*)(void))tensor_method_detach,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"detach_",
+     (PyCFunction)(void (*)(void))tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_tensor",
