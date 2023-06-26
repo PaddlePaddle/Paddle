@@ -1218,7 +1218,7 @@ def set_grad_var_shape(program, dist_context):
                 forward_var_name = var_name[: var_name.find("@GRAD")]
 
             if op.type in [
-                "c_allreduce_sum",
+                "all_reduce",
                 "c_identity",
                 "scale",
                 "cast",

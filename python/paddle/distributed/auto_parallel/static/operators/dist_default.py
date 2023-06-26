@@ -56,9 +56,9 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         sync_group = new_process_group(ctx.data_parallel_group)
 
         allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [var_name]},
-            outputs={'Out': [var_name]},
+            type='all_reduce',
+            inputs={'x': [var_name]},
+            outputs={'out': [var_name]},
             attrs={
                 'ring_id': sync_group.id,
                 'use_calc_stream': True,
@@ -69,9 +69,9 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         param = ctx.grads_params[var_name]
         startup_block = dist_op_context.startup_block
         new_op = startup_block.append_op(
-            type='c_broadcast',
-            inputs={'X': [param]},
-            outputs={'Out': [param]},
+            type='broadcast',
+            inputs={'x': [param]},
+            outputs={'out': [param]},
             attrs={
                 'ring_id': sync_group.id,
                 'root': 0,
@@ -548,9 +548,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         sync_group = new_process_group(group_ranks)
 
                         new_op = startup_block.append_op(
-                            type='c_broadcast',
-                            inputs={'X': param},
-                            outputs={'Out': param},
+                            type='broadcast',
+                            inputs={'x': param},
+                            outputs={'out': param},
                             attrs={
                                 'ring_id': sync_group.id,
                                 'root': 0,

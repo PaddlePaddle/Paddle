@@ -39,6 +39,7 @@ from paddle.utils import unique_name
 from ..auto_parallel.process_mesh import ProcessMesh
 from .auto_parallel_amp import AMPPass
 from .pass_base import register_pass
+from .pass_utils import COMM_OP_TYPE
 
 world_process_group = get_world_process_group()
 # if user use python "+, -, * /" for network, there might be cast in vanilla program
@@ -711,8 +712,9 @@ def cast_startup_program():
             param_to_dtype[p.name] = p.dtype
 
     def is_initialization_op(op):
+        comm_op_prefix = "c_"
         op_type = op.type
-        if op.has_attr("ring_id"):
+        if op_type.startswith(comm_op_prefix) or op_type in COMM_OP_TYPE:
             return False
 
         if len(op.output_arg_names) != 1 and len(op.input_arg_names) != 0:

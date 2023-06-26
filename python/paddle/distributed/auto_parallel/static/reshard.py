@@ -17,6 +17,7 @@ from collections import OrderedDict
 from functools import reduce
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
@@ -335,13 +336,13 @@ class Inserter:
     @staticmethod
     def insert_send_op(block, idx, tensor, src, dst, op_role):
         """Insert send op into block at the given index."""
-        op_type = 'send_v2'
+        op_type = 'p_send'
         # use pair comm group
         process_group = new_process_group([src, dst], group_type='p2p')
         send_op = block._insert_op(
             idx,
             type=op_type,
-            inputs={'X': [tensor]},
+            inputs={'x': [tensor]},
             attrs={
                 'ring_id': process_group.id,
                 'peer': process_group.ranks.index(dst),
@@ -355,14 +356,14 @@ class Inserter:
     @staticmethod
     def insert_recv_op(block, idx, tensor, src, dst, op_role):
         """Insert recv op into block at the given index."""
-        op_type = 'recv_v2'
+        op_type = 'p_recv'
         # use pair group
         process_group = new_process_group([src, dst], group_type='p2p')
         recv_op = block._insert_op(
             idx,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [tensor]},
+            inputs={'x': [tensor]},
+            outputs={'out': [tensor]},
             attrs={
                 'ring_id': process_group.id,
                 'peer': process_group.ranks.index(src),
@@ -611,8 +612,41 @@ class Inserter:
         group = new_process_group(ranks)
         idx_offset = 0
 
-        # insert c_allgather op
-        op_type = 'c_allgather'
+        # instant process group before insert allgather op.
+        if not group.is_instantiate():
+            # insert fill_constant op
+            fill_constant_out = Inserter.insert_fill_constant_op(
+                block, idx, op_role
+            )
+            fill_constant_out.stop_gradient = True
+
+            # insert all_reduce sum op
+            allreduce_op = block._insert_op(
+                idx + 1,
+                type="all_reduce",
+                inputs={'x': [fill_constant_out]},
+                outputs={'out': [fill_constant_out]},
+                attrs={
+                    'ring_id': 0,
+                    'use_calc_stream': True,
+                    'op_role': op_role,
+                    'reduce_type': dist.ReduceOp.SUM,
+                },
+            )
+            allreduce_op._set_attr('op_namescope', "/auto_parallel/reshard")
+            # insert c_sync_calc_stream op
+            sync_calc_op = block._insert_op(
+                idx + 2,
+                type="c_sync_calc_stream",
+                inputs={'X': [fill_constant_out]},
+                outputs={'Out': [fill_constant_out]},
+                attrs={'op_role': op_role},
+            )
+            sync_calc_op._set_attr('op_namescope', "/auto_parallel/reshard")
+            idx_offset = 3
+
+        # insert all_gather op
+        op_type = 'all_gather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         with paddle.static.program_guard(block.program):
@@ -630,8 +664,8 @@ class Inserter:
         allgather_op = block._insert_op(
             idx + idx_offset,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [allgather_out]},
+            inputs={'x': [tensor]},
+            outputs={'out': [allgather_out]},
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
@@ -2918,7 +2952,7 @@ class Resharder:
                     group_ranks = [key, op_desc.dst]
                     shape = op_desc.shape
                     send_desc = build_comm_desc(
-                        "send_v2", group_ranks, dtype, shape
+                        "p_send", group_ranks, dtype, shape
                     )
                     idx, is_the_same = _get_idx(comm_ranks, group_ranks)
                     if idx is None:

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..dist_attribute import OperatorDistAttr
@@ -117,12 +118,13 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
         var_name = src_op.output_arg_names[0]
         sync_group = new_process_group(ctx.data_parallel_group)
         allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [var_name]},
-            outputs={'Out': [var_name]},
+            type='all_reduce',
+            inputs={'x': [var_name]},
+            outputs={'out': [var_name]},
             attrs={
                 'ring_id': sync_group.id,
                 'use_calc_stream': True,
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: OpRole.Forward,
             },
         )

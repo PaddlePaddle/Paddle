@@ -33,6 +33,17 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
+COMM_OP_TYPE = [
+    'broadcast',
+    'all_gather',
+    'reduce_scatter',
+    'reduce',
+    'all_reduce',
+    'p_send',
+    'p_recv',
+    'all_to_all',
+]
+
 
 def list_to_ordered_dict(list_obj, ordered_dict=None):
     if ordered_dict is None:

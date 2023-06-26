@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import paddle.distributed as dist
 from paddle.common_ops_import import check_dtype, check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     AllreduceSumOpCost,
@@ -185,10 +186,14 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         parallel_axis = dist_op.dist_attr.get_input_dims_mapping(
             serial_op.input("W")[0]
         )[0]
-        attrs = {"use_calc_stream": True, "use_model_parallel": True}
+        attrs = {
+            "use_calc_stream": True,
+            "use_model_parallel": True,
+            "reduce_type": dist.ReduceType.SUM,
+        }
         var_names = serial_op.output("Out")
-        c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
-            "c_allreduce_sum",
+        allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+            "all_reduce",
             dist_op,
             ctx,
             var_names,
@@ -200,7 +205,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             AllreduceSumOpCost,
             ctx,
             processes,
-            c_allreduce_sum_desc_mapping,
+            allreduce_sum_desc_mapping,
             cluster,
         )
 
@@ -461,7 +466,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             Out_var,
             'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
-            'c_allreduce_sum',
+            'all_reduce',
         )
 
         c_embedding_op = main_block.append_op(
@@ -477,14 +482,15 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             intermediate_var_0.desc.set_shape(ref_shape)
 
         # use_model_parallel
-        c_allreduce_sum_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [intermediate_var_0]},
-            outputs={'Out': [Out_var]},
+        allreduce_sum_op = main_block.append_op(
+            type='all_reduce',
+            inputs={'x': [intermediate_var_0]},
+            outputs={'out': [Out_var]},
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
                 'use_model_parallel': True,
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
@@ -520,14 +526,14 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         allreduce_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allreduce_op_dist_attr.impl_type = op_dist_attr.impl_type
         allreduce_op_dist_attr.impl_idx = op_dist_attr.impl_idx
-        for input_varname in c_allreduce_sum_op.desc.input_arg_names():
+        for input_varname in allreduce_sum_op.desc.input_arg_names():
             input_var = main_block._var_recursive(input_varname)
             tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(input_var)
             assert tensor_dist_attr is not None
             allreduce_op_dist_attr.set_input_dist_attr(
                 input_varname, tensor_dist_attr
             )
-        for output_varname in c_allreduce_sum_op.desc.output_arg_names():
+        for output_varname in allreduce_sum_op.desc.output_arg_names():
             output_dist_attr = op_dist_attr.get_output_dist_attr(output_varname)
             assert output_dist_attr is not None, "dist_attr is {}".format(
                 op_dist_attr
@@ -536,7 +542,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 output_varname, output_dist_attr
             )
         ctx.set_op_dist_attr_for_program(
-            c_allreduce_sum_op, allreduce_op_dist_attr
+            allreduce_sum_op, allreduce_op_dist_attr
         )
 
         # param initialization sync
@@ -563,9 +569,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                     sync_group = new_process_group(group_ranks)
 
                     startup_block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
+                        type='broadcast',
+                        inputs={'x': param},
+                        outputs={'out': param},
                         attrs={
                             'ring_id': sync_group.id,
                             'root': 0,
