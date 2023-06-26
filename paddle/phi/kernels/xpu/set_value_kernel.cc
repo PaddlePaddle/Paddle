@@ -140,9 +140,15 @@ void SetValueImpl(const Context& dev_ctx,
                 in.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-  int64_t slice_numels = phi::product(slice_dims);
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  XPUType* slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
+  XPUType* slice_data = nullptr;
+  int64_t slice_numels = phi::product(slice_dims);
+  int64_t slice_assign_numels = phi::product(slice_dims_for_assign);
+  if (slice_numels >= slice_assign_numels) {
+    slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
+  } else {
+    slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_assign_numels);
+  }
 
   int in_size = in_dims.size();
   std::vector<int> starts_indices(in_size, 0);
