@@ -130,17 +130,9 @@ function(copy_part_of_thrid_party TARGET DST)
         add_custom_command(
           TARGET ${TARGET}
           POST_BUILD
-          COMMAND strip -s ${dst_dir}/lib/libmkldnn.so.0
-          COMMENT "striping libmkldnn.so.0")
+          COMMAND strip -s ${dst_dir}/lib/libdnnl.so.3
+          COMMENT "striping libdnnl.so.3")
       endif()
-      add_custom_command(
-        TARGET ${TARGET}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0
-                ${dst_dir}/lib/libdnnl.so.1
-        COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0
-                ${dst_dir}/lib/libdnnl.so.2
-        COMMENT "Make a symbol link of libmkldnn.so.0")
     endif()
   endif()
 
