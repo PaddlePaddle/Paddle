@@ -117,7 +117,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_skip_layernorm_fuse_pass",          //
       "preln_skip_layernorm_fuse_pass",        //
 #endif
-    // "preln_residual_bias_fuse_pass",   //
+    "preln_residual_bias_fuse_pass",   //
       "preln_layernorm_x_fuse_pass",     //
       "reverse_roll_fuse_pass",          //
       "conv_bn_fuse_pass",               //

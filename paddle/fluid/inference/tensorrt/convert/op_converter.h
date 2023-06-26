@@ -174,11 +174,25 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
+std::cout << op_desc.Type() << std::endl;
+
+for(auto it1 : op_desc.InputNames())
+{
+  for (auto it2 : op_desc.Input(it1))
+  {
+    auto output_name = it2;
+    std::cout << output_name << std::endl;
+  }
+}
+
+std::cout << op_desc.InputNames().size() << std::endl;
+
     it->SetEngine(engine);
     engine->SetScope(scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
+    
     size_t output_num = op_desc.OutputNames().size();
     // only one out settensordynamicRange
     if (op_desc.HasAttr("out_threshold")) {
@@ -316,9 +330,17 @@ class OpConverter {
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        auto min_input_shape = engine->min_input_shape()[input];
-        auto max_input_shape = engine->max_input_shape()[input];
-        auto optim_input_shape = engine->optim_input_shape()[input];
+        
+        if (!(engine->min_input_shape().count(input) && 
+              engine->max_input_shape().count(input) && 
+              engine->optim_input_shape().count(input))) {
+          PADDLE_THROW(platform::errors::InvalidArgument("Cannot get %s min/max/opt shape", input));
+        }
+
+        auto min_input_shape = engine->min_input_shape().at(input);
+        auto max_input_shape = engine->max_input_shape().at(input);
+        auto optim_input_shape = engine->optim_input_shape().at(input);
+
         size_t ranks = min_input_shape.size();
 
         std::vector<int64_t> input_shape;
@@ -657,6 +679,18 @@ class OpConverter {
     std::string layer_name = layer_type + " (Output: ";
     for (size_t i = 0; i < num_out; i++) {
       layer->getOutput(i)->setName(output_tensor_names[i].c_str());
+
+    PADDLE_ENFORCE_GE(
+        layer->getOutput(i)->getDimensions().nbDims,
+        0,
+        platform::errors::InvalidArgument(
+            "Errors occures in Paddle-TRT layers with output name: %s", output_tensor_names[i].c_str()));
+    std::cout << output_tensor_names[i] ;
+    for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
+      std::cout << "输出维度: " << layer->getOutput(i)->getDimensions().d[ii] ;
+    }
+    std::cout << std::endl;
+
       engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
       if (test_mode) {
         engine_->DeclareOutput(output_tensor_names[i]);

@@ -92,7 +92,8 @@ void MemoryOptimizePass::CollectLifeCycle(
 
           auto in_shape = node->Var()->GetShape();
           for (auto i : in_shape) {
-            CHECK_GT(i, 0);
+            std::cout <<node->Name() << std::endl;
+            CHECK_GE(i, 0);
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),

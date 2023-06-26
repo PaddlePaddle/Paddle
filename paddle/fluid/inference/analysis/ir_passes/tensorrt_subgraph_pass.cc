@@ -330,6 +330,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto *scope = param_scope();
   // The node->inputs contains input tensors and parameters.
   for (auto *x : node->inputs) {
+    //std::cout << "子图输入：" <<  x->Name() << std::endl;
     input_names.insert(x->Name());
     input_names_with_id.insert(x->Name() + std::to_string(x->id()));
     if (std::count(graph_params.begin(), graph_params.end(), x->Name()) > 0) {

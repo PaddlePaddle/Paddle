@@ -106,8 +106,7 @@ void NaiveExecutor::Run() {
     // std::cout <<  cudaGetErrorString( cudaGetLastError() ) << std::endl;
     // PADDLE_ENFORCE_GPU_SUCCESS(success);
 
-
-    if (0 && "conv2d" == op->Type() && "conv2d_fusion" == op->Type() && 0) {
+    if (0 && "conv2d" == op->Type() && "conv2d_fusion" == op->Type()) {
       for (auto name : op->OutputVars(true)) {
         std::cout << name << ": " << std::endl;
         auto var = scope_->FindVar(name);
@@ -118,7 +117,13 @@ void NaiveExecutor::Run() {
         
         int want_num = std::min(10, (int)(tensor->numel()));
 
-        if (tensor->dtype() == paddle::DataType::FLOAT32) {
+        for (int64_t i = 0; i < dims.size(); i++) {
+          std::cout << dims[i] << " ";
+        }
+
+        std::cout << std::endl;
+
+        if (tensor->dtype() == paddle::DataType::FLOAT32 && 0) {
           float *cpu_data = new float[tensor->numel()];
           float *tensor_data = tensor->data<float>();
           if (tensor->place() == platform::CPUPlace()) {
@@ -127,12 +132,6 @@ void NaiveExecutor::Run() {
             cudaMemcpy(cpu_data, tensor_data, sizeof(float) * want_num,
                        cudaMemcpyDeviceToHost);
           }
-
-          for (int64_t i = 0; i < dims.size(); i++) {
-            std::cout << dims[i] << " ";
-          }
-
-          std::cout << std::endl;
           
           for(int i = 0; i < want_num; i++) {
             if(cpu_data[i] > 50000 || cpu_data[i] < -50000)
@@ -140,6 +139,24 @@ void NaiveExecutor::Run() {
           }
           delete[] cpu_data;
         }
+        
+        want_num = 1;
+        if (tensor->dtype() == paddle::DataType::INT32) {
+          int *cpu_data = new int[want_num];
+          int *tensor_data = tensor->data<int>();
+          if (tensor->place() == platform::CPUPlace()) {
+            memcpy(cpu_data, tensor_data, sizeof(int) * want_num);
+          } else {
+            cudaMemcpy(cpu_data, tensor_data, sizeof(int) * want_num,
+                       cudaMemcpyDeviceToHost);
+          }
+          
+          for(int i = 0; i < want_num; i++) {
+            std::cout << "异常数字" << cpu_data[i] << std::endl;
+          }
+          delete[] cpu_data;
+        }
+
       }
     }
 

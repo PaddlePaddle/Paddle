@@ -2228,6 +2228,11 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
       for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
       if (shape.size() >= 1) {
         shape_info_[name].emplace_back(shape);
+      } else if(tensor.numel() > 0) {
+        // This must be a zero dimension tensor.
+        PADDLE_ENFORCE_EQ(tensor.numel(), 1UL);
+        std::vector<int32_t> zero_shape(1, 1);
+        shape_info_[name].emplace_back(zero_shape);
       }
 
       // We need collect value range for shape tensor for Paddle-TRT's use.
