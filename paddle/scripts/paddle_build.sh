@@ -2237,7 +2237,7 @@ EOF
 set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
-        test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
+        test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep -E "_xpu|test_group$" )        # cases list which would be run exclusively
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
         while read -r line; do
             if [[ "$line" == "" ]]; then
@@ -3545,7 +3545,7 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
-    
+
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -3834,7 +3834,7 @@ EOF
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
-    
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi

@@ -22,7 +22,8 @@ namespace funcs {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-struct ConcatFunctor<phi::CPUContext, T> {
+class ConcatFunctor<phi::CPUContext, T> {
+ public:
   void operator()(const phi::CPUContext& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
@@ -73,7 +74,7 @@ struct ConcatFunctor<phi::CPUContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-struct SplitFunctor<phi::CPUContext, T> {
+class SplitFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
                   const phi::DenseTensor& input,

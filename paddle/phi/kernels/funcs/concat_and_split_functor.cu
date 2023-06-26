@@ -620,7 +620,8 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
 }
 
 template <typename T>
-struct ConcatFunctor<phi::GPUContext, T> {
+class ConcatFunctor<phi::GPUContext, T> {
+ public:
   void operator()(const phi::GPUContext& context,
                   const std::vector<phi::DenseTensor>& input,
                   int axis,

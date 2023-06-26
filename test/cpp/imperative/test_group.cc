@@ -88,6 +88,12 @@ void GroupConcatSplit(Place place, size_t size) {
 
     phi::DenseTensor tmp;
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
+
+    // special for 1st element: set to 0-dim
+    if (tmp.numel() == 1) {
+      tmp.Resize(phi::make_ddim({}));
+    }
+
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
     group.dtype_ = framework::TransToProtoVarType(tensor->dtype());
@@ -103,7 +109,10 @@ void GroupConcatSplit(Place place, size_t size) {
         .mutable_data(place, framework::TransToPhiDataType(group.dtype_));
     group.ConcatTensors(*dev_ctx);
 
+#if !defined(PADDLE_WITH_XPU_BKCL)
+    // DivNRanks is not supported on XPU
     group.DivNRanks(*dev_ctx, 1);
+#endif
 
     phi::DenseTensor tmp;
     framework::TensorCopySync(*tensor, cpu_place, &tmp);

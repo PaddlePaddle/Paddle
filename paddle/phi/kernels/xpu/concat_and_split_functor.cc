@@ -37,12 +37,21 @@ class ConcatFunctor<XPUContext, T> {
 
     int num = input.size();
     auto input_dims = input[0].dims();
+    // special for 0-dim shape
+    if (input_dims.size() == 0) {
+      input_dims = {1};
+    }
 
     std::vector<std::vector<int>> xdims_list(num);
     for (int i = 0; i < num; ++i) {
       std::vector<int> tmp_dims(input_dims.size());
       for (int j = 0; j < input_dims.size(); ++j) {
-        tmp_dims[j] = input[i].dims()[j];
+        auto ins_i_dims = input[i].dims();
+        // special for 0-dim shape
+        if (ins_i_dims.size() == 0) {
+          ins_i_dims = {1};
+        }
+        tmp_dims[j] = ins_i_dims[j];
       }
       xdims_list[i] = tmp_dims;
     }

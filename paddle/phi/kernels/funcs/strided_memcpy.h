@@ -154,6 +154,10 @@ inline void StridedMemcpyWithAxis0(
     auto out_stride = stride_numel(shape_refer[i]->dims());
     auto out = outputs->at(i);
     if (out != nullptr && out->initialized() && out->numel() > 0) {
+      // special for 0-dim
+      if (out_stride.size() == 0) {
+        out_stride = phi::make_ddim({1});
+      }
       StridedNumelCopyWithAxis<T, Context>(dev_ctx,
                                            axis,
                                            out->data<T>(),
