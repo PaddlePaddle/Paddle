@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.framework import set_default_dtype
 
@@ -28,9 +27,6 @@ default_main_program().random_seed = 42
 paddle.disable_static()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class LinearTestCase(unittest.TestCase):
     def config(self):
         self.dtype = 'float16'
@@ -82,7 +78,6 @@ class LinearTestCase(unittest.TestCase):
     def test_linear_compress(self):
         out_real = self.get_linear_compress_out()
         out_expect = self.get_linear_out()
-        # print("real:", out_real.shape, "expect:", out_expect.shape)
         np.testing.assert_allclose(
             out_real, out_expect, rtol=self.rtol, atol=self.atol
         )

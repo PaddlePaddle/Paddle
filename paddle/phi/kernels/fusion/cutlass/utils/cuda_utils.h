@@ -99,7 +99,7 @@ void check(T result,
            const char* const file,
            int const line) {
   if (result) {
-    throw std::runtime_error(std::string("[FT][ERROR] CUDA runtime error: ") +
+    throw std::runtime_error(std::string("[ERROR] CUDA runtime error: ") +
                              (_cudaGetErrorEnum(result)) + " " + file + ":" +
                              std::to_string(line) + " \n");
   }
@@ -118,11 +118,11 @@ inline void syncAndCheck(const char* const file, int const line) {
       cudaError_t result = cudaGetLastError();
       if (result) {
         throw std::runtime_error(
-            std::string("[FT][ERROR] CUDA runtime error: ") +
+            std::string("[ERROR] CUDA runtime error: ") +
             (_cudaGetErrorEnum(result)) + " " + file + ":" +
             std::to_string(line) + " \n");
       }
-      std::cout << "run syncAndCheck at " << file << ":" << line << std::endl;
+      VLOG(2) << "run syncAndCheck at " << file << ":" << line;
     }
   }
 
@@ -130,7 +130,7 @@ inline void syncAndCheck(const char* const file, int const line) {
   cudaDeviceSynchronize();
   cudaError_t result = cudaGetLastError();
   if (result) {
-    throw std::runtime_error(std::string("[FT][ERROR] CUDA runtime error: ") +
+    throw std::runtime_error(std::string("[ERROR] CUDA runtime error: ") +
                              (_cudaGetErrorEnum(result)) + " " + file + ":" +
                              std::to_string(line) + " \n");
   }
@@ -144,7 +144,7 @@ inline void syncAndCheck(const char* const file, int const line) {
     cudnnStatus_t status = (expression);                                \
     if (status != CUDNN_STATUS_SUCCESS) {                               \
       std::cerr << "Error on file " << __FILE__ << " line " << __LINE__ \
-                << ": " << cudnnGetErrorString(status) << std::endl;    \
+                << ": " << cudnnGetErrorString(status);                 \
       std::exit(EXIT_FAILURE);                                          \
     }                                                                   \
   }
@@ -173,13 +173,13 @@ void check_abs_mean_val(const T* result, const int size);
 
 #define PRINT_FUNC_NAME_()                                          \
   do {                                                              \
-    std::cout << "[FT][CALL] " << __FUNCTION__ << " " << std::endl; \
+    VLOG(2) << "[CALL] " << __FUNCTION__ << " ";                    \
   } while (0)
 
 [[noreturn]] inline void throwRuntimeError(const char* const file,
                                            int const line,
                                            std::string const& info = "") {
-  throw std::runtime_error(std::string("[FT][ERROR] ") + info +
+  throw std::runtime_error(std::string("[ERROR] ") + info +
                            " Assertion fail: " + file + ":" +
                            std::to_string(line) + " \n");
 }
@@ -210,7 +210,7 @@ inline void myAssert(bool result,
     cusparseStatus_t status = (func);                                     \
     if (status != CUSPARSE_STATUS_SUCCESS) {                              \
       throw std::runtime_error(                                           \
-          std::string("[FT][ERROR] CUSPARSE API failed at line ") +       \
+          std::string("[ERROR] CUSPARSE API failed at line ") +       \
           std::to_string(__LINE__) + " in file " + __FILE__ + ": " +      \
           cusparseGetErrorString(status) + " " + std::to_string(status)); \
     }                                                                     \
@@ -435,15 +435,14 @@ void compareTwoTensor(const T1* pred,
   }
 
   if (print_size > 0) {
-    std::cout << "  id |   pred  |   ref   |abs diff | rel diff (%) |"
-              << std::endl;
+    VLOG(2) << "  id |   pred  |   ref   |abs diff | rel diff (%) |";
   }
   float mean_abs_diff = 0.0f;
   float mean_rel_diff = 0.0f;
   int count = 0;
   for (int i = 0; i < size; i++) {
     if (i < print_size) {
-      std::cout << i << " | " << static_cast<float>(h_pred[i]) << " | "
+      VLOG(2) << i << " | " << static_cast<float>(h_pred[i]) << " | "
                 << static_cast<float>(h_ref[i]) << " | "
                 << (abs(static_cast<float>(h_pred[i]) -
                         static_cast<float>(h_ref[i])))
@@ -451,7 +450,7 @@ void compareTwoTensor(const T1* pred,
                 << (abs(static_cast<float>(h_pred[i]) -
                         static_cast<float>(h_ref[i])) /
                     (abs(static_cast<float>(h_ref[i])) + 1e-6f) * 100.f)
-                << " | " << std::endl;
+                << " | ";
     }
     if (static_cast<float>(h_pred[i]) == 0) {
       continue;
@@ -476,8 +475,8 @@ void compareTwoTensor(const T1* pred,
   }
   mean_abs_diff = mean_abs_diff / static_cast<float>(count);
   mean_rel_diff = mean_rel_diff / static_cast<float>(count);
-  std::cout << "mean_abs_diff: " << mean_abs_diff
-            << ", mean_rel_diff: " << mean_rel_diff << std::endl;
+  VLOG(2) << "mean_abs_diff: " << mean_abs_diff
+            << ", mean_rel_diff: " << mean_rel_diff;
 
   if (fd != nullptr) {
     fprintf(fd,

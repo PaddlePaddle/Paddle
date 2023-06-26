@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-// #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/transform.h"
