@@ -44,7 +44,7 @@ class Categorical(distribution.Distribution):
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
-        .. code-block:: python:name :code-example1
+        .. code-block:: python
 
             import paddle
             from paddle.distribution import Categorical
@@ -126,7 +126,7 @@ class Categorical(distribution.Distribution):
             Tensor: A tensor with prepended dimensions shape.
 
         Examples:
-            .. code-block:: python:name :code-example2
+            .. code-block:: python
 
                 import paddle
                 from paddle.distribution import Categorical
@@ -183,7 +183,7 @@ class Categorical(distribution.Distribution):
             Tensor: kl-divergence between two Categorical distributions.
 
         Examples:
-            .. code-block:: python:name :code-example3
+            .. code-block:: python
 
                 import paddle
                 from paddle.distribution import Categorical
@@ -237,7 +237,7 @@ class Categorical(distribution.Distribution):
             Tensor: Shannon entropy of Categorical distribution. The data type is float32.
 
         Examples:
-            .. code-block:: python:name :code-example4
+            .. code-block:: python
 
                 import paddle
                 from paddle.distribution import Categorical
@@ -281,7 +281,7 @@ class Categorical(distribution.Distribution):
             Tensor: probability according to the category index.
 
         Examples:
-            .. code-block:: python:name :code-example5
+            .. code-block:: python
 
                 import paddle
                 from paddle.distribution import Categorical
@@ -328,7 +328,7 @@ class Categorical(distribution.Distribution):
             Tensor: Log probability.
 
         Examples:
-            .. code-block:: python:name :code-example6
+            .. code-block:: python
 
                 import paddle
                 from paddle.distribution import Categorical
