@@ -14,9 +14,10 @@
 
 import paddle
 
-__all__ = ['clip_grad_norm_']
+__all__ = []
 
 
+@paddle.no_grad()
 def clip_grad_norm_(
     parameters,
     max_norm,
@@ -98,10 +99,10 @@ def clip_grad_norm_(
     clip_coef = max_norm / (total_norm + 1e-6)
     # Note: when the coef is clamped to 1, it is redundant to multiply the clamped coef, but this
     # avoids the `if clip_coef < 1:` condition.
-    clip_coef_clamped = paddle.clip(clip_coef, max=1.0)
-    with paddle.no_grad():
-        for _, p in enumerate(parameters):
-            g = p.grad
-            if g is not None:
-                p.grad = paddle.multiply(x=g, y=clip_coef_clamped)
+    clip_coef_clamped = paddle.clip_(clip_coef, max=1.0)
+
+    for _, p in enumerate(parameters):
+        g = p.grad
+        if g is not None:
+            p.grad = paddle.multiply(x=g, y=clip_coef_clamped)
     return total_norm

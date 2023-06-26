@@ -14,9 +14,10 @@
 
 import paddle
 
-__all__ = ['clip_grad_value_']
+__all__ = []
 
 
+@paddle.no_grad()
 def clip_grad_value_(
     parameters,
     clip_value,
@@ -52,8 +53,7 @@ def clip_grad_value_(
 
     clip_value = float(clip_value)
 
-    with paddle.no_grad():
-        for _, p in enumerate(parameters):
-            g = p.grad
-            if g is not None:
-                p.grad = paddle.clip(x=g, min=-clip_value, max=clip_value)
+    for _, p in enumerate(parameters):
+        g = p.grad
+        if g is not None:
+            p.grad = paddle.clip_(x=g, min=-clip_value, max=clip_value)
