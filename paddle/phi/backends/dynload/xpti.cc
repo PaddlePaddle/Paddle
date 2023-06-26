@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPTI
 
 #include "paddle/phi/backends/dynload/xpti.h"
 
@@ -29,4 +29,4 @@ XPTI_ROUTINE_EACH(DEFINE_WRAP);
 }  // namespace dynload
 }  // namespace phi
 
-#endif  // PADDLE_WITH_XPU
+#endif  // PADDLE_WITH_XPTI

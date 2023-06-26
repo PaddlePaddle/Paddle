@@ -62,7 +62,7 @@ __global__ void FuseScaleAddGradRateZero(const T* grad,
 template <typename T1, typename T2 = T1, typename OutT = T1>
 struct NoMaskBwFunctor {
   const float retain_prob_;
-  using MT = typename phi::kps::details::MPTypeTrait<T1>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T1>::Type;
   MT factor_;
   HOSTDEVICE inline NoMaskBwFunctor(const float retain_prob)
       : retain_prob_(retain_prob) {
@@ -171,7 +171,7 @@ void FusedDropoutAddGradKernel(const Context& dev_ctx,
   auto* y_grad_data = dev_ctx.template Alloc<T>(y_grad);
 
   const auto* out_grad_data = out_grad.data<T>();
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   int blocks = NumBlocks(numel);
   int threads = kNumCUDAThreads;
 
