@@ -31,6 +31,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+class Squeeze2MatmulXPUFusePass : public FusePassBase {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  void FuseSqueeze2Matmul(ir::Graph* graph) const;
+  const std::string name_scope_{"squeeze2_matmul_xpu_fuse_pass"};
+};
+
 class Reshape2MatmulXPUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

@@ -373,6 +373,18 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bincount
+  inputs :
+    {x : X, weights : Weights}
+  outputs :
+    out : Out
+  scalar:
+    minlength:
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    bincount : GetBincountExpectedKernelType
+
 - op : bitwise_and
   inputs :
     {x : X, y : Y}
@@ -1121,6 +1133,14 @@
 
 - op : gather
   backward : gather_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : Axis
 
 - op : gather_nd
   backward : gather_nd_grad

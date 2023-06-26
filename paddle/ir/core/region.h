@@ -48,6 +48,7 @@ class IR_API Region {
   void emplace_back();
   void push_front(Block *block);
   iterator insert(const_iterator position, Block *block);
+  iterator erase(const_iterator position);
   void clear();
 
   void TakeBody(Region &&other);
