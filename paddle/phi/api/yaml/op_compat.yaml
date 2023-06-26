@@ -297,6 +297,7 @@
     out : Out
 
 - op : atan2
+  backward : atan2_grad
   inputs :
     {x : X1, y : X2}
   outputs :
@@ -371,6 +372,18 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : bincount
+  inputs :
+    {x : X, weights : Weights}
+  outputs :
+    out : Out
+  scalar:
+    minlength:
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    bincount : GetBincountExpectedKernelType
 
 - op : bitwise_and
   inputs :
@@ -932,6 +945,15 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exponential_
+  backward : exponential__grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    lam : lambda
+
 - op : eye
   outputs :
     out : Out
@@ -980,6 +1002,17 @@
 - op : fft_r2c
   inputs: {x: X}
   outputs: {out: Out}
+
+- op : fill (fill_any)
+  backward : fill_grad (fill_any_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
 
 - op : fill_diagonal
   backward : fill_diagonal_grad
@@ -1084,8 +1117,10 @@
     x : X
   outputs :
     out : Out
-  attrs :
-    {value: value, dtype: dtype}
+  scalar :
+    value :
+      data_type : float
+      support_tensor : true
 
 - op : fused_conv2d
   extra :
@@ -1098,6 +1133,14 @@
 
 - op : gather
   backward : gather_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : Axis
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -1560,7 +1603,7 @@
     out : Y
 
 - op : matmul (matmul_v2)
-  backward : matmul_grad (matmul_v2_grad)
+  backward : matmul_grad (matmul_v2_grad), matmul_double_grad (matmul_v2_grad_grad), matmul_triple_grad (matmul_v2_triple_grad)
   inputs :
     {x : X, y : Y}
   attrs :
@@ -1569,6 +1612,7 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
@@ -1972,6 +2016,14 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+
+- op : prior_box
+  inputs :
+    {input: Input, image: Image}
+  outputs :
+    {out: Boxes, var: Variances}
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
 
 - op : prod (reduce_prod)
   backward : prod_grad (reduce_prod_grad)

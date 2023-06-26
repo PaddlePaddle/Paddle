@@ -74,6 +74,8 @@ class PreservedAnalyses {
     preserved_ids_.erase(TypeId::get<AnalysisT>());
   }
 
+  friend ir::detail::TypeIdResolver<AllAnalysesType>;
+
  private:
   template <typename>
   friend struct AnalysisModel;
@@ -304,3 +306,5 @@ class AnalysisManagerHolder {
 };
 
 }  // namespace ir
+
+IR_DECLARE_EXPLICIT_TYPE_ID(ir::detail::PreservedAnalyses::AllAnalysesType)

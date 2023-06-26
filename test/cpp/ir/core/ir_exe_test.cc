@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
@@ -41,8 +42,8 @@
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
+#include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "test/cpp/ir/core/phi_kernel_adaptor.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);

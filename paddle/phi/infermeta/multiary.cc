@@ -978,6 +978,85 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x.at(0));
 }
 
+void CudnnLSTMInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& init_h,
+    const MetaTensor& init_c,
+    const MetaTensor& w,
+    const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
+    const MetaTensor& sequence_length,
+    float dropout_prob,
+    bool is_bidirec,
+    int hidden_size,
+    int num_layers,
+    bool is_test,
+    int seed,
+    MetaTensor* out,
+    MetaTensor* last_h,
+    MetaTensor* last_c,
+    MetaTensor* reserve,
+    MetaTensor* state_out) {
+  auto in_dims = x.dims();
+  auto init_h_dims = init_h.dims();
+
+  auto init_c_dims = init_c.dims();
+
+  PADDLE_ENFORCE_EQ(in_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input in CudnnLSTM  must be 3. But "
+                        "received Input's rank is %d.",
+                        in_dims.size()));
+  PADDLE_ENFORCE_EQ(init_h_dims.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The rank of InitH in CudnnLSTM  must be 3. But "
+                        "received InitH's rank is %d.",
+                        init_h_dims.size()));
+
+  if (sequence_length) {
+    auto seq_dims = sequence_length.dims();
+    PADDLE_ENFORCE_EQ(
+        in_dims[1],
+        seq_dims[0],
+        phi::errors::InvalidArgument(
+            "The size of SequenceLength has to equal the batch_size. But "
+            "received batch_size is %d and the size of SequenceLength is %d.",
+            in_dims[1],
+            seq_dims[0]));
+  }
+
+  PADDLE_ENFORCE_EQ(in_dims[1],
+                    init_h_dims[1],
+                    phi::errors::InvalidArgument(
+                        "The in_dims[1] (Input dims) and init_h_dims[1] (InitH "
+                        "dims) should be equal. But "
+                        "received in_dims[1] is %d and init_h_dims[1] is %d.",
+                        in_dims[1],
+                        init_h_dims[1]));
+
+  PADDLE_ENFORCE_EQ(init_c_dims,
+                    init_h_dims,
+                    phi::errors::InvalidArgument(
+                        "The InitC dims and InitH "
+                        "dims should be equal. But "
+                        "received init_c_dims is %d and init_h_dims is %d.",
+                        init_c_dims,
+                        init_h_dims));
+
+  auto out_dims = in_dims;
+  out_dims[2] = is_bidirec ? hidden_size * 2 : hidden_size;
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+  last_h->set_dims(init_c_dims);
+  last_h->set_dtype(x.dtype());
+  last_c->set_dims(init_h_dims);
+  last_c->set_dtype(x.dtype());
+
+  reserve->set_dtype(phi::DataType::UINT8);
+  state_out->set_dtype(phi::DataType::UINT8);
+}
+
 inline int ConvOutputSize(
     int input_size, int filter_size, int dilation, int padding, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
@@ -2061,6 +2140,7 @@ void LambInferMeta(const MetaTensor& param,
                    float beta1,
                    float beta2,
                    float epsilon,
+                   bool always_adapt,
                    bool multi_precision,
                    MetaTensor* param_out,
                    MetaTensor* moment1_out,
@@ -2162,32 +2242,32 @@ void LogspaceInferMeta(const MetaTensor& start,
                        MetaTensor* out) {
   auto s_dims = start.dims();
   PADDLE_ENFORCE_EQ(
-      (s_dims.size() == 1) && (s_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Start) must be [1],"
-                                   "but received input shape is [%s].",
-                                   s_dims));
+      phi::product(s_dims),
+      1,
+      phi::errors::InvalidArgument("The size of Input(Start) must be 1,"
+                                   "but received input size is %s.",
+                                   phi::product(s_dims)));
   auto e_dims = stop.dims();
   PADDLE_ENFORCE_EQ(
-      (e_dims.size() == 1) && (e_dims[0] == 1),
+      phi::product(e_dims),
       true,
-      phi::errors::InvalidArgument("The shape of Input(Stop) must be [1],"
-                                   "but received input shape is [%s].",
-                                   e_dims));
+      phi::errors::InvalidArgument("The size of Input(Stop) must be 1,"
+                                   "but received input size is %s.",
+                                   phi::product(e_dims)));
   auto num_dims = number.dims();
   PADDLE_ENFORCE_EQ(
-      (num_dims.size() == 1) && (num_dims[0] == 1),
+      phi::product(num_dims),
       true,
-      phi::errors::InvalidArgument("The shape of Input(Num) must be [1],"
-                                   "but received input shape is [%s].",
-                                   num_dims));
+      phi::errors::InvalidArgument("The size of Input(Num) must be 1,"
+                                   "but received input size is %s.",
+                                   phi::product(num_dims)));
   auto b_dims = base.dims();
-  PADDLE_ENFORCE_EQ(
-      (b_dims.size() == 1) && (b_dims[0] == 1),
-      true,
-      phi::errors::InvalidArgument("The shape of Input(Base) must be [1],"
-                                   "but received input shape is [%s].",
-                                   b_dims));
+  PADDLE_ENFORCE_EQ(phi::product(b_dims),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The size of Input(Base) must be 1,"
+                        "but received input size is phi::product(b_dims).",
+                        phi::product(b_dims)));
   out->set_dims(phi::make_ddim({-1}));
   out->set_dtype(dtype);
 }

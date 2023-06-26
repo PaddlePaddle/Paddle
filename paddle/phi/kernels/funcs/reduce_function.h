@@ -1047,7 +1047,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
   }
 #endif
 
-  using MPType = typename kps::details::MPTypeTrait<Ty>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
   auto reducer = ReduceOp<MPType>();
   // launch ReduceHigherDimKernel
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
