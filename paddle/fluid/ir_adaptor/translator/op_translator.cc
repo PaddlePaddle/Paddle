@@ -904,30 +904,34 @@ struct FeedOpTranscriber : public OpTranscriber {
 };
 
 struct FetchOpTranscriber : public OpTranscriber {
-  ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext* ctx,
-      std::string normalized_op_name,
-      const OpAttributeInfoList& op_attr_infos,
-      const OpDesc& op_desc) override {
+  ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
+                                           TranslationContext* param_map,
+                                           ir::Program* program,
+                                           const OpDesc& op_desc) {
+    auto op_info = LoopkUpOpInfo(ctx, op_desc);
+
+    auto* op_info_concept =
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
+    OpInputInfoList input_infos;
+    OpAttributeInfoList attr_infos;
+    OpOutputInfoList output_infos;
+    std::tie(input_infos, attr_infos, output_infos, std::ignore) =
+        op_info_concept->get_op_info_();
+
+    auto op_inputs = GenerateOperationInput(
+        ctx, param_map, op_desc, op_info.name(), input_infos, program);
+
+    OpOutputTypeList op_output_types;
     ir::AttributeMap attribute_map = {
         {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
     };
 
-    return attribute_map;
-  }
+    op_output_types.push_back(op_inputs[0].type());
+    ir::Operation* operation = ir::Operation::Create(
+        op_inputs, attribute_map, op_output_types, op_info);
+    program->block()->push_back(operation);
 
-  std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
-      ir::IrContext* ctx,
-      const OpDesc& op_desc,
-      const OpOutputInfoList& output_infos) override {
-    return {};
-  }
-
-  void RecordOpResultMapping(TranslationContext* param_map,
-                             const OpDesc& op_desc,
-                             ir::Operation* operation,
-                             const OpOutputMapping& arg_to_idx) override {
-    return;
+    return operation;
   }
 };
 
