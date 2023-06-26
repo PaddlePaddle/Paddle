@@ -554,6 +554,8 @@ def squeeze2_composite(x, axis):
     axis can only be list, not int
     """
     rank = len(x.shape)
+    if rank == 0:
+        return [assign(x), None]
     if len(axis) == 0:
         dims = set(range(rank))
     else:
