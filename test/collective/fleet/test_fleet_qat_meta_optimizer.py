@@ -69,7 +69,7 @@ class TestFleetWithQAT(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(loss)
-        return train_prog, startup_prog, input_x, input_y
+        return train_prog, startup_prog, input_x, input_y, optimizer
 
     def execute_program(self, train_prog, startup_prog, input_x, input_y):
         place = (
@@ -86,7 +86,7 @@ class TestFleetWithQAT(unittest.TestCase):
         )
         exe.run(train_prog, feed=feeder.feed([data]))
 
-    def valid_program(self, train_prog):
+    def valid_program(self, train_prog, eval_prog):
         ops_type = [op.type for op in train_prog.block(0).ops]
         self.assertEqual(
             ops_type.count('matmul_v2'), 3
@@ -100,11 +100,24 @@ class TestFleetWithQAT(unittest.TestCase):
     def test_fleet_with_qat(self):
         dist_strategy = paddle.distributed.fleet.DistributedStrategy()
         self.setup_strategy(dist_strategy)
-        train_prog, startup_prog, input_x, input_y = self.generate_program(
-            dist_strategy
+        (
+            train_prog,
+            startup_prog,
+            input_x,
+            input_y,
+            optimizer,
+        ) = self.generate_program(dist_strategy)
+        place = (
+            fluid.CUDAPlace(0)
+            if paddle.fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        eval_prog = train_prog.clone(for_test=True)
+        optimizer.qat_init(
+            place, scope=paddle.static.global_scope(), test_program=eval_prog
         )
         self.execute_program(train_prog, startup_prog, input_x, input_y)
-        self.valid_program(train_prog)
+        self.valid_program(train_prog, eval_prog)
 
 
 class TestFleetWithAMPQAT(TestFleetWithQAT):
@@ -112,7 +125,7 @@ class TestFleetWithAMPQAT(TestFleetWithQAT):
         strategy.qat = True
         strategy.amp = True
 
-    def valid_program(self, train_prog):
+    def valid_program(self, train_prog, eval_prog):
         ops_type = [op.type for op in train_prog.block(0).ops]
         self.assertEqual(
             ops_type.count('matmul_v2'), 3
