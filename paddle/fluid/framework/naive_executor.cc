@@ -73,6 +73,20 @@ void NaiveExecutor::Run() {
       op->SetOutputHooks(hookfuncs_);
     }
 
+
+      //std::cout << op->Type() << std::endl;
+
+
+      // for (auto name : op->OutputVars(true)) {
+      //   std::cout << name << std::endl;
+      //   auto tensor = FindTensor(name);
+      //   auto dims = tensor->dims();
+      //   for(int i = 0; i < dims.size(); i++)
+      //   {
+      //     std::cout << dims[i] << std::endl;
+      //   }
+      // }
+
     op->Run(*scope_, place_);
 
     // Update the shared_holder so that only records the max one.
