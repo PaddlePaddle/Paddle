@@ -215,7 +215,7 @@
   backward : frobenius_norm_grad
 
 - op : full_like
-  args : (Tensor x, Scalar value = 0.0, DataType dtype = DataType::UNDEFINED)
+  args : (Tensor x, Scalar(Scalar) value = {}, DataType dtype = DataType::UNDEFINED)
   output: Tensor(out)
   infer_meta :
     func : FillAnyLikeInferMeta

@@ -95,7 +95,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-  invoke : full_like(out_grad, 0.0f)
+  invoke : full_like(out_grad, Scalar(0.0f))
 
 - backward_op : frobenius_norm_grad
   forward: frobenius_norm (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)

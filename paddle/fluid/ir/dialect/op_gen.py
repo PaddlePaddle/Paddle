@@ -327,6 +327,7 @@ class OpInfoParser:
             'Scalar(int64_t)': ['ir::Int64Attribute', 'int64_t'],
             'Scalar(float)': ['ir::FloatAttribute', 'float'],
             'Scalar(dobule)': ['ir::DoubleAttribute', 'dobule'],
+            'Scalar(Scalar)': ['paddle::dialect::ScalarAttribute', 'Scalar'],
             'Scalar[]': [
                 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
                 'const std::vector<Scalar>&',

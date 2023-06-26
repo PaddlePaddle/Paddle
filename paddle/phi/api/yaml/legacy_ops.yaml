@@ -407,7 +407,7 @@
     backend : place
 
 - op : full_like
-  args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
+  args : (Tensor x, Scalar(Scalar) value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor(out)
   infer_meta :
     func : CreateLikeInferMeta

@@ -164,6 +164,7 @@ class BaseAPI:
             'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',
             'Scalar(dobule)': 'const Scalar&',
+            'Scalar(Scalar)': 'const Scalar&',
             'Scalar[]': 'const std::vector<phi::Scalar>&',
             'int': 'int',
             'int32_t': 'int32_t',

@@ -39,7 +39,8 @@ class FillAnyLikeOpConverter : public OpConverter {
       value_tensor = Add1DConstantLayer(value.to<int32_t>(),
                                         output_name + "_value_tensor_");
     } else {
-      value_tensor = Add1DConstantLayer(value, output_name + "_value_tensor_");
+      value_tensor =
+          Add1DConstantLayer(value.to<float>(), output_name + "_value_tensor_");
     }
     auto shape_tensor = Shape(input);
     auto* one_rank_tensor = Add1DConstantLayer(

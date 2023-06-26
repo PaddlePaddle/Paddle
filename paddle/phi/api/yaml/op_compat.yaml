@@ -1104,10 +1104,6 @@
     x : X
   outputs :
     out : Out
-  scalar :
-    value :
-      data_type : paddle::experimental::Scalar
-      support_tensor : true
 
 - op : fused_conv2d
   extra :
