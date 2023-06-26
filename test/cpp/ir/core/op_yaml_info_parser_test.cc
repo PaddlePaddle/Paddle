@@ -60,10 +60,10 @@ TEST(ir_op_info_test, op_op_info_test) {
   auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParams();
   auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParams();
 
-  EXPECT_EQ(infer_meta_tensor_param.size(), 1u);
-  EXPECT_EQ(infer_meta_attr_param.size(), 1u);
-  EXPECT_EQ(kernel_fn_tensor_param.size(), 3u);
-  EXPECT_EQ(kernel_fn_attr_param.size(), 2u);
+  EXPECT_EQ(infer_meta_tensor_param.size(), 0u);
+  EXPECT_EQ(infer_meta_attr_param.size(), 2u);
+  EXPECT_EQ(kernel_fn_tensor_param.size(), 0u);
+  EXPECT_EQ(kernel_fn_attr_param.size(), 5u);
 
   EXPECT_EQ((op_yaml_info_parser.AttrTypeName("seed") == "ir::Int32Attribute"),
             true);
