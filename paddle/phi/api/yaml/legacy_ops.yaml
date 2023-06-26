@@ -121,15 +121,6 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
-- op : bincount
-  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
-  output: Tensor(out)
-  infer_meta:
-    func: BincountInferMeta
-  kernel:
-    func: bincount
-  optional: weights
-
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
