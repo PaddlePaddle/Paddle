@@ -215,8 +215,6 @@ TEST(StandaloneExecutor, data_transfer) {
 
   auto out_tensor = scope.Var("inner_var_9")->Get<phi::DenseTensor>();
 
-  std::cerr << out_tensor.dims() << std::endl;
-
   auto& pool = phi::DeviceContextPool::Instance();
   phi::DenseTensor out;
   phi::DeviceContext* dev_ctx = pool.Get(out_tensor.place());
