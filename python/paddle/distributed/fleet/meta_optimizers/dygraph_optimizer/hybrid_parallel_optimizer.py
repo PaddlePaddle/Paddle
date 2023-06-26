@@ -57,8 +57,6 @@ class HybridParallelClipGrad:
         for p, g in params_grads:
             if g is None:
                 continue
-            assert g.dtype == paddle.float32
-            assert g.type == core.VarDesc.VarType.LOD_TENSOR
             chunk_info = getattr(p, '_chunk_info', {})
             cur_chunk_num = chunk_info.get('chunk_num', -1)
             if chunk_num < 0:
@@ -87,8 +85,6 @@ class HybridParallelClipGrad:
         for p, g in params_grads:
             if g is None:
                 continue
-            assert g.dtype == paddle.float32
-            assert g.type == core.VarDesc.VarType.LOD_TENSOR
             not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
                 hasattr(p, 'is_firstly_shared')
                 and getattr(p, 'is_firstly_shared', True)
