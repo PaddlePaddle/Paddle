@@ -51,8 +51,14 @@ struct OperationArgument {
         info(info),
         regions(std::move(regions)) {}
 
+  /// Add Operand.
+  void AddOperand(OpResult operand) { inputs.emplace_back(operand); }
+
   template <class InputIt>
   void AddOperands(InputIt first, InputIt last);
+
+  /// Add Output.
+  void AddOutput(Type type) { output_types.emplace_back(type); }
 
   template <class InputIt>
   void AddTypes(InputIt first, InputIt last);

@@ -70,6 +70,7 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "xpu_delete_cast_op_pass",
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
+    "xpu_delete_cast_op_pass",
 };
 
 Graph *Pass::Apply(Graph *graph) const {

@@ -192,7 +192,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
                                  local_scope_,
                                  value_2_var_name_map_,
                                  execution_config_);
-    SetFeedVarsInplaceSkip(feed_names);
+    // SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();

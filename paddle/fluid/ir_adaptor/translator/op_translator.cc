@@ -875,6 +875,8 @@ struct FeedOpTranscriber : public OpTranscriber {
       const OpDesc& op_desc) override {
     ir::AttributeMap attribute_map = {
         {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
+        {"col",
+         ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
 
     return attribute_map;
