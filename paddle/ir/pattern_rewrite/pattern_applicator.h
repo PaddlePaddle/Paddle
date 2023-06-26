@@ -39,7 +39,7 @@ class PatternApplicator {
                        std::function<void(const Pattern&)> on_failure = {},
                        std::function<bool(const Pattern&)> on_success = {});
 
-  void ApplyCostModel(CostModel model);
+  void ApplyCostModel(const CostModel& model);
 
   void ApplyDefaultCostModel() {
     ApplyCostModel([](const Pattern& pattern) { return pattern.benefit(); });
@@ -48,7 +48,7 @@ class PatternApplicator {
   void WalkAllPatterns(std::function<void(const Pattern&)> walk);
 
  private:
-  const FrozenRewritePatternSet& frozen_patter_list_;
+  const FrozenRewritePatternSet& frozen_pattern_list_;
   std::unordered_map<OpInfo, std::vector<const RewritePattern*>> patterns_;
   std::vector<const RewritePattern*> any_op_patterns_;
 };

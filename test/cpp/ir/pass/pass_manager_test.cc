@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include "glog/logging.h"
 
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
@@ -28,6 +29,35 @@
 #include "paddle/ir/pass/pass.h"
 #include "paddle/ir/pass/pass_manager.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
+
+#ifndef _WIN32
+class TestAnalysis1 {};
+class TestAnalysis2 {};
+
+IR_DECLARE_EXPLICIT_TYPE_ID(TestAnalysis1)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestAnalysis1)
+IR_DECLARE_EXPLICIT_TYPE_ID(TestAnalysis2)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestAnalysis2)
+
+TEST(pass_manager, PreservedAnalyses) {
+  ir::detail::PreservedAnalyses pa;
+  CHECK_EQ(pa.IsNone(), true);
+
+  CHECK_EQ(pa.IsPreserved<TestAnalysis1>(), false);
+  pa.Preserve<TestAnalysis1>();
+  CHECK_EQ(pa.IsPreserved<TestAnalysis1>(), true);
+  pa.Unpreserve<TestAnalysis1>();
+  CHECK_EQ(pa.IsPreserved<TestAnalysis1>(), false);
+  CHECK_EQ(pa.IsPreserved<TestAnalysis2>(), false);
+  pa.Preserve<TestAnalysis1, TestAnalysis2>();
+  CHECK_EQ(pa.IsPreserved<TestAnalysis1>(), true);
+  CHECK_EQ(pa.IsPreserved<TestAnalysis2>(), true);
+  CHECK_EQ(pa.IsAll(), false);
+  pa.PreserveAll();
+  CHECK_EQ(pa.IsAll(), true);
+  CHECK_EQ(pa.IsNone(), false);
+}
+#endif
 
 class AddOp : public ir::Op<AddOp> {
  public:
@@ -63,15 +93,49 @@ void AddOp::Build(ir::Builder &,
 IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
+struct CountOpAnalysis {
+  explicit CountOpAnalysis(ir::Operation *container_op) {
+    IR_ENFORCE(container_op->num_regions() > 0, true);
+
+    LOG(INFO) << "In CountOpAnalysis, op is " << container_op->name() << "\n";
+    for (size_t i = 0; i < container_op->num_regions(); ++i) {
+      auto &region = container_op->region(i);
+      for (auto it = region.begin(); it != region.end(); ++it) {
+        auto *block = *it;
+        for (auto it = block->begin(); it != block->end(); ++it) {
+          ++count;
+        }
+      }
+    }
+
+    LOG(INFO) << "-- count is " << count << "\n";
+  }
+
+  int count = 0;
+};
+
+IR_DECLARE_EXPLICIT_TYPE_ID(CountOpAnalysis)
+IR_DEFINE_EXPLICIT_TYPE_ID(CountOpAnalysis)
+
 class TestPass : public ir::Pass {
  public:
   TestPass() : ir::Pass("TestPass", 1) {}
   void Run(ir::Operation *op) override {
+    auto count_op_analysis = analysis_manager().GetAnalysis<CountOpAnalysis>();
+    pass_state().preserved_analyses.Preserve<CountOpAnalysis>();
+    CHECK_EQ(pass_state().preserved_analyses.IsPreserved<CountOpAnalysis>(),
+             true);
+    CHECK_EQ(count_op_analysis.count, 4);
+
     auto module_op = op->dyn_cast<ir::ModuleOp>();
     CHECK_EQ(module_op.operation(), op);
     CHECK_EQ(module_op.name(), module_op->name());
     LOG(INFO) << "In " << pass_info().name << ": " << module_op->name()
               << std::endl;
+
+    pass_state().preserved_analyses.Unpreserve<CountOpAnalysis>();
+    CHECK_EQ(pass_state().preserved_analyses.IsPreserved<CountOpAnalysis>(),
+             false);
   }
 
   bool CanApplyOn(ir::Operation *op) const override {
@@ -79,7 +143,11 @@ class TestPass : public ir::Pass {
   }
 };
 
-TEST(pass_manager_test, pass_manager) {
+TEST(pass_manager, PassManager) {
+  //
+  // TODO(liuyuanle): remove test code other than pass manager
+  //
+
   // (1) Init environment.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *builtin_dialect =
@@ -186,6 +254,7 @@ TEST(pass_manager_test, pass_manager) {
       op4->operand(0).type().dialect().GetRegisteredInterface<Interface>();
   //   ir::Parameter *parameter_c =
   //       c_interface->VariableToParameter(variable_c.get());
+
   std::unique_ptr<ir::Parameter> parameter_c =
       c_interface->VariableToParameter(variable_c.get());
   EXPECT_EQ(parameter_c->type(), dense_tensor_dtype);
@@ -198,6 +267,10 @@ TEST(pass_manager_test, pass_manager) {
   // (8) Traverse Program
   EXPECT_EQ(program.block()->size() == 4, true);
   EXPECT_EQ(program.parameters_num() == 3, true);
+
+  //
+  // TODO(liuyuanle): remove the code above.
+  //
 
   // (9) Test pass manager for program.
   ir::PassManager pm(ctx);
