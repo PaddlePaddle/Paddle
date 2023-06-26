@@ -952,13 +952,12 @@ void BuildOpFuncList(
     auto attr_map = (*it)->attributes();
 
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+    op_func_node.phi_op_name_ = op_name;
 
     if (op_name == "builtin.combine" || op_name == "pd.feed") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
-
-    op_func_node.phi_op_name_ = op_name;
 
     ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
