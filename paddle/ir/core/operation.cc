@@ -33,7 +33,7 @@ Operation *Operation::Create(OperationArgument &&argument) {
                          argument.regions.size());
 
   for (size_t index = 0; index < argument.regions.size(); ++index) {
-    op->GetRegion(index).TakeBody(std::move(*argument.regions[index]));
+    op->region(index).TakeBody(std::move(*argument.regions[index]));
   }
   return op;
 }
@@ -103,17 +103,35 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
   return op;
 }
 
-// Call destructors for OpResults, Operation, and OpOperands in sequence, and
-// finally free memory.
+// Call destructors for Region , OpResults, Operation, and OpOperands in
+// sequence, and finally free memory.
 void Operation::Destroy() {
-  // Deconstruct Regions.
+  // 1. Deconstruct Regions.
   if (num_regions_ > 0) {
     for (size_t idx = 0; idx < num_regions_; idx++) {
       regions_[idx].~Region();
     }
   }
 
-  // 1. Get aligned_ptr by result_num.
+  // 2. Deconstruct Result.
+  for (size_t idx = 0; idx < num_results_; ++idx) {
+    detail::OpResultImpl *impl = result(idx).impl();
+    IR_ENFORCE(impl->use_empty(), "operation destroyed but still has uses.");
+    if (detail::OpOutlineResultImpl::classof(*impl)) {
+      static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
+    } else {
+      static_cast<detail::OpInlineResultImpl *>(impl)->~OpInlineResultImpl();
+    }
+  }
+
+  // 3. Deconstruct Operation.
+  this->~Operation();
+
+  // 4. Deconstruct OpOperand.
+  for (size_t idx = 0; idx < num_operands_; idx++) {
+    operand(idx).impl()->~OpOperandImpl();
+  }
+  // 5. Free memory.
   uint32_t max_inline_result_num =
       detail::OpResultImpl::GetMaxInlineResultIndex() + 1;
   size_t result_mem_size =
@@ -122,46 +140,11 @@ void Operation::Destroy() {
                     (num_results_ - max_inline_result_num) +
                 sizeof(detail::OpInlineResultImpl) * max_inline_result_num
           : sizeof(detail::OpInlineResultImpl) * num_results_;
-  char *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
-  // 2.1. Deconstruct OpResult.
-  char *base_ptr = aligned_ptr;
-  for (size_t idx = num_results_; idx > 0; idx--) {
-    // release the uses of this result
-    detail::OpOperandImpl *first_use =
-        reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    while (first_use != nullptr) {
-      first_use->remove_from_ud_chain();
-      first_use =
-          reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    }
-    // destory the result
-    if (idx > max_inline_result_num) {
-      reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
-          ->~OpOutlineResultImpl();
-      base_ptr += sizeof(detail::OpOutlineResultImpl);
-    } else {
-      reinterpret_cast<detail::OpInlineResultImpl *>(base_ptr)
-          ->~OpInlineResultImpl();
-      base_ptr += sizeof(detail::OpInlineResultImpl);
-    }
-  }
-  // 2.2. Deconstruct Operation.
-  if (reinterpret_cast<uintptr_t>(base_ptr) !=
-      reinterpret_cast<uintptr_t>(this)) {
-    IR_THROW("Operation address error");
-  }
-  reinterpret_cast<Operation *>(base_ptr)->~Operation();
-  base_ptr += sizeof(Operation);
-  // 2.3. Deconstruct OpOperand.
-  for (size_t idx = 0; idx < num_operands_; idx++) {
-    reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
-    base_ptr += sizeof(detail::OpOperandImpl);
-  }
-  // 3. Free memory.
-  VLOG(4) << "Destroy an Operation: {ptr = "
-          << reinterpret_cast<void *>(aligned_ptr)
+  void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
+
+  VLOG(4) << "Destroy an Operation: {ptr = " << aligned_ptr
           << ", size = " << result_mem_size << "}";
-  aligned_free(reinterpret_cast<void *>(aligned_ptr));
+  aligned_free(aligned_ptr);
 }
 
 IrContext *Operation::ir_context() const { return info_.ir_context(); }
@@ -231,7 +214,7 @@ Program *Operation::GetParentProgram() {
   return module_op ? module_op.program() : nullptr;
 }
 
-Region &Operation::GetRegion(unsigned index) {
+Region &Operation::region(unsigned index) {
   assert(index < num_regions_ && "invalid region index");
   return regions_[index];
 }

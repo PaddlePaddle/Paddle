@@ -248,7 +248,7 @@ def mean_composite(x, axis, keepdim):
     from paddle.fluid.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
-    if dtype == ["float16", "uint16"]:
+    if dtype in ["float16", "uint16"]:
         is_amp = True
         x = cast(x, "float32")
 

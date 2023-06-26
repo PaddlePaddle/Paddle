@@ -1,0 +1,11 @@
+--- a/unsupported/Eigen/CXX11/src/Tensor/TensorRandom.h
++++ b/unsupported/Eigen/CXX11/src/Tensor/TensorRandom.h
+@@ -16,7 +16,7 @@ namespace internal {
+ 
+ namespace {
+ 
+-EIGEN_DEVICE_FUNC uint64_t get_random_seed() {
++static EIGEN_DEVICE_FUNC uint64_t get_random_seed() {
+ #if defined(EIGEN_GPU_COMPILE_PHASE)
+   // We don't support 3d kernels since we currently only use 1 and
+   // 2d kernels.

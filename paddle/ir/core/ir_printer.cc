@@ -104,7 +104,7 @@ void BasicIrPrinter::PrintAttribute(const Attribute& attr) {
 void IrPrinter::PrintProgram(Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
-    auto& region = top_level_op->GetRegion(i);
+    auto& region = top_level_op->region(i);
     for (auto it = region.begin(); it != region.end(); ++it) {
       auto* block = *it;
       os << "{\n";
@@ -153,7 +153,7 @@ void IrPrinter::PrintFullOperation(Operation* op) {
     os << newline;
   }
   for (size_t i = 0; i < op->num_regions(); ++i) {
-    auto& region = op->GetRegion(i);
+    auto& region = op->region(i);
     PrintRegion(region);
   }
 }

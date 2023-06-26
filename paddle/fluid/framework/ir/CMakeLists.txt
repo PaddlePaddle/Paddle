@@ -107,6 +107,7 @@ pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(transfer_layout_elim_pass inference)
+pass_library(relu6_fuse_pass inference)
 pass_library(silu_fuse_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -236,9 +237,13 @@ if(WITH_XPU)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(redundant_squeeze_unsqueeze_elimination_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(reshape_unstack_concat_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_adaptive_seqlen_fuse_pass inference DIR xpu
@@ -258,6 +263,7 @@ if(WITH_XPU)
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(xpu_delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fold_two_squeeze2_fuse_pass inference DIR xpu DEPS
@@ -429,6 +435,10 @@ cc_test(
   test_delete_cast_op_pass
   SRCS delete_cast_op_pass_test.cc
   DEPS delete_cast_op_pass)
+cc_test(
+  test_relu6_fuse_pass
+  SRCS relu6_fuse_pass_test.cc
+  DEPS relu6_fuse_pass)
 
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
@@ -548,6 +558,10 @@ if(WITH_XPU)
     test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
+  cc_test(
+    test_xpu_delete_cast_op_pass
+    SRCS xpu/xpu_delete_cast_op_pass_test.cc
+    DEPS xpu_delete_cast_op_pass)
   cc_test(
     test_fold_interp_outsize_fuse_pass
     SRCS xpu/fold_interp_outsize_fuse_pass_test.cc

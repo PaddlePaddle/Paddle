@@ -564,8 +564,12 @@ libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
 if('${WITH_SHARED_PHI}' == 'ON'):
-    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+    package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
+
+if('${WITH_SHARED_IR}' == 'ON'):
+    package_data['paddle.libs'] += [('libir' if os.name != 'nt' else 'ir') + ext_name]
+    shutil.copy('${IR_LIB}', libs_path)
 
 package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
@@ -712,6 +716,10 @@ if '${WITH_XPU_XFT}' == 'ON':
     shutil.copy('${XPU_XFT_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_XFT_LIB_NAME}']
 
+if '${WITH_XPTI}' == 'ON':
+    shutil.copy('${XPU_XPTI_LIB}', libs_path)
+    package_data['paddle.libs']+=['${XPU_XPTI_LIB_NAME}']
+
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
@@ -731,11 +739,17 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            if('${WITH_SHARED_IR}' == 'ON'):
+                # change rpath of ir.ext for loading 3rd party libb
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            if('${WITH_SHARED_IR}' == 'ON'):
+                # change rpath of ir.ext for loading 3rd party lib
+                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
