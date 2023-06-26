@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
