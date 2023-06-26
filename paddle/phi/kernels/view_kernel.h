@@ -14,13 +14,19 @@
 
 #pragma once
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-bool ReshapeStride(const DDim& old_dims,
-                   const DDim& old_stride,
-                   const DDim& new_dims,
-                   DDim& new_stride);  // NOLINT
+template <typename Context>
+void ViewShapeKernel(const Context& dev_ctx,
+                     const DenseTensor& input,
+                     const std::vector<int64_t>& dims,
+                     DenseTensor* out);
+
+template <typename Context>
+void ViewDtypeKernel(const Context& dev_ctx,
+                     const DenseTensor& input,
+                     DataType dtype,
+                     DenseTensor* out);
 }  // namespace phi

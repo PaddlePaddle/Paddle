@@ -543,6 +543,67 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    def call_view(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.view(x, [10, 100, 20])
+        np_out = x_np.reshape(10, 100, 20)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view2(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        out = paddle.view(x, "uint8")
+        np_out = x_np.view(np.uint8)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view_as(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        self.assertTrue(np.allclose(x.numpy(), x_np))
+
+        np_out = x_np.reshape(10, 100, 20)
+        tmp = paddle.to_tensor(np_out)
+        out = paddle.view_as(x, tmp)
+
+        self.assertTrue(np.allclose(out.numpy(), np_out))
+
+        self.assertTrue(out.is_contiguous("NCHW"))
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        self.assertTrue(np.allclose(out_c.numpy(), np_out))
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
     def call_unfold(self):
         x_np = np.random.random(size=[9]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -584,6 +645,9 @@ class TestStride(unittest.TestCase):
         self.call_chunk()
         self.call_unbind()
         self.call_as_strided()
+        self.call_view()
+        self.call_view2()
+        self.call_view_as()
         self.call_unfold()
 
 

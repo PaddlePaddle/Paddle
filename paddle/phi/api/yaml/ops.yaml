@@ -2488,6 +2488,29 @@
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
 
+- op : view_dtype
+  args : (Tensor input, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : view_dtype
+    data_type : input
+  backward : view_dtype_grad
+  no_need_buffer : input
+
+- op : view_shape
+  args : (Tensor input, int64_t[] dims = {})
+  output : Tensor(out)
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : view_shape
+  backward : view_shape_grad
+  no_need_buffer : input
+
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
   output : Tensor(scores), Tensor(path)

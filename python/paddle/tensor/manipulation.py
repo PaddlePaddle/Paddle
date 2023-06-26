@@ -5061,6 +5061,36 @@ def view(x, shape_or_dtype, name=None):
 
 
 @dygraph_only
+def view_as(x, other, name=None):
+    """
+    View x with other's shape.
+
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        other (Tensor): The result tensor has the same size as other.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, A viewed Tensor with the same shape as ``other``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([2, 4, 6], dtype="float32")
+            y = paddle.rand([8, 6], dtype="float32")
+
+            out = paddle.view_as(x, y)
+            print(out)
+    """
+    return _C_ops.view_shape(x, other.shape)
+
+
+@dygraph_only
 def unfold(x, axis, size, step, name=None):
     """
     View x with specified shape, stride and offset, which contains all slices of size size from x in the dimension axis.
