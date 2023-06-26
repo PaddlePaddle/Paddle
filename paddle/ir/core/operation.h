@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ostream>
+#include <vector>
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
@@ -106,7 +107,7 @@ class IR_API alignas(8) Operation final {
   void ReplaceAllUsesWith(const std::vector<Value> &values);
 
   inline void ReplaceAllUsesWith(Value value) {
-    ReplaceAllUsesWith(std::vector{value});
+    ReplaceAllUsesWith(std::vector<Value>{value});
   }
 
  private:
