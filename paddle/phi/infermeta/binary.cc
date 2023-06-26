@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
 namespace phi {
