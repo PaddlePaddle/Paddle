@@ -1132,6 +1132,14 @@
 
 - op : gather
   backward : gather_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : Axis
 
 - op : gather_nd
   backward : gather_nd_grad
