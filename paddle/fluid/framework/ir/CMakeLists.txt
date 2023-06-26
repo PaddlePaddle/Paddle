@@ -236,6 +236,8 @@ if(WITH_XPU)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(conv2d_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(redundant_squeeze_unsqueeze_elimination_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
@@ -258,7 +260,13 @@ if(WITH_XPU)
                xpu DEPS ${XPU_PASS_DEPS})
   pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(xpu_delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(fold_two_squeeze2_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
 endif()
 
@@ -544,7 +552,23 @@ if(WITH_XPU)
     SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
     DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
   cc_test(
+    test_xpu_delete_cast_op_pass
+    SRCS xpu/xpu_delete_cast_op_pass_test.cc
+    DEPS xpu_delete_cast_op_pass)
+  cc_test(
     test_fold_interp_outsize_fuse_pass
     SRCS xpu/fold_interp_outsize_fuse_pass_test.cc
     DEPS fold_interp_outsize_fuse_pass)
+  cc_test(
+    test_fold_two_squeeze2_fuse_pass
+    SRCS xpu/fold_two_squeeze2_fuse_pass_test.cc
+    DEPS fold_two_squeeze2_fuse_pass)
+  cc_test(
+    test_matmul_weight_trans_pass
+    SRCS xpu/matmul_weight_trans_pass_test.cc
+    DEPS matmul_weight_trans_pass)
+  cc_test(
+    test_reshape2_matmul_xpu_fuse_pass
+    SRCS xpu/reshape2_matmul_xpu_fuse_pass_test.cc
+    DEPS reshape2_matmul_xpu_fuse_pass)
 endif()

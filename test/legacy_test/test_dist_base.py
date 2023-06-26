@@ -44,8 +44,31 @@ DEFAULT_BATCH_SIZE = 2
 DIST_UT_PORT = 0
 
 
-def print_to_out(out_losses):
-    sys.stdout.buffer.write(pickle.dumps(out_losses))
+def remove_glog_envs(envs):
+    if not envs:
+        return envs
+
+    glog_envs = ['GLOG_v', 'GLOG_logtostderr', 'GLOG_vmodule']
+    envs = dict(envs)
+    for env in glog_envs:
+        if env in envs:
+            del envs[env]
+    return envs
+
+
+def get_dump_file(rank):
+    return f"./out_dump_{os.getpid()}_{rank}.pickled"
+
+
+def modify_envs(envs, rank=0):
+    if not envs:
+        envs = {}
+    envs = remove_glog_envs(envs)
+    dump_file = get_dump_file(rank)
+    envs['DUMP_FILE'] = dump_file
+    if os.path.exists(dump_file):
+        os.remove(dump_file)
+    return envs
 
 
 def dump_output(x):
@@ -54,7 +77,8 @@ def dump_output(x):
         pickle.dump(x, f)
 
 
-def load_and_remove(path):
+def load_and_remove_dump_file(rank=0):
+    path = get_dump_file(rank)
     with open(path, 'rb') as f:
         out = pickle.load(f)
     os.remove(path)
@@ -1084,14 +1108,14 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps0_pipe,
-            env=required_envs,
+            env=modify_envs(required_envs),
         )
         print_to_err(type(self).__name__, "going to start pserver process 1")
         ps1_proc = subprocess.Popen(
             ps1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=ps1_pipe,
-            env=required_envs,
+            env=modify_envs(required_envs),
         )
 
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
@@ -1152,9 +1176,6 @@ class TestDistBase(unittest.TestCase):
             cmd += " --find_unused_parameters"
 
         env_local.update(envs)
-        cur_pid = os.getpid()
-        dump_file = f"out_data_local_{cur_pid}.pickled"
-        env_local["DUMP_FILE"] = dump_file
         print(f"local_cmd: {cmd}, env: {env_local}")
 
         if check_error_log:
@@ -1164,14 +1185,14 @@ class TestDistBase(unittest.TestCase):
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=err_log,
-                env=env_local,
+                env=modify_envs(env_local),
             )
         else:
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=env_local,
+                env=modify_envs(env_local),
             )
 
         local_out, local_err = local_proc.communicate()
@@ -1181,7 +1202,7 @@ class TestDistBase(unittest.TestCase):
 
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
-        return load_and_remove(dump_file)
+        return load_and_remove_dump_file()
 
     def _run_local_gloo(
         self,
@@ -1260,14 +1281,6 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        cur_pid = os.getpid()
-        dump_files = [
-            f'./out_data_0_{cur_pid}.pickled',
-            f'./out_data_1_{cur_pid}.pickled',
-        ]
-        env0["DUMP_FILE"] = dump_files[0]
-        env1["DUMP_FILE"] = dump_files[1]
-
         print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
         print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
 
@@ -1281,14 +1294,14 @@ class TestDistBase(unittest.TestCase):
             tr0_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr0_pipe,
-            env=env0,
+            env=modify_envs(env0, 0),
         )
         print_to_err(type(self).__name__, "going to start trainer process 1")
         tr1_proc = subprocess.Popen(
             tr1_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=tr1_pipe,
-            env=env1,
+            env=modify_envs(env1, 1),
         )
 
         # Wait until trainer process terminate
@@ -1315,7 +1328,7 @@ class TestDistBase(unittest.TestCase):
         ps0.terminate()
         ps1.terminate()
 
-        return load_and_remove(dump_files[0]), load_and_remove(dump_files[1])
+        return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _get_gloo_trainer_cmd(
         self, model, ep, update_method, trainer_id, trainer_num
@@ -1502,8 +1515,6 @@ class TestDistBase(unittest.TestCase):
 
         procs = []
         pipes = []
-        dump_files = []
-        cur_pid = os.getpid()
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_gloo_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num
@@ -1511,10 +1522,6 @@ class TestDistBase(unittest.TestCase):
             tr_env.update(envs)
             tr_env["GLOG_vmodule"] = 'gloo_context=4'
             tr_env["GLOG_v"] = '3'
-
-            dump_file = f'./out_data_{i}_{cur_pid}.pickled'
-            dump_files.append(dump_file)
-            tr_env["DUMP_FILE"] = dump_file
             print(
                 "use_hallreduce:{} tr_cmd:{}, env: {}".format(
                     self._use_hallreduce, tr_cmd, tr_env
@@ -1534,7 +1541,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=modify_envs(tr_env, i),
             )
 
             procs.append(tr_proc)
@@ -1550,15 +1557,13 @@ class TestDistBase(unittest.TestCase):
         if trainer_num == 1:
             if check_error_log:
                 print("outs[0]:", outs[0])
-            return load_and_remove(dump_files[0])
+            return load_and_remove_dump_file(0)
 
         else:
             if check_error_log:
                 print("outs[0]:", outs[0])
                 print("outs[1]:", outs[1])
-            return load_and_remove(dump_files[0]), load_and_remove(
-                dump_files[1]
-            )
+            return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _run_cluster_nccl2(
         self, model, envs, update_method, check_error_log, log_name
@@ -1586,16 +1591,11 @@ class TestDistBase(unittest.TestCase):
 
         procs = []
         pipes = []
-        cur_pid = os.getpid()
-        dump_files = []
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num
             )
             tr_env.update(envs)
-            dump_file = f'./out_data_{i}_{cur_pid}.pickled'
-            dump_files.append(dump_file)
-            tr_env["DUMP_FILE"] = dump_file
             print(
                 "use_hallreduce:{} tr_cmd:{}, env: {}".format(
                     self._use_hallreduce, tr_cmd, tr_env
@@ -1615,7 +1615,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=modify_envs(tr_env, i),
             )
 
             procs.append(tr_proc)
@@ -1632,7 +1632,7 @@ class TestDistBase(unittest.TestCase):
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
 
-        return load_and_remove(dump_files[0]), load_and_remove(dump_files[1])
+        return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _run_pipeline(self, model, envs, check_error_log, log_name):
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -1643,8 +1643,6 @@ class TestDistBase(unittest.TestCase):
 
         procs = []
         pipes = []
-        cur_pid = os.getpid()
-        dump_files = []
         for i in range(0, trainer_num):
             tr_cmd, tr_env = self._get_nccl2_trainer_cmd(
                 model, worker_endpoints[i], update_method, i, trainer_num
@@ -1654,10 +1652,6 @@ class TestDistBase(unittest.TestCase):
             tr_env['NCCL_SHM_DISABLE'] = '1'
             tr_env['FLAGS_selected_gpus'] = str(i)
             tr_env['FLAGS_cudnn_deterministic'] = '0'
-
-            dump_file = f'./out_data_{i}_{cur_pid}.pickled'
-            dump_files.append(dump_file)
-            tr_env["DUMP_FILE"] = dump_file
             print(f"tr_cmd:{tr_cmd}, env: {tr_env}")
 
             path = os.path.join(self.temp_dir.name + f"tr{i}_err.log")
@@ -1671,7 +1665,7 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=tr_pipe,
-                env=tr_env,
+                env=modify_envs(tr_env, i),
             )
 
             procs.append(tr_proc)
@@ -1687,7 +1681,7 @@ class TestDistBase(unittest.TestCase):
         if check_error_log:
             print("outs[0]:", outs[0])
             print("outs[1]:", outs[1])
-        return load_and_remove(dump_files[0]), load_and_remove(dump_files[1])
+        return load_and_remove_dump_file(0), load_and_remove_dump_file(1)
 
     def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.

@@ -22,13 +22,19 @@
 #include "paddle/ir/core/dialect.h"
 #include "paddle/ir/core/ir_context.h"
 
+class AttributeA {};
+IR_DECLARE_EXPLICIT_TYPE_ID(AttributeA)
+IR_DEFINE_EXPLICIT_TYPE_ID(AttributeA)
+
+struct FakeDialect : ir::Dialect {
+  explicit FakeDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
+  static const char *name() { return "fake"; }
+};
+IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
+
 TEST(attribute_test, attribute_base) {
-  class AttributeA {};
-  struct FakeDialect : ir::Dialect {
-    explicit FakeDialect(ir::IrContext *context)
-        : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
-    static const char *name() { return "fake"; }
-  };
   // Test 1: Test the function of IrContext to register Dialect.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
