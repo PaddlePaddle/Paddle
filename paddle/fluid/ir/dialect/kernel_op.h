@@ -29,6 +29,9 @@ class PhiKernelOp : public ir::Op<PhiKernelOp> {
   static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
+  const std::string op_name();
+  const std::string kernel_name();
+  phi::KernelKey kernel_key();
 };
 
 }  // namespace dialect

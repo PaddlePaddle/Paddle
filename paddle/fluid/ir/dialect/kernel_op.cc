@@ -42,6 +42,25 @@ void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
                         "Type of attribute: kernel_key is not right."));
 }
 
+const std::string PhiKernelOp::op_name() {
+  return operation()
+      ->attributes()["op_name"]
+      .dyn_cast<ir::StrAttribute>()
+      .data();
+}
+const std::string PhiKernelOp::kernel_name() {
+  return operation()
+      ->attributes()["kernel_name"]
+      .dyn_cast<ir::StrAttribute>()
+      .data();
+}
+phi::KernelKey PhiKernelOp::kernel_key() {
+  return operation()
+      ->attributes()["kernel_key"]
+      .dyn_cast<KernelAttribute>()
+      .data();
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
