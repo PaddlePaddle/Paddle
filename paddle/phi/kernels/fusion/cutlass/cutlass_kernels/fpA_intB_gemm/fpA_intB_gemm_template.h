@@ -157,7 +157,7 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
   Gemm gemm;
   if (gemm.get_workspace_size(args) > workspace_bytes) {
     VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
-                 "back to non-split-k implementation.";
+               "back to non-split-k implementation.";
     // If requested split-k factor will require more workspace bytes, revert to
     // standard gemm.
     args.batch_count = 1;
@@ -213,8 +213,7 @@ struct dispatch_stages {
     std::string err_msg = "Cutlass fpA_intB gemm. Not instantiates for arch " +
                           std::to_string(arch::kMinComputeCapability) +
                           " with stages set to " + std::to_string(Stages);
-    throw std::runtime_error("[dispatch_stages::dispatch] " +
-                             err_msg);
+    throw std::runtime_error("[dispatch_stages::dispatch] " + err_msg);
   }
 };
 
