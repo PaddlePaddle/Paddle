@@ -1896,9 +1896,10 @@ class TracedLayer:
 
 def get_ast_static_function(function):
     if isinstance(function, SymbolicStaticFunction):
-        return ASTStaticFunction(
+        retval = ASTStaticFunction(
             function._function_spec._dygraph_function,
-            function._input_spec,
+            function.last_call_input_spec,
             **function._kwargs,
         )
+        return retval
     return function
