@@ -17,7 +17,7 @@ import paddle
 __all__ = []
 
 
-@paddle.no_grad()
+@paddle.autograd.no_grad()
 def clip_grad_value_(
     parameters,
     clip_value,
