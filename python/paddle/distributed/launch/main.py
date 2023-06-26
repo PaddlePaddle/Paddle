@@ -304,6 +304,7 @@ def launch():
         from ..auto_tuner.utils import gen_new_args, read_log
         from . import controllers
 
+        start_time = time.time()
         # read user defined tuner config json
         try:
             with open(ctx.args.auto_tuner_json, "r") as f:
@@ -476,6 +477,8 @@ def launch():
                 )
         assert best_cfg
 
+        end_time = time.time()
+        ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
         ctx.status._current_status = None
         new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)

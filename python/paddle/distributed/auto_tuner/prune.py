@@ -26,7 +26,7 @@ def same_cfgs_beside(attr, cur_cfg, history_cfgs):
         for key in cur_cfg:
             if key == attr:
                 continue
-            if key not in history_cfgs or history_cfgs[key] != cur_cfg[key]:
+            if key not in cfg or cfg[key] != cur_cfg[key]:
                 same = False
                 break
         if same:
