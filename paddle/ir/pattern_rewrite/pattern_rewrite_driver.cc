@@ -134,7 +134,7 @@ class GreedyPatternRewriteDriver : public ir::PatternRewriter {
       AddOperandToWorklist(op->operand(i).source());
     }
     for (uint32_t i = 0; i < op->num_regions(); ++i) {
-      auto& region = op->GetRegion(i);
+      auto& region = op->region(i);
       for (auto it = region.begin(); it != region.end(); ++it) {
         for (auto op_it = (*it)->begin(); op_it != (*it)->end(); ++op_it) {
           RemoveFromWorklist(*op_it);

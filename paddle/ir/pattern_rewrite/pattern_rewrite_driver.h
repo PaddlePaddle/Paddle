@@ -77,7 +77,7 @@ inline IR_API bool ApplyPatternsGreedily(
     GreedyRewriteConfig config = GreedyRewriteConfig()) {
   bool failed = false;
   for (uint32_t i = 0; i < op->num_regions(); ++i) {
-    Region& region = op->GetRegion(i);
+    Region& region = op->region(i);
     failed |= !ApplyPatternsGreedily(region, patterns, config);
   }
   return !failed;

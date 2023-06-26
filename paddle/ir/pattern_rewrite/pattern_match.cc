@@ -123,24 +123,22 @@ void RewriterBase::ReplaceOp(Operation* op,
   NotifyRootReplaced(op, new_values);
   IR_ENFORCE(op->num_results() == new_values.size(),
              "incorrect # of replacement values");
-  // TODO(wilber): ir support replace method.
-  // op->ReplaceAllUsesWith(new_values);
+  op->ReplaceAllUsesWith(new_values);
   NotifyOperationRemoved(op);
-  // TODO(wilber): ir support erase method.
-  // op->erase();
+  op->GetParent()->erase(*op);
 }
 
 void RewriterBase::EraseOp(Operation* op) {
   // TODO(wilber): Operation support use_empty.
   // IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
   NotifyOperationRemoved(op);
-  // TODO(wilber): ir support erase method.
-  // op->erase();
+  op->GetParent()->erase(*op);
 }
 
 /// Find uses of `from` and replace it with `to`
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // TODO(wilber): ir support replace.
+  // TODO(wilber): Substitue a low level impl.
+  from.ReplaceAllUsesWith(to);
 }
 
 // TODO(wilber): iterator maybe should support modify inplace.

@@ -15,6 +15,7 @@
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/operation.h"
 
 namespace ir {
 Region::~Region() { clear(); }

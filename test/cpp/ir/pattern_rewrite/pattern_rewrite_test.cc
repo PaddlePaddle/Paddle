@@ -236,7 +236,7 @@ class TestPass : public ir::Pass {
     ir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 1;
-    ir::ApplyPatternsGreedily(op->GetRegion(0), frozen_ps, cfg);
+    ir::ApplyPatternsGreedily(op->region(0), frozen_ps, cfg);
   }
 
   bool CanApplyOn(ir::Operation *op) const override {

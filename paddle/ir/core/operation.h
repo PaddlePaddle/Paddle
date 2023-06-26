@@ -102,6 +102,13 @@ class IR_API alignas(8) Operation final {
 
   operator Block::const_iterator() const { return position_; }
 
+  /// Replace all uses of results of this operation with the provided 'values'.
+  void ReplaceAllUsesWith(const std::vector<Value> &values);
+
+  inline void ReplaceAllUsesWith(Value value) {
+    ReplaceAllUsesWith(std::vector{value});
+  }
+
  private:
   Operation(const AttributeMap &attribute,
             ir::OpInfo op_info,
