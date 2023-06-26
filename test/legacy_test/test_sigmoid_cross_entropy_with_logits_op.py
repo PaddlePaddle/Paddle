@@ -147,27 +147,28 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
         self.python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
+
+        x = logit(
+            np.random.uniform(0, 1, (batch_size, num_classes)).astype("float64")
+        )
+        label = np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+            "float64"
+        )
+        pos_weight = np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+            "float64"
+        )
         self.inputs = {
-            'X': logit(
-                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                    "float64"
-                )
-            ),
-            'Label': np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                "float64"
-            ),
-            'PosWeight': np.random.uniform(0, 1, (num_classes)).astype(
-                "float64"
-            ),
+            'X': x,
+            'Label': label,
+            'PosWeight': pos_weight,
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
         # elementwise logistic loss
-        # Label * -log(sigmoid(X)) + (1 - label) * -log(1 - sigmoid(X))
-        sigmoid_X = expit(self.inputs['X'])
-        term1 = self.inputs['Label'] * np.log(sigmoid_X)
-        term2 = (1 - self.inputs['Label']) * np.log(1 - sigmoid_X)
-        self.outputs = {'Out': -term1 - term2}
+        term1 = np.maximum(self.inputs['X'], 0)
+        term2 = self.inputs['X'] * self.inputs['Label']
+        term3 = np.log(1 + np.exp(-1 * np.abs(self.inputs['X']))) * pos_weight
+        self.outputs = {'Out': term1 - term2 + term3}
 
     def test_check_output(self):
         self.check_output()
