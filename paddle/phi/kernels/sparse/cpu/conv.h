@@ -205,8 +205,8 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   }
 
   int out_non_zero_num = out_indexs.size();
-  int tmpidx = is2D == true ? 3 : 4;
-  const int64_t sparse_dim = tmpidx;
+  int tmpindex = is2D == true ? 3 : 4;
+  const int64_t sparse_dim = tmpindex;
   DenseTensorMeta indices_meta(phi::CppTypeToDataType<IntT>::Type(),
                                {sparse_dim, out_non_zero_num},
                                DataLayout::NCHW);
