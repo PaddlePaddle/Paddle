@@ -95,6 +95,24 @@ PyObject* tensor_properties_get_stop_gradient(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties_get_data(TensorObject* self, void* closure) {
+  EAGER_TRY
+  return reinterpret_cast<PyObject*>(self);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_data(TensorObject* self,
+                               PyObject* value,
+                               void* closure) {
+  EAGER_TRY
+  auto src = CastPyArg2Tensor(value, 0);
+  self->tensor = src;
+  phi::DenseTensor tmp;
+  self->tensor.ShareInplaceVersionCounterWith(tmp);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
+
 PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
@@ -124,6 +142,26 @@ int tensor_properties_set_grad(TensorObject* self,
                      "Please check if you have manually cleared"
                      "the grad inside autograd_meta"));
   grad->copy_(src, self->tensor.place(), true);
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
+
+int tensor_properties_set_grad_(TensorObject* self,
+                                PyObject* value,
+                                void* closure) {
+  EAGER_TRY
+  auto src = CastPyArg2Tensor(value, 0);
+  PADDLE_ENFORCE(
+      egr::EagerUtils::IsLeafTensor(self->tensor),
+      paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
+
+  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
+  PADDLE_ENFORCE(grad != nullptr,
+                 paddle::platform::errors::Fatal(
+                     "Detected NULL grad"
+                     "Please check if you have manually cleared"
+                     "the grad inside autograd_meta"));
+  *grad = src;
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
@@ -339,9 +377,19 @@ PyObject* tensor_properties_get_dtype(TensorObject* self, void* closure) {
 }
 
 struct PyGetSetDef variable_properties[] = {
+    {"data",
+     (getter)tensor_properties_get_data,
+     (setter)tensor_properties_set_data,
+     nullptr,
+     nullptr},
     {"grad",
      (getter)tensor_properties_get_grad,
      (setter)tensor_properties_set_grad,
+     nullptr,
+     nullptr},
+    {"grad_",
+     (getter)tensor_properties_get_grad,
+     (setter)tensor_properties_set_grad_,
      nullptr,
      nullptr},
     {"name",
