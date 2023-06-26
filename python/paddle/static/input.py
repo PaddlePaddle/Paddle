@@ -137,7 +137,7 @@ class InputSpec:
             for more details.
 
     Examples:
-        .. code-block:: python:name :code-example1
+        .. code-block:: python
 
             from paddle.static import InputSpec
 
@@ -183,7 +183,7 @@ class InputSpec:
             A InputSpec instance generated from Tensor.
 
         Examples:
-            .. code-block:: python:name :code-example2
+            .. code-block:: python
 
                 import paddle
                 from paddle.static import InputSpec
@@ -216,7 +216,7 @@ class InputSpec:
             A InputSpec instance generated from Tensor.
 
         Examples:
-            .. code-block:: python:name :code-example3
+            .. code-block:: python
 
                 import numpy as np
                 from paddle.static import InputSpec
@@ -239,7 +239,7 @@ class InputSpec:
             The original InputSpec instance by inserting `batch_size` in front of `shape`.
 
         Examples:
-            .. code-block:: python:name :code-example4
+            .. code-block:: python
 
                 from paddle.static import InputSpec
 
@@ -276,7 +276,7 @@ class InputSpec:
             The original InputSpec instance by removing the first element of `shape` .
 
         Examples:
-            .. code-block:: python:name :code-example5
+            .. code-block:: python
 
                 from paddle.static import InputSpec
 
