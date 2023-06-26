@@ -907,7 +907,7 @@ struct FetchOpTranscriber : public OpTranscriber {
         op_info_concept->get_op_info_();
 
     auto op_inputs = this->GenerateOperationInput(
-        ctx, param_map, program, op_desc, op_info.name(), input_infos);
+        ctx, param_map, op_desc, op_info.name(), input_infos, program);
 
     OpOutputTypeList op_output_types;
     ir::AttributeMap attribute_map = {
