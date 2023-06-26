@@ -5746,21 +5746,21 @@ class Program:
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         Examples:
-          .. code-block:: python
-              :name: code-example1
+            .. code-block:: python
+                :name: code-example1
 
-            import paddle
-            import paddle.static as static
+                import paddle
+                import paddle.static as static
 
-            paddle.enable_static()
+                paddle.enable_static()
 
-            img = static.data(name='image', shape=[None, 784])
-            pred = static.nn.fc(x=img, size=10, actvation='relu')
-            loss = paddle.mean(pred)
-            # Here we use clone before Momentum
-            test_program = static.default_main_program().clone(for_test=True)
-            optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-            optimizer.minimize(loss)
+                img = static.data(name='image', shape=[None, 784])
+                pred = static.nn.fc(x=img, size=10, actvation='relu')
+                loss = paddle.mean(pred)
+                # Here we use clone before Momentum
+                test_program = static.default_main_program().clone(for_test=True)
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+                optimizer.minimize(loss)
 
         Args:
 
