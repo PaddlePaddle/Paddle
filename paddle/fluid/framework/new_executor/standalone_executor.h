@@ -42,11 +42,12 @@ class StandaloneExecutor {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
  private:
+  bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;
   const interpreter::Plan plan_;
 
   std::vector<framework::Scope*> micro_batch_scopes_;
-  std::vector<std::unique_ptr<InterpreterCore>> interpretercores_;
+  std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 
   Scope* scope_;
 };
