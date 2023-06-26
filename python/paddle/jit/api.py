@@ -25,6 +25,7 @@ from collections import OrderedDict
 import inspect
 import threading
 from typing import Any
+import types
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -1896,10 +1897,18 @@ class TracedLayer:
 
 def get_ast_static_function(function):
     if isinstance(function, SymbolicStaticFunction):
-        retval = ASTStaticFunction(
-            function._function_spec._dygraph_function,
-            function.last_call_input_spec,
-            **function._kwargs,
-        )
-        return retval
+        if function._function_spec._input_spec is None:
+            if function._class_instance:
+                dygraph_function = types.MethodType(
+                    function._dygraph_function, function._class_instance
+                )
+            else:
+                dygraph_function = function._dygraph_function
+
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function.last_call_input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
     return function

@@ -455,7 +455,7 @@ class TestSeResnet(unittest.TestCase):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img, label],
+                                [img],
                                 output_spec=[pred],
                             )
                         else:
