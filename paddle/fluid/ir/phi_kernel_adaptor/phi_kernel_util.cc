@@ -61,8 +61,9 @@ void BuildScope(ir::Block* block,
       for (size_t i = 0; i < input_num; ++i) {
         auto var = scope->Var("fetch");
         auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-        // for now only support one fetch
-        fetch_list->resize(1);
+        int index =
+            (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+        fetch_list->resize(index + 1);
       }
       continue;
     }
@@ -254,13 +255,20 @@ void BuildInferMetaContext(
     // process fetch op
     auto fetch_var = scope->Var("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(index)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
-      auto name = name_map.at(out_ptr);
-      ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+      if (out_ptr.type()) {
+        auto name = name_map.at(out_ptr);
+        ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+      } else {
+        std::cerr << "emplace null ptr " << i << std::endl;
+        ctx->EmplaceBackOutput(nullptr);
+      }
     }
   }
 }
@@ -386,14 +394,21 @@ void BuildPhiKernelContext(
     // process fetch op
     auto fetch_var = scope->Var("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(index)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
       auto name = name_map.at(out_ptr);
-      ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
-          &(scope->Var(name)->Get<phi::DenseTensor>())));
+      if (out_ptr.type()) {
+        ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
+            &(scope->Var(name)->Get<phi::DenseTensor>())));
+      } else {
+        std::cerr << "emplace null ptr " << i << std::endl;
+        ctx->EmplaceBackOutput(nullptr);
+      }
 
       if (output_map != nullptr) {
         // only deal with single input for now, [todo] need support multi input

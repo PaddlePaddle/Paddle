@@ -1360,9 +1360,11 @@ void DotGradKernel(const Context& dev_ctx,
                    DenseTensor* dx,
                    DenseTensor* dy) {
   if (dx) {
+    std::cerr << "have dx" << std::endl;
     dev_ctx.template Alloc<T>(dx);
   }
   if (dy) {
+    std::cerr << "have dy" << std::endl;
     dev_ctx.template Alloc<T>(dy);
   }
   DotGradFunction<Context, T>()(dev_ctx, &x, &y, &dout, dx, dy);

@@ -224,7 +224,10 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
         std::stringstream ss;
         result_type.Print(ss);
         std::cerr << "get type " << ss.str() << std::endl;
-        if (result_type.isa<dialect::DenseTensorType>()) {
+        if (!result_type) {
+          std::cerr << "null type" << std::endl;
+          op_output_types.push_back(result_type);
+        } else if (result_type.isa<dialect::DenseTensorType>()) {
           std::cerr << "is densetensr" << std::endl;
           auto allocated_dense_tensor_dtype =
               paddle::dialect::AllocatedDenseTensorType::get(
