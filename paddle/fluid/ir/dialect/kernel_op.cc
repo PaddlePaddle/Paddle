@@ -18,18 +18,28 @@ namespace paddle {
 namespace dialect {
 
 const char *PhiKernelOp::attributes_name[attributes_num] = {
-    "base_op", "infermeta_fn", "kernel_fn"};
+    "op_name", "kernel_name", "kernel_key"};
 
 void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
                          const std::vector<ir::Type> &outputs,
                          const ir::AttributeMap &attributes) {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
-
-  // Verify inputs type:
-
   // Verify if attributes contain attribute name in attributes_name:
-  //   if (!attributes.at("parameter_name").isa<StrAttribute>()) {
-  //     throw("Type of attribute: parameter_name is not right.");
+  PADDLE_ENFORCE_EQ(attributes.count("op_name") > 0 &&
+                        attributes.at("op_name").isa<ir::StrAttribute>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Type of attribute: op_name is not right."));
+  PADDLE_ENFORCE_EQ(attributes.count("kernel_name") > 0 &&
+                        attributes.at("kernel_name").isa<ir::StrAttribute>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Type of attribute: kernel_name is not right."));
+  PADDLE_ENFORCE_EQ(attributes.count("kernel_key") > 0 &&
+                        attributes.at("kernel_key").isa<KernelAttribute>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "Type of attribute: kernel_key is not right."));
 }
 
 }  // namespace dialect

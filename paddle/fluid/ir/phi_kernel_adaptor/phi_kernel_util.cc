@@ -74,8 +74,6 @@ void BuildScope(ir::Block* block,
       // TODO(phlrain): need to update here, support StringTensor
       auto out_tensor = var->GetMutable<phi::DenseTensor>();
 
-      name_map->emplace(ptr, name);
-
       auto feed_var = scope->Var("feed");
       int index =
           (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
