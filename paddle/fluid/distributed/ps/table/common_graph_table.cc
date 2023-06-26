@@ -1816,7 +1816,7 @@ void GraphTable::fennel_graph_edge_partition() {
     auto &shard = neighbor_nodes[key % shard_num_per_server];
     auto it = shard.find(key);
     if (it == shard.end()) {
-      VLOG(0) << "get rank by score not found key=" << key;
+//      VLOG(0) << "get rank by score not found key=" << key;
       return -1;
     }
     if (!get_inter_cost(key, it->second, &inter_cost)) {
@@ -1901,9 +1901,11 @@ void GraphTable::fennel_graph_edge_partition() {
     }
     return cnt;
   };
+  typedef robin_hood::unordered_flat_set<uint64_t>  UniqueSet;
+  typedef std::deque<uint64_t> NodeQueue;
   // 添加所有邻居入队列
   auto add_neighbor_to_queue = [this, &neighbor_nodes](
-      const uint64_t &key, std::deque<uint64_t> *queue, robin_hood::unordered_set<uint64_t> *unique) {
+      const uint64_t &key, NodeQueue *queue, UniqueSet *unique) {
     auto &shard = neighbor_nodes[key % shard_num_per_server];
     if (shard.empty()) {
       return;
@@ -1912,13 +1914,10 @@ void GraphTable::fennel_graph_edge_partition() {
     if (it == shard.end()) {
       return;
     }
+    unique->insert(key);
     for (auto &node : it->second) {
       for (size_t n_i = 0; n_i < node->get_neighbor_size(); ++n_i) {
         uint64_t d_id = node->get_neighbor_id(n_i);
-        int rank = egde_node_rank_.find(d_id);
-        if (rank >= 0) {
-          continue;
-        }
         if (unique->find(d_id) != unique->end()) {
           continue;
         }
@@ -1926,12 +1925,13 @@ void GraphTable::fennel_graph_edge_partition() {
         queue->push_back(d_id);
       }
     }
-    shard.erase(key);
+    shard.erase(it);
   };
 
-  robin_hood::unordered_set<uint64_t> keys_unique;
+  UniqueSet keys_unique;
   keys_unique.rehash(total_node);
-  std::deque<uint64_t> node_queue[node_num_];
+  NodeQueue node_queue[node_num_];
+
   size_t cnt = 0;
   size_t start_print = 0;
   size_t max_node = 0;
@@ -1986,7 +1986,8 @@ void GraphTable::fennel_graph_edge_partition() {
         VLOG(0) << "current total nodes count=" << cnt
             << ", egde_node_ids[" << i << "] :" << egde_node_rank_.nodes_num(i)
             << ", queue size: " << node_queue[i].size()
-            << ", first size: " << rank_nums[i];
+            << ", first size: " << rank_nums[i]
+            << ", keys_unique: " << keys_unique.size();
       }
       start_print = cnt;
     }
