@@ -2257,17 +2257,17 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
   return 0;
 }
 void GraphTable::fix_feature_node_shards(bool load_slot) {
-  CHECK(load_slot) << "only support feature node mode";
-  VLOG(0) << "begin fix feature node type count="
-      << feature_shards.size() << ", edge count=" << edge_shards.size();
+  auto &shards = (load_slot) ? feature_shards: node_shards;
+  VLOG(0) << "begin fix " << ((load_slot) ? "feature ": "")
+      << "node type count=" << shards.size() << ", edge count=" << edge_shards.size();
   std::vector<std::future<std::pair<size_t, size_t>>> tasks;
-  for (size_t idx = 0; idx < feature_shards.size(); ++idx) {
-    for (size_t j = 0; j < feature_shards[idx].size(); ++j) {
+  for (size_t idx = 0; idx < shards.size(); ++idx) {
+    for (size_t j = 0; j < shards[idx].size(); ++j) {
       tasks.push_back(load_node_edge_task_pool->enqueue(
           [this, idx, j, load_slot]() -> std::pair<size_t, size_t> {
         size_t cnt = 0;
         size_t edge_node_cnt = 0;
-        auto &features = feature_shards[idx][j];
+        auto &features = (load_slot) ? feature_shards[idx][j] : node_shards[idx][j];
         for (auto edge_idx : nodeid_to_edgeids_[idx]) {
           auto &shard_keys = edge_shards_keys_[edge_idx][j];
           edge_node_cnt += shard_keys.size();
@@ -2300,7 +2300,7 @@ void GraphTable::fix_feature_node_shards(bool load_slot) {
     total += pair.first;
     add_cnt += pair.second;
   }
-  VLOG(0) << "fix feature node count=" << total
+  VLOG(0) << "fix node count=" << total
       << ", add count=" << add_cnt << ", with slot=" << load_slot;
 }
 int32_t GraphTable::load_node_and_edge_file(
