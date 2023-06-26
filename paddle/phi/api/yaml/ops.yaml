@@ -2087,7 +2087,7 @@
   backward : sigmoid_grad
 
 - op : sigmoid_cross_entropy_with_logits
-  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
   output : Tensor
   infer_meta :
     func : SigmoidCrossEntropyWithLogitsInferMeta
@@ -2095,6 +2095,7 @@
     func : sigmoid_cross_entropy_with_logits
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
+  optional : pos_weight
 
 - op : sign
   args : (Tensor x)
@@ -2495,7 +2496,7 @@
     func : WeightedSampleNeighborsInferMeta
   kernel :
     func : weighted_sample_neighbors
-  optional: eids
+  optional : eids
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
