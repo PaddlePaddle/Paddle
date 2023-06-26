@@ -15,7 +15,6 @@
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/enforce.h"
-#include "paddle/ir/core/operation.h"
 
 namespace ir {
 Region::~Region() { clear(); }
@@ -30,6 +29,12 @@ Region::iterator Region::insert(const_iterator position, Block *block) {
   Region::iterator iter = blocks_.insert(position, block);
   block->SetParent(this, iter);
   return iter;
+}
+
+Region::iterator Region::erase(const_iterator position) {
+  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this region.");
+  delete *position;
+  return blocks_.erase(position);
 }
 void Region::TakeBody(Region &&other) {
   clear();

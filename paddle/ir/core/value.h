@@ -55,11 +55,21 @@ class IR_API OpOperand {
 
   Value source() const;
 
+  Type type() const;
+
   void set_source(Value value);
 
   Operation *owner() const;
 
+  void RemoveFromUdChain();
+
+  friend Operation;
+
  private:
+  // The interface shoule ensure impl_ isn't nullptr.
+  // if the user can accept impl_ is nullptr, shoule use impl_ member directly.
+  detail::OpOperandImpl *impl() const;
+
   detail::OpOperandImpl *impl_{nullptr};
 };
 
@@ -157,6 +167,7 @@ class IR_API Value {
   void ReplaceUsesWithIf(
       Value new_value,
       const std::function<bool(OpOperand)> &should_replace) const;
+  void ReplaceAllUsesWith(Value new_value) const;
 
   // The interface shoule ensure impl_ isn't nullptr.
   // if the user can accept impl_ is nullptr, shoule use impl_ member directly.
