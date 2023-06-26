@@ -104,9 +104,13 @@ TEST(value_test, value_test) {
   // Test 4: Value Replace Use
   // a = OP1(); b = OP2(); c = OP3(a, b); d, e, f, g, h, i, j = OP4(a, c);
   //
-  c.ReplaceUsesWithIf(a, [](ir::OpOperand) { return true; });
-  EXPECT_EQ(op4->operand(1).source(), a);
+  c.ReplaceUsesWithIf(b, [](ir::OpOperand) { return true; });
+  EXPECT_EQ(op4->operand(1).source(), b);
   EXPECT_TRUE(c.use_empty());
+
+  b.ReplaceAllUsesWith(a);
+  EXPECT_EQ(op4->operand(1).source(), a);
+  EXPECT_TRUE(b.use_empty());
 
   // destroy
   VLOG(0) << op1->result(0).PrintUdChain() << std::endl;
