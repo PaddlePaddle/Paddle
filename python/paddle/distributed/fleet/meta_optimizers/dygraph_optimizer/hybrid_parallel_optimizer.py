@@ -13,6 +13,9 @@
 # limitations under the License.
 
 
+import distutils.util
+import os
+
 import numpy as np
 
 import paddle
@@ -45,6 +48,9 @@ class HybridParallelClipGrad:
         self._hcg = hcg
         self.not_sharding_stage1 = True
         self._vpp_chunk_num = None
+        self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
+            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '1')
+        )
 
     def _get_vpp_chunk_num(self, params_grads):
         chunk_num = -1
@@ -90,6 +96,9 @@ class HybridParallelClipGrad:
 
             chunk_id = p._chunk_info['chunk_id']
             if not_shared_enable:
+                if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    merge_grad = clip.merge_selected_rows(g)
+                    g = clip.get_tensor_from_selected_rows(merge_grad)
                 square = paddle.square(g)
                 sum_square = paddle.sum(square)
                 layer_id = chunk_id * pp_size + pp_rank
@@ -104,8 +113,10 @@ class HybridParallelClipGrad:
             group=pp_group,
         )
 
-        sum_square_dist_fp32 = []
-        sum_square_not_dist_fp32 = []
+        # order: FP16, BF16, FP32
+        sum_square_dist = [[], [], []]
+        sum_square_not_dist = [[], [], []]
+
         pp_stage = self._hcg.get_stage_id()
         for i, metas in enumerate(all_sum_square_metas):
             for layer_id, is_distributed, sum_square in metas:
@@ -113,30 +124,56 @@ class HybridParallelClipGrad:
                 assert rank < pp_size
                 if rank != pp_rank:
                     continue
-                if is_distributed:
-                    sum_square_dist_fp32.append(sum_square)
+                if sum_square.dtype == np.float32:
+                    idx = 2
+                elif sum_square.dtype == np.float16:
+                    idx = 0
                 else:
-                    sum_square_not_dist_fp32.append(sum_square)
-        sum_square_dist_fp32 = np.concatenate(
-            sum_square_dist_fp32, axis=0
-        ).flatten()
-        sum_square_dist_fp32 = paddle.to_tensor(sum_square_dist_fp32)
-        global_norm_var_dist = paddle.sum(sum_square_dist_fp32)
+                    assert (
+                        sum_square.dtype == np.uint16
+                    ), "The data type of grad must be FP32, FP16 or BF16, but got {}".format(
+                        sum_square.dtype
+                    )
+                    idx = 1
 
-        sum_square_not_dist_fp32 = np.concatenate(
-            sum_square_not_dist_fp32, axis=0
-        ).flatten()
-        sum_square_not_dist_fp32 = paddle.to_tensor(sum_square_not_dist_fp32)
-        global_norm_var_not_dist = paddle.sum(sum_square_not_dist_fp32)
+                if is_distributed:
+                    sum_square_dist[idx].append(sum_square)
+                else:
+                    sum_square_not_dist[idx].append(sum_square)
+
+        global_norm_var_dist = self._add_sum_squares(sum_square_dist)
+        global_norm_var_not_dist = self._add_sum_squares(sum_square_not_dist)
 
         return self._comm_and_clip(
             params_grads, global_norm_var_dist, global_norm_var_not_dist
         )
 
+    def _add_sum_squares(self, sum_squares):
+        norm_sum = None
+        for sq in sum_squares:
+            if len(sq) == 0:
+                continue
+
+            sq = np.concatenate(sq, axis=0).flatten()
+            sq = paddle.to_tensor(sq)
+            sq = paddle.sum(sq)
+            if sq.dtype != paddle.float32:
+                sq = sq.astype(paddle.float32)
+
+            if norm_sum is None:
+                norm_sum = sq
+            else:
+                norm_sum = norm_sum + sq
+
+        if norm_sum is None:
+            norm_sum = paddle.to_tensor([0.0], dtype=paddle.float32)
+
+        return norm_sum
+
     @no_grad()
     def _dygraph_clip(self, params_grads):
         chunk_num = self._get_vpp_chunk_num(params_grads)
-        if chunk_num > 0:
+        if chunk_num > 0 and self._force_align_vpp_grad_sum_order:
             return self._vpp_dygraph_clip(params_grads, chunk_num)
 
         sum_square_dist_fp16 = []
