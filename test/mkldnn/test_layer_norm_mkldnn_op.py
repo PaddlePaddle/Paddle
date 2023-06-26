@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# from paddle.fluid.tests.unittests.test_layer_norm_op import *
+# from test_layer_norm_op import *
 import unittest
 from functools import reduce
 from operator import mul
 
 import numpy as np
+from eager_op_test import OpTestTool, _set_use_system_allocator
 
 from paddle import enable_static, fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTestTool,
-    _set_use_system_allocator,
-)
 
 np.random.random(123)
 

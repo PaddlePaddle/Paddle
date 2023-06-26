@@ -375,7 +375,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 dim_head,
                 time_step->data<int>()[0],
                 rotary_emb_dims,
-                1. / sqrt(dim_head));
+                1. / std::sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;
@@ -1049,7 +1049,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                 dim_head,
                 time_step->data<int>()[0],
                 rotary_emb_dims,
-                1. / sqrt(dim_head));
+                1. / std::sqrt(dim_head));
       } else if (cache_kv_out) {  // generation context stage
         const phi::DenseTensor *pre_cache_kv_tensor =
             pre_caches.size() > 0 ? pre_caches[i] : nullptr;

@@ -60,7 +60,6 @@ def resnet_basic_block(
     trainable_statistics=False,
     find_conv_max=True,
 ):
-
     if fluid.framework.in_dygraph_mode():
         attrs = (
             'stride1',

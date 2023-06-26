@@ -16,11 +16,6 @@ limitations under the License. */
 
 namespace phi {
 
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, SparseCooTensor>::kType =
-        RegisterStaticType<phi::TensorBase>(SparseCooTensor::name());
-
 SparseCooTensor::SparseCooTensor() {
   DenseTensor non_zero_indices, non_zero_elements;
   this->SetMember(non_zero_indices, non_zero_elements, {1}, true);

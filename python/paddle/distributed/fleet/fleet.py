@@ -272,20 +272,7 @@ class Fleet:
 
         self.strategy_compiler = StrategyCompiler()
 
-        if self._role_maker._is_non_distributed() and self._is_collective:
-            if paddle.framework.core.is_compiled_with_cuda():
-                gpus_num = paddle.framework.core.get_cuda_device_count()
-                if gpus_num != 1:
-                    raise ValueError(
-                        "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
-                    )
-
         if in_dynamic_mode():
-            if self.worker_num() == 1:
-                # if worker_num is 1, should construct default topology & hcg
-                self._topology = tp.CommunicateTopology()
-                self._hcg = tp.HybridCommunicateGroup(self._topology)
-                return
             if parallel_helper._is_parallel_ctx_initialized():
                 logger.warning(
                     "The dygraph parallel environment has been initialized."
@@ -1335,7 +1322,7 @@ class Fleet:
                 self._user_defined_strategy.semi_auto
                 or self._user_defined_strategy.auto_search
             ):
-                from ..auto_parallel.parallelizer import AutoParallelizer
+                from ..auto_parallel.static.parallelizer import AutoParallelizer
 
                 auto_parallelizer = AutoParallelizer(self)
                 (

@@ -56,6 +56,7 @@ endif()
 
 if(WITH_XPU)
   list(APPEND ALLOCATOR_DEPS xpu_info)
+  list(APPEND ALLOCATOR_SRCS xpu_allocator.cc stream_safe_xpu_allocator.cc)
 endif()
 
 if(WITH_IPU)

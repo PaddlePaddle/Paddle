@@ -27,8 +27,15 @@ InferGPUContext::InferGPUContext(const phi::Place& place)
 #endif
 
 #ifdef PADDLE_WITH_XPU
-InferXPUContext::InferXPUContext(const phi::Place& place)
-    : phi::XPUContext(place) {}
+InferXPUContext::InferXPUContext(const phi::Place& place, int context_gm_size)
+    : phi::XPUContext(place) {
+  if (context_gm_size >= 0) {
+    x_context()->set_option("XPUAPI_DEFAULT_SIZE",
+                            std::to_string(context_gm_size).c_str());
+  } else {
+    x_context()->set_option("XPUAPI_DEFAULT_SIZE", "");
+  }
+}
 
 void* InferXPUContext::Alloc(phi::TensorBase* tensor,
                              phi::DataType dtype,
@@ -72,6 +79,22 @@ void* InferXPUContext::Alloc(phi::TensorBase* tensor,
   } else {
     return DeviceContext::Alloc(
         tensor, dtype, requested_size, pinned, fake_alloc);
+  }
+}
+
+void InferXPUContext::SetXContext(xpu::Context* x_context) {
+  auto* old_x_context = this->x_context();
+  if (old_x_context != x_context) {
+    if (l3_owned_ && l3_size_ > 0 &&
+        (x_context->_l3_mgr.get_size() != l3_size_ ||
+         x_context->_l3_mgr.get_ptr() != l3_ptr_)) {
+      xpu_free(l3_ptr_);
+    }
+    old_x_context->_l3_mgr.set(nullptr, 0);
+    l3_size_ = x_context->_l3_mgr.get_size();
+    l3_ptr_ = x_context->_l3_mgr.get_ptr();
+    l3_owned_ = false;
+    phi::XPUContext::SetXContext(x_context);
   }
 }
 

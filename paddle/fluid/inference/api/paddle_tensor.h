@@ -36,9 +36,8 @@ namespace paddle_infer {
 /// Strings for text data.
 using Strings = std::vector<std::string>;
 
-class Tensor;
-using Exp_OutputHookFunc =
-    std::function<void(const std::string&, const std::string&, const Tensor&)>;
+using OutputTensorHookFunc = std::function<void(
+    const std::string&, const std::string&, const paddle::Tensor&)>;
 
 typedef void (*CallbackFunc)(void*);
 

@@ -53,6 +53,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/new_executor/executor_statistics.h"
+#include "paddle/fluid/framework/new_executor/interpreter/job.h"
+#include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -208,6 +210,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 DECLARE_FILE_SYMBOLS(init_phi);
+DECLARE_FILE_SYMBOLS(kernel_dialect);
 namespace paddle {
 namespace pybind {
 
@@ -307,6 +310,15 @@ bool IsCompiledWithCINN() {
   return false;
 #else
   return true;
+#endif
+}
+
+bool IsRunWithCINN() {
+#ifndef PADDLE_WITH_CINN
+  return false;
+#else
+  return framework::paddle2cinn::CinnCompiler::GetInstance()
+             ->real_compiled_num() > 0;
 #endif
 }
 
@@ -1145,6 +1157,8 @@ All parameter, weight, gradient are variables in Paddle.
   _Scope
       .def("_remove_from_pool",
            [](Scope &self) { ScopePool::Instance().Remove(&self); })
+      .def("raw_address",
+           [](Scope &self) { return reinterpret_cast<uint64_t>(&self); })
       .def(
           "var",
           [](Scope &self, const std::string &name) -> Variable * {
@@ -1840,41 +1854,39 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
-      .def(py::init<const platform::Place &, const ProgramDesc &>())
+      .def(py::init<const platform::Place &,
+                    const interpreter::Plan &,
+                    Scope *>())
       .def("run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              std::vector<std::string> feed_names,
-              std::vector<std::string> fetch_names) {
+           [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
              paddle::framework::FetchList ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(scope, feed_names, fetch_names);
+               ret = self.Run(feed_names);
              }
              return py::cast(std::move(ret));
-           })
-      .def("dry_run",
-           [](StandaloneExecutor &self,
-              Scope *scope,
-              const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<phi::DenseTensor> feed_tensors;
-             std::vector<std::string> feed_names;
-
-             for (auto &item : input_dict) {
-               phi::DenseTensor t;
-               SetTensorFromPyArray<platform::CPUPlace>(
-                   &t, item.second, platform::CPUPlace(), false);
-               feed_names.push_back(item.first);
-               feed_tensors.push_back(t);
-             }
-
-             framework::interpreter::CostInfo cost_info;
-             {
-               pybind11::gil_scoped_release release;
-               cost_info = self.DryRun(scope, feed_names, feed_tensors);
-             }
-             return cost_info;
            });
+
+  py::class_<framework::interpreter::Job,
+             std::shared_ptr<framework::interpreter::Job>>(m, "Job")
+      .def(py::init<const std::string &>(), py::arg("type"))
+      .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
+      .def("type", &framework::interpreter::Job::Type)
+      .def("set_col_attr_for_fetch_op",
+           &framework::interpreter::Job::SetColAttrForFetchOp)
+      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId);
+
+  py::class_<framework::interpreter::Plan>(m, "Plan")
+      .def(
+          py::init<
+              const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
+              const std::unordered_map<std::string, framework::ProgramDesc *>
+                  &>(),
+          py::arg("job_list"),
+          py::arg("type_to_program"))
+      .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
@@ -1913,6 +1925,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
+  m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -1923,6 +1936,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
+  m.def("_test_enforce_gpu_success", []() {
+#if defined(PADDLE_WITH_CUDA)
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaErrorInsufficientDriver);
+#endif
   });
 
   m.def("get_float_stats", []() {
@@ -2697,12 +2715,6 @@ All parameter, weight, gradient are variables in Paddle.
   // Add skipped op list
   m.def("set_skipped_op_list",
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
-
-  m.def("check_numerics",
-        [](const std::string &op_name, const paddle::Tensor &tensor) {
-          VLOG(4) << "Check tensor whether has nan or inf.";
-          egr::CheckTensorHasNanOrInf(op_name, tensor);
-        });
 
   BindFleetWrapper(&m);
   BindIO(&m);

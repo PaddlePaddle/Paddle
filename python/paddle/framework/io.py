@@ -1070,8 +1070,7 @@ def load(path, **configs):
                     load_result = _pack_loaded_dict(load_result)
                     # paddle2.0: paddle.save/load
                     if "StructuredToParameterName@@" in load_result:
-
-                        for (key, name) in load_result[
+                        for key, name in load_result[
                             "StructuredToParameterName@@"
                         ].items():
                             if isinstance(load_result[key], np.ndarray):

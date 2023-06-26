@@ -98,7 +98,6 @@ class AmpScaler:
         decr_every_n_nan_or_inf=1,
         use_dynamic_loss_scaling=True,
     ):
-
         tracer = _dygraph_tracer()
         if not tracer:
             raise ValueError(

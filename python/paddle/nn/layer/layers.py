@@ -78,7 +78,6 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     A post-hook to append customized attributes into all operators generated in current layer.
     """
     if not in_dygraph_mode() and layer._op_recorder.is_valid:
-
         start = layer._op_recorder.start
         end = len(default_main_program().current_block().ops)
         assert start >= 0 and end >= start
@@ -1914,6 +1913,13 @@ class Layer:
                     p = core.Place()
                     p.set_place(t._place())
                     place = core.XPUPlace(p.xpu_device_id())
+                elif p.is_custom_place():
+                    p = core.Place()
+                    p.set_place(t._place())
+                    place = core.CustomPlace(
+                        paddle.device.get_device().split(':')[0],
+                        p.custom_device_id(),
+                    )
                 else:
                     p = core.Place()
                     p.set_place(t._place())

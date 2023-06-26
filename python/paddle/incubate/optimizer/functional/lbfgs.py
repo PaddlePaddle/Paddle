@@ -212,6 +212,7 @@ def minimize_lbfgs(
                 f=objective_func,
                 xk=xk,
                 pk=pk,
+                max_iters=max_line_search_iters,
                 initial_step_length=initial_step_length,
                 dtype=dtype,
             )

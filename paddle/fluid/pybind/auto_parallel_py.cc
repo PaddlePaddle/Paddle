@@ -43,6 +43,8 @@ using phi::distributed::auto_parallel::Machine;
 using phi::distributed::auto_parallel::ProcessMesh;
 using phi::distributed::auto_parallel::TensorDistAttr;
 
+PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
+
 static inline const ProcessMesh *get_tensor_process_mesh(
     const TensorDistAttr &self) {
   if (self.process_mesh().empty()) {
@@ -225,8 +227,11 @@ void BindAutoParallel(py::module *m) {
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
 
-  py::class_<TensorDistAttr>(*m, "TensorDistAttr")
-      .def(py::init<>())
+  py::class_<TensorDistAttr, std::shared_ptr<TensorDistAttr>> py_dist_attr(
+      *m, "TensorDistAttr");
+  g_tensor_dist_attr_pytype =
+      reinterpret_cast<PyTypeObject *>(py_dist_attr.ptr());
+  py_dist_attr.def(py::init<>())
       .def(py::init([](const VarDesc &var_desc) {
         auto shape =
             paddle::distributed::auto_parallel::get_tensor_shape(&var_desc);

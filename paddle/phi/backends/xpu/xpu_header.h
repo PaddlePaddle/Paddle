@@ -51,4 +51,22 @@ class XPUTypeTrait<phi::dtype::bfloat16> {
   using Type = bfloat16;
 };
 
+template <typename T>
+class XPUTypeToPhiType {
+ public:
+  using Type = T;
+};
+
+template <>
+class XPUTypeToPhiType<float16> {
+ public:
+  using Type = phi::dtype::float16;
+};
+
+template <>
+class XPUTypeToPhiType<bfloat16> {
+ public:
+  using Type = phi::dtype::bfloat16;
+};
+
 #endif

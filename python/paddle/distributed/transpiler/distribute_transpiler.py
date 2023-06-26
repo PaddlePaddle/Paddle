@@ -490,7 +490,6 @@ class DistributeTranspiler:
     def _update_remote_sparse_update_op(
         self, program, need_sparse_update_params
     ):
-
         for param_varname, attrs in need_sparse_update_params.items():
             height_sections = self.sparse_param_to_height_sections[
                 param_varname
