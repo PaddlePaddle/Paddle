@@ -598,12 +598,6 @@ class Optimizer:
                 % (type(scheduler))
             )
         self._learning_rate = scheduler
-        current_lr = self._global_learning_rate()
-        if current_lr is not None:
-            if isinstance(self._learning_rate, LRScheduler):
-                print("ok")
-            elif isinstance(self._learning_rate, float):
-                print("not ok")
 
     def get_lr(self):
         """
