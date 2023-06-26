@@ -163,4 +163,9 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                                  const std::string& act_type,
                                  MetaTensor* out,
                                  MetaTensor* out_max);
+
+void ElementwiseMulMulAddXPUInferMeta(const MetaTensor& x,
+                                      const MetaTensor& y,
+                                      const MetaTensor& z,
+                                      MetaTensor* out);
 }  // namespace phi

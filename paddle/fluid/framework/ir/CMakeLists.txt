@@ -268,10 +268,14 @@ if(WITH_XPU)
   pass_library(xpu_delete_cast_op_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fold_interp_outsize_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+<<<<<<< HEAD
   pass_library(fold_two_squeeze2_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
+=======
+  pass_library(elementwise_mul_add_xpu_fuse_pass inference DIR xpu DEPS
+>>>>>>> add ele_mul + mul + add fuse pass
                ${XPU_PASS_DEPS})
 endif()
 

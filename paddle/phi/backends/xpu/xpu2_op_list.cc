@@ -173,6 +173,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"conv2d_transpose_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"elementwise_mul_mul_add_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"cumsum",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,

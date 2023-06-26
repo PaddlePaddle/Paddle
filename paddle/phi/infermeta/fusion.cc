@@ -686,4 +686,11 @@ void Conv2dTransposeXPUInferMeta(const MetaTensor& x,
                             out_max);
 }
 
+void ElementwiseMulMulAddXPUInferMeta(const MetaTensor& x,
+                                      const MetaTensor& y,
+                                      const MetaTensor& z,
+                                      MetaTensor* out) {
+  out->set_dims(x.dims());
+}
+
 }  // namespace phi
