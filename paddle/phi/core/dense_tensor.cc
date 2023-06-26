@@ -115,8 +115,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   if (fake_alloc) {
     bytes = 0;
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         valid(),
+        true,
         phi::errors::PreconditionNotMet("The meta data must be valid when "
                                         "call the mutable data function."));
     if (requested_size) {
@@ -169,8 +170,9 @@ const T* DenseTensor::data() const {
 template <typename T>
 T* DenseTensor::data() {
   T* ret = static_cast<T*>(data());
-  PADDLE_ENFORCE(
-      (dtype() == phi::CppTypeToDataType<T>::Type()),
+  PADDLE_ENFORCE_EQ(
+      dtype(),
+      phi::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
@@ -200,16 +202,18 @@ const void* DenseTensor::data() const {
 }
 
 void DenseTensor::set_meta(DenseTensorMeta&& meta) {
-  PADDLE_ENFORCE(!meta_.valid(),
-                 phi::errors::InvalidArgument(
-                     "Only when the original attribute of Tensor is "
-                     "incomplete, can it be reset."));
+  PADDLE_ENFORCE_EQ(meta_.valid(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "Only when the original attribute of Tensor is "
+                        "incomplete, can it be reset."));
   meta_ = std::move(meta);
 }
 
 void DenseTensor::set_meta(const DenseTensorMeta& meta) {
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       meta.valid(),
+      true,
       phi::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;

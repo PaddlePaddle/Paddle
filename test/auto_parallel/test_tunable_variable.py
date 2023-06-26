@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.tuner import tunable_variable as tv
+from paddle.distributed.auto_parallel.static.tuner import tunable_variable as tv
 
 
 class TestTunableVariable(unittest.TestCase):

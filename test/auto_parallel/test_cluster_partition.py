@@ -18,7 +18,7 @@ import unittest
 class TestClusterPartition(unittest.TestCase):
     def test_cluster_partition(self):
         clusters = [(5, 8), (1, 8), (4, 8), (16, 8), (2, 8), (3, 8)]
-        from paddle.distributed.auto_parallel.tuner.rule_based_tuner import (
+        from paddle.distributed.auto_parallel.static.tuner.rule_based_tuner import (
             ClusterPartitionUtil,
         )
 

@@ -15,6 +15,7 @@
 
 import collections
 import unittest
+from sys import version_info
 
 import paddle
 
@@ -27,18 +28,28 @@ class TestEvalFrame(unittest.TestCase):
         pass
 
     def test_eval_frame(self):
-        CustomCode = collections.namedtuple("CustomCode", ["code"])
+        if version_info.major != 3 or (
+            version_info.minor <= 8 or version_info.minor >= 11
+        ):
+            # print("skip test_eval_frame, current only support 3.8 - 3.10")
+            return
+
+        CustomCode = collections.namedtuple(
+            "CustomCode", ["code", "disable_eval_frame"]
+        )
 
         def mul(a, b):
             return a * b
 
-        code = CustomCode(mul.__code__)
+        code = CustomCode(mul.__code__, True)
 
         def callback(frame_obj):
             # Do your callback function here and return a object with `.code`
             if frame_obj.f_code.co_name == "add":
                 return code
-            return CustomCode(code=frame_obj.f_code)  # do nothing.
+            return CustomCode(
+                code=frame_obj.f_code, disable_eval_frame=True
+            )  # do nothing.
 
         def add(a, b):
             return a + b

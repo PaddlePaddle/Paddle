@@ -97,7 +97,6 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
     def check_save_inference_model(
         self, model, inputs, gt_out, feed=None, fetch=None
     ):
-
         expected_persistable_vars = {p.name for p in model.parameters()}
 
         infer_model_prefix = os.path.join(

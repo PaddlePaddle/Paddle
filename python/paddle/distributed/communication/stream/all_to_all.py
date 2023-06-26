@@ -185,7 +185,7 @@ def alltoall(
     if in_tensor_or_tensor_list is None:
         raise RuntimeError("The input should be specified.")
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         out_is_tensor = paddle.is_tensor(out_tensor_or_tensor_list)
         in_is_tensor = paddle.is_tensor(in_tensor_or_tensor_list)
@@ -335,7 +335,7 @@ def alltoall_single(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         return _alltoall_single_in_dygraph(
             out_tensor,

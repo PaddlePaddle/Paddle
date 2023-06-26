@@ -74,7 +74,7 @@ struct ExpAddFunctor {
 /*
   Cross entropy soft label with dynamic size on axis (log2_elements is
   varibale).
-  - if the input is softmax，compute loss with softmax
+  - if the input is softmax, compute loss with softmax
   - if the input is log_softmax, compute loss with log_softmax and update
   softmax
 */

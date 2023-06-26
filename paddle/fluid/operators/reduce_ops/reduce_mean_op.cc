@@ -98,9 +98,10 @@ class __reduce_meanMaker__ : public ops::ReduceBaseOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean,
-                            ReduceMeanInferShapeFunctor,
-                            PD_INFER_META(phi::OriginReduceInferMetaBase));
+DECLARE_INFER_SHAPE_FUNCTOR(
+    reduce_mean,
+    ReduceMeanInferShapeFunctor,
+    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
 
 REGISTER_OPERATOR(reduce_mean,
                   ops::ReduceBaseOp,

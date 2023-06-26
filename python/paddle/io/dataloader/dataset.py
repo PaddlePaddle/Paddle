@@ -268,12 +268,12 @@ class TensorDataset(Dataset):
     """
 
     def __init__(self, tensors):
-        if not framework._non_static_mode():
+        if not framework.in_dynamic_mode():
             raise RuntimeError(
                 "TensorDataset con only be used in imperative mode"
             )
         assert all(
-            [tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]
+            tensor.shape[0] == tensors[0].shape[0] for tensor in tensors
         ), "tensors not have same shape of the 1st dimension"
         self.tensors = tensors
 

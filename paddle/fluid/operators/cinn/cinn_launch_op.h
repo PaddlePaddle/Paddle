@@ -22,12 +22,15 @@
 
 #include "cinn/common/target.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
@@ -57,6 +60,9 @@ void SetCinnRuntimeFlags();
 // set CINN global random seed
 template <typename DeviceContext>
 void SetCinnRandomSeed();
+
+// set CINN compile target
+void SetCinnTarget(const ::cinn::common::Target& target);
 
 }  // namespace details
 
@@ -115,6 +121,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         "Step 2. Get compilation result of the graph");
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
+    details::SetCinnTarget(target);
     using ClockType = std::chrono::steady_clock;
     std::chrono::time_point<ClockType> start_t, end_t;
     if (VLOG_IS_ON(1)) {
@@ -129,6 +136,11 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
           end_t - start_t);
       VLOG(1) << "Ends to compile at thread " << std::this_thread::get_id()
               << " , time cost : " << time_sec.count() << " ms";
+
+      const auto& visible_names =
+          cinn_compiled_object.launch_context->GetVisibleVarNames();
+      VLOG(1) << "These CINN variable can visible by Paddle: "
+              << string::join_strings(visible_names, ", ");
     }
     details::DebugCinnCompiledResult(cinn_compiled_object);
     auto* launch_context = cinn_compiled_object.launch_context.get();

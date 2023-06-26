@@ -88,7 +88,6 @@ class TestPTQ(unittest.TestCase):
         self.assertEqual(observer_count, 14)
 
     def test_convert(self):
-
         quant_model, ptq = self._get_model_for_ptq()
 
         image = paddle.rand([1, 1, 32, 32], dtype="float32")

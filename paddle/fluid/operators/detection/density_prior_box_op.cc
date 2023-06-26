@@ -268,3 +268,11 @@ PD_REGISTER_STRUCT_KERNEL(density_prior_box,
                           ops::DensityPriorBoxOpKernel,
                           float,
                           double) {}
+
+REGISTER_OP_KERNEL(prior_box,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::PriorBoxOpKernel<float>,
+                   ops::PriorBoxOpKernel<double>,
+                   ops::PriorBoxOpKernel<uint8_t>,
+                   ops::PriorBoxOpKernel<int8_t>);

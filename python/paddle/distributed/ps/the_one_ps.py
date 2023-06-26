@@ -470,7 +470,7 @@ class CommonAccessor(Accessor):
             attr_varnames = self.opt_attr_map[oop.type]
             self.accessor_class = oop.type
 
-        for (formal_name, shape) in param_varnames:
+        for formal_name, shape in param_varnames:
             params.append(formal_name)
             if self.accessor_class == "adam_d2sum":
                 # for dims
@@ -573,7 +573,7 @@ class CommonAccessor(Accessor):
                     oop = op
                     break
 
-        for (attr_varname, type_) in attr_varnames:
+        for attr_varname, type_ in attr_varnames:
             value = oop.attr(attr_varname)
             attrs.append("&".join([attr_varname, str(value)]))
 

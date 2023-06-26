@@ -44,7 +44,7 @@ class EqualGreaterThanChecker {
     PADDLE_ENFORCE_GE(
         value,
         lower_bound_,
-        platform::errors::OutOfRange("Check for attribute valur equal or "
+        platform::errors::OutOfRange("Check for attribute value equal or "
                                      "greater than a certain value failed."));
   }
 
@@ -92,7 +92,7 @@ class TypedAttrVarInfoChecker {
                         true,
                         platform::errors::InvalidArgument(
                             "Required dtype of Attribute(%s) shall be "
-                            "int32|int64, but recevied %s.",
+                            "int32|int64, but received %s.",
                             var_desc->Name(),
                             dtype));
     }

@@ -14,7 +14,6 @@
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 
