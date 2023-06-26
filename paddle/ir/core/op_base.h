@@ -20,7 +20,7 @@
 
 namespace ir {
 
-class InterfaceValue {
+class IR_API InterfaceValue {
  public:
   template <typename ConcreteOp, typename T>
   static InterfaceValue get() {
@@ -64,7 +64,7 @@ class InterfaceValue {
   void *model_{nullptr};
 };
 
-class OpBase {
+class IR_API OpBase {
  public:
   explicit OpBase(Operation *operation = nullptr) : operation_(operation) {}
 

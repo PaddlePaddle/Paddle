@@ -40,8 +40,8 @@ set(PYBIND_DEPS
     phi
     phi_kernel_adaptor
     pd_dialect
-    new_ir
     program_translator
+    ir
     new_profiler
     jit_layer
     jit_property
@@ -340,7 +340,15 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
-      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
+    endif()
+
+    if(WITH_SHARED_IR)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/ir.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${op_impl_path}
+        DEPENDS ir)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
