@@ -36,7 +36,12 @@ phi::KernelKey GetKernelKey(
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
   if (op->name() == "pd.feed") {
-    return {phi::Backend::CPU, phi::DataLayout::ANY, phi::DataType::FLOAT32};
+    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
+    return {phi::Backend::CPU,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
