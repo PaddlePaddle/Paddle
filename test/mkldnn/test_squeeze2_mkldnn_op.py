@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 @OpTestTool.skip_if(
@@ -74,6 +70,20 @@ class TestSqueezeOneDNNOp(TestSqueeze2OneDNNOp):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
+
+
+class TestSqueeze2OneDNNOp_ZeroDim(TestSqueeze2OneDNNOp):
+    def init_test_case(self):
+        self.ori_shape = [1]
+        self.axes = ()
+        self.new_shape = ()
+
+
+class TestSqueezeOneDNNOp_ZeroDim(TestSqueezeOneDNNOp):
+    def init_test_case(self):
+        self.ori_shape = [1]
+        self.axes = ()
+        self.new_shape = ()
 
 
 class TestSqueeze2OneDNNOp1(TestSqueeze2OneDNNOp):

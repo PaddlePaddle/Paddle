@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 // Out = sum(abs(X))
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class L1NormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -39,7 +39,7 @@ class L1NormKernel : public framework::OpKernel<T> {
 };
 
 // dX = dout * sign(X)
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class L1NormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

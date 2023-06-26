@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature DropoutOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature DropoutOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "dropout",
       {"X", "Seed"},
@@ -25,14 +26,15 @@ KernelSignature DropoutOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature DropoutGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("dropout_grad",
                          {"Mask", "Out@GRAD"},
                          {"dropout_prob", "is_test", "dropout_implementation"},
                          {"X@GRAD"});
 }
 
-KernelSignature DropoutNdOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature DropoutNdOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("dropout_nd",
                          {"X", "Seed"},
                          {"dropout_prob",
@@ -45,7 +47,7 @@ KernelSignature DropoutNdOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature DropoutNdGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "dropout_nd_grad",
       {"Mask", "Out@GRAD"},

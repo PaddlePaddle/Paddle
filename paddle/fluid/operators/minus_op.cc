@@ -155,6 +155,8 @@ REGISTER_OPERATOR(minus,
                   ops::MinusOpMaker,
                   ops::MinusGradDescMaker,
                   ops::MinusGradMaker);
-REGISTER_OP_CPU_KERNEL(minus, ops::MinusKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(minus, CPU, ALL_LAYOUT, ops::MinusKernel, float) {}
 
-REGISTER_OP_CUDA_KERNEL(minus, ops::MinusKernel<phi::GPUContext, float>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(minus, GPU, ALL_LAYOUT, ops::MinusKernel, float) {}
+#endif

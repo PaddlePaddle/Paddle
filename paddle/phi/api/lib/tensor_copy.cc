@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/tensor_copy.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"

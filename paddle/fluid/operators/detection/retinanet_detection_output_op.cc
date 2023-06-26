@@ -248,7 +248,7 @@ static inline T JaccardOverlap(const std::vector<T>& box1,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
  public:
   void NMSFast(const std::vector<std::vector<T>>& cls_dets,
@@ -671,6 +671,9 @@ REGISTER_OPERATOR(
     ops::RetinanetDetectionOutputOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(retinanet_detection_output,
-                       ops::RetinanetDetectionOutputKernel<float>,
-                       ops::RetinanetDetectionOutputKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(retinanet_detection_output,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::RetinanetDetectionOutputKernel,
+                          float,
+                          double) {}

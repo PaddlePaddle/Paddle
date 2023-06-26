@@ -56,6 +56,8 @@ class OneHotOpConverter : public OpConverter {
       if (dtype == 6) {  // int64
         VLOG(3) << "trt not support float64, so it is converted to float32.";
       }
+    } else {
+      PADDLE_THROW(platform::errors::Fatal("one_hot is not supported"));
     }
 
     auto depth_name = op_desc.Input("depth_tensor");

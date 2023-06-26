@@ -82,7 +82,7 @@ def optimizer_setting(params, parameter_list):
             learning_rate=lr, step_each_epoch=step, epochs=num_epochs
         ),
         momentum=momentum_rate,
-        regularization=fluid.regularizer.L2Decay(l2_decay),
+        regularization=paddle.regularizer.L2Decay(l2_decay),
         parameter_list=parameter_list,
     )
 
@@ -122,7 +122,6 @@ class ConvBNLayer(paddle.nn.Layer):
 
 class SqueezeExcitation(paddle.nn.Layer):
     def __init__(self, num_channels, reduction_ratio):
-
         super().__init__()
         self._num_channels = num_channels
         self._pool = paddle.nn.AdaptiveAvgPool2D(1)

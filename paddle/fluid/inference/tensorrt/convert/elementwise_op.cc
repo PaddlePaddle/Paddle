@@ -102,7 +102,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
     int right_one_num = dims_x.nbDims - axis - dims_y.nbDims;
     nvinfer1::IShuffleLayer* reshape_layer;
     nvinfer1::ITensor* reshape_y_tensor;
-    if (left_one_num > 0 || right_one_num > 0) {
+    if (dims_x.nbDims != dims_y.nbDims &&
+        (left_one_num > 0 || right_one_num > 0)) {
       if (engine_->with_dynamic_shape()) {
         auto* y_shape_tensor = Shape(Y);
         auto* new_y_shape_tensor = y_shape_tensor;
@@ -319,6 +320,37 @@ class ElementwiseTensorModOpConverter : public ElementwiseTensorOpConverter {
  public:
   ElementwiseTensorModOpConverter() { op_type_ = "mod"; }
 };
+
+// The diff between `pow` and `elementwise_pow` is in:
+// https://github.com/PaddlePaddle/Paddle/blob/release/2.4/python/paddle/tensor/math.py#L420
+class PowOpConverter : public OpConverter {
+ public:
+  PowOpConverter() {}
+  void operator()(const framework::proto::OpDesc& op,
+                  const framework::Scope& scope,
+                  bool test_mode) override {
+    VLOG(3) << "Convert a pow op to TensorRT IElementWiseLayer";
+    framework::OpDesc op_desc(op, nullptr);
+    auto* X = engine_->GetITensor(op_desc.Input("X").front());
+    float factor = PADDLE_GET_CONST(float, op_desc.GetAttr("factor"));
+    nvinfer1::Dims dims_x = X->getDimensions();
+    auto output_name = op_desc.Output("Out")[0];
+
+    nvinfer1::Dims trt_dims_y;
+    trt_dims_y.nbDims = dims_x.nbDims;
+    for (int i = 0; i < trt_dims_y.nbDims; i++) {
+      trt_dims_y.d[i] = 1;
+    }
+
+    std::vector<float> w_data{factor};
+    auto* Y = AddConstantLayer(w_data.data(), trt_dims_y);
+
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kPOW);
+    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+  }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -369,3 +401,5 @@ REGISTER_TRT_OP_CONVERTER(logical_and, ElementwiseTensorLogicalAndOpConverter);
 REGISTER_TRT_OP_CONVERTER(less_equal, ElementwiseTensorLessEqualOpConverter);
 REGISTER_TRT_OP_CONVERTER(greater_equal,
                           ElementwiseTensorGreaterEqualOpConverter);
+
+REGISTER_TRT_OP_CONVERTER(pow, PowOpConverter);

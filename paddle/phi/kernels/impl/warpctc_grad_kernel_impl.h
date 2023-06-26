@@ -29,11 +29,11 @@ namespace phi {
 
 template <typename T, typename Context>
 void WarpctcGradKernel(const Context& dev_ctx,
-                       const DenseTensor& logits,
+                       const DenseTensor& logits UNUSED,
                        const paddle::optional<DenseTensor>& logits_length,
                        const DenseTensor& warpctcgrad,
                        const DenseTensor& loss_grad,
-                       int blank,
+                       int blank UNUSED,
                        bool norm_by_times,
                        DenseTensor* logits_grad) {
   dev_ctx.template Alloc<T>(logits_grad);

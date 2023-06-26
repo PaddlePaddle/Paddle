@@ -363,7 +363,7 @@ __global__ void RoiTransformKernel(const float* input_data,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -507,7 +507,7 @@ __global__ void RoiTransformGradKernel(int out_size,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -539,7 +539,13 @@ class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(roi_perspective_transform,
-                        ops::CUDAROIPerspectiveTransformOpKernel<float>);
-REGISTER_OP_CUDA_KERNEL(roi_perspective_transform_grad,
-                        ops::CUDAROIPerspectiveTransformGradOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CUDAROIPerspectiveTransformOpKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CUDAROIPerspectiveTransformGradOpKernel,
+                          float) {}

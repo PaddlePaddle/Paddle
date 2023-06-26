@@ -239,6 +239,25 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void CudnnLSTMInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& init_h,
+    const MetaTensor& init_c,
+    const MetaTensor& w,
+    const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
+    const MetaTensor& sequence_length,
+    float dropout_prob,
+    bool is_bidirec,
+    int hidden_size,
+    int num_layers,
+    bool is_test,
+    int seed,
+    MetaTensor* out,
+    MetaTensor* last_h,
+    MetaTensor* last_c,
+    MetaTensor* reserve,
+    MetaTensor* state_out);
+
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,
@@ -268,6 +287,13 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out);
 
+void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
+                          const std::vector<int>& outs_dtype,
+                          const std::vector<int>& inputs_dtype,
+                          const std::string& func_name,
+                          int type,
+                          std::vector<MetaTensor*> outs);
+
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,
@@ -288,7 +314,6 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& count,
                            const MetaTensor& hashtable_value,
                            const MetaTensor& hashtable_index,
-                           bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes);
@@ -333,6 +358,12 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out);
+
 void LambInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
@@ -346,6 +377,7 @@ void LambInferMeta(const MetaTensor& param,
                    float beta1,
                    float beta2,
                    float epsilon,
+                   bool always_adapt,
                    bool multi_precision,
                    MetaTensor* param_out,
                    MetaTensor* moment1_out,
@@ -551,6 +583,17 @@ void WarprnntInferMeta(const MetaTensor& input,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
 
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids);
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
@@ -595,6 +638,23 @@ void FusedAdamInferMeta(
     std::vector<MetaTensor*> beta1_pows_out,
     std::vector<MetaTensor*> beta2_pows_out,
     std::vector<MetaTensor*> master_params_out);
+
+void FusedConvInferMeta(const MetaTensor& input,
+                        const MetaTensor& filter,
+                        const MetaTensor& bias,
+                        const MetaTensor& residual_param,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations,
+                        int groups,
+                        const std::string& data_format,
+                        const std::string& mkldnn_data_type,
+                        const std::string& fuse_activation,
+                        bool fuse_residual_conn,
+                        bool force_fp32_output,
+                        MetaTensor* out,
+                        MetaConfig config);
 
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,

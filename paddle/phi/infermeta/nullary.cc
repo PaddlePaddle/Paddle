@@ -41,6 +41,15 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
+void CreateIntArrayInferMeta(const IntArray& data,
+                             DataType dtype,
+                             MetaTensor* out) {
+  CreateInferMetaBase({static_cast<int64_t>(data.GetData().size())},
+                      dtype,
+                      DataLayout::NCHW,
+                      out);
+}
+
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
                          DataLayout layout,

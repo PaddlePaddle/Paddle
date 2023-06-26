@@ -133,8 +133,15 @@ TEST(shape_info_io, read_and_write) {
 
   min_shape.insert(std::make_pair("test1", std::vector<int32_t>{1, 3, 56, 56}));
   std::vector<std::string> names{"test1"};
-  paddle::inference::UpdateShapeRangeInfo(
-      path, min_shape, max_shape, opt_shape, names);
+  paddle::inference::UpdateShapeRangeInfo(path,
+                                          min_shape,
+                                          max_shape,
+                                          opt_shape,
+                                          min_value,
+                                          max_value,
+                                          opt_value,
+                                          names,
+                                          names);
 
   ASSERT_THROW(paddle::inference::DeserializeShapeRangeInfo("no_exists_file",
                                                             &min_shape,

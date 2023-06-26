@@ -77,4 +77,7 @@ PD_REGISTER_KERNEL(unique_consecutive,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(kernel_key.dtype());
+  kernel->OutputAt(2).SetDataType(kernel_key.dtype());
+}

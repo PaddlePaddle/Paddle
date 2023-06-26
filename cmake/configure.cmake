@@ -93,10 +93,6 @@ if(WITH_BOX_PS)
   add_definitions(-DPADDLE_WITH_BOX_PS)
 endif()
 
-if(WITH_ASCEND)
-  add_definitions(-DPADDLE_WITH_ASCEND)
-endif()
-
 if(WITH_XPU)
   message(STATUS "Compile with XPU!")
   add_definitions(-DPADDLE_WITH_XPU)
@@ -238,4 +234,8 @@ endif()
 
 if(WITH_CUDNN_FRONTEND)
   add_definitions(-DPADDLE_WITH_CUDNN_FRONTEND)
+endif()
+
+if(WITH_SHARED_PHI)
+  add_definitions(-DPHI_SHARED)
 endif()

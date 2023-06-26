@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
+#include "glog/logging.h"
+
+#include "paddle/phi/core/macros.h"
+
 namespace phi {
 namespace funcs {
 
@@ -51,11 +55,11 @@ struct cpu_gather_scatter_functor {
   template <typename func_t>
   void operator()(phi::DenseTensor self,
                   int dim,
-                  const phi::DenseTensor& index,
+                  const phi::DenseTensor& index UNUSED,
                   const phi::DenseTensor& src,
-                  const std::string& method_name,
+                  const std::string& method_name UNUSED,
                   const func_t& reduce_op,
-                  const phi::DeviceContext& ctx) {
+                  const phi::DeviceContext& ctx UNUSED) {
     if (index.numel() == 0) {
       return;
     }
@@ -177,11 +181,11 @@ void cpu_scatter_mul_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_input_grad_kernel(phi::DenseTensor self,
+void cpu_scatter_input_grad_kernel(phi::DenseTensor self UNUSED,
                                    int dim,
                                    const phi::DenseTensor& index,
                                    phi::DenseTensor output,
-                                   const phi::DeviceContext& ctx) {
+                                   const phi::DeviceContext& ctx UNUSED) {
   auto* index_data = index.data<index_t>();
   auto* output_data = output.data<tensor_t>();
 

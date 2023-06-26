@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/instance_norm_grad_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -180,6 +180,9 @@ def custom_write_stub(resource, pyfile):
 
         def __bootstrap__():
             assert os.path.exists(so_path)
+            # load custom op shared library with abs path
+            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+
             if os.name == 'nt' or sys.platform.startswith('darwin'):
                 # Cpp Extension only support Linux now
                 mod = types.ModuleType(__name__)
@@ -193,10 +196,8 @@ def custom_write_stub(resource, pyfile):
                 except ImportError:
                     mod = types.ModuleType(__name__)
 
-            # load custom op shared library with abs path
-            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            for custom_ops in custom_ops:
-                setattr(mod, custom_ops, eval(custom_ops))
+            for custom_op in custom_ops:
+                setattr(mod, custom_op, eval(custom_op))
 
         __bootstrap__()
 
@@ -561,8 +562,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
                 extra_compile_args[compiler] = []
 
     if IS_WINDOWS:
-        # TODO(zhouwei): may append compile flags in future
-        pass
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
@@ -886,7 +885,6 @@ def add_compile_flag(extra_compile_args, flags):
 
 
 def is_cuda_file(path):
-
     cuda_suffix = {'.cu'}
     items = os.path.splitext(path)
     assert len(items) > 1
@@ -1037,16 +1035,22 @@ def _generate_python_module(
 
 
 def _gen_output_content(
-    op_name, in_names, out_names, ins_map, attrs_map, inplace_reverse_idx
+    op_name,
+    in_names,
+    out_names,
+    ins_map,
+    attrs_map,
+    outs_list,
+    inplace_reverse_idx,
 ):
     # ' ' * tab space * tab number
     indent = ' ' * 4 * 2
-    dynamic_content = f"""
-{indent}res = []
+    dynamic_content = f"""res = []
 {indent}start_idx = 0"""
-    static_content = f"""
-{indent}ins = {{}}
+    static_content = f"""ins = {{}}
 {indent}ins_map = {ins_map}
+{indent}outs = {{}}
+{indent}outs_list = {outs_list}
 {indent}for key, value in ins_map.items():
 {indent}    # handle optional inputs
 {indent}    if value is not None:
@@ -1131,23 +1135,19 @@ def _custom_api_content(op_name):
         out_names,
         ins_map,
         attrs_map,
+        outs_list,
         inplace_reverse_idx,
     )
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.core import Tensor
-        from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
+        from paddle.framework import in_dynamic_mode
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
-            # prepare inputs and outputs
-            outs = {{}}
-            outs_list = {outs_list}
-
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 outs = core.eager._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
@@ -1159,7 +1159,6 @@ def _custom_api_content(op_name):
     api_content = API_TEMPLATE.format(
         op_name=op_name,
         params_list=params_list,
-        outs_list=outs_list,
         dynamic_content=dynamic_content,
         static_content=static_content,
     )
@@ -1267,7 +1266,7 @@ def _write_setup_file(
     ).lstrip()
 
     with_cuda = False
-    if any([is_cuda_file(source) for source in sources]):
+    if any(is_cuda_file(source) for source in sources):
         with_cuda = True
     log_v(f"with_cuda: {with_cuda}", verbose)
 

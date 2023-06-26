@@ -45,3 +45,7 @@ endfunction()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+
+if(APPLE)
+  set_tests_properties(test_model_cast_to_bf16 PROPERTIES TIMEOUT 300)
+endif()

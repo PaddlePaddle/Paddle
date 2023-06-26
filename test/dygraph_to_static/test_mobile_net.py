@@ -448,7 +448,7 @@ def create_optimizer(args, parameter_list):
     optimizer = fluid.optimizer.Momentum(
         learning_rate=args.lr,
         momentum=args.momentum_rate,
-        regularization=fluid.regularizer.L2Decay(args.l2_decay),
+        regularization=paddle.regularizer.L2Decay(args.l2_decay),
         parameter_list=parameter_list,
     )
 
@@ -496,7 +496,6 @@ class Args:
 def train_mobilenet(args, to_static):
     paddle.jit.enable_to_static(to_static)
     with fluid.dygraph.guard(args.place):
-
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)

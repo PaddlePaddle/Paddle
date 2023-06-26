@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu()
@@ -69,6 +69,12 @@ class TestStack2DOneDNNOp(OpTest):
 class TestStack1DOneDNNOp(TestStack2DOneDNNOp):
     def initParameters(self):
         self.input_dim = 100
+        self.axis = 0
+
+
+class TestStack0DOneDNNOp(TestStack2DOneDNNOp):
+    def initParameters(self):
+        self.input_dim = ()
         self.axis = 0
 
 

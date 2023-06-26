@@ -79,7 +79,7 @@ struct ReorderFunctor {
   int64_t stride_;
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -149,7 +149,7 @@ class ShuffleBatchCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -180,15 +180,21 @@ class ShuffleBatchGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(shuffle_batch,
-                        ops::ShuffleBatchCUDAKernel<float>,
-                        ops::ShuffleBatchCUDAKernel<double>,
-                        ops::ShuffleBatchCUDAKernel<int32_t>,
-                        ops::ShuffleBatchCUDAKernel<int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(shuffle_batch_grad,
-                        ops::ShuffleBatchGradCUDAKernel<float>,
-                        ops::ShuffleBatchGradCUDAKernel<double>,
-                        ops::ShuffleBatchGradCUDAKernel<int32_t>,
-                        ops::ShuffleBatchGradCUDAKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(shuffle_batch,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleBatchCUDAKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(shuffle_batch_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleBatchGradCUDAKernel,
+                          float,
+                          double,
+                          int32_t,
+                          int64_t) {}
 #endif

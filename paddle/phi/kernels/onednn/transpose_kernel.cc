@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_kernel.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 

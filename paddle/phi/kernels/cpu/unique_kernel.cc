@@ -80,10 +80,6 @@ void UniqueRawKernel(const Context& context,
     return;
   }
 
-  if (x.numel() == 0) {
-    context.template Alloc<T>(out);
-    return;
-  }
   if (axis.empty()) {
     phi::VisitDataTypeTiny(
         dtype,
@@ -123,7 +119,11 @@ PD_REGISTER_KERNEL(unique,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(unique_raw,
                    CPU,
@@ -132,4 +132,8 @@ PD_REGISTER_KERNEL(unique_raw,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
+}

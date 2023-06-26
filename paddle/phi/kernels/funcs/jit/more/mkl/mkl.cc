@@ -246,10 +246,10 @@ bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
   return true;
 }
 
-#define AWALYS_USE_ME_WITH_DOUBLE(func)                      \
-  template <>                                                \
-  bool func##Kernel<double>::CanBeUsed(const int& d) const { \
-    return true;                                             \
+#define AWALYS_USE_ME_WITH_DOUBLE(func)                             \
+  template <>                                                       \
+  bool func##Kernel<double>::CanBeUsed(const int& d UNUSED) const { \
+    return true;                                                    \
   }
 
 AWALYS_USE_ME_WITH_DOUBLE(VMul);

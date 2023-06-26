@@ -18,6 +18,8 @@
 #include <cstring>
 #include <thread>
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace distributed {
 namespace tcputils {

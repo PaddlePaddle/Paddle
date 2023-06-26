@@ -20,6 +20,8 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/profiler/common_event.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/api/profiler/host_event_recorder.h"
@@ -31,13 +33,13 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
 
-DEFINE_bool(enable_host_event_recorder_hook,
-            false,
-            "enable HostEventRecorder, hook Profiler");
+PHI_DEFINE_bool(enable_host_event_recorder_hook,
+                false,
+                "enable HostEventRecorder, hook Profiler");
 
-DEFINE_bool(enable_record_op_info,
-            false,
-            "enable operator supplement info recorder");
+PHI_DEFINE_bool(enable_record_op_info,
+                false,
+                "enable operator supplement info recorder");
 
 namespace phi {
 

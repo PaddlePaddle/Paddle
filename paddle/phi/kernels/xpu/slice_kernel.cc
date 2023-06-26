@@ -21,14 +21,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SliceRawKernel(const Context& ctx,
-                    const DenseTensor& input,
-                    const std::vector<int64_t>& axes,
-                    const IntArray& starts_t,
-                    const IntArray& ends_t,
-                    const std::vector<int64_t>& infer_flags,
-                    const std::vector<int64_t>& decrease_axis,
-                    DenseTensor* out) {
+void SliceKernel(const Context& ctx,
+                 const DenseTensor& input,
+                 const std::vector<int64_t>& axes,
+                 const IntArray& starts_t,
+                 const IntArray& ends_t,
+                 const std::vector<int64_t>& infer_flags,
+                 const std::vector<int64_t>& decrease_axis,
+                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   // Step 1: Get the accurate attribute value of starts and ends
@@ -97,6 +97,12 @@ void SliceRawKernel(const Context& ctx,
   }
 
   ctx.template Alloc<T>(out);
+  for (size_t i = 0; i < shape_size; ++i) {
+    if (starts_extension[i] == ends_extension[i] || shape[i] == 0) {
+      return;
+    }
+  }
+
   int r = xpu::slice<XPUType>(ctx.x_context(),
                               reinterpret_cast<const XPUType*>(input.data<T>()),
                               reinterpret_cast<XPUType*>(out->data<T>()),
@@ -110,7 +116,7 @@ void SliceRawKernel(const Context& ctx,
 PD_REGISTER_KERNEL(slice,
                    XPU,
                    ALL_LAYOUT,
-                   phi::SliceRawKernel,
+                   phi::SliceKernel,
                    float,
                    int,
                    phi::dtype::float16,

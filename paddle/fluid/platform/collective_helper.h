@@ -22,10 +22,8 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/device_manager.h"
 #include "paddle/utils/variant.h"
-#if defined(PADDLE_WITH_CNCL)
-#include "paddle/fluid/platform/device/mlu/device_context.h"
-#endif
 
 namespace paddle {
 namespace platform {
@@ -247,59 +245,51 @@ class BKCLCommContext {
 };
 #endif
 
-#if defined(PADDLE_WITH_CNCL)
-// In order to apply hierarchical communication with CNCL, we need
-// a communication ring contains CNCL communicators associated to a global
-// cnclUniqueId. E.g. for a hierarchical case,
-//
-//    11 - 12   21 - 22
-//     |    |    |    |
-//    13 - 14 - 23 - 24
-//          |    |
-//    31 - 32 - 41 - 42
-//     |    |    |    |
-//    33 - 34   43 - 44
-//
-// we group (14,23,32,41) as the top, and (11,12,13,14), (21,22,23,24),
-// (31,32,33,34), (41,42,43,44) as bottoms respectively.
-//
-// We could also use a single communication ring for the flatten case
-//
-// The CNCLComm instance is created and reversed in the CNCLCommContext
-// singleton with a global user specified group id.
-class MLUDeviceContext;
-
-class CNCLComm {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+class XCCLComm {
  public:
   virtual int ring_id() const = 0;
   virtual int nranks() const = 0;
   virtual int rank() const = 0;
   virtual int device_id() const = 0;
-  virtual cnclComm_t comm() const = 0;
-  virtual mluStream stream() const = 0;
-  virtual MLUDeviceContext* dev_context() const = 0;
-  virtual ~CNCLComm() = default;
+  virtual phi::ccl::CCLComm comm() const = 0;
+  virtual std::shared_ptr<phi::stream::Stream> stream() const = 0;
+  virtual std::shared_ptr<phi::event::Event> compute_event() const = 0;
+  virtual std::shared_ptr<phi::event::Event> comm_event() const = 0;
+  virtual phi::CustomContext* dev_context() const = 0;
+  virtual ~XCCLComm() = default;
 };
 
-// A singleton CNCL communicator context reserves communication ring ids
-class CNCLCommContext {
+// A singleton XCCL communicator context reserves communication ring ids
+class XCCLCommContext {
  public:
-  static CNCLCommContext& Instance() {
-    static CNCLCommContext comm_ctx;
-    return comm_ctx;
-  }
+  static XCCLCommContext& Instance(const std::string& device_type);
+  static void Release();
 
-  CNCLComm* CreateComm(
-      cnclCliqueId* cncl_id, int nranks, int rank, int dev_id, int ring_id = 0);
-  void CreateAllCNCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
+  XCCLComm* CreateComm(phi::ccl::CCLRootId* nccl_id,
+                       int nranks,
+                       int rank,
+                       int dev_id,
+                       int ring_id = 0);
+
+  void CreateAllXCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
+
+  void CreateXCCLCommMultiTrainer(const std::vector<int>& dev_ids,
+                                  phi::ccl::CCLRootId* xccl_id,
+                                  int nranks,
+                                  int rank,
+                                  int ring_id);
 
   // a latter comm with the same dev_id and the same ring_id
   // will override the former
-  CNCLComm* AssignCNCLComm(
-      cnclComm_t comm, int nranks, int rank, int dev_id, int ring_id = 0);
+  XCCLComm* AssignXCCLComm(phi::ccl::CCLComm comm,
+                           int nranks,
+                           int rank,
+                           int dev_id,
+                           int ring_id = 0);
 
   // retrieve a communicator by the ring id in multiprocessing mode
-  CNCLComm* Get(int ring_id) const {
+  XCCLComm* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(
         comm_map_.count(ring_id),
         0,
@@ -313,8 +303,19 @@ class CNCLCommContext {
     return comm_map_.at(ring_id).begin()->second.get();
   }
 
+  int GetRingId(phi::ccl::CCLComm comm) const {
+    for (const auto& pair : comm_map_) {
+      for (const auto& p : pair.second) {
+        if (p.second.get()->comm() == comm) {
+          return pair.first;
+        }
+      }
+    }
+    return -1;
+  }
+
   // retrieve a communicator by the ring id and the device id
-  CNCLComm* Get(int ring_id, int dev_id) const {
+  XCCLComm* Get(int ring_id, int dev_id) const {
     PADDLE_ENFORCE_GT(
         comm_map_.count(ring_id),
         0,
@@ -331,23 +332,24 @@ class CNCLCommContext {
   }
 
   // retrieve a communicator by the ring id and place
-  CNCLComm* Get(int ring_id, Place place) const {
+  XCCLComm* Get(int ring_id, Place place) const {
     return Get(ring_id, place.device);
   }
 
  private:
+  std::string device_type_;
   std::once_flag once_flag_;
   std::mutex comm_map_mutex_;
-  // ring id to dev-CNCLComm
-  std::map<int, std::map<int, std::unique_ptr<CNCLComm>>> comm_map_;
+  // ring id to dev-XCCLComm
+  std::map<int, std::map<int, std::unique_ptr<XCCLComm>>> comm_map_;
 
-  void ReleaseCNCLComms();
+  void ReleaseXCCLComms();
 
-  CNCLCommContext() = default;
-  DISABLE_COPY_AND_ASSIGN(CNCLCommContext);
+  XCCLCommContext() = default;
+  explicit XCCLCommContext(const std::string& device_type)
+      : device_type_(device_type) {}
+  DISABLE_COPY_AND_ASSIGN(XCCLCommContext);
 };
-
 #endif
-
 }  // namespace platform
 }  // namespace paddle

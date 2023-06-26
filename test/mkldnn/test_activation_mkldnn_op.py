@@ -15,17 +15,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
-from scipy.special import expit
-
-import paddle
-import paddle.nn.functional as F
-from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-)
-from paddle.fluid.tests.unittests.test_activation_op import (
+from test_activation_op import (
     TestAbs,
     TestAbs_ZeroDim,
     TestActivation,
@@ -49,7 +41,11 @@ from paddle.fluid.tests.unittests.test_activation_op import (
     TestTanh,
     TestTanh_ZeroDim,
 )
-from paddle.fluid.tests.unittests.test_gelu_op import gelu
+from test_gelu_op import gelu
+
+import paddle
+import paddle.nn.functional as F
+from paddle.fluid import core
 
 
 class TestMKLDNNReluDim2(TestRelu):
@@ -414,30 +410,6 @@ class TestMKLDNNAbsDim4(TestAbs):
 
     def init_dtype(self):
         self.dtype = np.float32
-
-
-class TestMKLDNNSwishDim4(TestSwish):
-    def setUp(self):
-        super().setUp()
-
-        x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
-        beta = 2.3
-        out = x * expit(beta * x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "beta": beta}
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):

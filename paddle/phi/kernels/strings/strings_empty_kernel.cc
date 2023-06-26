@@ -38,28 +38,26 @@ void EmptyLikeKernel(const Context& dev_ctx, StringTensor* out) {
 
 using pstring = ::phi::dtype::pstring;
 
-PD_REGISTER_GENERAL_KERNEL(strings_empty,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::strings::EmptyKernel<phi::CPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::EmptyKernel<phi::CPUContext>) {}
 
-PD_REGISTER_GENERAL_KERNEL(strings_empty_like,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::strings::EmptyLikeKernel<phi::CPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_empty_like,
+    CPU,
+    ALL_LAYOUT,
+    phi::strings::EmptyLikeKernel<phi::CPUContext>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(strings_empty,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::EmptyKernel<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_empty,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::strings::EmptyKernel<phi::GPUContext>) {}
 
-PD_REGISTER_GENERAL_KERNEL(strings_empty_like,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::strings::EmptyLikeKernel<phi::GPUContext>,
-                           pstring) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
+    strings_empty_like,
+    GPU,
+    ALL_LAYOUT,
+    phi::strings::EmptyLikeKernel<phi::GPUContext>) {}
 #endif

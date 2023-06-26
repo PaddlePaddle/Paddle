@@ -19,10 +19,12 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
     START_BASH
     test_fleet_launch_custom_device.sh
     ENVS
+    PYTHONPATH=""
     FLAGS_allocator_strategy=naive_best_fit
     PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR}
     PLUGIN_URL=${PLUGIN_URL}
-    PLUGIN_TAG=${PLUGIN_TAG})
+    PLUGIN_TAG=${PLUGIN_TAG}
+    PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
 
   set_tests_properties(test_custom_cpu_plugin PROPERTIES TIMEOUT 120)
   set_tests_properties(test_custom_cpu_profiler_plugin PROPERTIES TIMEOUT 120)

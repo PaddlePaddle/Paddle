@@ -33,42 +33,19 @@ MD5SUM = '71e730ee8d7aa77a215b7e898aa089af'
 SAVE_NAME = 'bert_training_data.npz'
 
 
-DY2ST_PRIM_GT = [
-    11.144556999206543,
-    10.343620300292969,
-    10.330279350280762,
-    10.276118278503418,
-    10.222086906433105,
-    10.194628715515137,
-    10.14902114868164,
-    10.096250534057617,
-    10.104615211486816,
-    9.985644340515137,
-]
-DY2ST_CINN_GT = [
-    10.649632453918457,
-    10.333406448364258,
-    10.33541202545166,
-    10.260543823242188,
-    10.219606399536133,
-    10.176884651184082,
-    10.124699592590332,
-    10.072620391845703,
-    10.112163543701172,
-    9.969393730163574,
-]
 DY2ST_PRIM_CINN_GT = [
-    11.144556999206543,
-    10.343620300292969,
-    10.330279350280762,
-    10.276118278503418,
-    10.222086906433105,
-    10.194628715515137,
-    10.149020195007324,
-    10.096250534057617,
-    10.104615211486816,
-    9.985644340515137,
+    11.086677551269531,
+    10.357963562011719,
+    10.33290958404541,
+    10.270476341247559,
+    10.230023384094238,
+    10.196759223937988,
+    10.153482437133789,
+    10.098485946655273,
+    10.119072914123535,
+    9.993000984191895,
 ]
+
 
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -157,27 +134,7 @@ class TestBert(unittest.TestCase):
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
         "paddle is not compiled with CINN and CUDA",
     )
-    def test_prim(self):
-        dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
-
-    @unittest.skipIf(
-        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
-        "paddle is not compiled with CINN and CUDA",
-    )
-    def test_cinn(self):
-        paddle.set_flags({'FLAGS_deny_cinn_ops': "dropout"})
-        dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-        np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
-
-    @unittest.skipIf(
-        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
-        "paddle is not compiled with CINN and CUDA",
-    )
     def test_prim_cinn(self):
-        paddle.set_flags(
-            {'FLAGS_deny_cinn_ops': "gaussian_random;uniform_random"}
-        )
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

@@ -29,7 +29,7 @@ template <typename T1, typename T2 = T1, typename OutT = T1>
 struct NoMaskFwFunctor {
   const float retain_prob_;
   const bool is_upscale_in_train_;
-  using MT = typename phi::kps::details::MPTypeTrait<T1>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T1>::Type;
   MT factor;
   HOSTDEVICE inline NoMaskFwFunctor(const float retain_prob,
                                     const bool is_upscale_in_train)
@@ -59,7 +59,7 @@ struct NoMaskFwFunctor {
 
 template <typename T>
 struct ScaleAddFuctor {
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   explicit ScaleAddFuctor(const MT factor, bool upscale_in_train)
       : factor_(factor), upscale_in_train_(upscale_in_train) {}
 
@@ -139,6 +139,7 @@ template <typename T, typename Context>
 void FusedDropoutAddKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
+                           const paddle::optional<DenseTensor>& seed_tensor,
                            const Scalar& p,
                            bool is_test,
                            const std::string& mode,
@@ -168,10 +169,18 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     size_t block_size = random_prop[1];
     size_t offset = random_prop[2];
     size_t main_offset = random_prop[3];
-    funcs::GetSeedDataAndIncrement(
-        dev_ctx, nullptr, fix_seed, seed, offset, &seed_data, &increment);
+    funcs::GetSeedDataAndIncrement(dev_ctx,
+                                   seed_tensor.get_ptr(),
+                                   fix_seed,
+                                   seed,
+                                   offset,
+                                   &seed_data,
+                                   &increment);
     seed_offset_data[0] = static_cast<int64_t>(seed_data);
     seed_offset_data[1] = static_cast<int64_t>(increment);
+
+    VLOG(4) << "FusedDropoutAdd seed: " << seed << ", offset: " << offset
+            << ", seed_data:" << seed_data;
 
     auto dst_functor =
         NoMaskFwFunctor<T, float>(1.0f - dropout_rate, upscale_in_train);
@@ -197,7 +206,7 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
                                        dst_functor);
 #undef PD_DROPOUT_KERNEL_NAME
   } else {
-    using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT factor = static_cast<MT>(1.0f - dropout_rate);
     std::vector<phi::DenseTensor*> outs = {out};
     std::vector<const phi::DenseTensor*> ins = {&x, &y};

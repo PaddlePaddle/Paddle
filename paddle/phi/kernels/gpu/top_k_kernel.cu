@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/top_k_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -100,7 +102,7 @@ void TopkKernel(const Context& dev_ctx,
 
     // The conclusion is drawn from the data through multiple sets of
     // statistics
-    if (input_width >= 128 && k >= input_width * 0.75) {
+    if (input_width >= 128 && k >= input_width * 0.25) {
       auto* ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
       if (phi::funcs::SortTopk<T>(*ctx,
                                   input,

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kthvalue_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -287,6 +287,7 @@ PD_REGISTER_KERNEL(kthvalue,
                    double,
                    int,
                    int64_t,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

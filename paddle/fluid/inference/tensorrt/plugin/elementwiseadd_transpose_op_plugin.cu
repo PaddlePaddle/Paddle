@@ -86,9 +86,16 @@ bool ElementwiseAddTransposePluginDynamic::supportsFormatCombination(
   }
   // output 0
   if (pos == 2) {
-    return (in.type == in_out[0].type) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR ||
-            in.format == nvinfer1::TensorFormat::kHWC8);
+    // 7.0.0.11 test_pcpvt_base_trt_fp16.py failed if support C8.
+    // Only support linear format in lower versions of TRT
+#if IS_TRT_VERSION_GE(7100)
+    bool support_format = in.format == nvinfer1::TensorFormat::kLINEAR ||
+                          in.format == nvinfer1::TensorFormat::kHWC8;
+#else
+    bool support_format = in.format == nvinfer1::TensorFormat::kLINEAR;
+#endif
+
+    return (in.type == in_out[0].type) && (support_format);
   }
 }
 void ElementwiseAddTransposePluginDynamic::configurePlugin(

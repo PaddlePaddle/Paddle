@@ -23,7 +23,6 @@ from paddle.dataset import wmt16
 
 
 def get_input_descs(args, mode="train"):
-
     batch_size = args.batch_size  # TODO None(before)
     seq_len = None
     n_head = getattr(args, "n_head", 8)

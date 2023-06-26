@@ -192,7 +192,7 @@ def yolo_loss(
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.yolo_loss(
+        loss = _C_ops.yolo_loss(
             x,
             gt_box,
             gt_label,
@@ -524,9 +524,9 @@ def prior_box(
             input,
             image,
             min_sizes,
+            max_sizes,
             aspect_ratios,
             variance,
-            max_sizes,
             flip,
             clip,
             step_w,

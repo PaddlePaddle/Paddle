@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 @OpTestTool.skip_if(
@@ -63,6 +59,20 @@ class TestExpandV2ExpandDimOneDNNOp(TestExpandV2OneDNNOp):
         self.ori_shape = [120]
         self.shape = [2, 120]
         self.expand_times = [2, 1]
+
+
+class TestExpandV2ExpandDimOneDNNOp_ZeroDim(TestExpandV2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = [10, 10]
+        self.expand_times = [10, 10]
+
+
+class TestExpandV2ExpandDimOneDNNOp_ZeroDim2(TestExpandV2OneDNNOp):
+    def init_data(self):
+        self.ori_shape = []
+        self.shape = []
+        self.expand_times = []
 
 
 class TestExpandV2CopyScenarioOneDNNOp(TestExpandV2OneDNNOp):

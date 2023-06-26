@@ -21,26 +21,26 @@ namespace sparse {
 
 /* DENSE + COO @ DENSE -> DENSE */
 template <typename T, typename Context>
-void AddmmCooDenseKernel(const Context& dev_ctx,
-                         const DenseTensor& input,
-                         const SparseCooTensor& x,
-                         const DenseTensor& y,
-                         float beta,
-                         float alpha,
-                         DenseTensor* out) {
+void AddmmCooDenseKernel(const Context& dev_ctx UNUSED,
+                         const DenseTensor& input UNUSED,
+                         const SparseCooTensor& x UNUSED,
+                         const DenseTensor& y UNUSED,
+                         float beta UNUSED,
+                         float alpha UNUSED,
+                         DenseTensor* out UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.addmm' now."));
 }
 
 /* DENSE + CSR @ DENSE -> DENSE */
 template <typename T, typename Context>
-void AddmmCsrDenseKernel(const Context& dev_ctx,
-                         const DenseTensor& input,
-                         const SparseCsrTensor& x,
-                         const DenseTensor& y,
-                         float beta,
-                         float alpha,
-                         DenseTensor* out) {
+void AddmmCsrDenseKernel(const Context& dev_ctx UNUSED,
+                         const DenseTensor& input UNUSED,
+                         const SparseCsrTensor& x UNUSED,
+                         const DenseTensor& y UNUSED,
+                         float beta UNUSED,
+                         float alpha UNUSED,
+                         DenseTensor* out UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.addmm' now."));
 }

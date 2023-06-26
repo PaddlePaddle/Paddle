@@ -78,7 +78,7 @@ def shape(input):
                 input.shape = [3, 2]
 
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, bfloat16, float16, float32, float64, int32, int64.
                           If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
@@ -113,6 +113,7 @@ def shape(input):
             'input',
             [
                 'bool',
+                'uint16',
                 'float16',
                 'float32',
                 'float64',

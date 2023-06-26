@@ -102,6 +102,12 @@ class GradientMergeConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class PipelineConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.PIPELINE
+        super().__init__(category, config_dict)
+
+
 class QATConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.QAT
@@ -123,6 +129,12 @@ class DatasetConfig(BaseConfig):
 class FusedPassesConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.FUSED_PASSES
+        super().__init__(category, config_dict)
+
+
+class DPOptimizationConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.DP_OPTIMIZATION
         super().__init__(category, config_dict)
 
 
@@ -186,6 +198,9 @@ class Strategy(BaseConfig):
         config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
         self.gradient_merge = GradientMergeConfig(config_dict)
 
+        config_dict = self._config_dict.get(constants.PIPELINE, None)
+        self.pipeline = PipelineConfig(config_dict)
+
         config_dict = self._config_dict.get(constants.QAT, None)
         self.qat = QATConfig(config_dict)
 
@@ -197,3 +212,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
         self.fused_passes = FusedPassesConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.DP_OPTIMIZATION, None)
+        self.dp_optimization = DPOptimizationConfig(config_dict)

@@ -14,15 +14,17 @@
 
 #include "paddle/phi/kernels/npu_identity_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void NPUIdentityKernel(const Context& dev_ctx,
+void NPUIdentityKernel(const Context& dev_ctx UNUSED,
                        const DenseTensor& x,
-                       const int format,
+                       const int format UNUSED,
                        DenseTensor* out) {
   VLOG(4) << "npu_identity op is only for NPU, please avoid using this kernel!";
   out->ShareDataWith(x);

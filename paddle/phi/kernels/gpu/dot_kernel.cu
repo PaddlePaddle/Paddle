@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/dot_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -30,7 +32,7 @@ void DotKernel(const Context& dev_ctx,
                const DenseTensor& y,
                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  if (1 == out->dims().size()) {
+  if (out->dims().size() == 0) {
     auto eigen_out = phi::EigenScalar<T>::From(*out);
     auto eigen_x = phi::EigenVector<T>::Flatten(x);
     auto eigen_y = phi::EigenVector<T>::Flatten(y);
@@ -38,7 +40,7 @@ void DotKernel(const Context& dev_ctx,
     auto& dev = *dev_ctx.eigen_device();
     eigen_out.device(dev) = (eigen_x * eigen_y).sum();
   } else {
-    auto eigen_out = phi::EigenMatrix<T>::From(*out);
+    auto eigen_out = phi::EigenVector<T>::From(*out);
     auto eigen_x = phi::EigenMatrix<T>::From(x);
     auto eigen_y = phi::EigenMatrix<T>::From(y);
 
@@ -61,4 +63,6 @@ PD_REGISTER_KERNEL(dot,
                    int,
                    int64_t,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

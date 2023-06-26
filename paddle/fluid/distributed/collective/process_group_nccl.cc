@@ -23,9 +23,10 @@
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-DECLARE_bool(nccl_blocking_wait);
+PHI_DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
 // set this flag to `true` and recompile to enable dynamic checks
@@ -202,25 +203,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
       CommType::ALLREDUCE,
       sync_op,
       use_calc_stream);
-}
-
-void CheckSizeOnEachRank(const phi::DDim& tensor_dim,
-                         const std::vector<int64_t>& size_on_each_rank,
-                         int world_size) {
-  int length_size_on_each_rank = size_on_each_rank.size();
-  PADDLE_ENFORCE_EQ(
-      length_size_on_each_rank,
-      world_size,
-      phi::errors::InvalidArgument(
-          "The length of size_on_each_rank must be equal to world_size."));
-
-  int64_t sum_size_on_each_rank =
-      std::accumulate(size_on_each_rank.begin(), size_on_each_rank.end(), 0);
-  PADDLE_ENFORCE_EQ(
-      sum_size_on_each_rank,
-      tensor_dim[0],
-      phi::errors::InvalidArgument(
-          "The sum of size_on_each_rank must be equal to tensor's dim[0]."));
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
@@ -1056,41 +1038,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                                            stream);
       },
       CommType::ALLGATHER);
-}
-
-void* GetPointerByOffset(void* raw_pointer, size_t offset, phi::DataType type) {
-  if (type == phi::DataType::FLOAT32) {
-    return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::FLOAT64) {
-    return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::FLOAT16) {
-    return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::INT32) {
-    return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::INT64) {
-    return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::INT8) {
-    return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::UINT8) {
-    return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::BOOL) {
-    return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::BFLOAT16) {
-    return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
-                                   offset);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Datatype %s in NCCL is not supported.", type));
-  }
-  return nullptr;
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(

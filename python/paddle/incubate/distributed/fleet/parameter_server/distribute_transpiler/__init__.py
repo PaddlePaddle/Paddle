@@ -419,6 +419,7 @@ class FleetTranspiler(Fleet):
         target_vars,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for inference,
@@ -453,6 +454,7 @@ class FleetTranspiler(Fleet):
                 None,
                 None,
                 export_for_deployment,
+                legacy_format=legacy_format,
             )
         else:
             paddle.static.save_inference_model(
@@ -465,6 +467,7 @@ class FleetTranspiler(Fleet):
                 None,
                 export_for_deployment,
                 True,
+                legacy_format=legacy_format,
             )
 
             model_basename = "__model__"
@@ -943,7 +946,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
         parameter_list=None,
         no_grad_set=None,
     ):
-
         if isinstance(losses, list):
             raise ValueError("need implement later")
 

@@ -11,13 +11,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/row_conv_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -136,8 +134,8 @@ https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
   }
 };
 
-template <typename T>
-class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
+template <typename T, typename DeviceContext>
+class RowConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<phi::DenseTensor>("X");
@@ -211,8 +209,8 @@ class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
+template <typename T, typename DeviceContext>
+class RowConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<phi::DenseTensor>("X");
@@ -351,6 +349,7 @@ REGISTER_OPERATOR(row_conv,
                   ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
-REGISTER_OP_CPU_KERNEL(row_conv, ops::RowConvKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(row_conv_grad,
-                       ops::RowConvGradKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    row_conv, CPU, ALL_LAYOUT, ops::RowConvKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    row_conv_grad, CPU, ALL_LAYOUT, ops::RowConvGradKernel, float) {}

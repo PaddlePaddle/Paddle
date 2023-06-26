@@ -259,7 +259,7 @@ class TestDictCmpInFor(unittest.TestCase):
             neg = [-1, -3]
             dict_val = {'minus': 0}
             # test `zip` with `for`
-            for (x, y) in zip(pos, neg):
+            for x, y in zip(pos, neg):
                 val = x - y
                 dict_val.update(
                     {k: val + dict_val[k] for k, v in dict_val.items()}

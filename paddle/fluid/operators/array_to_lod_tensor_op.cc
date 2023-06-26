@@ -43,7 +43,9 @@ struct ArrayToLoDFunctorImpl {
   void apply();
 };
 
-struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
+struct ArrayToLoDFunctor {
+  using argument_type = platform::Place;
+  using result_type = void;
   std::vector<phi::DenseTensor> in;
   mutable phi::DenseTensor *out;
 

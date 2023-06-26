@@ -1357,7 +1357,6 @@ void BindDistributed(py::module *m) {
       *m, "ProcessGroupIdMap")
       .def_static("destroy",
                   distributed::ProcessGroupIdMap::DestroyProcessGroup,
-                  py::arg("group_id") = 0,
                   py::call_guard<py::gil_scoped_release>());
 }
 

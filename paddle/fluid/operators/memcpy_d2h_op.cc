@@ -86,16 +86,15 @@ class MemcpyD2HOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(phi::DenseTensor) The type of output "
               "is the same as input X.");
-    AddAttr<int>(
-        "dst_place_type",
-        "Determine the dst place of tensor copy. "
-        "By Now it ONLY support XPU/NPUPlace/CUDAPlace <-> CUDAPinnedPlace/CPU"
-        "Other place type is Unimplemented and will cause ERROR."
-        "0: dst is on CPUPlace. "
-        "1: dst is on CUDAPinnedPlace. ");
+    AddAttr<int>("dst_place_type",
+                 "Determine the dst place of tensor copy. "
+                 "By Now it ONLY support XPU/CUDAPlace <-> CUDAPinnedPlace/CPU"
+                 "Other place type is Unimplemented and will cause ERROR."
+                 "0: dst is on CPUPlace. "
+                 "1: dst is on CUDAPinnedPlace. ");
     AddComment(R"DOC(
     MemcpyD2H Operator.
-    By now, it ONLY supports the memcopy between NPUPlace/CUDAPlace <-> CUDAPinnedPlace/CPU.
+    By now, it ONLY supports the memcopy between CUDAPlace <-> CUDAPinnedPlace/CPU.
     You would have to update it if you want other more capacities.
 Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.

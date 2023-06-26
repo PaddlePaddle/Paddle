@@ -56,8 +56,8 @@ void TopkGradKernel(const Context& dev_ctx,
                     const DenseTensor& out_grad,
                     const Scalar& k_scalar,
                     int axis,
-                    bool largest,
-                    bool sorted,
+                    bool largest UNUSED,
+                    bool sorted UNUSED,
                     DenseTensor* x_grad) {
   const auto& in_dims = x.dims();
   const auto& out_dims = indices.dims();

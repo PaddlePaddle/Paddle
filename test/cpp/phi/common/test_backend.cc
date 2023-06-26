@@ -36,9 +36,6 @@ TEST(Backend, OStream) {
   oss << phi::Backend::XPU;
   EXPECT_EQ(oss.str(), "XPU");
   oss.str("");
-  oss << phi::Backend::NPU;
-  EXPECT_EQ(oss.str(), "NPU");
-  oss.str("");
   oss << phi::Backend::ONEDNN;
   EXPECT_EQ(oss.str(), "ONEDNN");
   oss.str("");
@@ -62,7 +59,6 @@ TEST(Backend, StringToBackend) {
   EXPECT_EQ(phi::Backend::CPU, pexp::StringToBackend("CPU"));
   EXPECT_EQ(phi::Backend::GPU, pexp::StringToBackend("GPU"));
   EXPECT_EQ(phi::Backend::XPU, pexp::StringToBackend("XPU"));
-  EXPECT_EQ(phi::Backend::NPU, pexp::StringToBackend("NPU"));
   EXPECT_EQ(phi::Backend::ONEDNN, pexp::StringToBackend("OneDNN"));
   EXPECT_EQ(phi::Backend::GPUDNN, pexp::StringToBackend("GPUDNN"));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

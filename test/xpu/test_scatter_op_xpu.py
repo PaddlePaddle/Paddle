@@ -1,4 +1,4 @@
-#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -139,10 +139,13 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             self.op_type = "scatter"
             self.place = paddle.XPUPlace(0)
             self.dtype = self.in_type
-            self.__class__.no_need_check_grad = True
+            self.__class__.no_need_check_grad = False
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 support_types = get_xpu_op_support_types('scatter')

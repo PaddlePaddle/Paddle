@@ -73,13 +73,13 @@ __global__ void AccuracyCudaKernel(const int N,
 }
 
 template <typename T, typename Context>
-void AccuracyRawKernel(const Context& dev_ctx,
-                       const DenseTensor& inference,
-                       const DenseTensor& indices,
-                       const DenseTensor& label,
-                       DenseTensor* accuracy,
-                       DenseTensor* correct,
-                       DenseTensor* total) {
+void AccuracyKernel(const Context& dev_ctx,
+                    const DenseTensor& inference,
+                    const DenseTensor& indices,
+                    const DenseTensor& label,
+                    DenseTensor* accuracy,
+                    DenseTensor* correct,
+                    DenseTensor* total) {
   // FIXME(typhoonzero): only support indices currently
   // if add support for output values, how to detect the data type?
   const int64_t* indices_data = indices.data<int64_t>();
@@ -137,7 +137,7 @@ void AccuracyRawKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(accuracy,
                    GPU,
                    ALL_LAYOUT,
-                   phi::AccuracyRawKernel,
+                   phi::AccuracyKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    float,

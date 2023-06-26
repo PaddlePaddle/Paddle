@@ -17,7 +17,6 @@
 #include <string>
 
 #include "paddle/phi/core/dense_tensor.h"
-
 namespace phi {
 
 template <typename T, typename Context>

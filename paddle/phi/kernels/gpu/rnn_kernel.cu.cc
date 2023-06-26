@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -132,7 +134,7 @@ void RnnKernel(const Context &dev_ctx,
                const paddle::optional<DenseTensor> &sequence_length,
                float dropout_prob,
                bool is_bidirec,
-               int input_size,
+               int input_size UNUSED,
                int hidden_size,
                int num_layers,
                const std::string &mode,

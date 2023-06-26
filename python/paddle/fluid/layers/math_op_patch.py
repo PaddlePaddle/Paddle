@@ -409,11 +409,19 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
+            if (
+                op_type == "divide" or op_type == "elementwise_div"
+            ) and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # NOTE(zhiqiu): the output of compare operator should be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:
-                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+                out = create_new_tmp_var(
+                    current_block(self), dtype=safe_get_dtype(self)
+                )
 
             axis = -1
             if other_var.ndim > 0 and other_var.shape[0] == -1:

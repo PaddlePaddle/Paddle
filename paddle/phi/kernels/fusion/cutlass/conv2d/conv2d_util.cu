@@ -16,6 +16,8 @@
 
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
@@ -110,12 +112,15 @@ __global__ void naive_conv2d_kernel(const half *input,
 
   switch (op_type) {
     case CONV2D_BIAS:
+    case CONV2D_DEPTHWISE_BIAS:
       *out_ptr = x;
       break;
     case CONV2D_BIAS_RELU:
+    case CONV2D_DEPTHWISE_BIAS_RELU:
       *out_ptr = x > 0 ? x : 0;
       break;
     case CONV2D_BIAS_SILU:
+    case CONV2D_DEPTHWISE_BIAS_SILU:
       *out_ptr = x * (1.f / (1 + exp(-x)));
       break;
     case CONV2D_BIAS_ADD_RELU:
@@ -124,6 +129,10 @@ __global__ void naive_conv2d_kernel(const half *input,
       break;
     case CONV2D_BIAS_LEAKY_RELU:
       *out_ptr = x > 0 ? x : (x * alpha);
+      break;
+    case CONV2D_BIAS_SIGMOID:
+    case CONV2D_DEPTHWISE_BIAS_SIGMOID:
+      *out_ptr = 1.f / (1.f + std::exp(-x));
       break;
     default:
       break;
@@ -219,11 +228,22 @@ std::string OpType2String(OpType op_type) {
     case CONV2D_BIAS_SILU:
       return "conv2d_bias_silu";
       break;
+    case CONV2D_BIAS_SIGMOID:
+      return "conv2d_bias_sigmoid";
+      break;
     case CONV2D_BIAS_ADD_RELU:
       return "conv2d_bias_add_relu";
       break;
     case CONV2D_BIAS_LEAKY_RELU:
       return "conv2d_bias_leaky_relu";
+    case CONV2D_DEPTHWISE_BIAS:
+      return "conv2d_depthwise_bias";
+    case CONV2D_DEPTHWISE_BIAS_RELU:
+      return "conv2d_depthwise_bias_relu";
+    case CONV2D_DEPTHWISE_BIAS_SIGMOID:
+      return "conv2d_depthwise_bias_sigmoid";
+    case CONV2D_DEPTHWISE_BIAS_SILU:
+      return "conv2d_depthwise_bias_silu";
     default:
       break;
   }
@@ -243,6 +263,11 @@ int ProfileToGetBestConfig(
     auto func = all_func[i];
     // When func has large diff, we will make it nullptr.
     if (!func) continue;
+    cudaMemset(params.output,
+               0,
+               sizeof(half) * params.batch * params.oc * params.oh * params.ow);
+    status = func(params);
+    if (status != cutlass::Status::kSuccess) continue;
 
     for (int ii = 0; ii < WARMUP; ii++) {
       status = func(params);

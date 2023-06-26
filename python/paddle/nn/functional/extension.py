@@ -24,11 +24,9 @@ from ...fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
-from ...tensor.layer_function_generator import templatedoc
 
 __all__ = []
 
@@ -103,12 +101,8 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     if not isinstance(input, Variable):
         input = assign(input)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.diag_embed(input, offset, dim1, dim2)
-    elif in_dynamic_mode():
-        return _legacy_C_ops.diag_embed(
-            input, "offset", offset, "dim1", dim1, "dim2", dim2
-        )
 
     inputs = {'Input': [input]}
     attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
@@ -219,7 +213,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if maxlen is not None:
@@ -319,7 +313,7 @@ def gather_tree(ids, parents):
     if ids.ndim != parents.ndim:
         raise ValueError("The ids's shape must be the same as parents' shape. ")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
@@ -338,13 +332,44 @@ def gather_tree(ids, parents):
         return out
 
 
-@templatedoc()
 def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     """
 
     **Temporal Shift Operator**
 
-    ${comment}
+    Calculate the temporal shifting features for Input(X).
+
+    Input(X) should be in shape of [N*T, C, H, W] or [N*T, H, W, C], while
+    N is the batch size, T is the temporal segment number specified by
+    :attr:`seg_num`, C is the channel number, H and W is the height and
+    width of features.
+
+    Temporal Shifting is calculated as follows when data format is NCHW:
+
+    Step 1: Reshape Input(X) to [N, T, C, H, W].
+
+    Step 2: Pad 0 to reshaping result in the 2nd(T) dimension with
+    padding width as 1 on each side, padding result will be in shape
+    of [N, T+2, C, H, W].
+
+    Step 3: Assume :attr:`shift_ratio` is :math:`1/4`, slice padding
+    result as follows:
+
+    $$
+    slice1 = x[:, :T, :C/4, :, :]
+    $$
+    $$
+    slice2 = x[:, 2:T+2, C/4:C/2, :, :]
+    $$
+    $$
+    slice3 = x[:, 1:T+1, C/2:, :, :]
+    $$
+
+    Step 4: Concatenate three slices along the 3rd(C) dimension and
+    reshape result to [N*T, C, H, W].
+
+    For details of temporal shifting, please refer to paper:
+    `Temporal Shift Module <http://arxiv.org/abs/1811.08383>`_ .
 
     Args:
         x(Tensor): ${x_comment}
@@ -374,12 +399,15 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
             "Received Attr(data_format): {}.".format(data_format)
         )
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
     else:
         helper = LayerHelper("temporal_shift", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'temporal_shift'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'temporal_shift',
         )
         check_type(seg_num, 'seg_num', int, 'temporal_shift')
         check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')

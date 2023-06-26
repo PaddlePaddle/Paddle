@@ -18,8 +18,9 @@
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_double(fraction_of_cpu_memory_to_use);
+PHI_DECLARE_double(fraction_of_cpu_memory_to_use);
 
 TEST(CpuMemoryUsage, Print) {
   std::stringstream ss;

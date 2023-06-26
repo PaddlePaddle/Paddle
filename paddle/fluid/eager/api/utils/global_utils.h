@@ -58,6 +58,9 @@ class Controller {
     return tracer_->GetAmpLevel();
   }
 
+  void SetUsePromote(bool use_promote) { tracer_->SetUsePromote(use_promote); }
+  bool GetUsePromote() const { return tracer_->GetUsePromote(); }
+
   bool UseLayoutAutoTune() {
     bool use_autotune = false;
 #if defined(PADDLE_WITH_CUDA)
@@ -73,6 +76,12 @@ class Controller {
   void DisableLayoutAutoTune() { tracer_->DisableLayoutAutoTune(); }
 
   void EnableLayoutAutoTune() { tracer_->EnableLayoutAutoTune(); }
+
+  void SetPythonStack(std::string stack_str) {
+    tracer_->SetPythonStack(stack_str);
+  }
+
+  std::string GetPythonStack() { return tracer_->GetPythonStack(); }
 
   bool HasGrad() const { return tracer_->HasGrad(); }
   void SetHasGrad(bool has_grad) { tracer_->SetHasGrad(has_grad); }

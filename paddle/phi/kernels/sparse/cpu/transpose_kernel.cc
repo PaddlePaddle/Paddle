@@ -33,7 +33,7 @@ void TransposeCooKernel(const Context& dev_ctx,
   int64_t x_nnz = x.nnz();
   DDim out_dims = x.dims().transpose(perm);
   DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx, x.indices());
-  DenseTensor out_values(x.values());
+  const DenseTensor& out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of indices
@@ -108,7 +108,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
       out_crows_data[i] = 0;
     }
     for (int i = 0; i < x_nnz; ++i) {
-      int j = x_cols_data[i];
+      int64_t j = x_cols_data[i];
       out_crows_data[j + 1]++;
     }
     out_crows_data[out_dims[0]] = x_nnz;
@@ -134,8 +134,8 @@ void TransposeCsrKernel(const Context& dev_ctx,
       }
     }
   } else {  // n_dim == 3
-    int out_n_rows = out_dims[1];
-    int x_n_rows = x.dims()[1];
+    int64_t out_n_rows = out_dims[1];
+    int64_t x_n_rows = x.dims()[1];
     for (int k = 0; k < out_dims[0]; ++k) {
       if (perm[0] == 0) {  // perm == {0, 2, 1}
         // compute out_crows_data by x_cols_data
@@ -143,7 +143,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
           out_crows_data[i] = 0;
         }
         for (int i = 0; i < x_crows_data[x_n_rows]; ++i) {
-          int j = x_cols_data[i];
+          int64_t j = x_cols_data[i];
           out_crows_data[j + 1]++;
         }
         out_crows_data[out_n_rows] = x_crows_data[x_n_rows];
@@ -176,14 +176,14 @@ void TransposeCsrKernel(const Context& dev_ctx,
         for (int i = 0; i < out_n_rows; ++i) {
           out_crows_data[i] = 0;
         }
-        int x_cols_offset = 0;
+        int64_t x_cols_offset = 0;
         int out_cols_index = 0;
         for (int i = 0; i < x.dims()[0]; ++i) {
           int x_crows_index = i * (x_n_rows + 1);
-          int start = x_crows_data[x_crows_index + k];
-          int end = x_crows_data[x_crows_index + 1 + k];
+          int64_t start = x_crows_data[x_crows_index + k];
+          int64_t end = x_crows_data[x_crows_index + 1 + k];
           out_crows_data[i + 1] = end - start;
-          for (int j = start; j < end; ++j) {
+          for (int64_t j = start; j < end; ++j) {
             out_cols_data[out_cols_index] = x_cols_data[x_cols_offset + j];
             out_values_data[out_cols_index] = x_values_data[x_cols_offset + j];
             out_cols_index++;

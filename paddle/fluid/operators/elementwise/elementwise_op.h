@@ -159,7 +159,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   }
 
   phi::KernelKey GetKernelTypeForVar(
-      const std::string &var_name,
+      const std::string &var_name UNUSED,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
@@ -225,7 +225,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
   virtual void AddOpComment() { AddComment(GetCommentExamples()); }
 
-  virtual std::string GetOpFuntionality() const { return ""; }
+  virtual std::string GetOpFunctionality() const { return ""; }
 
   virtual std::string GetName() const = 0;
   virtual std::string GetEquation() const = 0;
@@ -269,7 +269,7 @@ For example:
 
 )DOC",
                            GetName(),
-                           GetOpFuntionality(),
+                           GetOpFunctionality(),
                            GetEquation());
   }
 };
@@ -305,7 +305,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
   }
 
   phi::KernelKey GetKernelTypeForVar(
-      const std::string &var_name,
+      const std::string &var_name UNUSED,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
@@ -346,7 +346,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
   }
 
   phi::KernelKey GetKernelTypeForVar(
-      const std::string &var_name,
+      const std::string &var_name UNUSED,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
@@ -394,7 +394,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
   }
 
   phi::KernelKey GetKernelTypeForVar(
-      const std::string &var_name,
+      const std::string &var_name UNUSED,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
@@ -442,7 +442,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
   }
 
   phi::KernelKey GetKernelTypeForVar(
-      const std::string &var_name,
+      const std::string &var_name UNUSED,
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {

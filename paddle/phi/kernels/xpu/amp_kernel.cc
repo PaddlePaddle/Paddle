@@ -18,6 +18,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -278,7 +280,13 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    ALL_LAYOUT,
                    phi::UpdateLossScalingKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  }
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::INT32);
+}
 
 PD_REGISTER_KERNEL(check_finite_and_unscale,
                    XPU,

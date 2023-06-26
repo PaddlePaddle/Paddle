@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import numpy as np
+from test_cuda_graph_static_mode import build_program
 
 import paddle
 from paddle.device.cuda.graphs import CUDAGraph
-
-sys.path.append("..")
-from paddle.fluid.tests.unittests.test_cuda_graph_static_mode import (
-    build_program,
-)
 
 paddle.enable_static()
 
@@ -126,7 +122,7 @@ class TestCustomStream(unittest.TestCase):
 
         for out in outs:
             for baseline, result in zip(outs[0], out):
-                self.assertEqual(baseline[0], result[0])
+                self.assertEqual(baseline, result)
 
 
 if __name__ == "__main__":

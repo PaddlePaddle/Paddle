@@ -67,6 +67,7 @@ ops_to_fill_zero_for_empty_grads = {
     "multiply_grad",
     "divide_grad",
     "matmul_grad",
+    "unbind_grad",
 }
 
 # For API dispatch used at python-level
@@ -292,7 +293,9 @@ def ParseYamlArgs(string):
     # attrs_list = [ [arg_name, arg_type, default_value, orig_position], ...]
     attrs_list = []
 
-    args = [x.strip() for x in string.strip().split(",")]
+    patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+    args = re.split(patten, string.strip())
+    args = [x.strip() for x in args]
     atype = r'((const )?\S+) '
     aname = r'(.*)'
     pattern = f'{atype}{aname}'

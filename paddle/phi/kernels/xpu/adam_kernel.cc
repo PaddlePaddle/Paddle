@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"

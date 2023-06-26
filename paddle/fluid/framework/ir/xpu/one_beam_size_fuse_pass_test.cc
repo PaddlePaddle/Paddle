@@ -20,6 +20,21 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+template <typename T = float>
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
+                   const DDim& dims,
+                   T value = 0) {
+  auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
+  tensor->Resize(dims);
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  auto* data = cpu_ctx->Alloc<T>(tensor);
+  for (int64_t i = 0; i < tensor->numel(); i++) {
+    data[i] = value;
+  }
+}
+
 VarDesc* Data(paddle::framework::BlockDesc* block,
               std::string name,
               std::vector<int64_t> shape = {},
@@ -128,9 +143,9 @@ TEST(RemoveBeamSearchAssociatedOps, basic) {
   auto* selected_scores = beam_search_outs[2];
 
   auto* write_to_array_0_i = layers.data("write_to_array_0_i");
-  layers.write_to_array({selected_ids}, write_to_array_0_i);
+  layers.write_to_array(selected_ids, write_to_array_0_i);
   auto* write_to_array_1_i = layers.data("write_to_array_1_i");
-  layers.write_to_array({selected_scores}, write_to_array_1_i);
+  layers.write_to_array(selected_scores, write_to_array_1_i);
   auto* is_empty_out = layers.is_empty(selected_ids);
   layers.logical_not(is_empty_out);
   layers.cast(parent_idx);
@@ -145,6 +160,58 @@ TEST(RemoveBeamSearchAssociatedOps, basic) {
                     0,
                     platform::errors::PreconditionNotMet(
                         "beam_search op should be removed from the graph."));
+}
+
+TEST(RemoveWriteReadArrayOps, basic) {
+  Layers layers;
+  auto* block = layers.Block();
+  OpDesc* beam_search_op = block->AppendOp();
+  beam_search_op->SetType("beam_search");
+  beam_search_op->SetAttr("beam_size", 1);
+
+  auto* write_x = layers.data("write_x", {1}, true);
+  auto* write_i = layers.data("write_i");
+  auto* write_out = layers.write_to_array(write_x, write_i);
+  auto* read_i = layers.data("read_i");
+  layers.read_from_array(write_out, read_i);
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  auto* param_scope = new Scope();
+  graph->Set("__param_scope__", param_scope);
+  AddVarToScope(param_scope, write_x->Name(), {1});
+  auto pass = PassRegistry::Instance().Get("one_beam_size_fuse_pass");
+  pass->Apply(graph.get());
+  auto write_read_num = GetNumOpNodes(graph, "write_to_array") +
+                        GetNumOpNodes(graph, "read_from_array");
+  PADDLE_ENFORCE_EQ(write_read_num,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "write_to_array and read_from_array ops should be "
+                        "removed from the graph."));
+}
+
+TEST(RemoveGatherOps, basic) {
+  Layers layers;
+  auto* block = layers.Block();
+  OpDesc* beam_search_op = block->AppendOp();
+  beam_search_op->SetType("beam_search");
+  beam_search_op->SetAttr("beam_size", 1);
+
+  auto* gather_x = layers.data("gather_x");
+  auto* gather_i = layers.data("gather_i", {1}, true);
+  layers.gather(gather_x, gather_i, 0);
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  auto* param_scope = new Scope();
+  graph->Set("__param_scope__", param_scope);
+  AddVarToScope<int>(param_scope, gather_i->Name(), {1}, 0);
+  auto pass = PassRegistry::Instance().Get("one_beam_size_fuse_pass");
+  pass->Apply(graph.get());
+  auto gather_num = GetNumOpNodes(graph, "gather");
+  PADDLE_ENFORCE_EQ(gather_num,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "gather op should be removed from the graph."));
 }
 
 }  // namespace ir

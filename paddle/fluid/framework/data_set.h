@@ -25,6 +25,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/phi/core/macros.h"
 #ifdef PADDLE_WITH_GLOO
 #include <gloo/broadcast.h>
 
@@ -51,13 +52,13 @@ class Dataset {
   Dataset() {}
   virtual ~Dataset() {}
   // do sample
-  virtual void TDMSample(const std::string tree_name,
-                         const std::string tree_path,
-                         const std::vector<uint16_t> tdm_layer_counts,
-                         const uint16_t start_sample_layer,
-                         const bool with_hierachy,
-                         const uint16_t seed_,
-                         const uint16_t sample_slot) {}
+  virtual void TDMSample(const std::string tree_name UNUSED,
+                         const std::string tree_path UNUSED,
+                         const std::vector<uint16_t> tdm_layer_counts UNUSED,
+                         const uint16_t start_sample_layer UNUSED,
+                         const bool with_hierachy UNUSED,
+                         const uint16_t seed_ UNUSED,
+                         const uint16_t sample_slot UNUSED) {}
   // set file list
   virtual void SetFileList(const std::vector<std::string>& filelist) = 0;
   // set readers' num
@@ -238,8 +239,9 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle(int thread_num = -1) {}
-  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
+  virtual void GlobalShuffle(int thread_num UNUSED = -1) {}
+  virtual void SlotsShuffle(
+      const std::set<std::string>& slots_to_replace UNUSED) {}
   virtual const std::vector<T>& GetSlotsOriginalData() {
     return slots_shuffle_original_data_;
   }
@@ -251,12 +253,12 @@ class DatasetImpl : public Dataset {
   virtual void MergeByInsId() {}
   virtual void PreprocessInstance() {}
   virtual void PostprocessInstance() {}
-  virtual void SetCurrentPhase(int current_phase) {}
-  virtual void GenerateLocalTablesUnlock(int table_id,
-                                         int feadim,
-                                         int read_thread_num,
-                                         int consume_thread_num,
-                                         int shard_num) {}
+  virtual void SetCurrentPhase(int current_phase UNUSED) {}
+  virtual void GenerateLocalTablesUnlock(int table_id UNUSED,
+                                         int feadim UNUSED,
+                                         int read_thread_num UNUSED,
+                                         int consume_thread_num UNUSED,
+                                         int shard_num UNUSED) {}
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -288,9 +290,9 @@ class DatasetImpl : public Dataset {
   virtual uint32_t GetPassID() { return pass_id_; }
 
  protected:
-  virtual int ReceiveFromClient(int msg_type,
-                                int client_id,
-                                const std::string& msg) {
+  virtual int ReceiveFromClient(int msg_type UNUSED,
+                                int client_id UNUSED,
+                                const std::string& msg UNUSED) {
     // TODO(yaoxuefeng) for SlotRecordDataset
     return -1;
   }

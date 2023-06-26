@@ -23,6 +23,12 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
+static uint64_t GetRandomSeed() {
+  std::random_device rd;
+  // double has 53 bit significant, so limit uint64 to 53 bits
+  return ((((uint64_t)rd()) << 32) + rd()) & 0x1FFFFFFFFFFFFF;
+}
+
 namespace phi {
 
 const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
@@ -91,6 +97,17 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   static auto default_cpu_generator =
       std::make_shared<Generator>(GetRandomSeed());
   return default_cpu_generator;
+}
+
+const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
+    const phi::CustomPlace& place) {
+  static std::
+      unordered_map<phi::Place, std::shared_ptr<Generator>, phi::Place::Hash>
+          generators;
+  if (generators.find(place) == generators.end()) {
+    generators.insert({place, std::make_shared<Generator>(GetRandomSeed())});
+  }
+  return generators[place];
 }
 
 using RNGMap = std::unordered_map<std::string, std::shared_ptr<Generator>>;
@@ -260,11 +277,11 @@ uint64_t Generator::Random64() {
 }
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(
-    uint64_t increament_offset) {
+    uint64_t increment_offset) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::lock_guard<std::mutex> lock(this->mu_);
   uint64_t cur_offset = this->state_.thread_offset;
-  this->state_.thread_offset += increament_offset;
+  this->state_.thread_offset += increment_offset;
   return std::make_pair(this->state_.current_seed, cur_offset);
 #else
   PADDLE_THROW(phi::errors::PermissionDenied(

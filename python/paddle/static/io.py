@@ -75,7 +75,7 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
 def _check_vars(name, var_list):
     if not isinstance(var_list, list):
         var_list = [var_list]
-    if not var_list or not all([isinstance(var, Variable) for var in var_list]):
+    if not all(isinstance(var, Variable) for var in var_list):
         raise ValueError(
             f"'{name}' should be a Variable or a list of Variable."
         )
@@ -252,6 +252,7 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
         kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
 
             - program(Program): specify a program if you don't want to use default main program.
+            - legacy_format(bool): whether to save inference program in legacy format. Defaults to False.
 
     Returns:
         bytes: serialized program.
@@ -289,14 +290,15 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
 
     program = _get_valid_program(kwargs.get('program', None))
     program = normalize_program(program, feed_vars, fetch_vars)
-    return _serialize_program(program)
+    legacy_format = kwargs.get('legacy_format', False)
+    return _serialize_program(program, legacy_format=legacy_format)
 
 
-def _serialize_program(program):
+def _serialize_program(program, legacy_format=False):
     """
     serialize given program to bytes.
     """
-    return program.desc.serialize_to_string()
+    return program.desc.serialize_to_string(legacy_format=legacy_format)
 
 
 @static_only
@@ -459,6 +461,8 @@ def save_inference_model(
 
             - clip_extra(bool): the flag indicating whether to clip extra information for every operator. Default: True.
 
+            - legacy_format(bool): whether to save inference model in legacy format. Default: False.
+
     Returns:
         None
 
@@ -518,15 +522,24 @@ def save_inference_model(
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
+    legacy_format = kwargs.get('legacy_format', False)
     program_bytes = _serialize_program(
-        program._remove_training_info(clip_extra=clip_extra)
+        program._remove_training_info(clip_extra=clip_extra),
+        legacy_format=legacy_format,
     )
     save_to_file(model_path, program_bytes)
-    # serialize and save params
-    params_bytes = _serialize_persistables(program, executor)
-    # program may not contain any parameter and just compute operation
-    if params_bytes is not None:
-        save_to_file(params_path, params_bytes)
+
+    vars = list(filter(is_persistable, program.list_vars()))
+    if len(vars) > 0:
+        save_dirname = os.path.dirname(params_path)
+        params_filename = os.path.basename(params_path)
+        save_vars(
+            executor,
+            dirname=save_dirname,
+            main_program=program,
+            predicate=is_persistable,
+            filename=params_filename,
+        )
 
 
 @static_only
@@ -575,6 +588,7 @@ def deserialize_program(data):
     return program
 
 
+# NOTE(liuyuanle): Due to load from memory, deserialize_persistables does not support loading weights with file sizes exceeding 2GB.
 @static_only
 def deserialize_persistables(program, data, executor):
     """
@@ -791,16 +805,29 @@ def load_inference_model(path_prefix, executor, **kwargs):
 
     # load from memory
     if path_prefix is None:
-        _logger.warning("Load inference model from memory is deprecated.")
+        _logger.warning(
+            "Load inference model from memory is deprecated. Please specify path_prefix."
+        )
         model_filename = kwargs.get('model_filename', None)
         params_filename = kwargs.get('params_filename', None)
         if params_filename is None:
             raise ValueError(
                 "params_filename cannot be None when path_prefix is None."
             )
-        load_dirname = ''
         program_bytes = model_filename
-        params_bytes = params_filename
+        # deserialize bytes to program
+        program = deserialize_program(program_bytes)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
+            load_vars(
+                executor,
+                # load from memory, dirname is None
+                dirname=None,
+                main_program=program,
+                predicate=is_persistable,
+                filename=params_filename,
+            )
     # load from file
     else:
         # check and norm path_prefix
@@ -835,24 +862,27 @@ def load_inference_model(path_prefix, executor, **kwargs):
                 if not os.path.exists(params_path):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
-                "The old way to load inference model is deprecated."
+                "The old way to load inference model is deprecated. Please specify path_prefix."
                 " model path: {}, params path: {}".format(
                     model_path, params_path
                 )
             )
         program_bytes = load_from_file(model_path)
-        load_dirname = os.path.dirname(params_path)
-        params_filename = os.path.basename(params_path)
-        # load params data
-        params_path = os.path.join(load_dirname, params_filename)
-        params_bytes = None
-        if os.path.exists(params_path):
-            params_bytes = load_from_file(params_path)
 
-    # deserialize bytes to program
-    program = deserialize_program(program_bytes)
-    # deserialize bytes to params
-    deserialize_persistables(program, params_bytes, executor)
+        # deserialize bytes to program
+        program = deserialize_program(program_bytes)
+
+        vars = list(filter(is_persistable, program.list_vars()))
+        if len(vars) > 0:
+            load_dirname = os.path.dirname(params_path)
+            params_filename = os.path.basename(params_path)
+            load_vars(
+                executor,
+                dirname=load_dirname,
+                main_program=program,
+                predicate=is_persistable,
+                filename=params_filename,
+            )
 
     feed_target_names = program.desc.get_feed_target_names()
     fetch_target_names = program.desc.get_fetch_target_names()
@@ -946,7 +976,7 @@ def save_vars(
     if dirname is None and filename is None:
         save_to_memory = True
 
-    main_program = paddle.static.io._get_valid_program(main_program)
+    main_program = _get_valid_program(main_program)
 
     if vars is None:
         return save_vars(
@@ -1371,8 +1401,6 @@ def save(program, model_path, protocol=4, **configs):
 
     main_program = program.clone()
     program.desc.flush()
-    main_program.desc._set_version()
-    paddle.fluid.core.save_op_version_info(program.desc)
 
     with open(model_path + ".pdmodel", "wb") as f:
         f.write(program.desc.serialize_to_string())
@@ -1536,7 +1564,12 @@ def load(program, model_path, executor=None, var_list=None):
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
             place = paddle.fluid.XPUPlace(p.xpu_device_id())
-
+        elif p.is_custom_place():
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.CustomPlace(
+                paddle.device.get_device().split(':')[0], p.custom_device_id()
+            )
         else:
             p = paddle.fluid.core.Place()
             p.set_place(t._place())
@@ -1551,7 +1584,6 @@ def load(program, model_path, executor=None, var_list=None):
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
-
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
         if sys.platform == 'darwin' and sys.version_info.major == 3:
             load_dict = _pickle_loads_mac(parameter_file_name, f)

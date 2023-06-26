@@ -15,8 +15,8 @@
 #pragma once
 #include <cstddef>
 #include <type_traits>
-
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/macros.h"
 
 namespace phi {
 namespace detail {
@@ -32,7 +32,7 @@ struct UnrollFillConstant {
 template <size_t kStart, size_t kEnd>
 struct UnrollFillConstant<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline static void Run(T *data, T val) {}
+  HOSTDEVICE inline static void Run(T *data UNUSED, T val UNUSED) {}
 };
 
 template <size_t kStart, size_t kEnd, bool kStop>
@@ -47,7 +47,7 @@ struct UnrollAssign {
 template <size_t kStart, size_t kEnd>
 struct UnrollAssign<kStart, kEnd, true> {
   template <typename Tin, typename Tout>
-  HOSTDEVICE inline static void Run(const Tin *d1, Tout *d2) {}
+  HOSTDEVICE inline static void Run(const Tin *d1 UNUSED, Tout *d2 UNUSED) {}
 };
 
 template <typename T, size_t kStart, size_t kEnd, bool kStop>
@@ -87,7 +87,8 @@ struct UnrollCompare {
 template <size_t kStart, size_t kEnd>
 struct UnrollCompare<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline constexpr static bool Run(const T *d1, const T *d2) {
+  HOSTDEVICE inline constexpr static bool Run(const T *d1 UNUSED,
+                                              const T *d2 UNUSED) {
     return true;
   }
 };
@@ -104,7 +105,7 @@ struct UnrollProduct {
 template <size_t kStart, size_t kEnd>
 struct UnrollProduct<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline constexpr static T Run(const T *d) {
+  HOSTDEVICE inline constexpr static T Run(const T *d UNUSED) {
     return 1;
   }
 };

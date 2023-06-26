@@ -50,9 +50,9 @@ void ImagGradKernel(const Context& dev_ctx,
 
 template <typename T>
 struct ComplexGradForRealFunctor {
-  inline HOSTDEVICE T operator()(const T x,
-                                 const T y,
-                                 const phi::dtype::complex<T> out,
+  inline HOSTDEVICE T operator()(const T x UNUSED,
+                                 const T y UNUSED,
+                                 const phi::dtype::complex<T> out UNUSED,
                                  const phi::dtype::complex<T> dout) {
     return dout.real;
   }
@@ -60,9 +60,9 @@ struct ComplexGradForRealFunctor {
 
 template <typename T>
 struct ComplexGradForImagFunctor {
-  inline HOSTDEVICE T operator()(const T x,
-                                 const T y,
-                                 const phi::dtype::complex<T> out,
+  inline HOSTDEVICE T operator()(const T x UNUSED,
+                                 const T y UNUSED,
+                                 const phi::dtype::complex<T> out UNUSED,
                                  const phi::dtype::complex<T> dout) {
     return dout.imag;
   }

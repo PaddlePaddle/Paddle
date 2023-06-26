@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/lock_guard_ptr.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
@@ -57,7 +59,6 @@ void MemcpySyncH2D(void* dst,
                    const platform::XPUPlace& dst_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(dst_place);
-  dev_ctx->Wait();
   phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place, *dev_ctx);
 }
 
@@ -67,7 +68,6 @@ void MemcpySyncD2H(void* dst,
                    const platform::XPUPlace& src_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
-  dev_ctx->Wait();
   phi::backends::xpu::MemcpySyncD2H(dst, src, count, src_place, *dev_ctx);
 }
 
@@ -92,6 +92,128 @@ void XPUStreamSync(xpuStream stream) {
 
 phi::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
   return phi::backends::xpu::get_xpu_version(dev_id);
+}
+
+/**************************** XPU Allocator **************************/
+size_t XPUMinChunkSize() { return 1 << 6; }
+
+static void RaiseNonOutOfMemoryError(int status) {
+  if (status == XPUERR_NOMEM) {
+    status = XPU_SUCCESS;
+  }
+  PADDLE_ENFORCE_XRE_SUCCESS(status);
+}
+
+class RecordedXPUMallocHelper {
+ private:
+  explicit RecordedXPUMallocHelper(int dev_id, uint64_t limit_size = 0)
+      : dev_id_(dev_id), limit_size_(limit_size) {
+    if (NeedRecord()) {
+      mtx_.reset(new std::mutex());
+    }
+  }
+
+  DISABLE_COPY_AND_ASSIGN(RecordedXPUMallocHelper);
+
+ public:
+  static RecordedXPUMallocHelper* Instance(int dev_id) {
+    std::call_once(once_flag_, [] {
+      int dev_cnt = GetXPUDeviceCount();
+      instances_.reserve(dev_cnt);
+      for (int i = 0; i < dev_cnt; ++i) {
+        // NOTE(zhiqiu): share the flags with gpu, avoid more flags.
+        instances_.emplace_back(new RecordedXPUMallocHelper(i, 0UL << 20));
+      }
+    });
+
+    PADDLE_ENFORCE_GE(
+        dev_id,
+        0,
+        phi::errors::OutOfRange(
+            "Device id must be not less than 0, but got %d.", dev_id));
+    PADDLE_ENFORCE_LT(
+        dev_id,
+        instances_.size(),
+        phi::errors::OutOfRange("Device id %d exceeds XPU card number %d.",
+                                dev_id,
+                                instances_.size()));
+    return instances_[dev_id].get();
+  }
+
+  /**
+   * Try to allocate `size` XPU memory. Only XPUERR_NOMEM
+   * or XPU_SUCCESS would be returned.
+   */
+  int Malloc(void** ptr, size_t size) {
+    LockGuardPtr<std::mutex> lock(mtx_);
+    if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
+      return XPUERR_NOMEM;
+    }
+
+    XPUDeviceGuard guard(dev_id_);
+    VLOG(10) << "Allocate " << size << " bytes with ptr = " << &(ptr);
+    auto result = xpu_malloc(ptr, size);
+    if (result == XPU_SUCCESS) {
+      cur_size_.fetch_add(size);
+      return result;
+    } else {
+      RaiseNonOutOfMemoryError(result);
+      // Non out of memory error would be raised inside
+      // RaiseNonOutOfMemoryError. Therefore, we can
+      // return XPUERR_NOMEM directly here.
+      return XPUERR_NOMEM;
+    }
+  }
+
+  /**
+   * Free XPU memory. Usually, free is not allowed to raise error.
+   * If it does raise error, the process should be crashed.
+   */
+  void Free(void* ptr, size_t size) {
+    XPUDeviceGuard guard(dev_id_);
+    xpu_free(ptr);
+    cur_size_.fetch_sub(size);
+  }
+
+  inline bool NeedRecord() const { return limit_size_ != 0; }
+
+  uint64_t RecordedSize() const { return cur_size_.load(); }
+
+  uint64_t LimitSize() const { return limit_size_; }
+
+ private:
+  const int dev_id_;
+  const uint64_t limit_size_;
+  std::atomic<uint64_t> cur_size_{0};
+
+  mutable std::unique_ptr<std::mutex> mtx_;
+
+  static std::once_flag once_flag_;
+  static std::vector<std::unique_ptr<RecordedXPUMallocHelper>> instances_;
+};
+
+std::once_flag RecordedXPUMallocHelper::once_flag_;
+std::vector<std::unique_ptr<RecordedXPUMallocHelper>>
+    RecordedXPUMallocHelper::instances_;
+
+int RecordedXPUMalloc(void** ptr, size_t size, int dev_id) {
+  return RecordedXPUMallocHelper::Instance(dev_id)->Malloc(ptr, size);
+}
+
+void RecordedXPUFree(void* p, size_t size, int dev_id) {
+  return RecordedXPUMallocHelper::Instance(dev_id)->Free(p, size);
+}
+
+uint64_t RecordedXPUMallocSize(int dev_id) {
+  return RecordedXPUMallocHelper::Instance(dev_id)->RecordedSize();
+}
+
+uint64_t RecordedXPULimitSize(int dev_id) {
+  return RecordedXPUMallocHelper::Instance(dev_id)->LimitSize();
+}
+
+bool IsXPUMallocRecorded(int dev_id) {
+  return RecordedXPUMallocHelper::Instance(dev_id)->NeedRecord();
 }
 
 }  // namespace platform

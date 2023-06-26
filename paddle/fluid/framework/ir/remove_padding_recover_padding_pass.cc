@@ -110,12 +110,14 @@ void MultiheadMatmul::operator()() {
       .LinksTo({multihead_matmul_out});
 }
 
-void Fc::operator()() {
-  // Create nodes for fc.
-  auto* fc_input =
-      pattern->NewNode(fc_input_repr())->assert_is_op_input("fc", "Input");
-  auto* fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
-  fc_op->LinksFrom({fc_input});
+void MatrixMultiply::operator()() {
+  // Create nodes for matrix_multiply.
+  auto* matrix_multiply_input =
+      pattern->NewNode(matrix_multiply_input_repr())
+          ->assert_is_op_input("matrix_multiply", "X");
+  auto* matrix_multiply_op = pattern->NewNode(matrix_multiply_op_repr())
+                                 ->assert_is_op("matrix_multiply");
+  matrix_multiply_op->LinksFrom({matrix_multiply_input});
 }
 
 void Activation::operator()() {
@@ -145,6 +147,19 @@ void FusedTokenPrune::operator()() {
 
   fused_token_prune_op->LinksFrom({fused_token_prune_input})
       .LinksTo({fused_token_prune_output});
+}
+
+void ElementWise::operator()() {
+  // Create nodes for elementwise.
+  auto* elementwise_input = pattern->NewNode(elementwise_input_repr())
+                                ->assert_is_op_input("elementwise_add", "X");
+  auto* elementwise_op =
+      pattern->NewNode(elementwise_op_repr())->assert_is_op("elementwise_add");
+  auto* elementwise_out = pattern->NewNode(elementwise_out_repr())
+                              ->assert_is_op_output("elementwise_add");
+
+  // Add links for elementwise op.
+  elementwise_op->LinksFrom({elementwise_input}).LinksTo({elementwise_out});
 }
 }  // namespace patterns
 
@@ -400,38 +415,45 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   gpd2(graph, handler2);
 
   GraphPatternDetector gpd3;
-  patterns::Fc fc(gpd3.mutable_pattern(),
-                  "remove_padding_recover_padding_pass");
-  fc();
+  patterns::MatrixMultiply matrix_multiply(
+      gpd3.mutable_pattern(), "remove_padding_recover_padding_pass");
+  matrix_multiply();
 
   auto handler3 = [&](const GraphPatternDetector::subgraph_t& subgraph,
                       Graph* graph) {
-    VLOG(3) << "remove_padding_recover_padding_pass for transformer: fc";
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "matrix_multiply";
 
-    GET_IR_NODE_FROM_SUBGRAPH(fc_input, fc_input, fc);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc_op, fc);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matrix_multiply_input, matrix_multiply_input, matrix_multiply);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matrix_multiply_op, matrix_multiply_op, matrix_multiply);
 
-    std::vector<int64_t> fc_input_shape = fc_input->Var()->GetShape();
+    std::vector<int64_t> matrix_multiply_input_shape =
+        matrix_multiply_input->Var()->GetShape();
     check_flag = true;
-    if ((fc_input_shape.size() != multihead_matmul_input_shape.size()) ||
-        (fc_input_shape.size() != 3)) {
+    if ((matrix_multiply_input_shape.size() !=
+         multihead_matmul_input_shape.size()) ||
+        (matrix_multiply_input_shape.size() != 3)) {
       check_flag = false;
       VLOG(3) << "Transformer model remove_padding shape check failed, return "
                  "remove_padding pass.";
       return;
     }
-    if (fc_input_shape[0] != multihead_matmul_input_shape[0]) {
+    if (matrix_multiply_input_shape[0] != multihead_matmul_input_shape[0]) {
       check_flag = false;
     }
-    if (fc_input_shape[1] != multihead_matmul_input_shape[1]) {
+    if (matrix_multiply_input_shape[1] != multihead_matmul_input_shape[1]) {
       check_flag = false;
     }
-    if ((fc_input_shape[2] != multihead_matmul_input_shape[2]) &&
-        (fc_input_shape[2] != 4 * multihead_matmul_input_shape[2])) {
+    if ((matrix_multiply_input_shape[2] != multihead_matmul_input_shape[2]) &&
+        (matrix_multiply_input_shape[2] !=
+         4 * multihead_matmul_input_shape[2])) {
       check_flag = false;
     }
 
-    if (PADDLE_GET_CONST(int, fc_op->Op()->GetAttr("in_num_col_dims")) != 2) {
+    if (PADDLE_GET_CONST(
+            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != 2) {
       check_flag = false;
     }
     if (!check_flag) {
@@ -439,8 +461,13 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
                  "remove_padding pass.";
       return;
     }
-    insert_remove_padding_op(fc_input, fc_op);
-    insert_recover_padding_op(fc_op, fc_op->outputs[0]);
+
+    matrix_multiply_op->Op()->RemoveAttr("x_num_col_dims");
+    matrix_multiply_op->Op()->SetAttr("x_num_col_dims", 1);
+
+    insert_remove_padding_op(matrix_multiply_input, matrix_multiply_op);
+    insert_recover_padding_op(matrix_multiply_op,
+                              matrix_multiply_op->outputs[0]);
     found_subgraph_count++;
   };
   gpd3(graph, handler3);
@@ -616,6 +643,57 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     found_subgraph_count++;
   };
   gpd7(graph, handler7);
+
+  // Removed fc_add fuse, elementwise can be used by the optimized model
+  GraphPatternDetector gpd8;
+  patterns::ElementWise elementwise(gpd8.mutable_pattern(),
+                                    "remove_padding_recover_padding_pass");
+  elementwise();
+
+  auto handler8 = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                      Graph* graph) {
+    VLOG(3) << "remove_padding_recover_padding_pass for transformer: "
+               "elementwise";
+
+    GET_IR_NODE_FROM_SUBGRAPH(
+        elementwise_input, elementwise_input, elementwise);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_op, elementwise_op, elementwise);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, elementwise);
+
+    std::vector<int64_t> elementwise_input_shape =
+        elementwise_input->Var()->GetShape();
+    check_flag = true;
+    if (elementwise_input_shape.size() != multihead_matmul_input_shape.size()) {
+      check_flag = false;
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+
+    if (elementwise_input_shape[0] != multihead_matmul_input_shape[0]) {
+      check_flag = false;
+    }
+    if (elementwise_input_shape[1] != multihead_matmul_input_shape[1]) {
+      check_flag = false;
+    }
+    if ((elementwise_input_shape[2] != multihead_matmul_input_shape[2]) &&
+        (elementwise_input_shape[2] != 4 * multihead_matmul_input_shape[2])) {
+      check_flag = false;
+    }
+    if (!check_flag) {
+      VLOG(3) << "Transformer model remove_padding shape check failed, return "
+                 "remove_padding pass.";
+      return;
+    }
+
+    elementwise_op->Op()->RemoveAttr("axis");
+    elementwise_op->Op()->SetAttr("axis", 1);
+
+    insert_remove_padding_op(elementwise_input, elementwise_op);
+    insert_recover_padding_op(elementwise_op, elementwise_out);
+    found_subgraph_count++;
+  };
+  gpd8(graph, handler8);
 
   AddStatis(found_subgraph_count);
 }

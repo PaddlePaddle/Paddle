@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -24,7 +26,7 @@ namespace phi {
 
 template <typename Context, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const Context& ctx,
+  void operator()(const Context& ctx UNUSED,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,

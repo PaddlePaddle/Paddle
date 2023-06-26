@@ -21,6 +21,8 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/expect.h"
 
+#include "glog/logging.h"
+
 namespace phi {
 
 OneDNNContextThreadLocals::Body::Body()
@@ -79,6 +81,11 @@ void OneDNNContextThreadLocals::Body::log_lib_version(void) {
     LOG(INFO) << "oneDNN v" << dv->major << "." << dv->minor << "."
               << dv->patch;
   }
+}
+
+OneDNNContextThreadLocals::Body& OneDNNContextThreadLocals::fetch() {
+  thread_local Body b;
+  return b;
 }
 
 struct OneDNNContext::Impl {
@@ -459,6 +466,8 @@ const std::vector<std::string>& OneDNNContext::GetOutputsName(
     const std::string& output) const {
   return impl_->GetOutputsName(output);
 }
+
+const char* OneDNNContext::name() { return "OneDNNContext"; }
 
 }  // namespace phi
 #endif

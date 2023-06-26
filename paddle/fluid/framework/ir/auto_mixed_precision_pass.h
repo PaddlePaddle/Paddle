@@ -68,9 +68,9 @@ class AutoMixedPrecisionPass : public FusePassBase {
  private:
   mutable bool skip_pass_{false};
 
-  mutable bool keep_io_types_{true};
+  mutable bool enable_low_precision_io_{false};
   // float16 or bfloat16 now
-  mutable phi::DataType low_precision_{phi::DataType::FLOAT16};
+  mutable phi::DataType low_precision_{phi::DataType::UNDEFINED};
 
   mutable phi::Backend backend_{phi::Backend::UNDEFINED};
 

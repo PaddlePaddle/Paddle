@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_base.h"

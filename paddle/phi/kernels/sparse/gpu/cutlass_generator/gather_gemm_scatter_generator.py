@@ -68,7 +68,6 @@ def CreateGatherGemmScatterOperator(
         for tile_description in tile_descriptions:
             for alignment in alignment_constraints:
                 for complex_transform in complex_transforms:
-
                     alignment_c = min(8, alignment)
 
                     A = TensorDescription(
@@ -97,8 +96,7 @@ def CreateGatherGemmScatterOperator(
     return operations
 
 
-def GenerateSM80_TensorOp_16816(manifest, cuda_version):
-
+def GenerateSM80_TensorOp_16816(manifest, cuda_version, debug=False):
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
@@ -191,6 +189,12 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version):
                 [64, 64, 64], 5, [2, 2, 1], math_inst, min_cc, max_cc
             ),
         ]
+        if debug:
+            tile_descriptions = [
+                TileDescription(
+                    [256, 128, 32], 3, [4, 2, 1], math_inst, min_cc, max_cc
+                ),
+            ]
 
         data_type = [
             math_inst.element_a,
@@ -205,7 +209,6 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version):
 
         # Avoid emitting two kernels if the accumulator type does not differ from the input type (e.g. F16 accumulation)
         if math_inst.element_a != math_inst.element_accumulator:
-
             data_type_mixed = [
                 math_inst.element_a,
                 math_inst.element_b,
@@ -218,13 +221,14 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version):
             )
 
 
-def GenerateSM80_TensorOp_1688(manifest, cuda_version):
-
+def GenerateSM80_TensorOp_1688(manifest, cuda_version, debug=False):
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -302,6 +306,13 @@ def GenerateSM80_TensorOp_1688(manifest, cuda_version):
             ),
         ]
 
+        if debug:
+            tile_descriptions = [
+                TileDescription(
+                    [256, 128, 16], 3, [4, 2, 1], math_inst, min_cc, max_cc
+                ),
+            ]
+
         data_type = [
             math_inst.element_a,
             math_inst.element_b,
@@ -325,13 +336,14 @@ def GenerateSM80_TensorOp_1688(manifest, cuda_version):
         )
 
 
-def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version):
-
+def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version, debug=False):
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -409,6 +421,13 @@ def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version):
             ),
         ]
 
+        if debug:
+            tile_descriptions = [
+                TileDescription(
+                    [256, 128, 16], 3, [4, 2, 1], math_inst, min_cc, max_cc
+                ),
+            ]
+
         data_type = [DataType.f32, DataType.f32, DataType.f32, DataType.f32]
 
         CreateGatherGemmScatterOperator(
@@ -416,13 +435,16 @@ def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version):
         )
 
 
-def GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version):
-
+def GenerateSM80_TensorOp_1688_fast_fp32_math(
+    manifest, cuda_version, debug=False
+):
     if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
         return
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -482,6 +504,13 @@ def GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version):
             ),
         ]
 
+        if debug:
+            tile_descriptions = [
+                TileDescription(
+                    [128, 128, 16], 4, [4, 2, 1], math_inst, min_cc, max_cc
+                ),
+            ]
+
         data_type = [DataType.f32, DataType.f32, DataType.f32, DataType.f32]
 
         CreateGatherGemmScatterOperator(
@@ -489,11 +518,95 @@ def GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version):
         )
 
 
-def GenerateSM80(manifest, cuda_version):
-    GenerateSM80_TensorOp_16816(manifest, cuda_version)
-    GenerateSM80_TensorOp_1688(manifest, cuda_version)
-    GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version)
-    GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version)
+def GenerateSM75_TensorOp_1688(manifest, cuda_version, debug=False):
+    if not CudaToolkitVersionSatisfies(cuda_version, 10, 2):
+        return
+
+    layouts = [
+        (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+    ]
+
+    math_instructions = [
+        MathInstruction(
+            [16, 8, 8],
+            DataType.f16,
+            DataType.f16,
+            DataType.f32,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add,
+        ),
+        MathInstruction(
+            [16, 8, 8],
+            DataType.f16,
+            DataType.f16,
+            DataType.f16,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add,
+        ),
+    ]
+
+    min_cc = 75
+    max_cc = 1024
+
+    for math_inst in math_instructions:
+        tile_descriptions = [
+            TileDescription(
+                [256, 128, 32], 2, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 32], 2, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 32], 2, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 32], 2, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 32], 2, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 64], 2, [1, 2, 2], math_inst, min_cc, max_cc
+            ),
+        ]
+
+        if debug:
+            tile_descriptions = [
+                TileDescription(
+                    [256, 128, 32], 2, [4, 2, 1], math_inst, min_cc, max_cc
+                ),
+            ]
+
+        data_type = [
+            math_inst.element_a,
+            math_inst.element_b,
+            math_inst.element_accumulator,
+            math_inst.element_accumulator,
+        ]
+
+        CreateGatherGemmScatterOperator(
+            manifest, layouts, tile_descriptions, data_type
+        )
+
+
+def GenerateSM75(manifest, cuda_version, debug=False):
+    GenerateSM75_TensorOp_1688(manifest, cuda_version, debug)
+
+
+def GenerateSM80(manifest, cuda_version, debug=False):
+    GenerateSM80_TensorOp_16816(manifest, cuda_version, debug)
+    GenerateSM80_TensorOp_1688(manifest, cuda_version, debug)
+    GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version, debug)
+    GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version, debug)
 
 
 class KernelCfg:
@@ -529,7 +642,6 @@ class KernelCfg:
 
 
 if __name__ == "__main__":
-
     args = KernelCfg(
         architectures='80',
         build_dir=sys.argv[2],
@@ -547,6 +659,8 @@ if __name__ == "__main__":
     )
     manifest = GatherGemmScatterManifest(args)
 
-    GenerateSM80(manifest, args.cuda_version)
+    debug = False
+    GenerateSM75(manifest, args.cuda_version, debug)
+    GenerateSM80(manifest, args.cuda_version, debug)
 
     manifest.emit(GeneratorTarget.Library)

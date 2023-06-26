@@ -41,7 +41,7 @@ def desired(primal, cotangent, axis, keep_dim):
 class TestSumGradComp(unittest.TestCase):
     def test_sum_grad_comp_1(self):
         self.primal = np.random.rand(10, 10)
-        self.cotangent = np.random.rand(1)
+        self.cotangent = np.array(np.random.rand())
         paddle.disable_static()
 
         np.testing.assert_allclose(

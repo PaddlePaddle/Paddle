@@ -321,7 +321,7 @@ def try_load_model_vars(
                 global_block._remove_op(index)
 
         # if fetch_list have lod tensor
-        return_numpy = all([v.lod_level == 0 for v in fetch_list])
+        return_numpy = all(v.lod_level == 0 for v in fetch_list)
 
         # try dump fetch_targets
         feed_tensors = []

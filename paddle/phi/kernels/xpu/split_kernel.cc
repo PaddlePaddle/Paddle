@@ -66,13 +66,19 @@ void SplitWithNumKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    split, XPU, ALL_LAYOUT, phi::SplitKernel, float, int, phi::dtype::float16) {
-}
+PD_REGISTER_KERNEL(split,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SplitKernel,
+                   float,
+                   int64_t,
+                   int,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(split_with_num,
                    XPU,
                    ALL_LAYOUT,
                    phi::SplitWithNumKernel,
                    float,
+                   int64_t,
                    int,
                    phi::dtype::float16) {}

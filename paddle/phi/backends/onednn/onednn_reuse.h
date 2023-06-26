@@ -676,7 +676,7 @@ class OneDNNHandlerNoCachingT {
       const dnnl::memory::desc& user_md,
       const dnnl::memory::desc& target_md,
       void* ptr,
-      bool is_persistent = false,
+      bool is_persistent UNUSED = false,
       std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     std::shared_ptr<dnnl::memory> target_memory_p;
     if (custom_reorder_func) {
@@ -1083,7 +1083,9 @@ class BroadcastDataOneDNNHandler
                                                  : vectorize(out->dims());
     const auto src0_md = dnnl::memory::desc(
         src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
-    const auto src1_md = x->mem_desc().reshape(extended_x_dims);
+    const auto reshape_dims =
+        extended_x_dims.size() != 0 ? extended_x_dims : std::vector<int64_t>{1};
+    const auto src1_md = x->mem_desc().reshape(reshape_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -1113,7 +1115,7 @@ class PReluOneDNNHandler
                      const DenseTensor& x,
                      const DenseTensor& weights,
                      const std::string& mode,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      const bool is_test)
       : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             engine, cpu_place) {
@@ -1126,6 +1128,9 @@ class PReluOneDNNHandler
             *std::max_element(weights_dims.begin(), weights_dims.end());
       }
       weights_dims = std::move(new_weights_dims);
+    }
+    if (weights_dims.empty()) {
+      weights_dims = std::vector<int64_t>{1};
     }
     auto weights_md = memory::desc(
         weights_dims, OneDNNGetDataType<T>(), memory::format_tag::any);
@@ -1173,7 +1178,7 @@ class ReductionOneDNNHandler
                          const dnnl::engine engine,
                          Place cpu_place,
                          const DenseTensor* x,
-                         const DenseTensor* out,
+                         const DenseTensor* out UNUSED,
                          std::vector<int64_t> out_tz,
                          const dnnl::primitive_attr& attrs = NULL)
       : OneDNNHandlerNoCachingT<T, dnnl::reduction>(engine, cpu_place) {

@@ -74,6 +74,15 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
                              const std::string& data_format,
                              MetaTensor* out);
 
+void CheckNumericsInferMeta(const MetaTensor& tensor,
+                            const std::string& op_type,
+                            const std::string& var_name,
+                            const int check_nan_inf_level,
+                            const int stack_height_limit,
+                            const std::string& output_dir,
+                            MetaTensor* stats,
+                            MetaTensor* values);
+
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,
@@ -110,6 +119,12 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
                             bool exclusive,
                             bool reverse,
                             MetaTensor* out);
+
+void CumWithIndicesInferMeta(const MetaTensor& x,
+                             int axis,
+                             int dtype,
+                             MetaTensor* out,
+                             MetaTensor* indices);
 
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
@@ -162,6 +177,11 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
+
+void FillAnyLikeInferMeta(const MetaTensor& x,
+                          const Scalar& value,
+                          DataType dtype,
+                          MetaTensor* out);
 
 void FillDiagonalInferMeta(
     const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out);
@@ -272,8 +292,8 @@ void LUInferMeta(const MetaTensor& x,
 void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out);
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool hermitian,
                          bool use_default_tol,
+                         bool hermitian,
                          MetaTensor* out);
 
 void MaxOutInferMeta(const MetaTensor& x,
@@ -627,6 +647,8 @@ void TrilTriuInferMeta(const MetaTensor& x,
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor*> outs);
+
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 

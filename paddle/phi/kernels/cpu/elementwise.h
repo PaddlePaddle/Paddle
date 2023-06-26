@@ -122,10 +122,10 @@ struct SameDimsDivideFunctor<
     DevCtx,
     T,
     typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const DevCtx& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* z) {
+  void operator()(const DevCtx& dev_ctx UNUSED,
+                  const DenseTensor& x UNUSED,
+                  const DenseTensor& y UNUSED,
+                  DenseTensor* z UNUSED) {
     phi::errors::InvalidArgument(
         "If use SameDimsDivideFunctor, template args(T) must be floating "
         "point. ");

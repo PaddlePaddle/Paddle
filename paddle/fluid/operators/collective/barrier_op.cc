@@ -33,7 +33,7 @@ class BarrierOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
     AddComment(R"DOC(
-Barrier Operator - Barrier among all pariticapitors.)DOC");
+Barrier Operator - Barrier among all participators.)DOC");
   }
 };
 

@@ -18,6 +18,8 @@
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #endif
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
@@ -27,6 +29,8 @@
 #include "paddle/phi/kernels/fusion/gpu/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+
+PHI_DECLARE_bool(use_fast_math);
 
 namespace phi {
 namespace fusion {
@@ -290,21 +294,22 @@ class FusedDropoutHelper {
                           T* d_bias,
                           const std::string& act_method) {
     if (act_method == "gelu") {
-      phi::funcs::GeluGradFunctor<T> gelu_grad;
-      phi::fusion::
-          LaunchDropoutActBiasGrad<T, MaskType, phi::funcs::GeluGradFunctor<T>>(
-              gelu_grad,
-              dout,
-              mask,
-              src,
-              bias,
-              dropout_param_.dropout_prob,
-              dropout_param_.is_upscale_in_train,
-              rows_,
-              cols_,
-              d_src,
-              d_bias,
-              ctx);
+      phi::fusion::GeluGradFunctor<T> gelu_grad;
+      phi::fusion::LaunchDropoutActBiasGrad<T,
+                                            MaskType,
+                                            phi::fusion::GeluGradFunctor<T>>(
+          gelu_grad,
+          dout,
+          mask,
+          src,
+          bias,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          rows_,
+          cols_,
+          d_src,
+          d_bias,
+          ctx);
     } else if (act_method == "relu") {
       phi::funcs::ReluGradFunctor<T> relu_grad;
       phi::fusion::

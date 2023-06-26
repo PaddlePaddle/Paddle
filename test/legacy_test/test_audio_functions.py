@@ -60,7 +60,7 @@ class TestAudioFuncitons(unittest.TestCase):
     def test_audio_function(self, val: float, htk_flag: bool):
         mel_paddle = paddle.audio.functional.hz_to_mel(val, htk_flag)
         mel_paddle_tensor = paddle.audio.functional.hz_to_mel(
-            paddle.to_tensor(val), htk_flag
+            paddle.to_tensor([val]), htk_flag
         )
         mel_librosa = librosa.hz_to_mel(val, htk_flag)
         np.testing.assert_almost_equal(mel_paddle, mel_librosa, decimal=5)
@@ -70,7 +70,7 @@ class TestAudioFuncitons(unittest.TestCase):
 
         hz_paddle = paddle.audio.functional.mel_to_hz(val, htk_flag)
         hz_paddle_tensor = paddle.audio.functional.mel_to_hz(
-            paddle.to_tensor(val), htk_flag
+            paddle.to_tensor([val]), htk_flag
         )
         hz_librosa = librosa.mel_to_hz(val, htk_flag)
         np.testing.assert_almost_equal(hz_paddle, hz_librosa, decimal=4)
@@ -79,7 +79,7 @@ class TestAudioFuncitons(unittest.TestCase):
         )
 
         decibel_paddle = paddle.audio.functional.power_to_db(
-            paddle.to_tensor(val)
+            paddle.to_tensor([val])
         )
         decibel_librosa = librosa.power_to_db(val)
         np.testing.assert_almost_equal(

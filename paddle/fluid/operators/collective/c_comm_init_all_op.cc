@@ -124,7 +124,7 @@ class CCommInitAllOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 CCommInitAll operator
 
-Initialize all collective communicatoin context
+Initialize all collective communication context
 )DOC");
     AddAttr<std::vector<int>>(
         "devices",

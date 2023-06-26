@@ -25,7 +25,7 @@ namespace operators {
 
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUUnitKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
@@ -153,7 +153,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUUnitGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>

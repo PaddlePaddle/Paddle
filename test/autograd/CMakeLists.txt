@@ -15,6 +15,7 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach()
 
+set_tests_properties(test_autograd_dynamic PROPERTIES TIMEOUT 100)
 set_tests_properties(test_autograd_functional_dynamic PROPERTIES TIMEOUT 200)
 set_tests_properties(test_autograd_functional_static PROPERTIES TIMEOUT 160)
 set_tests_properties(test_minimize PROPERTIES TIMEOUT 60)

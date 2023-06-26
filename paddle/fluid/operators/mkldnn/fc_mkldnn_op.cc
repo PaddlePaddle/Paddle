@@ -44,7 +44,7 @@ class FCMKLDNNHandler
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
                   const phi::DenseTensor* bias,
-                  phi::DenseTensor* out,
+                  phi::DenseTensor* out UNUSED,
                   const int in_num_col_dims,
                   dnnl::engine onednn_engine,
                   platform::Place cpu_place)
@@ -192,7 +192,9 @@ class FCMKLDNNHandler
     } else {
       auto scale_in_data = ctx.Attr<float>("Scale_in");
       auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+      bool has_activation = !ctx.Attr<std::string>("activation_type").empty() ||
+                            (ctx.HasAttr("fuse_activation") &&
+                             !ctx.Attr<std::string>("fuse_activation").empty());
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
       bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
                                 ctx.Attr<bool>("fuse_residual_connection");
@@ -401,7 +403,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                              }));
   }
 
-  void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p,
+  void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p
+                         UNUSED,
                      const std::shared_ptr<dnnl::memory>& src_mem,
                      const phi::DenseTensor* x,
                      const dnnl::engine& engine) const {

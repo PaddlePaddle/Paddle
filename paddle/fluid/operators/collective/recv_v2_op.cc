@@ -114,9 +114,12 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(recv_v2, ops::RecvOpV2, ops::RecvOpV2Maker);
 
-REGISTER_OP_CPU_KERNEL(recv_v2,
-                       ops::RecvOpV2CPUKernel<float>,
-                       ops::RecvOpV2CPUKernel<double>,
-                       ops::RecvOpV2CPUKernel<int>,
-                       ops::RecvOpV2CPUKernel<int64_t>,
-                       ops::RecvOpV2CPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(recv_v2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::RecvOpV2CPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

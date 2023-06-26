@@ -17,7 +17,7 @@
 #include <typeinfo>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -34,7 +34,7 @@ void ClipByNormKernel(const Context& dev_ctx,
     return ClipByNormFunctor<float, Context>(dev_ctx, in, max_norm, output);
   }
   auto input = &in;
-  dev_ctx.template Alloc<dtype::float16>(output);
+  dev_ctx.template Alloc<T>(output);
 
   PADDLE_ENFORCE_NOT_NULL(input,
                           phi::errors::InvalidArgument(
@@ -49,20 +49,14 @@ void ClipByNormKernel(const Context& dev_ctx,
   auto* tmp = &tmp_tensor;
   tmp->Resize({1});
   dev_ctx.template Alloc<float>(tmp);
-  phi::funcs::ReduceKernel<dtype::float16,
-                           float,
-                           kps::AddFunctor,
-                           kps::SquareFunctor<dtype::float16, float>>(
-      dev_ctx,
-      *input,
-      tmp,
-      kps::SquareFunctor<dtype::float16, float>(),
-      reduce_dims);
+  phi::funcs::
+      ReduceKernel<T, float, kps::AddFunctor, kps::SquareFunctor<T, float>>(
+          dev_ctx, *input, tmp, kps::SquareFunctor<T, float>(), reduce_dims);
   auto tmp_eigen = phi::EigenVector<float>::Flatten(*tmp);
   auto x_norm = tmp_eigen.sqrt();
 
-  auto x = phi::EigenVector<dtype::float16>::Flatten(*input);
-  auto out = phi::EigenVector<dtype::float16>::Flatten(*output);
+  auto x = phi::EigenVector<T>::Flatten(*input);
+  auto out = phi::EigenVector<T>::Flatten(*output);
   auto* place = dev_ctx.eigen_device();
 
   auto temp = (x_norm <= max_norm).template cast<float>();
@@ -72,7 +66,7 @@ void ClipByNormKernel(const Context& dev_ctx,
 
   auto scaling =
       (temp + (static_cast<float>(1) - temp) * max_norm / (x_norm + epsilon))
-          .template cast<dtype::float16>();
+          .template cast<T>();
   Eigen::array<int, 1> one_dim{{1}};
   Eigen::DSizes<int, 1> m_dsize(input->numel());
 
@@ -86,4 +80,5 @@ PD_REGISTER_KERNEL(clip_by_norm,
                    ALL_LAYOUT,
                    phi::ClipByNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

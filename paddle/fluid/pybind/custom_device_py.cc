@@ -29,6 +29,23 @@ namespace pybind {
 void BindCustomDevicePy(py::module *m_ptr) {
   auto &m = *m_ptr;
   // Bind Methods
+  m.def("_get_device_min_chunk_size", [](const std::string &device_type) {
+    auto place = paddle::platform::CustomPlace(device_type);
+    return phi::DeviceManager::GetMinChunkSize(place);
+  });
+  m.def(
+      "_get_device_total_memory",
+      [](const std::string &device_type, int device_id) {
+        auto place = paddle::platform::CustomPlace(
+            device_type,
+            device_id == -1 ? phi::DeviceManager::GetDevice(device_type)
+                            : device_id);
+        size_t total = 0, free = 0;
+        phi::DeviceManager::MemoryStats(place, &total, &free);
+        return total;
+      },
+      py::arg("device_type"),
+      py::arg("device_id") = -1);
   m.def(
       "_get_current_custom_device_stream",
       [](const std::string &device_type, int device_id) {
@@ -300,7 +317,7 @@ void BindCustomDevicePy(py::module *m_ptr) {
           Default: None.
 
       Returns:
-          The recored event.
+          The record event.
 
       Examples:
         .. code-block:: python

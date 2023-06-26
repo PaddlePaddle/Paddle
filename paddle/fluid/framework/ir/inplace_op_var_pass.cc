@@ -36,6 +36,12 @@ bool InplaceOpVarPass::IsValidInplaceOp(
     if (var_node->Name() != x_name) continue;
     if (var_node->Var()->Persistable() || var_node->outputs.size() != 1)
       return false;
+    // The op type in front of in_var_node should not be feed.
+    for (auto* pre_op : var_node->inputs) {
+      if (pre_op->Op()->Type() == "feed") {
+        return false;
+      }
+    }
   }
 
   // in/out_var_node should be not used in multi graphs.

@@ -150,12 +150,15 @@ REGISTER_OPERATOR(hinge_loss,
                   ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
                   ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
-REGISTER_OP_CPU_KERNEL(hinge_loss,
-                       ops::HingeLossKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(hinge_loss_grad,
-                       ops::HingeLossGradKernel<phi::CPUContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(hinge_loss,
-                        ops::HingeLossKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(hinge_loss_grad,
-                        ops::HingeLossGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    hinge_loss, CPU, ALL_LAYOUT, ops::HingeLossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    hinge_loss_grad, CPU, ALL_LAYOUT, ops::HingeLossGradKernel, float) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(
+    hinge_loss, GPU, ALL_LAYOUT, ops::HingeLossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    hinge_loss_grad, GPU, ALL_LAYOUT, ops::HingeLossGradKernel, float) {}
+#endif

@@ -127,7 +127,7 @@ def batch_norm(
     """
     Applies Batch Normalization as described in the paper Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift .
 
-    nn.functional.batch_norm is uesd for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
+    nn.functional.batch_norm is used for nn.BatchNorm1D, nn.BatchNorm2D, nn.BatchNorm3D. Please use above API for BatchNorm.
 
     Parameters:
         x(Tesnor): input value. It's data type should be float32, float64.
@@ -213,7 +213,7 @@ def batch_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+            x, 'input', ['float16', 'uint16', 'float32', 'float64'], 'BatchNorm'
         )
 
         # for static need dict
@@ -240,7 +240,9 @@ def batch_norm(
         from paddle.fluid.data_feeder import convert_dtype
 
         param_dtype = (
-            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+            x.dtype
+            if convert_dtype(x.dtype) not in ['float16', 'uint16']
+            else 'float32'
         )
         saved_mean = helper.create_variable_for_type_inference(
             dtype=param_dtype, stop_gradient=True
@@ -280,7 +282,7 @@ def layer_norm(
     For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
 
     Parameters:
-        x(Tensor): Input Tensor. It's data type should be float32, float64.
+        x(Tensor): Input Tensor. It's data type should be bfloat16, float16, float32, float64.
         normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
@@ -332,12 +334,12 @@ def layer_norm(
         )
 
     if in_dygraph_mode():
-        out, _, _ = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+        out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
+            x, 'input', ['uint16', 'float16', 'float32', 'float64'], 'LayerNorm'
         )
 
         inputs = {}
@@ -546,7 +548,7 @@ def local_response_norm(
 
     from functools import reduce
 
-    sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
+    sum_sizes = reduce(lambda x, y: x * y, sizes[1:], 1)
 
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
     if not channel_last:

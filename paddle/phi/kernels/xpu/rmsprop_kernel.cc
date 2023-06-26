@@ -41,12 +41,6 @@ void RmspropDenseKernel(const Context& dev_ctx,
                         DenseTensor* mean_grad_out,
                         DenseTensor* master_param_outs) {
   // copy learning_rate to cpu
-  PADDLE_ENFORCE_EQ(
-      learning_rate.dims().size(),
-      1,
-      errors::InvalidArgument("learining rate should have dimension = 1."
-                              " But received learning rate dim [%s] ",
-                              learning_rate.dims().size()));
   T learning_rate_cpu = 0.0f;
   memory_utils::Copy(CPUPlace(),
                      static_cast<void*>(&learning_rate_cpu),

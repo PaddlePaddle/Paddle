@@ -96,6 +96,10 @@ static std::tuple<int, int, int> GetTrtCompileVersion() {
       NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH};
 }
 
+static float TrtMajorVersion(int full_version) {
+  return (full_version / 100) / 10.0;
+}
+
 template <typename T>
 struct Destroyer {
   void operator()(T* x) {
@@ -190,6 +194,10 @@ inline void PrintITensorShape(nvinfer1::ITensor* X) {
 template <typename T>
 inline std::string Vec2Str(const std::vector<T>& vec) {
   std::ostringstream os;
+  if (vec.empty()) {
+    os << "()";
+    return os.str();
+  }
   os << "(";
   for (size_t i = 0; i < vec.size() - 1; ++i) {
     os << vec[i] << ",";

@@ -15,6 +15,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "glog/logging.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"

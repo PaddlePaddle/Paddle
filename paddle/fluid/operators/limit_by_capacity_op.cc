@@ -77,10 +77,13 @@ class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(limit_by_capacity,
-                       ops::LimitByCapacityOpCPUKernel<int>,
-                       ops::LimitByCapacityOpCPUKernel<int64_t>);
-
 REGISTER_OP_WITHOUT_GRADIENT(limit_by_capacity,
                              ops::LimitByCapacityOp,
                              ops::LimitByCapacityOpMaker);
+
+PD_REGISTER_STRUCT_KERNEL(limit_by_capacity,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LimitByCapacityOpCPUKernel,
+                          int,
+                          int64_t) {}

@@ -101,8 +101,8 @@ void QrKernel(const Context& ctx,
 
   if (reduced_mode) {
     auto trans_qr = TransposeLast2Dim<T, Context>(ctx, qr);
-    auto sliced_qr = SliceKernel<T, Context>(
-        ctx, trans_qr, {trans_qr.dims().size() - 2}, {0}, {min_mn}, {1}, {});
+    auto sliced_qr = Slice<T, Context>(
+        ctx, trans_qr, {trans_qr.dims().size() - 2}, {0}, {min_mn});
     auto tmp_r = TrilTriu<T, Context>(ctx, sliced_qr, 0, false);
     // Transpose 'tmp_r' to retore the original row-major order
     phi::Copy(ctx, tmp_r, r->place(), false, r);
@@ -128,8 +128,8 @@ void QrKernel(const Context& ctx,
                                qr_stride,
                                tau_stride);
       auto trans_q = TransposeLast2Dim<T, Context>(ctx, qr);
-      auto sliced_q = SliceKernel<T, Context>(
-          ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {min_mn}, {1}, {});
+      auto sliced_q = Slice<T, Context>(
+          ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {min_mn});
       phi::Copy(ctx, sliced_q, q->place(), false, q);
     } else {
       if (m > n) {
@@ -170,8 +170,8 @@ void QrKernel(const Context& ctx,
                                  qr_stride,
                                  tau_stride);
         auto trans_q = TransposeLast2Dim<T, Context>(ctx, qr);
-        auto sliced_q = SliceKernel<T, Context>(
-            ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {m}, {1}, {});
+        auto sliced_q = Slice<T, Context>(
+            ctx, trans_q, {trans_q.dims().size() - 1}, {0}, {m});
         phi::Copy(ctx, sliced_q, q->place(), false, q);
       }
     }

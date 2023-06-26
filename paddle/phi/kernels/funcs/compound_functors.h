@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-
+#include "paddle/phi/core/macros.h"
 namespace phi {
 namespace funcs {
 
@@ -33,7 +33,7 @@ struct BinaryCompoundFunctor {
     return func1_(x, intermediat_out);
   }
 
-  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return func2_(y); }
+  inline HOSTDEVICE T GetIntermediateOut(T x UNUSED, T y) { return func2_(y); }
 
   BinaryFunctor func1_;
   UnaryFunctor func2_;
@@ -47,7 +47,7 @@ struct UnaryCompoundFunctor {
 
   inline HOSTDEVICE T GetOut(T x, T y) { return func1_(func2_(x, y)); }
 
-  inline HOSTDEVICE T GetOutUseIntermediateOut(T x, T intermediat_out) {
+  inline HOSTDEVICE T GetOutUseIntermediateOut(T x UNUSED, T intermediat_out) {
     return func1_(intermediat_out);
   }
 
@@ -64,16 +64,18 @@ struct BinaryCompoundGradDxFunctor {
                               const UnaryFun &unary_fun)
       : d_binary_fun_(d_binary_fun), unary_fun_(unary_fun) {}
 
-  inline HOSTDEVICE T Recompute(T x, T y, T out, T dout) {
+  inline HOSTDEVICE T Recompute(T x, T y, T out UNUSED, T dout) {
     return dout * d_binary_fun_.Dx(x, unary_fun_(y));
   }
 
-  inline HOSTDEVICE T
-  UseIntermediateOut(T x, T y, T intermediate_out, T out, T dout) {
+  inline HOSTDEVICE T UseIntermediateOut(
+      T x, T y UNUSED, T intermediate_out, T out UNUSED, T dout) {
     return dout * d_binary_fun_.Dx(x, intermediate_out);
   }
 
-  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return unary_fun_(y); }
+  inline HOSTDEVICE T GetIntermediateOut(T x UNUSED, T y) {
+    return unary_fun_(y);
+  }
 
  private:
   DBinaryFun d_binary_fun_;
@@ -94,12 +96,12 @@ struct BinaryCompoundGradDyFunctor {
         unary_fun_(unary_fun),
         d_unary_fun_(d_unary_fun) {}
 
-  inline HOSTDEVICE T Recompute(T x, T y, T out, T dout) {
+  inline HOSTDEVICE T Recompute(T x, T y, T out UNUSED, T dout) {
     return dout * d_binary_fun_.Dy(x, unary_fun_(y)) * d_unary_fun_.UseX(y);
   }
 
   inline HOSTDEVICE T
-  UseIntermediateOut(T x, T y, T intermediate_out, T out, T dout) {
+  UseIntermediateOut(T x, T y, T intermediate_out, T out UNUSED, T dout) {
     if (InPlace) {
       return dout * d_binary_fun_.Dy(x, intermediate_out) *
              d_unary_fun_.UseOut(intermediate_out);
@@ -109,7 +111,9 @@ struct BinaryCompoundGradDyFunctor {
     }
   }
 
-  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return unary_fun_(y); }
+  inline HOSTDEVICE T GetIntermediateOut(T x UNUSED, T y) {
+    return unary_fun_(y);
+  }
 
  private:
   DBinaryFun d_binary_fun_;
@@ -210,13 +214,13 @@ struct BinaryCompoundGradDIntermedaiteOutFunctor {
                                             const UnaryFun &unary_fun)
       : d_binary_fun_(d_binary_fun), unary_fun_(unary_fun) {}
 
-  inline HOSTDEVICE T Recompute(T x, T y, T out, T dout) {
+  inline HOSTDEVICE T Recompute(T x, T y, T out UNUSED, T dout) {
     return dout * d_binary_fun_.Dy(x, unary_fun_(y));
   }
 
   inline HOSTDEVICE T UseIntermediateOut(T x,
                                          T intermediate_out,
-                                         T out,
+                                         T out UNUSED,
                                          T dout) {
     return dout * d_binary_fun_.Dy(x, intermediate_out);
   }
@@ -243,7 +247,7 @@ struct UnaryCompoundGradDIntermediateFunctor {
     }
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x,
+  inline HOSTDEVICE T UseIntermediateOut(T x UNUSED,
                                          T intermediate_out,
                                          T out,
                                          T dout) {

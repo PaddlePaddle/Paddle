@@ -16,20 +16,11 @@ import re
 import sys
 
 import numpy as np
-from spectral_op_np import (
-    fft_c2c,
-    fft_c2c_backward,
-    fft_c2r,
-    fft_c2r_backward,
-    fft_r2c,
-    fft_r2c_backward,
-)
+from eager_op_test import OpTest
+from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
 
 import paddle
 from paddle import _C_ops
-
-sys.path.append("../")
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 paddle.enable_static()
 
@@ -37,7 +28,6 @@ TEST_CASE_NAME = 'test_case'
 
 
 def parameterize(attrs, input_values=None):
-
     if isinstance(attrs, str):
         attrs = [attrs]
     input_dicts = (
@@ -155,22 +145,13 @@ class TestFFTC2COp(OpTest):
         }
         self.outputs = {'Out': out}
 
-        self.out_grad = (
-            np.random.random(self.x.shape) + 1j * np.random.random(self.x.shape)
-        ).astype(self.x.dtype)
-        self.x_grad = fft_c2c_backward(
-            self.out_grad, self.axes, self.norm, self.forward
-        )
-
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
-            "X",
+            ["X"],
             "Out",
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad],
         )
 
 
@@ -248,16 +229,6 @@ class TestFFTC2ROp(OpTest):
         }
         self.outputs = {'Out': out}
 
-        self.out_grad = np.random.random(out.shape).astype(out.dtype)
-        self.x_grad = fft_c2r_backward(
-            self.x,
-            self.out_grad,
-            self.axes,
-            self.norm,
-            self.forward,
-            self.last_dim_size,
-        )
-
     def test_check_output(self):
         self.check_output()
 
@@ -265,8 +236,6 @@ class TestFFTC2ROp(OpTest):
         self.check_grad(
             ["X"],
             "Out",
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad],
         )
 
 
@@ -332,23 +301,11 @@ class TestFFTR2COp(OpTest):
         }
         self.outputs = {'Out': out}
 
-        self.out_grad = np.random.random(out.shape).astype(out.dtype)
-        self.x_grad = fft_r2c_backward(
-            self.x,
-            self.out_grad,
-            self.axes,
-            self.norm,
-            self.forward,
-            self.onesided,
-        )
-
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
-            "X",
+            ["X"],
             "Out",
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad],
         )

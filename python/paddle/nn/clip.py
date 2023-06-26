@@ -18,11 +18,11 @@ from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.framework import LayerHelper, _non_static_mode, in_dygraph_mode
+from paddle.framework import LayerHelper, in_dynamic_mode
 from paddle.tensor.layer_function_generator import templatedoc
 
 __all__ = []
@@ -57,13 +57,13 @@ def clip_by_norm(x, max_norm, name=None):
             # [[0.5, 0.5], [0.5, 0.5]]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.clip_by_norm(x, max_norm)
-    if _non_static_mode():
-        return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
-    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+    check_variable_and_dtype(
+        x, 'X', ['float16', 'float32', 'uint16'], 'clip_by_norm'
+    )
     check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
     if name is None:
@@ -107,11 +107,8 @@ def merge_selected_rows(x, name=None):
                 type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             y = nn.merge_selected_rows(var)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.merge_selected_rows(x)
-
-    if _non_static_mode():
-        return _legacy_C_ops.merge_selected_rows(x)
 
     helper = LayerHelper("merge_selected_rows", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -214,7 +211,7 @@ def _squared_l2_norm(x):
         sum_square = paddle.sum(square)
         return sum_square
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
@@ -333,7 +330,7 @@ class ClipGradBase:
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        if _non_static_mode():
+        if in_dynamic_mode():
             return self._dygraph_clip(params_grads)
         else:
             for p, g in params_grads:
@@ -653,7 +650,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             merge_grad = g
 
-            if in_dygraph_mode() and g.is_selected_rows():
+            if in_dynamic_mode() and g.is_selected_rows():
                 merge_grad = merge_selected_rows(g)
                 merge_grad = merge_grad._get_tensor_from_selected_rows()
 
@@ -698,7 +695,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
 
         need_clip = False

@@ -414,6 +414,36 @@ def _add_feed_fetch_ops(
     return tmp_program
 
 
+def _set_micro_batch_fetch(plan):
+    if plan.micro_batch_num() <= 1:
+        return
+
+    valid_fetch_types = ["fetch", "fetch_v2"]
+    for job in plan.job_list():
+        idx_to_col_attr = {}
+        prog = plan.program(job.type())
+        for i in range(prog.block(0).op_size()):
+            op = prog.block(0).op(i)
+            if op.type() in valid_fetch_types:
+                idx_to_col_attr[i] = op.attr('col')
+
+        for idx, col in idx_to_col_attr.items():
+            job.set_col_attr_for_fetch_op(
+                idx, col * plan.micro_batch_num() + job.micro_batch_id()
+            )
+
+
+def _merge_tensors(tensor, micro_batch_num):
+    if micro_batch_num <= 1:
+        return tensor
+    assert len(tensor) % micro_batch_num == 0
+    chunk_tensor = [
+        tensor[i : i + micro_batch_num]
+        for i in range(0, len(tensor), micro_batch_num)
+    ]
+    return [np.array(chunk) for chunk in chunk_tensor]
+
+
 def _apply_inplace_addto_pass(
     program, enable_inplace, enable_addto, skip_var_names
 ):
@@ -511,9 +541,11 @@ def _prepare_fleet_executor():
     return fleet_exe
 
 
-def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
-    return program.desc.cached_hash_str() + _get_program_cache_key(
-        feed, fetch_list
+def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
+    return (
+        program.desc.cached_hash_str()
+        + str(scope.raw_address())
+        + _get_program_cache_key(feed, fetch_list)
     )
 
 
@@ -580,7 +612,7 @@ def _as_lodtensor(data, place, dtype=None):
             else dtype
         )
         if np.isscalar(data):
-            data = np.array([data]).astype(dtype)
+            data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -632,14 +664,14 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 
 class _StandaloneExecutor:
-    def __init__(self, place, main_program, scope):
+    def __init__(self, place, plan, scope):
         self._place = core.Place()
         self._place.set_place(place)
-        self._main_program = main_program
+        self._plan = plan
         self._scope = scope
         self._new_exe = self._create_new_executor()
 
-    def run(self, scope, feed_names, fetch_list, return_numpy=True):
+    def run(self, feed_names, return_numpy=True):
         """
         Args:
             feed_names(list): This parameter represents the input names of the model.
@@ -649,74 +681,21 @@ class _StandaloneExecutor:
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
         """
-        fetch_list = self._check_fetch(fetch_list)
-
-        tensors = self._new_exe.run(
-            scope, feed_names, fetch_list
-        )._move_to_list()
+        tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
-            return as_numpy(tensors, copy=True)
+            tensors = as_numpy(tensors, copy=True)
+            return _merge_tensors(tensors, self._plan.micro_batch_num())
         else:
+            if self._plan.micro_batch_num() > 1:
+                raise RuntimeError(
+                    "`merge_tensor` does not support when return_numpy is False."
+                )
             return tensors
 
     def _create_new_executor(self):
-        new_exe = core.StandaloneExecutor(self._place, self._main_program.desc)
+        new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
         return new_exe
-
-    def _update_feed(self, feed):
-        """
-        Update the feed dict, remove the feed item which is pruned in program.
-
-        Notes: This is a very low level API. Users should not use this API
-        directly.
-
-        Args:
-            feed(list|dict): feed dict or list.
-
-        Returns:
-            feed:(list|dict)  updated feed.
-        """
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        global_block = self._main_program.global_block()
-        for feed_name in list(feed.keys()):
-            if not global_block.has_var(feed_name):
-                feed.pop(feed_name)
-                warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % feed_name
-                )
-
-        return feed
-
-    def _check_fetch(self, fetch_list):
-        if fetch_list is None:
-            fetch_list = []
-
-        res = []
-        for fetch_var in fetch_list:
-            if isinstance(fetch_var, Variable):
-                fetch_var = fetch_var.name
-            elif not isinstance(fetch_var, str):
-                raise TypeError(
-                    "Required fetch_var shall be str|Variable, but received {}".format(
-                        type(fetch_var).__name__
-                    )
-                )
-
-            res.append(fetch_var)
-        return res
 
 
 class _ExecutorCache:
@@ -750,13 +729,16 @@ class _ExecutorCache:
                     ).to_program()
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program._program, feed, fetch_list
+                        self.program._program,
+                        self.scope,
+                        self.feed,
+                        self.fetch_list,
                     )
                 )
             else:
                 self.key = hash(
                     _get_strong_program_cache_key_for_new_exe(
-                        self.program, feed, fetch_list
+                        self.program, self.scope, self.feed, self.fetch_list
                     )
                 )
 
@@ -886,7 +868,28 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
-        new_exe = _StandaloneExecutor(place, new_program, scope)
+        if (
+            new_program._pipeline_opt
+            and "standalone_opt" in new_program._pipeline_opt
+        ):
+            from paddle.distributed.passes.pipeline_scheduler_pass import (
+                apply_pass,
+            )
+
+            standalone_opt = new_program._pipeline_opt["standalone_opt"]
+            pass_name = standalone_opt["schedule_mode"]
+            pass_attr = {
+                "num_micro_batches": standalone_opt["num_micro_batches"]
+            }
+            plan = apply_pass(new_program, new_program, pass_name, pass_attr)
+        else:
+            default_job = core.Job("default")
+            type_to_program = {"default": new_program.desc}
+            plan = core.Plan([default_job], type_to_program)
+
+        _set_micro_batch_fetch(plan)
+
+        new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
 
@@ -963,6 +966,7 @@ class Executor:
         self.ctx_caches = dict()
         self.trainer_caches = dict()
         self.scope_caches = dict()
+        self.micro_scope_cache = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
         p = core.Place()
@@ -1031,6 +1035,12 @@ class Executor:
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
+
+    def _add_micro_scopes_cache(self, program_cache_key, micro_scopes: list):
+        self.micro_scope_cache[program_cache_key] = micro_scopes
+
+    def _get_micro_scopes_cache(self, program_cache_key):
+        return self.micro_scope_cache.get(program_cache_key, None)
 
     # just for testing, will be removed later
     @lru_cache()
@@ -1451,22 +1461,25 @@ class Executor:
 
         fetch_list = self._check_fetch_list(fetch_list)
 
-        if isinstance(program, Program) and program._pipeline_opt:
+        from paddle.distributed.auto_parallel.static.utils import (
+            use_new_executor,
+        )
+
+        if (
+            isinstance(program, Program)
+            and program._pipeline_opt
+            and not use_new_executor()
+        ):
             if "fleet_opt" in program._pipeline_opt:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
-                    # Temporary manual enable standalone executor for fleet executor,
-                    # delete this code after the FLAGS is removed.
-                    if 'tasks' in program._pipeline_opt["fleet_opt"]:
-                        set_flags(
-                            {"FLAGS_fleet_executor_with_standalone": True}
-                        )
                     self._fleet_executor = _prepare_fleet_executor()
                 return self._run_using_fleet_executor(
                     program=program,
                     feed=feed,
                     fetch_list=fetch_list,
                     with_standalone_executor=self._fleet_executor_with_standalone,
+                    return_numpy=return_numpy,
                 )
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
@@ -1576,7 +1589,6 @@ class Executor:
             return True
 
         if _can_use_interpreter_core(program, self.place):
-
             if feed is None:
                 feed = {}
             elif isinstance(feed, (list, tuple)):
@@ -1623,6 +1635,7 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
@@ -1647,9 +1660,7 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            ret = new_exe.run(
-                scope, list(feed.keys()), fetch_list, return_numpy
-            )
+            ret = new_exe.run(list(feed.keys()), return_numpy)
             set_flags(stored_flag)
             return ret
 
@@ -1980,14 +1991,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2157,14 +2163,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2340,13 +2341,25 @@ class Executor:
         fetch_var_name="fetch",
         fetch_list=None,
         with_standalone_executor=False,
+        return_numpy=True,
     ):
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_program = self._get_program_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
+        micro_cached_scopes = self._get_micro_scopes_cache(cache_key)
+        fleet_opt = program._pipeline_opt["fleet_opt"]
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
+        if micro_cached_scopes is None:
+            micro_cached_scopes = []
+            if (
+                "inference_generation" in fleet_opt
+                and fleet_opt["inference_generation"]
+            ):
+                for _ in range(int(fleet_opt["num_micro_batches"])):
+                    micro_cached_scopes.append(cached_scope.new_scope())
+                self._add_micro_scopes_cache(cache_key, micro_cached_scopes)
         if cached_program is None:
             assert (
                 program._pipeline_opt
@@ -2424,7 +2437,7 @@ class Executor:
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
-                micro_scope_list=micro_scope_list,
+                micro_scope_list=micro_cached_scopes,
                 with_standalone_executor=with_standalone_executor,
             )
 
@@ -2448,17 +2461,33 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
-
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
             # not mix up. It indicate that final result will in multiple scopes and need to
             # fetch each.
             result_list = []
-            for scope in micro_scope_list:
-                for var in fleet_opt["fetch_var"]:
-                    tensor = core.get_variable_tensor(scope, var)
-                result_list.append(as_numpy(tensor))
+            for scope in micro_cached_scopes:
+                scope_result_list = []
+                for varname in fleet_opt["fetch_var"]:
+                    tensor = None
+                    try:
+                        tensor = core.get_variable_tensor(scope, varname)
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                    except:
+                        var = scope.find_var(varname)
+                        tensor = var.get_lod_tensor_array()
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                        else:
+                            tensor = [t for t in tensor]
+
+                    if tensor:
+                        scope_result_list.append(tensor)
+
+                if scope_result_list:
+                    result_list.append(scope_result_list)
             return result_list
 
         if fetch_list:

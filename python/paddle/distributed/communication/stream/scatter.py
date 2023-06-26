@@ -91,7 +91,11 @@ def _scatter_in_static_mode(
                 )
         else:
             tensor_list = [tensor for _ in range(nranks)]
-        input_tensor = paddle.concat(tensor_list, axis=0)
+        # 0-D use stack/unstack while others use concat/split
+        if len(tensor_list[0].shape) == 0:
+            input_tensor = paddle.stack(tensor_list, axis=0)
+        else:
+            input_tensor = paddle.concat(tensor_list, axis=0)
 
     ring_id = 0 if group is None else group.id
 
@@ -197,7 +201,7 @@ def scatter(
             )
         tensor_or_tensor_list = []
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         src_rank_in_group = _get_or_throw_group_rank(src, group)
         if paddle.is_tensor(tensor_or_tensor_list):

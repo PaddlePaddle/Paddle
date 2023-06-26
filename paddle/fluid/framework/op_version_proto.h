@@ -17,6 +17,7 @@ limitations under the License. */
 #include <stdint.h>
 
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/framework.pb.h"
 
@@ -52,6 +53,10 @@ class OpVersionMap {
  private:
   proto::OpVersionMap* desc_;
 };
+
+// get version id for operators with version id in paddle 2.4.2, this is used
+// for converting ProgramDesc in 2.4 comtabible format
+const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions();
 
 }  // namespace pb
 }  // namespace compatible

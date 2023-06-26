@@ -22,10 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_CNCL)
-#include "paddle/fluid/platform/device/mlu/cncl_helper.h"
-#endif
-
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
@@ -45,16 +41,6 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 
     platform::GpuStreamSync(stream);
 
-#elif defined(PADDLE_WITH_CNCL)
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on mlu place only for now."));
-    int ring_id = ctx.Attr<int>("ring_id");
-    auto stream =
-        platform::CNCLCommContext::Instance().Get(ring_id, place)->stream();
-    platform::MLUStreamSync(stream);
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),

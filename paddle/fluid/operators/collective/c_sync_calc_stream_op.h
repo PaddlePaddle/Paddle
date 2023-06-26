@@ -47,16 +47,6 @@ class CSyncCalcStreamKernel : public framework::OpKernel<T> {
 
     platform::GpuStreamSync(dev_ctx->stream());
 
-#elif defined(PADDLE_WITH_CNCL)
-    auto place = ctx.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_mlu_place(place),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Sync stream op can run on mlu place only for now."));
-
-    auto dev_ctx = static_cast<platform::MLUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    platform::MLUStreamSync(dev_ctx->stream());
 #elif defined(PADDLE_WITH_XPU_BKCL)
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(platform::is_xpu_place(place),

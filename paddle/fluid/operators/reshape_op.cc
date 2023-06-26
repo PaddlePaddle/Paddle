@@ -683,6 +683,13 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class Reshape2InferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -735,6 +742,7 @@ REGISTER_OPERATOR(reshape2,
                   ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
+                  ops::Reshape2InferVarType,
                   ops::Reshape2CompositeGradOpMaker,
                   ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad,

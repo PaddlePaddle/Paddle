@@ -92,7 +92,6 @@ def generate_intermediate_api(
     dygraph_header_file_path,
     dygraph_source_file_path,
 ):
-
     dygraph_header_file = open(dygraph_header_file_path, 'w')
     dygraph_source_file = open(dygraph_source_file_path, 'w')
 

@@ -61,7 +61,6 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.gaussian_random_test(place=fluid.XPUPlace(0))
 
         def gaussian_random_test(self, place):
-
             program = fluid.Program()
             block = program.global_block()
             vout = block.create_var(name="Out")

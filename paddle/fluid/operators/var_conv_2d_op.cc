@@ -17,7 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -176,7 +176,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
  public:
   void Im2Col(const framework::ExecutionContext& ctx,
@@ -392,7 +392,7 @@ void VarConv2dOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
  public:
   void Im2ColGrad(const framework::ExecutionContext& ctx, T* top_diff) const {
@@ -532,11 +532,7 @@ REGISTER_OPERATOR(var_conv_2d,
                   ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
 
-REGISTER_OP_CPU_KERNEL(var_conv_2d,
-                       ops::CPUVarConv2dOPKernel<phi::CPUContext, float>);
-//     ops::CPUVarConv2dOPKernel<phi::CPUContext,
-//                                       double>
-REGISTER_OP_CPU_KERNEL(var_conv_2d_grad,
-                       ops::CPUVarConv2dOPGradKernel<phi::CPUContext, float>);
-//     ops::CPUVarConv2dOPGradKernel<phi::CPUContext,
-//                                           double>
+PD_REGISTER_STRUCT_KERNEL(
+    var_conv_2d, CPU, ALL_LAYOUT, ops::CPUVarConv2dOPKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    var_conv_2d_grad, CPU, ALL_LAYOUT, ops::CPUVarConv2dOPGradKernel, float) {}

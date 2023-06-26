@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"

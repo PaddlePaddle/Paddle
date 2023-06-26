@@ -20,9 +20,8 @@
 #include "paddle/phi/common/amp_type_traits.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
-DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -30,6 +29,7 @@ namespace details {
 struct DebugTools {
   DebugTools() {}
   std::string path = "";
+  int stack_limit = 1;
 };
 static DebugTools debug_nan_inf;
 
@@ -44,6 +44,13 @@ std::string GetNanPath() {
   }
   return debug_nan_inf.path + "/";
 }
+
+void SetNanInfStackLimit(const int& stack_limit) {
+  debug_nan_inf.stack_limit = stack_limit;
+  VLOG(4) << "Set the stack limit of debug tools : " << stack_limit;
+}
+
+int GetNanInfStackLimit() { return debug_nan_inf.stack_limit; }
 
 static std::once_flag white_list_init_flag;
 
@@ -146,29 +153,6 @@ static void InitWhiteListFormEnv() {
       op_var_nan_inf_white_list()[op].emplace_back(var);
     }
   }
-}
-
-template <>
-template <typename T>
-void TensorCheckerVisitor<phi::CPUContext>::apply(
-    typename std::enable_if<
-        std::is_floating_point<T>::value ||
-        std::is_same<T, ::paddle::platform::complex<float>>::value ||
-        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
-    const {
-  std::string cpu_hint_str =
-      GetCpuHintString<T>(op_type, var_name, tensor.place());
-  CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
-}
-
-template <>
-void tensor_check<phi::CPUContext>(const std::string& op_type,
-                                   const std::string& var_name,
-                                   const phi::DenseTensor& tensor,
-                                   const platform::Place& place) {
-  TensorCheckerVisitor<phi::CPUContext> vistor(
-      op_type, var_name, tensor, place);
-  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,

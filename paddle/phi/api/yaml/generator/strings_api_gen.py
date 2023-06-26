@@ -330,6 +330,8 @@ def source_include(header_file_path):
 #include "{header_file_path}"
 
 #include "gflags/gflags.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -360,7 +362,6 @@ namespace strings {
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
-
     with open(api_yaml_path, 'r') as f:
         apis = yaml.load(f, Loader=yaml.FullLoader)
     header_file = open(header_file_path, 'w')
