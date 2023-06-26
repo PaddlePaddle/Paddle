@@ -86,7 +86,6 @@ phi::KernelKey GetKernelKey(
 
         dialect::DenseTensorType type =
             op->operand(in_index)
-                .source()
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>();
         kernel_data_type = TransToPhiDataType(type.dtype());
@@ -108,7 +107,7 @@ phi::KernelKey GetKernelKey(
       if (op->name() == "pd.uniform") {
         // try to process uniform, use shape to determin backend
         // TODO(phlrain): shuold support other initilize op
-        auto define_op = op->operand(0).source().GetDefiningOp();
+        auto define_op = op->operand(0).GetDefiningOp();
         if (define_op->name() == "pd.full_int_array") {
           auto shape = define_op->attributes()
                            .at("value")
@@ -140,8 +139,7 @@ phi::KernelKey GetKernelKey(
       if ((input_info.size() > i) && input_info[i].is_mutable_attribute) {
         continue;
       }
-      auto input_tmp = op->operand(i).source();
-
+      auto input_tmp = op->operand(i);
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
       auto input_type = new_input_tmp.type();
@@ -262,7 +260,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        auto cur_in = (*it)->operand(i).source();
+        auto cur_in = (*it)->operand(i);
         auto new_in = map_value_pair.at(cur_in);
 
         auto new_in_type = new_in.type();

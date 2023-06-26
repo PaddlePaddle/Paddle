@@ -54,12 +54,12 @@ INPUT_VECTORTYPE_CHECK_TEMPLATE = """
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
   }}"""
 INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
-  if (auto val = (*this)->operand({index})) {{
+  if (auto val = (*this)->op_operand({index})) {{
     PADDLE_ENFORCE(val.type().isa<{standard}>(),
                    phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
   }}"""
 INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
-  if (auto val =  (*this)->operand({index})) {{
+  if (auto val =  (*this)->op_operand({index})) {{
     if (auto vec_type = val.type().dyn_cast<ir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); i++) {{
         PADDLE_ENFORCE(vec_type[i].isa<{standard}>(),
