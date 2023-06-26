@@ -94,10 +94,9 @@ phi::KernelKey GetKernelKey(
 
       if (op->name() == "pd.uniform") {
         // try to process uniform, use shape to determin backend
-        std::cerr << "is unifform" << std::endl;
+        // TODO(phlrain): shuold support other initilize op
         auto define_op = op->operand(0).source().GetDefiningOp();
         if (define_op->name() == "pd.full_int_array") {
-          std::cerr << "full init array  " << std::endl;
           auto shape = define_op->attributes()
                            .at("value")
                            .dyn_cast<dialect::IntArrayAttribute>()
@@ -106,7 +105,6 @@ phi::KernelKey GetKernelKey(
 
           size_t numel = 1;
           for (auto& s : shape) {
-            std::cerr << "s " << s << std::endl;
             numel *= s;
           }
           if (numel > init_on_gpu_threashold) {
@@ -262,7 +260,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
         auto new_in_type = new_in.type();
 
-        auto& kernel = phi::KernelFactory::Instance().SelectKernel(
+        auto& kernel = phi::KernelFactory::Instance().SelectKernelWithGPUDNN(
             kernel_fn_str, kernel_key);
 
         if (kernel.IsValid()) {
@@ -277,8 +275,8 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
                 (place != phi::TransToPhiPlace(kernel_key.backend()))) {
               if (paddle::experimental::NeedTransformPlace(
                       place, kernel.InputAt(i).backend, {})) {
-                std::cerr << "need trans  " << place << "\t "
-                          << kernel_key.backend() << std::endl;
+                VLOG(6) << "need trans from " << place << " to "
+                        << kernel_key.backend();
                 // build memcopy op
                 auto copy_kernel_key = kernel_key;
                 copy_kernel_key.set_backend(phi::Backend::GPU);
