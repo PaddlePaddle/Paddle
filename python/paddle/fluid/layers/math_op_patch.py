@@ -182,7 +182,7 @@ def monkey_patch_variable():
         Examples:
             In Static Graph Mode:
 
-            .. code-block:: python:name :code-example5
+            .. code-block:: python
                 import paddle
                 import paddle.fluid as fluid
                 paddle.enable_static()
