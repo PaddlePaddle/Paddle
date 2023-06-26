@@ -19,8 +19,8 @@ set -ex
 XPTI_URL=$1
 XPTI_DIR_NAME=$2
 
-if [ -n "$WITH_XPTI" ]; then
-  exit 1
+if ! [ -n "$WITH_XPTI" ]; then
+  return
 fi
 
 wget --no-check-certificate ${XPTI_URL} -c -q -O xpti.tar.gz
