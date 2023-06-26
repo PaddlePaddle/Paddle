@@ -209,7 +209,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         # 2. insert c_allgather op
         # create c_allgather output var
         allgather_out = main_block.create_var(
-            name=".".join(["c_allgather", X_var.name]),
+            name=".".join(["all_gather", X_var.name]),
             dtype=X_var.dtype,
             shape=X_var.shape,
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -300,10 +300,10 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
 
         # 1. copy p_norm_grad op and reset input name and output name
         new_kwargs = copy.deepcopy(kwargs)
-        new_kwargs['X'] = [".".join(["c_allgather", X_var.name])]
+        new_kwargs['X'] = [".".join(["all_gather", X_var.name])]
         new_X_var = main_block._var_recursive(new_kwargs['X'][0])
         new_X_grad = main_block.create_var(
-            name=".".join(["c_allgather", X_grad_var.name]),
+            name=".".join(["all_gather", X_grad_var.name]),
             dtype=X_grad_var.dtype,
             shape=new_X_var.shape,
             type=core.VarDesc.VarType.LOD_TENSOR,

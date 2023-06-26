@@ -711,9 +711,8 @@ def cast_startup_program():
             param_to_dtype[p.name] = p.dtype
 
     def is_initialization_op(op):
-        comm_op_prefix = "c_"
         op_type = op.type
-        if op_type.startswith(comm_op_prefix):
+        if op.has_attr("ring_id"):
             return False
 
         if len(op.output_arg_names) != 1 and len(op.input_arg_names) != 0:

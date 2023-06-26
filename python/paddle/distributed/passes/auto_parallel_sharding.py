@@ -641,10 +641,7 @@ class ShardingPass(PassBase):
                 assert len(op.output_arg_names) == 1
                 output_name = op.output_arg_names[0]
 
-                if (
-                    op.type == "c_broadcast"
-                    and op.attr("ring_id") in dp_ring_ids
-                ):
+                if op.type == "broadcast" and op.attr("ring_id") in dp_ring_ids:
                     if (
                         self.outer_dp_group
                         and sharding_info.get_var_rank(output_name)
@@ -656,7 +653,7 @@ class ShardingPass(PassBase):
                     continue
 
                 if (
-                    op.type != "c_broadcast"
+                    op.type != "broadcast"
                     and output_name in param_usage
                     and sharding_info.get_var_rank(output_name)
                     != sharding_info.local_rank
@@ -1575,7 +1572,7 @@ def _is_param_grad_sum_op(op, block):
 
 def is_sharding_param_broadcast_op(op):
     return (
-        op.type == "c_broadcast"
+        op.type == "broadcast"
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )

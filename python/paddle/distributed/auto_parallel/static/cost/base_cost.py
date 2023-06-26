@@ -25,11 +25,11 @@ from ..process_group import get_process_group
 from ..utils import _get_comm_group, _get_idx_in_axis
 
 COMM_OP_TYPE = [
-    "send_v2",
-    "recv_v2",
-    "c_broadcast",
-    "c_allgather",
-    "c_allreduce_sum",
+    "p_send",
+    "p_recv",
+    "broadcast",
+    "all_gather",
+    "all_reduce",
     "c_identity",
 ]
 NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
@@ -347,7 +347,7 @@ def build_comm_desc(op_type, group_ranks, dtype, shape, attrs=None):
     desc = {}
     desc["op"] = op_type
     desc["group_ranks"] = group_ranks
-    desc["inputs"] = {"X": [(dtype, shape)]}
+    desc["inputs"] = {"x": [(dtype, shape)]}
     desc["attrs"] = attrs
     return desc
 
@@ -785,15 +785,15 @@ class CommOpCost(OpCost):
             if self.op is not None:
                 vars = self.op.block.vars
                 # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
-                var_name = self.op.input("X")[0]
+                var_name = self.op.input("x")[0]
                 var = get_var_with_recursion(
                     var_name, self.op.block, self.program
                 )
                 dtype = var.dtype
                 shape = var.shape
             elif self.op_desc is not None:
-                dtype = self.op_desc["inputs"]["X"][0][0]
-                shape = self.op_desc["inputs"]["X"][0][1]
+                dtype = self.op_desc["inputs"]["x"][0][0]
+                shape = self.op_desc["inputs"]["x"][0][1]
 
             factor = None
             if dtype == paddle.float32 or dtype == paddle.int32:

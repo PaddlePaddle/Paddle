@@ -22,7 +22,7 @@ from paddle.fluid import data_feeder
 
 
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
-    op_type = _get_reduce_op(op, "allreduce")
+    op_type = _get_reduce_op(op, "all_reduce")
 
     if use_calc_stream:
         return group.process_group.all_reduce_on_calc_stream(tensor, op_type)
@@ -51,7 +51,8 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
         'all_reduce',
     )
 
-    op_type = _get_reduce_op(op, "allreduce")
+    # op_type = _get_reduce_op(op, "all_reduce")
+    op_type = "all_reduce"
     ring_id = 0 if group is None else group.id
 
     if not isinstance(ring_id, int):
@@ -62,9 +63,9 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
-        attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
+        attrs={'ring_id': ring_id, 'reduce_type': op},
     )
 
     return None

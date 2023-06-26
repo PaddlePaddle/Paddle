@@ -26,16 +26,10 @@ from .process_group import get_process_group
 
 def is_collective_comm_op(op):
     comm_list = [
-        "c_allreduce_sum",
-        "c_allreduce_min",
-        "c_allreduce_max",
-        "c_allreduce_prod",
-        "c_reduce_sum",
-        "c_reduce_min",
-        "c_reduce_max",
-        "c_reduce_prod",
-        "c_broadcast",
-        "c_allgather",
+        "all_reduce",
+        "reduce",
+        "broadcast",
+        "all_gather",
     ]
     if op.type in comm_list:
         return True
@@ -44,7 +38,7 @@ def is_collective_comm_op(op):
 
 
 def is_p2p_comm_op(op):
-    comm_list = ["send_v2", "recv_v2"]
+    comm_list = ["p_send", "p_recv"]
     if op.type in comm_list:
         return True
     else:
@@ -98,26 +92,26 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
             new_tensor_shape.append(val)
     tensor_size = functools.reduce(operator.mul, new_tensor_shape, 1)
     tensor_bytes = tensor_size * get_dtype_bytes(tensor.dtype)
-    if "c_allreduce" in comm_op_type:
+    if "all_reduce" in comm_op_type:
         comm_volume = 2 * tensor_bytes
-    elif "c_allgather" in comm_op_type:
+    elif "all_gather" in comm_op_type:
         comm_volume = tensor_bytes
-    elif "c_broadcast" in comm_op_type:
+    elif "broadcast" in comm_op_type:
         if comm_op.attr("root") == src_rank:
             comm_volume = tensor_bytes
         else:
             comm_volume = None
-    elif "c_reduce" in comm_op_type:
+    elif "reduce" in comm_op_type:
         if comm_op.attr("root_id") == src_rank:
             comm_volume = None
         else:
             comm_volume = tensor_bytes
-    elif "send_v2" in comm_op_type:
+    elif "p_send" in comm_op_type:
         if comm_op.attr("peer") == tgt_rank:
             comm_volume = tensor_bytes
         else:
             comm_volume = None
-    elif "recv_v2" in comm_op_type:
+    elif "p_recv" in comm_op_type:
         comm_volume = None
     else:
         raise ValueError("Unrecognized communication operator.")
