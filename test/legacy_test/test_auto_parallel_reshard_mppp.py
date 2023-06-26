@@ -173,22 +173,22 @@ def check_send_recv_result(dist_main_prog, rank_id):
     ops = dist_main_prog.global_block().ops
     if rank_id in [0, 1]:
         for idx, op in enumerate(ops):
-            if op.type == "send_v2" and "gelu_0.tmp_0" in op.input_arg_names:
+            if op.type == "p_send" and "gelu_0.tmp_0" in op.input_arg_names:
                 send_result = True
             if (
-                op.type == "recv_v2"
+                op.type == "p_recv"
                 and "gelu_0.tmp_0@GRAD" in op.output_arg_names[0]
             ):
                 recv_result = True
     else:
         for idx, op in enumerate(ops):
             if (
-                op.type == "send_v2"
+                op.type == "p_send"
                 and "gelu_0.tmp_0@GRAD" in op.input_arg_names[0]
             ):
                 send_result = True
             if (
-                op.type == "recv_v2"
+                op.type == "p_recv"
                 and "gelu_0.tmp_0" in op.output_arg_names[0]
             ):
                 recv_result = True
@@ -203,7 +203,7 @@ def check_initialization_for_mppp(dist_startup_prog, rank_id):
         need_check_params = ["linear_1.b_0", "linear_2.b_0"]
     broadcast_varnames = []
     for op in dist_startup_prog.global_block().ops:
-        if op.type == "c_broadcast":
+        if op.type == "broadcast":
             broadcast_varnames.append(op.output_arg_names[0])
 
     return need_check_params == broadcast_varnames

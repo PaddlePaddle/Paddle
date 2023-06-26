@@ -412,19 +412,21 @@ def build_dp_costs(
     if not has_found:
         return
 
-    c_allreduce_sum_descs = build_comm_desc_from_dist_op(
-        "c_allreduce_sum",
+    attrs['reduce_type'] = paddle.distributed.ReduceType.SUM
+    allreduce_sum_descs = build_comm_desc_from_dist_op(
+        "all_reduce",
         dist_op,
         ctx,
         var_names,
         attrs=attrs,
         parallel_axis=parallel_axis,
     )
+
     comm_cost_list = build_comm_costs_from_descs(
-        _g_op_cost_factory["c_allreduce_sum"],
+        _g_op_cost_factory["all_reduce"],
         ctx,
         processes,
-        c_allreduce_sum_descs,
+        allreduce_sum_descs,
         cluster,
         is_dp=True,
     )

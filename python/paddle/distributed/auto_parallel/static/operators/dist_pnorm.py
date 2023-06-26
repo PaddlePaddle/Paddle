@@ -206,8 +206,8 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'norm'
         )
 
-        # 2. insert c_allgather op
-        # create c_allgather output var
+        # 2. insert all_gather op
+        # create all_gather output var
         allgather_out = main_block.create_var(
             name=".".join(["all_gather", X_var.name]),
             dtype=X_var.dtype,
@@ -225,10 +225,10 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         ctx.set_tensor_dist_attr_for_program(
             allgather_out, allgather_out_dist_attr
         )
-        c_allgather_op = main_block.append_op(
-            type='c_allgather',
-            inputs={'X': [X_var]},
-            outputs={'Out': [allgather_out]},
+        allgather_op = main_block.append_op(
+            type='all_gather',
+            inputs={'x': [X_var]},
+            outputs={'out': [allgather_out]},
             attrs={
                 'ring_id': group.id,
                 'use_calc_stream': True,
@@ -236,7 +236,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
                 'op_role': src_op.attr('op_role'),
             },
         )
-        # set c_allgather op dist_attr
+        # set allgather op dist_attr
         allgather_op_dist_attr = OperatorDistAttr()
         allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
         allgather_op_dist_attr.set_input_dims_mapping(
@@ -245,7 +245,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         allgather_op_dist_attr.set_output_dims_mapping(
             allgather_out.name, allgather_out_dist_attr.dims_mapping
         )
-        ctx.set_op_dist_attr_for_program(c_allgather_op, allgather_op_dist_attr)
+        ctx.set_op_dist_attr_for_program(allgather_op, allgather_op_dist_attr)
 
         # 3. copy p_norm op desc and reset input name
         # rename input

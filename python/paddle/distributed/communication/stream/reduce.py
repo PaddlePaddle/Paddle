@@ -71,7 +71,7 @@ def _reduce_in_static_mode(
         attrs={
             'ring_id': ring_id,
             'root_id': dst_rank_in_group,
-            'reduce_type': 'op',
+            'reduce_type': op,
         },
     )
     return None
