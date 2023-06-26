@@ -154,31 +154,5 @@ void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
   gloo::reduce(opts);
 }
 
-void GlooCommContext::Send(const phi::DenseTensor& in_tensor,
-                           int dst,
-                           uint32_t tag) {
-  SendRecvOptions opts(gloo_context_);
-  const auto& dtype = in_tensor.dtype();
-  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
-  opts.setSrc(gloo_context_.get()->rank);
-  opts.setDst(dst);
-  opts.setTag(tag);
-  send_recv(&opts);
-}
-void GlooCommContext::Recv(phi::DenseTensor* out_tensor,
-                           int src,
-                           const phi::DenseTensor& in_tensor,
-                           uint32_t tag) {
-  SendRecvOptions opts(gloo_context_);
-  const auto& dtype = in_tensor.dtype();
-  // const auto& dtype = out_tensor->dtype();
-  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
-  opts.setTag(tag);
-  // opts.setSrc(rank);
-  opts.setSrc(gloo_context_.get()->rank);
-  opts.setDst(src);
-  send_recv(&opts);
-}
-
 }  // namespace distributed
 }  // namespace phi
