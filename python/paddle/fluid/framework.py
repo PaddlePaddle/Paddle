@@ -1259,7 +1259,8 @@ class Variable(metaclass=VariableMetaClass):
     Examples:
         In Static Graph Mode:
 
-        .. code-block:: python :name: code-example1
+        .. code-block:: python
+            :name: code-example1
 
             import paddle.fluid as fluid
             cur_program = fluid.Program()
@@ -1270,7 +1271,8 @@ class Variable(metaclass=VariableMetaClass):
 
         In Dygraph  Mode:
 
-        .. code-block:: python :name: code-example2
+        .. code-block:: python
+            :name: code-example2
 
             import paddle.fluid as fluid
             import numpy as np
@@ -5743,8 +5745,9 @@ class Program:
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
-        For Example:
-          .. code-block:: python :name: code-example1
+        Examples:
+          .. code-block:: python
+              :name: code-example1
 
             import paddle
             import paddle.static as static
@@ -5777,7 +5780,8 @@ class Program:
                 print Program Descs inorder to make sure you have same print result
                 after :code:`clone`:
 
-            .. code-block:: python :name: code-example2
+            .. code-block:: python
+                :name: code-example2
 
                 import paddle
 
@@ -5794,7 +5798,8 @@ class Program:
 
 
             1. To clone a test program, the sample code is:
-                .. code-block:: python :name: code-example3
+                .. code-block:: python
+                    :name: code-example3
 
                     import paddle
                     import paddle.static as static
@@ -5846,7 +5851,8 @@ class Program:
 
 
             2. The clone method can be avoid if you create program for training and program for testing individually.
-                .. code-block:: python :name: code-example4
+                .. code-block:: python
+                    :name: code-example4
 
                     import paddle
                     import paddle.static as static
@@ -7233,7 +7239,8 @@ def program_guard(main_program, startup_program=None):
             Default: None.
 
     Examples:
-       .. code-block:: python :name: code-example1
+        .. code-block:: python
+            :name: code-example1
 
           import paddle
 
@@ -7248,7 +7255,8 @@ def program_guard(main_program, startup_program=None):
     to construct either of startup program or main program.
 
     Examples:
-       .. code-block:: python :name: code-example2
+        .. code-block:: python
+            :name: code-example2
 
           import paddle
 
