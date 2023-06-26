@@ -141,14 +141,8 @@ void SetValueImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  XPUType* slice_data = nullptr;
   int64_t slice_numels = phi::product(slice_dims);
-  int64_t slice_assign_numels = phi::product(slice_dims_for_assign);
-  if (slice_numels >= slice_assign_numels) {
-    slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
-  } else {
-    slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_assign_numels);
-  }
+  XPUType* slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
 
   int in_size = in_dims.size();
   std::vector<int> starts_indices(in_size, 0);
@@ -399,9 +393,9 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
   std::vector<T> assign_values;
-  assign_values.reserve(values.size());
-  for (const auto& val : values) {
-    assign_values.push_back(val.to<T>());
+  assign_values.reserve(std::max(shape, values.size()));
+  for (int i = 0; i < values.size(); i++) {
+    assign_values[i] = values[i].to<T>();
   }
 
   SetValueKernelImpl<T, Context>(
