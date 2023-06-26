@@ -102,7 +102,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
-            return np.random.uniform(0.1, 0.1, attrs['weight_size']).astype(
+            return np.random.uniform(0.05, 0.05, attrs['weight_size']).astype(
                 np.float32
             )
 
@@ -402,7 +402,7 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
-            return np.random.uniform(0.1, 0.5, attrs['weight_size']).astype(
+            return np.random.uniform(0.05, 0.1, attrs['weight_size']).astype(
                 np.float32
             )
 
