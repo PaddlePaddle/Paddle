@@ -116,7 +116,7 @@ TEST(PatternRewrite, PatternBenefit) {
   EXPECT_TRUE(benefit2 == benefit3);
 }
 
-TEST(RewritePattern, OpRewritePattern) {
+TEST(RewritePattern, RewritePatternSet) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();

@@ -19,6 +19,7 @@
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -31,7 +32,6 @@
 #include "paddle/ir/core/type_id.h"
 #include "paddle/ir/core/type_name.h"
 #include "paddle/ir/core/value.h"
-#include "paddle/utils/optional.h"
 
 namespace ir {
 
@@ -73,22 +73,22 @@ class IR_API Pattern {
  public:
   const std::vector<OpInfo>& generated_ops() const { return generated_ops_; }
 
-  paddle::optional<OpInfo> root_kind() const {
+  std::optional<OpInfo> root_kind() const {
     if (root_kind_ == RootKind::OperationInfo)
       return OpInfo::RecoverFromOpaquePointer(root_val_);
-    return paddle::none;
+    return std::nullopt;
   }
 
-  paddle::optional<TypeId> GetRootInterfaceID() const {
+  std::optional<TypeId> GetRootInterfaceID() const {
     if (root_kind_ == RootKind::InterfaceId)
       return TypeId::RecoverFromOpaquePointer(root_val_);
-    return paddle::none;
+    return std::nullopt;
   }
 
-  paddle::optional<TypeId> GetRootTraitID() const {
+  std::optional<TypeId> GetRootTraitID() const {
     if (root_kind_ == RootKind::TraitId)
       return TypeId::RecoverFromOpaquePointer(root_val_);
-    return paddle::none;
+    return std::nullopt;
   }
 
   PatternBenefit benefit() const { return benefit_; }
