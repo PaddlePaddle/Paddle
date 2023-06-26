@@ -33,8 +33,8 @@ Program *ModuleOp::program() {
 Block *ModuleOp::block() {
   assert(operation() != nullptr);
   assert(operation()->num_regions() == 1);
-  assert(operation()->GetRegion(0).size() == 1);
-  return operation()->GetRegion(0).front();
+  assert(operation()->region(0).size() == 1);
+  return operation()->region(0).front();
 }
 
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
@@ -71,6 +71,15 @@ void ModuleOp::Verify(const std::vector<ir::OpResult> &inputs,
 const char *GetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
+void GetParameterOp::Build(Builder &builder,
+                           OperationArgument &argument,
+                           const std::string &name,
+                           Type type) {
+  argument.attributes[attributes_name[0]] =
+      ir::StrAttribute::get(builder.ir_context(), name);
+  argument.output_types.emplace_back(type);
+}
+
 void GetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
                             const std::vector<ir::Type> &outputs,
                             const ir::AttributeMap &attributes) {
@@ -90,6 +99,14 @@ void GetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
 const char *SetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
+void SetParameterOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           OpResult parameter,
+                           const std::string &name) {
+  argument.AddOperand(parameter);
+  argument.AddAttribute(attributes_name[0],
+                        ir::StrAttribute::get(builder.ir_context(), name));
+}
 void SetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
                             const std::vector<ir::Type> &outputs,
                             const ir::AttributeMap &attributes) {
@@ -104,6 +121,18 @@ void SetParameterOp::Verify(const std::vector<ir::OpResult> &inputs,
 
   // Verify outputs type:
   IR_ENFORCE(outputs.size() == 0, "The size of outputs must be equal to 0.");
+}
+
+void CombineOp::Build(Builder &builder,
+                      OperationArgument &argument,
+                      const std::vector<ir::OpResult> &inputs) {
+  argument.inputs = inputs;
+  std::vector<ir::Type> inputs_type(inputs.size());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs_type[idx] = inputs[idx].type();
+  }
+  argument.output_types.emplace_back(
+      ir::VectorType::get(builder.ir_context(), inputs_type));
 }
 
 void CombineOp::Verify(const std::vector<ir::OpResult> &inputs,
@@ -204,3 +233,11 @@ void ConstantOp::Verify(const std::vector<ir::OpResult> &inputs,
 Attribute ConstantOp::value() { return operation()->attributes().at("value"); }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ModuleOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::GetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::CombineOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::SliceOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ConstantLikeTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::ConstantOp)

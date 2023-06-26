@@ -15,21 +15,20 @@
 include(ExternalProject)
 
 set(LIBMCT_PROJECT "extern_libmct")
-if((NOT DEFINED LIBMCT_VER) OR (NOT DEFINED LIBMCT_URL))
-  message(STATUS "use pre defined download url")
-  set(LIBMCT_VER
-      "0.1.0"
-      CACHE STRING "" FORCE)
-  set(LIBMCT_NAME
-      "libmct"
-      CACHE STRING "" FORCE)
-  set(LIBMCT_DOWNLOAD_FILE
-      "${LIBMCT_NAME}.tar.gz"
-      CACHE STRING "" FORCE)
-  set(LIBMCT_URL
-      "https://pslib.bj.bcebos.com/libmct/${LIBMCT_DOWNLOAD_FILE}"
-      CACHE STRING "" FORCE)
-endif()
+set(LIBMCT_VER
+    "0.1.0"
+    CACHE STRING "" FORCE)
+set(LIBMCT_NAME
+    "libmct"
+    CACHE STRING "" FORCE)
+set(LIBMCT_DOWNLOAD_FILE
+    "${LIBMCT_NAME}.tar.gz"
+    CACHE STRING "" FORCE)
+set(LIBMCT_URL
+    "https://pslib.bj.bcebos.com/libmct/${LIBMCT_DOWNLOAD_FILE}"
+    CACHE STRING "" FORCE)
+set(LIBMCT_URL_MD5 7e6b6c91b45b7490186f7120ef7e08fe)
+
 message(STATUS "LIBMCT_NAME: ${LIBMCT_NAME}, LIBMCT_URL: ${LIBMCT_URL}")
 set(LIBMCT_PREFIX_DIR "${THIRD_PARTY_PATH}/libmct")
 set(LIBMCT_DOWNLOAD_DIR
@@ -43,10 +42,39 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${LIBMCT_ROOT}/lib")
 
 include_directories(${LIBMCT_INC_DIR})
 
-file(
-  DOWNLOAD ${LIBMCT_URL} ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE}
-  TLS_VERIFY OFF
-  STATUS ERR)
+function(download_libmct)
+  message(
+    STATUS
+      "Downloading ${LIBMCT_URL} to ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE}"
+  )
+  # NOTE: If the version is updated, consider emptying the folder; maybe add timeout
+  file(
+    DOWNLOAD ${LIBMCT_URL} ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE}
+    EXPECTED_MD5 ${LIBMCT_URL_MD5}
+    TLS_VERIFY OFF
+    STATUS ERR)
+  if(ERR EQUAL 0)
+    message(STATUS "Download ${LIBMCT_DOWNLOAD_FILE} success")
+  else()
+    message(
+      FATAL_ERROR
+        "Download failed, error: ${ERR}\n You can try downloading ${LIBMCT_DOWNLOAD_FILE} again"
+    )
+  endif()
+endfunction()
+
+# Download and check libmct.
+if(EXISTS ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE})
+  file(MD5 ${LIBMCT_DOWNLOAD_DIR}/${LIBMCT_DOWNLOAD_FILE} LIBMCT_MD5)
+  if(NOT LIBMCT_MD5 STREQUAL LIBMCT_URL_MD5)
+    # clean build file
+    file(REMOVE_RECURSE ${LIBMCT_PREFIX_DIR})
+    file(REMOVE_RECURSE ${LIBMCT_INSTALL_DIR})
+    download_libmct()
+  endif()
+else()
+  download_libmct()
+endif()
 
 file(
   WRITE ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
@@ -65,9 +93,7 @@ ExternalProject_Add(
   COMMAND ${CMAKE_COMMAND} -E copy ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
           ${LIBMCT_INSTALL_DIR}
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBMCT_INSTALL_ROOT}
-             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-  CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${LIBMCT_INSTALL_ROOT}
-                   -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE})
+  CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${LIBMCT_INSTALL_ROOT})
 
 add_library(libmct INTERFACE)
 

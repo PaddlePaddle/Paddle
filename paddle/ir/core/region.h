@@ -17,12 +17,14 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/ir/core/dll_decl.h"
+
 namespace ir {
 
 class Block;
 class Operation;
 
-class Region {
+class IR_API Region {
  public:
   using iterator = std::list<Block *>::iterator;
   using reverse_iterator = std::list<Block *>::reverse_iterator;
@@ -46,6 +48,7 @@ class Region {
   void emplace_back();
   void push_front(Block *block);
   iterator insert(const_iterator position, Block *block);
+  iterator erase(const_iterator position);
   void clear();
 
   void TakeBody(Region &&other);
