@@ -438,9 +438,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # which is a side effect of changing the default start method.
         if paddle.is_compiled_with_xpu():
             import multiprocess as multiprocessing
+            
             multiprocessing.set_start_method('spawn', force=True)
         else:
-            import paddle.incubate.multiprocessing as multiprocessing
+            from paddle.incubate import multiprocessing
 
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
