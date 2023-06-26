@@ -88,13 +88,12 @@ class OffloadHelper:
         for ring in rings:
             block._insert_op_without_sync(
                 idx,
-                type="c_broadcast",
-                inputs={'X': param_name},
-                outputs={'Out': param_name},
+                type="broadcast",
+                inputs={'x': param_name},
+                outputs={'out': param_name},
                 attrs={
                     'ring_id': ring,
                     'root': 0,
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
