@@ -23,13 +23,17 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertActivationTest(TrtLayerAutoScanTest):
+class TrtConvertTopKV2Test(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
         if len(inputs['input_data'].shape) <= attrs[0]['axis']:
+            return False
+        axis = attrs[0]['axis']
+        axis = axis if axis >= 0 else axis + len(inputs['input_data'].shape)
+        if inputs['input_data'].shape[axis] <= attrs[0]['k']:
             return False
         return True
 
@@ -49,11 +53,12 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for k in [1, 3]:
-                    for axis in [-1, 1, 2, 3]:
+                    for axis in [-1, 1, 0, 2, 3]:
                         for largest in [True, False]:
                             for sort in [True, False]:
                                 self.dims = dims
                                 self.sort = sort
+                                self.axis = axis
                                 dics = [
                                     {
                                         "k": k,
@@ -120,7 +125,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "input_data": [4, 32, 32, 32]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 32, 32]
+                    "input_data": [4, 3, 32, 32]
                 }
 
         def clear_dynamic_shape():
@@ -129,7 +134,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1:
+            if not dynamic_shape and (self.dims == 1 or self.axis == 0):
                 return 0, 4
             if not self.sort:
                 return 0, 4
