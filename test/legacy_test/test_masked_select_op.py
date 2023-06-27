@@ -163,6 +163,9 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
 
 class TestMaskedSelectError(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -190,6 +193,54 @@ class TestMaskedSelectError(unittest.TestCase):
                 paddle.masked_select(x, mask_float)
 
             self.assertRaises(TypeError, test_mask_dtype)
+
+
+class TestMaskedSelectBroadcast(unittest.TestCase):
+    def setUp(self):
+        paddle.set_device('cpu')
+        paddle.disable_static()
+
+    def test_broadcast(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array([[True], [False], [False]])
+        x = paddle.to_tensor(np_x)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        np_out = np_x[0]
+        np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
+
+    def test_broadcast_grad(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array([[True], [False], [False]])
+        x = paddle.to_tensor(np_x, stop_gradient=False)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        out.sum().backward()
+        np_out = np.zeros(shape)
+        np_out[0] = 1.0
+        np.testing.assert_allclose(x.grad.numpy(), np_out, rtol=1e-05)
+
+    def test_broadcast_zerodim(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        x = paddle.to_tensor(np_x)
+        mask = paddle.to_tensor(True)
+        out = paddle.masked_select(x, mask)
+        np_out = np_x.reshape(-1)
+        np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
+
+    def test_broadcast_zerodim_grad(self):
+        shape = (3, 4)
+        np_x = np.random.random(shape).astype('float32')
+        np_mask = np.array(True)
+        x = paddle.to_tensor(np_x, stop_gradient=False)
+        mask = paddle.to_tensor(np_mask)
+        out = paddle.masked_select(x, mask)
+        out.sum().backward()
+        np_out = np.ones(shape)
+        np.testing.assert_allclose(x.grad.numpy(), np_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

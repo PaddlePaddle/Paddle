@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/masked_select_grad_kernel.h"
+#include "paddle/phi/common/broadcast_shape.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -25,15 +27,19 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
-  auto input_dim = x.dims();
-  auto mask_dim = mask.dims();
-  auto out_grad_dims = out_grad.dims();
-  auto x_grad_dim = x_grad->dims();
+  DenseTensor mask_expand;
+  if (mask.dims() != x.dims()) {
+    auto expanded_size = InferBroadcastShape(x.dims(), mask.dims());
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
 
-  VLOG(0) << "input_dim:" << input_dim;
-  VLOG(0) << "mask_dim:" << mask_dim;
-  VLOG(0) << "out_grad_dims:" << out_grad_dims;
-  VLOG(0) << "x_grad_dim:" << x_grad_dim;
+  auto mask_dim = mask_expand.dims();
+
+  auto input_dim = x.dims();
+  auto x_grad_dim = x_grad->dims();
 
   PADDLE_ENFORCE_EQ(
       input_dim,
@@ -57,11 +63,11 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
           input_dim,
           x_grad_dim));
 
-  auto* mask_data = mask.data<bool>();
+  auto* mask_data = mask_expand.data<bool>();
   auto* input_data = out_grad.data<T>();
 
   auto* out_data = dev_ctx.template Alloc<T>(x_grad);
-  int mask_size = mask.numel();
+  int mask_size = mask_expand.numel();
 
   int index = 0;
   for (int i = 0; i < mask_size; i++) {
@@ -72,6 +78,19 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
       out_data[i] = 0;
     }
   }
+
+  auto out_grad_numel = out_grad.numel();
+
+  PADDLE_ENFORCE_EQ(
+      index,
+      out_grad_numel,
+      phi::errors::InvalidArgument(
+          "The dim size of input and x_grad in OP(masked_selected_grad) "
+          "must be equal, but got mask with ones:(%ld), out_grad numel: "
+          "(%ld). Please check input "
+          "value.",
+          index,
+          out_grad_numel));
 }
 
 }  // namespace phi

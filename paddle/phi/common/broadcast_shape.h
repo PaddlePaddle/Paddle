@@ -32,8 +32,6 @@
 
 namespace phi {
 
-namespace {
-
 template <typename Container>
 Container InferShapeImpl(DDim a, DDim b) {
   int DimsA{a.size()};
@@ -66,9 +64,7 @@ Container InferShapeImpl(DDim a, DDim b) {
   return expandedSizes;
 }
 
-}  // namespace
-
-std::vector<int64_t> InferBroadcastShape(DDim a, DDim b) {
+inline std::vector<int64_t> InferBroadcastShape(DDim a, DDim b) {
   return InferShapeImpl<std::vector<int64_t>>(a, b);
 }
 

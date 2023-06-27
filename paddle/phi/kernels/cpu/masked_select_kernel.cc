@@ -26,17 +26,15 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& mask,
                         DenseTensor* out) {
-  auto expanded_size = InferBroadcastShape(x.dims(), mask.dims());
-
-  VLOG(0) << "input sizes: " << x.dims();
-  VLOG(0) << "mask sizes: " << mask.dims();
-  VLOG(0) << "expand sizes: " << make_ddim(expanded_size);
-
   DenseTensor mask_expand;
-  ExpandKernel<bool, Context>(
-      dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  if (x.dims() != mask.dims()) {
+    auto expanded_size = InferBroadcastShape(x.dims(), mask.dims());
 
-  VLOG(0) << "mask expaned sizes: " << mask_expand.dims();
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
 
   auto input_dim = x.dims();
   auto mask_dim = mask_expand.dims();
