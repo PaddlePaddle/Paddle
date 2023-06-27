@@ -58,13 +58,14 @@ set(ABSL_LIB_NAMES
     wyhash
     city
     strings
-    strings_internal
     throw_delegate
     bad_any_cast_impl
     bad_optional_access
     bad_variant_access
-    raw_logging_internal
     raw_hash_set)
+if(CINN_ONLY)
+  list(APPEND ABSL_LIB_NAMES strings_internal raw_logging_internal)
+endif()
 set(ABSL_LIBS "")
 
 add_library(absl STATIC IMPORTED GLOBAL)
