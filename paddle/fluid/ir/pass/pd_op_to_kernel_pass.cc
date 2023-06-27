@@ -187,9 +187,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
   std::unordered_map<ir::Operation*, ir::Operation*> map_op_pair;
   std::unordered_map<ir::Value, ir::OpResult> map_value_pair;
 
-  std::string op1_name = paddle::dialect::PhiKernelOp::name();
+  std::string op_name = paddle::dialect::PhiKernelOp::name();
 
-  ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
   for (auto it = block->begin(); it != block->end(); ++it) {
     VLOG(6) << "op name " << (*it)->name();
@@ -277,19 +277,19 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
                 // build memcopy op
                 auto copy_kernel_key = kernel_key;
                 copy_kernel_key.set_backend(phi::Backend::GPU);
-                std::unordered_map<std::string, ir::Attribute> op1_attribute{
+                std::unordered_map<std::string, ir::Attribute> op_attribute{
                     {"op_name", ir::StrAttribute::get(ctx, "pd.memcpy_h2d")},
                     {"kernel_name", ir::StrAttribute::get(ctx, "memcpy_h2d")},
                     {"kernel_key",
                      dialect::KernelAttribute::get(ctx, copy_kernel_key)},
                     {"dst_place_type", ir::Int32Attribute::get(ctx, 1)}};
 
-                ir::Operation* op1 = ir::Operation::Create(
-                    {new_in}, op1_attribute, {new_in_type}, op1_info);
+                ir::Operation* op = ir::Operation::Create(
+                    {new_in}, op_attribute, {new_in_type}, op_info);
 
-                program->block()->push_back(op1);
+                program->block()->push_back(op);
 
-                new_in = op1->result(0);
+                new_in = op->result(0);
               }
             }
           } else if (new_in_type.isa<ir::VectorType>()) {
@@ -303,7 +303,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       }
     }
 
-    std::unordered_map<std::string, ir::Attribute> op1_attribute{
+    std::unordered_map<std::string, ir::Attribute> op_attribute{
         {"op_name", ir::StrAttribute::get(ctx, (*it)->name())},
         {"kernel_name", ir::StrAttribute::get(ctx, kernel_fn_str)},
         {"kernel_key", dialect::KernelAttribute::get(ctx, kernel_key)}};
@@ -311,22 +311,22 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     auto op_attr_map = (*it)->attributes();
 
     for (auto it1 = op_attr_map.begin(); it1 != op_attr_map.end(); ++it1) {
-      op1_attribute.emplace(it1->first, it1->second);
+      op_attribute.emplace(it1->first, it1->second);
     }
 
-    ir::Operation* op1 = ir::Operation::Create(
-        vec_inputs, op1_attribute, op_output_types, op1_info);
+    ir::Operation* op = ir::Operation::Create(
+        vec_inputs, op_attribute, op_output_types, op_info);
 
-    map_op_pair[*it] = op1;
+    map_op_pair[*it] = op;
 
     // only deal with single output
     if ((*it)->num_results() > 0) {
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        map_value_pair[(*it)->result(i)] = op1->result(i);
+        map_value_pair[(*it)->result(i)] = op->result(i);
       }
     }
 
-    program->block()->push_back(op1);
+    program->block()->push_back(op);
   }
 
   return program;
