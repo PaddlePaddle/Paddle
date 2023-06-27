@@ -43,19 +43,10 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
     '''
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # is_sparse is only support False
-        if program_config.ops[0].attrs['is_sparse']:
-            return False
-
-        # is_distributed only support False
-        if program_config.ops[0].attrs['is_distributed']:
-            return False
         return True
 
     def sample_program_config(self, draw):
-        is_sparse = draw(st.booleans())
-        is_distributed = draw(st.booleans())
-        padding_idx = draw(st.integers())
+        padding_idx = -1
         axis = -1
         op_type = draw(st.sampled_from(['lookup_table', 'lookup_table_v2']))
         epsilon = draw(st.floats(min_value=0.0001, max_value=0.001))
@@ -97,8 +88,6 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
         attrs = [
             {
-                'is_sparse': is_sparse,
-                'is_distributed': is_distributed,
                 'padding_idx': padding_idx,
                 'op_type': op_type,
             },
@@ -116,8 +105,6 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             inputs={"Ids": ["input_data1"], "W": ["embedding_weight1"]},
             outputs={"Out": ["embedding_output1"]},
             attrs={
-                'is_sparse': attrs[0]['is_sparse'],
-                'is_distributed': attrs[0]['is_distributed'],
                 'padding_idx': attrs[0]['padding_idx'],
             },
         )
@@ -126,8 +113,6 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             inputs={"Ids": ["input_data2"], "W": ["embedding_weight2"]},
             outputs={"Out": ["embedding_output2"]},
             attrs={
-                'is_sparse': attrs[0]['is_sparse'],
-                'is_distributed': attrs[0]['is_distributed'],
                 'padding_idx': attrs[0]['padding_idx'],
             },
         )
@@ -136,8 +121,6 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             inputs={"Ids": ["input_data3"], "W": ["embedding_weight3"]},
             outputs={"Out": ["embedding_output3"]},
             attrs={
-                'is_sparse': attrs[0]['is_sparse'],
-                'is_distributed': attrs[0]['is_distributed'],
                 'padding_idx': attrs[0]['padding_idx'],
             },
         )
@@ -294,40 +277,10 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
     '''
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # is_sparse is only support False
-        if program_config.ops[0].attrs['is_sparse']:
-            return False
-
-        # is_distributed only support False
-        if program_config.ops[0].attrs['is_distributed']:
-            return False
-
-        # axis only support -1 and the last dim.
-        if program_config.ops[3].attrs['axis'] not in [-1, 2]:
-            return False
-
-        if not (
-            program_config.ops[5].attrs['epsilon'] >= 0
-            and program_config.ops[5].attrs['epsilon'] <= 0.001
-        ):
-            return False
-
-        if program_config.ops[5].attrs['begin_norm_axis'] != 2:
-            return False
-
-        # input check
-        if (
-            program_config.weights['embedding_weight1'].shape[1]
-            != program_config.weights['layer_norm_scale'].shape[0]
-        ):
-            return False
-
         return True
 
     def sample_program_config(self, draw):
-        is_sparse = False
-        is_distributed = False
-        padding_idx = 0
+        padding_idx = -1
         axis = -1
         op_type = draw(st.sampled_from(['lookup_table', 'lookup_table_v2']))
         epsilon = 0.0001
@@ -397,8 +350,6 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
 
         attrs = [
             {
-                'is_sparse': is_sparse,
-                'is_distributed': is_distributed,
                 'padding_idx': padding_idx,
                 'op_type': op_type,
             },
@@ -416,8 +367,6 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
             inputs={"Ids": ["input_data1"], "W": ["embedding_weight1"]},
             outputs={"Out": ["embedding_output1"]},
             attrs={
-                'is_sparse': attrs[0]['is_sparse'],
-                'is_distributed': attrs[0]['is_distributed'],
                 'padding_idx': attrs[0]['padding_idx'],
             },
         )
@@ -426,8 +375,6 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
             inputs={"Ids": ["input_data2"], "W": ["embedding_weight2"]},
             outputs={"Out": ["embedding_output2"]},
             attrs={
-                'is_sparse': attrs[0]['is_sparse'],
-                'is_distributed': attrs[0]['is_distributed'],
                 'padding_idx': attrs[0]['padding_idx'],
             },
         )
@@ -436,8 +383,6 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
             inputs={"Ids": ["input_data3"], "W": ["embedding_weight3"]},
             outputs={"Out": ["embedding_output3"]},
             attrs={
-                'is_sparse': attrs[0]['is_sparse'],
-                'is_distributed': attrs[0]['is_distributed'],
                 'padding_idx': attrs[0]['padding_idx'],
             },
         )
