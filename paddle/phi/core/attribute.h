@@ -16,13 +16,14 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/tensor_ref.h"
-#include "paddle/utils/flat_hash_map.h"
+
 #include "paddle/utils/variant.h"
 
 namespace phi {
@@ -50,6 +51,6 @@ using Attribute = paddle::variant<bool,
                                   Place,
                                   TensorRef>;
 
-using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
+using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 }  // namespace phi

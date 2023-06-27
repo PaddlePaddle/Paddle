@@ -18,6 +18,7 @@ limitations under the License. */
 #include <typeindex>
 #include <typeinfo>
 #include <utility>
+#include <unordered_map>
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
@@ -27,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/utils/any.h"
-#include "paddle/utils/flat_hash_map.h"
+
 #include "paddle/utils/small_vector.h"
 
 namespace phi {
@@ -332,7 +333,7 @@ class MetaFnFactory {
    * the number of kernel arguments in the same row is the same, and only
    * the tensor types in the arguments are different.
    */
-  paddle::flat_hash_map<std::string, InferMetaFn> meta_fn_map_;
+  std::unordered_map<std::string, InferMetaFn> meta_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(MetaFnFactory);
 };

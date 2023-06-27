@@ -15,11 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>
+#include <unordered_map>
 
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/utils/flat_hash_map.h"
+
 
 namespace phi {
 class DeviceContext;
@@ -80,7 +81,7 @@ class PADDLE_API DeviceContextPool {
  private:
   DeviceContextPool() = default;
 
-  paddle::flat_hash_map<Place, const phi::DeviceContext*, Place::Hash>
+  std::unordered_map<Place, const phi::DeviceContext*, Place::Hash>
       context_map_;
   std::mutex mutex_;
 

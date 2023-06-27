@@ -16,12 +16,13 @@
 
 #include <NvInfer.h>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
-#include "paddle/utils/flat_hash_map.h"
+
 
 namespace paddle {
 namespace inference {
@@ -67,7 +68,7 @@ class DynamicMetaFnFactory {
  private:
   DynamicMetaFnFactory() = default;
 
-  paddle::flat_hash_map<std::string, DynamicMetaFn> meta_fn_map_;
+  std::unordered_map<std::string, DynamicMetaFn> meta_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(DynamicMetaFnFactory);
 };

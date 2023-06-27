@@ -28,7 +28,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/utils/flat_hash_map.h"
+
 #include "paddle/utils/small_vector.h"
 namespace phi {
 
@@ -293,9 +293,9 @@ class Kernel {
   KernelRegisteredType kernel_registered_type_ = KernelRegisteredType::FUNCTION;
 };
 
-using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
+using KernelKeyMap = std::unordered_map<KernelKey, Kernel, KernelKey::Hash>;
 
-using KernelNameMap = paddle::flat_hash_map<std::string, KernelKeyMap>;
+using KernelNameMap = std::unordered_map<std::string, KernelKeyMap>;
 
 struct KernelResult {
   KernelResult(const Kernel& kernel, bool fallback_cpu)
