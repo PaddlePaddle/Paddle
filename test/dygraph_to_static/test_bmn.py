@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import dy2static_unittest
 from predictor_utils import PredictorTools
 
 import paddle
@@ -752,7 +752,6 @@ class TestTrain(unittest.TestCase):
                         break
             return np.array(loss_data)
 
-    @ast_only_test
     def test_train(self):
 
         static_res = self.train_bmn(self.args, self.place, to_static=True)

@@ -19,7 +19,6 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
@@ -714,7 +713,6 @@ class TestMobileNet(unittest.TestCase):
             ),
         )
 
-    @ast_only_test
     def test_mobile_net(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")

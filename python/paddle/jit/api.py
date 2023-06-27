@@ -1079,7 +1079,9 @@ def save(layer, path, input_spec=None, **configs):
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
-                    inner_layer.forward, input_spec=inner_input_spec
+                    inner_layer.forward,
+                    input_spec=inner_input_spec,
+                    enable_fallback=False,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(

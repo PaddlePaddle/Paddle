@@ -237,7 +237,6 @@ class TestBert(unittest.TestCase):
 
         self.verify_predict()
 
-    @ast_only_test
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
         # core._add_skip_comp_ops("layer_norm")

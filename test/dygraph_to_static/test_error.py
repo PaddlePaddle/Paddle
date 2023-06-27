@@ -17,6 +17,7 @@ import os
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import enable_fallback_guard
 
 import paddle
 from paddle import fluid
@@ -394,7 +395,8 @@ class TestJitSaveInCompiletime(TestErrorBase):
         )
 
     def test_error(self):
-        self._test_raise_new_exception()
+        with enable_fallback_guard("True"):
+            self._test_raise_new_exception()
 
 
 @paddle.jit.to_static
