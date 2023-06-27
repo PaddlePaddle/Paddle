@@ -36,12 +36,12 @@ def fused_rotary_position_embedding(q, k, v):
 
             # required: gpu
             import paddle
-            from paddle.incubate.nn.functional import rotary_position_embedding
+            from paddle.incubate.nn.functional import fused_rotary_position_embedding
 
             q = paddle.randn([1, 1, 4, 10], dtype='float16')
             k = paddle.randn([1, 1, 4, 10], dtype='float16')
             v = paddle.randn([1, 1, 4, 10], dtype='float16')
-            out = rotary_position_embedding(q, k, v)
+            out = fused_rotary_position_embedding(q, k, v)
     """
     if in_dynamic_mode():
         return _C_ops.fused_rope(q, k, v)
