@@ -19,7 +19,7 @@ import unittest
 
 import numpy
 
-# TODO: use import legacy_test.nets to replace it
+# TODO: remove sys.path.append
 sys.path.append("../legacy_test")
 import nets
 
