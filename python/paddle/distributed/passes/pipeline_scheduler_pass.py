@@ -22,7 +22,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Program
 
-from .pass_base import PassBase, register_pass
+from .pass_base import PassBase, PassContext, new_pass, register_pass
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -257,7 +257,7 @@ def _program_for_fthenb_and_1f1b(program):
     }
 
 
-@register_pass("pipeline_fthenb_scheduler")
+@register_pass("pipeline_scheduler_FThenB")
 class PipelineFThenBPass(PassBase):
     def __init__(self):
         super().__init__()
@@ -270,29 +270,42 @@ class PipelineFThenBPass(PassBase):
 
     def _create_job_list(self):
         job_list = []
-        lr_job = core.job("lr")
+        lr_job = core.Job("lr")
         job_list.append(lr_job)
-        for i in range(self._micro_batch_size):
-            forward_job = core.job("forward")
+        for i in range(self._num_micro_batches):
+            forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(i)
             job_list.append(forward_job)
 
-        for i in range(self._micro_batch_size):
-            backward_job = core.job("backward")
+        for i in range(self._num_micro_batches):
+            backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(i)
             job_list.append(backward_job)
 
-        opt_job = core.job("optimizer")
+        opt_job = core.Job("optimizer")
         job_list.append(opt_job)
         return job_list
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        self._micro_batch_size = self.get_attr("micro_batch_size")
+        self._num_micro_batches = self.get_attr("num_micro_batches")
         self._program = main_program
 
         _insert_sync_for_fthenb_1f1b(self._program)
         type_to_program = _program_for_fthenb_and_1f1b(self._program)
         job_list = self._create_job_list()
 
-        plan = core.plan(job_list, type_to_program)
+        plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)
+
+
+def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
+    assert pass_name in [
+        "FThenB"
+    ], "pipeline scheduler only support FThenB, but recieve {}".format(
+        pass_name
+    )
+    pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
+    pass_context = PassContext()
+    pipeline_pass.apply([main_program], [startup_program], pass_context)
+    plan = pass_context.get_attr("plan")
+    return plan

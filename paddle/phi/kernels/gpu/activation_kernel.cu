@@ -103,8 +103,6 @@ DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Exp, CudaExpFunctor)
-DEFINE_GPU_ACTIVATION_KERNEL(Expm1, CudaExpm1Functor)
 DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Square, CudaSquareFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Sqrt, CudaSqrtFunctor)
@@ -120,6 +118,8 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, CudaLogFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, CudaLog2Functor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log10, CudaLog10Functor)
 DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log1p, CudaLog1pFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Exp, CudaExpFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
@@ -132,7 +132,6 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, CudaSwishFunctor, beta)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
 
@@ -167,6 +166,16 @@ void HardSwishKernel(const Context& dev_ctx,
       dev_ctx, x, out, functor);
 }
 
+template <typename T, typename Context>
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  funcs::CudaSwishFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = 1.0;
+  ActivationGPUImpl<T, Context, funcs::CudaSwishFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -237,6 +246,8 @@ PD_REGISTER_KERNEL(expm1,
                    phi::Expm1Kernel,
                    float,
                    double,
+                   int,
+                   int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(square,
@@ -260,7 +271,7 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)

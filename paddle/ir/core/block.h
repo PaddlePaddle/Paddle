@@ -17,12 +17,13 @@
 #include <cstddef>
 #include <list>
 
+#include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/region.h"
 
 namespace ir {
 class Operation;
 
-class Block {
+class IR_API Block {
   using OpListType = std::list<Operation *>;
 
  public:
@@ -49,6 +50,7 @@ class Block {
   void push_back(Operation *op);
   void push_front(Operation *op);
   iterator insert(const_iterator iterator, Operation *op);
+  iterator erase(const_iterator position);
   void clear();
   operator Region::iterator() { return position_; }
 

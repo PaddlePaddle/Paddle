@@ -368,7 +368,6 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
                 )
             ),
         )
-
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
@@ -1351,28 +1350,6 @@ def _append_backward_ops_(
     assert isinstance(rename_var_map, dict)
 
     if core._is_bwd_prim_enabled():
-        grad_name_set = set()
-        for target in target_vars:
-            grad_name_set.add(_append_grad_suffix_(target.name))
-
-        for op in reversed(block.ops):
-            if op.type == "fill_any_like":
-                for out_name in op.desc.output_arg_names():
-                    grad_name_set.add(out_name)
-                continue
-            for var_name in op.desc.output_arg_names():
-                grad_var_name = _append_grad_suffix_(var_name)
-                if grad_var_name not in grad_name_set:
-                    op_desc = _create_op_desc_(
-                        "fill_any_like",
-                        {"X": [var_name]},
-                        {"Out": [grad_var_name]},
-                        {'value': 0, 'dtype': target_vars[0].dtype},
-                    )
-                    block.desc.append_op().copy_from(op_desc)
-            break
-        block.program._sync_with_cpp()
-
         composite_block = program.clone().current_block()
         # Create output and infer shape for operators whose output haven't
         # been created.
@@ -2461,6 +2438,7 @@ def calc_gradient_helper(
     target_grad_map = {}
     rename_var_map = {}
     skip_rename_var_list = []
+    grad_name_set = set()
     for i, grad in enumerate(target_gradients):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
@@ -2490,9 +2468,10 @@ def calc_gradient_helper(
             input_grad_names_set.add(grad.name)
             rename_var_map[grad_name] = grad.name
 
+        grad_name_set.add(grad_name)
+
     if core._is_bwd_prim_enabled():
         core._set_prim_target_grad_name(target_grad_map)
-
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
     # associate target_grad var name with first grad_op input name.
@@ -2503,7 +2482,6 @@ def calc_gradient_helper(
     for input in inputs:
         if input.block.program != prog:
             raise "input must be in the same program as targets"
-
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
     op_path_dict = dict()
@@ -2511,9 +2489,32 @@ def calc_gradient_helper(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
 
+    # only for composite to add grad_op input,
+    # tmp_targets includes targets and other outputs
+    # of the same forward op who create targets
+    tmp_targets = targets
+
+    if core._is_bwd_prim_enabled():
+        for op in reversed(block.ops):
+            if op.type == "fill_any_like":
+                continue
+            for var_name in op.desc.output_arg_names():
+                grad_var_name = _append_grad_suffix_(var_name)
+                if grad_var_name not in grad_name_set:
+                    op_desc = _create_op_desc_(
+                        "fill_any_like",
+                        {"X": [var_name]},
+                        {"Out": [grad_var_name]},
+                        {'value': 0, 'dtype': targets[0].dtype},
+                    )
+                    block.desc.append_op().copy_from(op_desc)
+                    tmp_targets.append(block.var(var_name))
+            break
+        block.program._sync_with_cpp()
+
     # find no grad var by op_path
     no_grad_vars = _find_no_grad_vars(
-        block, op_path, targets, block_no_grad_set
+        block, op_path, tmp_targets, block_no_grad_set
     )
     block_no_grad_set.update(no_grad_vars)
 

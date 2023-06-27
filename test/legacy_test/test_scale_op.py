@@ -155,7 +155,8 @@ class TestScaleFp16Op(TestScaleOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_rocm(), "core is not compiled with CUDA"
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
 )
 class TestScaleBF16Op(OpTest):
     def setUp(self):
