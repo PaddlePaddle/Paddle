@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from typing import List
+
+from paddle.fluid import core
+from paddle.fluid.framework import Program
 
 
 def list_to_ordered_dict(list_obj, ordered_dict=None):
@@ -133,3 +137,95 @@ def split_program(program, op_indices):
                     break
     valid_output_vars = [list(item.keys()) for item in valid_output_vars]
     return splitted_programs, input_vars, valid_output_vars
+
+
+class OpInfo:
+    def __init__(self, op):
+        self.op = op
+        self.no_need_buffer_slots = set()
+        self.other_arg_names_set = set()
+
+    def get_op_attrs(self):
+        inputs = {}
+        for input_name in self.op.input_names:
+            inputs[input_name] = self.op.input(input_name)
+        outputs = {}
+        for output_name in self.op.output_names:
+            outputs[output_name] = self.op.output(output_name)
+        attrs = {}
+        for attr_name in self.op.attr_names:
+            attrs[attr_name] = self.op.attr(attr_name)
+
+        return inputs, outputs, attrs
+
+    def build_op_info(self):
+        inputs, outputs, attrs = self.get_op_attrs()
+        self.no_need_buffer_slots = core.infer_no_need_buffer_slots(
+            self.op.type, inputs, outputs, attrs
+        )
+        if len(self.no_need_buffer_slots) == 0:
+            return
+
+        for slot_name in self.op.input_names:
+            if slot_name in self.no_need_buffer_slots:
+                continue
+
+            for in_name in self.op.input(slot_name):
+                self.other_arg_names_set.add(in_name)
+
+        for slot_name in self.op.output_names:
+            for out_name in self.op.output(slot_name):
+                self.other_arg_names_set.add(out_name)
+
+    def is_needed(self, arg_name):
+        return (
+            len(self.no_need_buffer_slots) == 0
+            or arg_name in self.other_arg_names_set
+        )
+
+
+def get_skip_gc_vars(program_list: List[Program]):
+    """
+    Get `skip_gc_vars` for every sub_program of program_list.
+
+    A whole_program is split up into sub_programs according to the schedule mode,
+    thus a sub_program's vars might be used as the op's input of the later sub_program,
+    and these vars cannot be gc after executing current sub_program.
+    """
+
+    # step1: get all non-persistable vars of every sub_program of program_list
+    vars_list = [
+        {
+            var.name
+            for var in filter(
+                lambda var: not var.persistable, program.list_vars()
+            )
+        }
+        for program in program_list
+    ]
+
+    # step2: get the `intersection_vars_list` that vars of current sub_program might be used in the later sub_program
+    union_set = set()
+    intersection_vars_list = [set()] * len(program_list)
+    for idx, vars_set in reversed(list(enumerate(vars_list))):
+        if idx < len(vars_list) - 1:
+            union_set = union_set.union(vars_list[idx + 1])
+        intersection_vars_list[idx] = vars_set & union_set
+
+    # step3: Filter the vars that might be in no_need_buffer of op.
+    # Reversely traversing all ops in the program_list. If op's input_args in the former vars_list,
+    # and the input_args is used in op's computation, the input_args should be put in skip_gc_vars.
+    skip_gc_vars = [set() for _ in range(len(program_list))]
+    for ip, program in reversed(list(enumerate(program_list))):
+        for op in program.global_block().ops:
+            op_info = OpInfo(op)
+            op_info.build_op_info()
+
+            for in_name in op.input_arg_names:
+                for i in range(0, ip):
+                    if in_name not in intersection_vars_list[i]:
+                        continue
+                    if op_info.is_needed(in_name):
+                        skip_gc_vars[i].add(in_name)
+
+    return skip_gc_vars

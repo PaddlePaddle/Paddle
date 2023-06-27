@@ -14,6 +14,7 @@
 
 #pragma once
 #include <glog/logging.h>
+#include <set>
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -58,10 +59,21 @@ class Job final {
     micro_batch_id_ = micro_batch_id;
   }
 
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
+    PADDLE_ENFORCE_EQ(skip_gc_vars_.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "skip_gc_vars_ can only be initialized once, now "
+                          "skip_gc_vars_ is not empty, "
+                          "do not call SetSkipGcVars method repeatedly."));
+    skip_gc_vars_ = skip_gc_vars;
+  }
+
  private:
   const std::string type_;
   int64_t micro_batch_id_;
   std::unordered_map<int, int> fetch_op_id_to_col_attr_;
+  std::set<std::string> skip_gc_vars_;
 };
 
 }  // namespace interpreter
