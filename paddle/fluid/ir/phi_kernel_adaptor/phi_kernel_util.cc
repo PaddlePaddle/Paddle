@@ -147,8 +147,7 @@ void BuildScope(ir::Block* block,
         }
         auto var = scope->Var(name);
         // Only support DenseTensor or Vector<DenseTensor>
-        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
-            ptr.type().isa<paddle::dialect::DenseTensorType>()) {
+        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type().isa<ir::VectorType>()) {
           auto tensor_array =
@@ -157,11 +156,8 @@ void BuildScope(ir::Block* block,
                i++) {
             PADDLE_ENFORCE(
                 ptr.type()
-                        .dyn_cast<ir::VectorType>()[i]
-                        .isa<paddle::dialect::AllocatedDenseTensorType>() ||
-                    ptr.type()
-                        .dyn_cast<ir::VectorType>()[i]
-                        .isa<paddle::dialect::DenseTensorType>(),
+                    .dyn_cast<ir::VectorType>()[i]
+                    .isa<paddle::dialect::AllocatedDenseTensorType>(),
                 paddle::platform::errors::Fatal(
                     "Element of VectorType output only support "
                     "DenseTensorType"));
