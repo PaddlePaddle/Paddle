@@ -649,7 +649,7 @@ class PipelineLayer(nn.Layer):
             start = self._start_poss[i]
             end = self._end_poss[i]
             # Get a model chunk
-            chunk = self._build_layer_impl(start, end, is_interleave=True)
+            chunk = self._build_layer_impl(start, end)
             assert isinstance(chunk, PipelineLayerChunk)
             # Add the chunk to all chunks and add this chunk to the sublayer
             self._model_chunks.append(chunk)
@@ -661,23 +661,23 @@ class PipelineLayer(nn.Layer):
     def _build_layer(self):
         start = self._start_pos
         end = self._end_pos
-        self.run_function = self._build_layer_impl(start, end)
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
 
-    def _build_layer_impl(self, start, end, is_interleave=False):
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+        self.run_function = self._build_layer_impl(start, end)
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
+
+    def _build_layer_impl(self, start, end):
         if self._num_virtual_pipeline_stages > 1:
             # For interleave scheduler, all layers relating with one model chunk will be saved in PipelineLayerChunk
             run_function = PipelineLayerChunk()
         else:
             # For 1f1b scheduler, just use run_function list
             run_function = self.run_function
-
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
-            get_rng_state_tracker,
-        )
-
-        if not is_interleave:
-            orig_rng_state = paddle.get_rng_state()
-            orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
@@ -733,9 +733,6 @@ class PipelineLayer(nn.Layer):
             else:
                 run_function.append(layer)
 
-        if not is_interleave:
-            paddle.set_rng_state(orig_rng_state)
-            get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
         return run_function
 
     def forward_function(self, start, end):
