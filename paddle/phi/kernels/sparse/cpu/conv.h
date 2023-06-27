@@ -135,7 +135,7 @@ void ProductRuleBook(const Context& dev_ctx,
             // IntT in_x = indices_ptr[i + 3 * non_zero_num];
             // IntT out_z = (in_z + paddings[0] - kz * dilations[0]) /
             // strides[0];
-            IntT out_z = 0;
+            IntT out_z = is2D == true ? 0 : (in_z + paddings[0] - kz * dilations[0]) / strides[0];;
             IntT out_y =
                 (in_y + c_paddings[2] - ky * c_dilations[2]) / c_strides[2];
             IntT out_x =
