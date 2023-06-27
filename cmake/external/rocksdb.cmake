@@ -91,8 +91,9 @@ ExternalProject_Add(
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   INSTALL_COMMAND
     mkdir -p ${ROCKSDB_INSTALL_DIR}/lib/ && cp
-    ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
-    && cp -r ${ROCKSDB_SOURCE_DIR}/include ${ROCKSDB_INSTALL_DIR}/
+    ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb-build/librocksdb.a
+    ${ROCKSDB_LIBRARIES} && cp -r ${ROCKSDB_SOURCE_DIR}/include
+    ${ROCKSDB_INSTALL_DIR}/
   BUILD_BYPRODUCTS ${ROCKSDB_LIBRARIES})
 
 add_library(rocksdb STATIC IMPORTED GLOBAL)
