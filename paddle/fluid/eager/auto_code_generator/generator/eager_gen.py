@@ -230,13 +230,13 @@ FORWARD_FUNCTION_TEMPLATE = """
   bool trace_backward = egr::Controller::Instance().HasGrad();
   bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({});
 
- // Node Declaration
+  // Node Declaration
   std::shared_ptr<{}> grad_node;
 
-  //Set grad_node before API Call
+  // Set grad_node before API Call
 {}
 
- // Forward API Call
+  // Forward API Call
 {}
   // Check NaN and Inf if needed
 {}
@@ -246,7 +246,7 @@ FORWARD_FUNCTION_TEMPLATE = """
 {}
   // Check Inplace if needed
 {}{}
-  //Set grad_node after API call
+  // Set grad_node after API call
 {}
 
   VLOG(4) << \"Finish AD API: {}";
