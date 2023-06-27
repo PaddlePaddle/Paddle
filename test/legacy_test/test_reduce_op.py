@@ -584,10 +584,7 @@ class TestProdOp_ZeroDim(OpTest):
         self.public_python_api = raw_reduce_prod
         self.op_type = "reduce_prod"
         self.prim_op_type = "prim"
-        self.inputs = {'X': np.random.random([]).astype("float64")}
-        self.outputs = {'Out': self.inputs['X'].prod()}
-        self.attrs = {'dim': [], 'reduce_all': True}
-
+        self.init_inputs_and_outputs()
         # 0-D tensor doesn't support in cinn
         self.enable_cinn = False
 
@@ -601,6 +598,29 @@ class TestProdOp_ZeroDim(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestProdOp_ZeroDim1(TestProdOp):
+    def setUp(self):
+        self.python_api = paddle.prod
+        self.public_python_api = paddle.prod
+        self.op_type = "reduce_prod"
+        self.prim_op_type = "prim"
+        self.init_inputs_and_outputs()
+        # 0-D tensor doesn't support in cinn
+        self.enable_cinn = False
+
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([100]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
+
+
+class TestProdOp_ZeroDim2(TestProdOp_ZeroDim1):
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([5, 6, 10]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
 
 
 class TestProd6DOp(OpTest):
