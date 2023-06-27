@@ -50,6 +50,7 @@ class IR_API Block {
   void push_back(Operation *op);
   void push_front(Operation *op);
   iterator insert(const_iterator iterator, Operation *op);
+  iterator erase(const_iterator position);
   void clear();
   operator Region::iterator() { return position_; }
 

@@ -44,6 +44,8 @@ TEST(value_test, value_test) {
                             op1_output_types,
                             ir::OpInfo());
   op1->Print(std::cout);
+  ir::OpResult a = op1->result(0);
+  EXPECT_TRUE(a.use_empty());
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
@@ -53,17 +55,23 @@ TEST(value_test, value_test) {
                             op2_output_types,
                             ir::OpInfo());
   op2->Print(std::cout);
+  ir::OpResult b = op2->result(0);
+  EXPECT_TRUE(b.use_empty());
   // 3. Construct OP3: c = OP3(a, b);
-  std::vector<ir::OpResult> op3_inputs = {op1->result(0), op2->result(0)};
+  std::vector<ir::OpResult> op3_inputs{a, b};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op3 =
       ir::Operation::Create(op3_inputs,
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
                             ir::OpInfo());
+
+  EXPECT_TRUE(op1->result(0).HasOneUse());
+  EXPECT_TRUE(op2->result(0).HasOneUse());
   op3->Print(std::cout);
+  ir::OpResult c = op3->result(0);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
-  std::vector<ir::OpResult> op4_inputs = {op1->result(0), op3->result(0)};
+  std::vector<ir::OpResult> op4_inputs = {a, c};
   std::vector<ir::Type> op4_output_types;
   for (size_t i = 0; i < 7; i++) {
     op4_output_types.push_back(ir::Float32Type::get(ctx));
@@ -98,13 +106,24 @@ TEST(value_test, value_test) {
   ++iter;
   EXPECT_EQ(iter.owner(), op3);
 
+  // Test 4: Value Replace Use
+  // a = OP1(); b = OP2(); c = OP3(a, b); d, e, f, g, h, i, j = OP4(a, c);
+  //
+  c.ReplaceUsesWithIf(b, [](ir::OpOperand) { return true; });
+  EXPECT_EQ(op4->operand(1).source(), b);
+  EXPECT_TRUE(c.use_empty());
+
+  b.ReplaceAllUsesWith(a);
+  EXPECT_EQ(op4->operand(1).source(), a);
+  EXPECT_TRUE(b.use_empty());
+
   // destroy
-  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).PrintUdChain() << std::endl;
   op4->Destroy();
-  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).PrintUdChain() << std::endl;
   op3->Destroy();
-  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).PrintUdChain() << std::endl;
   op2->Destroy();
-  VLOG(0) << op1->result(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->result(0).PrintUdChain() << std::endl;
   op1->Destroy();
 }

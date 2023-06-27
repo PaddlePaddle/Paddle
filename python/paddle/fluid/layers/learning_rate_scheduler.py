@@ -166,8 +166,8 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.ExponentialDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -228,8 +228,8 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NaturalExpDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.NaturalExpDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -288,8 +288,8 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.InverseTimeDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.InverseTimeDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -495,8 +495,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.CosineDecay(
-                learning_rate, step_each_epoch, epochs
+            decay = paddle.optimizer.lr.CosineAnnealingDecay(
+                learning_rate, epochs
             )
             return decay
         else:
