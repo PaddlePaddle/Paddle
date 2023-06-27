@@ -45,6 +45,7 @@ TEST(value_test, value_test) {
                             ir::OpInfo());
   op1->Print(std::cout);
   ir::OpResult a = op1->result(0);
+  EXPECT_TRUE(a.use_empty());
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
@@ -55,6 +56,7 @@ TEST(value_test, value_test) {
                             ir::OpInfo());
   op2->Print(std::cout);
   ir::OpResult b = op2->result(0);
+  EXPECT_TRUE(b.use_empty());
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs{a, b};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
@@ -63,6 +65,9 @@ TEST(value_test, value_test) {
                             CreateAttributeMap("op3_name", "op3_attr"),
                             op3_output_types,
                             ir::OpInfo());
+
+  EXPECT_TRUE(op1->result(0).HasOneUse());
+  EXPECT_TRUE(op2->result(0).HasOneUse());
   op3->Print(std::cout);
   ir::OpResult c = op3->result(0);
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);

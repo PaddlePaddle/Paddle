@@ -952,8 +952,8 @@ void BuildOpFuncList(
 
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
 
-    if (op_name == "builtin.combine") {
-      VLOG(6) << "skip process pd.fetch op";
+    if (op_name == "builtin.combine" || op_name == "pd.feed") {
+      VLOG(6) << "skip process " << op_name;
       continue;
     }
 
@@ -985,9 +985,9 @@ void BuildOpFuncList(
                           .data();
 
     VLOG(6) << "finish process infer meta context";
-    auto t1 =
-        phi::KernelFactory::Instance().SelectKernel(kernel_name, kernel_key);
-    op_func_node.phi_kernel_ = new phi::Kernel(t1);
+    auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        kernel_name, kernel_key);
+    op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
 
     PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
                       true,

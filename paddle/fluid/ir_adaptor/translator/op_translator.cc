@@ -540,6 +540,8 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
       GenerateOperationOutput(ctx, op_desc, output_infos);
   ir::AttributeMap attribute_map = {
       {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
+      {"col",
+       ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
   };
 
   ir::Operation* operation =

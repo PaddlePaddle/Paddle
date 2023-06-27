@@ -2,6 +2,7 @@
   inputs: []
   attrs:
   - {typename: str, name: name}
+  - {typename: int, name: col}
   outputs:
   - {typename: Tensor, name: out, optional: false, intermediate: false}
   no_need_buffer: null
