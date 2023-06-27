@@ -50,27 +50,6 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         # is_distributed only support False
         if program_config.ops[0].attrs['is_distributed']:
             return False
-
-        # axis only support -1 and the last dim.
-        if program_config.ops[3].attrs['axis'] not in [-1, 2]:
-            return False
-
-        if not (
-            program_config.ops[5].attrs['epsilon'] >= 0
-            and program_config.ops[5].attrs['epsilon'] <= 0.001
-        ):
-            return False
-
-        if program_config.ops[5].attrs['begin_norm_axis'] != 2:
-            return False
-
-        # input check
-        if (
-            program_config.weights['embedding_weight1'].shape[1]
-            != program_config.weights['layer_norm_scale'].shape[0]
-        ):
-            return False
-
         return True
 
     def sample_program_config(self, draw):
