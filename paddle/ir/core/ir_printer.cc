@@ -59,6 +59,10 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "i32";
   } else if (type.isa<Int64Type>()) {
     os << "i64";
+  } else if (type.isa<Complex64Type>()) {
+    os << "c64";
+  } else if (type.isa<Complex128Type>()) {
+    os << "c128";
   } else if (type.isa<VectorType>()) {
     os << "vec[";
     auto inner_types = type.dyn_cast<VectorType>().data();

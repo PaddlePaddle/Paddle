@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <sstream>
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -30,7 +31,10 @@ void test_parameterless_type() {
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
 
   ir::Type type = IR_TYPE::get(ctx);
-  VLOG(3) << "[type printer test] type: " << type;
+  std::stringstream ss;
+  ss << type;
+  EXPECT_GT(ss.str().size(), 0u);
+  EXPECT_NE(ss.str(), "<<NULL TYPE>>");
   phi::DataType phi_type = paddle::dialect::TransToPhiDataType(type);
   EXPECT_EQ(type, paddle::dialect::TransToIrDataType(phi_type));
 
