@@ -3908,7 +3908,7 @@ Lamb = LambOptimizer
 
 class ModelAverage(Optimizer):
     r"""
-	:api_attr: Static Graph
+    :api_attr: Static Graph
 
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed

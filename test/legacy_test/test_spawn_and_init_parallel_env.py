@@ -37,7 +37,7 @@ class TestInitParallelEnv(unittest.TestCase):
     def test_check_env_failed(self):
         os.environ['FLAGS_selected_gpus'] = '0'
         os.environ['PADDLE_TRAINER_ID'] = '0'
-        os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
+        # os.environ['PADDLE_CURRENT_ENDPOINT'] = '127.0.0.1:6170'
         os.environ['PADDLE_TRAINERS_NUM'] = '2'
         with self.assertRaises(ValueError):
             dist.init_parallel_env()

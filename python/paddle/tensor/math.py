@@ -675,8 +675,8 @@ def logaddexp(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
-        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
