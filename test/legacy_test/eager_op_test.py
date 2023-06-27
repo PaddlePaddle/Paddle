@@ -47,6 +47,7 @@ from paddle.fluid.framework import (
     Program,
     _current_expected_place,
     canonicalize_attrs,
+    set_flags,
 )
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
@@ -386,6 +387,7 @@ class OpTest(unittest.TestCase):
         cls.input_shape_is_large = True
         cls.is_calc_ref = False
         cls.check_prim = False
+        cls._check_cinn = False
 
         np.random.seed(123)
         random.seed(124)
@@ -1125,6 +1127,41 @@ class OpTest(unittest.TestCase):
             )
             return outputs
 
+    def _check_ir_output(self, place, program, feed_map, fetch_list, outs):
+        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+            return
+        if self.check_prim:
+            return
+        if self._check_cinn:
+            return
+
+        set_flags({"FLAGS_enable_new_ir_in_executor": True})
+
+        executor = Executor(place)
+        ir_outs = executor.run(
+            program,
+            feed=feed_map,
+            fetch_list=fetch_list,
+            return_numpy=False,
+        )
+        np.testing.assert_array_equal(
+            outs,
+            ir_outs,
+            err_msg='Operator ('
+            + self.op_type
+            + ') has diff at '
+            + str(place)
+            + '\nExpect '
+            + str(outs)
+            + '\n'
+            + 'But Got'
+            + str(ir_outs)
+            + ' in class '
+            + self.__class__.__name__,
+        )
+
+        set_flags({"FLAGS_enable_new_ir_in_executor": False})
+
     def _calc_output(
         self,
         place,
@@ -1197,6 +1234,7 @@ class OpTest(unittest.TestCase):
                     program, build_strategy=build_strategy
                 )
                 program = compiled_prog
+                self._check_cinn = enable_cinn_test
 
             executor = Executor(place)
             outs = executor.run(
@@ -1205,6 +1243,9 @@ class OpTest(unittest.TestCase):
                 fetch_list=fetch_list,
                 return_numpy=False,
             )
+
+            self._check_ir_output(place, program, feed_map, fetch_list, outs)
+
             self.op = op
             self.program = original_program
         if for_inplace_test:
