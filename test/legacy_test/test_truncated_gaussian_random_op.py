@@ -44,7 +44,6 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
             self.gaussian_random_test_eager(place=fluid.CUDAPlace(0))
 
     def gaussian_random_test(self, place):
-
         program = fluid.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")

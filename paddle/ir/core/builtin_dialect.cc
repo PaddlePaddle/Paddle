@@ -41,8 +41,8 @@ void BuiltinDialect::initialize() {
                      FloatAttribute,
                      DoubleAttribute,
                      PointerAttribute,
-                     Int32_tAttribute,
-                     Int64_tAttribute,
+                     Int32Attribute,
+                     Int64Attribute,
                      ArrayAttribute>();
 
   RegisterOps<ModuleOp,
@@ -54,3 +54,5 @@ void BuiltinDialect::initialize() {
 }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::BuiltinDialect)

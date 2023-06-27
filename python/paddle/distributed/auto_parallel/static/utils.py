@@ -28,7 +28,7 @@ from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from ..process_mesh import ProcessMesh
-from .dist_attribute import OperatorDistAttr, TensorDistAttr
+from .dist_attribute import DistTensorSpec, OperatorDistAttr, TensorDistAttr
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -422,7 +422,6 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
 
 
 def _get_corresponding_rank(dist_context, target_mesh, rank):
-
     # TODO(JZ-LIANG) a hack method to support varying mesh in Pipeline parallelism case.
     # we assume that all mesh are evenly divide from a parent mesh and should have same size.
     # to revise this in future.
@@ -1190,7 +1189,6 @@ def set_grad_var_shape(program, dist_context):
     grad_var_to_var = dist_context.dist_op_context.grad_var_to_var
 
     for idx, op in enumerate(block.ops):
-
         if int(op.attr('op_role')) != int(OpRole.Backward):
             continue
 
@@ -1210,7 +1208,6 @@ def set_grad_var_shape(program, dist_context):
         assert op_dist_attr is not None
 
         for var_name in op.output_arg_names:
-
             if "@GRAD" not in var_name:
                 continue
             if var_name in grad_var_to_var[appended_grad_times]:
@@ -1809,7 +1806,6 @@ def to_list(value):
 
 
 def debug_program(program, path, name):
-
     filename = os.path.join(
         path, name + '_program' + ".%d" % (paddle.distributed.get_rank())
     )
@@ -1827,7 +1823,6 @@ def ring_id_to_process_group(ring_id):
 
 
 def find_higher_order_backward_op(program):
-
     higher_order_op_suffix = ['_grad_grad', 'triple_grad']
     for block in program.blocks:
         for op in block.ops:
@@ -2237,7 +2232,6 @@ def insert_dependencies_for_two_ops(
     )
 
     def _select_best_depend_var(vars):
-
         # parameter should not be dep var since it maybe partition in sharding pass
         vars = [var for var in vars if not var.is_parameter]
         assert len(vars) > 0
@@ -2373,3 +2367,79 @@ def _dygraph_guard_(func):
 
 
 dygraph_guard = wrap_decorator(_dygraph_guard_)
+
+
+def use_new_executor():
+    new_executor_micro_batching = os.environ.get(
+        'FLAGS_new_executor_micro_batching', None
+    )
+    return new_executor_micro_batching in [
+        1,
+        '1',
+        True,
+        'True',
+        'true',
+    ]
+
+
+def wrap_data_for_completion(
+    dist_op, input_names: list, output_names: list, attr_names: list
+):
+    """
+    Get data used in inferring distributed attributes, including:
+      1. DistTensorSpec for each input and output tensor of this dist_op.
+      2. Operator attributes of this dist_op, e.g. transpose_x in matmul op.
+
+    Args:
+      dist_op: the DistributedOperator
+      input_names: list, name of the dist_op's input tensors
+      output_names: list, name of the dist_op's output tensors
+      attr_names: list, attribute name of the dist_op's corresponding serial op
+
+    Returns:
+      input_specs: list, DistTensorSpec for each input tensor of the dist_op
+      output_specs: list, DistTensorSpec for each output tensor of the dist_op
+      attrs: dict, attribute map of the dist op
+
+    Usage:
+      op_desc = dist_op.serial_op.desc
+      input_name_list = []
+      output_name_list = []
+      input_name_list.append(op_desc.input('X')[0]) # 'X' is the arg name for op
+      input_name_list.append(op_desc.input('Y')[0])
+      output_name_list.append(op_desc.output('Out')[0])
+      attr_name_list = ['trans_x', 'trans_y']
+      input_specs, output_specs, attrs = wrap_data_for_completion(
+          dist_op,
+          input_name_list,
+          output_name_list,
+          attr_name_list)
+
+    """
+
+    input_specs = []
+    output_specs = []
+    attrs = {}
+
+    serial_op = dist_op.serial_op
+
+    # Construct each input tensor's DistTensorSpec with shape and dist_attr
+    for name in input_names:
+        tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(name)
+        var = serial_op.block._var_recursive(name)
+        tensor_shape = var.shape
+        dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
+        input_specs.append(dist_spec)
+
+    # Construct each output tensor's DistTensorSpec with shape and dist_attr
+    for name in output_names:
+        tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
+        var = serial_op.block._var_recursive(name)
+        tensor_shape = var.shape
+        dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
+        output_specs.append(dist_spec)
+
+    for attr_name in attr_names:
+        attrs[attr_name] = serial_op.desc.attr(attr_name)
+
+    return input_specs, output_specs, attrs

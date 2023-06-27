@@ -244,7 +244,6 @@ def step_load(
 
 
 def test_save_load(args):
-
     np.random.seed(args.seed)
     paddle.seed(args.seed)
 
@@ -354,7 +353,6 @@ def test_save_load(args):
 
 
 def run_case(args):
-
     saving_strategy = args.test_case.split(":")[0]
     loading_strategy = args.test_case.split(":")[1]
 
@@ -388,7 +386,6 @@ def run_case(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--cmd", default="main", choices=["main", "save", "load"]

@@ -369,7 +369,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = model.embed_linear0(indices)
             loss.backward()
             _, params_grads = optimizer.minimize(loss)
-            for (items_0, *items_len) in params_grads:
+            for items_0, *items_len in params_grads:
                 assert items_0.name is not model.embed1.weight.name
                 assert items_0.name is not model.linear_1.weight.name
             assert model.embed1.weight._grad_ivar() is None

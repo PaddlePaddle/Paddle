@@ -115,7 +115,6 @@ class PSController(Controller):
             self.add_container(envs=e, log_file=log_file)
 
     def _build_pod_with_master(self):
-
         self.pod.rank = int(self.ctx.args.rank)
 
         server_num = self.ctx.args.server_num or 1

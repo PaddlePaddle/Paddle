@@ -23,7 +23,6 @@ from paddle.fluid import core
 
 
 def compare(ref, res, atol, rtol):
-
     ref = np.array(ref).flatten()
     res = np.array(res).flatten()
 
@@ -136,7 +135,7 @@ class TestFuseGemmEpilogueFWDBase(unittest.TestCase):
             "_matmul_y": self.matmul_y_arr,
             "_ele_y": self.ele_y_arr,
         }
-        self.reference = self.exe.run(
+        self.reference = paddle.static.Executor(self.place).run(
             self.main_prog, feed=self.feed, fetch_list=[self.loss.name]
         )
 
@@ -207,10 +206,6 @@ class TestFuseGemmEpilogueReluFWDFP16(TestFuseGemmEpilogueReluFWDFP32):
             self.place, self.main_prog, to_fp16_var_names=fp16_var_list
         )
 
-        self.data_arr = self.data_arr.astype("float16")
-        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
-        self.ele_y_arr = self.ele_y_arr.astype("float16")
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -239,10 +234,6 @@ class TestFuseGemmEpilogueGeluFWDFP16(TestFuseGemmEpilogueGeluFWDFP32):
         paddle.static.amp.cast_parameters_to_fp16(
             self.place, self.main_prog, to_fp16_var_names=fp16_var_list
         )
-
-        self.data_arr = self.data_arr.astype("float16")
-        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
-        self.ele_y_arr = self.ele_y_arr.astype("float16")
 
 
 @unittest.skipIf(
@@ -319,7 +310,8 @@ class TestFuseGemmEpilogueBWDBase(unittest.TestCase):
             f'{multi_layer.linear3.full_name()}.w_0@GRAD',
             f'{multi_layer.linear3.full_name()}.b_0@GRAD',
         ]
-        self.outs_ref = self.exe.run(
+
+        self.outs_ref = paddle.static.Executor(self.place).run(
             self.main_prog, feed=self.feed, fetch_list=self.fetch
         )
 
@@ -403,10 +395,6 @@ class TestFuseGemmEpilogueReLUBWDFP16(TestFuseGemmEpilogueReLUBWDFP32):
             self.place, self.main_prog, to_fp16_var_names=fp16_var_list
         )
 
-        self.data_arr = self.data_arr.astype("float16")
-        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
-        self.ele_y_arr = self.ele_y_arr.astype("float16")
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -435,10 +423,6 @@ class TestFuseGemmEpilogueGeLUBWDFP16(TestFuseGemmEpilogueGeLUBWDFP32):
         paddle.static.amp.cast_parameters_to_fp16(
             self.place, self.main_prog, to_fp16_var_names=fp16_var_list
         )
-
-        self.data_arr = self.data_arr.astype("float16")
-        self.matmul_y_arr = self.matmul_y_arr.astype("float16")
-        self.ele_y_arr = self.ele_y_arr.astype("float16")
 
 
 if __name__ == "__main__":

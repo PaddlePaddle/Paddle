@@ -50,6 +50,7 @@ using TranslationContext =
 class ProgramTranslator {
   using ProgramDesc = ::paddle::framework::ProgramDesc;
   using BlockDesc = ::paddle::framework::BlockDesc;
+  using VarDesc = ::paddle::framework::VarDesc;
 
  public:
   explicit ProgramTranslator(const ProgramDesc* legacy_program,
@@ -58,10 +59,13 @@ class ProgramTranslator {
   void Translate();
 
  private:
-  const ProgramDesc* legacy_program;
-  ir::Program* program;
-  TranslationContext param_map;
-  ir::IrContext* ctx;
+  const ProgramDesc* legacy_program_;  // not owned
+  ir::Program* program_;               // not owned
+  ir::IrContext* ctx_;                 // not owned
+
+  TranslationContext param_map_;
+  std::unordered_map<std::string, VarDesc*> parameter_name_mappings_;
+  std::unordered_set<std::string> parameter_visited_;
 
   /// In the legacy program desc, there are two special named varibales:
   /// 1. "feed", the input variable of feed op
@@ -71,8 +75,9 @@ class ProgramTranslator {
   /// `ExtractParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
-  void ExtractParameterFromSingleBlock(const BlockDesc& block);
+  void GetParameterForSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);
+  void SetParameterFromSingleBlock(const BlockDesc& block);
 };
 
 }  // namespace translator

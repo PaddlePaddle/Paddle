@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/nanmedian_utils.h"
 #include "paddle/phi/kernels/top_k_kernel.h"
 
 namespace phi {
@@ -31,7 +31,6 @@ void CalcMedianFunc(const Context& dev_ctx,
                     int64_t pre_dim,
                     T* o_ptr,
                     int64_t* m_ptr) {
-  bool should_ignore_nan = ignore_nan;
   DenseTensor sort_out;
   DenseTensor sort_indices;
   auto sort_dim = x.dims();
@@ -52,7 +51,7 @@ void CalcMedianFunc(const Context& dev_ctx,
   int64_t offset = 0;
   int64_t i = 0;
   bool is_ori_odd = stride & 1;
-  if (should_ignore_nan) {
+  if (ignore_nan) {
     for (i = 0; i < pre_dim; i++) {
       offset = i * sort_k;
       if (nan_counts[i] == stride) {
@@ -107,11 +106,11 @@ void CalcMedianFunc(const Context& dev_ctx,
 template <typename T, typename Context>
 void ProcessMedianKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         T* o_ptr,
-                         int64_t* m_ptr,
-                         bool ignore_nan) {
-  bool should_ignore_nan = ignore_nan;
-  const T* x_ptr = x.data<T>();
+                         DenseTensor* out,
+                         DenseTensor* median_index) {
+  const T* x_data = x.data<T>();
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  int64_t* m_data = dev_ctx.template Alloc<int64_t>(median_index);
 
   int64_t numel = x.numel();
   auto x_dim = x.dims();
@@ -122,7 +121,8 @@ void ProcessMedianKernel(const Context& dev_ctx,
 
   int64_t max_valid_num = 0;
   std::vector<int64_t> nan_counts;
-  if (should_ignore_nan) {
+  bool ignore_nan = true;
+  if (ignore_nan) {
     int64_t total_nan_num = 0;
     std::vector<T> col_vec;
     col_vec.reserve(stride);
@@ -133,7 +133,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
     for (int64_t i = 0; i < pre_dim; i++) {
       col_vec.clear();
       col_vec.insert(
-          col_vec.begin(), x_ptr + i * stride, x_ptr + (i + 1) * stride);
+          col_vec.begin(), x_data + i * stride, x_data + (i + 1) * stride);
       nan_counts[i] =
           std::count_if(col_vec.begin(), col_vec.end(), [&](const T& val) {
             return std::isnan(static_cast<float>(val));
@@ -145,47 +145,25 @@ void ProcessMedianKernel(const Context& dev_ctx,
     // all elems are nan
     if (total_nan_num == numel) {
       for (i = 0; i < pre_dim; i++) {
-        o_ptr[i] = x_ptr[0];
-        m_ptr[2 * i] = -1;
-        m_ptr[2 * i + 1] = -1;
+        out_data[i] = std::numeric_limits<T>::quiet_NaN();
+        m_data[2 * i] = -1;
+        m_data[2 * i + 1] = -1;
       }
       return;
     }
-    should_ignore_nan = total_nan_num > 0;
+    ignore_nan = total_nan_num > 0;
   }
 
-  int64_t sort_k = should_ignore_nan ? max_valid_num : ((stride >> 1) + 1);
+  int64_t sort_k = ignore_nan ? max_valid_num : ((stride >> 1) + 1);
   CalcMedianFunc<T, Context>(dev_ctx,
                              x,
                              nan_counts,
-                             should_ignore_nan,
+                             ignore_nan,
                              sort_k,
                              stride,
                              pre_dim,
-                             o_ptr,
-                             m_ptr);
-}
-
-template <typename T, typename Context>
-void BaseMedianKernel(const Context& dev_ctx,
-                      const DenseTensor& input,
-                      const IntArray& axes,
-                      DenseTensor* out,
-                      DenseTensor* median_index,
-                      bool ignore_nan) {
-  DenseTensor x;
-  auto rank = input.dims().size();
-  if ((axes.size() == 0) || rank <= 1) {
-    x = input;
-    x.Resize({input.numel()});
-  } else {
-    PreprocessMedianKernel<T, Context>(dev_ctx, input, axes, &x);
-  }
-
-  T* o_ptr = dev_ctx.template Alloc<T>(out);
-  int64_t* m_ptr = dev_ctx.template Alloc<int64_t>(median_index);
-  ProcessMedianKernel<T, Context>(dev_ctx, x, o_ptr, m_ptr, ignore_nan);
-  out->Resize(out->dims());
+                             out_data,
+                             m_data);
 }
 
 template <typename T, typename Context>
@@ -195,7 +173,16 @@ void NanmedianKernel(const Context& dev_ctx,
                      bool keepdim UNUSED,
                      DenseTensor* out,
                      DenseTensor* median_index) {
-  BaseMedianKernel<T, Context>(dev_ctx, x, axes, out, median_index, true);
+  DenseTensor tmp_x;
+  auto rank = x.dims().size();
+  if ((axes.size() == 0) || rank <= 1) {
+    tmp_x = x;
+    tmp_x.Resize({x.numel()});
+  } else {
+    funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
+  }
+
+  ProcessMedianKernel<T, Context>(dev_ctx, tmp_x, out, median_index);
 }
 
 }  // namespace phi

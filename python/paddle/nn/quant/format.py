@@ -86,7 +86,6 @@ class LinearQuanter(Layer):
 
     @staticmethod
     def from_quanter(quanter):
-
         return LinearQuanter(
             quanter.scales(),
             zero_point=quanter.zero_points(),

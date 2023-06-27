@@ -91,6 +91,8 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
     ViewSliceHelper<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, stride, in_dim[2], out_second_dim);
     return *lse;
+  } else {
+    return *lse;
   }
 }
 }  // namespace funcs

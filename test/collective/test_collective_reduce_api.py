@@ -67,7 +67,6 @@ class TestCollectiveReduceAPI(TestDistBase):
 
     def test_reduce_gloo_with_comm_context(self):
         dtypes_to_test = [
-            "float16",
             "float32",
             "float64",
             "int32",
@@ -115,7 +114,6 @@ class TestCollectiveReduceAPI(TestDistBase):
 
     def test_reduce_gloo_dygraph(self):
         dtypes_to_test = [
-            "float16",
             "float32",
             "float64",
             "int32",

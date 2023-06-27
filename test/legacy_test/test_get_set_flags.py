@@ -51,7 +51,6 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
 
         # flags in set_flags should be public flags.
         def test_set_private_flag():
-
             fluid.set_flags(flag_private)
 
         self.assertRaises(ValueError, test_set_private_flag)

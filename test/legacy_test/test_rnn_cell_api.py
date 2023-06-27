@@ -144,7 +144,6 @@ class TestRnn(unittest.TestCase):
         self.seq_len = 4
 
     def test_run(self):
-
         numpy_cell = LSTMCell(self.input_size, self.hidden_size)
         dynamic_cell = paddle.nn.LSTMCell(self.input_size, self.hidden_size)
 

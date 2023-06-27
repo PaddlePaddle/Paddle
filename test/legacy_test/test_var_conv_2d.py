@@ -41,7 +41,6 @@ class TestVarConv2DOp(OpTest):
     def init_data(
         self, input_channel, output_channel, filter_size, stride, row, col
     ):
-
         feature = [row[i] * col[i] for i in range(len(row))]
         numel = sum(feature) * input_channel
         x_data = np.random.random((numel, 1)).astype('float32')

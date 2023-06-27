@@ -1339,7 +1339,6 @@ class DownpourOptimizer(DistributedOptimizer):
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
             for i in range(0, len(startup_programs)):
-
                 t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
