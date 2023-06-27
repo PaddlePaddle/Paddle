@@ -21,20 +21,20 @@
 namespace ir {
 
 PatternApplicator::PatternApplicator(
-    const FrozenRewritePatternSet& frozen_patter_list)
-    : frozen_patter_list_(frozen_patter_list) {}
+    const FrozenRewritePatternSet& frozen_pattern_list)
+    : frozen_pattern_list_(frozen_pattern_list) {}
 
-void PatternApplicator::ApplyCostModel(CostModel model) {
+void PatternApplicator::ApplyCostModel(const CostModel& model) {
   // TODO(wilber): remove impossible patterns.
   patterns_.clear();
-  for (const auto& it : frozen_patter_list_.op_specific_native_patterns()) {
+  for (const auto& it : frozen_pattern_list_.op_specific_native_patterns()) {
     for (const RewritePattern* pattern : it.second) {
       patterns_[it.first].push_back(pattern);
     }
   }
 
   any_op_patterns_.clear();
-  for (auto& pattern : frozen_patter_list_.match_any_op_native_patterns()) {
+  for (auto& pattern : frozen_pattern_list_.match_any_op_native_patterns()) {
     any_op_patterns_.push_back(pattern.get());
   }
 
@@ -59,10 +59,11 @@ void PatternApplicator::ApplyCostModel(CostModel model) {
 
 void PatternApplicator::WalkAllPatterns(
     std::function<void(const Pattern&)> walk) {
-  for (const auto& it : frozen_patter_list_.op_specific_native_patterns())
+  for (const auto& it : frozen_pattern_list_.op_specific_native_patterns())
     for (auto* pattern : it.second) walk(*pattern);
 
-  for (auto& it : frozen_patter_list_.match_any_op_native_patterns()) walk(*it);
+  for (const auto& it : frozen_pattern_list_.match_any_op_native_patterns())
+    walk(*it);
 }
 
 bool PatternApplicator::MatchAndRewrite(
