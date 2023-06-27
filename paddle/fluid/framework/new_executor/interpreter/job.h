@@ -37,6 +37,8 @@ class Job final {
 
   int64_t MicroBatchId() const { return micro_batch_id_; }
 
+  std::set<std::string> SkipGcVars() const { return skip_gc_vars_; }
+
   std::vector<int> AllFetchOpIds() const {
     std::vector<int> fetch_op_ids;
     fetch_op_ids.reserve(fetch_op_id_to_col_attr_.size());
