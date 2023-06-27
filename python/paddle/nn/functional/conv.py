@@ -449,6 +449,7 @@ def conv1d(
         )
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    weight = weight.assign()
     weight = unsqueeze(weight, axis=[-2])
 
     l_type = "conv2d"
