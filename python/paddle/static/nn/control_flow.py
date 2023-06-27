@@ -936,6 +936,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     Examples:
         .. code-block:: python
+            :name: code-example2
 
             import paddle
 
