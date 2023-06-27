@@ -68,12 +68,41 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
+  // forbid constant folding when model has control flow ops.
+  const std::vector<std::string> forbidden_folding_ops{"while",
+                                                       "conditional_block"};
+  std::unordered_set<Node *> forbidden_folding_nodes;
+  for (auto *op_node : op_node_sorted) {
+    if (!op_node->IsOp()) continue;
+    auto op_type = op_node->Op()->Type();
+    if (std::find(forbidden_folding_ops.begin(),
+                  forbidden_folding_ops.end(),
+                  op_type) != forbidden_folding_ops.end()) {
+      continue;
+    }
+    forbidden_folding_nodes.insert(op_node);
+    for (auto in_var_node : op_node->inputs) {
+      for (auto link_op_node : in_var_node->outputs) {
+        forbidden_folding_nodes.insert(link_op_node);
+      }
+    }
+    for (auto out_var_node : op_node->outputs) {
+      for (auto link_op_node : out_var_node->outputs) {
+        forbidden_folding_nodes.insert(link_op_node);
+      }
+    }
+  }
+
   for (auto *op_node : op_node_sorted) {
     if (!op_node->IsOp()) continue;
     if (std::find(blacklist.begin(), blacklist.end(), op_node->Name()) !=
         blacklist.end())
       continue;
-
+    if (std::find(forbidden_folding_nodes.begin(),
+                  forbidden_folding_nodes.end(),
+                  op_node) != forbidden_folding_nodes.end()) {
+      continue;
+    }
     bool input_persis = true;
     // map is used to record how many time a name string occurs in the whole
     // graph's nodes
