@@ -105,6 +105,7 @@ list(
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
   cumsum_op.cc
+  unbind_op.cc
   temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
