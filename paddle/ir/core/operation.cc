@@ -224,4 +224,12 @@ void Operation::SetParent(Block *parent, const Block::iterator &position) {
   position_ = position;
 }
 
+void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
+  IR_ENFORCE(num_results_ == values.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(values[i]);
+  }
+}
+
 }  // namespace ir
