@@ -265,9 +265,11 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
                 new_in_type.dyn_cast<dialect::AllocatedDenseTensorType>()
                     .place();
 
-            if ((op_info_parser != nullptr &&
+            bool need_trans =
+                (op_info_parser != nullptr &&
                  !op_info_parser->IsTensorAttribute(i)) &&
-                (place != phi::TransToPhiPlace(kernel_key.backend()))) {
+                (place != phi::TransToPhiPlace(kernel_key.backend()));
+            if (need_trans) {
               if (paddle::experimental::NeedTransformPlace(
                       place, kernel.InputAt(i).backend, {})) {
                 VLOG(6) << "need trans from " << place << " to "
