@@ -161,7 +161,7 @@ void BuildScope(ir::Block* block,
                                "DenseTensorType"));
             std::string name_i = "inner_var_" + std::to_string(count++);
             auto var_i = scope->Var(name_i);
-            var_i->GetMutable<phi::DenseTensor>();
+            tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
           }
         } else {
           PADDLE_THROW(phi::errors::PreconditionNotMet(
