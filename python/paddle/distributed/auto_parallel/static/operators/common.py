@@ -14,6 +14,7 @@
 
 import abc
 
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..dist_attribute import OperatorDistAttr
@@ -430,12 +431,13 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
         added_ops = []
         grad_var = main_block.var(var_name)
         allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [grad_var]},
-            outputs={'Out': [grad_var]},
+            type='all_reduce',
+            inputs={'x': [grad_var]},
+            outputs={'out': [grad_var]},
             attrs={
                 'ring_id': dp_group.id,
                 'use_calc_stream': True,
+                'reduce_type': dist.ReduceOp.SUM,
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )
@@ -510,7 +512,8 @@ def is_data_parallel_scale_op(op):
 
 def is_data_parallel_reduce_op(op):
     return (
-        op.type in ["c_reduce_sum", "c_allreduce_sum"]
+        op.type in ["reduce", "all_reduce"]
+        and op.attr("reduce_type") == dist.ReduceOp.SUM
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
@@ -518,7 +521,8 @@ def is_data_parallel_reduce_op(op):
 
 def is_amp_flag_sync_op(op):
     return (
-        op.type == "c_allreduce_max"
+        op.type == "all_reduce"
+        and op.attr("reduce_type") == dist.ReduceOp.MAX
         and op.desc.has_attr("op_namescope")
         and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
     )
@@ -526,7 +530,8 @@ def is_amp_flag_sync_op(op):
 
 def is_global_norm_sync_op(op):
     return (
-        op.type == "c_allreduce_sum"
+        op.type == "all_reduce"
+        and op.attr("reduce_type") == dist.ReduceOp.SUM
         and op.desc.has_attr("op_namescope")
         and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )

@@ -973,7 +973,8 @@ class TestGPTPartitioner(unittest.TestCase):
                 if (
                     op.type == "all_reduce"
                     and op.attr('op_role') == 1
-                    and op.attr('reduce_type') == paddle.distributed.ReduceOp.SUM
+                    and op.attr('reduce_type')
+                    == paddle.distributed.ReduceOp.SUM
                     and op.desc.attr("ring_id") == mp_ring_id
                 )
             ]

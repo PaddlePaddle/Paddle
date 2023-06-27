@@ -111,8 +111,7 @@ def initialization_check(
             op
             for op in dist_startup_prog.global_block().ops
             if (
-                op.type == "broadcast"
-                and op.desc.attr("ring_id") == mp_ring_id
+                op.type == "broadcast" and op.desc.attr("ring_id") == mp_ring_id
             )
         ]
         broadcast_varnames = sorted(
