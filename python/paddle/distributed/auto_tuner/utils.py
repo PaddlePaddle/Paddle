@@ -123,9 +123,7 @@ def default_candidates(tuner_cfg):
     elif tuner_cfg.get("micro_batch_size", None):
         candidates["micro_batch_size"] = tuner_cfg.get("micro_batch_size")
     else:
-        candidates["micro_batch_size"] = [
-            tuner_cfg["model_cfg"]["global_batch_size"]
-        ]
+        candidates["micro_batch_size"] = [None]
 
     return candidates
 
