@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
 
 namespace phi {
-
 template <typename Context>
 void ReshapeStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
@@ -32,9 +31,6 @@ void ReshapeStridedKernel(const Context& dev_ctx,
   size_t x_offset = x.offset();
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
-  DDim x_dims = x.dims();
-  DDim x_stride = x.stride();
-  size_t x_offset = x.offset();
   DDim stride;
   if (ReshapeStride(x_dims, x_stride, out->dims(), stride)) {
     out->set_offset(x_offset);

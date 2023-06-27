@@ -20,7 +20,7 @@
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
-TEST(PatternBenefit, PatternBenefit) {
+TEST(pattern_rewrite, PatternBenefit) {
   ir::PatternBenefit benefit1(1);
   EXPECT_EQ(benefit1.benefit(), 1U);
   ir::PatternBenefit benefit2(2);
@@ -95,7 +95,7 @@ class TestPatternRewrite2 : public ir::OpRewritePattern<Operation1> {
   }
 };
 
-TEST(RewritePattern, OpRewritePattern) {
+TEST(pattern_rewrite, RewritePatternSet) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
   auto *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();

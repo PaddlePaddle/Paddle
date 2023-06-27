@@ -40,23 +40,6 @@ inline bool NeedTransformDataType(const DataType& input,
           target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
 }
 
-inline bool NeedTransformPlace(const phi::Place& input,
-                               const Backend& target,
-                               const TransformFlag& transform_flag) {
-  // NOTE(dev): The default value of TransformFlag is True, if it is set with
-  // False
-  // somewhere such as ops.yaml or backward.yaml that means we should skip data
-  // transform. Because "stop_transform_" has highest priority.
-  if (!transform_flag.need_trans_backend()) {
-    return false;
-  }
-  bool ret = input.GetType() == AllocationType::GPUPINNED ||
-             (target != Backend::ALL_BACKEND &&
-              phi::TransToPhiBackend(input) !=
-                  (target != Backend::GPUDNN ? target : Backend::GPU));
-  return ret;
-}
-
 inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
                                 const phi::Place& place,

@@ -333,6 +333,9 @@ class KernelFactory {
   const Kernel& SelectKernel(const std::string& kernel_name,
                              const KernelKey& kernel_key) const;
 
+  const Kernel& SelectKernelWithGPUDNN(const std::string& kernel_name,
+                                       const KernelKey& kernel_key) const;
+
   KernelKeyMap SelectKernelMap(const std::string& kernel_name) const;
 
   const KernelArgsDef& GetFirstKernelArgsDef(

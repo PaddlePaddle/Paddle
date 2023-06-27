@@ -125,6 +125,22 @@ void TransDataBackend(const phi::SelectedRows* tensor,
 phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
 
 void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
+inline bool NeedTransformPlace(const phi::Place& input,
+                               const Backend& target,
+                               const TransformFlag& transform_flag) {
+  // NOTE(dev): The default value of TransformFlag is True, if it is set with
+  // False
+  // somewhere such as ops.yaml or backward.yaml that means we should skip data
+  // transform. Because "stop_transform_" has highest priority.
+  if (!transform_flag.need_trans_backend()) {
+    return false;
+  }
+  bool ret = input.GetType() == AllocationType::GPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(input) !=
+                  (target != Backend::GPUDNN ? target : Backend::GPU));
+  return ret;
+}
 
 }  // namespace experimental
 }  // namespace paddle
