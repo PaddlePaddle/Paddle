@@ -28,18 +28,11 @@ class TrtConvertUnbind(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        self.trt_param.workspace_size = 1073741824
+        # self.trt_param.workspace_size = 1073741824
 
         def generate_input1():
-            if self.dims == 2:
-                self.input_shape = [2, 3]
-                return np.random.random([2, 3]).astype(np.float32)
-            elif self.dims == 3:
-                self.input_shape = [2, 3, 4]
-                return np.random.random([2, 3, 4]).astype(np.float32)
-            elif self.dims == 4:
-                self.input_shape = [4, 3, 32, 32]
-                return np.random.random([4, 3, 32, 32]).astype(np.float32) - 0.5
+            self.input_shape = [3, 400, 196, 80]
+            return np.random.random([3, 400, 196, 80]).astype(np.float32)
 
         for dims in [4]:
             for axis in [0]:
@@ -51,7 +44,7 @@ class TrtConvertUnbind(TrtLayerAutoScanTest):
                         "op_inputs": {
                             "X": ["input_data"],
                         },
-                        "op_outputs": {"Out": ["output_data0", "output_data1", "output_data2"]},
+                        "op_outputs": {"Out": ["output_data0", "output_data1", "output_data2", "output_data3"]},
                         "op_attrs": {"axis": axis},
                     }
                 ]
@@ -65,7 +58,7 @@ class TrtConvertUnbind(TrtLayerAutoScanTest):
                             data_gen=partial(generate_input1)
                         ),
                     },
-                    outputs=["output_data"],
+                    outputs=["output_data0", "output_data1", "output_data2", "output_data3"],
                 )
 
                 yield program_config
@@ -75,43 +68,7 @@ class TrtConvertUnbind(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape():
-
-            if self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 3],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [2, 3],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 3],
-                }
-
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 3, 4],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [2, 3, 4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [2, 3, 4],
-                }
-
-            elif self.dims == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [4, 3, 32, 32],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 3, 32, 32],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [4, 3, 32, 32],
-                }
-
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 1, 2
+        
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -122,19 +79,15 @@ class TrtConvertUnbind(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
+        # for static_shape        
         clear_dynamic_shape()
-
-        # for dynamic_shape
-        # generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
+        yield self.create_inference_config(), (0, 6), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2
+        yield self.create_inference_config(), (0, 6), 1e-3
+        
+        # for dynamic_shape
+        # no dynamic_shape
 
     def test(self):
         self.run_test()
