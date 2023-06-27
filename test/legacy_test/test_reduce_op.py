@@ -1011,6 +1011,17 @@ class Test1DReduce(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestReduceSum_ZeroDim(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.python_api = paddle.sum
+        self.public_python_api = paddle.sum
+        self.prim_op_type = "prim"
+        self.inputs = {'X': np.random.random(()).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.if_enable_cinn()
+
+
 class Test2DReduce0(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
