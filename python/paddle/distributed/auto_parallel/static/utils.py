@@ -2367,3 +2367,16 @@ def _dygraph_guard_(func):
 
 
 dygraph_guard = wrap_decorator(_dygraph_guard_)
+
+
+def use_new_executor():
+    new_executor_micro_batching = os.environ.get(
+        'FLAGS_new_executor_micro_batching', None
+    )
+    return new_executor_micro_batching in [
+        1,
+        '1',
+        True,
+        'True',
+        'true',
+    ]
