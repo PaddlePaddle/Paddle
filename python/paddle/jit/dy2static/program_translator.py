@@ -677,7 +677,6 @@ class SymbolicStaticFunction(StaticFunction):
         self.last_call_input_spec = None
 
     def _perform_call(self, *args, **kwargs):
-<<<<<<< HEAD
         args, kwargs = self._function_spec.unified_args_and_kwargs(args, kwargs)
         (
             input_args_with_spec,
@@ -685,8 +684,6 @@ class SymbolicStaticFunction(StaticFunction):
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
 
-=======
->>>>>>> dfef6dc85728412c35f9af3a82ddba2f57713101
         from sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
