@@ -99,7 +99,7 @@ def clip_grad_norm_(
     clip_coef = max_norm / (total_norm + 1e-6)
     # Note: when the coef is clamped to 1, it is redundant to multiply the clamped coef, but this
     # avoids the `if clip_coef < 1:` condition.
-    clip_coef_clamped = paddle.clip_(clip_coef, max=1.0)
+    clip_coef_clamped = clip_coef.clip_(max=1.0)
 
     for _, p in enumerate(parameters):
         g = p.grad

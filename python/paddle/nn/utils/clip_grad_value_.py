@@ -56,4 +56,4 @@ def clip_grad_value_(
     for _, p in enumerate(parameters):
         g = p.grad
         if g is not None:
-            p.grad = paddle.clip_(x=g, min=-clip_value, max=clip_value)
+            p.grad = g.clip_(min=-clip_value, max=clip_value)
