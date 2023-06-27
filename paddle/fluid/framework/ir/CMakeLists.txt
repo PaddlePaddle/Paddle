@@ -100,6 +100,7 @@ pass_library(trt_delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_op_device_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
+pass_library(delete_assign_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
@@ -423,6 +424,10 @@ cc_test(
   test_delete_op_device_pass
   SRCS delete_op_device_pass_test.cc
   DEPS delete_op_device_pass)
+cc_test(
+  test_delete_assign_op_pass_cc
+  SRCS delete_assign_op_pass_test.cc
+  DEPS delete_assign_op_pass)
 cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
