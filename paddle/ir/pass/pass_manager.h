@@ -34,7 +34,7 @@ namespace detail {
 class PassAdaptor;
 }
 
-class PassManager {
+class IR_API PassManager {
  public:
   explicit PassManager(IrContext *context, uint8_t opt_level = 2);
 

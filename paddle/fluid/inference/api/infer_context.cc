@@ -27,8 +27,15 @@ InferGPUContext::InferGPUContext(const phi::Place& place)
 #endif
 
 #ifdef PADDLE_WITH_XPU
-InferXPUContext::InferXPUContext(const phi::Place& place)
-    : phi::XPUContext(place) {}
+InferXPUContext::InferXPUContext(const phi::Place& place, int context_gm_size)
+    : phi::XPUContext(place) {
+  if (context_gm_size >= 0) {
+    x_context()->set_option("XPUAPI_DEFAULT_SIZE",
+                            std::to_string(context_gm_size).c_str());
+  } else {
+    x_context()->set_option("XPUAPI_DEFAULT_SIZE", "");
+  }
+}
 
 void* InferXPUContext::Alloc(phi::TensorBase* tensor,
                              phi::DataType dtype,
