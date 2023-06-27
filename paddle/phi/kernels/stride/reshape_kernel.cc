@@ -37,7 +37,6 @@ void ReshapeStridedKernel(const Context& dev_ctx,
     out->set_stride(stride);
     out->ResetHolder(x.Holder());
   } else {
-    std::cout << "reshape else!!!" << std::endl;
     DenseTensor tmp;
     tmp.set_meta(x.meta());
     PD_VISIT_ALL_TYPES(x.dtype(), "ReshapeStridedKernel", ([&] {
