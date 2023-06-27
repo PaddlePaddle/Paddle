@@ -28,6 +28,7 @@ cc_test_old(
   SRCS
   ir_exe_test.cc
   DEPS
+  pd_op_to_kernel_pass
   pd_dialect
   phi_kernel_adaptor
   ir
