@@ -15,6 +15,7 @@
 #pragma once
 
 #include <ostream>
+#include <vector>
 #include "paddle/ir/core/block.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
@@ -101,6 +102,13 @@ class IR_API alignas(8) Operation final {
   operator Block::iterator() { return position_; }
 
   operator Block::const_iterator() const { return position_; }
+
+  /// Replace all uses of results of this operation with the provided 'values'.
+  void ReplaceAllUsesWith(const std::vector<Value> &values);
+
+  inline void ReplaceAllUsesWith(Value value) {
+    ReplaceAllUsesWith(std::vector<Value>{value});
+  }
 
  private:
   Operation(const AttributeMap &attribute,

@@ -23,7 +23,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/target.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
