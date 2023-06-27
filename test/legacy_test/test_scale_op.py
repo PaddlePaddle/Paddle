@@ -219,6 +219,7 @@ from paddle.fluid import core
 #     def _executed_api(self, x, scale=1.0, bias=0.0):
 #         return paddle.scale(x, scale, bias)
 
+
 #     def test_api(self):
 #         paddle.disable_static()
 #         input = np.random.random([2, 25]).astype("float32")

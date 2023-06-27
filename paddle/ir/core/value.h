@@ -158,9 +158,11 @@ class IR_API Value {
 
   OpOperand first_use() const;
 
-  friend struct std::hash<Value>;
-
   bool use_empty() const;
+
+  bool HasOneUse() const;
+
+  friend struct std::hash<Value>;
 
   void ReplaceUsesWithIf(
       Value new_value,

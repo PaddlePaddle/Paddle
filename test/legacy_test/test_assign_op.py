@@ -72,7 +72,8 @@ class TestAssignFP16Op(eager_op_test.OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
 )
 class TestAssignBFP16Op(eager_op_test.OpTest):
     def setUp(self):
