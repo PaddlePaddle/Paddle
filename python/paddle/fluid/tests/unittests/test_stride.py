@@ -671,5 +671,28 @@ class TestStrideGPU(TestStride):
         paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
 
+class TestToStaticCheck(unittest.TestCase):
+    def test_error(self):
+        @paddle.jit.to_static
+        def func():
+            x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+            x = paddle.to_tensor(x_np)
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            x.add_(x)
+
+        self.assertRaises(ValueError, func)
+
+    def test_no_error(self):
+        @paddle.jit.to_static
+        def func():
+            x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+            x = paddle.to_tensor(x_np)
+            xx = paddle.assign(x)
+            y = paddle.transpose(xx, perm=[1, 0, 2])
+            x.add_(x)
+
+        func()
+
+
 if __name__ == '__main__':
     unittest.main()
