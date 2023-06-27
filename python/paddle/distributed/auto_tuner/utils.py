@@ -42,7 +42,7 @@ def dist_degree(mode, num_gpus, num_nodes):
 
     elif mode == "pp":
         if num_nodes > 1:
-            results = list(range(num_nodes))
+            results = list(range(1, num_nodes + 1))
         else:
             results = divisor(num_gpus, reverse=True)
 

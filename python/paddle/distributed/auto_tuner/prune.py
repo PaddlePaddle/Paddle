@@ -128,6 +128,9 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
             // cur_cfg["dp_degree"]
             // cur_cfg["sharding_degree"]
         )
+        if local_batch_size == 0:
+            return True
+
     mbs_candidates = tuner_cfg.get("micro_batch_size", None)
 
     if mbs_candidates == "auto":
