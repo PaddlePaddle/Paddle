@@ -2718,7 +2718,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "einsum") {
 #if !IS_TRT_VERSION_GE(8200)
-      VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
+      VLOG(3) << "einsum is not supported when TensorRT < 8.2";
       return false;
 #else
       if (!with_dynamic_shape) {
