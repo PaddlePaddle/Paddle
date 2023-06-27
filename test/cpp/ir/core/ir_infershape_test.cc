@@ -38,20 +38,21 @@
 #include "paddle/phi/infermeta/nullary.h"
 
 // Define op
-class OperationTest : public ir::Op<OperationTest, InferShapeInterface> {
+class OperationTest
+    : public ir::Op<OperationTest, paddle::dialect::InferShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {}
+  static void Verify() {}
   static void InferShape(phi::InferMetaContext *infer_meta) {
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);
   }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(OperationTest)
+IR_DEFINE_EXPLICIT_TYPE_ID(OperationTest)
 
 const char *OperationTest::attributes_name[attributes_num] = {"op2_attr1",
                                                               "op2_attr2"};
@@ -68,6 +69,8 @@ class TestDialect : public ir::Dialect {
  private:
   void initialize() { RegisterOps<OperationTest>(); }
 };
+IR_DECLARE_EXPLICIT_TYPE_ID(TestDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(TestDialect)
 
 TEST(infershape_test, infershape_test) {
   ir::IrContext *ctx = ir::IrContext::Instance();
@@ -84,7 +87,8 @@ TEST(infershape_test, infershape_test) {
   ir::Operation *op =
       ir::Operation::Create(op_inputs, {}, op_output_types, op_info);
 
-  InferShapeInterface interface = op->dyn_cast<InferShapeInterface>();
+  paddle::dialect::InferShapeInterface interface =
+      op->dyn_cast<paddle::dialect::InferShapeInterface>();
   phi::InferMetaContext infer_meta_ctx;
   infer_meta_ctx.EmplaceBackAttr(phi::IntArray({5, 6}));
   infer_meta_ctx.EmplaceBackAttr(phi::DataType::FLOAT32);

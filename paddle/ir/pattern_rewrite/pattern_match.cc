@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
-#include <cassert>
+
+#include <algorithm>
 #include <cstdint>
+
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
@@ -22,102 +25,120 @@ namespace ir {
 //===----------------------------------------------------------------------===//
 // Pattern
 //===----------------------------------------------------------------------===//
-
-// Pattern::Pattern(const void* root_val,
-//                  RootKind root_kind,
-//                  const std::vector<std::string>& generated_names,
-//                  PatternBenefit benefit,
-//                  ir::IrContext* context)
-//     : benefit_(benefit), context_(context), generated_names_(generated_names)
-//     {}
-
 Pattern::Pattern(const std::string& root_name,
                  PatternBenefit benefit,
                  IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : op_name_(root_name),
-      root_kind_(RootKind::OperationName),
-      benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+    : Pattern(context->GetRegisteredOpInfo(root_name).AsOpaquePointer(),
+              RootKind::OperationInfo,
+              generated_names,
+              benefit,
+              context) {}
 
 Pattern::Pattern(MatchAnyOpTypeTag tag,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : root_kind_(RootKind::Any),
-      benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+    : Pattern(nullptr, RootKind::Any, generated_names, benefit, context) {}
 
 Pattern::Pattern(MatchInterfaceOpTypeTag tag,
-                 ir::TypeId interface_id,
+                 TypeId interface_id,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : interface_id_(interface_id),
-      root_kind_(RootKind::InterfaceId),
-      benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+    : Pattern(interface_id.AsOpaquePointer(),
+              RootKind::InterfaceId,
+              generated_names,
+              benefit,
+              context) {}
 
 Pattern::Pattern(MatchTraitOpTypeTag tag,
-                 ir::TypeId trait_id,
+                 TypeId trait_id,
                  PatternBenefit benefit,
-                 ir::IrContext* context,
+                 IrContext* context,
                  const std::vector<std::string>& generated_names)
-    : trait_id_(trait_id),
-      root_kind_(RootKind::TraitId),
+    : Pattern(trait_id.AsOpaquePointer(),
+              RootKind::TraitId,
+              generated_names,
+              benefit,
+              context) {}
+
+Pattern::Pattern(void* root_val,
+                 RootKind root_kind,
+                 const std::vector<std::string>& generated_names,
+                 PatternBenefit benefit,
+                 IrContext* context)
+    : root_val_(root_val),
+      root_kind_(root_kind),
       benefit_(benefit),
-      context_(context),
-      generated_names_(generated_names) {}
+      context_(context) {
+  if (generated_names.empty()) return;
+
+  generated_ops_.reserve(generated_names.size());
+  std::transform(generated_names.begin(),
+                 generated_names.end(),
+                 std::back_inserter(generated_ops_),
+                 [context](const std::string& name) {
+                   return context->GetRegisteredOpInfo(name);
+                 });
+}
 
 RewritePattern::~RewritePattern() = default;
 
 //===----------------------------------------------------------------------===//
 // RewriterBase
 //===----------------------------------------------------------------------===//
-
 RewriterBase::~RewriterBase() = default;
 
-// TODO(wilber): value support replace method.
-// void RewriterBase::ReplaceOpWithIf(Operation* op,
-//                                    ValueRange new_values,
-//                                    bool* all_uses_replaced,
-//                                    std::function<bool(OpOperand&)> functor) {
-//   // assert(op->num_results() == new_values.size() && "incorrect number of
-//   values to replace operation"); NotifyRootReplaced(op, new_values); bool
-//   replace_all_uses = true; for (uint32_t i = 0; i < op->num_results(); ++i) {
-//     // op->result(0)
-//   }
-// }
-// void RewriterBase::ReplaceOpWithIf(Operation* op,
-//                        ValueRange new_values,
-//                        std::function<bool(OpOperand&)> functor) {
-//   ReplaceOpWithIf(op, new_values, nullptr, functor);
-// }
+void RewriterBase::ReplaceOpWithIf(
+    Operation* op,
+    const std::vector<Value>& new_values,
+    bool* all_uses_replaced,
+    const std::function<bool(OpOperand)>& functor) {
+  IR_ENFORCE(op->num_results() == new_values.size(),
+             "incorrect number of values to replace operation");
+  NotifyRootReplaced(op, new_values);
 
-// TODO(wilber): support erase.
-// void ReplaceOp(Operation* op, ValueRange new_values) {
-//   NotifyRootReplaced(op, new_values);
-//   assert(op->num_results() == new_values.size() && "incorrect # of
-//   replacement values"); op->ReplaceAllUsesWith(new_values);
-//   NotifyOperationRemoved(op);
-//   op->erase();
-// }
-void RewriterBase::EraseOp(Operation* op) {
-  //   assert(op->use_empty() && "expected 'op' to have no uses");
-  //   NotifyOperationRemoved(op);
-  //   op->erase();
+  // Replace each use of the results when the functor is true.
+  bool replace_all_uses = true;
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    auto src_res = op->result(i);
+    src_res.ReplaceUsesWithIf(new_values[i], functor);
+    replace_all_uses &= src_res.use_empty();
+  }
+  if (replace_all_uses) {
+    *all_uses_replaced = replace_all_uses;
+  }
 }
 
+void RewriterBase::ReplaceOpWithIf(
+    Operation* op,
+    const std::vector<Value>& new_values,
+    const std::function<bool(OpOperand)>& functor) {
+  ReplaceOpWithIf(op, new_values, nullptr, functor);
+}
+
+void RewriterBase::ReplaceOp(Operation* op,
+                             const std::vector<Value>& new_values) {
+  NotifyRootReplaced(op, new_values);
+  IR_ENFORCE(op->num_results() == new_values.size(),
+             "incorrect # of replacement values");
+  op->ReplaceAllUsesWith(new_values);
+  NotifyOperationRemoved(op);
+  op->GetParent()->erase(*op);
+}
+
+void RewriterBase::EraseOp(Operation* op) {
+  // TODO(wilber): Operation support use_empty.
+  // IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
+  NotifyOperationRemoved(op);
+  op->GetParent()->erase(*op);
+}
+
+/// Find uses of `from` and replace it with `to`
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // from.
-  // for (mlir::OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
-  // {
-  //   mlir::Operation* op = operand.getOwner();
-  //   UpdateRootInPlace(op, [&]() { operand.set(to); });
-  // }
+  // TODO(wilber): Substitue a low level impl.
+  from.ReplaceAllUsesWith(to);
 }
 
 // TODO(wilber): iterator maybe should support modify inplace.
@@ -125,8 +146,8 @@ void RewriterBase::ReplaceUseIf(Value from,
                                 Value to,
                                 std::function<bool(OpOperand&)> functor) {
   // for (auto it = from.begin(); it != from.end(); ++it) {
-  //   // TODO: need a lvalue.
-  //   if (functor(it.get())) {
+  // //   // TODO: need a lvalue.
+  //   if (functor(*it)) {
   //     UpdateRootInplace(it.owner(), [&](){it.get().set(to)});
   //   }
   // }
@@ -134,8 +155,8 @@ void RewriterBase::ReplaceUseIf(Value from,
 
 void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
-  assert(op->num_results() == new_op->num_results() &&
-         "replacement op doesn't match results of original op");
+  IR_ENFORCE(op->num_results() == new_op->num_results(),
+             "replacement op doesn't match results of original op");
   // TODO(wilber): Op support results method.
   // if (op->num_results() == 1) return ReplaceOp(op,
   // new_op->result(0)); return ReplaceOp(op, new_op->GetResults());

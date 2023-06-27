@@ -307,11 +307,9 @@ class TestLRDecay(TranspilerTest):
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(
-            learning_rate=fluid.layers.exponential_decay(
+            learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=1.0,
-                decay_steps=2100,
-                decay_rate=0.1,
-                staircase=True,
+                gamma=0.1,
             )
         )
         sgd_optimizer.minimize(avg_cost)
@@ -444,11 +442,9 @@ class TestFakeInit(TranspilerTest):
         avg_cost = paddle.mean(cost)
 
         sgd_optimizer = fluid.optimizer.SGD(
-            learning_rate=fluid.layers.exponential_decay(
+            learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=1.0,
-                decay_steps=2100,
-                decay_rate=0.1,
-                staircase=True,
+                gamma=0.1,
             )
         )
         sgd_optimizer.minimize(avg_cost)

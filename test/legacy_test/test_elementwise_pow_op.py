@@ -268,6 +268,10 @@ class TestElementwisePowOpFP16(OpTest):
         )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestElementwisePowBF16Op(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"

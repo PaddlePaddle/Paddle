@@ -90,6 +90,13 @@ def parse_args():
     )
 
     base_group.add_argument(
+        "--enable_gpu_log",
+        type=strtobool,
+        default=True,
+        help="enable capture gpu log while running. Default True",
+    )
+
+    base_group.add_argument(
         "--nnodes",
         type=str,
         default="1",
@@ -159,6 +166,13 @@ def parse_args():
         help="the full path of py script,"
         "followed by arguments for the "
         "training script",
+    )
+
+    base_group.add_argument(
+        "--auto_tuner_json",
+        type=str,
+        default=None,
+        help="auto tuner json file path",
     )
 
     base_group.add_argument('training_script_args', nargs=REMAINDER)

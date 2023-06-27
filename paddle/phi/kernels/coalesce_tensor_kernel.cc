@@ -277,7 +277,22 @@ PD_REGISTER_KERNEL(coalesce_tensor,
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
+PD_REGISTER_KERNEL(coalesce_tensor,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CoalesceTensorKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   int,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif
+
+#ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(coalesce_tensor,
                    GPU,
                    ALL_LAYOUT,

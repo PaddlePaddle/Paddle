@@ -298,8 +298,13 @@ namespace phi {
     }                                                                          \
   }()
 
-#define PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_3_TYPES(                   \
-    SPECIFIED_TYPE1, SPECIFIED_TYPE2, SPECIFIED_TYPE3, TYPE, NAME, ...)       \
+#define PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(SPECIFIED_TYPE1,   \
+                                                           SPECIFIED_TYPE2,   \
+                                                           SPECIFIED_TYPE3,   \
+                                                           SPECIFIED_TYPE4,   \
+                                                           TYPE,              \
+                                                           NAME,              \
+                                                           ...)               \
   [&] {                                                                       \
     const auto& __dtype__ = TYPE;                                             \
     switch (__dtype__) {                                                      \
@@ -327,6 +332,10 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(NAME,                                              \
                            SPECIFIED_TYPE3,                                   \
                            ::phi::DataTypeToCppType<SPECIFIED_TYPE3>::type,   \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           SPECIFIED_TYPE4,                                   \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE4>::type,   \
                            __VA_ARGS__)                                       \
       default:                                                                \
         PD_THROW("function " #NAME " is not implemented for data type `",     \

@@ -18,8 +18,8 @@ import random
 import numpy as np
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
+    dump_output,
     print_to_err,
-    print_to_out,
     runtime_main,
 )
 
@@ -92,7 +92,7 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
                 )
             print_to_err(type(self).__name__, "model built in dygraph")
             out_losses = self.model_train(args, model, opt, train_reader)
-            print_to_out(out_losses)
+            dump_output(out_losses)
             return out_losses
 
     def run_trainer_with_spawn_func(self, args):
@@ -120,7 +120,7 @@ class TestNoSync(TestParallelDyGraphRunnerBase):
             )
 
         out_losses = self.model_train(args, model, opt, train_reader)
-        print_to_out(out_losses)
+        dump_output(out_losses)
         return out_losses
 
     def model_train(self, args, model, opt, train_reader):

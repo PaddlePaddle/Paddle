@@ -263,17 +263,6 @@
     func : UnchangedInferMeta
   invoke : zeros_like(out_grad)
 
-- backward_op : fill_grad
-  forward : fill (Tensor x, Scalar value) -> Tensor(out)
-  args : (Tensor out_grad, Scalar value)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [out_grad]
-  kernel :
-    func : fill_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : fmin_grad
   forward : fmin(Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)
@@ -293,19 +282,6 @@
     param : [x]
   kernel :
     func : frobenius_norm_grad
-
-- backward_op : gather_grad
-  forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
-  args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    data_type: x
-    func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, x_grad)
-  no_need_buffer : x
 
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x) -> Tensor(out)
