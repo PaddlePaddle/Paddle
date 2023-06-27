@@ -1385,6 +1385,11 @@ class TestSqrtCompFp32(TestActivation):
         self.dtype = np.float32
 
 
+class TestSqrtComp_ZeroDim(TestSqrtComp):
+    def init_shape(self):
+        self.shape = []
+
+
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
@@ -2029,7 +2034,7 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
         self.shape = []
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestLeakyReluAPI(unittest.TestCase):

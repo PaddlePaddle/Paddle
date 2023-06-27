@@ -90,9 +90,8 @@ class Operation1 : public ir::Op<Operation1> {
   static const char *name() { return "test.operation1"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {
+  void Verify() {
+    auto &attributes = this->attributes();
     if (attributes.count("op1_attr1") == 0 ||
         !attributes.at("op1_attr1").isa<ir::StrAttribute>()) {
       throw("Type of attribute: parameter_name is not right.");
@@ -133,9 +132,8 @@ class Operation2
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {
+  void Verify() {
+    auto &attributes = this->attributes();
     if (attributes.count("op2_attr1") == 0 ||
         (!attributes.at("op2_attr1").isa<ir::StrAttribute>())) {
       throw("Type of attribute: parameter_name is not right.");

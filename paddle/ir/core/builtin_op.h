@@ -30,10 +30,7 @@ class IR_API ModuleOp : public ir::Op<ModuleOp> {
   static const char *name() { return "builtin.module"; }
   static constexpr uint32_t attributes_num = 1;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes);
-
+  void Verify();
   Program *program();
   Block *block();
 
@@ -58,9 +55,7 @@ class IR_API GetParameterOp : public ir::Op<GetParameterOp> {
                     OperationArgument &argument,  // NOLINT
                     const std::string &name,
                     Type type);
-  static void Verify(const std::vector<OpResult> &inputs,
-                     const std::vector<Type> &outputs,
-                     const ir::AttributeMap &attributes);
+  void Verify();
 };
 
 ///
@@ -77,9 +72,7 @@ class IR_API SetParameterOp : public ir::Op<SetParameterOp> {
                     OperationArgument &argument,  // NOLINT
                     OpResult parameter,
                     const std::string &name);
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes);
+  void Verify();
 };
 
 ///
@@ -99,9 +92,7 @@ class IR_API CombineOp : public ir::Op<CombineOp> {
                     OperationArgument &argument,  // NOLINT
                     const std::vector<ir::OpResult> &inputs);
 
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes);
+  void Verify();
 };
 
 ///
@@ -116,9 +107,7 @@ class IR_API SliceOp : public ir::Op<SliceOp> {
   static constexpr uint32_t attributes_num = 1;
 
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes);
+  void Verify();
 };
 
 class IR_API ConstantLikeTrait : public OpTraitBase<ConstantLikeTrait> {
@@ -143,9 +132,7 @@ class IR_API ConstantOp : public Op<ConstantOp, ConstantLikeTrait> {
                     Attribute value,
                     Type output_type);
 
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const AttributeMap &attributes);
+  void Verify();
 
   Attribute value();
 };

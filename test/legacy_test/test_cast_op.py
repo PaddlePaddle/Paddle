@@ -95,6 +95,10 @@ class TestCastOpFp32ToFp16(OpTest):
         self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestCastOpBf16ToFp32(OpTest):
     def setUp(self):
         ipt = np.array(np.random.randint(10, size=[10, 10])).astype('uint16')
@@ -120,6 +124,10 @@ class TestCastOpBf16ToFp32(OpTest):
         self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestCastOpFp32ToBf16(OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10]).astype('float32')
