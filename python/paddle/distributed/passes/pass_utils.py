@@ -144,48 +144,66 @@ class OpInOutInfo:
     Record unused buffer input_vars of op and other var_names except unused buffer input_vars
     """
 
-    def __init__(self, op):
-        self.op = op
-        self.no_need_buffer_slots = set()
-        self.other_arg_names_set = set()
+    def __init__(self):
+        self._is_build = False
+        self._no_need_buffer_slots = set()
+        self._other_arg_names_set = set()
 
-    def get_op_attrs(self):
+    @property
+    def is_build(self):
+        return self._is_build
+
+    def _get_op_attrs(self, op):
         inputs = {}
-        for input_name in self.op.input_names:
-            inputs[input_name] = self.op.input(input_name)
+        for input_name in op.input_names:
+            inputs[input_name] = op.input(input_name)
         outputs = {}
-        for output_name in self.op.output_names:
-            outputs[output_name] = self.op.output(output_name)
+        for output_name in op.output_names:
+            outputs[output_name] = op.output(output_name)
         attrs = {}
-        for attr_name in self.op.attr_names:
-            attrs[attr_name] = self.op.attr(attr_name)
+        for attr_name in op.attr_names:
+            attrs[attr_name] = op.attr(attr_name)
 
         return inputs, outputs, attrs
 
-    def build_op_info(self):
-        inputs, outputs, attrs = self.get_op_attrs()
-        self.no_need_buffer_slots = core.infer_no_need_buffer_slots(
-            self.op.type, inputs, outputs, attrs
+    def build_info(self, op):
+        inputs, outputs, attrs = self._get_op_attrs(op)
+        self._no_need_buffer_slots = core.infer_no_need_buffer_slots(
+            op.type, inputs, outputs, attrs
         )
-        if len(self.no_need_buffer_slots) == 0:
+        if len(self._no_need_buffer_slots) == 0:
             return
 
-        for slot_name in self.op.input_names:
-            if slot_name in self.no_need_buffer_slots:
+        for slot_name in op.input_names:
+            if slot_name in self._no_need_buffer_slots:
                 continue
 
-            for in_name in self.op.input(slot_name):
-                self.other_arg_names_set.add(in_name)
+            for in_name in op.input(slot_name):
+                self._other_arg_names_set.add(in_name)
 
-        for slot_name in self.op.output_names:
-            for out_name in self.op.output(slot_name):
-                self.other_arg_names_set.add(out_name)
+        for slot_name in op.output_names:
+            for out_name in op.output(slot_name):
+                self._other_arg_names_set.add(out_name)
+
+        self._is_build = True
 
     def is_needed(self, arg_name):
         return (
-            len(self.no_need_buffer_slots) == 0
-            or arg_name in self.other_arg_names_set
+            len(self._no_need_buffer_slots) == 0
+            or arg_name in self._other_arg_names_set
         )
+
+
+def var_can_be_deleted(var_name, program):
+    var = program.global_block()._find_var_recursive(var_name)
+    if var is None or var.persistable:
+        return False
+
+    return var.type in [
+        core.VarDesc.VarType.LOD_TENSOR,
+        core.VarDesc.VarType.SELECTED_ROWS,
+        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    ]
 
 
 def get_skip_gc_vars(program_list: List[Program]):
@@ -197,39 +215,31 @@ def get_skip_gc_vars(program_list: List[Program]):
     and these vars cannot be gc after executing current sub_program.
     """
 
-    # step1: get all non-persistable vars of every sub_program of program_list
-    vars_list = [
-        {
-            var.name
-            for var in filter(
-                lambda var: not var.persistable, program.list_vars()
-            )
-        }
-        for program in program_list
-    ]
+    # step1: Get all vars of every sub_program of program_list that are non-persistable and not in op's no_need_buffer.
+    vars_list = [set() for _ in range(len(program_list))]
+    for ip, program in enumerate(program_list):
+        for op in program.global_block().ops:
+            op_info = OpInOutInfo()
+            for in_name in op.input_arg_names:
+                if not var_can_be_deleted(in_name, program):
+                    continue
 
-    # step2: get the `intersection_vars_list` that vars of current sub_program might be used in the later sub_program
+                if not op_info.is_build:
+                    op_info.build_info(op)
+
+                if op_info.is_needed(in_name):
+                    vars_list[ip].add(in_name)
+
+            for out_name in op.output_arg_names:
+                if var_can_be_deleted(out_name, program):
+                    vars_list[ip].add(out_name)
+
+    # step2: get the `skip_gc_vars` that vars of current sub_program might be used in the later sub_program
     union_set = set()
-    intersection_vars_list = [set()] * len(program_list)
+    skip_gc_vars = [set()] * len(program_list)
     for idx, vars_set in reversed(list(enumerate(vars_list))):
         if idx < len(vars_list) - 1:
             union_set = union_set.union(vars_list[idx + 1])
-        intersection_vars_list[idx] = vars_set & union_set
-
-    # step3: Filter the vars that might be in no_need_buffer of op.
-    # Reversely traversing all ops in the program_list. If op's input_args in the former vars_list,
-    # and the input_args is used in op's computation, the input_args should be put in skip_gc_vars.
-    skip_gc_vars = [set() for _ in range(len(program_list))]
-    for ip, program in reversed(list(enumerate(program_list))):
-        for op in program.global_block().ops:
-            op_info = OpInOutInfo(op)
-            op_info.build_op_info()
-
-            for in_name in op.input_arg_names:
-                for i in range(0, ip):
-                    if in_name not in intersection_vars_list[i]:
-                        continue
-                    if op_info.is_needed(in_name):
-                        skip_gc_vars[i].add(in_name)
+        skip_gc_vars[idx] = vars_set & union_set
 
     return skip_gc_vars

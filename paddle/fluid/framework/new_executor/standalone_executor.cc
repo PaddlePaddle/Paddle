@@ -59,11 +59,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
-    if (jobs.size() > 1) {
-      std::set<std::string> skip_vars = job->SkipGcVars();
-      execution_config.skip_gc_vars =
-          std::set<std::string>(skip_vars.begin(), skip_vars.end());
-    }
+    execution_config.skip_gc_vars = job->SkipGcVars();
 
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
