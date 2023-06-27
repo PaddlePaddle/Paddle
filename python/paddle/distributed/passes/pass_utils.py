@@ -139,7 +139,11 @@ def split_program(program, op_indices):
     return splitted_programs, input_vars, valid_output_vars
 
 
-class OpInfo:
+class OpInOutInfo:
+    """
+    Record unused buffer input_vars of op and other var_names except unused buffer input_vars
+    """
+
     def __init__(self, op):
         self.op = op
         self.no_need_buffer_slots = set()
@@ -218,7 +222,7 @@ def get_skip_gc_vars(program_list: List[Program]):
     skip_gc_vars = [set() for _ in range(len(program_list))]
     for ip, program in reversed(list(enumerate(program_list))):
         for op in program.global_block().ops:
-            op_info = OpInfo(op)
+            op_info = OpInOutInfo(op)
             op_info.build_op_info()
 
             for in_name in op.input_arg_names:
