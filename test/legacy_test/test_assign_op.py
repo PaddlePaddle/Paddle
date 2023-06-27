@@ -32,9 +32,13 @@ class TestAssignOp(eager_op_test.OpTest):
         self.public_python_api = paddle.assign
         self.op_type = "assign"
         self.prim_op_type = "prim"
-        x = np.random.random(size=(100, 10)).astype('float64')
+        self.init_input_configs()
+        x = np.random.random(size=self.shape).astype('float64')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
+
+    def init_input_configs(self):
+        self.shape = (100, 10)
 
     def test_forward(self):
         paddle.enable_static()
@@ -45,6 +49,11 @@ class TestAssignOp(eager_op_test.OpTest):
         paddle.enable_static()
         self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
+
+
+class TestAssignOp_ZeroDim(TestAssignOp):
+    def init_input_configs(self):
+        self.shape = ()
 
 
 @unittest.skipIf(
