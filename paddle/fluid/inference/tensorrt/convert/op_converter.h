@@ -680,17 +680,16 @@ std::cout << op_desc.InputNames().size() << std::endl;
     for (size_t i = 0; i < num_out; i++) {
       layer->getOutput(i)->setName(output_tensor_names[i].c_str());
 
-    PADDLE_ENFORCE_GE(
+    PADDLE_ENFORCE_GT(
         layer->getOutput(i)->getDimensions().nbDims,
         0,
         platform::errors::InvalidArgument(
-            "Errors occures in Paddle-TRT layers with output name: %s", output_tensor_names[i].c_str()));
+            "Error occures in Paddle-TRT layer with output name: %s", output_tensor_names[i].c_str()));
     
-    std::cout << output_tensor_names[i] ;
-    for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
-      std::cout << "输出维度: " << layer->getOutput(i)->getDimensions().d[ii] ;
-    }
-    std::cout << std::endl;
+      VLOG(3) << output_tensor_names[i] << "'s dimension :" ;
+      for (int ii = 0; ii < layer->getOutput(i)->getDimensions().nbDims; ii++) {
+        VLOG(3) << layer->getOutput(i)->getDimensions().d[ii] ;
+      }
 
       engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
       if (test_mode) {
