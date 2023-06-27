@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/ir/dialect/kernel_op.h"
+#include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
@@ -44,19 +47,22 @@ void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
 
 const std::string PhiKernelOp::op_name() {
   return operation()
-      ->attributes()["op_name"]
+      ->attributes()
+      .at("op_name")
       .dyn_cast<ir::StrAttribute>()
       .data();
 }
 const std::string PhiKernelOp::kernel_name() {
   return operation()
-      ->attributes()["kernel_name"]
+      ->attributes()
+      .at("kernel_name")
       .dyn_cast<ir::StrAttribute>()
       .data();
 }
 phi::KernelKey PhiKernelOp::kernel_key() {
   return operation()
-      ->attributes()["kernel_key"]
+      ->attributes()
+      .at("kernel_key")
       .dyn_cast<KernelAttribute>()
       .data();
 }

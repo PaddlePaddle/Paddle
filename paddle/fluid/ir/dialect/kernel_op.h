@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/op_base.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace dialect {
