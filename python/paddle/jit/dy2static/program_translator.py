@@ -679,7 +679,9 @@ class SymbolicStaticFunction(StaticFunction):
         from ..sot import symbolic_translate
 
         build_strategy = self._kwargs.get("build_strategy", None)
-        traced_fun = symbolic_translate(self._dygraph_function, build_strategy)
+        traced_fun = symbolic_translate(
+            self._dygraph_function, build_strategy=build_strategy
+        )
         if self._class_instance is not None:
             args = (self._class_instance,) + args
         return traced_fun(*args, **kwargs)
