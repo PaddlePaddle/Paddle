@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#include <sstream>
+
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
@@ -69,7 +72,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;
       auto base_program = paddle::TranslateLegacyProgramToProgram(*program);
-
+      std::stringstream ss;
+      base_program->Print(ss);
+      VLOG(6) << ss.str();
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get());
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(

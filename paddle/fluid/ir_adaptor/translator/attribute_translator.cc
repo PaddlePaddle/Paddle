@@ -135,8 +135,12 @@ class AttributeVisitor {
   virtual ir::Attribute operator()(
       const std::vector<paddle::experimental::Scalar>& ss) {
     VLOG(10) << "translating vector<scalar>";
-    IR_THROW(
-        "not support translating std::vector<paddle::experimental::Scalar>");
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(ss.size());
+    for (const auto& v : ss) {
+      attrs.push_back(paddle::dialect::ScalarAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
   }
 
   virtual ir::Attribute operator()(const paddle::blank& blank) {

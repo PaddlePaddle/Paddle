@@ -160,3 +160,24 @@
   - {typename: 'Tensor', name: out, optional: false, intermediate: false}
   no_need_buffer: null
   data_transform: null
+
+- name: set_value_
+  inputs:
+  -  {typename: 'Tensor', name: input, optional: false, no_need_buffer: false, data_transform: {}}
+  -  {typename: 'Tensor[]', name: value_tensor, optional: true, no_need_buffer: false, data_transform: {}}
+  -  {typename: 'Tensor[]', name: starts_tensor_list, optional: true, no_need_buffer: false, data_transform: {}}
+  -  {typename: 'Tensor[]', name: ends_tensor_list, optional: true, no_need_buffer: false, data_transform: {}}
+  -  {typename: 'Tensor[]', name: steps_tensor_list, optional: true, no_need_buffer: false, data_transform: {}}
+  attrs:
+  - {typename: 'int', name: dtype, default_value: '5'}
+  - {typename: 'int64_t[]', name: axes}
+  - {typename: 'int64_t[]', name: starts, default_value: '{}'}
+  - {typename: 'int64_t[]', name: ends, default_value: '{}'}
+  - {typename: 'int64_t[]', name: steps, default_value: '{}'}
+  - {typename: 'int64_t[]', name: decrease_axes, default_value: '{}'}
+  - {typename: 'int64_t[]', name: none_axes, default_value: '{}'}
+  - {typename: 'Scalar[]', name: values, default_value: '{}'}
+  outputs:
+  - {typename: 'Tensor', name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null

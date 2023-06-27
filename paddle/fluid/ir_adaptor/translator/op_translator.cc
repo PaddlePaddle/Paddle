@@ -394,6 +394,8 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     }
 
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
+    is_vector |=
+        (info.type_name.find("IntArrayAttribute") != std::string::npos);
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
 
@@ -904,10 +906,10 @@ struct FeedOpTranscriber : public OpTranscriber {
 };
 
 struct FetchOpTranscriber : public OpTranscriber {
-  ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
-                                           TranslationContext* param_map,
-                                           ir::Program* program,
-                                           const OpDesc& op_desc) {
+  ir::Operation* operator()(ir::IrContext* ctx,
+                            TranslationContext* param_map,
+                            ir::Program* program,
+                            const OpDesc& op_desc) {
     auto op_info = LoopkUpOpInfo(ctx, op_desc);
 
     auto* op_info_concept =
@@ -919,7 +921,7 @@ struct FetchOpTranscriber : public OpTranscriber {
         op_info_concept->get_op_info_();
 
     auto op_inputs = GenerateOperationInput(
-        ctx, param_map, op_desc, op_info.name(), input_infos, program);
+        ctx, param_map, program, op_desc, op_info.name(), input_infos);
 
     OpOutputTypeList op_output_types;
     ir::AttributeMap attribute_map = {

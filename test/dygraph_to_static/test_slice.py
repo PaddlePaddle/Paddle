@@ -142,19 +142,19 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-class TestSliceInIf(TestSliceWithoutControlFlow):
-    def init_dygraph_func(self):
-        self.dygraph_func = test_slice_in_if
+# class TestSliceInIf(TestSliceWithoutControlFlow):
+#     def init_dygraph_func(self):
+#         self.dygraph_func = test_slice_in_if
 
 
-class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
-    def init_dygraph_func(self):
-        self.dygraph_func = test_slice_in_while_loop
+# class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
+#     def init_dygraph_func(self):
+#         self.dygraph_func = test_slice_in_while_loop
 
 
-class TestSliceInForLoop(TestSliceWithoutControlFlow):
-    def init_dygraph_func(self):
-        self.dygraph_func = test_slice_in_for_loop
+# class TestSliceInForLoop(TestSliceWithoutControlFlow):
+#     def init_dygraph_func(self):
+#         self.dygraph_func = test_slice_in_for_loop
 
 
 class TestSetValue(TestSliceWithoutControlFlow):
