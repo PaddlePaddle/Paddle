@@ -53,7 +53,7 @@ void StridedCopyKernel(const Context& dev_ctx,
                        int64_t offset,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.stride = phi::make_ddim(out_stride);
+  meta.strides = phi::make_ddim(out_stride);
   meta.dims = phi::make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
@@ -62,8 +62,8 @@ void StridedCopyKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
   const int64_t* input_dims = input.dims().Get();
-  const int64_t* input_stride = input.stride().Get();
-  const int64_t* output_stride = meta.stride.Get();
+  const int64_t* input_stride = input.strides().Get();
+  const int64_t* output_stride = meta.strides.Get();
   auto numel = input.numel();
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;

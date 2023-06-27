@@ -46,10 +46,10 @@ DDim MetaTensor::dims() const {
   }
 }
 
-DDim MetaTensor::stride() const {
+DDim MetaTensor::strides() const {
   ValidCheck(*this);
   if (dynamic_cast<DenseTensor*>(tensor_)) {
-    return dynamic_cast<DenseTensor*>(tensor_)->stride();
+    return dynamic_cast<DenseTensor*>(tensor_)->strides();
   }
   return DDim();
 }
@@ -71,7 +71,7 @@ void MetaTensor::set_dims(const DDim& dims) {
         DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
     meta->dims = dims;
     if (!strided_kernel_used_) {
-      meta->stride = meta->calc_stride(dims, meta->layout);
+      meta->strides = meta->calc_strides(dims, meta->layout);
     }
   } else if (phi::StringTensor::classof(tensor_)) {
     StringTensorUtils::GetMutableMeta(static_cast<StringTensor*>(tensor_))
@@ -90,11 +90,11 @@ void MetaTensor::set_dims(const DDim& dims) {
   }
 }
 
-void MetaTensor::set_stride(const DDim& stride) {
+void MetaTensor::set_strides(const DDim& strides) {
   ValidCheck(*this);
   if (dynamic_cast<DenseTensor*>(tensor_)) {
     DenseTensorUtils::GetMutableMeta(dynamic_cast<DenseTensor*>(tensor_))
-        ->stride = stride;
+        ->strides = strides;
   }
 }
 
@@ -129,7 +129,7 @@ void MetaTensor::set_layout(DataLayout layout) {
         DenseTensorUtils::GetMutableMeta(static_cast<DenseTensor*>(tensor_));
     meta->layout = layout;
     if (!strided_kernel_used_) {
-      meta->stride = meta->calc_stride(meta->dims, layout);
+      meta->strides = meta->calc_strides(meta->dims, layout);
     }
   } else if (phi::StringTensor::classof(tensor_)) {
     // No need to set layout
@@ -138,7 +138,7 @@ void MetaTensor::set_layout(DataLayout layout) {
         static_cast<SelectedRows*>(tensor_)->mutable_value());
     meta->layout = layout;
     if (!strided_kernel_used_) {
-      meta->stride = meta->calc_stride(meta->dims, layout);
+      meta->strides = meta->calc_strides(meta->dims, layout);
     }
   } else if (phi::SparseCooTensor::classof(tensor_)) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCooTensor*>(tensor_))
@@ -223,7 +223,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
           static_cast<SelectedRows*>(tensor_)->mutable_value());
       meta->dims = selected_rows_in->mutable_value()->dims();
       if (!strided_kernel_used_) {
-        meta->stride = meta->calc_stride(meta->dims, meta->layout);
+        meta->strides = meta->calc_strides(meta->dims, meta->layout);
       }
     } else {
       set_dims(meta_tensor.dims());
@@ -234,10 +234,10 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
   }
 }
 
-void MetaTensor::share_stride(const MetaTensor& meta_tensor) {
+void MetaTensor::share_strides(const MetaTensor& meta_tensor) {
   ValidCheck(*this);
   if (phi::DenseTensor::classof(tensor_)) {
-    set_stride(meta_tensor.stride());
+    set_strides(meta_tensor.strides());
   }
 }
 

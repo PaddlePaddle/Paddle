@@ -33,7 +33,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   std::set<int64_t> axes_set;
 
   auto input_dims = input.dims();
-  auto input_stride = input.stride();
+  auto input_stride = input.strides();
 
   if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
     output_dims = phi::vectorize<int64_t>(out->dims());
@@ -65,7 +65,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
 
     auto meta = out->meta();
     meta.offset = input.offset();
-    meta.stride = DDim(output_stride.data(), output_stride.size());
+    meta.strides = DDim(output_stride.data(), output_stride.size());
     out->set_meta(meta);
     return;
   }
@@ -104,7 +104,7 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.stride = DDim(output_stride.data(), output_stride.size());
+  meta.strides = DDim(output_stride.data(), output_stride.size());
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());

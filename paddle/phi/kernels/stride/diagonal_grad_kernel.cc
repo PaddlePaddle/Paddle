@@ -30,7 +30,7 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                                int axis2,
                                DenseTensor* in_grad) {
   dev_ctx.Alloc(in_grad, in_grad->dtype());
-  in_grad->set_stride(DenseTensorMeta::calc_stride(in_grad->dims()));
+  in_grad->set_strides(DenseTensorMeta::calc_strides(in_grad->dims()));
   PD_VISIT_ALL_TYPES(in_grad->dtype(), "DiagonalGradStridedKernel", ([&] {
                        phi::FillKernel<data_t, Context>(
                            dev_ctx, *in_grad, 0, in_grad);
@@ -42,7 +42,7 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                            dev_ctx,
                            out_grad,
                            phi::vectorize<int64_t>(tmp.dims()),
-                           phi::vectorize<int64_t>(tmp.stride()),
+                           phi::vectorize<int64_t>(tmp.strides()),
                            tmp.offset(),
                            &tmp);
                      }));

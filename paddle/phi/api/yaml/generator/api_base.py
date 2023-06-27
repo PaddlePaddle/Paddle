@@ -1207,7 +1207,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         )
         pre_save_stride = ""
         transdata2strided = ""
-        if inplace_flag and kernel_name not in ["squeeze", "unsqueeze"]:
+        if inplace_flag and kernel_name not in [
+            "squeeze",
+            "unsqueeze",
+            "reshape",
+            "flatten",
+        ]:
             i = 0
             for kernel_out in outputs_args:
                 pre_save_stride += f"""{code_indent}  auto backup{i} = ProcessStrideBackup(&{kernel_out});\n"""

@@ -158,7 +158,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       py_strides[0] = sizeof_dtype * numel;
     }
   } else if (self->tensor.is_dense_tensor()) {
-    auto tensor_stride = self->tensor.stride();
+    auto tensor_stride = self->tensor.strides();
 
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
@@ -1083,7 +1083,7 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   const auto& tensor_dims = tensor.dims();
 
   std::vector<size_t> dims(tensor_dims.size());
-  std::vector<size_t> stride = phi::vectorize<size_t>(tensor.stride());
+  std::vector<size_t> stride = phi::vectorize<size_t>(tensor.strides());
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
@@ -2050,15 +2050,15 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_stride(TensorObject* self,
-                                      PyObject* args,
-                                      PyObject* kwargs) {
+static PyObject* tensor_method_strides(TensorObject* self,
+                                       PyObject* args,
+                                       PyObject* kwargs) {
   EAGER_TRY
   std::vector<int64_t> value;
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
     return ToPyObject(value);
   }
-  auto stride = self->tensor.stride();
+  auto stride = self->tensor.strides();
   size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
   for (size_t i = 0; i < rank; i++) {
@@ -2403,8 +2403,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"get_stride",
-     (PyCFunction)(void (*)(void))tensor_method_stride,
+    {"get_strides",
+     (PyCFunction)(void (*)(void))tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)

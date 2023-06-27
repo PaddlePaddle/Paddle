@@ -63,16 +63,16 @@ class MetaTensor {
   virtual DDim dims() const;
   virtual DataType dtype() const;
   virtual DataLayout layout() const;
-  virtual DDim stride() const;
+  virtual DDim strides() const;
   virtual void set_dims(const DDim& dims);
   virtual void set_dtype(DataType dtype);
   virtual void set_layout(DataLayout layout);
-  virtual void set_stride(const DDim& stride);
+  virtual void set_strides(const DDim& strides);
 
   virtual void share_lod(const MetaTensor& meta_tensor);
   virtual void share_meta(const MetaTensor& meta_tensor);
   virtual void share_dims(const MetaTensor& meta_tensor);
-  virtual void share_stride(const MetaTensor& meta_tensor);
+  virtual void share_strides(const MetaTensor& meta_tensor);
 
   virtual bool initialized() const;
 

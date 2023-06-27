@@ -77,7 +77,7 @@ bool is_only_transposed(const DDim& shape,
     axis[max_idx] = i;
   }
 
-  if (DenseTensorMeta::calc_stride(src_shape) == src_stride) {
+  if (DenseTensorMeta::calc_strides(src_shape) == src_stride) {
     return true;
   } else {
     return false;
@@ -90,21 +90,22 @@ void ContiguousKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
   std::vector<int> axis;
-  DDim src_stride = meta.stride;
+  DDim src_stride = meta.strides;
   DDim src_shape = meta.dims;
-  if (is_only_transposed(meta.dims, meta.stride, src_shape, src_stride, axis)) {
-    meta.stride = meta.calc_stride(meta.dims, meta.layout);
+  if (is_only_transposed(
+          meta.dims, meta.strides, src_shape, src_stride, axis)) {
+    meta.strides = meta.calc_strides(meta.dims, meta.layout);
     out->set_meta(meta);
     DenseTensor tmp_tensor = input;
     phi::DenseTensorMeta tmp_meta = meta;
-    tmp_meta.stride = src_stride;
+    tmp_meta.strides = src_stride;
     tmp_meta.dims = src_shape;
     tmp_tensor.set_meta(tmp_meta);
     TransposeKernel<T, Context>(dev_ctx, tmp_tensor, axis, out);
     return;
   }
 
-  meta.stride = meta.calc_stride(meta.dims, meta.layout);
+  meta.strides = meta.calc_strides(meta.dims, meta.layout);
   meta.offset = 0;
   out->set_meta(meta);
 
@@ -119,7 +120,7 @@ void ContiguousKernel(const Context& dev_ctx,
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
   for (int i = 0; i < input.dims().size(); i++) {
     input_dims[i] = input.dims()[i];
-    input_stride[i] = input.stride()[i];
+    input_stride[i] = input.strides()[i];
   }
 
   switch (rank) {
