@@ -792,13 +792,12 @@ def binary_cross_entropy_with_logits(
             _current_expected_place(),
         )
 
-        log_weight = None
         if pos_weight is not None:
-            log_weight = _C_ops.add(
+            pos_weight = _C_ops.add(
                 _C_ops.multiply(label, _C_ops.subtract(pos_weight, one)), one
             )
         out = _C_ops.sigmoid_cross_entropy_with_logits(
-            logit, label, log_weight, False, -100
+            logit, label, pos_weight, False, -100
         )
 
         if weight is not None:
@@ -832,7 +831,6 @@ def binary_cross_entropy_with_logits(
         out = helper.create_variable_for_type_inference(dtype=logit.dtype)
 
         one = paddle.full(shape=[1], fill_value=1.0, dtype=logit.dtype)
-        log_weight = None
         if pos_weight is not None:
             check_variable_and_dtype(
                 pos_weight,
@@ -840,13 +838,13 @@ def binary_cross_entropy_with_logits(
                 ['float32', 'float64'],
                 'binary_cross_entropy_with_logits',
             )
-            log_weight = paddle.add(
+            pos_weight = paddle.add(
                 paddle.multiply(label, paddle.subtract(pos_weight, one)), one
             )
 
         helper.append_op(
             type="sigmoid_cross_entropy_with_logits",
-            inputs={"X": logit, "Label": label, "PosWeight": log_weight},
+            inputs={"X": logit, "Label": label, "pos_weight": pos_weight},
             attrs={"ignore_index": kIgnoreIndex, 'normalize': False},
             outputs={"Out": out},
         )

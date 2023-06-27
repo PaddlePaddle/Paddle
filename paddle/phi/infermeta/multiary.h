@@ -523,6 +523,14 @@ void SgdInferMeta(const MetaTensor& param,
                   MetaTensor* param_out,
                   MetaTensor* master_param_out);
 
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            const MetaTensor& pos_weight,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config = MetaConfig());
+
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
                     MetaTensor* out,
@@ -645,13 +653,5 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias1,
                   const std::string& act_type,
                   MetaTensor* out);
-
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            const MetaTensor& pos_weight,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config = MetaConfig());
 
 }  // namespace phi

@@ -160,7 +160,7 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
         self.inputs = {
             'X': x,
             'Label': label,
-            'PosWeight': pos_weight,
+            'pos_weight': pos_weight,
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
