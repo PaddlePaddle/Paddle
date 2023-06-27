@@ -25,6 +25,7 @@ from collections import OrderedDict
 import inspect
 import threading
 from typing import Any
+import types
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -1043,7 +1044,9 @@ def save(layer, path, input_spec=None, **configs):
     concrete_program = None
     for attr_func in functions:
         if isinstance(layer, Layer):
-            static_func = getattr(inner_layer, attr_func, None)
+            static_func = get_ast_static_function(
+                getattr(inner_layer, attr_func, None)
+            )
             if isinstance(static_func, StaticFunction):
                 if static_func.is_property:
                     # property method to be exported
@@ -1076,7 +1079,9 @@ def save(layer, path, input_spec=None, **configs):
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
-                    inner_layer.forward, input_spec=inner_input_spec
+                    inner_layer.forward,
+                    input_spec=inner_input_spec,
+                    enable_fallback=False,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1092,14 +1097,16 @@ def save(layer, path, input_spec=None, **configs):
         else:
             # When layer is a function
             if isinstance(attr_func, StaticFunction):
-                if attr_func.is_property:
+                static_func = get_ast_static_function(attr_func)
+
+                if static_func.is_property:
                     # property method to be exported
-                    immediate_val = attr_func()
-                    property_vals.append((immediate_val, attr_func))
+                    immediate_val = static_func()
+                    property_vals.append((immediate_val, static_func))
                     continue
 
                 concrete_program = (
-                    attr_func.concrete_program_specify_input_spec(
+                    static_func.concrete_program_specify_input_spec(
                         inner_input_spec, is_prim_infer=is_prim_infer
                     )
                 )
@@ -1109,7 +1116,9 @@ def save(layer, path, input_spec=None, **configs):
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
-                    attr_func, input_spec=inner_input_spec
+                    static_func,
+                    input_spec=inner_input_spec,
+                    enable_fallback=False,
                 )
                 concrete_program = static_function.concrete_program
 
@@ -1125,9 +1134,9 @@ def save(layer, path, input_spec=None, **configs):
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
-            if attr_func._class_instance:
+            if static_func._class_instance:
                 dygraph_state_dict = (
-                    attr_func._class_instance.to_static_state_dict()
+                    static_func._class_instance.to_static_state_dict()
                 )
 
         if dygraph_state_dict:
@@ -1886,3 +1895,29 @@ class TracedLayer:
                 clip_extra=clip_extra,
                 legacy_format=legacy_format,
             )
+
+
+def get_ast_static_function(function):
+    if isinstance(function, SymbolicStaticFunction):
+        if function._class_instance:
+            dygraph_function = types.MethodType(
+                function._dygraph_function, function._class_instance
+            )
+        else:
+            dygraph_function = function._dygraph_function
+
+        if function._function_spec._input_spec is None:
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function.last_call_input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
+        else:
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function._function_spec._input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
+    return function

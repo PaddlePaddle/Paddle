@@ -19,7 +19,6 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
 from predictor_utils import PredictorTools
 
 import paddle
@@ -413,7 +412,6 @@ class TestResnet(unittest.TestCase):
             ),
         )
 
-    @ast_only_test
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -427,7 +425,6 @@ class TestResnet(unittest.TestCase):
         )
         self.verify_predict()
 
-    @ast_only_test
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
         core._add_skip_comp_ops("batch_norm")
@@ -443,7 +440,6 @@ class TestResnet(unittest.TestCase):
             ),
         )
 
-    @ast_only_test
     def test_in_static_mode_mkldnn(self):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:

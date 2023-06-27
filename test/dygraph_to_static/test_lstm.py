@@ -144,7 +144,6 @@ class TestSaveInEvalMode(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @ast_only_test
     def test_save_in_eval(self):
         paddle.jit.enable_to_static(True)
         net = LinearNet()
@@ -191,7 +190,6 @@ class TestEvalAfterSave(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @ast_only_test
     def test_eval_after_save(self):
         x = paddle.randn((2, 10, 12)).astype('float32')
         net = Net(12, 2)

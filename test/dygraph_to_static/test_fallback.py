@@ -112,7 +112,6 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(u_net(self.x).numpy(), [1, 1])
         assert u_net.training is False, "Training must be false."
 
-    @ast_only_test
     def test_case_save_error(self):
         """
         test the save will raise error.

@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 
@@ -101,7 +101,6 @@ class TestGradLinear(TestGrad):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @ast_only_test
     def test_save_infer_program(self):
         self.setUp()  # make self.func change to ast mode
         input_spec = [
@@ -114,7 +113,6 @@ class TestGradLinear(TestGrad):
         load_res = load_func(self.x).numpy()
         np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
-    @ast_only_test
     def test_save_train_program(self):
         self.setUp()  # make self.func change to ast mode
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)

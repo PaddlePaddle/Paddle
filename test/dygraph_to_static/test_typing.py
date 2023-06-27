@@ -17,7 +17,7 @@ import unittest
 from typing import Dict, List, Tuple
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 
@@ -94,7 +94,6 @@ class TestTyping(unittest.TestCase):
         out, _ = self.net(self.x)
         return out
 
-    @ast_only_test
     def test_type(self):
         self.net = self.build_net()
         out = self.run_dy()
