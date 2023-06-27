@@ -48,7 +48,7 @@ class OperationTest
   static void Verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes) {}
-  static void InferShape(phi::InferMetaContext *infer_meta) {
+  static void InferMeta(phi::InferMetaContext *infer_meta) {
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);
   }
@@ -97,7 +97,7 @@ TEST(infershape_test, infershape_test) {
 
   phi::DenseTensor tensor;
   infer_meta_ctx.EmplaceBackOutput(phi::MetaTensor(&tensor));
-  interface.InferShape(&infer_meta_ctx);
+  interface.InferMeta(&infer_meta_ctx);
 
   EXPECT_EQ(tensor.dims().size(), 2);
   EXPECT_EQ(tensor.dims()[0], 5);

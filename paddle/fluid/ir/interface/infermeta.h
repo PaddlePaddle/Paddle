@@ -28,11 +28,11 @@ class InferMetaInterface : public ir::OpInterfaceBase<InferMetaInterface> {
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferShape(phi::InferMetaContext *infer_meta) {
-      return ConcreteOp::InferShape(infer_meta);
+    static void InferMeta(phi::InferMetaContext *infer_meta) {
+      return ConcreteOp::InferMeta(infer_meta);
     }
 
-    Model() : Concept(InferShape) {}
+    Model() : Concept(InferMeta) {}
   };
 
   InferMetaInterface(ir::Operation *op, Concept *impl)
