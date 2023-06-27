@@ -26,6 +26,16 @@ class TestFusedCommBufferGradChecker(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         w = linear.weight
         b = linear.bias
+        FusedCommBuffer(
+            id=0,
+            params=[w, b],
+            comm_group=None,
+            acc_steps=10,
+            act=HOOK_ACTION.ALL_REDUCE,
+        )
+        linear = paddle.nn.Linear(10, 10)
+        w = linear.weight
+        b = linear.bias
         w.main_grad = None
         b.main_grad = None
         buffer = FusedCommBuffer(
