@@ -19,6 +19,7 @@ import tempfile
 
 import numpy as np
 
+# TODO: use import legacy_test.nets to replace it
 sys.path.append("../legacy_test")
 import nets
 
