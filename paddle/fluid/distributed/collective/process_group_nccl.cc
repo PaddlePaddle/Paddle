@@ -221,9 +221,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           comm_context->Recv(&output_partial, out_numel, i, stream);
           out_offset += out_numel;
         }
-        VLOG(3) << "Warning: alltoall send/recv finished.";
         comm_context->GroupEnd();
-        VLOG(3) << "Warning: alltoall groupend finished.";
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -905,18 +903,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         auto comm_context = this->GetCommContext();
         comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
-          // auto input_data =
-          // reinterpret_cast<phi::DenseTensor*>(GetPointerByOffset(input.data(),
-          // offset, input.dtype()));
           auto input_data = GetPartialTensor(input, offset, count);
           comm_context->Send(input_data, count, i, stream);
           auto output_data = GetPartialTensor(output, offset, count);
           comm_context->Recv(&output_data, count, i, stream);
           offset += count;
         }
-        VLOG(3) << "Warning: alltoall send/recv finished.";
         comm_context->GroupEnd();
-        VLOG(3) << "Warning: alltoall groupend finished.";
       },
       CommType::ALLTOALL);
 }

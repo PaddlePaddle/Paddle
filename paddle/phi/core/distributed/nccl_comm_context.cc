@@ -57,7 +57,6 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                   root,
                                   nccl_comm_,
                                   stream));
-  VLOG(3) << "debug nccl comm context broadcast";
 }
 
 void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
@@ -81,7 +80,6 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                   ToNCCLDataType(in_tensor.type()),
                                   nccl_comm_,
                                   stream));
-  VLOG(3) << "debug nccl comm context all_gather";
 }
 void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
@@ -106,7 +104,6 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                       reduce_type,
                                       nccl_comm_,
                                       stream));
-  VLOG(3) << "debug nccl comm context reduce_scatter";
 }
 
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
@@ -128,7 +125,6 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                              stream));
   VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
           << " to " << peer;
-  VLOG(3) << "debug nccl comm context send";
 }
 
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
@@ -149,7 +145,6 @@ void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                              stream));
   VLOG(3) << "rank " << GetRank() << " recv "
           << phi::product(out_tensor->dims()) << " from " << peer;
-  VLOG(3) << "debug nccl comm context recv";
 }
 
 void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
@@ -175,7 +170,6 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                   reduce_type,
                                   nccl_comm_,
                                   stream));
-  VLOG(3) << "debug nccl comm context all_reduce, type: " << reduce_type;
 }
 
 void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
@@ -203,17 +197,12 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                root,
                                nccl_comm_,
                                stream));
-  VLOG(3) << "debug nccl comm context reduce, type: " << reduce_type;
 }
 
 void NCCLCommContext::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
-  VLOG(3) << "debug nccl comm context group_start";
 }
-void NCCLCommContext::GroupEnd() {
-  NCCL_CHECK(phi::dynload::ncclGroupEnd());
-  VLOG(3) << "debug nccl comm context group_end";
-}
+void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
 
 }  // namespace distributed
 }  // namespace phi
