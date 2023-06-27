@@ -951,7 +951,7 @@ def comm_analyse(main_program):
             varsize_count[int(v / gap)] = 1
 
     for k, v in reduce_vars.items():
-        print(f"all_reduce: {k}: {v} KB")
+        print(f"allreduce: {k}: {v} KB")
         if int(v / gap) in varsize_count:
             varsize_count[int(v / gap)] += 1
         else:

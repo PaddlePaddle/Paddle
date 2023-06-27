@@ -146,6 +146,39 @@ class ProcessGroup:
         genv = _get_global_env()
         global_rank = genv.rank
 
+        def get_default_store():
+            master_addr = os.getenv("MASTER_ADDR", None)
+            master_port = os.getenv("MASTER_PORT", None)
+            endpoints = (
+                ":".join([master_addr, master_port])
+                if master_addr and master_port
+                else None
+            )
+            if endpoints is None:
+                endpoints = os.getenv("PADDLE_MASTER", None)
+            if endpoints is None:
+                endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(',')[0]
+            assert endpoints, (
+                "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
+                "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
+                "and 'export MASTER_ADDR=54612'. Or you can start your training"
+                "with paddle.distributed.run module."
+            )
+            master_addr, master_port = endpoints.split(":")
+            master_port = int(master_port)
+            is_master = genv.rank == 0
+            stop_check_timeout = int(
+                os.getenv("FLAGS_stop_check_timeout", "900")
+            )
+            store = core.TCPStore(
+                master_addr,
+                master_port,
+                is_master,
+                genv.world_size,
+                timeout=stop_check_timeout,
+            )
+            return store
+
         if self.nranks >= 2 and global_rank in self.ranks:
             logger.info(
                 f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
@@ -159,23 +192,10 @@ class ProcessGroup:
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
 
-            master_endpoint = os.getenv("PADDLE_MASTER", None)
-            if master_endpoint:
-                master_addr = master_endpoint.split(":")[0]
-                master_port = int(master_endpoint.split(":")[1])
-                rank = genv.rank
-                world_size = genv.world_size
-                dev_id = genv.device_id
-                is_master = rank == 0
-                store = core.TCPStore(
-                    master_addr,
-                    master_port,
-                    is_master,
-                    world_size,
-                )
             if core.is_compiled_with_cuda():
+                store = get_default_store()
                 core.CommContextManager.create_nccl_comm_context(
-                    store, dev_id, 0, rank, world_size
+                    store, genv.device_id, 0, genv.rank, genv.world_size
                 )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
@@ -209,10 +229,11 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-            barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', ring_id
-            )
+            # barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle.distributed.barrier()
+            # paddle._legacy_C_ops.barrier(
+            #    barrier_tensor, barrier_tensor, 'ring_id', ring_id
+            # )
 
             # NOTE(zhiqiu): to avoid send/recv hang in lazy init
             if self._group_type == 'p2p':
@@ -225,10 +246,11 @@ class ProcessGroup:
                 paddle.device.cuda.synchronize()
 
         if self.nranks > 1:
-            barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+            # barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle.distributed.barrier()
+        # paddle._legacy_C_ops.barrier(
+        #    barrier_tensor, barrier_tensor, 'ring_id', 0
+        # )
 
         self._is_instantiate = True
 
