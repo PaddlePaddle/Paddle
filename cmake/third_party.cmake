@@ -260,6 +260,36 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
 endif()
 
 ########################### include third_party according to flags ###############################
+
+# cinn_only includes third-party libraries separately
+if(CINN_ONLY)
+  include(external/zlib)
+  include(external/gflags)
+  include(external/glog)
+  include(external/gtest)
+  include(external/protobuf)
+  if(WITH_PYTHON)
+    include(external/pybind11)
+  endif()
+  if(WITH_MKL)
+    include(external/mklml)
+  endif()
+  if(WITH_MKLDNN)
+    include(external/mkldnn)
+  endif()
+  return()
+endif()
+
+if(WITH_CINN)
+  if(WITH_MKL)
+    add_definitions(-DCINN_WITH_MKL_CBLAS)
+  endif()
+  if(WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_MKLDNN)
+  endif()
+endif()
+
+
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
 include(external/glog) # download, build, install glog
@@ -472,20 +502,6 @@ endif()
 if(WITH_LITE)
   message(STATUS "Compile Paddle with Lite Engine.")
   include(external/lite)
-endif()
-
-if(WITH_CINN)
-  message(STATUS "Compile Paddle with CINN.")
-  include(external/cinn)
-  add_definitions(-DPADDLE_WITH_CINN)
-  if(WITH_GPU)
-    add_definitions(-DCINN_WITH_CUDA)
-    add_definitions(-DCINN_WITH_CUDNN)
-  endif()
-  if(WITH_MKL)
-    add_definitions(-DCINN_WITH_MKL_CBLAS)
-    add_definitions(-DCINN_WITH_MKLDNN)
-  endif()
 endif()
 
 if(WITH_CRYPTO)

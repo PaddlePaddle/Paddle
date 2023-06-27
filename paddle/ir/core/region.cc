@@ -14,6 +14,8 @@
 
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/operation.h"
 
 namespace ir {
 Region::~Region() { clear(); }
@@ -29,6 +31,12 @@ Region::iterator Region::insert(const_iterator position, Block *block) {
   block->SetParent(this, iter);
   return iter;
 }
+
+Region::iterator Region::erase(const_iterator position) {
+  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this region.");
+  delete *position;
+  return blocks_.erase(position);
+}
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
@@ -42,5 +50,10 @@ void Region::clear() {
     delete blocks_.back();
     blocks_.pop_back();
   }
+}
+
+IrContext *Region::ir_context() const {
+  IR_ENFORCE(parent_, "Region is not attached to a container.");
+  return parent_->ir_context();
 }
 }  // namespace ir

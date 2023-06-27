@@ -2,6 +2,7 @@ cc_test_old(type_test SRCS type_test.cc DEPS ir gtest)
 cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS ir gtest)
 cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS ir gtest)
 cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS ir gtest)
+cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS ir gtest)
 cc_test_old(
   ir_program_test
   SRCS
@@ -74,3 +75,12 @@ cc_test_old(
   ir)
 
 cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest ir)
+cc_test_old(
+  ir_op_yaml_info_parser_test
+  SRCS
+  op_yaml_info_parser_test.cc
+  DEPS
+  gtest
+  pd_dialect
+  pd_interface
+  ir)

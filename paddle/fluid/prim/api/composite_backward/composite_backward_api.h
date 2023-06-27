@@ -1307,7 +1307,7 @@ void batch_norm_grad(const Tensor& x,
         set_output<T>(scale_grad_data, scale_grad);
       }
       if (bias_grad) {
-        set_output<T>(nhwc_out_grad_sum, bias_grad);
+        set_output<T>(assign<T>(nhwc_out_grad_sum), bias_grad);
       }
       break;
     }
@@ -1343,7 +1343,7 @@ void batch_norm_grad(const Tensor& x,
           set_output<T>(scale_grad_data, scale_grad);
         }
         if (bias_grad) {
-          set_output<T>(out_grad_data_sum, bias_grad);
+          set_output<T>(assign<T>(out_grad_data_sum), bias_grad);
         }
       }
       break;
