@@ -78,7 +78,6 @@ def fused_adam_step(inputs, attributes, num):
 
 class TestFusedAdamOp(OpTest):
     def setUp(self):
-
         paddle.enable_static()
 
         '''Test FusedAdam Op with supplied attributes'''
@@ -101,7 +100,6 @@ class TestFusedAdamOp(OpTest):
         }
 
         for i in range(num):
-
             inputs_list[0][i] = np.random.uniform(-1, 1, (102, 105)).astype(
                 "float32"
             )

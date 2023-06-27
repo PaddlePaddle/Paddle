@@ -62,6 +62,18 @@ option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
+option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
+option(CINN_ONLY "Compile CINN only in Paddle" OFF)
+option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
+
+find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+  set(GIT_URL "https://github.com")
+endif()
+
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -111,7 +123,7 @@ endif()
 
 if(WIN32)
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
-
+  message("Build static library of PHI")
   set(CMAKE_SUPPRESS_REGENERATION ON)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
 
@@ -228,13 +240,6 @@ else()
   )
 endif()
 
-find_package(Git REQUIRED)
-
-# config GIT_URL with github mirrors to speed up dependent repos clone
-option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
-if(NOT GIT_URL)
-  set(GIT_URL "https://github.com")
-endif()
 
 find_package(Threads REQUIRED)
 
@@ -264,7 +269,6 @@ option(COVERALLS_UPLOAD "Package code coverage data to coveralls" OFF)
 option(WITH_PSLIB "Compile with pslib support" OFF)
 option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
-option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
@@ -307,7 +311,7 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" ON)
+option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -568,6 +572,37 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
+
+#------------- cinn cmake config start --------------
+
+set(WITH_MKL_CBLAS ${WITH_MKL})
+set(WITH_CUDA ${WITH_GPU})
+set(WITH_CUDNN ${WITH_GPU})
+if(WITH_CINN)
+  message(STATUS "Compile Paddle with CINN.")
+  include(cmake/cinn.cmake)
+  add_definitions(-DPADDLE_WITH_CINN)
+  # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
+  #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
+  if(WITH_GPU)
+    set(WITH_CUDA ${WITH_GPU})
+    add_definitions(-DCINN_WITH_CUDA)
+    set(WITH_CUDNN ${CINN_WITH_CUDNN})
+    if(WITH_CUDNN)
+      add_definitions(-DCINN_WITH_CUDNN)
+    endif()
+  endif()
+
+  if(CINN_ONLY)
+    if(WITH_PYTHON)
+      add_subdirectory(python)
+    endif()
+    add_subdirectory(test)
+    return()
+  endif()
+endif()
+
+#------------- cinn cmake config end --------------
 
 if(WITH_PROFILER)
   find_package(Gperftools REQUIRED)

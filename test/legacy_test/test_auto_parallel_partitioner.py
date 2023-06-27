@@ -67,7 +67,6 @@ def get_programs(annotated_func):
 
 
 def is_all_parameters_shape_equal(prog1, prog2):
-
     params1 = prog1.all_parameters()
     params2 = prog2.all_parameters()
     params1.sort(key=lambda x: x.name)
@@ -84,7 +83,6 @@ def is_all_parameters_shape_equal(prog1, prog2):
 
 
 def check_tensor_split(prog1, varnames1, prog2, varnames2, axis, nsplit):
-
     for i in range(len(varnames1)):
         var1 = prog1.global_block().var(varnames1[i])
         var2 = prog2.global_block().var(varnames2[i])
@@ -229,7 +227,6 @@ def check_equal_dist_op_attr(
 def distributed_attr_check_for_dist_op(
     serial_main_prog, dist_main_prog, dist_context, serial_op_idx, dist_op_idx
 ):
-
     equal = True
     serial_ops = serial_main_prog.global_block().ops
     dist_ops = dist_main_prog.global_block().ops

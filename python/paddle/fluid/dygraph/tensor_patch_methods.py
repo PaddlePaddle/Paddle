@@ -409,7 +409,6 @@ def monkey_patch_tensor():
 
     @framework.dygraph_only
     def _to(self, device=None, dtype=None, blocking=None):
-
         if device is None and dtype is None and blocking is None:
             return self
 

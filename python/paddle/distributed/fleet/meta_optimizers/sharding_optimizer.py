@@ -848,7 +848,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             elif self._sharding_segment_strategy == "segment_anchors":
                 if int(op.attr('op_role')) == int(OpRole.Backward):
                     for input_name in op.desc.input_arg_names():
-
                         # NOTE (JZ-LIANG) naive rule to support amp, if amp change, should modify here accordingly
                         if self.user_defined_strategy.amp:
                             if ".cast_fp16@GRAD" not in input_name:
@@ -1766,7 +1765,6 @@ class ShardingOptimizer(MetaOptimizerBase):
     def create_persistable_gradients_and_insert_merge_ops(
         self, main_block, startup_block, insert_idx, grad_names, shard
     ):
-
         for grad_name in grad_names:
             assert (
                 get_grad_device(grad_name, shard) == shard.worker_idx

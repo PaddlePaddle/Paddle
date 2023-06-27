@@ -33,7 +33,8 @@ endif()
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
-set(utils_modules pretty_log string_helper benchmark)
+get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
+set(utils_modules pretty_log string_helper benchmark utf8proc)
 
 add_subdirectory(api)
 
@@ -58,15 +59,20 @@ set(KERNEL_LIST
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
-  cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
-                                   ${utils_modules})
+  cc_library(paddle_inference DEPS ${fluid_modules} ${ir_targets}
+                                   ${STATIC_INFERENCE_API} ${utils_modules})
 else()
   # message("${fluid_modules}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
   # message("${phi_modules}")
-  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                    ${STATIC_INFERENCE_API} ${utils_modules})
+  if(WIN32)
+    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                      ${STATIC_INFERENCE_API} ${utils_modules})
+  else()
+    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
+  endif()
 endif()
 
 if(NOT APPLE)
@@ -96,8 +102,13 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
-                          ${utils_modules})
+if(WIN32)
+  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} analysis_predictor
+                            ${utils_modules})
+else()
+  set(SHARED_INFERENCE_DEPS phi ${fluid_modules} ${ir_targets}
+                            analysis_predictor ${utils_modules})
+endif()
 
 if(WITH_CRYPTO)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)

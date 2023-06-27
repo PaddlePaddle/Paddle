@@ -526,3 +526,15 @@
            mv_csr{sparse_csr, dense -> dense}
     layout : x
   backward: mv_grad
+
+- op: slice
+  args : (Tensor x, IntArray axes, IntArray starts, IntArray ends)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : slice_coo{sparse_coo -> sparse_coo},
+           slice_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : slice_grad

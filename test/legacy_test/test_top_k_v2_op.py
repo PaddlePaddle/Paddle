@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.fluid import core
@@ -51,12 +55,16 @@ class TestTopkOp(OpTest):
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 20)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
             self.input_data, axis=self.axis, k=self.k, largest=self.largest
         )
         self.outputs = {'Out': output, 'Indices': indices}
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -115,6 +123,7 @@ class TestTopkOp4(TestTopkOp):
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
@@ -137,6 +146,7 @@ class TestTopkOp5(TestTopkOp):
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
@@ -159,6 +169,7 @@ class TestTopkOp6(TestTopkOp):
         self.dtype = np.float32
         self.input_data = np.random.rand(10, 10, 5)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
@@ -181,6 +192,7 @@ class TestTopkOp7(TestTopkOp):
         self.dtype = np.float16
         self.input_data = np.random.rand(10, 20, 10)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
@@ -198,6 +210,7 @@ class TestTopkFP16Op(TestTopkOp):
         self.prim_op_type = "prim"
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
@@ -218,9 +231,11 @@ class TestTopkBF16Op(TestTopkOp):
         self.public_python_api = paddle.topk
         self.dtype = np.uint16
         self.prim_op_type = "prim"
-        self.input_data = np.random.rand(10, 20).astype(np.float32)
+        self.input_data = np.random.random([10, 20]).astype(np.float32)
         self.init_args()
+        self.if_enable_cinn()
         self.inputs = {'X': convert_float_to_uint16(self.input_data)}
+        self.input_data = convert_uint16_to_float(self.inputs['X'])
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
         output, indices = numpy_topk(
             self.input_data, axis=self.axis, k=self.k, largest=self.largest
@@ -230,13 +245,16 @@ class TestTopkBF16Op(TestTopkOp):
             'Indices': indices,
         }
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, {'X'}, 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 class TestTopKAPI(unittest.TestCase):

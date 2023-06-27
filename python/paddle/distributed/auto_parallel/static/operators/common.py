@@ -338,7 +338,6 @@ def set_comm_op_dist_attr_for_program(
 
 
 def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
-
     ref_dist_attr = ctx.get_op_dist_attr_for_program(ref_op)
     new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ref_dist_attr.process_mesh

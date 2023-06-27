@@ -466,7 +466,7 @@ class DistributedOpsPass(PassBase):
             PSGPU = core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
-            except (ValueError):
+            except ValueError:
                 raise ValueError(
                     "The slot name in gpups Should be able to convert to integer."
                 )
@@ -922,7 +922,6 @@ class SplitHeterWorkerOpsPass(PassBase):
         first_op_index_fp = len(heter_block.ops)
 
         if stage_id < len(program_block_ops_list):
-
             heter_block_bp = heter_program._create_block(pre_block_idx)
             optimizer_block.append(heter_block_bp)
 

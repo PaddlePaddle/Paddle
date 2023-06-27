@@ -39,9 +39,6 @@ class TestViewAsComplexOp(OpTest):
         self.python_api = paddle.as_complex
         x = np.random.randn(10, 10, 2).astype("float64")
         out_ref = ref_view_as_complex(x)
-        self.out_grad = np.ones([10, 10], dtype="float64") + 1j * np.ones(
-            [10, 10], dtype="float64"
-        )
         self.inputs = {'X': x}
         self.outputs = {'Out': out_ref}
 
@@ -52,8 +49,6 @@ class TestViewAsComplexOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[ref_view_as_real(self.out_grad)],
-            user_defined_grad_outputs=[self.out_grad],
         )
 
 
@@ -67,7 +62,6 @@ class TestViewAsRealOp(OpTest):
         self.inputs = {'X': x}
         self.outputs = {'Out': out_ref}
         self.python_api = paddle.as_real
-        self.out_grad = np.ones([10, 10, 2], dtype="float64")
 
     def test_check_output(self):
         self.check_output()
@@ -76,8 +70,6 @@ class TestViewAsRealOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[ref_view_as_complex(self.out_grad)],
-            user_defined_grad_outputs=[self.out_grad],
         )
 
 

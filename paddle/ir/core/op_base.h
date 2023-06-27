@@ -20,7 +20,7 @@
 
 namespace ir {
 
-class InterfaceValue {
+class IR_API InterfaceValue {
  public:
   template <typename ConcreteOp, typename T>
   static InterfaceValue get() {
@@ -64,7 +64,7 @@ class InterfaceValue {
   void *model_{nullptr};
 };
 
-class OpBase {
+class IR_API OpBase {
  public:
   explicit OpBase(Operation *operation = nullptr) : operation_(operation) {}
 
@@ -113,7 +113,7 @@ class OpInterfaceBase : public OpBase {
   static ConcreteInterface dyn_cast(Operation *op) {
     if (op && op->HasInterface<ConcreteInterface>()) {
       return ConcreteInterface(
-          op, op->op_info().GetInterfaceImpl<ConcreteInterface>());
+          op, op->info().GetInterfaceImpl<ConcreteInterface>());
     }
     return ConcreteInterface(nullptr, nullptr);
   }
@@ -142,8 +142,8 @@ class ConstructInterfacesOrTraits {
   static void PlacementConstrctInterface(
       InterfaceValue *&p_interface) {  // NOLINT
     p_interface->swap(InterfaceValue::get<ConcreteOp, T>());
-    VLOG(4) << "New a interface: id[" << (p_interface->type_id()).storage()
-            << "].";
+    VLOG(4) << "New a interface: id["
+            << (p_interface->type_id()).AsOpaquePointer() << "].";
     ++p_interface;
   }
 
@@ -151,7 +151,7 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
-    VLOG(4) << "New a trait: id[" << p_trait->storage() << "].";
+    VLOG(4) << "New a trait: id[" << p_trait->AsOpaquePointer() << "].";
     ++p_trait;
   }
 };
@@ -184,7 +184,7 @@ class Op : public OpBase {
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
   static ConcreteOp dyn_cast(Operation *op) {
-    if (op && op->op_info().id() == TypeId::get<ConcreteOp>()) {
+    if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
     }
     return ConcreteOp(nullptr);
@@ -206,4 +206,5 @@ class Op : public OpBase {
     return trait_set;
   }
 };
+
 }  // namespace ir

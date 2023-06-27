@@ -318,6 +318,10 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
             for out_item in forward_op_item['outputs']:
                 if out_item['name'] in op_args['extra']['outputs']:
                     out_item['is_extra'] = True
+        if 'extra' in op_args and 'inputs' in op_args['extra']:
+            for input_item in forward_op_item['inputs']:
+                if input_item['name'] in op_args['extra']['inputs']:
+                    input_item['is_extra'] = True
 
         key_set = ['inputs', 'attrs', 'outputs']
         args_map = {}
@@ -496,7 +500,7 @@ def parse_get_expected_kerneltype(
             fw_name = op_comp_map['op'].split('(')[0].strip()
             # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
             new_get_expected_kernel_type_func_map = {}
-            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+            for key, value in op_comp_map['get_expected_kernel_type'].items():
                 new_get_expected_kernel_type_func_map[
                     delete_last_underline(key)
                 ] = value

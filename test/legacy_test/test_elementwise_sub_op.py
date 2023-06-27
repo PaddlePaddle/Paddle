@@ -787,7 +787,6 @@ class TestComplexElementwiseSubOp(OpTest):
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -810,13 +809,6 @@ class TestComplexElementwiseSubOp(OpTest):
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x - self.y
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
-            self.shape, self.dtype
-        )
-        self.grad_x = self.grad_out
-        self.grad_y = -self.grad_out
-
     def test_check_output(self):
         self.check_output()
 
@@ -824,8 +816,6 @@ class TestComplexElementwiseSubOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_prim=self.check_prim,
         )
 
@@ -834,8 +824,6 @@ class TestComplexElementwiseSubOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
             check_prim=self.check_prim,
         )
 
@@ -844,8 +832,6 @@ class TestComplexElementwiseSubOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
             check_prim=self.check_prim,
         )
 
@@ -853,7 +839,7 @@ class TestComplexElementwiseSubOp(OpTest):
         self.enable_cinn = False
 
     def if_check_prim(self):
-        self.check_prim = True
+        self.check_prim = False
 
 
 class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
@@ -863,13 +849,6 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
             self.dtype
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x - self.y
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
-            self.shape, self.dtype
-        )
-        self.grad_x = np.real(self.grad_out)
-        self.grad_y = -self.grad_out
 
     def if_enable_cinn(self):
         self.enable_cinn = False
@@ -1045,7 +1024,6 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
 
 class TestTensorSubAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
 

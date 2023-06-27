@@ -73,19 +73,19 @@ TEST(FillConstantReshapePass, basic) {
   pass->Apply(graph.get());
   auto fills = GetOpNodes(graph, "fill_constant");
   auto fill0_in_names = fills[0]->Op()->Input("ShapeTensorList");
-  std::vector<std::string> expect_fill0_in_names{
-      "shape0", "shape3", "shape1", "shape2", "shape4"};
+  std::vector<std::string> expect_fill0_out_names{
+      "shape5", "shape6", "shape7", "shape8", "shape9"};
+  std::vector<std::string> expect_fill1_out_names{
+      "shape0", "shape1", "shape2", "shape3", "shape4"};
   PADDLE_ENFORCE_EQ(fill0_in_names,
-                    expect_fill0_in_names,
+                    expect_fill0_out_names,
                     platform::errors::PreconditionNotMet(
-                        "fill_constant name should be updated."));
+                        "fill_constant name should not be updated."));
   auto fill1_in_names = fills[1]->Op()->Input("ShapeTensorList");
-  std::vector<std::string> expect_fill1_in_names{
-      "shape5", "shape8", "shape6", "shape7", "shape9"};
   PADDLE_ENFORCE_EQ(fill1_in_names,
-                    expect_fill1_in_names,
+                    expect_fill1_out_names,
                     platform::errors::PreconditionNotMet(
-                        "fill_constant name should be updated."));
+                        "fill_constant name should not be updated."));
 }
 
 TEST(GatherReshapePass, basic) {
@@ -108,6 +108,69 @@ TEST(GatherReshapePass, basic) {
   auto pass = PassRegistry::Instance().Get(
       "fused_multi_transformer_cachekv_layout_trans_pass");
   pass->Apply(graph.get());
+  auto gathers = GetOpNodes(graph, "gather");
+  for (auto* gather : gathers) {
+    PADDLE_ENFORCE_EQ(gather->Op()->GetAttrIfExists<int>("axis"),
+                      1,
+                      platform::errors::PreconditionNotMet(
+                          "gather's axis attr should not be updated by pass."));
+  }
+}
+
+TEST(FillConstantAndGatherReshapePass, basic) {
+  Layers layers;
+  auto* block = layers.Block();
+  auto* shape0 = Data(block, "shape0");
+  auto* shape1 = Data(block, "shape1");
+  auto* shape2 = Data(block, "shape2");
+  auto* shape3 = Data(block, "shape3");
+  auto* shape4 = Data(block, "shape4");
+  auto* shape5 = Data(block, "shape5");
+  auto* shape6 = Data(block, "shape6");
+  auto* shape7 = Data(block, "shape7");
+  auto* shape8 = Data(block, "shape8");
+  auto* shape9 = Data(block, "shape9");
+  auto* fill0 = fill_constant(block, {shape0, shape1, shape2, shape3, shape4});
+  fill0->SetShape({1, 2, 3, 4, 5});
+  auto* fill1 = fill_constant(block, {shape5, shape6, shape7, shape8, shape9});
+  fill1->SetShape({1, 2, 3, 4, 5});
+  OpDesc* fused_multi_transformer = block->AppendOp();
+  fused_multi_transformer->SetType("fused_multi_transformer");
+  fused_multi_transformer->SetInput("CacheKV", {fill0->Name(), fill1->Name()});
+
+  auto* gather0_x = layers.data("gather0_x", {2, 1, 24, 512, 64});
+  auto* gather0_index = layers.data("gather0_index", {1});
+  auto* gather0_out = layers.gather(gather0_x, gather0_index, 1);
+  gather0_out->SetShape({2, 1, 24, 512, 64});
+  auto* gather1_x = layers.data("gather1_x", {2, 1, 24, 512, 64});
+  auto* gather1_index = layers.data("gather1_index", {1});
+  auto* gather1_out = layers.gather(gather1_x, gather1_index, 1);
+  gather1_out->SetShape({2, 1, 24, 512, 64});
+  OpDesc* fused_multi_transformer1 = block->AppendOp();
+  fused_multi_transformer1->SetType("fused_multi_transformer");
+  fused_multi_transformer1->SetInput(
+      "CacheKV", {gather0_out->Name(), gather1_out->Name()});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  auto pass = PassRegistry::Instance().Get(
+      "fused_multi_transformer_cachekv_layout_trans_pass");
+  pass->Apply(graph.get());
+
+  auto fills = GetOpNodes(graph, "fill_constant");
+  auto fill0_in_names = fills[0]->Op()->Input("ShapeTensorList");
+  std::vector<std::string> expect_fill0_out_names{
+      "shape0", "shape3", "shape1", "shape2", "shape4"};
+  std::vector<std::string> expect_fill1_out_names{
+      "shape5", "shape8", "shape6", "shape7", "shape9"};
+  PADDLE_ENFORCE_EQ(fill0_in_names,
+                    expect_fill0_out_names,
+                    platform::errors::PreconditionNotMet(
+                        "fill_constant name should be updated."));
+  auto fill1_in_names = fills[1]->Op()->Input("ShapeTensorList");
+  PADDLE_ENFORCE_EQ(fill1_in_names,
+                    expect_fill1_out_names,
+                    platform::errors::PreconditionNotMet(
+                        "fill_constant name should be updated."));
   auto gathers = GetOpNodes(graph, "gather");
   for (auto* gather : gathers) {
     PADDLE_ENFORCE_EQ(

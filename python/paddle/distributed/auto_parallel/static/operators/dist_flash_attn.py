@@ -52,7 +52,6 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
 
     @staticmethod
     def forward(ctx, *args, **kwargs):
-
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         startup_block = dist_op_context.startup_block
@@ -65,7 +64,6 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
             and not op_dist_attr.is_recompute
             and rank_id in op_dist_attr.process_mesh.process_ids
         ):
-
             assert (
                 op_dist_attr is not None
             ), f"forward op [{str(src_op)}] don't have dist attribute !"

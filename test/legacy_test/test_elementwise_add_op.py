@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import unittest
 import warnings
@@ -688,7 +689,6 @@ class TestComplexElementwiseAddOp(OpTest):
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -698,7 +698,7 @@ class TestComplexElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
@@ -709,13 +709,6 @@ class TestComplexElementwiseAddOp(OpTest):
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
-            self.shape, self.dtype
-        )
-        self.grad_x = self.grad_out
-        self.grad_y = self.grad_out
-
     def test_check_output(self):
         self.check_output()
 
@@ -723,8 +716,6 @@ class TestComplexElementwiseAddOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_x(self):
@@ -732,8 +723,6 @@ class TestComplexElementwiseAddOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_y(self):
@@ -741,25 +730,16 @@ class TestComplexElementwiseAddOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.y = np.random.random(self.shape).astype(
+        self.x = np.random.random(self.shape).astype(
             self.dtype
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
-            self.shape, self.dtype
-        )
-        self.grad_x = np.real(self.grad_out)
-        self.grad_y = self.grad_out
 
 
 class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
@@ -845,7 +825,6 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
 
 class TestTensorAddAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
 
@@ -867,6 +846,50 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
                 in str(context[-1].message)
             )
             os.environ['FLAGS_print_extra_attrs'] = "0"
+
+
+class TestTensorFloa32Bfloat16OrFloat16Add(unittest.TestCase):
+    def _floa32_bfloat16_or_float16_add(self, y_dtype):
+        paddle.disable_static()
+        test_num = 5
+        val_range = 10000
+        shapes = []
+        for i in range(test_num):
+            shape = [np.random.randint(val_range), np.random.randint(val_range)]
+            shapes.append(shape)
+
+        for i, shape in enumerate(shapes):
+            x = paddle.randn(list(shape), dtype=paddle.float32)
+            x_copy = copy.deepcopy(x)
+            y = paddle.randn(list(shape), dtype=y_dtype)
+            x.add_(y)
+            x_copy.add_(paddle.cast(y, paddle.float32))
+            np.testing.assert_equal(x.numpy(), x_copy.numpy())
+            del x, x_copy
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
+)
+class TestTensorFloa32Bfloat16Add(TestTensorFloa32Bfloat16OrFloat16Add):
+    def test_floa32_bfloat16_add(self):
+        place = core.CUDAPlace(0)
+        with fluid.dygraph.base.guard(place=place):
+            self._floa32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0",
+)
+class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
+    def test_floa32_float16_add(self):
+        place = core.CUDAPlace(0)
+        with fluid.dygraph.base.guard(place=place):
+            self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
 
 
 if __name__ == '__main__':

@@ -134,7 +134,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         batch_nums=10,
         is_data_loader=False,
     ):
-
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         val_reader = paddle.dataset.mnist.train()
@@ -186,7 +185,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         quant_iterations=5,
         is_data_loader=False,
     ):
-
         origin_model_path = self.download_model(data_url, data_md5, model_name)
 
         print(
