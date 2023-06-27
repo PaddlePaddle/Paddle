@@ -426,8 +426,6 @@ class TrtConvertEinsumTest_DoubuleOperand_Matrix_Matrix(TrtLayerAutoScanTest):
                 max_xshape[0] = 4
                 min_yshape[0] = 1
                 max_yshape[0] = 4
-            print(min_xshape, min_yshape, max_xshape, max_yshape)
-            print(self.x_shape, self.y_shape)
             self.dynamic_shape.min_input_shape = {
                 "operands_data0": min_xshape,
                 "operands_data1": min_yshape,
