@@ -209,7 +209,6 @@ struct dispatch_stages {
                        size_t workspace_bytes,
                        cudaStream_t stream,
                        int* occupancy = nullptr) {
-    // std::cout<<__PRETTY_FUNCTION__<<std::endl;
     std::string err_msg = "Cutlass fpA_intB gemm. Not instantiates for arch " +
                           std::to_string(arch::kMinComputeCapability) +
                           " with stages set to " + std::to_string(Stages);
@@ -243,8 +242,6 @@ struct dispatch_stages<T,
                        size_t workspace_bytes,
                        cudaStream_t stream,
                        int* occupancy = nullptr) {
-    // std::cout<<__PRETTY_FUNCTION__<<std::endl;
-
     generic_mixed_gemm_kernelLauncher<T,
                                       WeightType,
                                       arch,
@@ -424,7 +421,6 @@ void dispatch_gemm_to_cutlass(const T* A,
                               CutlassGemmConfig gemm_config,
                               cudaStream_t stream,
                               int* occupancy = nullptr) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   // Note that SIMT configs are omitted here since they are not supported for
   // fpA_intB. We also only instantiate configs here where threadblockShapeM ==
   // warpShapeM since those usually perform the best for mixed type gemms.
@@ -555,7 +551,6 @@ void dispatch_gemm_to_cutlass(const T* A,
 
 template <typename T, typename WeightType>
 CutlassFpAIntBGemmRunner<T, WeightType>::CutlassFpAIntBGemmRunner() {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   int device{-1};
   check_cuda_error(cudaGetDevice(&device));
   sm_ = getSMVersion();
@@ -564,9 +559,7 @@ CutlassFpAIntBGemmRunner<T, WeightType>::CutlassFpAIntBGemmRunner() {
 }
 
 template <typename T, typename WeightType>
-CutlassFpAIntBGemmRunner<T, WeightType>::~CutlassFpAIntBGemmRunner() {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
-}
+CutlassFpAIntBGemmRunner<T, WeightType>::~CutlassFpAIntBGemmRunner() {}
 
 template <typename T, typename WeightType>
 template <typename EpilogueTag>
@@ -584,7 +577,6 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::dispatch_to_arch<EpilogueTag>(
     const size_t workspace_bytes,
     cudaStream_t stream,
     int* occupancy) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   // if (sm_ >= 70 && sm_ < 75) {
   //     dispatch_gemm_to_cutlass<T, WeightType, cutlass::arch::Sm70,
   //     EpilogueTag>(
@@ -634,7 +626,6 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag>(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   static constexpr bool is_weight_only = !std::is_same<T, WeightType>::value;
   const bool is_weight_only_encoder = m >= 512 ? true : false;
   std::vector<CutlassGemmConfig> candidate_configs =
@@ -699,7 +690,6 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm_bias_act(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   if (activation_type == "gelu") {
     run_gemm<EpilogueOpBiasFtGelu>(A,
                                    B,
@@ -752,7 +742,6 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::gemm(const T* A,
                                                    char* workspace_ptr,
                                                    const size_t workspace_bytes,
                                                    cudaStream_t stream) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   run_gemm<EpilogueOpNoBias>(A,
                              B,
                              weight_scales,
@@ -770,7 +759,6 @@ template <typename T, typename WeightType>
 int CutlassFpAIntBGemmRunner<T, WeightType>::getWorkspaceSize(const int m,
                                                               const int n,
                                                               const int k) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;    // These are the min tile
   // sizes for each config, which would launch the maximum number of blocks
   const int max_grid_m = (m + 31) / 32;
   const int max_grid_n = (n + 127) / 128;
@@ -795,7 +783,6 @@ void CutlassFpAIntBGemmRunner<float, WeightType>::gemm_bias_act(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   throw std::runtime_error(
       ("Attempting to run mixed gemm bias act when the types are the same is "
        "an error."));
@@ -813,7 +800,6 @@ void CutlassFpAIntBGemmRunner<float, WeightType>::gemm(
     char* workspace_ptr,
     const size_t workspace_bytes,
     cudaStream_t stream) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   throw std::runtime_error((
       "Attempting to run mixed gemm when the types are the same is an error."));
 }
@@ -822,7 +808,6 @@ template <typename WeightType>
 int CutlassFpAIntBGemmRunner<float, WeightType>::getWorkspaceSize(const int m,
                                                                   const int n,
                                                                   const int k) {
-  // std::cout<<__PRETTY_FUNCTION__<<std::endl;
   return 0;
 }
 
