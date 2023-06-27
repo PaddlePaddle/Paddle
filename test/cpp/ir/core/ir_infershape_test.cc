@@ -32,14 +32,14 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-#include "paddle/fluid/ir/interface/infershape.h"
+#include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 // Define op
 class OperationTest
-    : public ir::Op<OperationTest, paddle::dialect::InferShapeInterface> {
+    : public ir::Op<OperationTest, paddle::dialect::InferMetaInterface> {
  public:
   using Op::Op;
   static const char *name() { return "test.operation2"; }
@@ -89,8 +89,8 @@ TEST(infershape_test, infershape_test) {
   ir::Operation *op =
       ir::Operation::Create(op_inputs, {}, op_output_types, op_info);
 
-  paddle::dialect::InferShapeInterface interface =
-      op->dyn_cast<paddle::dialect::InferShapeInterface>();
+  paddle::dialect::InferMetaInterface interface =
+      op->dyn_cast<paddle::dialect::InferMetaInterface>();
   phi::InferMetaContext infer_meta_ctx;
   infer_meta_ctx.EmplaceBackAttr(phi::IntArray({5, 6}));
   infer_meta_ctx.EmplaceBackAttr(phi::DataType::FLOAT32);

@@ -34,6 +34,7 @@
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -146,19 +147,24 @@ void BuildScope(ir::Block* block,
         }
         auto var = scope->Var(name);
         // Only support DenseTensor or Vector<DenseTensor>
-        if (ptr.type().isa<paddle::dialect::DenseTensorType>()) {
+        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>() ||
+            ptr.type().isa<paddle::dialect::DenseTensorType>()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type().isa<ir::VectorType>()) {
           auto tensor_array =
               var->GetMutable<paddle::framework::TensorRefArray>();
           for (size_t i = 0; i < ptr.type().dyn_cast<ir::VectorType>().size();
                i++) {
-            PADDLE_ENFORCE(ptr.type()
-                               .dyn_cast<ir::VectorType>()[i]
-                               .isa<paddle::dialect::DenseTensorType>(),
-                           paddle::platform::errors::Fatal(
-                               "Element of VectorType output only support "
-                               "DenseTensorType"));
+            PADDLE_ENFORCE(
+                ptr.type()
+                        .dyn_cast<ir::VectorType>()[i]
+                        .isa<paddle::dialect::AllocatedDenseTensorType>() ||
+                    ptr.type()
+                        .dyn_cast<ir::VectorType>()[i]
+                        .isa<paddle::dialect::DenseTensorType>(),
+                paddle::platform::errors::Fatal(
+                    "Element of VectorType output only support "
+                    "DenseTensorType"));
             std::string name_i = "inner_var_" + std::to_string(count++);
             auto var_i = scope->Var(name_i);
             tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
