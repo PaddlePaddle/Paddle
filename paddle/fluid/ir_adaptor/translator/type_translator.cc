@@ -31,6 +31,18 @@ using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 
 TypeTranslator::TypeTranslator() {
   handlers = {
+      {VarType::BOOL,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::BoolType::get(ctx);
+       }},
+      {VarType::UINT8,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::UInt8Type::get(ctx);
+       }},
+      {VarType::INT32,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int32Type::get(ctx);
+       }},
       {VarType::INT64,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Int64Type::get(ctx);
@@ -46,7 +58,7 @@ TypeTranslator::TypeTranslator() {
       {VarType::LOD_TENSOR,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          VLOG(10) << "[vartype translating]"
-                  << "[" << var_desc.Name() << "]" << var_desc.GetDataType();
+                  << "[" << var_desc.Name() << "] from LOD_TENSOR";
 
          ir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
@@ -56,6 +68,20 @@ TypeTranslator::TypeTranslator() {
          DenseTensorTypeStorage::LoD lod = {};
          size_t offset = 0;
          return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
+       }},
+      {VarType::LOD_TENSOR_ARRAY,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         VLOG(10) << "[vartype translating]"
+                  << "[" << var_desc.Name() << "] from LOD_TENSOR_ARRAY";
+
+         return ir::VectorType::get(ctx, std::vector<ir::Type>{});
+       }},
+      {VarType::SELECTED_ROWS,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         VLOG(10) << "[vartype translating]"
+                  << "[" << var_desc.Name() << "] from SELECTED_ROWS";
+
+         return this->operator[](VarType::LOD_TENSOR)(ctx, var_desc);
        }},
   };
 }
