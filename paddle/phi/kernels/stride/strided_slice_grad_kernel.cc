@@ -32,7 +32,7 @@ void StridedSliceRawGradStridedKernel(const Context& dev_ctx,
                                       const std::vector<int>& decrease_axis,
                                       DenseTensor* x_grad) {
   dev_ctx.Alloc(x_grad, x_grad->dtype());
-  x_grad->set_stride(DenseTensorMeta::calc_stride(x_grad->dims()));
+  x_grad->set_strides(DenseTensorMeta::calc_strides(x_grad->dims()));
   PD_VISIT_ALL_TYPES(x_grad->dtype(), "StridedSliceRawGradStridedKernel", ([&] {
                        phi::FillKernel<data_t, Context>(
                            dev_ctx, *x_grad, 0, x_grad);
@@ -53,7 +53,7 @@ void StridedSliceRawGradStridedKernel(const Context& dev_ctx,
             dev_ctx,
             out_grad,
             phi::vectorize<int64_t>(tmp.dims()),
-            phi::vectorize<int64_t>(tmp.stride()),
+            phi::vectorize<int64_t>(tmp.strides()),
             tmp.offset(),
             &tmp);
       }));

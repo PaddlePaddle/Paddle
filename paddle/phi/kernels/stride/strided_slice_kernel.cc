@@ -36,7 +36,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   std::vector<int64_t> strides = strides_arr.GetData();
 
   std::vector<int64_t> output_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.stride());
+  std::vector<int64_t> output_stride = phi::vectorize<int64_t>(input.strides());
   int64_t output_offset = input.offset();
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis_size = input.dims()[axes[i]];
@@ -113,7 +113,7 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.stride = DDim(output_stride.data(), output_stride.size());
+  meta.strides = DDim(output_stride.data(), output_stride.size());
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
 }

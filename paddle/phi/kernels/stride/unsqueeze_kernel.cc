@@ -29,7 +29,7 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
                                  DenseTensor* out) {
   std::vector<int64_t> axes = axes_arr.GetData();
   std::vector<int64_t> input_dims = phi::vectorize<int64_t>(input.dims());
-  std::vector<int64_t> input_stride = phi::vectorize<int64_t>(input.stride());
+  std::vector<int64_t> input_stride = phi::vectorize<int64_t>(input.strides());
 
   if (input.Holder() == out->Holder() && input.meta() == out->meta()) {
     input_dims = phi::vectorize<int64_t>(out->dims());
@@ -64,7 +64,7 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.stride = DDim(output_stride.data(), output_stride.size());
+  meta.strides = DDim(output_stride.data(), output_stride.size());
   meta.offset = input.offset();
   out->set_meta(meta);
   out->ResetHolder(input.Holder());

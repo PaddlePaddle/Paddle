@@ -31,7 +31,7 @@ void IndexSelectStridedKernel(const Context& ctx,
   dim = dim >= 0 ? dim : dim + input_dim.size();
 
   std::vector<int64_t> shape = phi::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> stride = phi::vectorize<int64_t>(x.stride());
+  std::vector<int64_t> stride = phi::vectorize<int64_t>(x.strides());
   int64_t offset = x.offset();
 
   offset = offset + index * stride[dim] * SizeOf(output->dtype());
@@ -49,7 +49,7 @@ void IndexSelectStridedKernel(const Context& ctx,
   //                          tmp_dim));
   // }
   meta.dims = tmp_dim;
-  meta.stride = DDim(stride.data(), stride.size());
+  meta.strides = DDim(stride.data(), stride.size());
   output->set_meta(meta);
   output->ResetHolder(x.Holder());
 }

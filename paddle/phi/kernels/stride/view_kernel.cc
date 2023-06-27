@@ -25,10 +25,10 @@ void ViewShapeKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   DDim new_dims = DDim(dims.data(), dims.size());
   DDim stride;
-  if (ReshapeStride(input.dims(), input.stride(), new_dims, stride)) {
+  if (ReshapeStride(input.dims(), input.strides(), new_dims, stride)) {
     auto meta = input.meta();
     meta.dims = new_dims;
-    meta.stride = stride;
+    meta.strides = stride;
     meta.offset = input.offset();
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
@@ -56,20 +56,20 @@ void ViewDtypeKernel(const Context& dev_ctx,
         "The Tensor's shape is [] can not be viewed."));
   } else if (input_dtype_size > output_dtype_size) {
     PADDLE_ENFORCE_EQ(
-        input.stride()[input.stride().size() - 1],
+        input.strides()[input.strides().size() - 1],
         1,
         phi::errors::InvalidArgument(
-            "input.stride[-1] must be 1 to view %s as %s, but got %d",
+            "input.strides[-1] must be 1 to view %s as %s, but got %d",
             input.dtype(),
             dtype,
-            input.stride()[input.stride().size() - 1]));
+            input.strides()[input.strides().size() - 1]));
     size_t times = input_dtype_size / output_dtype_size;
 
     DDim output_dims = input.dims();
     output_dims[output_dims.size() - 1] =
         output_dims[output_dims.size() - 1] * times;
 
-    DDim output_stride = input.stride();
+    DDim output_stride = input.strides();
     for (int i = 0; i < output_stride.size(); i++) {
       output_stride[i] = output_stride[i] * times;
     }
@@ -78,20 +78,20 @@ void ViewDtypeKernel(const Context& dev_ctx,
     auto meta = input.meta();
     meta.dtype = dtype;
     meta.dims = output_dims;
-    meta.stride = output_stride;
+    meta.strides = output_stride;
     meta.offset = input.offset() * times;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
   } else {
     PADDLE_ENFORCE_EQ(
-        input.stride()[input.stride().size() - 1],
+        input.strides()[input.strides().size() - 1],
         1,
         phi::errors::InvalidArgument(
-            "input.stride[%d] must be 1 to view %s as %s, but got %d",
-            input.stride().size() - 1,
+            "input.strides[%d] must be 1 to view %s as %s, but got %d",
+            input.strides().size() - 1,
             input.dtype(),
             dtype,
-            input.stride()[input.stride().size() - 1]));
+            input.strides()[input.strides().size() - 1]));
     size_t times = input_dtype_size / output_dtype_size;
     PADDLE_ENFORCE_EQ(
         input.dims()[input.dims().size() - 1] % times,
@@ -117,18 +117,18 @@ void ViewDtypeKernel(const Context& dev_ctx,
     output_dims[output_dims.size() - 1] =
         output_dims[output_dims.size() - 1] / times;
 
-    DDim output_stride = input.stride();
+    DDim output_stride = input.strides();
     for (int i = 0; i < output_stride.size(); i++) {
       PADDLE_ENFORCE_EQ(
           output_stride[i] % times,
           0,
-          phi::errors::InvalidArgument(
-              "input.stride[%d](%d) must be be multiple of %d to view %s as %s",
-              i,
-              output_stride[i],
-              times,
-              input.dtype(),
-              dtype));
+          phi::errors::InvalidArgument("input.strides[%d](%d) must be be "
+                                       "multiple of %d to view %s as %s",
+                                       i,
+                                       output_stride[i],
+                                       times,
+                                       input.dtype(),
+                                       dtype));
       output_stride[i] = output_stride[i] / times;
     }
     output_stride[output_stride.size() - 1] = 1;
@@ -136,7 +136,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     auto meta = input.meta();
     meta.dtype = dtype;
     meta.dims = output_dims;
-    meta.stride = output_stride;
+    meta.strides = output_stride;
     meta.offset = input.offset() / times;
     out->set_meta(meta);
     out->ResetHolder(input.Holder());

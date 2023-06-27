@@ -32,7 +32,7 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
     axis += input.dims().size();
   }
   dev_ctx.Alloc(input_grad, input_grad->dtype());
-  input_grad->set_stride(DenseTensorMeta::calc_stride(input_grad->dims()));
+  input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   if (out_grad.numel() < input.numel()) {
     PD_VISIT_ALL_TYPES(input_grad->dtype(), "TensorUnfoldGradKernel", ([&] {
                          phi::FillKernel<data_t, Context>(
@@ -46,7 +46,7 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
                            dev_ctx,
                            out_grad,
                            phi::vectorize<int64_t>(tmp.dims()),
-                           phi::vectorize<int64_t>(tmp.stride()),
+                           phi::vectorize<int64_t>(tmp.strides()),
                            tmp.offset(),
                            &tmp);
                      }));

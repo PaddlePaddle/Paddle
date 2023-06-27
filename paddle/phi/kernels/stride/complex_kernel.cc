@@ -28,12 +28,12 @@ void RealStridedKernel(const Context& dev_ctx,
                               "COMPLEX128, but the input dtype is %s",
                               x.dtype()));
   }
-  DDim stride = x.stride();
+  DDim stride = x.strides();
   for (int i = 0; i < stride.size(); i++) {
-    stride[i] = x.stride()[i] * 2;
+    stride[i] = x.strides()[i] * 2;
   }
   out->set_offset(x.offset());
-  out->set_stride(stride);
+  out->set_strides(stride);
   out->ResetHolder(x.Holder());
 }
 
@@ -47,11 +47,11 @@ void ImagStridedKernel(const Context& dev_ctx,
                               "COMPLEX128, but the input dtype is %s",
                               x.dtype()));
   }
-  DDim stride = x.stride();
+  DDim stride = x.strides();
   for (int i = 0; i < stride.size(); i++) {
-    stride[i] = x.stride()[i] * 2;
+    stride[i] = x.strides()[i] * 2;
   }
-  out->set_stride(stride);
+  out->set_strides(stride);
   out->set_offset(x.offset() + phi::SizeOf(out->dtype()));
   out->ResetHolder(x.Holder());
 }

@@ -25,7 +25,7 @@ void AsStridedKernel(const Context& dev_ctx,
                      int64_t offset,
                      DenseTensor* out) {
   out->Resize(DDim(dims.data(), dims.size()));
-  out->set_stride(DDim(stride.data(), stride.size()));
+  out->set_strides(DDim(stride.data(), stride.size()));
   out->set_offset(offset);
   out->ResetHolder(input.Holder());
 }

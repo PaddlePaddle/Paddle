@@ -27,14 +27,14 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* xshape UNUSED) {
   DDim x_dims = x.dims();
-  DDim x_stride = x.stride();
+  DDim x_stride = x.strides();
   size_t x_offset = x.offset();
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
   DDim stride;
   if (ReshapeStride(x_dims, x_stride, out->dims(), stride)) {
     out->set_offset(x_offset);
-    out->set_stride(stride);
+    out->set_strides(stride);
     out->ResetHolder(x.Holder());
   } else {
     DenseTensor tmp;
@@ -43,7 +43,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
                          phi::ContiguousKernel<data_t, Context>(
                              dev_ctx, x, &tmp);
                        }));
-    out->set_stride(DenseTensorMeta::calc_stride(out->dims()));
+    out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
     out->ResetHolder(tmp.Holder());
   }
 }

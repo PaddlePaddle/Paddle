@@ -23,7 +23,7 @@ template <typename Context>
 void AsComplexStridedKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             DenseTensor* out) {
-  out->set_stride(DenseTensorMeta::calc_stride(out->dims()));
+  out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
   if (x.dtype() == DataType::FLOAT32) {
     out->set_type(DataType::COMPLEX64);
   } else if (x.dtype() == DataType::FLOAT64) {

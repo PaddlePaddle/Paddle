@@ -93,11 +93,11 @@ class DenseTensor : public TensorBase,
 
   /// \brief Returns the stride of the tensor.
   /// \return The stride of the tensor.
-  const DDim& stride() const noexcept { return meta_.stride; }
+  const DDim& strides() const noexcept { return meta_.strides; }
 
   /// \brief Sets the stride of the tensor.
   /// \param meta The stride of the tensor.
-  void set_stride(const DDim& stride) { meta_.stride = stride; }
+  void set_strides(const DDim& strides) { meta_.strides = strides; }
 
   /// \brief Returns the lod of the tensor.
   /// \return The lod of the tensor.

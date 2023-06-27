@@ -29,7 +29,7 @@ void TensorUnfoldKernel(const Context& dev_ctx,
   }
 
   const DDim& input_dims = input.dims();
-  const DDim& input_stride = input.stride();
+  const DDim& input_stride = input.strides();
   int64_t max_size = input_dims.size() == 0 ? 1 : input_dims[axis];
 
   PADDLE_ENFORCE_LE(
@@ -60,7 +60,7 @@ void TensorUnfoldKernel(const Context& dev_ctx,
   }
 
   out->Resize(DDim(shape.data(), shape.size()));
-  out->set_stride(DDim(stride.data(), stride.size()));
+  out->set_strides(DDim(stride.data(), stride.size()));
   out->set_offset(input.offset());
   out->ResetHolder(input.Holder());
 }

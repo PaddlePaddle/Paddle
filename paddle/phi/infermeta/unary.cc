@@ -5061,7 +5061,7 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_meta(x);
-  out->set_stride(x.stride());
+  out->set_strides(x.strides());
 }
 
 }  // namespace phi

@@ -285,14 +285,14 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyObject* tensor_properties_get_stride(TensorObject* self, void* closure) {
+PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
     return ToPyObject(value);
   }
 
-  auto stride = self->tensor.stride();
+  auto stride = self->tensor.strides();
   size_t rank = static_cast<size_t>(stride.size());
   value.resize(rank);
 
@@ -412,7 +412,11 @@ struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
     {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
-    {"stride", (getter)tensor_properties_get_stride, nullptr, nullptr, nullptr},
+    {"strides",
+     (getter)tensor_properties_get_strides,
+     nullptr,
+     nullptr,
+     nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
     {"offset", (getter)tensor_properties_get_offset, nullptr, nullptr, nullptr},
     {"dist_attr",

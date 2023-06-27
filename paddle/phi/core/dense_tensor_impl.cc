@@ -65,8 +65,8 @@ const Place& DenseTensor::place() const {
 phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
 void DenseTensor::set_layout(const DataLayout layout) {
-  if (product(meta_.stride) == 0 || meta_.layout != layout) {
-    meta_.stride = meta_.calc_stride(meta_.dims, layout);
+  if (product(meta_.strides) == 0 || meta_.layout != layout) {
+    meta_.strides = meta_.calc_strides(meta_.dims, layout);
   }
   meta_.layout = layout;
 }
@@ -170,11 +170,11 @@ inline T* DenseTensor::mutable_data(const DDim& dims,
                           "Tensor stride is %s. New dims is %s.",
                           meta_.dims,
                           meta_.layout,
-                          meta_.stride,
+                          meta_.strides,
                           dims));
   }
   meta_.dims = dims;
-  meta_.stride = meta_.calc_stride(meta_.dims, meta_.layout);
+  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   return mutable_data<T>(place, requested_size);
 }
 
@@ -277,11 +277,11 @@ DenseTensor& DenseTensor::Resize(const DDim& dims) {
                           "Tensor stride is %s. New dims is %s.",
                           meta_.dims,
                           meta_.layout,
-                          meta_.stride,
+                          meta_.strides,
                           dims));
   }
   meta_.dims = dims;
-  meta_.stride = meta_.calc_stride(meta_.dims, meta_.layout);
+  meta_.strides = meta_.calc_strides(meta_.dims, meta_.layout);
   return *this;
 }
 
@@ -389,7 +389,7 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
   meta_.use_gpudnn = src.meta_.use_gpudnn;
-  meta_.stride = src.meta_.stride;
+  meta_.strides = src.meta_.strides;
   storage_properties_ =
       std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN

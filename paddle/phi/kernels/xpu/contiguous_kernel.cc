@@ -25,7 +25,7 @@ void ContiguousKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
-  meta.stride = meta.calc_stride(meta.dims, meta.layout);
+  meta.strides = meta.calc_strides(meta.dims, meta.layout);
   meta.offset = 0;
   out->set_meta(meta);
 
@@ -36,7 +36,7 @@ void ContiguousKernel(const Context& dev_ctx,
                                 input_data,
                                 output_data,
                                 phi::vectorize<int64_t>(input.dims()),
-                                phi::vectorize<int64_t>(input.stride()),
+                                phi::vectorize<int64_t>(input.strides()),
                                 0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
 }

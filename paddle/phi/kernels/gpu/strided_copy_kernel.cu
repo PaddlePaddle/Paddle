@@ -20,27 +20,29 @@ namespace phi {
 
 // TODO(wanghuancoder) delete output_rank and output_stride if they are same
 // with input's
-template <typename T>
-__global__ void StridedCopyFunc(const T* input_data,
-                                const int input_rank,
-                                const int64_t* input_dims,
-                                const int64_t* input_stride,
-                                T* output_data,
-                                const int output_rank,
-                                const int64_t* output_dims,
-                                const int64_t* output_stride,
-                                const int64_t numel) {
+template <typename T, size_t IN_RANK, size_t OUT_RANK>
+__global__ void StridedCopyFunc(
+    const T* input_data,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride,
+    T* output_data,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims,
+    phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride,
+    const int64_t numel) {
   int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+#pragma unroll
   for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
     int64_t input_offset = 0;
     int64_t index_tmp = i;
-    for (int dim = input_rank - 1; dim >= 0; --dim) {
+#pragma unroll
+    for (int dim = IN_RANK - 1; dim >= 0; --dim) {
       input_offset += (index_tmp % input_dims[dim]) * input_stride[dim];
       index_tmp = index_tmp / input_dims[dim];
     }
     int64_t output_offset = 0;
     index_tmp = i;
-    for (int dim = output_rank - 1; dim >= 0; --dim) {
+#pragma unroll
+    for (int dim = OUT_RANK - 1; dim >= 0; --dim) {
       output_offset += (index_tmp % output_dims[dim]) * output_stride[dim];
       index_tmp = index_tmp / output_dims[dim];
     }
@@ -56,20 +58,28 @@ void StridedCopyKernel(const Context& dev_ctx,
                        int64_t offset,
                        DenseTensor* out) {
   phi::DenseTensorMeta meta = input.meta();
-  meta.stride = phi::make_ddim(out_stride);
+  meta.strides = phi::make_ddim(out_stride);
   meta.dims = phi::make_ddim(dims);
   meta.offset = offset;
   out->set_meta(meta);
 
   const T* input_data = input.data<T>();
   int input_rank = input.dims().size();
-  const int64_t* input_dims = input.dims().Get();
-  const int64_t* input_stride = input.stride().Get();
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_dims;
+  for (int i = 0; i < input.dims().size(); i++) {
+    input_dims[i] = input.dims()[i];
+    input_stride[i] = input.strides()[i];
+  }
 
   T* output_data = dev_ctx.template Alloc<T>(out);
   int output_rank = meta.dims.size();
-  const int64_t* output_dims = meta.dims.Get();
-  const int64_t* output_stride = meta.stride.Get();
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride;
+  phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_dims;
+  for (int i = 0; i < meta.dims.size(); i++) {
+    output_dims[i] = meta.dims[i];
+    output_stride[i] = meta.strides[i];
+  }
 
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
@@ -89,45 +99,894 @@ void StridedCopyKernel(const Context& dev_ctx,
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
 
-  int64_t* tmp_data = reinterpret_cast<int64_t*>(
-      malloc(sizeof(int64_t) * (input_rank * 2 + output_rank * 2)));
-  std::memcpy(tmp_data, input_dims, sizeof(int64_t) * input_rank);
-  std::memcpy(
-      tmp_data + input_rank, input_stride, sizeof(int64_t) * input_rank);
-  std::memcpy(tmp_data + input_rank + input_rank,
-              output_dims,
-              sizeof(int64_t) * output_rank);
-  std::memcpy(tmp_data + input_rank + input_rank + output_rank,
-              output_stride,
-              sizeof(int64_t) * output_rank);
-
-  auto dims_stride = memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int64_t* dims_stride_data = reinterpret_cast<int64_t*>(dims_stride->ptr());
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     dims_stride_data,
-                     phi::CPUPlace(),
-                     tmp_data,
-                     sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
-                     dev_ctx.stream());
-
-  cudaStreamCallback_t free_when_cb = [](cudaStream_t stream,
-                                         cudaError_t status,
-                                         void* userData) { free(userData); };
-  cudaStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
-
-  StridedCopyFunc<<<grid, block, 0, dev_ctx.stream()>>>(
-      input_data,
-      input_rank,
-      dims_stride_data,
-      dims_stride_data + input_rank,
-      output_data,
-      output_rank,
-      dims_stride_data + input_rank + input_rank,
-      dims_stride_data + input_rank + input_rank + output_rank,
-      numel);
+  switch (input_rank) {
+    case 1: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 1, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 1, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 1, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 1, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 1, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 1, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 1, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 1, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 1, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 2: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 2, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 2, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 2, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 2, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 2, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 2, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 2, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 2, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 2, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 3: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 3, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 3, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 3, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 3, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 3, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 3, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 3, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 3, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 3, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 4: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 4, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 4, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 4, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 4, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 4, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 4, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 4, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 4, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 4, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 5: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 5, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 5, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 5, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 5, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 5, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 5, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 5, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 5, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 5, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 6: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 6, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 6, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 6, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 6, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 6, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 6, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 6, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 6, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 6, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 7: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 7, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 7, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 7, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 7, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 7, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 7, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 7, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 7, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 7, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 8: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 8, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 8, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 8, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 8, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 8, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 8, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 8, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 8, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 8, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    case 9: {
+      switch (output_rank) {
+        case 1:
+          StridedCopyFunc<T, 9, 1>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 2:
+          StridedCopyFunc<T, 9, 2>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 3:
+          StridedCopyFunc<T, 9, 3>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 4:
+          StridedCopyFunc<T, 9, 4>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 5:
+          StridedCopyFunc<T, 9, 5>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 6:
+          StridedCopyFunc<T, 9, 6>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 7:
+          StridedCopyFunc<T, 9, 7>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 8:
+          StridedCopyFunc<T, 9, 8>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        case 9:
+          StridedCopyFunc<T, 9, 9>
+              <<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                     input_dims,
+                                                     input_stride,
+                                                     output_data,
+                                                     output_dims,
+                                                     output_stride,
+                                                     numel);
+          break;
+        default:
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The rank of output should be less than 9, but received %d.",
+              output_rank));
+      }
+    } break;
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The rank of input should be less than 9, but received %d.",
+          input_rank));
+  }
 }
 
 }  // namespace phi
