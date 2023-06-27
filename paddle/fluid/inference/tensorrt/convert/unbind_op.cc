@@ -63,7 +63,6 @@ class UnbindOpConverter : public OpConverter {
         auto inputSliced = TRT_ENGINE_ADD_LAYER(
         engine_, Slice, *input_x_tensor, start, size, stride)->getOutput(0);
         // 2 reshape
-        // auto inputReshaped = Reshape(inputSliced, newDims, ("unbind: reshape: (Output(" + output_name + ")").c_str());
         auto inputReshaped = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputSliced);
         inputReshaped->setInput(1, *newDims);
         RreplenishLayerAndOutput(inputReshaped, "unbind", {output_name}, test_mode);
