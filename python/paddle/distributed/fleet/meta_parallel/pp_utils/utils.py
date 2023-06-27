@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import warnings
 from collections import OrderedDict
 
 import numpy as np
@@ -168,6 +168,17 @@ class FusedCommBuffer:
         self._comm_group = comm_group
 
         self.use_main_grad = hasattr(self._params[0], "main_grad")
+
+        if not self.use_main_grad:
+            warnings.warn(
+                "You are using comm overlap for dp but are not using main_grad. "
+                "Please call _unset_fake_empty() for each parameter after clear_grad(). \n"
+                "``` \n "
+                "opt.clear_grad() \n"
+                "for param in model.parameters(): \n"
+                "    param._unset_fake_empty() \n"
+                "```"
+            )
 
         self._task = None
         self._params_step_dict = {}
