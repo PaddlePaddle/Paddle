@@ -455,6 +455,7 @@ def launch():
             # generate a new config
             new_cfg = auto_tuner.search_once()
             cur_cfg = copy.deepcopy(new_cfg)
+            auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
             time.sleep(3)
