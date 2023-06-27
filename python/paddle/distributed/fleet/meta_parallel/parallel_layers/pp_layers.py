@@ -638,22 +638,32 @@ class PipelineLayer(nn.Layer):
                 logger.info(f"loss: {self._loss_fn.__class__.__name__}")
 
     def _build_layer_with_interleave(self):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
+
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         for i in range(len(self._start_poss)):
             start = self._start_poss[i]
             end = self._end_poss[i]
             # Get a model chunk
-            chunk = self._build_layer_impl(start, end)
+            chunk = self._build_layer_impl(start, end, is_interleave=True)
             assert isinstance(chunk, PipelineLayerChunk)
             # Add the chunk to all chunks and add this chunk to the sublayer
             self._model_chunks.append(chunk)
             self.add_sublayer(str(start), chunk)
+
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
     def _build_layer(self):
         start = self._start_pos
         end = self._end_pos
         self.run_function = self._build_layer_impl(start, end)
 
-    def _build_layer_impl(self, start, end):
+    def _build_layer_impl(self, start, end, is_interleave=False):
         if self._num_virtual_pipeline_stages > 1:
             # For interleave scheduler, all layers relating with one model chunk will be saved in PipelineLayerChunk
             run_function = PipelineLayerChunk()
@@ -665,8 +675,9 @@ class PipelineLayer(nn.Layer):
             get_rng_state_tracker,
         )
 
-        orig_rng_state = paddle.get_rng_state()
-        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+        if not is_interleave:
+            orig_rng_state = paddle.get_rng_state()
+            orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
 
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
@@ -722,8 +733,9 @@ class PipelineLayer(nn.Layer):
             else:
                 run_function.append(layer)
 
-        paddle.set_rng_state(orig_rng_state)
-        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
+        if not is_interleave:
+            paddle.set_rng_state(orig_rng_state)
+            get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
         return run_function
 
     def forward_function(self, start, end):
