@@ -69,28 +69,27 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
-  // forbid constant folding when model has control flow ops.
-  const std::vector<std::string> forbidden_folding_ops{"while",
-                                                       "conditional_block"};
-  std::unordered_set<Node *> forbidden_folding_nodes;
+  // forbid constant folding when current folding op output tensor will be
+  // override by other op. Example:
+  //   If assign op is the conditional_block subblock op,
+  //   and assign op output is conditional_block op output.
+  //   When condition is true, it should do assgin compute,
+  //   but if the assgin op is folded, it will cause an error.
+  const std::vector<std::string> control_flow_ops{
+      "while", "conditional_block", "increment"};
+  std::unordered_set<std::string> control_flow_var_node_names;
   for (auto *op_node : op_node_sorted) {
     if (!op_node->IsOp()) continue;
     auto op_type = op_node->Op()->Type();
-    if (std::find(forbidden_folding_ops.begin(),
-                  forbidden_folding_ops.end(),
-                  op_type) != forbidden_folding_ops.end()) {
+    if (std::find(control_flow_ops.begin(), control_flow_ops.end(), op_type) !=
+        control_flow_ops.end()) {
       continue;
     }
-    forbidden_folding_nodes.insert(op_node);
     for (auto in_var_node : op_node->inputs) {
-      for (auto link_op_node : in_var_node->outputs) {
-        forbidden_folding_nodes.insert(link_op_node);
-      }
+      control_flow_var_node_names.insert(in_var_node->Var()->Name());
     }
     for (auto out_var_node : op_node->outputs) {
-      for (auto link_op_node : out_var_node->outputs) {
-        forbidden_folding_nodes.insert(link_op_node);
-      }
+      control_flow_var_node_names.insert(out_var_node->Var()->Name());
     }
   }
 
@@ -99,24 +98,31 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     if (std::find(blacklist.begin(), blacklist.end(), op_node->Name()) !=
         blacklist.end())
       continue;
-    if (std::find(forbidden_folding_nodes.begin(),
-                  forbidden_folding_nodes.end(),
-                  op_node) != forbidden_folding_nodes.end()) {
-      continue;
-    }
     bool input_persis = true;
+    bool input_output_override_by_other_op = false;
     // map is used to record how many time a name string occurs in the whole
     // graph's nodes
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
+      if (std::find(control_flow_var_node_names.begin(),
+                    control_flow_var_node_names.end(),
+                    in_node->Name()) != control_flow_var_node_names.end()) {
+        input_output_override_by_other_op = true;
+      }
       if (!in_node->Var()->Persistable()) {
         input_persis = false;
       }
     }
     for (auto out_node : op_node->outputs) {
       map[out_node->Name()] = 0;
+      if (std::find(control_flow_var_node_names.begin(),
+                    control_flow_var_node_names.end(),
+                    out_node->Name()) != control_flow_var_node_names.end()) {
+        input_output_override_by_other_op = true;
+      }
     }
+    if (input_output_override_by_other_op) continue;
     // Forbid other node in graph having the same name with nodes in map
     for (auto iter : map) {
       for (auto node : graph->Nodes()) {
@@ -128,7 +134,6 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         }
       }
     }
-
     framework::Scope *local_scope = new framework::Scope();
     std::unordered_set<const paddle::framework::ir::Node *> remove_nodes;
     std::unique_ptr<OperatorBase> op;
