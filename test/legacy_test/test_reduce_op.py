@@ -198,7 +198,8 @@ create_test_fp16_class(TestSumOp3Dim)
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "core is not compiled with CUDA",
     )
     class TestSumOpBf16(parent):
         def setUp(self):
@@ -349,6 +350,7 @@ class TestMaxFP16Op(TestMaxFP32Op):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -449,6 +451,9 @@ class TestMin8DOp(OpTest):
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework."
 )
+@unittest.skipIf(
+    paddle.is_compiled_with_rocm(), "ROCm doesn't have FP16 reduce_min kernel"
+)
 class TestMinFP16Op(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -479,6 +484,7 @@ class TestMinFP16Op(OpTest):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -541,6 +547,7 @@ class TestProdFP16OP(TestProdOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -648,6 +655,7 @@ class TestProd6DFP16OP(TestProd6DOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
@@ -721,6 +729,7 @@ class TestProd8DFP16OP(TestProd8DOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
