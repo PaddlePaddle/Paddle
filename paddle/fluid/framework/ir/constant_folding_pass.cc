@@ -69,7 +69,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
-  // forbid constant folding when current folding op output tensor will be
+  // Forbid constant folding when current folding op output tensor will be
   // override by other op. Example:
   //   If assign op is the conditional_block subblock op,
   //   and assign op output is conditional_block op output.
