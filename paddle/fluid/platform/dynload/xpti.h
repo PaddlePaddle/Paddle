@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#ifdef PADDLE_WITH_XPTI
+
 #include <xpu/xpti.h>
 
 #include <mutex>  // NOLINT
@@ -41,3 +43,5 @@ XPTI_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_XPTI_WRAP);
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
+
+#endif  // PADDLE_WITH_XPTI

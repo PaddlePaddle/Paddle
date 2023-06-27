@@ -52,6 +52,7 @@ static const std::vector<std::string> support_subgraph_passes = {
 };
 
 static const std::vector<std::string> xpu_support_subgraph_passes = {
+    "delete_assign_op_pass",
     "delete_dropout_op_pass",
     "delete_concat_op_pass",
     "identity_op_clean_pass",
@@ -67,8 +68,10 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "one_beam_size_fuse_pass",
     "stack_fuse_pass",
     "fused_multi_transformer_xpu_pass",
+    "xpu_delete_cast_op_pass",
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
+    "xpu_delete_cast_op_pass",
 };
 
 Graph *Pass::Apply(Graph *graph) const {
