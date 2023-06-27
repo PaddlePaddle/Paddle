@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
-
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
@@ -25,6 +23,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Program
 
 from .pass_base import PassBase, PassContext, new_pass, register_pass
+from .pass_utils import get_skip_gc_vars
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -33,94 +32,6 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
-
-
-class OpInfo:
-    def __init__(self, op):
-        self.op = op
-        self.no_need_buffer_slots = set()
-        self.other_arg_names_set = set()
-
-    def get_op_attrs(self):
-        inputs = {}
-        for input_name in self.op.input_names:
-            inputs[input_name] = self.op.input(input_name)
-        outputs = {}
-        for output_name in self.op.output_names:
-            outputs[output_name] = self.op.output(output_name)
-        attrs = {}
-        for attr_name in self.op.attr_names:
-            attrs[attr_name] = self.op.attr(attr_name)
-
-        return inputs, outputs, attrs
-
-    def build_op_info(self):
-        inputs, outputs, attrs = self.get_op_attrs()
-        self.no_need_buffer_slots = core.infer_no_need_buffer_slots(
-            self.op.type, inputs, outputs, attrs
-        )
-        if len(self.no_need_buffer_slots) == 0:
-            return
-
-        for slot_name in self.op.input_names:
-            if slot_name in self.no_need_buffer_slots:
-                continue
-
-            for in_name in self.op.input(slot_name):
-                self.other_arg_names_set.add(in_name)
-
-        for slot_name in self.op.output_names:
-            for out_name in self.op.output(slot_name):
-                self.other_arg_names_set.add(out_name)
-
-    def is_needed(self, arg_name):
-        return (
-            len(self.no_need_buffer_slots) == 0
-            or arg_name in self.other_arg_names_set
-        )
-
-
-def get_skip_gc_vars(program_list: List[Program]):
-    """
-    Get `skip_gc_vars` for every sub_program of program_list.
-
-    A whole_program is split up into sub_programs according to the schedule mode,
-    thus a sub_program's vars might be used as the op's input of the later sub_program,
-    and these vars cannot be gc after executing current sub_program.
-    """
-
-    vars_list = [
-        {
-            var.name
-            for var in filter(
-                lambda var: not var.persistable, program.list_vars()
-            )
-        }
-        for program in program_list
-    ]
-
-    intersection_vars_list = [set()] * len(program_list)
-    for idx, vars_set in enumerate(vars_list):
-        union_set = set().union(*vars_list[idx + 1 :])
-        intersection_vars_list[idx] = vars_set & union_set
-
-    skip_gc_vars = [set() for _ in range(len(program_list))]
-    for idx in range(len(program_list) - 1):
-        if len(intersection_vars_list[idx]) == 0:
-            continue
-
-        for program in program_list[idx + 1 :]:
-            for op in program.global_block().ops:
-                op_info = OpInfo(op)
-                op_info.build_op_info()
-
-                for in_name in op.input_arg_names:
-                    if in_name not in intersection_vars_list[idx]:
-                        continue
-                    if op_info.is_needed(in_name):
-                        skip_gc_vars[idx].add(in_name)
-
-    return skip_gc_vars
 
 
 def _create_param(dst_block, src_var):

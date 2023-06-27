@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.distributed.passes.pass_utils import split_program
+from paddle.distributed.passes.pass_utils import get_skip_gc_vars, split_program
 from paddle.fluid import core
 from paddle.fluid.core import Job, Plan
 from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
@@ -179,19 +179,13 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
 
         job_list = []
         program_num = len(programs)
+        skip_gc_vars = get_skip_gc_vars(programs)
 
         for micro_batch_id in range(micro_batch_num):
             for program_id in range(program_num):
                 job = Job(f"P{program_id}")
                 job.set_micro_batch_id(micro_batch_id)
-                # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-                if program_id == program_num - 1:
-                    fetch_op_id_to_col_attr = {}
-                    for i in range(fetch_op_num):
-                        job.set_col_attr_for_fetch_op(
-                            fetch_op_indics[i],
-                            i * micro_batch_num + micro_batch_id,
-                        )
+                job.set_skip_gc_vars(skip_gc_vars[program_id])
                 job_list.append(job)
 
         type_to_program = {}

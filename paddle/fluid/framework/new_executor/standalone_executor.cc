@@ -56,11 +56,13 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  micro_batch_id,
                                  micro_batch_num));
 
-    interpreter::ExecutionConfig execution_config;
-    execution_config.create_local_scope = false;
-
     if (micro_batch_num > 1) {
       SetColAttrForFetchOps(program, micro_batch_num, micro_batch_id);
+    }
+
+    interpreter::ExecutionConfig execution_config;
+    execution_config.create_local_scope = false;
+    if (jobs.size() > 1) {
       std::set<std::string> skip_vars = job->SkipGcVars();
       execution_config.skip_gc_vars =
           std::set<std::string>(skip_vars.begin(), skip_vars.end());
