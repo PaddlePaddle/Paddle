@@ -109,17 +109,24 @@ phi::KernelKey GetElementwiseOpDoubleGradWithoutDXDYExpectedKernelType(
   auto DDY_name = framework::GradVarName("grad_y");
   auto DDX_name = framework::GradVarName("grad_x");
 
+  VLOG(7) << "DDX_name: " << DDX_name << " DDY_name: " << DDY_name;
+
   if (ctx.HasInput(DDX_name) == false) {
+    VLOG(7) << "ctx.HasInput(DDX_name) == false";
     input_data_type =
         op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, DDY_name);
   } else if (ctx.HasInput(DDY_name) == false) {
+    VLOG(7) << "ctx.HasInput(DDY_name) == false";
     input_data_type =
         op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, DDX_name);
   } else {
+    VLOG(7)
+        << "ctx.HasInput(DDX_name) == true && ctx.HasInput(DDY_name) == true";
     input_data_type = op_ptr->OperatorWithKernel::IndicateOrPromoteVarDataTypes(
         ctx, DDX_name, DDY_name);
   }
 
+  VLOG(7) << "end of GetElementwiseOpDoubleGradWithoutDXDYExpectedKernelType";
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
