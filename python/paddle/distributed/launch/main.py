@@ -344,6 +344,7 @@ def launch():
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
+        auto_tuner.add_cfg(cur_cfg)
 
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
@@ -426,6 +427,7 @@ def launch():
             # generate a new config
             new_cfg = auto_tuner.search_once()
             cur_cfg = copy.deepcopy(new_cfg)
+            auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
             time.sleep(3)
