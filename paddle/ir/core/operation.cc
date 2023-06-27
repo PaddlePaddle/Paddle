@@ -233,4 +233,10 @@ void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   }
 }
 
+void Operation::Verify() {
+  if (info_) {
+    info_.Verify(this);
+  }
+}
+
 }  // namespace ir

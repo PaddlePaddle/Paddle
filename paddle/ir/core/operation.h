@@ -110,6 +110,8 @@ class IR_API alignas(8) Operation final {
     ReplaceAllUsesWith(std::vector<Value>{value});
   }
 
+  void Verify();
+
  private:
   Operation(const AttributeMap &attribute,
             ir::OpInfo op_info,
