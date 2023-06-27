@@ -1635,6 +1635,7 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
+
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 

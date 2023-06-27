@@ -256,6 +256,7 @@ TEST(op_test, region_test) {
   block->push_front(op1);
   block->insert(block->begin(), op1_2);
   ir::Operation *op2 = ir::Operation::Create(std::move(argument));
+  EXPECT_EQ(op2->region(0).ir_context(), ctx);
   op2->Destroy();
 }
 

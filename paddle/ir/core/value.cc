@@ -85,6 +85,8 @@ OpOperand Value::first_use() const { return impl()->first_use(); }
 
 bool Value::use_empty() const { return !first_use(); }
 
+bool Value::HasOneUse() const { return impl()->HasOneUse(); }
+
 void Value::ReplaceUsesWithIf(
     Value new_value,
     const std::function<bool(OpOperand)> &should_replace) const {
