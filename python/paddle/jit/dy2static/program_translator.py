@@ -684,7 +684,7 @@ class SymbolicStaticFunction(StaticFunction):
         ) = self._function_spec.args_to_input_spec(args, kwargs)
         self.last_call_input_spec = input_args_with_spec
 
-        from ..sot import symbolic_translate
+        from sot import symbolic_translate
 
         traced_fun = symbolic_translate(self._dygraph_function)
         if self._class_instance is not None:
