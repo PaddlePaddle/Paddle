@@ -58,10 +58,12 @@ set(ABSL_LIB_NAMES
     wyhash
     city
     strings
+    strings_internal
     throw_delegate
     bad_any_cast_impl
     bad_optional_access
     bad_variant_access
+    raw_logging_internal
     raw_hash_set)
 set(ABSL_LIBS "")
 

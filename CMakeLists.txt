@@ -240,7 +240,6 @@ else()
   )
 endif()
 
-
 find_package(Threads REQUIRED)
 
 include(simd)
@@ -575,15 +574,11 @@ include(flags) # set paddle compile flags
 
 #------------- cinn cmake config start --------------
 
-set(WITH_MKL_CBLAS ${WITH_MKL})
-set(WITH_CUDA ${WITH_GPU})
-set(WITH_CUDNN ${WITH_GPU})
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
-  include(cmake/cinn.cmake)
-  add_definitions(-DPADDLE_WITH_CINN)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
+  set(WITH_MKL_CBLAS ${WITH_MKL})
   if(WITH_GPU)
     set(WITH_CUDA ${WITH_GPU})
     add_definitions(-DCINN_WITH_CUDA)
@@ -592,6 +587,8 @@ if(WITH_CINN)
       add_definitions(-DCINN_WITH_CUDNN)
     endif()
   endif()
+  include(cmake/cinn.cmake)
+  add_definitions(-DPADDLE_WITH_CINN)
 
   if(CINN_ONLY)
     if(WITH_PYTHON)
