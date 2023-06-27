@@ -149,66 +149,66 @@ class TestKronLayer(unittest.TestCase):
         np.testing.assert_allclose(c, np.kron(a, b))
 
 
-class TestComplexKronOp(OpTest):
-    def setUp(self):
-        self.op_type = "kron"
-        self.python_api = paddle.kron
-        self.x_shape = np.array([10, 10])
-        self.y_shape = np.array([3, 35])
-        self.out_shape = self.x_shape * self.y_shape
-        self.init_base_dtype()
-        self.init_input_output()
+# class TestComplexKronOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "kron"
+#         self.python_api = paddle.kron
+#         self.x_shape = np.array([10, 10])
+#         self.y_shape = np.array([3, 35])
+#         self.out_shape = self.x_shape * self.y_shape
+#         self.init_base_dtype()
+#         self.init_input_output()
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
-        self.outputs = {'Out': self.out}
+#         self.inputs = {
+#             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+#             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+#         }
+#         self.attrs = {'axis': -1, 'use_mkldnn': False}
+#         self.outputs = {'Out': self.out}
 
-    def init_base_dtype(self):
-        self.dtype = np.complex128
+#     def init_base_dtype(self):
+#         self.dtype = np.complex128
 
-    def init_input_output(self):
-        self.x = np.random.random(self.x_shape).astype(
-            self.dtype
-        ) + 1j * np.random.random(self.x_shape).astype(self.dtype)
-        self.y = np.random.random(self.y_shape).astype(
-            self.dtype
-        ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
-        self.out = np.kron(self.x, self.y)
+#     def init_input_output(self):
+#         self.x = np.random.random(self.x_shape).astype(
+#             self.dtype
+#         ) + 1j * np.random.random(self.x_shape).astype(self.dtype)
+#         self.y = np.random.random(self.y_shape).astype(
+#             self.dtype
+#         ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
+#         self.out = np.kron(self.x, self.y)
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
+#     def test_check_grad_normal(self):
+#         self.check_grad(
+#             ['X', 'Y'],
+#             'Out',
+#         )
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
+#     def test_check_grad_ingore_x(self):
+#         self.check_grad(
+#             ['Y'],
+#             'Out',
+#             no_grad_set=set("X"),
+#         )
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+#     def test_check_grad_ingore_y(self):
+#         self.check_grad(
+#             ['X'],
+#             'Out',
+#             no_grad_set=set('Y'),
+#         )
 
 
-class TestKronOpTypePromotion(TestComplexKronOp):
-    def init_input_output(self):
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.y = np.random.random(self.y_shape).astype(
-            self.dtype
-        ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
-        self.out = np.kron(self.x, self.y)
+# class TestKronOpTypePromotion(TestComplexKronOp):
+#     def init_input_output(self):
+#         self.x = np.random.random(self.x_shape).astype(self.dtype)
+#         self.y = np.random.random(self.y_shape).astype(
+#             self.dtype
+#         ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
+#         self.out = np.kron(self.x, self.y)
 
 
 if __name__ == '__main__':

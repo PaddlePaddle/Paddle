@@ -231,6 +231,8 @@ void BuildInferMetaContext(
           attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+    } else if (attr_type_name == "ir::Int64Attribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
     } else if (attr_type_name == "ir::BoolAttribute") {
@@ -326,6 +328,7 @@ void BuildPhiKernelContext(
 
   auto& vec_kernel_fn_attr_params = op_yaml_info.KernelFnAttrParams();
   for (auto& t : vec_kernel_fn_attr_params) {
+    std::cerr << "param name " << t << std::endl;
     if (name2id.count(t)) {
       // tensor attribute, get information from input
       ir::Value ptr = op->operand(name2id.at(t)).source();
@@ -370,6 +373,8 @@ void BuildPhiKernelContext(
           attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+    } else if (attr_type_name == "ir::Int64Attribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
     } else if (attr_type_name == "ir::BoolAttribute") {

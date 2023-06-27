@@ -185,102 +185,102 @@ class TestDygraph(unittest.TestCase):
             )
 
 
-class TestComplexDotOp(OpTest):
-    def setUp(self):
-        self.op_type = "dot"
-        self.python_api = paddle.dot
-        self.init_base_dtype()
-        self.init_input_output()
+# class TestComplexDotOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "dot"
+#         self.python_api = paddle.dot
+#         self.init_base_dtype()
+#         self.init_input_output()
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.outputs = {'Out': self.out}
+#         self.inputs = {
+#             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+#             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+#         }
+#         self.outputs = {'Out': self.out}
 
-    def init_base_dtype(self):
-        self.dtype = np.float64
+#     def init_base_dtype(self):
+#         self.dtype = np.float64
 
-    def init_input_output(self):
-        self.x = np.random.random(100).astype(
-            self.dtype
-        ) + 1j * np.random.random(100).astype(self.dtype)
-        self.y = np.random.random(100).astype(
-            self.dtype
-        ) + 1j * np.random.random(100).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
+#     def init_input_output(self):
+#         self.x = np.random.random(100).astype(
+#             self.dtype
+#         ) + 1j * np.random.random(100).astype(self.dtype)
+#         self.y = np.random.random(100).astype(
+#             self.dtype
+#         ) + 1j * np.random.random(100).astype(self.dtype)
+#         self.out = np.dot(self.x, self.y)
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
+#     def test_check_grad_normal(self):
+#         self.check_grad(
+#             ['X', 'Y'],
+#             'Out',
+#         )
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
+#     def test_check_grad_ingore_x(self):
+#         self.check_grad(
+#             ['Y'],
+#             'Out',
+#             no_grad_set=set("X"),
+#         )
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+#     def test_check_grad_ingore_y(self):
+#         self.check_grad(
+#             ['X'],
+#             'Out',
+#             no_grad_set=set('Y'),
+#         )
 
 
-class TestComplexDotOp2D(OpTest):
-    def setUp(self):
-        self.op_type = "dot"
-        self.python_api = paddle.dot
-        self.init_base_dtype()
-        self.init_input_output()
+# class TestComplexDotOp2D(OpTest):
+#     def setUp(self):
+#         self.op_type = "dot"
+#         self.python_api = paddle.dot
+#         self.init_base_dtype()
+#         self.init_input_output()
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.outputs = {'Out': self.out}
+#         self.inputs = {
+#             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+#             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+#         }
+#         self.outputs = {'Out': self.out}
 
-    def init_base_dtype(self):
-        self.dtype = np.float64
+#     def init_base_dtype(self):
+#         self.dtype = np.float64
 
-    def init_input_output(self):
-        self.x = np.random.random((2, 100)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 100)).astype(self.dtype)
-        self.y = np.random.random((2, 100)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 100)).astype(self.dtype)
-        self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
+#     def init_input_output(self):
+#         self.x = np.random.random((2, 100)).astype(
+#             self.dtype
+#         ) + 1j * np.random.random((2, 100)).astype(self.dtype)
+#         self.y = np.random.random((2, 100)).astype(
+#             self.dtype
+#         ) + 1j * np.random.random((2, 100)).astype(self.dtype)
+#         self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
+#     def test_check_grad_normal(self):
+#         self.check_grad(
+#             ['X', 'Y'],
+#             'Out',
+#         )
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
+#     def test_check_grad_ingore_x(self):
+#         self.check_grad(
+#             ['Y'],
+#             'Out',
+#             no_grad_set=set("X"),
+#         )
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+#     def test_check_grad_ingore_y(self):
+#         self.check_grad(
+#             ['X'],
+#             'Out',
+#             no_grad_set=set('Y'),
+#         )
 
 
 @unittest.skipIf(

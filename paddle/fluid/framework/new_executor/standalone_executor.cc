@@ -72,14 +72,16 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       if (VLOG_IS_ON(5)) {
         std::stringstream ss;
         base_program->Print(ss);
-        VLOG(5) << "base program is " << ss.str();
+        // VLOG(5) << "base program is " << ss.str();
+        std::cerr << ss.str() << std::endl;
       }
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get());
       if (VLOG_IS_ON(5)) {
         std::stringstream ss;
         kernel_program->Print(ss);
-        VLOG(5) << "kernel program is " << ss.str();
+        /// VLOG(5) << "kernel program is " << ss.str();
+        std::cerr << ss.str() << std::endl;
       }
 
       interpretercores_.emplace_back(std::make_shared<InterpreterCore>(

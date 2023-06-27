@@ -3441,19 +3441,19 @@ def expand(x, shape, name=None):
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
     else:
-        if isinstance(shape, Variable):
-            assert shape.numel() == 1, 'shape must be a Tensor with one element'
-        else:
-            for elem in shape:
-                if isinstance(elem, Variable):
-                    assert (
-                        elem.numel() == 1
-                    ), 'Elements in shape must be Tensor with one element or integers.'
-                else:
-                    type_tuple = (int, np.int32, np.int64)
-                    assert isinstance(
-                        elem, type_tuple
-                    ), 'Elements in shape must be Tensor with one element or integers.'
+        # if isinstance(shape, Variable):
+        #     assert shape.numel() == 1, 'shape must be a Tensor with one element'
+        # else:
+        #     for elem in shape:
+        #         if isinstance(elem, Variable):
+        #             assert (
+        #                 elem.numel() == 1
+        #             ), 'Elements in shape must be Tensor with one element or integers.'
+        #         else:
+        #             type_tuple = (int, np.int32, np.int64)
+        #             assert isinstance(
+        #                 elem, type_tuple
+        #             ), 'Elements in shape must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,

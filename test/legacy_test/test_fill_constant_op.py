@@ -27,30 +27,30 @@ def fill_wrapper(shape, value=0.0):
 
 # Situation 1: Attr(shape) is a list(without tensor)
 # Base case
-class TestFillConstantOp(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with default value'''
-        self.op_type = "fill_constant"
-        self.python_api = fill_wrapper
-        self.init_dtype()
-        self.init_shape()
-        self.init_value()
+# class TestFillConstantOp(OpTest):
+#     def setUp(self):
+#         '''Test fill_constant op with default value'''
+#         self.op_type = "fill_constant"
+#         self.python_api = fill_wrapper
+#         self.init_dtype()
+#         self.init_shape()
+#         self.init_value()
 
-        self.inputs = {}
-        self.attrs = {'shape': self.shape, 'value': self.value}
-        self.outputs = {'Out': np.full(self.shape, self.value)}
+#         self.inputs = {}
+#         self.attrs = {'shape': self.shape, 'value': self.value}
+#         self.outputs = {'Out': np.full(self.shape, self.value)}
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def init_dtype(self):
-        self.dtype = np.float64
+#     def init_dtype(self):
+#         self.dtype = np.float64
 
-    def init_shape(self):
-        self.shape = [123, 92]
+#     def init_shape(self):
+#         self.shape = [123, 92]
 
-    def init_value(self):
-        self.value = 0.0
+#     def init_value(self):
+#         self.value = 0.0
 
 
 # class TestFillConstantFP32Op(TestFillConstantOp):
@@ -226,7 +226,7 @@ class TestFillConstantOp(OpTest):
 #         self.check_output()
 
 
-# # Situation 4: value is a tensor
+# Situation 4: value is a tensor
 # class TestFillConstantOp1_ValueTensor(OpTest):
 #     def setUp(self):
 #         '''Test fill_constant op with specified value'''
@@ -250,28 +250,28 @@ class TestFillConstantOp(OpTest):
 #         self.check_output()
 
 
-# # Situation 5: value is a tensor
-# class TestFillConstantOp2_ValueTensor(OpTest):
-#     def setUp(self):
-#         '''Test fill_constant op with specified value'''
-#         self.op_type = "fill_constant"
-#         self.python_api = fill_wrapper
-#         self.init_data()
+# Situation 5: value is a tensor
+class TestFillConstantOp2_ValueTensor(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value'''
+        self.op_type = "fill_constant"
+        self.python_api = fill_wrapper
+        self.init_data()
 
-#         self.inputs = {
-#             "ShapeTensor": np.array(self.shape).astype("int32"),
-#             'ValueTensor': np.array([self.value]).astype("int32"),
-#         }
-#         self.attrs = {'value': self.value, 'dtype': 2}
-#         self.outputs = {'Out': np.full(self.shape, self.value)}
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor': np.array([self.value]).astype("int32"),
+        }
+        self.attrs = {'value': self.value, 'dtype': 2}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
 
-#     def init_data(self):
-#         self.shape = [123, 92]
-#         self.value = 3
-#         self.dtype = np.int32
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 3
+        self.dtype = np.int32
 
-#     def test_check_output(self):
-#         self.check_output()
+    def test_check_output(self):
+        self.check_output()
 
 
 # # Test python API

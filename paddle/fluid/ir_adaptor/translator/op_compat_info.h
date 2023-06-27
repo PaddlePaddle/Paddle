@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <functional>
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -82,7 +83,8 @@ class OpNameNormalizer {
       std::string target = "_grad";
       std::string data = "@GRAD";
 
-      size_t first_grad_pos = arg_name.find_first_of(target);
+      size_t first_grad_pos = arg_name.find(target);
+
       std::string legacy_name =
           this->GetLegacyArgName(op_type, arg_name.substr(0, first_grad_pos));
       legacy_name += arg_name.substr(first_grad_pos);
@@ -96,7 +98,9 @@ class OpNameNormalizer {
     if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
       return UnderscoreToCamelCase(arg_name);
     }
+
     auto& arg_mappings = op_arg_name_mappings[op_type];
+
     if (arg_mappings.find(arg_name) == arg_mappings.end()) {
       return UnderscoreToCamelCase(arg_name);
     }

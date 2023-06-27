@@ -272,7 +272,11 @@ def grad_check(
     # init variable in strtup program
     scope = fluid.executor.global_scope()
     exe = fluid.Executor(place)
+    # print("!!! default stratup program", fluid.default_startup_program())
+    # print( "main program", program)
     exe.run(fluid.default_startup_program())
+
+    # print("after startup program")
 
     x_init = _as_list(x_init)
     # init inputs if x_init is not None
@@ -286,14 +290,18 @@ def grad_check(
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
+        # print( "11")
         exe.run(program, feed=feeds, scope=scope)
+        # print("33")
 
+    # print( "check 1")
     # [x_idx, y_idx]
     numerical = [
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
         for xi in x
     ]
 
+    # print( "check 2")
     # [y_idx, x_idx]
     analytical = []
     for yi in y:
@@ -314,6 +322,7 @@ def grad_check(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope)
         )
 
+    # print( "check 3")
     for i, (x_idx, y_idx) in enumerate(
         product(*[range(len(x)), range(len(y))])
     ):

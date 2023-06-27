@@ -35,6 +35,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype UNUSED,
                 DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
+  std::cerr << "shape " << phi::make_ddim(shape.GetData()) << std::endl;
   FullValue<T>(dev_ctx, out, val.to<T>());
 }
 
