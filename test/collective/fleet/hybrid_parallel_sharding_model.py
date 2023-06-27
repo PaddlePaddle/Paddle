@@ -23,6 +23,10 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
 )
+from paddle.distributed.fleet.utils.mix_precision_utils import (
+    MixPrecisionLayer,
+    MixPrecisionOptimizer,
+)
 
 vocab_size = 20
 hidden_size = 10
@@ -227,7 +231,7 @@ class TestDistMPTraning(unittest.TestCase):
             )
         return optimizer
 
-    def build_model_optimizer(self, Optimizer="adam"):
+    def build_model_optimizer(self, Optimizer="adam", amp_level=None):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         sharding_id = hcg.get_sharding_parallel_rank()
@@ -245,8 +249,6 @@ class TestDistMPTraning(unittest.TestCase):
             strategy=self.strategy,
             Optimizer=Optimizer,
         )
-        model_a = fleet.distributed_model(model_a)
-        optimizer_a = fleet.distributed_optimizer(optimizer_a)
 
         model_b = SimpleDPNet(
             vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
@@ -257,11 +259,20 @@ class TestDistMPTraning(unittest.TestCase):
             Optimizer=Optimizer,
         )
 
+        if amp_level is not None and amp_level == "O2":
+            model_a = MixPrecisionLayer(model_a)
+            optimizer_a = MixPrecisionOptimizer(optimizer_a)
+            model_b = MixPrecisionLayer(model_b)
+            optimizer_b = MixPrecisionOptimizer(optimizer_b)
+
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
         return model_a, optimizer_a, model_b, optimizer_b
 
-    def sharding_model(self, Optimizer, sharded_accumulators):
+    def sharding_model(self, Optimizer, sharded_accumulators, amp_level=None):
         model_a, optimizer_a, model_b, optimizer_b = self.build_model_optimizer(
-            Optimizer=Optimizer
+            Optimizer=Optimizer, amp_level=amp_level
         )
 
         self.assertTrue(
@@ -323,6 +334,19 @@ class TestDistMPTraning(unittest.TestCase):
         }
         self.sharding_model(
             Optimizer="Momentum", sharded_accumulators=sharded_accumulators
+        )
+
+    def test_sharding_momentum_amp(self):
+        sharded_accumulators = {
+            'linear_12.w_0_velocity_0',
+            'linear_13.b_0_velocity_0',
+            'linear_14.b_0_velocity_0',
+            'embedding_4.w_0_velocity_0',
+        }
+        self.sharding_model(
+            Optimizer="Momentum",
+            sharded_accumulators=sharded_accumulators,
+            amp_level="O2",
         )
 
 
