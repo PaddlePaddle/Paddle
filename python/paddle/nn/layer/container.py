@@ -30,9 +30,8 @@ class LayerDict(Layer):
     Parameters:
         sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
 
-    Examplex:
+    Examples:
         .. code-block:: python
-            :name: code-example1
 
             import paddle
             import numpy as np
@@ -66,132 +65,6 @@ class LayerDict(Layer):
             len(layers_dict)
             #0
 
-        .. code-block:: python
-            :name: clear
-
-            import paddle
-            from collections import OrderedDict
-
-            sublayers = OrderedDict([
-                ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-                ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-                ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            ])
-
-            layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
-            len(layer_dict)
-            #3
-
-            layer_dict.clear()
-            len(layer_dict)
-            #0
-
-        .. code-block:: python
-            :name: pop
-
-            import paddle
-            from collections import OrderedDict
-
-            sublayers = OrderedDict([
-                ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-                ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-                ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            ])
-
-            layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
-            len(layer_dict)
-            #3
-
-            layer_dict.pop('conv2d')
-            len(layer_dict)
-            #2
-
-        .. code-block:: python
-            :name: keys
-            import paddle
-            from collections import OrderedDict
-
-            sublayers = OrderedDict([
-                ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-                ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-                ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            ])
-
-            layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
-            for k in layer_dict.keys():
-                print(k)
-
-            #conv1d
-            #conv2d
-            #conv3d
-
-        .. code-block:: python
-            :name: items
-
-            import paddle
-            from collections import OrderedDict
-
-            sublayers = OrderedDict([
-                ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-                ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-                ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            ])
-
-            layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
-            for k, v in layer_dict.items():
-                print(k, ":", v)
-
-            #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
-            #conv2d : Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
-            #conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
-
-        .. code-block:: python
-            :name: values
-
-            import paddle
-            from collections import OrderedDict
-
-            sublayers = OrderedDict([
-                ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-                ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-                ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            ])
-
-            layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
-            for v in layer_dict.values():
-                print(v)
-
-            #Conv1D(3, 2, kernel_size=[3], data_format=NCL)
-            #Conv2D(3, 2, kernel_size=[3, 3], data_format=NCHW)
-            #Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
-
-        .. code-block:: python
-            :name: update
-
-            import paddle
-            from collections import OrderedDict
-
-            sublayers = OrderedDict([
-                ('conv1d', paddle.nn.Conv1D(3, 2, 3)),
-                ('conv2d', paddle.nn.Conv2D(3, 2, 3)),
-                ('conv3d', paddle.nn.Conv3D(4, 6, (3, 3, 3))),
-            ])
-
-            new_sublayers = OrderedDict([
-                ('relu', paddle.nn.ReLU()),
-                ('conv2d', paddle.nn.Conv2D(4, 2, 4)),
-            ])
-            layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
-
-            layer_dict.update(new_sublayers)
-
-            for k, v in layer_dict.items():
-                print(k, ":", v)
-            #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
-            #conv2d : Conv2D(4, 2, kernel_size=[4, 4], data_format=NCHW)
-            #conv3d : Conv3D(4, 6, kernel_size=[3, 3, 3], data_format=NCDHW)
-            #relu : ReLU()
-
     """
 
     def __init__(self, sublayers=None):
@@ -224,7 +97,7 @@ class LayerDict(Layer):
         Parameters:
             None.
 
-        Examplex:
+        Examples:
             .. code-block:: python
 
                 import paddle

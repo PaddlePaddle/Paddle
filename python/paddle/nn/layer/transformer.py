@@ -1271,16 +1271,6 @@ class Transformer(Layer):
                                  enc_self_attn_mask,
                                  dec_self_attn_mask,
                                  cross_attn_mask)  # [2, 6, 128]
-        .. code-block:: python
-            :name: code-example2
-
-            import paddle
-            from paddle.nn.layer.transformer import Transformer
-            length = 5
-            d_model, n_head, dim_feedforward = 8, 4, 64
-            transformer_paddle = Transformer(
-                d_model, n_head, dim_feedforward=dim_feedforward)
-            mask = transformer_paddle.generate_square_subsequent_mask(length)
     """
 
     def __init__(
