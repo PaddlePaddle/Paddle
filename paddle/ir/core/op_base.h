@@ -84,6 +84,10 @@ class IR_API OpBase {
 
   const AttributeMap &attributes() const { return operation_->attributes(); }
 
+  Value operand(uint32_t index) const { return operation_->operand(index); }
+
+  OpResult result(uint32_t index) const { return operation_->result(index); }
+
  private:
   Operation *operation_;  // Not owned
 };

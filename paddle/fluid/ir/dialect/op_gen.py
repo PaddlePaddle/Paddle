@@ -78,9 +78,9 @@ op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
 
-OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->op_operand({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::Value {input_name}() {{ return operand({input_index}); }}
 """
-OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->result({output_index}); }}
+OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return result({output_index}); }}
 """
 
 # =====================================
