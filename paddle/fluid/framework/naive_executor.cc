@@ -74,7 +74,7 @@ void NaiveExecutor::Run() {
     }
 
     if (op->Type() == "while") {
-      op->SetOutputHooks(hookfuncs_);
+      op->SetOutputHooks(input_hookfuncs_);
     }
 
     op->Run(*scope_, place_);

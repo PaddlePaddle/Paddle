@@ -2129,10 +2129,6 @@ bool AnalysisPredictor::ZeroCopyRun() {
   }
 #endif
 
-  if (config_.shape_range_info_collected()) {
-    CollectShapeRangeInfo();
-  }
-
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
@@ -2314,8 +2310,6 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
 #endif
   return false;
 }
-
-void AnalysisPredictor::CollectShapeRangeInfo() {}
 
 void AnalysisPredictor::StatisticShapeRangeInfo() {
   std::map<std::string, std::vector<int32_t>> min_shapes;
