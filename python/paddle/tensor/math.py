@@ -478,7 +478,7 @@ def pow(x, y, name=None):
 def pow_(x, y, name=None):
     """
     Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_tensor_pow`.
+    Please refer to :ref:`api_paddle_pow`.
     """
     if isinstance(y, (int, float)):
         return _C_ops.pow_(x, y)
