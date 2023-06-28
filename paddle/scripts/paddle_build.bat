@@ -580,7 +580,7 @@ if "%UPLOAD_TP_FILE%"=="ON" (
         echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
         python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
         python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-        python -m pip install bce-python-sdk
+        python -m pip install bce-python-sdk==0.8.74
     )
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
