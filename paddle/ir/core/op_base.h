@@ -142,7 +142,7 @@ class ConstructInterfacesOrTraits {
   static void PlacementConstrctInterface(
       InterfaceValue *&p_interface) {  // NOLINT
     p_interface->swap(InterfaceValue::get<ConcreteOp, T>());
-    VLOG(4) << "New a interface: id["
+    VLOG(6) << "New a interface: id["
             << (p_interface->type_id()).AsOpaquePointer() << "].";
     ++p_interface;
   }
@@ -151,7 +151,7 @@ class ConstructInterfacesOrTraits {
   template <typename T>
   static void PlacementConstrctTrait(ir::TypeId *&p_trait) {  // NOLINT
     *p_trait = TypeId::get<T>();
-    VLOG(4) << "New a trait: id[" << p_trait->AsOpaquePointer() << "].";
+    VLOG(6) << "New a trait: id[" << p_trait->AsOpaquePointer() << "].";
     ++p_trait;
   }
 };
