@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/core/type.h"
+#include "paddle/ir/core/type_base.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {

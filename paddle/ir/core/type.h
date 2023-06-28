@@ -17,9 +17,13 @@
 #include <ostream>
 
 #include "paddle/ir/core/cast_utils.h"
-#include "paddle/ir/core/type_base.h"
+#include "paddle/ir/core/type_id.h"
 
 namespace ir {
+class TypeStorage;
+class AbstractType;
+class IrContext;
+class Dialect;
 ///
 /// \brief Unified interface of the Type class. Derivation of all Type classes
 /// only derives interfaces, not members. For example, DenseTensorType,
@@ -53,13 +57,13 @@ class IR_API Type {
   ///
   /// \brief Some type attribute acquisition interfaces.
   ///
-  TypeId type_id() { return storage_->abstract_type().type_id(); }
+  TypeId type_id();
 
-  const AbstractType &abstract_type() { return storage_->abstract_type(); }
+  const AbstractType &abstract_type();
 
   const Storage *storage() const { return storage_; }
 
-  Dialect &dialect() const { return storage_->abstract_type().dialect(); }
+  Dialect &dialect() const;
 
   IrContext *ir_context() const;
 
