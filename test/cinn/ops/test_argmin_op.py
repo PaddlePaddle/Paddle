@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
 import numpy as np
 from op_test import OpTest, OpTestTool
@@ -22,8 +23,9 @@ from cinn.frontend import *
 from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestArgMinOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -31,7 +33,8 @@ class TestArgMinOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            self.case["shape"], self.case["dtype"], low=0, high=10)
+            self.case["shape"], self.case["dtype"], low=0, high=10
+        )
         self.axis = self.case["axis"]
         self.keepdim = self.case["keepdim"]
 
@@ -43,11 +46,13 @@ class TestArgMinOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("argmin")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x"
+        )
         out = builder.argmin(x, self.axis, self.keepdim)
         prog = builder.build()
-        forward_res = self.get_cinn_output(prog, target, [x], [self.x_np],
-                                           [out])
+        forward_res = self.get_cinn_output(
+            prog, target, [x], [self.x_np], [out]
+        )
         self.cinn_outputs = np.array(forward_res).astype("int64")
 
     def test_check_results(self):
@@ -142,19 +147,12 @@ class TestArgMinOpAxisTest(TestCaseHelper):
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
-        self.attrs = [{
-            "axis": 0,
-            "keepdim": False
-        }, {
-            "axis": 1,
-            "keepdim": False
-        }, {
-            "axis": 2,
-            "keepdim": False
-        }, {
-            "axis": 3,
-            "keepdim": False
-        }]
+        self.attrs = [
+            {"axis": 0, "keepdim": False},
+            {"axis": 1, "keepdim": False},
+            {"axis": 2, "keepdim": False},
+            {"axis": 3, "keepdim": False},
+        ]
 
 
 class TestArgMinOpKeepdimTest(TestCaseHelper):
@@ -167,19 +165,12 @@ class TestArgMinOpKeepdimTest(TestCaseHelper):
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
-        self.attrs = [{
-            "axis": 0,
-            "keepdim": True
-        }, {
-            "axis": 1,
-            "keepdim": True
-        }, {
-            "axis": 2,
-            "keepdim": True
-        }, {
-            "axis": 3,
-            "keepdim": True
-        }]
+        self.attrs = [
+            {"axis": 0, "keepdim": True},
+            {"axis": 1, "keepdim": True},
+            {"axis": 2, "keepdim": True},
+            {"axis": 3, "keepdim": True},
+        ]
 
 
 if __name__ == "__main__":

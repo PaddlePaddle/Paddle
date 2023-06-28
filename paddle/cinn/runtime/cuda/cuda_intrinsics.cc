@@ -25,7 +25,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // bool for 1 input 1 output
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_BOOL(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_bool, target, bool, bool)
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(            \
+      cinn_nvgpu_##func__##_bool, target, bool, bool)
 
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_BOOL(bitwise_not);
 
@@ -33,7 +34,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // bool for 2 input 1 output
 #define REGISTER_EXTERN_FUNC_2_IN_1_OUT_BOOL(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_bool, target, bool, bool, bool)
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(            \
+      cinn_nvgpu_##func__##_bool, target, bool, bool, bool)
 
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_BOOL(bitwise_and);
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_BOOL(bitwise_or);
@@ -43,7 +45,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // uint8 for 1 input 1 output
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_UINT8(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_uint8, target, uint8_t, uint8_t)
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(             \
+      cinn_nvgpu_##func__##_uint8, target, uint8_t, uint8_t)
 
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_UINT8(bitwise_not);
 
@@ -51,7 +54,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // uint8 for 2 input 1 output
 #define REGISTER_EXTERN_FUNC_2_IN_1_OUT_UINT8(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_uint8, target, uint8_t, uint8_t, uint8_t);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(             \
+      cinn_nvgpu_##func__##_uint8, target, uint8_t, uint8_t, uint8_t);
 
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_UINT8(bitwise_and);
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_UINT8(bitwise_or);
@@ -62,7 +66,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // int8 for 1 input 1 output
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_INT8(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_int8, target, int8_t, int8_t)
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(            \
+      cinn_nvgpu_##func__##_int8, target, int8_t, int8_t)
 
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_INT8(bitwise_not);
 
@@ -70,7 +75,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // int8 for 2 input 1 output
 #define REGISTER_EXTERN_FUNC_2_IN_1_OUT_INT8(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_int8, target, int8_t, int8_t, int8_t);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(            \
+      cinn_nvgpu_##func__##_int8, target, int8_t, int8_t, int8_t);
 
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_INT8(bitwise_and);
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_INT8(bitwise_or);
@@ -81,7 +87,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // int16 for 1 input 1 output
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_INT16(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_int16, target, int16_t, int16_t)
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(             \
+      cinn_nvgpu_##func__##_int16, target, int16_t, int16_t)
 
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_INT16(bitwise_not);
 
@@ -89,7 +96,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // int16 for 2 input 1 output
 #define REGISTER_EXTERN_FUNC_2_IN_1_OUT_INT16(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_int16, target, int16_t, int16_t, int16_t);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(             \
+      cinn_nvgpu_##func__##_int16, target, int16_t, int16_t, int16_t);
 
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_INT16(bitwise_and);
   REGISTER_EXTERN_FUNC_2_IN_1_OUT_INT16(bitwise_or);
@@ -100,7 +108,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 // float
 #define REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_fp32, target, float, float);
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(             \
+      cinn_nvgpu_##func__##_fp32, target, float, float);
 
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(abs);
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT(exp);
@@ -132,7 +141,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_1_IN_1_OUT_FLOAT
 
 #define REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_fp32, target, float, bool);
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(                  \
+      cinn_nvgpu_##func__##_fp32, target, float, bool);
 
   REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL(isnan);
   REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL(isfinite);
@@ -141,7 +151,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_1_IN_FLOAT_1_OUT_BOOL
 
 #define REGISTER_EXTERN_FUNC_2_IN_1_FLOAT(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_fp32, target, float, float, float);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(         \
+      cinn_nvgpu_##func__##_fp32, target, float, float, float);
 
   REGISTER_EXTERN_FUNC_2_IN_1_FLOAT(pow)
   REGISTER_EXTERN_FUNC_2_IN_1_FLOAT(mod)
@@ -151,7 +162,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   // double
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_FP64(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_fp64, target, double, double);
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(        \
+      cinn_nvgpu_##func__##_fp64, target, double, double);
 
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(abs);
   REGISTER_EXTERN_FUNC_1_IN_1_FP64(exp);
@@ -183,7 +195,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_1_IN_1_FP64
 
 #define REGISTER_EXTERN_FUNC_1_IN_FP64_1_OUT_BOOL(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_fp64, target, double, bool);
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(                 \
+      cinn_nvgpu_##func__##_fp64, target, double, bool);
 
   REGISTER_EXTERN_FUNC_1_IN_FP64_1_OUT_BOOL(isnan);
   REGISTER_EXTERN_FUNC_1_IN_FP64_1_OUT_BOOL(isfinite);
@@ -192,7 +205,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_1_IN_FP64_1_OUT_BOOL
 
 #define REGISTER_EXTERN_FUNC_2_IN_1_FP64(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_fp64, target, double, double, double);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(        \
+      cinn_nvgpu_##func__##_fp64, target, double, double, double);
 
   REGISTER_EXTERN_FUNC_2_IN_1_FP64(pow)
   REGISTER_EXTERN_FUNC_2_IN_1_FP64(mod)
@@ -202,7 +216,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   // int32
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_INT32(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_int32, target, int, int);
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(         \
+      cinn_nvgpu_##func__##_int32, target, int, int);
 
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(bitwise_not)
   REGISTER_EXTERN_FUNC_1_IN_1_INT32(clz)
@@ -212,7 +227,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT32
 
 #define REGISTER_EXTERN_FUNC_1_IN_1_INT64(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(cinn_nvgpu_##func__##_int64, target, int64_t, int64_t);
+  REGISTER_EXTERN_SOURCE_FUNC_1_IN_1_OUT(         \
+      cinn_nvgpu_##func__##_int64, target, int64_t, int64_t);
 
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(bitwise_not)
   REGISTER_EXTERN_FUNC_1_IN_1_INT64(clz)
@@ -222,7 +238,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_1_IN_1_INT64
 
 #define REGISTER_EXTERN_FUNC_2_IN_1_INT32(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_int32, target, int, int, int);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(         \
+      cinn_nvgpu_##func__##_int32, target, int, int, int);
 
   REGISTER_EXTERN_FUNC_2_IN_1_INT32(pow)
   REGISTER_EXTERN_FUNC_2_IN_1_INT32(left_shift)
@@ -236,7 +253,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 #undef REGISTER_EXTERN_FUNC_2_IN_1_INT32
 
 #define REGISTER_EXTERN_FUNC_2_IN_1_INT64(func__) \
-  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(cinn_nvgpu_##func__##_int64, target, int64_t, int64_t, int64_t);
+  REGISTER_EXTERN_SOURCE_FUNC_2_IN_1_OUT(         \
+      cinn_nvgpu_##func__##_int64, target, int64_t, int64_t, int64_t);
 
   REGISTER_EXTERN_FUNC_2_IN_1_INT64(pow)
   REGISTER_EXTERN_FUNC_2_IN_1_INT64(bitwise_and)
@@ -247,16 +265,16 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 #undef REGISTER_EXTERN_FUNC_2_IN_1_INT64
 
-  FunctionProto::shape_inference_t inference_shape_globalpool = [](const std::vector<cinn::ir::Expr> &args,
-                                                                   int offset) {
-    auto t = args[0].as_tensor();
-    std::vector<cinn::ir::Expr> shape;
-    shape.push_back(t->shape[0]);
-    shape.push_back(t->shape[1]);
-    shape.push_back(cinn::ir::Expr(1));
-    shape.push_back(cinn::ir::Expr(1));
-    return shape;
-  };
+  FunctionProto::shape_inference_t inference_shape_globalpool =
+      [](const std::vector<cinn::ir::Expr> &args, int offset) {
+        auto t = args[0].as_tensor();
+        std::vector<cinn::ir::Expr> shape;
+        shape.push_back(t->shape[0]);
+        shape.push_back(t->shape[1]);
+        shape.push_back(cinn::ir::Expr(1));
+        shape.push_back(cinn::ir::Expr(1));
+        return shape;
+      };
 
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_cuda_find_int, target)
       .SetRetType<int>()
@@ -329,6 +347,7 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
   _REGISTER_CINN_NVGPU_LT_NUM(fp64, double);
   _REGISTER_CINN_NVGPU_LT_NUM(uint8, uint8_t);
   _REGISTER_CINN_NVGPU_LT_NUM(int16, int16_t);
+
   _REGISTER_CINN_NVGPU_LT_NUM(int32, int);
   _REGISTER_CINN_NVGPU_LT_NUM(int64, int64_t);
 
@@ -353,16 +372,17 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 #undef _REGISTER_CINN_NVGPU_GT_NUM
 
-#define _REGISTER_CINN_NVGPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                        \
-  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_nvgpu_index_add_##TYPE_SUFFIX, target) \
-      .SetRetType<TYPE>()                                                        \
-      .AddInputType<TYPE>()                                                      \
-      .AddInputType<int>()                                                       \
-      .AddInputType<cinn_buffer_t *>()                                           \
-      .AddInputType<int>()                                                       \
-      .AddInputType<int>()                                                       \
-      .AddInputType<cinn_buffer_t *>()                                           \
-      .AddInputType<int>()                                                       \
+#define _REGISTER_CINN_NVGPU_INDEX_ADD(TYPE_SUFFIX, TYPE)                \
+  REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_nvgpu_index_add_##TYPE_SUFFIX, \
+                                     target)                             \
+      .SetRetType<TYPE>()                                                \
+      .AddInputType<TYPE>()                                              \
+      .AddInputType<int>()                                               \
+      .AddInputType<cinn_buffer_t *>()                                   \
+      .AddInputType<int>()                                               \
+      .AddInputType<int>()                                               \
+      .AddInputType<cinn_buffer_t *>()                                   \
+      .AddInputType<int>()                                               \
       .End();
 
   _REGISTER_CINN_NVGPU_INDEX_ADD(bool, bool);
@@ -407,7 +427,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics) {
 
 CINN_REGISTER_HELPER(cinn_cuda_host_api) {
   using cinn::runtime::cuda::cinn_call_cuda_kernel;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_kernel, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_kernel,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // kernel_fn
       .AddInputType<void *>()  // args
@@ -422,7 +443,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cublas;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cublas, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cublas,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -442,7 +464,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_batched_cublas;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_batched_cublas, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_batched_cublas,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -463,7 +486,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cuda_memset;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_memset, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_memset,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -473,7 +497,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cuda_memcpy;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_memcpy, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cuda_memcpy,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -482,7 +507,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_gaussian_random;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_gaussian_random, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_gaussian_random,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -493,7 +519,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_uniform_random;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_uniform_random, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_uniform_random,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -504,7 +531,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_randint;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_randint, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_randint,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -513,7 +541,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cholesky_nvgpu;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cholesky_nvgpu, cinn::common::DefaultNVGPUTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cholesky_nvgpu,
+                              cinn::common::DefaultNVGPUTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -524,7 +553,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_triangular_solve_nvgpu;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_triangular_solve_nvgpu, cinn::common::DefaultNVGPUTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_triangular_solve_nvgpu,
+                              cinn::common::DefaultNVGPUTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -538,9 +568,11 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .AddInputType<void *>()  // stream
       .End();
 
-  // TODO(thisjiang): change msg type from 'int' to 'std::string' when custom call support 'std::string' type
+  // TODO(thisjiang): change msg type from 'int' to 'std::string' when custom
+  // call support 'std::string' type
   using cinn::runtime::cuda::cinn_assert_true_nvgpu;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_assert_true_nvgpu, cinn::common::DefaultNVGPUTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_assert_true_nvgpu,
+                              cinn::common::DefaultNVGPUTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -551,7 +583,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
 
 #ifdef CINN_WITH_CUDNN
   using cinn::runtime::cuda::cinn_call_cudnn_conv2d_forward;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_conv2d_forward, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_conv2d_forward,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -581,7 +614,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cudnn_conv2d_backward_data;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_conv2d_backward_data, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_conv2d_backward_data,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -611,7 +645,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cudnn_conv2d_backward_filter;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_conv2d_backward_filter, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_conv2d_backward_filter,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -641,7 +676,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cudnn_pool2d_forward;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_pool2d_forward, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_pool2d_forward,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -667,7 +703,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cudnn_pool2d_backward;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_pool2d_backward, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_pool2d_backward,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // v_args
       .AddInputType<int>()     // num_args
@@ -693,7 +730,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cudnn_softmax_forward;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_softmax_forward, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_softmax_forward,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // args
       .AddInputType<int>()     // num_args
@@ -713,7 +751,8 @@ CINN_REGISTER_HELPER(cinn_cuda_host_api) {
       .End();
 
   using cinn::runtime::cuda::cinn_call_cudnn_softmax_backward;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_softmax_backward, cinn::common::DefaultHostTarget())
+  REGISTER_EXTERN_FUNC_HELPER(cinn_call_cudnn_softmax_backward,
+                              cinn::common::DefaultHostTarget())
       .SetRetType<void>()
       .AddInputType<void *>()  // args
       .AddInputType<int>()     // num_args

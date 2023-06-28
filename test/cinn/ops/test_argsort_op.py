@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import paddle
 import numpy as np
 from op_test import OpTest, OpTestTool
@@ -22,8 +23,9 @@ from cinn.frontend import *
 from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestArgSortOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -42,11 +44,11 @@ class TestArgSortOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("argsort")
         x1 = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x1")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x1"
+        )
         out = builder.argsort(x1, self.axis, not self.descending)
         prog = builder.build()
-        forward_res = self.get_cinn_output(prog, target, [x1], [self.x_np],
-                                           out)
+        forward_res = self.get_cinn_output(prog, target, [x1], [self.x_np], out)
         self.cinn_outputs = np.array([forward_res[0]]).astype("int64")
 
     def test_check_results(self):
@@ -136,19 +138,12 @@ class TestArgSortOpAxisTest(TestCaseHelper):
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
-        self.attrs = [{
-            "axis": 0,
-            "descending": False
-        }, {
-            "axis": 1,
-            "descending": False
-        }, {
-            "axis": 2,
-            "descending": False
-        }, {
-            "axis": 3,
-            "descending": False
-        }]
+        self.attrs = [
+            {"axis": 0, "descending": False},
+            {"axis": 1, "descending": False},
+            {"axis": 2, "descending": False},
+            {"axis": 3, "descending": False},
+        ]
 
 
 class TestArgSortOpDescedingTest(TestCaseHelper):
@@ -161,19 +156,12 @@ class TestArgSortOpDescedingTest(TestCaseHelper):
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
-        self.attrs = [{
-            "axis": 0,
-            "descending": True
-        }, {
-            "axis": 1,
-            "descending": True
-        }, {
-            "axis": 2,
-            "descending": True
-        }, {
-            "axis": 3,
-            "descending": True
-        }]
+        self.attrs = [
+            {"axis": 0, "descending": True},
+            {"axis": 1, "descending": True},
+            {"axis": 2, "descending": True},
+            {"axis": 3, "descending": True},
+        ]
 
 
 if __name__ == "__main__":
