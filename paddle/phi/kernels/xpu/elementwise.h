@@ -29,83 +29,6 @@ namespace phi {
 
 template <typename T, typename XPUType>
 void XPUElementwise(const XPUContext& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* z,
-                    std::function<int(xpu::Context*,
-                                      const XPUType*,
-                                      const XPUType*,
-                                      XPUType*,
-                                      const std::vector<int>&,
-                                      const std::vector<int>&)> func) {
-  dev_ctx.template Alloc<T>(z);
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  int max_dim = std::max(x_dims.size(), y_dims.size());
-  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-
-  PADDLE_ENFORCE_GE(
-      axis,
-      0,
-      errors::InvalidArgument(
-          "Axis should be great than or equal to 0, but received axis is %d.",
-          axis));
-  PADDLE_ENFORCE_LE(
-      axis,
-      max_dim,
-      errors::InvalidArgument(
-          "Axis should be less than or equal to %d, but received axis is %d.",
-          max_dim,
-          axis));
-  std::vector<int> x_dims_vec(max_dim, 1);
-  std::vector<int> y_dims_vec(max_dim, 1);
-  if (x_dims.size() == max_dim) {
-    for (int i = 0; i < max_dim; i++) {
-      x_dims_vec[i] = x_dims[i];
-    }
-  } else {
-    for (int i = 0; i < x_dims.size(); i++) {
-      x_dims_vec[i + axis] = x_dims[i];
-    }
-  }
-  if (y_dims.size() == max_dim) {
-    for (int i = 0; i < max_dim; i++) {
-      y_dims_vec[i] = y_dims[i];
-    }
-  } else {
-    for (int i = 0; i < y_dims.size(); i++) {
-      y_dims_vec[i + axis] = y_dims[i];
-    }
-  }
-  const T* x_data = x.data<T>();
-  const T* y_data = y.data<T>();
-  T* z_data = z->data<T>();
-
-  int ret = xpu::SUCCESS;
-
-  // For [2, 3] + [] --> [2, 3] + [1, 1]
-  // For [] + [2, 3] --> [1, 1] + [2, 3]
-  // For [] + [], Use [1] + [1] to replace [], because xpu not support []
-  if (x_dims_vec.size() == 0) {
-    x_dims_vec = std::vector<int>({1});
-  }
-
-  if (y_dims_vec.size() == 0) {
-    y_dims_vec = std::vector<int>({1});
-  }
-
-  ret = func(dev_ctx.x_context(),
-             reinterpret_cast<const XPUType*>(x_data),
-             reinterpret_cast<const XPUType*>(y_data),
-             reinterpret_cast<XPUType*>(z_data),
-             x_dims_vec,
-             y_dims_vec);
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
-}
-
-template <typename T, typename XPUType>
-void XPUElementwise(const XPUContext& dev_ctx,
                     const T* x_data,
                     const DDim& x_dims,
                     const T* y_data,
@@ -175,6 +98,30 @@ void XPUElementwise(const XPUContext& dev_ctx,
              x_dims_vec,
              y_dims_vec);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "elementwise");
+}
+
+template <typename T, typename XPUType>
+void XPUElementwise(const XPUContext& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* z,
+                    std::function<int(xpu::Context*,
+                                      const XPUType*,
+                                      const XPUType*,
+                                      XPUType*,
+                                      const std::vector<int>&,
+                                      const std::vector<int>&)> func) {
+  dev_ctx.template Alloc<T>(z);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+  T* z_data = z->data<T>();
+
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x_data, x_dims, y_data, y_dims, axis, z_data, func);
 }
 
 template <typename T, typename XPUType>
