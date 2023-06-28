@@ -1229,12 +1229,12 @@ class OpTest(unittest.TestCase):
                     build_strategy.enable_inplace = enable_inplace
                 if enable_cinn_test:
                     build_strategy.build_cinn_pass = check_cinn
+                    self._check_cinn = enable_cinn_test
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
                 )
                 program = compiled_prog
-                self._check_cinn = enable_cinn_test
 
             executor = Executor(place)
             outs = executor.run(
@@ -2794,6 +2794,51 @@ class OpTest(unittest.TestCase):
             output_names.append(cast_output.name)
         return output_names
 
+    def _check_ir_grad_output(
+        self, place, program, scope, feed_dict, fetch_list, gradients
+    ):
+        if os.getenv("FLAGS_NEW_IR_OPTEST") is None:
+            return
+        if self.check_prim:
+            return
+        if self._check_cinn:
+            return
+
+        set_flags({"FLAGS_enable_new_ir_in_executor": True})
+
+        executor = Executor(place)
+        new_gradients = list(
+            map(
+                np.array,
+                executor.run(
+                    program,
+                    feed_dict,
+                    fetch_list,
+                    scope=scope,
+                    return_numpy=False,
+                ),
+            )
+        )
+
+        for i in range(len(new_gradients)):
+            np.testing.assert_array_equal(
+                gradients[i],
+                new_gradients[i],
+                err_msg='Operator GradCheck ('
+                + self.op_type
+                + ') has diff at '
+                + str(place)
+                + '\nExpect '
+                + str(gradients[i])
+                + '\n'
+                + 'But Got'
+                + str(new_gradients[i])
+                + ' in class '
+                + self.__class__.__name__,
+            )
+
+        set_flags({"FLAGS_enable_new_ir_in_executor": False})
+
     def _get_gradient(
         self,
         input_to_check,
@@ -2807,6 +2852,7 @@ class OpTest(unittest.TestCase):
         with paddle.fluid.framework._static_guard():
             prog = Program()
             scope = core.Scope()
+            ir_scope = core.Scope()
             block = prog.global_block()
             self._append_ops(block)
 
@@ -2861,6 +2907,11 @@ class OpTest(unittest.TestCase):
                     tensor = true_var.get_tensor()
                     tensor.set(grad_out_value, place)
                     grad_outputs.append(var)
+                    if os.getenv("FLAGS_NEW_IR_OPTEST") is not None:
+                        ir_true_var = ir_scope.var(var.name)
+                        ir_tensor = ir_true_var.get_tensor()
+                        ir_tensor.set(grad_out_value, place)
+
                 targets = [
                     outputs[name] for name in outputs if name in output_names
                 ]
@@ -2870,7 +2921,7 @@ class OpTest(unittest.TestCase):
                 grad_inputs = paddle.static.gradients(
                     targets, inputs, grad_outputs, no_grad_set
                 )
-                fetch_list = grad_inputs
+                fetch_list = [grad.name for grad in grad_inputs]
 
             enable_cinn_test = check_cinn and self._enable_check_cinn_test(
                 place, feed_dict, outputs
@@ -2890,6 +2941,7 @@ class OpTest(unittest.TestCase):
                 if enable_cinn_test:
                     build_strategy = fluid.BuildStrategy()
                     build_strategy.build_cinn_pass = check_cinn
+                    self._check_cinn = True
 
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
@@ -2906,6 +2958,11 @@ class OpTest(unittest.TestCase):
                     ),
                 )
             )
+
+            self._check_ir_grad_output(
+                place, prog, ir_scope, feed_dict, fetch_list, res
+            )
+
         return res
 
 
