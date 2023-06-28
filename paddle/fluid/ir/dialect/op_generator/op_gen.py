@@ -141,7 +141,6 @@ void {op_name}::Build({build_args}) {{
 }}
 """
 
-
 DEFINE_OP_TYPE_ID = """
 IR_DEFINE_EXPLICIT_TYPE_ID({op_name})
 """

@@ -63,6 +63,9 @@ set(ABSL_LIB_NAMES
     bad_optional_access
     bad_variant_access
     raw_hash_set)
+if(CINN_ONLY)
+  list(APPEND ABSL_LIB_NAMES strings_internal raw_logging_internal)
+endif()
 set(ABSL_LIBS "")
 
 add_library(absl STATIC IMPORTED GLOBAL)

@@ -42,6 +42,7 @@ class TestTransposeOp(OpTest):
             'XShape': np.random.random(self.shape).astype("float64"),
             'Out': self.inputs['X'].transpose(self.axis),
         }
+        self.if_enable_cinn()
 
     def init_op_type(self):
         self.op_type = "transpose2"
@@ -53,9 +54,21 @@ class TestTransposeOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
 
+    def if_enable_cinn(self):
+        pass
+
     def initTestCase(self):
         self.shape = (3, 40)
         self.axis = (1, 0)
+
+
+class TestTransposeOp_ZeroDim(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = ()
+        self.axis = ()
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestCase0(TestTransposeOp):

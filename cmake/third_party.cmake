@@ -263,6 +263,7 @@ endif()
 
 # cinn_only includes third-party libraries separately
 if(CINN_ONLY)
+  set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
   include(external/zlib)
   include(external/gflags)
   include(external/glog)
@@ -288,7 +289,6 @@ if(WITH_CINN)
     add_definitions(-DCINN_WITH_MKLDNN)
   endif()
 endif()
-
 
 include(external/zlib) # download, build, install zlib
 include(external/gflags) # download, build, install gflags
