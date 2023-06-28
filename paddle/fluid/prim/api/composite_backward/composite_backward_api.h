@@ -150,11 +150,20 @@ void gather_grad(const Tensor& x,
   }
 
   // transpose out_grad and zero grad to target rank.
-  auto tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
-  auto tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+  auto tmp_zero_x_grad = zero_tensor;
+  auto tmp_out_grad = out_grad;
+  if (zero_tensor.dims().size() > 0) {
+    tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
+  }
+  if (out_grad.dims().size() > 0) {
+    tmp_out_grad = transpose<T>(out_grad, tmp_perm);
+  }
   // scatter grad to grad_x
   auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+  auto tmp_grad_x_tranposed = tmp_grad_x;
+  if (tmp_grad_x.dims().size() > 0) {
+    tmp_grad_x_tranposed = transpose<T>(tmp_grad_x, reverse_perm);
+  }
   set_output<T>(tmp_grad_x_tranposed, grad_x);
 }
 
