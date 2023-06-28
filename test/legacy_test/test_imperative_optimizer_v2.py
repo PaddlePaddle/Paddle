@@ -688,10 +688,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
             lr = adam.get_lr()
             np.testing.assert_allclose(lr, 0.5, rtol=1e-06, atol=0.0)
 
-            with self.assertRaises(TypeError):
-                scheduler_var = paddle.fluid.dygraph.StepDecay(0.5, step_size=3)
-                adam.set_lr_scheduler(scheduler_var)
-
 
 class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
