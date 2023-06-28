@@ -48,20 +48,20 @@ class Operation1 : public ir::Op<Operation1> {
   static const char *name() { return "test.Operation1"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {
-    if (attributes.count("op2_attr1") == 0 ||
-        (!attributes.at("op2_attr1").isa<ir::StrAttribute>())) {
-      throw("Type of attribute: parameter_name is not right.");
-    }
-    if (attributes.count("op2_attr2") == 0 ||
-        (!attributes.at("op2_attr2").isa<ir::StrAttribute>())) {
-      throw("Type of attribute: parameter_name is not right.");
-    }
-  }
+  void Verify();
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
+void Operation1::Verify() {
+  auto &attributes = this->attributes();
+  if (attributes.count("op2_attr1") == 0 ||
+      (!attributes.at("op2_attr1").isa<ir::StrAttribute>())) {
+    throw("Type of attribute: parameter_name is not right.");
+  }
+  if (attributes.count("op2_attr2") == 0 ||
+      (!attributes.at("op2_attr2").isa<ir::StrAttribute>())) {
+    throw("Type of attribute: parameter_name is not right.");
+  }
+}
 const char *Operation1::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
 IR_DECLARE_EXPLICIT_TYPE_ID(Operation1)
@@ -181,7 +181,7 @@ class TransposePatternRewrite
 
   bool MatchAndRewrite(paddle::dialect::TransposeOp op,
                        ir::PatternRewriter &rewriter) const override {
-    auto prev_op = op->operand(0).source().GetDefiningOp();
+    auto prev_op = op->operand(0).GetDefiningOp();
     std::vector<int> axis_last = GetAxis(op);
     auto prev_trans_op = prev_op->dyn_cast<paddle::dialect::TransposeOp>();
     if (prev_trans_op) {
@@ -191,7 +191,7 @@ class TransposePatternRewrite
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.SetInsertionPoint(op);
       auto new_op = rewriter.Build<paddle::dialect::TransposeOp>(
-          prev_op->operand(0).source().GetDefiningOp()->result(0), new_perm);
+          prev_op->operand(0).GetDefiningOp()->result(0), new_perm);
       rewriter.ReplaceOp(op, {new_op.out()});
       return true;
     }

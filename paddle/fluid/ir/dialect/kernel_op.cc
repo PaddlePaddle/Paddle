@@ -20,9 +20,7 @@ namespace dialect {
 const char *PhiKernelOp::attributes_name[attributes_num] = {
     "base_op", "infermeta_fn", "kernel_fn"};
 
-void PhiKernelOp::Verify(const std::vector<ir::OpResult> &inputs,
-                         const std::vector<ir::Type> &outputs,
-                         const ir::AttributeMap &attributes) {
+void PhiKernelOp::Verify() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
 
   // Verify inputs type:
