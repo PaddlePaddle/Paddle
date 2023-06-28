@@ -423,6 +423,7 @@ def launch():
                     "Get best config failed. Currently there are no appropriate configs."
                 )
             c.finalize(exit=False)
+            ctx.status._current_status = None
 
             # generate a new config
             new_cfg = auto_tuner.search_once()
@@ -434,6 +435,7 @@ def launch():
         recorder.store_history()
 
         # get best config to run
+        signal.alarm(0)
         best_cfg = None
         if nnodes > 1:
             import socket
@@ -487,6 +489,7 @@ def launch():
         ctx.args.training_script_args = new_args
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
+        ctx.args.log_dir = "best_cfg"
         c = controllers.init(ctx)
         c.run()
         c.finalize(exit=True)
