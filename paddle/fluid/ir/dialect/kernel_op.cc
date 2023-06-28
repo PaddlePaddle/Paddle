@@ -44,10 +44,10 @@ void PhiKernelOp::Verify() {
                      "Type of attribute: kernel_key is not right."));
 }
 
-const std::string& PhiKernelOp::op_name() {
+std::string PhiKernelOp::op_name() {
   return attributes().at("op_name").dyn_cast<ir::StrAttribute>().data();
 }
-const std::string& PhiKernelOp::kernel_name() {
+std::string PhiKernelOp::kernel_name() {
   return attributes().at("kernel_name").dyn_cast<ir::StrAttribute>().data();
 }
 phi::KernelKey PhiKernelOp::kernel_key() {

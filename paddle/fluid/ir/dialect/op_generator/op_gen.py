@@ -16,17 +16,9 @@ import argparse
 import os
 
 import yaml
-
-from paddle.fluid.ir.dialect.op_generator.op_interface_gen import (
-    gen_exclusive_interface_str,
-    gen_op_infer_meta_str,
-)
-from paddle.fluid.ir.dialect.op_generator.op_member_func_gen import (
-    gen_op_get_inputs_outputs_str,
-)
-from paddle.fluid.ir.dialect.op_generator.op_verify_gen import (
-    gen_verify_func_str,
-)
+from op_interface_gen import gen_exclusive_interface_str, gen_op_infer_meta_str
+from op_member_func_gen import gen_op_get_inputs_outputs_str
+from op_verify_gen import gen_verify_func_str
 
 # =====================================
 # String Template for h file code gen
