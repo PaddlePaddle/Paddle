@@ -121,15 +121,6 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
-- op : bincount
-  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
-  output: Tensor(out)
-  infer_meta:
-    func: BincountInferMeta
-  kernel:
-    func: bincount
-  optional: weights
-
 - op : cast
   args : (Tensor x, DataType dtype)
   output : Tensor
@@ -263,6 +254,7 @@
     func : ElementwiseInferMeta
   kernel :
     func : elementwise_pow
+  inplace: (x -> out)
   backward : elementwise_pow_grad
 
 - op : embedding
@@ -406,18 +398,6 @@
     data_type : dtype
     backend : place
 
-- op : full_int_array
-  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor(out)
-  infer_meta :
-    func : CreateIntArrayInferMeta
-    param : [value, dtype]
-  kernel :
-    func : full_int_array
-    param : [value, dtype]
-    data_type : dtype
-    backend : place
-
 - op : full_like
   args : (Tensor x, Scalar value, DataType dtype = DataType::UNDEFINED, Place place = {})
   output: Tensor(out)
@@ -442,16 +422,6 @@
     data_type : params
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
-
-- op : gather
-  args : (Tensor x, Tensor index, Scalar(int) axis=0)
-  output : Tensor(out)
-  infer_meta :
-    func : GatherInferMeta
-  kernel :
-    func : gather
-    data_type: x
-  backward : gather_grad
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
@@ -622,6 +592,24 @@
     func : mean
   backward : mean_grad
 
+- op : memcpy_d2h
+  args : (Tensor x, int dst_place_type)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : memcpy_d2h
+
+- op : memcpy_h2d
+  args : (Tensor x, int dst_place_type)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : memcpy_h2d
+
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
@@ -726,14 +714,6 @@
     func : pool3d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
-
-- op : prior_box
-  args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
-  output : Tensor(out), Tensor(var)
-  infer_meta :
-    func : PriorBoxInferMeta
-  kernel :
-    func : prior_box
 
 - op : prod
   args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)

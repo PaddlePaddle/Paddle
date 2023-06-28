@@ -474,6 +474,22 @@ def pow(x, y, name=None):
             )
 
 
+@inplace_apis_in_dygraph_only
+def pow_(x, y, name=None):
+    """
+    Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_pow`.
+    """
+    if isinstance(y, (int, float)):
+        return _C_ops.pow_(x, y)
+    elif isinstance(y, (paddle.Tensor, Variable)):
+        return _C_ops.elementwise_pow_(x, y)
+    else:
+        raise TypeError(
+            'y must be scalar or tensor type, but received: %s ' % (type(y))
+        )
+
+
 OP_NAMEMAPPING = {
     'elementwise_max': 'maximum',
     'elementwise_min': 'minimum',
@@ -675,8 +691,8 @@ def logaddexp(x, y, name=None):
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
     Args:
-        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
-        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be int32, int64, float32, float64, float16.
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:

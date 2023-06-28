@@ -20,7 +20,7 @@
 
 namespace ir {
 
-class InterfaceValue {
+class IR_API InterfaceValue {
  public:
   template <typename ConcreteOp, typename T>
   static InterfaceValue get() {
@@ -64,7 +64,7 @@ class InterfaceValue {
   void *model_{nullptr};
 };
 
-class OpBase {
+class IR_API OpBase {
  public:
   explicit OpBase(Operation *operation = nullptr) : operation_(operation) {}
 
@@ -77,6 +77,12 @@ class OpBase {
   Operation *operator->() const { return operation_; }
 
   IrContext *ir_context() const { return operation_->ir_context(); }
+
+  uint32_t num_results() const { return operation_->num_results(); }
+
+  uint32_t num_operands() const { return operation_->num_operands(); }
+
+  const AttributeMap &attributes() const { return operation_->attributes(); }
 
  private:
   Operation *operation_;  // Not owned
@@ -204,6 +210,16 @@ class Op : public OpBase {
     auto p_first_trait = trait_set.data();
     ConstructInterfacesOrTraits<ConcreteOp, TraitList>::trait(p_first_trait);
     return trait_set;
+  }
+  static constexpr bool HasNoDataMembers() {
+    class EmptyOp : public Op<EmptyOp, TraitOrInterface...> {};
+    return sizeof(ConcreteOp) == sizeof(EmptyOp);
+  }
+
+  static void VerifyInvariants(Operation *op) {
+    static_assert(HasNoDataMembers(),
+                  "Op class shouldn't define new data members");
+    op->dyn_cast<ConcreteOp>().Verify();
   }
 };
 

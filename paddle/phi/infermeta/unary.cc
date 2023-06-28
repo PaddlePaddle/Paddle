@@ -136,6 +136,13 @@ void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
 }
 
+void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto dim = x.dims();
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -1109,6 +1116,15 @@ void ExpandInferMeta(const MetaTensor& x,
   if (out_rank > 0 && out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
+}
+
+void FillAnyLikeInferMeta(const MetaTensor& x,
+                          const Scalar& value,
+                          DataType dtype,
+                          MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(dtype == DataType::UNDEFINED ? x.dtype() : dtype);
+  out->share_lod(x);
 }
 
 void FillDiagonalInferMeta(

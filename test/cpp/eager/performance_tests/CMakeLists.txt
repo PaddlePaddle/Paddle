@@ -11,7 +11,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
          eager_scale
          scale_node
          generated_op
-         matmul_v2_op
+         generated_static_op
          dygraph_function
          eager_prim_api)
 

@@ -55,7 +55,7 @@ void Reduce(const KPDevice& dev_ctx,
         out_dtype,
         "ReduceKernel",
         ([&] {
-          using MPType = typename kps::details::MPTypeTrait<data_t>::Type;
+          using MPType = typename phi::dtype::MPTypeTrait<data_t>::Type;
           phi::funcs::ReduceKernel<data_t,
                                    data_t,
                                    ReduceOp,
@@ -68,7 +68,7 @@ void Reduce(const KPDevice& dev_ctx,
               is_mean);
         }));
   } else {
-    using MPType = typename kps::details::MPTypeTrait<T>::Type;
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
         dev_ctx,
         x,
@@ -78,7 +78,7 @@ void Reduce(const KPDevice& dev_ctx,
         is_mean);
   }
 #else
-  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::funcs::ReduceKernel<T, T, ReduceOp, TransformOp<T, MPType>>(
       dev_ctx,
       x,

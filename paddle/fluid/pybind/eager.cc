@@ -136,7 +136,6 @@ void EmptyTensorInitializer(TensorObject* self,
     // TODO(jiabin): Maybe support LOD later
     std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
     if (dims.size() == 1 && dims[0] == 0) {
-      VLOG(0) << "Create dense tensor with dims[0] equal to 0";
       std::shared_ptr<phi::Allocation> allocation_ptr = nullptr;
       dense_tensor = std::make_shared<phi::DenseTensor>(
           allocation_ptr,
@@ -192,7 +191,7 @@ void InitDistTensorWithNumpyValue(TensorObject* self,
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
       true,
-      paddle::platform::errors::Fatal(
+      paddle::platform::errors::Unavailable(
           "Calling InitDistTensorWithNumpyValue of Eager Tensor without "
           "EmptyDistTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
@@ -233,7 +232,7 @@ void InitTensorWithNumpyValue(TensorObject* self,
   PADDLE_ENFORCE_EQ(
       self->tensor.defined(),
       true,
-      paddle::platform::errors::Fatal(
+      paddle::platform::errors::Unavailable(
           "Calling InitTensorWithNumpyValue of Eager Tensor without "
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
