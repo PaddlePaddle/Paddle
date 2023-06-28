@@ -980,13 +980,36 @@ def parse_index(x, indices):
                 estimated_dim,
                 paddle.to_tensor(slice_item),
             )
+
+            if (
+                advanced_index[estimated_dim][1].dtype == paddle.bool
+                and len(slice_item) != x.shape[dim]
+            ):
+                raise IndexError(
+                    "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
+                        len(slice_item), x.shape[dim], dim
+                    )
+                )
+
             has_advanced_index = True
             estimated_dim += 1
+
         elif isinstance(slice_item, paddle.fluid.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
+            if (
+                slice_item.dtype == paddle.bool
+                and len(slice_item) != x.shape[dim]
+            ):
+                raise IndexError(
+                    "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
+                        len(slice_item), x.shape[dim], dim
+                    )
+                )
+
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
             estimated_dim += 1
+
         else:
             raise IndexError(
                 "Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {}.".format(
@@ -1303,8 +1326,22 @@ def _getitem_static(x, indices):
         ) = deal_advanced_index(out, advanced_index, False)
 
         # TODO(zooooo0820): Replacing gather_nd to another advanded OP for handling of mixed indexes more efficiently
-        adjusted_advanced_index = paddle.stack(adjusted_advanced_index, axis=-1)
-        out = paddle.gather_nd(transed_tensor, adjusted_advanced_index)
+        if (
+            len(adjusted_advanced_index) == 1
+            and adjusted_advanced_index[0].dtype == paddle.bool
+        ):
+            # Note: now slice not support 0-size Tensor, so only one bool tensor can return empty 0-size.
+            out = get_value_for_bool_tensor(
+                transed_tensor, adjusted_advanced_index[0]
+            )
+        else:
+            adjusted_advanced_index = parse_bool_and_broadcast_indices(
+                adjusted_advanced_index
+            )
+            advanced_index_tensor = paddle.stack(
+                adjusted_advanced_index, axis=-1
+            )
+            out = paddle.gather_nd(transed_tensor, advanced_index_tensor)
 
         if pos_of_new_dim != 0:
             perm = (
@@ -1315,3 +1352,14 @@ def _getitem_static(x, indices):
             out = out.transpose(perm)
 
     return out
+
+
+def parse_bool_and_broadcast_indices(indices):
+    # deal with multiple Tensors and translating bool tensor to int tensor.
+    # In static mode, bool-tensor cannot be broadcasted since its corressponding int tensor's shape cannot be infered.
+    for i, indice in enumerate(indices):
+        if indice.dtype == paddle.bool:
+            indices[i] = paddle.nonzero(indice)[:, 0]
+    if len(indices) > 1:
+        indices = paddle.broadcast_tensors(indices)
+    return indices

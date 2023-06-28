@@ -188,50 +188,62 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    # def test_combined_index_7(self):
-    #     # int tensor + bool tensor + slice (without decreasing axes)
-    #     np_data = np.random.randn(3, 4, 5, 6)
-    #     np_res = np_data[:, [True, False, True, False], [1, 4]]
-    #     with paddle.static.program_guard(
-    #         paddle.static.Program(), paddle.static.Program()
-    #     ):
-    #         x = paddle.to_tensor(np_data)
-    #         y = _getitem_static(
-    #             x,
-    #             (slice(None, None, None), [True, False, True, False], [1, 4])
-    #         )
-    #         res = self.exe.run(fetch_list=[y.name])
+    def test_combined_index_9(self):
+        # multiple int tensors, with broadcast.
+        np_data = np.random.randn(3, 4, 5, 6, 7)
+        np_res = np_data[[[1, 0]], [1, 0], 0:4:2, [[3, 5], [4, 2]]]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x, ([[1, 0]], [1, 0], slice(0, 4, 2), [[3, 5], [4, 2]])
+            )
+            res = self.exe.run(fetch_list=[y.name])
 
-    #     np.testing.assert_allclose(res[0], np_res)
+        np.testing.assert_allclose(res[0], np_res)
 
-    # def test_combined_index_4(self):
-    #     # int tensor (with ranks > 1) + bool tensor + slice (with decreasing axes)
-    #     np_data = np.arange(3*4*5*6).reshape((3, 4, 5, 6))
-    #     np_res = np_data[[0, 0], [True, False, True, False], [[0, 2], [1, 4]], 4]
-    #     with paddle.static.program_guard(
-    #         paddle.static.Program(), paddle.static.Program()
-    #     ):
-    #         x = paddle.to_tensor(np_data)
-    #         y = _getitem_static(
-    #             x,
-    #             ([0, 0], [True, False, True, False], [[0, 2], [1, 4]], 4)
-    #         )
-    #         res = self.exe.run(fetch_list=[y.name])
+    def test_combined_index_10(self):
+        # only one bool tensor with basic-index
+        np_data = np.random.randn(3, 4, 5, 6)
+        np_res = np_data[:, [True, False, True, False], 4]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x, (slice(None, None, None), [True, False, True, False], 4)
+            )
+            res = self.exe.run(fetch_list=[y.name])
 
-    #     np.testing.assert_allclose(res[0], np_res)
+        np.testing.assert_allclose(res[0], np_res)
 
-    # def test_combined_index_5(self):
-    #     # int tensor + slice + Ellipsis
-    #     np_data = np.arange(3*4*5*6).reshape((3, 4, 5, 6))
-    #     np_res = np_data[..., [1, 4, 3], ::2]
-    #     with paddle.static.program_guard(
-    #         paddle.static.Program(), paddle.static.Program()
-    #     ):
-    #         x = paddle.to_tensor(np_data)
-    #         y = _getitem_static(
-    #             x,
-    #             (..., [1, 4, 3], slice(None, None, 2)),
-    #         )
-    #         res = self.exe.run(fetch_list=[y.name])
+    def test_combined_index_11(self):
+        # only one bool tensor with all False
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[:, [False, False, False, False], 4]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x, (slice(None, None, None), [False, False, False, False], 4)
+            )
+            res = self.exe.run(fetch_list=[y.name])
 
-    #     np.testing.assert_allclose(res[0], np_res)
+        np.testing.assert_allclose(res[0], np_res)
+
+
+class TestGetItemErrorCase(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_bool_shape_error1(self):
+        x = paddle.randn((4, 3, 2))
+        with self.assertRaises(IndexError):
+            y = _getitem_static(x, ([True, False]))
+
+    def test_bool_shape_error2(self):
+        x = paddle.randn((4, 3, 2))
+        with self.assertRaises(IndexError):
+            y = _getitem_static(x, (1, paddle.to_tensor([True, False]), [0, 1]))
