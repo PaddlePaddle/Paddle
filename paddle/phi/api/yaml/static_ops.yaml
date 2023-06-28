@@ -433,6 +433,18 @@
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool3d_grad
 
+- op : prod
+  args : (Tensor x, IntArray dims={0}, bool keep_dim=false, bool reduce_all=false, int in_dtype=-1, DataType out_dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+    param : [x, dims, keep_dim, reduce_all, out_dtype]
+  kernel :
+    func : prod
+    param : [x, dims, keep_dim, reduce_all, out_dtype]
+    data_type : x
+  backward : prod_grad
+
 - op : randint
   args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
   output : Tensor(out)
