@@ -39,7 +39,7 @@ from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
-g_calc_shard_locally = int(os.environ.get("CALC_SHARD_LOCALLY", 0))
+g_calc_shard_locally = int(os.environ.get("CALC_SHARD_LOCALLY", 1))
 
 
 class ChunkNormer:
@@ -253,7 +253,7 @@ class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
         self._clip = clip
         self._hcg = hcg
-        self.not_sharding_stage1 = True
+        self.not_sharding_stage1 = False
 
     def _global_norm(self, params_grads):
         sum_square_dist_fp16 = []
