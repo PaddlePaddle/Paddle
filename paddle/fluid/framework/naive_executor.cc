@@ -69,23 +69,13 @@ void NaiveExecutor::Run() {
                                 platform::NvtxRangeColor::Green);
 #endif
 
+    for (auto &func : input_hookfuncs_) {
+      func(op.get(), scope_);
+    }
+
     if (op->Type() == "while") {
       op->SetOutputHooks(hookfuncs_);
     }
-
-
-      //std::cout << op->Type() << std::endl;
-
-
-      // for (auto name : op->OutputVars(true)) {
-      //   std::cout << name << std::endl;
-      //   auto tensor = FindTensor(name);
-      //   auto dims = tensor->dims();
-      //   for(int i = 0; i < dims.size(); i++)
-      //   {
-      //     std::cout << dims[i] << std::endl;
-      //   }
-      // }
 
     op->Run(*scope_, place_);
 
@@ -118,7 +108,7 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    for (auto &func : hookfuncs_) {
+    for (auto &func : output_hookfuncs_) {
       func(op.get(), scope_);
     }
   }
@@ -199,7 +189,11 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfuncs_.push_back(hookfunc);
+  output_hookfuncs_.push_back(hookfunc);
+}
+
+void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
+  input_hookfuncs_.push_back(hookfunc);
 }
 
 void NaiveExecutor::MakeReusePlan(
