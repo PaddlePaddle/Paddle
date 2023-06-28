@@ -1773,18 +1773,16 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk, size_t key_num, int t
   std::shared_ptr<phi::Allocation> d_feature_list;
   std::shared_ptr<phi::Allocation> d_slot_list;
 
-  if (conf_.sage_mode) {
-    size_t temp_storage_bytes = (key_num + 1) * sizeof(uint32_t);
-    if (d_feature_size_list_buf_ == NULL ||
-        d_feature_size_list_buf_->size() < temp_storage_bytes) {
-      d_feature_size_list_buf_ =
+  size_t temp_storage_bytes = (key_num + 1) * sizeof(uint32_t);
+  if (d_feature_size_list_buf_ == NULL ||
+      d_feature_size_list_buf_->size() < temp_storage_bytes) {
+    d_feature_size_list_buf_ =
           memory::AllocShared(this->place_, temp_storage_bytes);
-    }
-    if (d_feature_size_prefixsum_buf_ == NULL ||
-        d_feature_size_prefixsum_buf_->size() < temp_storage_bytes) {
-      d_feature_size_prefixsum_buf_ =
+  }
+  if (d_feature_size_prefixsum_buf_ == NULL ||
+      d_feature_size_prefixsum_buf_->size() < temp_storage_bytes) {
+    d_feature_size_prefixsum_buf_ =
           memory::AllocShared(this->place_, temp_storage_bytes);
-    }
   }
 
   uint32_t *d_feature_size_list_ptr =
