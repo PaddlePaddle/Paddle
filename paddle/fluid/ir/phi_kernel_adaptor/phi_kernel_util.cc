@@ -171,7 +171,7 @@ void BuildInferMetaContext(
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
     auto index = op_yaml_info.Name2Id().at(t);
-    ir::Value ptr = op->operand(index).source();
+    ir::Value ptr = op->operand(index);
     auto in_var_name = name_map.at(ptr);
 
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
@@ -286,7 +286,7 @@ void BuildPhiKernelContext(
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
     auto index = op_yaml_info.Name2Id().at(t);
-    ir::Value ptr = op->operand(index).source();
+    ir::Value ptr = op->operand(index);
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
@@ -320,7 +320,7 @@ void BuildPhiKernelContext(
   for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
       // tensor attribute, get information from input
-      ir::Value ptr = op->operand(name2id.at(t)).source();
+      ir::Value ptr = op->operand(name2id.at(t));
 
       auto in_var_name = name_map.at(ptr);
       if (input_map != nullptr) {
