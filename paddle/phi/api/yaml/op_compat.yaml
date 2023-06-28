@@ -2029,15 +2029,20 @@
   backward : prod_grad (reduce_prod_grad)
   inputs:
     x : X
-  attrs:
-    { dims : dim,  keep_dim : keep_dim}
   outputs:
     out : Out
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
   int_array:
     dims :
       data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false]
+  get_expected_kernel_type :
+    prod : GetReduceExpectedKernelType
+    prod_grad : GetReduceGradExpectedKernelType
+  manual_signature : [prod]
 
 - op : put_along_axis
   backward : put_along_axis_grad
