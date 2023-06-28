@@ -237,7 +237,7 @@ class TestPass : public ir::Pass {
     ir::FrozenRewritePatternSet frozen_ps(std::move(ps));
     ir::GreedyRewriteConfig cfg;
     cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 1;
+    cfg.max_iterations = 10;
     ir::ApplyPatternsGreedily(op->region(0), frozen_ps, cfg);
   }
 
