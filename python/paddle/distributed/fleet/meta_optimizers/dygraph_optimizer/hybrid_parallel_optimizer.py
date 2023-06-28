@@ -49,7 +49,7 @@ class HybridParallelClipGrad:
         self.not_sharding_stage1 = True
         self._vpp_chunk_num = None
         self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
-            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '1')
+            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '0')
         )
 
     def _get_vpp_chunk_num(self, params_grads):
