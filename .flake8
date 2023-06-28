@@ -7,16 +7,6 @@ exclude =
     # Exclude third-party libraries
     ./third_party/**,
     ./python/paddle/utils/gast/**,
-    # Temporarily ignore CINN files, it will fix later
-    ./python/cinn/**,
-    ./test/cinn/**,
-    ./paddle/cinn/backends/llvm/generate_runtime_llvm_ir.py,
-    ./tools/cinn/gen_c++_tutorial.py,
-    ./tools/cinn/paddle_benchmark/paddle_save_model.py,
-    ./tools/cinn/paddle_benchmark/paddle_test_benchmark.py,
-    ./tools/cinn/paddle_benchmark/test_paddle_ops.py,
-    ./tools/cinn/tvm_benchmark/test_topi_default.py,
-    ./tools/cinn/tvm_benchmark/tvm_graph_with_single_op.py,
 ignore =
     # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
     E203,
@@ -37,3 +27,21 @@ ignore =
 per-file-ignores =
     # These files need tabs for testing.
     test/dygraph_to_static/test_error.py:E101,W191
+    # Temporarily ignore CINN files, it will fix later
+    python/cinn/**:
+        E265,
+    test/cinn/**:
+        E126,
+        E231,
+        E251,
+        E265,
+        E266,
+        E401,
+        E711,
+        W291,
+        W504,
+    paddle/cinn/**:
+        E265,
+    tools/cinn/**:
+        E265,
+        E401,
