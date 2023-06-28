@@ -174,18 +174,18 @@ class OpConverter {
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
-std::cout << op_desc.Type() << std::endl;
+// std::cout << op_desc.Type() << std::endl;
 
-for(auto it1 : op_desc.InputNames())
-{
-  for (auto it2 : op_desc.Input(it1))
-  {
-    auto output_name = it2;
-    std::cout << output_name << std::endl;
-  }
-}
+// for(auto it1 : op_desc.InputNames())
+// {
+//   for (auto it2 : op_desc.Input(it1))
+//   {
+//     auto output_name = it2;
+//     std::cout << output_name << std::endl;
+//   }
+// }
 
-std::cout << op_desc.InputNames().size() << std::endl;
+// std::cout << op_desc.InputNames().size() << std::endl;
 
     it->SetEngine(engine);
     engine->SetScope(scope);
