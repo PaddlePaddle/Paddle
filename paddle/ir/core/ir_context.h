@@ -32,6 +32,7 @@ class InterfaceValue;
 class Type;
 class OpResult;
 class Attribute;
+class Operation;
 
 using OpInfoMap = std::unordered_map<std::string, OpInfo>;
 
@@ -102,18 +103,14 @@ class IR_API IrContext {
   ///
   /// \brief Register an op infomation to IrContext
   ///
-  void RegisterOpInfo(
-      Dialect *dialect,
-      TypeId op_id,
-      const char *name,
-      std::vector<InterfaceValue> &&interface_map,
-      const std::vector<TypeId> &trait_set,
-      size_t attributes_num,
-      const char **attributes_name,
-      void (*verify)(
-          const std::vector<OpResult> &inputs,
-          const std::vector<Type> &outputs,
-          const std::unordered_map<std::string, Attribute> &attributes));
+  void RegisterOpInfo(Dialect *dialect,
+                      TypeId op_id,
+                      const char *name,
+                      std::vector<InterfaceValue> &&interface_map,
+                      const std::vector<TypeId> &trait_set,
+                      size_t attributes_num,
+                      const char **attributes_name,
+                      void (*verify)(Operation *));
 
   ///
   /// \brief Get registered operaiton infomation.

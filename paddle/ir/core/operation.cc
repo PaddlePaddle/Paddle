@@ -46,10 +46,6 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              ir::OpInfo op_info,
                              size_t num_regions) {
-  // 0. Verify
-  if (op_info) {
-    op_info.Verify(inputs, output_types, attributes);
-  }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -100,6 +96,11 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
       base_ptr += sizeof(Region);
     }
   }
+
+  // 0. Verify
+  if (op_info) {
+    op_info.Verify(op);
+  }
   return op;
 }
 
@@ -129,7 +130,7 @@ void Operation::Destroy() {
 
   // 4. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
-    operand(idx).impl()->~OpOperandImpl();
+    op_operand(idx).impl()->~OpOperandImpl();
   }
   // 5. Free memory.
   uint32_t max_inline_result_num =
@@ -183,13 +184,18 @@ ir::OpResult Operation::result(uint32_t index) const {
   }
 }
 
-ir::OpOperand Operation::operand(uint32_t index) const {
+OpOperand Operation::op_operand(uint32_t index) const {
   if (index >= num_operands_) {
     IR_THROW("index exceeds OP input range.");
   }
   const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
                     (index) * sizeof(detail::OpOperandImpl);
-  return ir::OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+  return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+}
+
+Value Operation::operand(uint32_t index) const {
+  OpOperand val = op_operand(index);
+  return val ? val.source() : Value();
 }
 
 std::string Operation::name() const {
@@ -222,6 +228,20 @@ Region &Operation::region(unsigned index) {
 void Operation::SetParent(Block *parent, const Block::iterator &position) {
   parent_ = parent;
   position_ = position;
+}
+
+void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
+  IR_ENFORCE(num_results_ == values.size(),
+             "the num of result should be the same.");
+  for (uint32_t i = 0; i < num_results_; ++i) {
+    result(i).ReplaceAllUsesWith(values[i]);
+  }
+}
+
+void Operation::Verify() {
+  if (info_) {
+    info_.Verify(this);
+  }
 }
 
 }  // namespace ir

@@ -38,22 +38,21 @@ class AddOp : public ir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {
-    if (inputs.size() != 2) {
-      throw("The size of inputs must be equal to 2.");
-    }
-    if (outputs.size() != 1) {
-      throw("The size of outputs must be equal to 1.");
-    }
-  }
+  void Verify();
   static void Build(ir::Builder &builder,             // NOLINT
                     ir::OperationArgument &argument,  // NOLINT
                     ir::OpResult l_operand,
                     ir::OpResult r_operand,
                     ir::Type sum_type);
 };
+void AddOp::Verify() {
+  if (num_operands() != 2) {
+    throw("The size of inputs must be equal to 2.");
+  }
+  if (num_results() != 1) {
+    throw("The size of outputs must be equal to 1.");
+  }
+}
 void AddOp::Build(ir::Builder &,
                   ir::OperationArgument &argument,
                   ir::OpResult l_operand,
@@ -175,9 +174,9 @@ TEST(program_test, program) {
   // (8) Def SetParameterOp(c, "c")
   auto op4 = builder.Build<ir::SetParameterOp>(op3->result(0), "c");
 
-  EXPECT_EQ(op4->operand(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op4->op_operand(0).type().dialect().id(), paddle_dialect->id());
   Interface *c_interface =
-      op4->operand(0).type().dialect().GetRegisteredInterface<Interface>();
+      op4->op_operand(0).type().dialect().GetRegisteredInterface<Interface>();
   //   ir::Parameter *parameter_c =
   //       c_interface->VariableToParameter(variable_c.get());
   std::unique_ptr<ir::Parameter> parameter_c =
@@ -262,9 +261,9 @@ TEST(program_test, builder) {
   ir::Type full_op_output = full_op->result(0).type();
   EXPECT_EQ(program.block()->size(), 1u);
   EXPECT_EQ(program.block()->back(), full_op.operation());
-  EXPECT_EQ(full_op->num_operands(), 0u);
-  EXPECT_EQ(full_op->num_results(), 1u);
-  EXPECT_EQ(full_op->attributes().size(), 4u);
+  EXPECT_EQ(full_op.num_operands(), 0u);
+  EXPECT_EQ(full_op.num_results(), 1u);
+  EXPECT_EQ(full_op.attributes().size(), 4u);
   EXPECT_EQ(
       full_op_output.dyn_cast<paddle::dialect::DenseTensorType>().offset() == 0,
       true);

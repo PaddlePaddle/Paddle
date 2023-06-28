@@ -3625,46 +3625,7 @@ def record_is_view_var(op_type, inputs, outputs):
         else:
             if hasattr(outputs["Out"], "is_view_var"):
                 outputs["Out"].is_view_var = True
-    elif op_type == "share_data":  # detach
-        if inputs is not None and isinstance(inputs["X"], list):
-            if hasattr(inputs["X"][0], "is_view_var"):
-                inputs["X"][0].is_view_var = True
-        else:
-            if hasattr(inputs["X"], "is_view_var"):
-                inputs["X"].is_view_var = True
-        if outputs is not None and isinstance(outputs["Out"], list):
-            if hasattr(outputs["Out"][0], "is_view_var"):
-                outputs["Out"][0].is_view_var = True
-        else:
-            if hasattr(outputs["Out"], "is_view_var"):
-                outputs["Out"].is_view_var = True
     elif op_type == "squeeze" or op_type == "squeeze2":
-        if inputs is not None and isinstance(inputs["X"], list):
-            if hasattr(inputs["X"][0], "is_view_var"):
-                inputs["X"][0].is_view_var = True
-        else:
-            if hasattr(inputs["X"], "is_view_var"):
-                inputs["X"].is_view_var = True
-        if outputs is not None and isinstance(outputs["Out"], list):
-            if hasattr(outputs["Out"][0], "is_view_var"):
-                outputs["Out"][0].is_view_var = True
-        else:
-            if hasattr(outputs["Out"], "is_view_var"):
-                outputs["Out"].is_view_var = True
-    elif op_type == "expand" or op_type == "expand_v2":
-        if inputs is not None and isinstance(inputs["X"], list):
-            if hasattr(inputs["X"][0], "is_view_var"):
-                inputs["X"][0].is_view_var = True
-        else:
-            if hasattr(inputs["X"], "is_view_var"):
-                inputs["X"].is_view_var = True
-        if outputs is not None and isinstance(outputs["Out"], list):
-            if hasattr(outputs["Out"][0], "is_view_var"):
-                outputs["Out"][0].is_view_var = True
-        else:
-            if hasattr(outputs["Out"], "is_view_var"):
-                outputs["Out"].is_view_var = True
-    elif op_type == "expand_as" or op_type == "expand_as_v2":
         if inputs is not None and isinstance(inputs["X"], list):
             if hasattr(inputs["X"][0], "is_view_var"):
                 inputs["X"][0].is_view_var = True

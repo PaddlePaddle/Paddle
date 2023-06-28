@@ -23,6 +23,7 @@ namespace ir {
 
 class Block;
 class Operation;
+class IrContext;
 
 class IR_API Region {
  public:
@@ -54,6 +55,8 @@ class IR_API Region {
   void TakeBody(Region &&other);
 
   Operation *GetParent() const { return parent_; }
+
+  IrContext *ir_context() const;
 
  private:
   Region(Region &) = delete;
