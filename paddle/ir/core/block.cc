@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/region.h"
 
@@ -30,6 +31,12 @@ Block::iterator Block::insert(const_iterator iterator, Operation *op) {
   Block::iterator iter = ops_.insert(iterator, op);
   op->SetParent(this, iter);
   return iter;
+}
+
+Block::iterator Block::erase(const_iterator position) {
+  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this block.");
+  (*position)->Destroy();
+  return ops_.erase(position);
 }
 
 void Block::clear() {

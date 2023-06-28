@@ -66,6 +66,27 @@ void BuildScope(ir::Block* block,
       continue;
     }
 
+    if (op_name == "pd.feed") {
+      auto ptr = (*it)->result(0);
+      std::string name = "inner_var_" + std::to_string(count++);
+      name_map->emplace(ptr, name);
+      auto var = scope->Var(name);
+      // TODO(phlrain): need to update here, support StringTensor
+      auto out_tensor = var->GetMutable<phi::DenseTensor>();
+
+      name_map->emplace(ptr, name);
+
+      auto feed_var = scope->Var("feed");
+      int index =
+          (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+      auto feed_list = feed_var->Get<paddle::framework::FeedList>();
+      auto& in_tensor = (PADDLE_GET(phi::DenseTensor, feed_list.at(index)));
+
+      out_tensor->ShareDataWith(in_tensor);
+
+      continue;
+    }
+
     if (op_name == "builtin.combine") {
       auto out_value = (*it)->result(0);
 
@@ -82,7 +103,7 @@ void BuildScope(ir::Block* block,
       auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
 
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
 
         PADDLE_ENFORCE_EQ(name_map->count(ptr),
                           true,
@@ -98,7 +119,7 @@ void BuildScope(ir::Block* block,
 
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -162,15 +183,15 @@ void BuildInferMetaContext(
   auto runtime_info = std::get<3>(op_yaml_info);
 
   // int input_index = 0;
+
   std::vector<std::string> vec_param_list = runtime_info.infer_meta_param;
 
   for (size_t input_index = 0; input_index < vec_param_list.size();
        input_index++) {
     auto& t = vec_param_list[input_index];
-
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {
@@ -197,7 +218,7 @@ void BuildInferMetaContext(
         if (var->IsType<phi::DenseTensor>()) {
           const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
           ctx->EmplaceBackInput(const_cast<phi::TensorBase*>(tensor_in));
-        } else {
+        } else if (var->IsType<paddle::framework::TensorRefArray>()) {
           paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>
               inputs;
           auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
@@ -206,6 +227,9 @@ void BuildInferMetaContext(
           }
 
           ctx->EmplaceBackInputs(std::move(inputs));
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
+                                                  var->Type()));
         }
       }
     }
@@ -238,8 +262,7 @@ void BuildInferMetaContext(
     }
   }
 
-  // update here, support fetch list for now
-  // [todo update here]
+  // TODO(phlrain): use var type instead of op name
   if (op->attributes().count("op_name") &&
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
@@ -249,9 +272,11 @@ void BuildInferMetaContext(
     auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
-    ir::Value out_ptr = op->result(0);
-    auto name = name_map.at(out_ptr);
-    ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      ir::Value out_ptr = op->result(i);
+      auto name = name_map.at(out_ptr);
+      ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+    }
   }
 }
 
@@ -291,12 +316,16 @@ void BuildPhiKernelContext(
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
-
       if (input_map != nullptr) {
         // only deal with single input for now, [todo] need support multi input
         // like concat
+        // TODO(phlrain): OpFuncNode need input_index and output_index,
+        // construct input_index and output_here,  should remove input_index and
+        // output_index from OpFuncNode Each in_var_name named "inner_var_" +
+        // index, len("inner_var_") = 10
+
         size_t tmp_id = std::atol(in_var_name.substr(4, 100).c_str());
         (*input_map)[std::to_string(input_index_map.at(t))].push_back(tmp_id);
       }
@@ -331,7 +360,7 @@ void BuildPhiKernelContext(
         if (var->IsType<phi::DenseTensor>()) {
           const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
           ctx->EmplaceBackInput(tensor_in);
-        } else {
+        } else if (var->IsType<paddle::framework::TensorRefArray>()) {
           paddle::small_vector<const phi::TensorBase*> inputs;
           auto& tensor_array = var->Get<paddle::framework::TensorRefArray>();
           for (size_t i = 0; i < tensor_array.size(); ++i) {
@@ -339,6 +368,13 @@ void BuildPhiKernelContext(
           }
 
           ctx->EmplaceBackInputs(std::move(inputs));
+        } else if (var->IsType<paddle::framework::FeedList>()) {
+          auto feed_list = var->Get<paddle::framework::FeedList>();
+          auto* in_tensor = &(PADDLE_GET(phi::DenseTensor, feed_list.at(0)));
+          ctx->EmplaceBackOutput(in_tensor);
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
+                                                  var->Type()));
         }
       }
     }
@@ -371,6 +407,7 @@ void BuildPhiKernelContext(
     }
   }
 
+  // TODO(phlrain): use var type instead of op name
   if (op->attributes().count("op_name") &&
       (op->attributes().at("op_name").dyn_cast<ir::StrAttribute>().data() ==
        "pd.fetch")) {
@@ -380,16 +417,23 @@ void BuildPhiKernelContext(
     auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
-    ir::Value out_ptr = op->result(0);
-    auto name = name_map.at(out_ptr);
-    ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
-        &(scope->Var(name)->Get<phi::DenseTensor>())));
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      ir::Value out_ptr = op->result(i);
+      auto name = name_map.at(out_ptr);
+      ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
+          &(scope->Var(name)->Get<phi::DenseTensor>())));
 
-    if (output_map != nullptr) {
-      // only deal with single input for now, [todo] need support multi input
-      // like concat
-      size_t tmp_id = std::atol(name.substr(4, 100).c_str());
-      (*output_map)["out"].push_back(tmp_id);
+      if (output_map != nullptr) {
+        // only deal with single input for now, [todo] need support multi input
+        // like concat
+        // TODO(phlrain): OpFuncNode need input_index and output_index,
+        // construct input_index and output_here,  should remove input_index and
+        // output_index from OpFuncNode Each in_var_name named "inner_var_" +
+        // index, len("inner_var_") = 10
+
+        size_t tmp_id = std::atol(name.substr(4, 100).c_str());
+        (*output_map)["out"].push_back(tmp_id);
+      }
     }
   }
 }

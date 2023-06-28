@@ -98,6 +98,8 @@ class LRScheduler:
                     type(learning_rate)
                 )
             )
+        if learning_rate < 0:
+            raise ValueError(f"Invalid learning rate: {learning_rate}")
         self.base_lr = float(learning_rate)
         self.last_lr = float(learning_rate)
         self.last_epoch = last_epoch

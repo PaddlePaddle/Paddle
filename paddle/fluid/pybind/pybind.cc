@@ -1874,7 +1874,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("type", &framework::interpreter::Job::Type)
       .def("set_col_attr_for_fetch_op",
            &framework::interpreter::Job::SetColAttrForFetchOp)
-      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId);
+      .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
+      .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
   py::class_<framework::interpreter::Plan>(m, "Plan")
       .def(
@@ -2408,6 +2409,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_cupti_supported", &paddle::platform::Profiler::IsCuptiSupported)
       .def("is_cnpapi_supported",
            &paddle::platform::Profiler::IsCnpapiSupported)
+      .def("is_xpti_supported", &paddle::platform::Profiler::IsXPTISupported)
       .def("prepare",
            [](paddle::platform::Profiler *profiler) {
              platform::EnableHostEventRecorder();

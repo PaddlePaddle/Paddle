@@ -396,6 +396,8 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     }
 
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
+    is_vector |=
+        (info.type_name.find("IntArrayAttribute") != std::string::npos);
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
 
@@ -875,6 +877,8 @@ struct FeedOpTranscriber : public OpTranscriber {
       const OpDesc& op_desc) override {
     ir::AttributeMap attribute_map = {
         {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
+        {"col",
+         ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
 
     return attribute_map;

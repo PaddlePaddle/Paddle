@@ -46,6 +46,10 @@ static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
     return phi::DataType::INT64;
   } else if (dtype.isa<ir::BoolType>()) {
     return phi::DataType::BOOL;
+  } else if (dtype.isa<ir::Complex64Type>()) {
+    return phi::DataType::COMPLEX64;
+  } else if (dtype.isa<ir::Complex128Type>()) {
+    return phi::DataType::COMPLEX128;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
@@ -69,12 +73,20 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
       return ir::Float64Type::get(ctx);
     case phi::DataType::UINT8:
       return ir::UInt8Type::get(ctx);
+    case phi::DataType::INT8:
+      return ir::Int8Type::get(ctx);
     case phi::DataType::INT16:
       return ir::Int16Type::get(ctx);
     case phi::DataType::INT32:
       return ir::Int32Type::get(ctx);
     case phi::DataType::INT64:
       return ir::Int64Type::get(ctx);
+    case phi::DataType::BOOL:
+      return ir::BoolType::get(ctx);
+    case phi::DataType::COMPLEX64:
+      return ir::Complex64Type::get(ctx);
+    case phi::DataType::COMPLEX128:
+      return ir::Complex128Type::get(ctx);
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "

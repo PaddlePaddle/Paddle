@@ -108,7 +108,7 @@ class TestBatchNormOp(OpTest):
             )
 
     def test_check_grad_scale_bias(self):
-        if self.data_format == "NCHW":
+        if self.data_format == "NCHW" and self.training is False:
             self.enable_cinn = False
         if self.dtype == "float32":
             self.rev_comp_atol = 1e-3

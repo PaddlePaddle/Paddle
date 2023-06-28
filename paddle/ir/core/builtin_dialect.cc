@@ -35,6 +35,8 @@ void BuiltinDialect::initialize() {
                 Int32Type,
                 Int64Type,
                 BoolType,
+                Complex64Type,
+                Complex128Type,
                 VectorType>();
 
   RegisterAttributes<StrAttribute,

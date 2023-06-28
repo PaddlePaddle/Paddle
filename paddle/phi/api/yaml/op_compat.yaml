@@ -373,6 +373,18 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bincount
+  inputs :
+    {x : X, weights : Weights}
+  outputs :
+    out : Out
+  scalar:
+    minlength:
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    bincount : GetBincountExpectedKernelType
+
 - op : bitwise_and
   inputs :
     {x : X, y : Y}
@@ -1121,6 +1133,14 @@
 
 - op : gather
   backward : gather_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : Axis
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -1961,7 +1981,7 @@
     pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false, bool use_cudnn = false]
+              str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : pool3d
   backward : pool3d_grad
@@ -1975,7 +1995,7 @@
     pool3d : GetPoolExpectedKernelType
     pool3d_grad : GetPoolExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false]
 
 - op : pow
   backward : pow_grad, pow_double_grad, pow_triple_grad
@@ -2011,15 +2031,20 @@
   backward : prod_grad (reduce_prod_grad)
   inputs:
     x : X
-  attrs:
-    { dims : dim,  keep_dim : keep_dim}
   outputs:
     out : Out
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
   int_array:
     dims :
       data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false]
+  get_expected_kernel_type :
+    prod : GetReduceExpectedKernelType
+    prod_grad : GetReduceGradExpectedKernelType
+  manual_signature : [prod]
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -2523,7 +2548,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, float beta = 1.0]
 
 - op : sync_batch_norm
   backward : sync_batch_norm_grad

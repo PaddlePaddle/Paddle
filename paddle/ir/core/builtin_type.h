@@ -64,16 +64,18 @@ class IR_API VectorType : public Type {
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
-  __macro(BFloat16);                  \
-  __macro(Float16);                   \
-  __macro(Float32);                   \
-  __macro(Float64);                   \
-  __macro(Int8);                      \
-  __macro(UInt8);                     \
-  __macro(Int16);                     \
-  __macro(Int32);                     \
-  __macro(Int64);                     \
-  __macro(Bool);
+  __macro(BFloat16Type);              \
+  __macro(Float16Type);               \
+  __macro(Float32Type);               \
+  __macro(Float64Type);               \
+  __macro(Int8Type);                  \
+  __macro(UInt8Type);                 \
+  __macro(Int16Type);                 \
+  __macro(Int32Type);                 \
+  __macro(Int64Type);                 \
+  __macro(BoolType);                  \
+  __macro(Complex64Type);             \
+  __macro(Complex128Type);
 
 FOREACH_BUILTIN_TYPE(DECLARE_BUILTIN_TYPE)
 
@@ -93,3 +95,5 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int16Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Type)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::BoolType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex64Type)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Complex128Type)

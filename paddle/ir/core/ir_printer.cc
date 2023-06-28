@@ -59,6 +59,10 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "i32";
   } else if (type.isa<Int64Type>()) {
     os << "i64";
+  } else if (type.isa<Complex64Type>()) {
+    os << "c64";
+  } else if (type.isa<Complex128Type>()) {
+    os << "c128";
   } else if (type.isa<VectorType>()) {
     os << "vec[";
     auto inner_types = type.dyn_cast<VectorType>().data();
@@ -112,7 +116,7 @@ void BasicIrPrinter::PrintAttribute(const Attribute& attr) {
 void IrPrinter::PrintProgram(Program* program) {
   auto top_level_op = program->module_op();
   for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
-    auto& region = top_level_op->GetRegion(i);
+    auto& region = top_level_op->region(i);
     for (auto it = region.begin(); it != region.end(); ++it) {
       auto* block = *it;
       os << "{\n";
@@ -161,7 +165,7 @@ void IrPrinter::PrintFullOperation(Operation* op) {
     os << newline;
   }
   for (size_t i = 0; i < op->num_regions(); ++i) {
-    auto& region = op->GetRegion(i);
+    auto& region = op->region(i);
     PrintRegion(region);
   }
 }
@@ -238,7 +242,7 @@ void IrPrinter::PrintOpOperands(Operation* op) {
   std::vector<Value> op_operands;
   op_operands.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    op_operands.push_back(op->operand(idx).source());
+    op_operands.push_back(op->operand(idx));
   }
   PrintInterleave(
       op_operands.begin(),
@@ -253,11 +257,11 @@ void IrPrinter::PrintOperandsType(Operation* op) {
   std::vector<Type> op_operand_types;
   op_operand_types.reserve(num_op_operands);
   for (size_t idx = 0; idx < num_op_operands; idx++) {
-    auto op_operand = op->operand(idx);
+    auto op_operand = op->op_operand(idx);
     if (op_operand) {
-      op_operand_types.push_back(op->operand(idx).source().type());
+      op_operand_types.push_back(op_operand.type());
     } else {
-      op_operand_types.push_back(Type(nullptr));
+      op_operand_types.push_back(Type());
     }
   }
   os << " (";
