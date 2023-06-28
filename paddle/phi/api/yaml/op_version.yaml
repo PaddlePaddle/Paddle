@@ -352,6 +352,33 @@
           comment : Specify the data format of the input data
           default : "true"
 
+- op : roi_align
+  version :
+    - checkpoint : Incompatible upgrade of input [RpnRoisLod])
+      action :
+        - delete_input : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect input name and it is not used in object detection models yet
+    - checkpoint :  Upgrade roi_pool add a new input [RoisNum]
+      action :
+        - add_input : RoisNum
+          comment : The number of RoIs in each image. RoisNum is dispensable
+    - checkpoint :  Upgrade roi_align add a new input [aligned]
+      action :
+        - add_attr : aligned
+          comment : If true, pixel shift it by -0.5 for align more perfectly.
+          default : "false"
+
+- op : roi_pool
+  version :
+    - checkpoint :  Incompatible upgrade of input [RpnRoisLod]
+      action :
+        - delete_input : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect input name and it is not used in object detection models yet.
+    - checkpoint :  Upgrade roi_pool add a new input [RoisNum]
+      action :
+        - add_input : RoisNum
+          comment : The number of RoIs in each image. RoisNum is dispensable
+
 - op : roll
   version :
     - checkpoint : Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].
