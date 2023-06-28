@@ -87,20 +87,33 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
         Node* useless_op_out_var = subgraph.at(useless_op_out);
         const std::string useless_op_in_name = useless_op_in_var->Name();
         const std::string useless_op_out_name = useless_op_out_var->Name();
-
-
-        if (useless_op_in_var->inputs.size() != 1L) return;
-        auto pre_op_node = useless_op_in_var->inputs[0];
-        
-        // Link pre_op directly to scale_out
-        auto* pre_op_desc = pre_op_node->Op();
-        IR_NODE_LINK_TO(pre_op_node, useless_op_out_var);
-        // Modify pre_op_desc
-        pre_op_desc->RenameOutput(useless_op_in_var->Name(), useless_op_out_var->Name());
-
-        // Remove nodes in graph
+        // Remove links in graph
         GraphSafeRemoveNodes(graph, {useless_op_in_var, useless_op_var});
-
+        // Modify pre_op_desc
+        // Link pre_op directly to scale_out
+        for (auto& node : graph->Nodes()) {
+          if (node->IsOp()) {
+            auto* op_desc = node->Op();
+            auto out_vars_map = op_desc->Outputs();
+            for (auto out_var_map : out_vars_map) {
+              auto names = out_var_map.second;
+              bool reset = false;
+              for (size_t i = 0; i < names.size(); i++) {
+                if (names[i] == useless_op_in_name) {
+                  reset = true;
+                  names[i] = useless_op_out_name;
+                  break;
+                }
+              }
+              if (reset) {
+                op_desc->SetOutput(out_var_map.first, names);
+                op_desc->Flush();
+                IR_NODE_LINK_TO(node, useless_op_out_var);
+                break;
+              }
+            }
+          }
+        }
         found_subgraph_count++;
       };
 

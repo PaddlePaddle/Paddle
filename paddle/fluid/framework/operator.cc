@@ -2001,9 +2001,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                           tensors,
                           HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
-        
-        std::cout << phi_kernel_name << " " <<  *kernel_type_ << std::endl;
-
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
         phi::KernelContext phi_kernel_context;
