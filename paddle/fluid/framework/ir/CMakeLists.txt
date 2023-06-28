@@ -271,6 +271,8 @@ if(WITH_XPU)
   pass_library(matmul_weight_trans_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(reshape2_matmul_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(elementwise_mul_add_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

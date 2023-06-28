@@ -291,6 +291,13 @@ void GenerateSequenceXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void ElementwiseMulMulAddXPUInferMeta(const MetaTensor& x,
+                                      const MetaTensor& y,
+                                      const MetaTensor& z,
+                                      MetaTensor* out) {
+  out->set_dims(x.dims());
+}
+
 void MultiEncoderXPUInferMeta(
     const MetaTensor& x,
     const std::vector<const MetaTensor*>& fc_weight,

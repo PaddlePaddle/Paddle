@@ -241,6 +241,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"elementwise_mul_mul_add_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"elementwise_pow",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"elementwise_sub_grad",
