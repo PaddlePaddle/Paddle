@@ -12,8 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/interface/infermeta.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
-
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
+#include "paddle/ir/core/verify.h"
+#include "paddle/ir/core/operation.h"
+namespace ir {
+void Verify(Operation *op, bool verify_recursively) {
+  op->Verify();
+  if (!verify_recursively) return;
+  for (size_t index = 0; index < op->num_regions(); ++index) {
+    auto &region = op->region(index);
+    for (auto iter = region.begin(); iter != region.end(); ++iter) {
+      auto block = *iter;
+      for (auto op_iter = block->begin(); op_iter != block->end(); ++op_iter) {
+        Verify(*op_iter, verify_recursively);
+      }
+    }
+  }
+}
+}  // namespace ir
