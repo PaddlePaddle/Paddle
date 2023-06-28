@@ -20,7 +20,9 @@
 #include <thrust/scan.h>
 
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/broadcast_shape.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
 namespace phi {
@@ -50,12 +52,21 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             const DenseTensor& mask,
                             const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
-  auto mask_size = mask.numel();
+  DenseTensor mask_expand;
+  if (mask.dims() != x.dims()) {
+    auto expanded_size = InferBroadcastShape(x.dims(), mask.dims());
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
+
+  auto mask_size = mask_expand.numel();
   dev_ctx.template Alloc<T>(x_grad);
   if (mask_size <= 0) return;
   using Functor = MaskedSelectGradFunctor<bool, T, T>;
   phi::funcs::SelectKernel<bool, T, T, 2, Functor>(
-      dev_ctx, mask, out_grad, x_grad, Functor());
+      dev_ctx, mask_expand, out_grad, x_grad, Functor());
 }
 
 }  // namespace phi

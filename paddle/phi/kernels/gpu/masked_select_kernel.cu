@@ -21,7 +21,9 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/broadcast_shape.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/select_impl.cu.h"
 
 namespace phi {
@@ -48,12 +50,17 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& mask,
                         DenseTensor* out) {
-  auto* mask_data = mask.data<bool>();
-  auto input_data = x.data<T>();
+  DenseTensor mask_expand;
+  if (mask.dims() != x.dims()) {
+    auto expanded_size = InferBroadcastShape(x.dims(), mask.dims());
+    ExpandKernel<bool, Context>(
+        dev_ctx, mask, IntArray(expanded_size), &mask_expand);
+  } else {
+    mask_expand = mask;
+  }
 
-  auto mask_size = mask.numel();
   auto input_dim = x.dims();
-  auto mask_dim = mask.dims();
+  auto mask_dim = mask_expand.dims();
   PADDLE_ENFORCE_EQ(input_dim,
                     mask_dim,
                     phi::errors::InvalidArgument(
@@ -63,9 +70,13 @@ void MaskedSelectKernel(const Context& dev_ctx,
                         "value.",
                         input_dim,
                         mask_dim));
+
+  auto* mask_data = mask_expand.data<bool>();
+  auto input_data = x.data<T>();
+
   using Functor = MaskedSelectFunctor<bool, T, T>;
   phi::funcs::SelectKernel<bool, T, T, 1, Functor>(
-      dev_ctx, mask, x, out, Functor());
+      dev_ctx, mask_expand, x, out, Functor());
 }
 
 }  // namespace phi

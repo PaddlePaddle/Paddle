@@ -197,7 +197,6 @@ class TestMaskedSelectError(unittest.TestCase):
 
 class TestMaskedSelectBroadcast(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('cpu')
         paddle.disable_static()
 
     def test_broadcast(self):
