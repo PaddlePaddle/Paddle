@@ -650,6 +650,9 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
+C:\Python37\python.exe -m pip uninstall -y paddlepaddle
+C:\Python37\python.exe -m pip uninstall -y paddlepaddle-gpu
+C:\Python37\python.exe -m pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
     echo pip install whl package failed!
     exit /b 1
