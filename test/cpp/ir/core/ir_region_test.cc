@@ -32,8 +32,8 @@ TEST(region, erase_op_test) {
   ir::Builder builder = ir::Builder(ctx, program.block());
 
   // (3) Def a = ConstantOp("2.0"); b = ConstantOp("2.0");
-  ir::FloatAttribute fp_attr = ir::FloatAttribute::get(ctx, 2.0f);
-  ir::Float32Type fp32_type = ir::Float32Type::get(ctx);
+  ir::FloatAttribute fp_attr = builder.float_attr(2.0f);
+  ir::Float32Type fp32_type = builder.float32_type();
   ir::OpResult a = builder.Build<ir::ConstantOp>(fp_attr, fp32_type)->result(0);
   ir::OpResult b = builder.Build<ir::ConstantOp>(fp_attr, fp32_type)->result(0);
 
