@@ -113,8 +113,8 @@ void XPUElementwise(const XPUContext& dev_ctx,
                                       const std::vector<int>&,
                                       const std::vector<int>&)> func) {
   dev_ctx.template Alloc<T>(z);
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  const DDim& x_dims = x.dims();
+  const DDim& y_dims = y.dims();
 
   const T* x_data = x.data<T>();
   const T* y_data = y.data<T>();
