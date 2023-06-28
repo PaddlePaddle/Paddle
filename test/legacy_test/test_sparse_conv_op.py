@@ -442,5 +442,5 @@ class TestStatic(unittest.TestCase):
         paddle.disable_static()
 
 
-if __name__ == "__main__"
+if __name__ == "__main__":
     unittest.main()
