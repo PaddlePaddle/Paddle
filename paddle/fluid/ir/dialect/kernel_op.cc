@@ -20,27 +20,28 @@
 namespace paddle {
 namespace dialect {
 
-const char *PhiKernelOp::attributes_name[attributes_num] = {
+const char* PhiKernelOp::attributes_name[attributes_num] = {
     "op_name", "kernel_name", "kernel_key"};
 
 void PhiKernelOp::Verify() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: PhiKernelOp.";
-  // Verify if attributes contain attribute name in attributes_name:
-  PADDLE_ENFORCE_EQ(attributes.count("op_name") > 0 &&
-                        attributes.at("op_name").isa<ir::StrAttribute>(),
-                    true,
-                    phi::errors::PreconditionNotMet(
-                        "Type of attribute: op_name is not right."));
-  PADDLE_ENFORCE_EQ(attributes.count("kernel_name") > 0 &&
-                        attributes.at("kernel_name").isa<ir::StrAttribute>(),
-                    true,
-                    phi::errors::PreconditionNotMet(
-                        "Type of attribute: kernel_name is not right."));
-  PADDLE_ENFORCE_EQ(attributes.count("kernel_key") > 0 &&
-                        attributes.at("kernel_key").isa<KernelAttribute>(),
-                    true,
-                    phi::errors::PreconditionNotMet(
-                        "Type of attribute: kernel_key is not right."));
+
+  auto& attributes = this->attributes();
+
+  PADDLE_ENFORCE(attributes.count("op_name") > 0 &&
+                     attributes.at("op_name").isa<ir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: op_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_name") > 0 &&
+                     attributes.at("kernel_name").isa<ir::StrAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_name is not right."));
+
+  PADDLE_ENFORCE(attributes.count("kernel_key") > 0 &&
+                     attributes.at("kernel_key").isa<KernelAttribute>(),
+                 phi::errors::PreconditionNotMet(
+                     "Type of attribute: kernel_key is not right."));
 }
 
 const std::string PhiKernelOp::op_name() {
