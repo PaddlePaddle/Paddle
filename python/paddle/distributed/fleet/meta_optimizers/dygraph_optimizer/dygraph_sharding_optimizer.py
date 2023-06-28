@@ -24,6 +24,7 @@ from paddle.fluid.dygraph import base as imperative_base
 from ...utils.log_util import logger
 
 g_shard_use_reduce = int(os.environ.get("SHARD_USE_REDUCE", 0))
+logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
 
 
 def _is_trainable(param):

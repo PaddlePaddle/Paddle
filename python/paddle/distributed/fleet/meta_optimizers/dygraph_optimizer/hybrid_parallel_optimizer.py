@@ -40,6 +40,7 @@ from ...utils.mix_precision_utils import MixPrecisionOptimizer
 __all__ = []
 
 g_calc_shard_locally = int(os.environ.get("CALC_SHARD_LOCALLY", 1))
+logger.info(f"g_calc_shard_locally {g_calc_shard_locally}")
 
 
 class ChunkNormer:
