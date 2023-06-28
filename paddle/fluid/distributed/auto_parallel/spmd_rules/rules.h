@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/embedding_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 
@@ -28,6 +29,10 @@ REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
 
 // replicated rule
 REGISTER_SPMD_RULE(replicated, ReplicatedSPMDRule);
+
+// embedding rule
+REGISTER_SPMD_RULE(embedding, EmbeddingSPMDRule);
+REGISTER_SPMD_RULE(lookup_table_v2, EmbeddingSPMDRule);
 
 }  // namespace auto_parallel
 }  // namespace distributed

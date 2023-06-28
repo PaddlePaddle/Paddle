@@ -69,12 +69,16 @@ class SPMDRuleBase {
       const paddle::framework::AttributeMap& attrs) const {
     auto& attr = GetAttr(name, attrs);
 
-    // In order to get bool attr properly
     framework::proto::AttrType attr_type =
         static_cast<framework::proto::AttrType>(attr.index() - 1);
+
     if (attr_type == framework::proto::AttrType::INT) {
+      // In order to get bool attr properly
       if (std::is_same<bool, T>::value) {
         return static_cast<bool>(PADDLE_GET_CONST(int, attr));
+        // In order to get int64 attr properly
+      } else if (std::is_same<int64_t, T>::value) {
+        return static_cast<int64_t>(PADDLE_GET_CONST(int, attr));
       }
     }
 
@@ -96,7 +100,8 @@ class SPMDRuleBase {
 // The same axes of different tensors will be merged.
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<const std::string, const std::vector<int64_t>>>&
-        tensor_axes_to_dim_pairs);
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts = true);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A repicated dimension could be merged by any sharded dimension.
