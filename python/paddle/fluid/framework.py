@@ -5927,6 +5927,8 @@ class Program:
             p._appending_grad_times = self._appending_grad_times
             if hasattr(self, 'lr_scheduler'):
                 p.lr_scheduler = self.lr_scheduler
+            if hasattr(self, '_pipeline_opt'):
+                p._pipeline_opt = self._pipeline_opt
 
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.

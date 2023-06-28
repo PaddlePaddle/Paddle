@@ -35,7 +35,7 @@ class OpOperandImpl {
 
   void set_source(Value value);
 
-  /// Remove this operand from the current use list.
+  /// Remove this op_operand from the current use list.
   void RemoveFromUdChain();
 
   ~OpOperandImpl();
@@ -62,7 +62,7 @@ class OpOperandImpl {
 /// \brief ValueImpl is the base class of all derived Value classes such as
 /// OpResultImpl. This class defines all the information and usage interface in
 /// the IR Value. Each Value include three attributes:
-/// (1) type: ir::Type; (2) UD-chain of value: OpOperandImpl*, first operand
+/// (1) type: ir::Type; (2) UD-chain of value: OpOperandImpl*, first op_operand
 /// address with offset of this value; (3) index: the position where the output
 /// list of the parent operator.
 ///
@@ -97,6 +97,10 @@ class alignas(8) ValueImpl {
   OpOperandImpl **first_use_addr() { return &first_use_offseted_by_index_; }
 
   bool use_empty() const { return first_use() == nullptr; }
+
+  bool HasOneUse() const {
+    return (first_use() != nullptr) && (first_use()->next_use() == nullptr);
+  }
 
   std::string PrintUdChain();
 

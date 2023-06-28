@@ -26,18 +26,30 @@ namespace dialect {
 // TODO(zhangbo): The builtin type needs to cover all data types of
 // phi::DataType.
 static inline phi::DataType TransToPhiDataType(ir::Type dtype) {
-  if (dtype.isa<ir::Float16Type>()) {
+  if (dtype.isa<ir::BFloat16Type>()) {
+    return phi::DataType::BFLOAT16;
+  } else if (dtype.isa<ir::Float16Type>()) {
     return phi::DataType::FLOAT16;
   } else if (dtype.isa<ir::Float32Type>()) {
     return phi::DataType::FLOAT32;
   } else if (dtype.isa<ir::Float64Type>()) {
     return phi::DataType::FLOAT64;
+  } else if (dtype.isa<ir::UInt8Type>()) {
+    return phi::DataType::UINT8;
+  } else if (dtype.isa<ir::Int8Type>()) {
+    return phi::DataType::INT8;
   } else if (dtype.isa<ir::Int16Type>()) {
     return phi::DataType::INT16;
   } else if (dtype.isa<ir::Int32Type>()) {
     return phi::DataType::INT32;
   } else if (dtype.isa<ir::Int64Type>()) {
     return phi::DataType::INT64;
+  } else if (dtype.isa<ir::BoolType>()) {
+    return phi::DataType::BOOL;
+  } else if (dtype.isa<ir::Complex64Type>()) {
+    return phi::DataType::COMPLEX64;
+  } else if (dtype.isa<ir::Complex128Type>()) {
+    return phi::DataType::COMPLEX128;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
@@ -51,18 +63,30 @@ static inline ir::Type TransToIrDataType(phi::DataType dtype,
     ctx = ir::IrContext::Instance();
   }
   switch (dtype) {
+    case phi::DataType::BFLOAT16:
+      return ir::BFloat16Type::get(ctx);
     case phi::DataType::FLOAT16:
       return ir::Float16Type::get(ctx);
     case phi::DataType::FLOAT32:
       return ir::Float32Type::get(ctx);
     case phi::DataType::FLOAT64:
       return ir::Float64Type::get(ctx);
+    case phi::DataType::UINT8:
+      return ir::UInt8Type::get(ctx);
+    case phi::DataType::INT8:
+      return ir::Int8Type::get(ctx);
     case phi::DataType::INT16:
       return ir::Int16Type::get(ctx);
     case phi::DataType::INT32:
       return ir::Int32Type::get(ctx);
     case phi::DataType::INT64:
       return ir::Int64Type::get(ctx);
+    case phi::DataType::BOOL:
+      return ir::BoolType::get(ctx);
+    case phi::DataType::COMPLEX64:
+      return ir::Complex64Type::get(ctx);
+    case phi::DataType::COMPLEX128:
+      return ir::Complex128Type::get(ctx);
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
