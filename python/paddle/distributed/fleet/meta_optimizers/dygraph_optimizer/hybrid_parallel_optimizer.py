@@ -168,9 +168,10 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
-        chunk_num = self._get_vpp_chunk_num(params_grads)
-        if chunk_num > 0 and self._force_align_vpp_grad_sum_order:
-            return self._vpp_dygraph_clip(params_grads, chunk_num)
+        if self._force_align_vpp_grad_sum_order:
+            chunk_num = self._get_vpp_chunk_num(params_grads)
+            if chunk_num > 0:
+                return self._vpp_dygraph_clip(params_grads, chunk_num)
 
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
