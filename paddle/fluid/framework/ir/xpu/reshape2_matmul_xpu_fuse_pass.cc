@@ -80,21 +80,18 @@ struct Reshape2MatmulPattern : public PatternBase {
 Reshape2MatmulPattern::Reshape2MatmulPattern(PDPattern* pattern,
                                              const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
-  auto* reshape2_in = pattern->NewNode(reshape2_in_repr())
-                          ->assert_is_op_input("reshape2", "X")
-                          ->AsInput()
-                          ->assert_more([](Node* node) {
-                            auto reshape2_in_x_shape = node->Var()->GetShape();
-                            size_t reshape2_in_rank =
-                                reshape2_in_x_shape.size();
-                            if (reshape2_in_rank == 4) {
-                              return (reshape2_in_x_shape[2] == 1 &&
-                                      reshape2_in_x_shape[3] == 1) ||
-                                     (reshape2_in_x_shape[1] == 1 &&
-                                      reshape2_in_x_shape[3] == 1);
-                            }
-                            return false;
-                          });
+  auto* reshape2_in =
+      pattern->NewNode(reshape2_in_repr())
+          ->assert_is_op_input("reshape2", "X")
+          ->AsInput()
+          ->assert_more([](Node* node) {
+            auto reshape2_in_x_shape = node->Var()->GetShape();
+            size_t reshape2_in_rank = reshape2_in_x_shape.size();
+            return reshape2_in_rank == 4 && ((reshape2_in_x_shape[2] == 1 &&
+                                              reshape2_in_x_shape[3] == 1) ||
+                                             (reshape2_in_x_shape[1] == 1 &&
+                                              reshape2_in_x_shape[3] == 1));
+          });
   auto* reshape2 =
       pattern->NewNode(reshape2_repr())
           ->assert_is_op("reshape2")
@@ -156,12 +153,8 @@ Squeeze2MatmulPattern::Squeeze2MatmulPattern(PDPattern* pattern,
           ->assert_more([](Node* node) {
             auto squeeze2_in_x_shape = node->Var()->GetShape();
             size_t squeeze2_in_rank = squeeze2_in_x_shape.size();
-            if (squeeze2_in_rank == 4) {
-              bool nice_shape =
-                  squeeze2_in_x_shape[2] == 1 && squeeze2_in_x_shape[3] == 1;
-              return nice_shape;
-            }
-            return false;
+            return squeeze2_in_rank == 4 &&
+                   (squeeze2_in_x_shape[2] == 1 && squeeze2_in_x_shape[3] == 1);
           });
   auto* squeeze2 = pattern->NewNode(squeeze2_repr())
                        ->assert_is_op("squeeze2")
