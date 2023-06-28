@@ -104,7 +104,7 @@ void BuildScope(ir::Block* block,
       auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
 
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
 
         PADDLE_ENFORCE_EQ(name_map->count(ptr),
                           true,
@@ -120,7 +120,7 @@ void BuildScope(ir::Block* block,
 
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -197,7 +197,7 @@ void BuildInferMetaContext(
   for (auto& t : vec_infer_meta_attr_params) {
     if (name2id.count(t)) {
       // tensor attribute, get information from input
-      ir::Value ptr = op->operand(name2id.at(t)).source();
+      ir::Value ptr = op->operand(name2id.at(t));
       auto in_var_name = name_map.at(ptr);
 
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
@@ -321,6 +321,7 @@ void BuildPhiKernelContext(
     if (name2id.count(t)) {
       // tensor attribute, get information from input
       ir::Value ptr = op->operand(name2id.at(t)).source();
+
       auto in_var_name = name_map.at(ptr);
       if (input_map != nullptr) {
         // only deal with single input for now, [todo] need support multi input

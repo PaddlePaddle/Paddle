@@ -26,9 +26,7 @@ class PhiKernelOp : public ir::Op<PhiKernelOp> {
   static const char *name() { return "phi.kernel"; }
   static constexpr uint32_t attributes_num = 3;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes);
+  void Verify();
 };
 
 }  // namespace dialect

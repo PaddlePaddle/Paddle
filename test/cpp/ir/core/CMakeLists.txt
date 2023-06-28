@@ -84,3 +84,13 @@ cc_test_old(
   pd_dialect
   pd_interface
   ir)
+
+cc_test_old(
+  ir_type_converter_test
+  SRCS
+  ir_type_converter_test.cc
+  DEPS
+  gtest
+  program_translator
+  pd_dialect
+  ir)

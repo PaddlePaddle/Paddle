@@ -195,11 +195,9 @@ class TestPSPassWithBow(unittest.TestCase):
         loss, acc, _ = self.net()
 
         optimizer = fluid.optimizer.Adam(
-            learning_rate=fluid.layers.exponential_decay(
+            learning_rate=paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=base_lr,
-                decay_steps=500,
-                decay_rate=0.969,
-                staircase=True,
+                gamma=0.969,
             )
         )
 

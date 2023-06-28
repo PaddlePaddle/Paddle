@@ -28,8 +28,8 @@ class OpResultImpl;
 }  // namespace detail
 
 ///
-/// \brief OpOperand class represents the operand of operation. This class only
-/// provides interfaces, for specific implementation, see Impl class.
+/// \brief OpOperand class represents the op_operand of operation. This class
+/// only provides interfaces, for specific implementation, see Impl class.
 ///
 class IR_API OpOperand {
  public:
@@ -158,9 +158,11 @@ class IR_API Value {
 
   OpOperand first_use() const;
 
-  friend struct std::hash<Value>;
-
   bool use_empty() const;
+
+  bool HasOneUse() const;
+
+  friend struct std::hash<Value>;
 
   void ReplaceUsesWithIf(
       Value new_value,

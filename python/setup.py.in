@@ -103,28 +103,7 @@ def is_taged():
 def get_cinn_version():
     if '@WITH_CINN@' != 'ON':
         return "False"
-
-    cinn_git_version = 'Unknown'
-    try:
-        cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
-        cinn_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd='@CINN_SOURCE_DIR@').communicate()[0].strip()
-        if len(cinn_tag) > 0:
-            cinn_git_version = cinn_tag
-    except:
-        pass
-
-    if cinn_git_version == 'Unknown':
-        try:
-            cmd = ['git', 'rev-parse', 'HEAD']
-            cinn_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
-                cwd='@CINN_SOURCE_DIR@').communicate()[0].strip()
-            if len(cinn_commit) > 0:
-                cinn_git_version = cinn_commit
-        except:
-            pass
-
-    cinn_git_version = cinn_git_version.decode('utf-8')
-    return str(cinn_git_version)
+    return "0.3.0"
 
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
@@ -636,16 +615,16 @@ if '${WITH_LITE}' == 'ON':
 
 if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
-    shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
+    shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']
     package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
 
-    cinn_fp16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/float16.h'
+    cinn_fp16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float16.h'
     if os.path.exists(cinn_fp16_file):
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']
 
-    cinn_bf16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/bfloat16.h'
+    cinn_bf16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/bfloat16.h'
     if os.path.exists(cinn_bf16_file):
         shutil.copy(cinn_bf16_file, libs_path)
         package_data['paddle.libs']+=['bfloat16.h']
@@ -923,7 +902,7 @@ if '${WITH_STRIP}' == 'ON':
 def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     """install cpp distribution and build test target
 
-    TODO(huangjiyi): 
+    TODO(huangjiyi):
     1. This function will be moved when seperating C++ distribution
     installation from python package installation.
     2. Reduce the header and library files to be installed.
@@ -932,7 +911,7 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
         return
     os.makedirs(paddle_install_dir, exist_ok=True)
     # install C++ header files
-    for header in headers: 
+    for header in headers:
         install_dir = get_header_install_dir(header)
         install_dir = os.path.join(
             paddle_install_dir, 'include', os.path.dirname(install_dir)
@@ -952,7 +931,7 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     for lib in package_data['paddle.libs']:
         lib_path = os.path.join(libs_path, lib)
         shutil.copy(lib_path, lib_install_dir)
-    
+
     # build test target
     cmake_args = ["cmake", paddle_lib_test_dir, "-B", paddle_lib_test_dir]
     if os.getenv("GENERATOR") == "Ninja":
@@ -966,7 +945,7 @@ if '${WITH_CPP_DIST}' == 'ON':
     paddle_install_dir = '${PADDLE_INSTALL_DIR}'
     paddle_lib_test_dir = '${PADDLE_LIB_TEST_DIR}'
     install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
-    
+
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
