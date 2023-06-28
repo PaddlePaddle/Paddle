@@ -429,6 +429,14 @@ if(NOT WITH_XPU AND WITH_XPU_XFT)
       CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_XFT" FORCE)
 endif()
 
+if(NOT WITH_XPU AND WITH_XPTI)
+  message(
+    WARNING "Disable XPTI when compiling without XPU. Force WITH_XPTI=OFF.")
+  set(WITH_XPTI
+      OFF
+      CACHE STRING "Disable XPTI when compiling without XPU" FORCE)
+endif()
+
 if(NOT WITH_XPU AND WITH_XPU_BKCL)
   message(
     WARNING "Disable BKCL when compiling without XPU. Force WITH_XPU_BKCL=OFF.")
