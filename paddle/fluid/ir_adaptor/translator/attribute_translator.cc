@@ -192,7 +192,7 @@ class DataTypeAttributeVisitor : public AttributeVisitor {
     return paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype);
   }
 
-  virtual ir::Attribute operator()(const paddle::blank& blank) {
+  ir::Attribute operator()(const paddle::blank& blank) override {
     VLOG(10) << "translating paddle::blank to DataType::UNDEFINED";
     return paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType());
   }
