@@ -53,14 +53,14 @@ class IR_API VectorType : public Type {
   Type operator[](size_t index) const { return data()[index]; }
 };
 
-#define DECLARE_BUILTIN_TYPE(__name)                         \
-  class IR_API __name##Type : public Type {                  \
-   public:                                                   \
-    using Type::Type;                                        \
-                                                             \
-    DECLARE_TYPE_UTILITY_FUNCTOR(__name##Type, TypeStorage); \
-                                                             \
-    static __name##Type get(IrContext *context);             \
+#define DECLARE_BUILTIN_TYPE(__name)                   \
+  class IR_API __name : public Type {                  \
+   public:                                             \
+    using Type::Type;                                  \
+                                                       \
+    DECLARE_TYPE_UTILITY_FUNCTOR(__name, TypeStorage); \
+                                                       \
+    static __name get(IrContext *context);             \
   };
 
 #define FOREACH_BUILTIN_TYPE(__macro) \
