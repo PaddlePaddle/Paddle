@@ -402,6 +402,7 @@ class OpTest(unittest.TestCase):
 
         if hasattr(cls, 'check_prim') and os.getenv('FLAGS_prim_test_log'):
             print("check prim end!")
+            print(f"check(.{cls.__name__})end")
 
         def is_empty_grad_op(op_type):
             all_op_kernels = core._get_all_register_op_kernels()
