@@ -674,9 +674,6 @@ class PipelineLayer(nn.Layer):
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
-        paddle.set_rng_state(orig_rng_state)
-        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
-
     def _build_layer_impl(self, start, end):
         if self._num_virtual_pipeline_stages > 1:
             # For interleave scheduler, all layers relating with one model chunk will be saved in PipelineLayerChunk
