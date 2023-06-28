@@ -19,9 +19,13 @@ import tempfile
 
 import numpy as np
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
-from paddle.fluid import framework, layers, nets
+from paddle.fluid import framework, layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 

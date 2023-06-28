@@ -40,7 +40,12 @@ phi::KernelKey GetKernelKey(
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
   if (op->name() == "pd.feed") {
-    return {phi::Backend::CPU, phi::DataLayout::ANY, phi::DataType::FLOAT32};
+    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
+    return {phi::Backend::CPU,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
@@ -223,23 +228,27 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
                   result_type.dyn_cast<dialect::DenseTensorType>());
           op_output_types.push_back(allocated_dense_tensor_dtype);
         } else if (result_type.isa<ir::VectorType>()) {
-          auto pos1 = result_type.dyn_cast<ir::VectorType>().data()[0];
-
-          if (pos1.isa<dialect::DenseTensorType>()) {
-            auto allocated_dense_tensor_dtype =
-                paddle::dialect::AllocatedDenseTensorType::get(
-                    ctx,
-                    phi::TransToPhiPlace(kernel_key.backend()),
-                    pos1.dyn_cast<dialect::DenseTensorType>());
-            op_output_types.push_back(allocated_dense_tensor_dtype);
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor in vector type for now"));
+          std::vector<ir::Type> vec_inner_types;
+          auto base_types = result_type.dyn_cast<ir::VectorType>().data();
+          for (size_t j = 0; j < base_types.size(); ++j) {
+            if (base_types[j].isa<dialect::DenseTensorType>()) {
+              auto allocated_dense_tensor_dtype =
+                  paddle::dialect::AllocatedDenseTensorType::get(
+                      ctx,
+                      phi::TransToPhiPlace(kernel_key.backend()),
+                      base_types[j].dyn_cast<dialect::DenseTensorType>());
+              vec_inner_types.push_back(allocated_dense_tensor_dtype);
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "only support dense tensor in vector type for now"));
+            }
           }
 
-          ir::Type t1 = ir::VectorType::get(ctx, op_output_types);
-          op_output_types.clear();
+          ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
           op_output_types.push_back(t1);
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Result type only support DenseTensorType and VectorType"));
         }
       }
     }
