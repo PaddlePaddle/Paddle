@@ -46,9 +46,9 @@
 
 #include "glog/logging.h"
 
-void build_scope(ir::Block* block,
-                 paddle::framework::Scope* scope,
-                 std::unordered_map<ir::Value, std::string>* name_map) {
+void BuildScope(ir::Block* block,
+                paddle::framework::Scope* scope,
+                std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
   int count = 0;
@@ -56,7 +56,7 @@ void build_scope(ir::Block* block,
     int input = (*it)->num_operands();
     if (input > 0) {
       for (int i = 0; i < input; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -130,7 +130,7 @@ void build_context(ir::Operation* op,
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {
@@ -192,7 +192,7 @@ class PhiKernelAdaptor {
   void run(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    build_scope(block, scope_, &name_map);
+    BuildScope(block, scope_, &name_map);
 
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
     phi::Place cpu_place(phi::AllocationType::CPU);
@@ -248,7 +248,7 @@ class PhiKernelAdaptor {
   void run_kernel_prog(ir::Program* program) {
     auto block = program->block();
     std::unordered_map<ir::Value, std::string> name_map;
-    build_scope(block, scope_, &name_map);
+    BuildScope(block, scope_, &name_map);
     ir::IrContext* ctx = ir::IrContext::Instance();
 
     ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();

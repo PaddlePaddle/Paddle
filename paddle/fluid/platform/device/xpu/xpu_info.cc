@@ -98,7 +98,7 @@ phi::backends::xpu::XPUVersion get_xpu_version(int dev_id) {
 size_t XPUMinChunkSize() { return 1 << 6; }
 
 static void RaiseNonOutOfMemoryError(int status) {
-  if (status == XPUERR_NOMEM) {
+  if (-1 * status == XPUERR_NOMEM) {
     status = XPU_SUCCESS;
   }
   PADDLE_ENFORCE_XRE_SUCCESS(status);

@@ -3,8 +3,6 @@ cc_test_old(
   SRCS
   pattern_rewrite_test.cc
   DEPS
-  new_pass
-  pattern_rewrite
+  ir
   pd_dialect
-  phi
   gtest)

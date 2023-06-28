@@ -744,6 +744,17 @@
     func : fill_diagonal_tensor_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : fill_grad
+  forward : fill (Tensor x, Scalar value=0) -> Tensor(out)
+  args : (Tensor out_grad, Scalar value)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fill_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : flash_attn_grad
   forward : flash_attn (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "") -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false)
@@ -828,6 +839,19 @@
     param : [x]
   kernel :
     func : frame_grad
+
+- backward_op : gather_grad
+  forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
+  args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param: [x]
+  kernel :
+    data_type: out_grad
+    func : gather_grad
+  composite : gather_grad(x, index, out_grad, axis, x_grad)
+  no_need_buffer : x
 
 - backward_op : gather_nd_grad
   forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
@@ -1806,8 +1830,8 @@
     data_type : x
 
 - backward_op : sigmoid_cross_entropy_with_logits_grad
-  forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100) -> Tensor(out)
-  args : (Tensor x, Tensor label, Tensor out_grad, bool normalize, int ignore_index)
+  forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100) -> Tensor(out)
+  args : (Tensor x, Tensor label, Tensor pos_weight, Tensor out_grad, bool normalize, int ignore_index)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -1815,6 +1839,7 @@
   kernel :
     func : sigmoid_cross_entropy_with_logits_grad
   inplace : (out_grad -> x_grad)
+  optional : pos_weight
 
 - backward_op : sigmoid_double_grad
   forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)

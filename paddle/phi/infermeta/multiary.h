@@ -239,6 +239,25 @@ void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
                      MetaTensor* out,
                      MetaConfig config = MetaConfig());
 
+void CudnnLSTMInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& init_h,
+    const MetaTensor& init_c,
+    const MetaTensor& w,
+    const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
+    const MetaTensor& sequence_length,
+    float dropout_prob,
+    bool is_bidirec,
+    int hidden_size,
+    int num_layers,
+    bool is_test,
+    int seed,
+    MetaTensor* out,
+    MetaTensor* last_h,
+    MetaTensor* last_c,
+    MetaTensor* reserve,
+    MetaTensor* state_out);
+
 void DeformableConvInferMeta(const MetaTensor& x,
                              const MetaTensor& offset,
                              const MetaTensor& filter,
@@ -358,6 +377,7 @@ void LambInferMeta(const MetaTensor& param,
                    float beta1,
                    float beta2,
                    float epsilon,
+                   bool always_adapt,
                    bool multi_precision,
                    MetaTensor* param_out,
                    MetaTensor* moment1_out,
@@ -521,6 +541,14 @@ void SgdInferMeta(const MetaTensor& param,
                   bool multi_precision,
                   MetaTensor* param_out,
                   MetaTensor* master_param_out);
+
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            const MetaTensor& pos_weight,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config = MetaConfig());
 
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,

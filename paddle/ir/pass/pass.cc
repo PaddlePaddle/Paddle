@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/pass/pass.h"
+
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
@@ -43,7 +44,7 @@ void detail::PassAdaptor::RunImpl(Operation* op,
   auto last_am = analysis_manager();
 
   for (size_t i = 0; i < op->num_regions(); ++i) {
-    auto& region = op->GetRegion(i);
+    auto& region = op->region(i);
     for (auto it = region.begin(); it != region.end(); ++it) {
       auto* block = *it;
       for (auto it = block->begin(); it != block->end(); ++it) {
@@ -226,3 +227,5 @@ void PassInstrumentor::AddInstrumentation(
 }
 
 }  // namespace ir
+
+IR_DEFINE_EXPLICIT_TYPE_ID(ir::detail::PreservedAnalyses::AllAnalysesType)

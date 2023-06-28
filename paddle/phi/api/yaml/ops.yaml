@@ -294,6 +294,15 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- op : bincount
+  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
+  output: Tensor(out)
+  infer_meta:
+    func: BincountInferMeta
+  kernel:
+    func: bincount
+  optional: weights
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -801,6 +810,17 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
+- op : fill
+  args : (Tensor x, Scalar value=0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : fill
+  inplace : (x -> out)
+  backward: fill_grad
+
 - op : fill_diagonal
   args : (Tensor x, float value=0, int offset=0, bool wrap=false)
   output : Tensor(out)
@@ -907,6 +927,28 @@
   kernel :
     func : frame
   backward : frame_grad
+
+- op : full_int_array
+  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output: Tensor(out)
+  infer_meta :
+    func : CreateIntArrayInferMeta
+    param : [value, dtype]
+  kernel :
+    func : full_int_array
+    param : [value, dtype]
+    data_type : dtype
+    backend : place
+
+- op : gather
+  args : (Tensor x, Tensor index, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+    data_type: x
+  backward : gather_grad
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
@@ -1220,7 +1262,7 @@
   backward : label_smooth_grad
 
 - op : lamb_
-  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1=0.9, float beta2=0.999, float epsilon=1.0e-6f, bool multi_precision=false)
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, float weight_decay, float beta1=0.9, float beta2=0.999, float epsilon=1.0e-6f, bool always_adapt=false, bool multi_precision=false)
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_outs)
   infer_meta :
     func : LambInferMeta
@@ -1780,6 +1822,7 @@
   kernel :
     func : pow
     data_type : x
+  inplace: (x -> out)
   backward : pow_grad
 
 - op : prelu
@@ -1791,6 +1834,15 @@
     func : prelu
     data_type : x
   backward : prelu_grad
+
+- op : prior_box
+  args : (Tensor input, Tensor image, float[] min_sizes, float[] max_sizes = {}, float[] aspect_ratios = {}, float[] variances = {}, bool flip=true, bool clip=true, float step_w=0.0, float step_h=0.0, float offset=0.5, bool min_max_aspect_ratios_order=false)
+  output : Tensor(out), Tensor(var)
+  infer_meta :
+    func : PriorBoxInferMeta
+  kernel :
+    func : prior_box
+    data_type : input
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
@@ -2055,7 +2107,7 @@
   backward : sigmoid_grad
 
 - op : sigmoid_cross_entropy_with_logits
-  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
   output : Tensor
   infer_meta :
     func : SigmoidCrossEntropyWithLogitsInferMeta
@@ -2063,6 +2115,7 @@
     func : sigmoid_cross_entropy_with_logits
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
+  optional : pos_weight
 
 - op : sign
   args : (Tensor x)
@@ -2463,7 +2516,7 @@
     func : WeightedSampleNeighborsInferMeta
   kernel :
     func : weighted_sample_neighbors
-  optional: eids
+  optional : eids
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
