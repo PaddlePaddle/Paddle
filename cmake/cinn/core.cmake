@@ -145,13 +145,16 @@ function(cinn_nv_binary TARGET_NAME)
 endfunction(cinn_nv_binary)
 
 function(cinn_nv_test TARGET_NAME)
-  if(WITH_GPU AND WITH_TESTING AND CINN_ONLY)
+  if(WITH_GPU
+     AND WITH_TESTING
+     AND CINN_ONLY)
     set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cinn_nv_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS "-std=c++${CMAKE_CUDA_STANDARD}")
+    cuda_add_executable(${TARGET_NAME} ${cinn_nv_test_SRCS} OPTIONS
+                        "-std=c++${CMAKE_CUDA_STANDARD}")
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(
       ${TARGET_NAME}
