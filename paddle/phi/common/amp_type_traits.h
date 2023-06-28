@@ -32,13 +32,11 @@ class MPTypeTrait<phi::dtype::float16> {
   using Type = float;
 };
 
-#ifndef PADDLE_WITH_XPU_KP
 template <>
 class MPTypeTrait<phi::dtype::bfloat16> {
  public:
   using Type = float;
 };
-#endif
 
 }  // namespace dtype
 }  // namespace phi
