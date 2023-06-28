@@ -32,6 +32,13 @@ exclude = [
     # Temporarily ignore CINN files, it will fix later
     "python/cinn/**",
     "test/cinn/**",
+    "./paddle/cinn/backends/llvm/generate_runtime_llvm_ir.py",
+    "./tools/cinn/gen_c++_tutorial.py",
+    "./tools/cinn/paddle_benchmark/paddle_save_model.py",
+    "./tools/cinn/paddle_benchmark/paddle_test_benchmark.py",
+    "./tools/cinn/paddle_benchmark/test_paddle_ops.py",
+    "./tools/cinn/tvm_benchmark/test_topi_default.py",
+    "./tools/cinn/tvm_benchmark/tvm_graph_with_single_op.py",
 ]
 target-version = "py37"
 select = [
