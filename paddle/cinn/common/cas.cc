@@ -74,7 +74,7 @@ int gcd(int a, int b) {
 }
 
 //////// All the following symbolic computation methods are implemented
-///referencing to the book <Computer Algegra and
+/// referencing to the book <Computer Algegra and
 /// Symbolic Computation - Joel S. Cohen>
 
 template <typename T>
