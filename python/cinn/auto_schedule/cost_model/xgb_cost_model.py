@@ -48,7 +48,8 @@ class XgbCostModel(object):
             samples = np.concatenate(samples, axis=0)
         if isinstance(labels, list):
             labels = np.concatenate(
-                [[y] * length for y, length in zip(labels, lengths)], axis=0)
+                [[y] * length for y, length in zip(labels, lengths)], axis=0
+            )
 
         dmatrix = xgb.DMatrix(data=samples, label=labels)
         self.booster = xgb.train(self.xgb_param, dmatrix, self.train_round)
@@ -77,7 +78,9 @@ class XgbCostModel(object):
         Args:
             path(str): path to save
         """
-        assert self.booster is not None, "Calling save on a XgbCostModel not been trained"
+        assert (
+            self.booster is not None
+        ), "Calling save on a XgbCostModel not been trained"
         self.booster.save_model(path)
 
     def load(self, path):
@@ -94,5 +97,5 @@ class XgbCostModel(object):
         # But we should do that here if that's changable in the future.
 
     def update(self, samples, labels):
-        #xgb doesn't support incremental training, we leave this method as TODO
+        # xgb doesn't support incremental training, we leave this method as TODO
         pass

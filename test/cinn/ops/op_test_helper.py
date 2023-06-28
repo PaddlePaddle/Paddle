@@ -26,11 +26,12 @@ parser.add_argument(
     "--case",
     type=str,
     help="Which case you want to test, default -1 for all cases.",
-    default=None)
+    default=None,
+)
 args = parser.parse_args()
 
 
-class TestCaseHelper():
+class TestCaseHelper:
     """
     Helper class for constructing test cases.
     """
@@ -69,7 +70,10 @@ class TestCaseHelper():
         assert isinstance(self.attrs, list)
         self.all_cases = []
         all_lists = [
-            self.inputs, self.dtypes, self.attrs, *self.custom_attrs_list
+            self.inputs,
+            self.dtypes,
+            self.attrs,
+            *self.custom_attrs_list,
         ]
         filtered_lists = filter(lambda x: len(x) > 0, all_lists)
         for case in itertools.product(*filtered_lists):
@@ -87,13 +91,21 @@ class TestCaseHelper():
                 no = int(re.search(r'\d+$', test_name).group(0))
                 assert 0 <= no and no < len(self.all_cases)
                 self.all_classes.append(
-                    type(f'{self.__class__.__name__}.{self.class_name}{no}',
-                         (self.cls, ), {"case": self.all_cases[no]}))
+                    type(
+                        f'{self.__class__.__name__}.{self.class_name}{no}',
+                        (self.cls,),
+                        {"case": self.all_cases[no]},
+                    )
+                )
         else:
             for i, case in enumerate(self.all_cases):
                 self.all_classes.append(
-                    type(f'{self.__class__.__name__}.{self.class_name}{i}',
-                         (self.cls, ), {"case": case}))
+                    type(
+                        f'{self.__class__.__name__}.{self.class_name}{i}',
+                        (self.cls,),
+                        {"case": case},
+                    )
+                )
 
     def run(self):
         """

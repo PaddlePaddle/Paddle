@@ -34,11 +34,13 @@ class TestBitwiseOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         y = paddle.static.data(
             name='y',
             shape=self.feed_data['y'].shape,
-            dtype=self.feed_data['y'].dtype)
+            dtype=self.feed_data['y'].dtype,
+        )
         return {'X': [x], 'Y': [y]}
 
     def set_op_attrs(self):
@@ -74,7 +76,8 @@ class TestBitwiseNotOp(TestBitwiseOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def test_check_results(self):
