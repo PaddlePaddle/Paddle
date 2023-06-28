@@ -16,6 +16,7 @@
 
 #include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/op_base.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace dialect {
@@ -26,6 +27,9 @@ class PhiKernelOp : public ir::Op<PhiKernelOp> {
   static const char *name() { return "phi.kernel"; }
   static constexpr uint32_t attributes_num = 3;
   static const char *attributes_name[attributes_num];
+  const std::string op_name();
+  const std::string kernel_name();
+  phi::KernelKey kernel_key();
   void Verify();
 };
 

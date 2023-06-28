@@ -964,8 +964,8 @@ void BuildOpFuncList(
     auto impl =
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
 
-    op_func_node.infer_shape_interface_ =
-        op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
+    op_func_node.infer_meta_interface_ =
+        op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
