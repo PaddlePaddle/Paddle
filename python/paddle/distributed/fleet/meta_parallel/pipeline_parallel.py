@@ -903,6 +903,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert len(self.model_chunks) == self.num_model_chunks
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
+        self._assign_vpp_info(self.model_chunks)
         self._reset_counter()
 
         self._check_sanity()
@@ -964,6 +965,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     f.write(record + '\n')
             self._records = []
             self._reset_counter()
+
+    def _assign_vpp_info(self, chunks):
+        chunk_num = len(chunks)
+        for i, chunk in enumerate(chunks):
+            for p in chunk.parameters():
+                p._chunk_info = {"chunk_id": i, "chunk_num": chunk_num}
 
     def _get_virtual_pp_rank(self, micro_step, forward):
         virtual_pp_stage = micro_step % (

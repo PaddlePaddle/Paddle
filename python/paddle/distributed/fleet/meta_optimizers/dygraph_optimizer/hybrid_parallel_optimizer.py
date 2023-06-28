@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import distutils.util
 import os
+
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -46,6 +49,124 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
+        self._vpp_chunk_num = None
+        self._force_align_vpp_grad_sum_order = distutils.util.strtobool(
+            os.getenv('FLAGS_force_align_vpp_grad_sum_order', '1')
+        )
+
+    def _get_vpp_chunk_num(self, params_grads):
+        chunk_num = -1
+        for p, g in params_grads:
+            if g is None:
+                continue
+            chunk_info = getattr(p, '_chunk_info', {})
+            cur_chunk_num = chunk_info.get('chunk_num', -1)
+            if chunk_num < 0:
+                chunk_num = cur_chunk_num
+            else:
+                assert chunk_num == cur_chunk_num
+        return chunk_num
+
+    @no_grad()
+    def _vpp_dygraph_clip(self, params_grads, chunk_num):
+        pp_group = self._hcg.get_pipe_parallel_group()
+        pp_rank = self._hcg.get_stage_id()
+        pp_size = self._hcg.get_pipe_parallel_world_size()
+
+        if self._vpp_chunk_num is None:
+            all_chunk_nums = []
+            paddle.distributed.all_gather_object(
+                all_chunk_nums, chunk_num, group=pp_group
+            )
+            assert all(chunk_num == n for n in all_chunk_nums)
+            self._vpp_chunk_num = chunk_num
+        else:
+            assert self._vpp_chunk_num == chunk_num
+
+        sum_square_metas = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
+                hasattr(p, 'is_firstly_shared')
+                and getattr(p, 'is_firstly_shared', True)
+            )
+
+            chunk_id = p._chunk_info['chunk_id']
+            if not_shared_enable:
+                if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    merge_grad = clip.merge_selected_rows(g)
+                    g = clip.get_tensor_from_selected_rows(merge_grad)
+                square = paddle.square(g)
+                sum_square = paddle.sum(square)
+                layer_id = chunk_id * pp_size + pp_rank
+                sum_square_metas.append(
+                    [layer_id, p.is_distributed, sum_square.numpy()]
+                )
+
+        all_sum_square_metas = []
+        paddle.distributed.all_gather_object(
+            all_sum_square_metas,
+            sum_square_metas,
+            group=pp_group,
+        )
+
+        # order: FP16, BF16, FP32
+        sum_square_dist = [[], [], []]
+        sum_square_not_dist = [[], [], []]
+
+        pp_stage = self._hcg.get_stage_id()
+        for i, metas in enumerate(all_sum_square_metas):
+            for layer_id, is_distributed, sum_square in metas:
+                rank = layer_id // chunk_num
+                assert rank < pp_size
+                if rank != pp_rank:
+                    continue
+                if sum_square.dtype == np.float32:
+                    idx = 2
+                elif sum_square.dtype == np.float16:
+                    idx = 0
+                else:
+                    assert (
+                        sum_square.dtype == np.uint16
+                    ), "The data type of grad must be FP32, FP16 or BF16, but got {}".format(
+                        sum_square.dtype
+                    )
+                    idx = 1
+
+                if is_distributed:
+                    sum_square_dist[idx].append(sum_square)
+                else:
+                    sum_square_not_dist[idx].append(sum_square)
+
+        global_norm_var_dist = self._add_sum_squares(sum_square_dist)
+        global_norm_var_not_dist = self._add_sum_squares(sum_square_not_dist)
+
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
+
+    def _add_sum_squares(self, sum_squares):
+        norm_sum = None
+        for sq in sum_squares:
+            if len(sq) == 0:
+                continue
+
+            sq = np.concatenate(sq, axis=0).flatten()
+            sq = paddle.to_tensor(sq)
+            sq = paddle.sum(sq)
+            if sq.dtype != paddle.float32:
+                sq = sq.astype(paddle.float32)
+
+            if norm_sum is None:
+                norm_sum = sq
+            else:
+                norm_sum = norm_sum + sq
+
+        if norm_sum is None:
+            norm_sum = paddle.to_tensor([0.0], dtype=paddle.float32)
+
+        return norm_sum
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         # sharding first
@@ -99,6 +220,10 @@ class HybridParallelClipGrad:
 
     @no_grad()
     def _dygraph_clip(self, params_grads):
+        chunk_num = self._get_vpp_chunk_num(params_grads)
+        if chunk_num > 0 and self._force_align_vpp_grad_sum_order:
+            return self._vpp_dygraph_clip(params_grads, chunk_num)
+
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -199,7 +324,13 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_bf16
             + global_norm_not_dist_fp32
         )
+        return self._comm_and_clip(
+            params_grads, global_norm_var_dist, global_norm_var_not_dist
+        )
 
+    def _comm_and_clip(
+        self, params_grads, global_norm_var_dist, global_norm_var_not_dist
+    ):
         self._global_norm(global_norm_var_dist, global_norm_var_not_dist)
 
         global_norm_var_fp32 = paddle.sqrt(
@@ -219,12 +350,7 @@ class HybridParallelClipGrad:
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
         # bf16 is not supported on XPU now
-        if not (
-            paddle.is_compiled_with_xpu()
-            or isinstance(
-                paddle.framework._current_expected_place(), paddle.CustomPlace
-            )
-        ):
+        if not paddle.is_compiled_with_xpu():
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
