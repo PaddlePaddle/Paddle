@@ -40,9 +40,10 @@
  * CINN_USE_REGISTER(some_key);
  */
 #define CINN_REGISTER_HELPER(symbol__) bool __cinn__##symbol__##__registrar()
-#define CINN_USE_REGISTER(symbol__)              \
-  extern bool __cinn__##symbol__##__registrar(); \
-  [[maybe_unused]] static bool __cinn_extern_registrar_##symbol__ = __cinn__##symbol__##__registrar();
+#define CINN_USE_REGISTER(symbol__)                                 \
+  extern bool __cinn__##symbol__##__registrar();                    \
+  [[maybe_unused]] static bool __cinn_extern_registrar_##symbol__ = \
+      __cinn__##symbol__##__registrar();
 
 #if __cplusplus >= 201703L
 #define CINN_NODISCARD [[nodiscard]]

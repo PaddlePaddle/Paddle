@@ -30,15 +30,15 @@ namespace poly {
 
 namespace detail {
 
-//! Visit the nodes in topological order, if one node is valid to visit, visit it and check whether its out link
-//! children are ready to visit, merge them to the same group.
-//! NOTE this is discarded.
+//! Visit the nodes in topological order, if one node is valid to visit, visit
+//! it and check whether its out link children are ready to visit, merge them to
+//! the same group. NOTE this is discarded.
 std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
   VLOG(3) << "graph:\n" << graph->Visualize();
   // collect indegrees for naive topological traversal.
   std::map<DataFlowGraphNode*, uint16_t> indegree;
   for (common::GraphNode* n : graph->nodes()) {
-    auto* node     = n->safe_as<DataFlowGraphNode>();
+    auto* node = n->safe_as<DataFlowGraphNode>();
     indegree[node] = node->inlinks().size();
   }
 
@@ -62,11 +62,13 @@ std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
       auto* child = c->sink()->safe_as<DataFlowGraphNode>();
       --indegree[child];
 
-      VLOG(3) << node->stage->transformed_domain() << " -> " << child->stage->transformed_domain();
+      VLOG(3) << node->stage->transformed_domain() << " -> "
+              << child->stage->transformed_domain();
       if (indegree[child] == 0) {
         // Merge the two groups if their iteration domain is the same.
         if (DataFlowGraphNode::TransformedDomainIsSame(node, child)) {
-          VLOG(4) << child->id() << " ready to merge " << node->id() << " with " << child->id();
+          VLOG(4) << child->id() << " ready to merge " << node->id() << " with "
+                  << child->id();
           DataFlowGraphNode::MergeGroup(node, child);
         }
         queue.push_back(child);
@@ -78,7 +80,8 @@ std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
   for (auto* n : graph->nodes()) {
     auto* node = n->safe_as<DataFlowGraphNode>();
     for (auto& compute_at : node->stage->compute_ats()) {
-      CHECK(compute_at.IsCompatible(node->stage.get())) << "The registered ComputeAt is not compatible";
+      CHECK(compute_at.IsCompatible(node->stage.get()))
+          << "The registered ComputeAt is not compatible";
       // check the endpoints of compute_at has data dependency.
       auto* node0 = node;
       auto* node1 = name2node[compute_at.stage->id()];
@@ -95,12 +98,12 @@ std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
 
   std::map<DataFlowGraphNode*, std::vector<DataFlowGraphNode*>> node_groups;
 
-  auto topo_order      = graph->topological_order();
+  auto topo_order = graph->topological_order();
   auto& nodes_in_order = std::get<0>(topo_order);
   auto& edges_in_order = std::get<1>(topo_order);
 
   for (auto* n : nodes_in_order) {
-    auto* node     = n->safe_as<DataFlowGraphNode>();
+    auto* node = n->safe_as<DataFlowGraphNode>();
     auto* ancestor = node->group_ancestor();
     if (!groups_gathered.count(ancestor)) {
       groups_gathered.insert(ancestor);
@@ -121,7 +124,8 @@ std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
   }
 
   // NOTE DEBUG
-  // check there are same count of nodes both in the orginal graph and the groups.
+  // check there are same count of nodes both in the orginal graph and the
+  // groups.
   // @{
   int num_node_in_groups = 0;
   for (auto& group : groups) num_node_in_groups += group.nodes.size();
@@ -131,9 +135,10 @@ std::vector<Group> PartitionGraphByIterationDomain(common::Graph* graph) {
   return groups;
 }
 
-//! Check whether a group partition is valid. The ComputeAt and some other transform may broke data dependency, use this
-//! to check validity.
-// TODO(Superjomn) Implement this and integrate it into ComputeAt transform for checking transform validity.
+//! Check whether a group partition is valid. The ComputeAt and some other
+//! transform may broke data dependency, use this to check validity.
+// TODO(Superjomn) Implement this and integrate it into ComputeAt transform for
+// checking transform validity.
 bool CheckGroupValid(const std::vector<Group>& groups) {
   CINN_NOT_IMPLEMENTED
   return false;
@@ -164,7 +169,9 @@ bool IsLinkTo(const common::GraphNode* a, const common::GraphNode* b) {
   return false;
 }
 
-bool IsBetween(const common::GraphNode* x, const common::GraphNode* a, const common::GraphNode* b) {
+bool IsBetween(const common::GraphNode* x,
+               const common::GraphNode* a,
+               const common::GraphNode* b) {
   if (IsLinkTo(a, x) && IsLinkTo(x, b)) return true;
   if (IsLinkTo(x, a) && IsLinkTo(b, x)) return true;
   return false;
@@ -178,13 +185,14 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {
   std::vector<Group> group_order;
   absl::flat_hash_map<std::string, Group*> node2group;
   for (int i = 0; i < groups.size(); i++) {
-    Group* group  = &groups[i];
+    Group* group = &groups[i];
     int in_degree = 0;
     for (auto& node : group->nodes) {
       node2group[node->id()] = group;
       in_degree += node->inlinks().size();
       for (auto& node2 : group->nodes) {
-        if (node2->as<common::GraphNode>()->IsLinkedTo(node->as<common::GraphNode>())) {
+        if (node2->as<common::GraphNode>()->IsLinkedTo(
+                node->as<common::GraphNode>())) {
           in_degree--;
         }
       }
@@ -215,7 +223,8 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {
       for (auto& edge : node->outlinks()) {
         CHECK_EQ(edge->source()->id(), node->id());
         auto* sink = edge->sink();
-        if (all_nodes.count(sink->id()) == 0 && (--group_indegree[node2group[sink->id()]]) == 0) {
+        if (all_nodes.count(sink->id()) == 0 &&
+            (--group_indegree[node2group[sink->id()]]) == 0) {
           queue.push_back(node2group[sink->id()]);
         }
       }
@@ -228,12 +237,12 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {
  * Naive idea to split a graph.
  *
  * 1. treat each stage as a seperate group.
- * 2. If ComputeAt is set between two stages and their iteration domain matches, the stages will be put in a group with
- * relative order.
+ * 2. If ComputeAt is set between two stages and their iteration domain matches,
+ * the stages will be put in a group with relative order.
  */
 std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
   std::map<DataFlowGraphNode*, std::vector<DataFlowGraphNode*>> node_groups;
-  auto topo_order      = graph->topological_order();
+  auto topo_order = graph->topological_order();
   auto& nodes_in_order = std::get<0>(topo_order);
   auto& edges_in_order = std::get<1>(topo_order);
 
@@ -243,18 +252,21 @@ std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
   }
 
   // process compute_at
-  absl::flat_hash_map<const common::GraphNode*, uint32_t> node2score;  // record each node's score for sorting.
+  absl::flat_hash_map<const common::GraphNode*, uint32_t>
+      node2score;  // record each node's score for sorting.
   int score = 0;
   for (auto* n : nodes_in_order) {
-    auto* node       = n->safe_as<DataFlowGraphNode>();
+    auto* node = n->safe_as<DataFlowGraphNode>();
     node2score[node] = score++;
     for (ComputeAtRelation& compute_at : node->stage->compute_ats()) {
-      CHECK(compute_at.IsCompatible(node->stage.get())) << "The registered ComputeAt is not compatible";
+      CHECK(compute_at.IsCompatible(node->stage.get()))
+          << "The registered ComputeAt is not compatible";
       // check the endpoints of compute_at has data dependency.
       auto* node0 = node;
       if (name2node.count(compute_at.stage->id()) == 0) {
         continue;
-        LOG(FATAL) << "Didn't find node with name " << compute_at.stage->id() << " !";
+        LOG(FATAL) << "Didn't find node with name " << compute_at.stage->id()
+                   << " !";
       }
       auto* node1 = name2node[compute_at.stage->id()];
       VLOG(3) << "a -> b: " << node0->id() << " -> " << node1->id();
@@ -263,7 +275,8 @@ std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
       // process single level of outlinks
       for (auto& outlink : node0->outlinks()) {
         if (IsBetween(outlink->sink(), node0, node1)) {
-          DataFlowGraphNode::MergeGroup(node0, outlink->sink()->safe_as<DataFlowGraphNode>());
+          DataFlowGraphNode::MergeGroup(
+              node0, outlink->sink()->safe_as<DataFlowGraphNode>());
         }
       }
 
@@ -271,7 +284,9 @@ std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
     }
   }
   // generate final groups.
-  absl::flat_hash_map<DataFlowGraphNode* /*ancestor*/, std::vector<DataFlowGraphNode*>> clusters;
+  absl::flat_hash_map<DataFlowGraphNode* /*ancestor*/,
+                      std::vector<DataFlowGraphNode*>>
+      clusters;
   for (auto* n : nodes_in_order) {
     auto* node = n->safe_as<DataFlowGraphNode>();
     clusters[node->group_ancestor()].push_back(node);
@@ -297,7 +312,8 @@ std::vector<Group> NaivePartitionGraph(common::Graph* graph) {
     graph_node_count += group.nodes.size();
   }
   // check the groups contains all the nodes in graph.
-  CHECK_EQ(graph_node_count, graph->nodes().size()) << "the groups should contain all the nodes in the graph";
+  CHECK_EQ(graph_node_count, graph->nodes().size())
+      << "the groups should contain all the nodes in the graph";
 #endif
 
   return group_order;
@@ -314,13 +330,15 @@ std::unique_ptr<Schedule> PolyScheduler::BuildSchedule() {
 
   // transform the DFG groups to schedule groups.
   CHECK(!schedule_graph_.nodes().empty());
-  CHECK_EQ(schedule_graph_.nodes().size(), dfg_->nodes().size()) << "DFG graph is not match schedule graph";
+  CHECK_EQ(schedule_graph_.nodes().size(), dfg_->nodes().size())
+      << "DFG graph is not match schedule graph";
   schedule_groups_.clear();
   for (auto& dfg_group : dfg_groups) {
     ScheduleGroup group;
     for (auto& node : dfg_group.nodes) {
       auto* schedule_node = schedule_graph_.RetrieveNode(node->id());
-      CHECK(schedule_node) << "missing node " << node->id() << " in schedule graph";
+      CHECK(schedule_node) << "missing node " << node->id()
+                           << " in schedule graph";
       group.nodes.push_back(schedule_node->safe_as<ScheduleGraphNode>());
     }
     schedule_groups_.emplace_back(std::move(group));
@@ -335,15 +353,17 @@ std::unique_ptr<Schedule> PolyScheduler::BuildSchedule() {
 
   for (auto& group : schedule_groups_) {
     for (auto& node : group.nodes) {
-      res->schedule[node->id()] = node->time_schedule.to_isl(Context::isl_ctx());
+      res->schedule[node->id()] =
+          node->time_schedule.to_isl(Context::isl_ctx());
     }
   }
 
   return res;
 }
 
-PolyScheduler::PolyScheduler(const std::vector<Stage*>& stages,
-                             const std::vector<std::pair<std::string, std::string>>& extra_links) {
+PolyScheduler::PolyScheduler(
+    const std::vector<Stage*>& stages,
+    const std::vector<std::pair<std::string, std::string>>& extra_links) {
   CHECK(!stages.empty()) << "No stage is provided";
 
   // collect extra links
@@ -360,7 +380,8 @@ PolyScheduler::PolyScheduler(const std::vector<Stage*>& stages,
   FinishStageAdd();
 }
 
-std::vector<detail::Group> PolyScheduler::PartitionGroups(DataFlowGraph* graph) {
+std::vector<detail::Group> PolyScheduler::PartitionGroups(
+    DataFlowGraph* graph) {
   CHECK(graph);
   CHECK(!graph->nodes().empty());
   return detail::NaivePartitionGraph(graph);
@@ -377,7 +398,7 @@ void PolyScheduler::ScheduleAGroup(ScheduleGroup* group) {
   }
 
   PolyGroupScheduler scheduler(stages);
-  group->nodes           = scheduler.Build();
+  group->nodes = scheduler.Build();
   group->dimension_names = scheduler.detailed_dimension_names();
 }
 
@@ -393,7 +414,7 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
   std::map<std::string, Stage*> stage_map;
   std::map<std::string, ComputeAtRelation> compute_at_links;
   for (int i = 0; i < stages_.size(); i++) {
-    auto& stage                     = stages_[i];
+    auto& stage = stages_[i];
     stage_map[stage->tensor_->name] = stage;
     for (auto& item : stage->compute_ats()) {
       compute_at_links[stage->tensor_->name] = item;
@@ -401,7 +422,8 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
   }
   std::map<std::string, int> stage_level;
   for (auto& link : compute_at_links) {
-    CHECK_NE(stage_map.count(link.first), 0) << link.first << " not found in stage_map";
+    CHECK_NE(stage_map.count(link.first), 0)
+        << link.first << " not found in stage_map";
     CHECK_NE(stage_map.count(link.second.stage->tensor_->name), 0)
         << link.second.stage->tensor_->name << " not found in stage_map";
     auto* a = stage_map.at(link.first);
@@ -419,17 +441,20 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
 
     // a -> b not in the compute_at_links
     if (!compute_at_links.count(a->tensor_->name) ||
-        compute_at_links[a->tensor_->name].stage->tensor_->name != b->tensor_->name) {
+        compute_at_links[a->tensor_->name].stage->tensor_->name !=
+            b->tensor_->name) {
       int min_level = INT_MAX;
-      if (stage_level.count(a->id())) min_level = std::min(min_level, stage_level[a->id()]);
-      if (stage_level.count(b->id())) min_level = std::min(min_level, stage_level[b->id()]);
+      if (stage_level.count(a->id()))
+        min_level = std::min(min_level, stage_level[a->id()]);
+      if (stage_level.count(b->id()))
+        min_level = std::min(min_level, stage_level[b->id()]);
       if (min_level < INT_MAX) {
         After(*a, *b, min_level);
       }
     }
   }
 
-  auto topo_order      = schedule_graph_.topological_order();
+  auto topo_order = schedule_graph_.topological_order();
   auto& nodes_in_order = std::get<0>(topo_order);
   auto& edges_in_order = std::get<1>(topo_order);
   std::vector<Shared<ScheduleGraphNode>> res;
@@ -438,9 +463,10 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
   for (auto& edge : edges_in_order) {
     auto* node0 = edge->source()->safe_as<ScheduleGraphNode>();
     auto* node1 = edge->sink()->safe_as<ScheduleGraphNode>();
-    int level   = edge->as<ScheduleGraphEdge>()->level;
+    int level = edge->as<ScheduleGraphEdge>()->level;
     if (level < 0) continue;
-    VLOG(2) << "schedule " << node0->id() << " -> " << node1->id() << " level " << level;
+    VLOG(2) << "schedule " << node0->id() << " -> " << node1->id() << " level "
+            << level;
     node1->time_schedule.OrderAfter(node0->time_schedule, level);
   }
 
@@ -450,7 +476,8 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
   return res;
 }
 
-PolyGroupScheduler::PolyGroupScheduler(const std::vector<Stage*>& stages) : stages_(stages) {
+PolyGroupScheduler::PolyGroupScheduler(const std::vector<Stage*>& stages)
+    : stages_(stages) {
   CHECK_GT(stages.size(), 0) << "No stage is provided";
   for (auto* stage : stages) {
     AddStage(*stage);

@@ -20,10 +20,12 @@ namespace frontend {
 namespace decomposer {
 
 void sum(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_GT(instr->inputs.size(), 0UL) << "At least 1 input tensor for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL) << "1 output tensor for " << instr->op_type;
-  auto inputs   = instr->inputs;
-  auto output   = instr->outputs[0];
+  CHECK_GT(instr->inputs.size(), 0UL)
+      << "At least 1 input tensor for " << instr->op_type;
+  CHECK_EQ(instr->outputs.size(), 1UL)
+      << "1 output tensor for " << instr->op_type;
+  auto inputs = instr->inputs;
+  auto output = instr->outputs[0];
   auto* builder = context.builder();
 
   auto sum = builder->Identity(inputs[0]);

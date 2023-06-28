@@ -195,7 +195,8 @@ class IrNodeRef : public common::Shared<IrNode> {
   }
 
   void operator=(const IrNodeRef& other) {
-    *static_cast<Shared<IrNode>*>(this) = *static_cast<const Shared<IrNode>*>(&other);
+    *static_cast<Shared<IrNode>*>(this) =
+        *static_cast<const Shared<IrNode>*>(&other);
   }
 
   IrNode* ptr() { return get(); }
@@ -236,7 +237,8 @@ struct IntImm : public ExprNode<IntImm> {
   void Verify() const override {
     CHECK(type().is_int());
     CHECK(type().is_scalar());
-    CHECK(type().bits() == 8 || type().bits() == 16 || type().bits() == 32 || type().bits() == 64);
+    CHECK(type().bits() == 8 || type().bits() == 16 || type().bits() == 32 ||
+          type().bits() == 64);
   }
 
   static const IrNodeTy _node_type_ = IrNodeTy::IntImm;
@@ -250,8 +252,8 @@ struct UIntImm : public ExprNode<UIntImm> {
   void Verify() const override {
     CHECK(type().is_uint());
     CHECK(type().is_scalar());
-    CHECK(type().bits() == 1 /*bool*/ || type().bits() == 8 || type().bits() == 16 || type().bits() == 32 ||
-          type().bits() == 64);
+    CHECK(type().bits() == 1 /*bool*/ || type().bits() == 8 ||
+          type().bits() == 16 || type().bits() == 32 || type().bits() == 64);
   }
 
   static const IrNodeTy _node_type_ = IrNodeTy::UIntImm;
@@ -305,8 +307,10 @@ struct Expr : public IrNodeRef {
   explicit Expr(uint32_t x) : IrNodeRef(new UIntImm(UInt(32), x)) {}
   explicit Expr(uint64_t x) : IrNodeRef(new UIntImm(UInt(64), x)) {}
 
-  explicit Expr(cinn::common::bfloat16 x) : IrNodeRef(new FloatImm(BFloat16(), x)) {}
-  explicit Expr(cinn::common::float16 x) : IrNodeRef(new FloatImm(Float16(), x)) {}
+  explicit Expr(cinn::common::bfloat16 x)
+      : IrNodeRef(new FloatImm(BFloat16(), x)) {}
+  explicit Expr(cinn::common::float16 x)
+      : IrNodeRef(new FloatImm(Float16(), x)) {}
   explicit Expr(float x) : IrNodeRef(new FloatImm(Float(32), x)) {}
   explicit Expr(double x) : IrNodeRef(new FloatImm(Float(64), x)) {}
 
@@ -494,7 +498,9 @@ namespace std {
 
 template <>
 struct hash<cinn::ir::Expr> {
-  size_t operator()(const cinn::ir::Expr& x) { return reinterpret_cast<size_t>(x.get()); }
+  size_t operator()(const cinn::ir::Expr& x) {
+    return reinterpret_cast<size_t>(x.get());
+  }
 };
 
 }  // namespace std

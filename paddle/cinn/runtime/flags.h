@@ -35,7 +35,7 @@ class RandomSeed {
   static unsigned long long Clear();
 
  private:
-  RandomSeed()                   = default;
+  RandomSeed() = default;
   RandomSeed(const RandomSeed &) = delete;
   RandomSeed &operator=(const RandomSeed &) = delete;
 
@@ -51,7 +51,7 @@ class CurrentTarget {
   static void SetCurrentTarget(const common::Target &target);
 
  private:
-  CurrentTarget()                      = default;
+  CurrentTarget() = default;
   CurrentTarget(const CurrentTarget &) = delete;
   CurrentTarget &operator=(const CurrentTarget &) = delete;
 

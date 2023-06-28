@@ -41,11 +41,12 @@ struct DomNode {
   int depth{0};
 };
 
-void GetBroadcastPattern(Node* op_node,
-                         OpPatternKind* pattern,
-                         const absl::flat_hash_map<std::string, framework::shape_t>& shape_dict) {
+void GetBroadcastPattern(
+    Node* op_node,
+    OpPatternKind* pattern,
+    const absl::flat_hash_map<std::string, framework::shape_t>& shape_dict) {
   if (*pattern == framework::kBroadcast) {
-    auto inlinks  = op_node->inlinks();
+    auto inlinks = op_node->inlinks();
     auto outlinks = op_node->outlinks();
     CHECK_EQ(inlinks.size(), 2U);
     CHECK_EQ(outlinks.size(), 1U);
@@ -56,8 +57,9 @@ void GetBroadcastPattern(Node* op_node,
       input_shapes.push_back(shape_dict.at(source->id()));
     }
     int small_index = input_shapes[0].size() <= input_shapes[1].size() ? 0 : 1;
-    auto begin      = std::find(
-        input_shapes[1 - small_index].begin(), input_shapes[1 - small_index].end(), input_shapes[small_index][0]);
+    auto begin = std::find(input_shapes[1 - small_index].begin(),
+                           input_shapes[1 - small_index].end(),
+                           input_shapes[small_index][0]);
     bool is_same = true;
     for (int i = 0; i < input_shapes[small_index].size(); i++) {
       if (input_shapes[small_index][i] != (*begin)) {
@@ -77,17 +79,20 @@ void GetBroadcastPattern(Node* op_node,
 
 class DomTree {
  public:
-  std::vector<DomNode*>& CreatePostDomTree(const std::vector<GraphNode*>& nodes) {
+  std::vector<DomNode*>& CreatePostDomTree(
+      const std::vector<GraphNode*>& nodes) {
     int size = nodes.size();
     dom_nodes_.resize(nodes.size());
     // construct postdom tree, reverse topological_order
     for (int i = size - 1; i >= 0; i--) {
       auto* dom_node = CreateDomNode(nodes[i]);
       CHECK(dom_node);
-      VLOG(2) << "dom_node: " << dom_node->ref_node->id() << ", pattern: " << dom_node->pattern
+      VLOG(2) << "dom_node: " << dom_node->ref_node->id()
+              << ", pattern: " << dom_node->pattern
               << ", depth: " << dom_node->depth;
       if (dom_node->parent) {
-        VLOG(2) << dom_node->ref_node->id() << " parent: " << dom_node->parent->ref_node->id();
+        VLOG(2) << dom_node->ref_node->id()
+                << " parent: " << dom_node->parent->ref_node->id();
       }
       dom_nodes_[i] = dom_node;
     }
@@ -97,44 +102,48 @@ class DomTree {
   std::vector<DomNode*> dom_nodes_;
 
  private:
-  OpPatternKind FusePattern(OpPatternKind p0, OpPatternKind p1) { return p0 > p1 ? p0 : p1; }
+  OpPatternKind FusePattern(OpPatternKind p0, OpPatternKind p1) {
+    return p0 > p1 ? p0 : p1;
+  }
   DomNode* LCA(DomNode* l, DomNode* r, OpPatternKind* pattern) {
     while (l != r) {
       if (!l || !r) return nullptr;
       if (l->depth < r->depth) {
         *pattern = FusePattern(*pattern, r->pattern);
-        r        = r->parent;
+        r = r->parent;
       } else if (l->depth > r->depth) {
         *pattern = FusePattern(*pattern, l->pattern);
-        l        = l->parent;
+        l = l->parent;
       } else {
         *pattern = FusePattern(*pattern, l->pattern);
         *pattern = FusePattern(*pattern, r->pattern);
-        l        = l->parent;
-        r        = r->parent;
+        l = l->parent;
+        r = r->parent;
       }
     }
     return l;
   }
 
   DomNode* FindLCA(GraphNode* graph_node, OpPatternKind* pattern) {
-    static auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+    static auto& op_pattern_dict =
+        Operator::GetAttrs<OpPatternKind>("OpPattern");
     CHECK(graph_node);
     CHECK(pattern);
     DomNode* parent = nullptr;
-    int count       = 0;
+    int count = 0;
     if (graph_node->safe_as<Node>()) {
-      auto* node            = graph_node->safe_as<Node>();
+      auto* node = graph_node->safe_as<Node>();
       const auto& out_links = node->outlinks_in_order();
       for (int i = 0; i < out_links.size(); i++) {
-        auto sink         = out_links[i]->sink();
+        auto sink = out_links[i]->sink();
         bool has_no_links = sink->outlinks().empty();
         if (i) {
-          // CHECK(has_no_links) << "only the first out_var of " << node->id() << " links to other op node!";
+          // CHECK(has_no_links) << "only the first out_var of " << node->id()
+          // << " links to other op node!";
         } else {
           int index = sink->get_index();
           // the first out_var is the parent of the op node
-          parent   = dom_nodes_[index];
+          parent = dom_nodes_[index];
           *pattern = FusePattern(*pattern, parent->pattern);
         }
       }
@@ -142,23 +151,25 @@ class DomTree {
       auto* node_data = graph_node->safe_as<NodeData>();
       CHECK(node_data);
       auto out_links = node_data->outlinks();
-      int count      = 0;
+      int count = 0;
       for (auto link : out_links) {
-        auto sink     = link->sink();
-        int index     = sink->get_index();
+        auto sink = link->sink();
+        int index = sink->get_index();
         auto dom_node = dom_nodes_[index];
         if (!count) {
           parent = dom_node;
           CHECK(parent);
         } else {
-          // if the out_var links to more than one opnode, then we need to find the LCA
+          // if the out_var links to more than one opnode, then we need to find
+          // the LCA
           parent = LCA(parent, dom_node, pattern);
         }
         auto* op_node = sink->safe_as<Node>();
         CHECK(op_node);
         auto op_pattern = op_pattern_dict[op_node->op()];
         VLOG(2) << sink->id() << "'s op pattern is " << op_pattern;
-        if (op_node->attrs.attr_store.count("pre_run") && absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
+        if (op_node->attrs.attr_store.count("pre_run") &&
+            absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
           // not fuse pre_run opnode
           op_pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
@@ -171,20 +182,20 @@ class DomTree {
   }
   DomNode* CreateDomNode(GraphNode* graph_node) {
     CHECK(graph_node);
-    DomNode* dom_node  = new DomNode();
+    DomNode* dom_node = new DomNode();
     dom_node->ref_node = graph_node;
     if (graph_node->inlinks().empty() && graph_node->safe_as<NodeData>()) {
       CHECK(graph_node->safe_as<NodeData>());
       // extern input vars
-      dom_node->parent  = nullptr;
+      dom_node->parent = nullptr;
       dom_node->pattern = framework::kNonFusible;
-      dom_node->depth   = 0;
+      dom_node->depth = 0;
     } else {
       OpPatternKind pattern{framework::kElementWise};
-      auto* parent      = FindLCA(graph_node, &pattern);
-      dom_node->parent  = parent;
+      auto* parent = FindLCA(graph_node, &pattern);
+      dom_node->parent = parent;
       dom_node->pattern = pattern;
-      dom_node->depth   = parent ? parent->depth + 1 : 0;
+      dom_node->depth = parent ? parent->depth + 1 : 0;
     }
     return dom_node;
   }
@@ -209,16 +220,19 @@ struct GroupNode {
     while (node != root_node) {
       auto* parent = node->parent;
       node->parent = root_node;
-      node         = parent;
+      node = parent;
     }
     return root_node;
   }
 };
 class GraphPartition {
  public:
-  GraphPartition(const absl::flat_hash_map<std::string, framework::shape_t>& shape_dict) : shape_dict_(shape_dict) {}
-  std::vector<std::vector<Node*>> Partition(const std::vector<GraphNode*>& graph_nodes,
-                                            const std::vector<DomNode*>& dom_nodes) {
+  GraphPartition(
+      const absl::flat_hash_map<std::string, framework::shape_t>& shape_dict)
+      : shape_dict_(shape_dict) {}
+  std::vector<std::vector<Node*>> Partition(
+      const std::vector<GraphNode*>& graph_nodes,
+      const std::vector<DomNode*>& dom_nodes) {
     CHECK_EQ(graph_nodes.size(), dom_nodes.size());
     InitGroups(graph_nodes);
     for (int i = 0; i < 2; i++) {
@@ -237,22 +251,24 @@ class GraphPartition {
   std::unordered_set<GraphNode*> visited_nodes_;
   const absl::flat_hash_map<std::string, framework::shape_t>& shape_dict_;
   void InitGroups(const std::vector<GraphNode*>& graph_nodes) {
-    static auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+    static auto& op_pattern_dict =
+        Operator::GetAttrs<OpPatternKind>("OpPattern");
     for (int i = 0; i < graph_nodes.size(); i++) {
       GroupNode* group_node = new GroupNode();
       GraphNode* graph_node = graph_nodes[i];
       CHECK(graph_node);
-      auto op_node         = graph_node->safe_as<Node>();
+      auto op_node = graph_node->safe_as<Node>();
       group_node->ref_node = graph_node;
-      group_node->index    = graph_node->get_index();
+      group_node->index = graph_node->get_index();
       if (op_node) {
         auto pattern = op_pattern_dict[op_node->op()];
-        if (op_node->attrs.attr_store.count("pre_run") && absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
+        if (op_node->attrs.attr_store.count("pre_run") &&
+            absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
           // not fuse pre_run opnode
           pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
-        group_node->pattern        = pattern;
+        group_node->pattern = pattern;
         group_node->op_nodes_count = 1;
         if (pattern == framework::kOutFusible) {
           group_node->master_node = graph_node;
@@ -268,7 +284,8 @@ class GraphPartition {
       group_nodes_.push_back(group_node);
     }
   }
-  bool IsSameShape(const std::vector<int>& shape1, const std::vector<int>& shape2) {
+  bool IsSameShape(const std::vector<int>& shape1,
+                   const std::vector<int>& shape2) {
     if (shape1.size() != shape2.size()) return false;
     for (int i = 0; i < shape1.size(); i++) {
       if (shape1[i] != shape2[i]) return false;
@@ -326,7 +343,9 @@ class GraphPartition {
         if (!i) {
           if (!CanFuse(new_source, sink, fn)) return false;
         } else {
-          CHECK(new_source->outlinks().empty()) << "only the first out_var of the op node can link to other op node";
+          CHECK(new_source->outlinks().empty())
+              << "only the first out_var of the op node can link to other op "
+                 "node";
         }
       }
     } else {
@@ -341,15 +360,16 @@ class GraphPartition {
   // check all the nodes between source and sink meet the function of fusion.
   template <typename T>
   bool VerifyFuse(GraphNode* source, GraphNode* sink, T fn) {
-    static auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
-    auto op_node                 = source->safe_as<Node>();
+    static auto& op_pattern_dict =
+        Operator::GetAttrs<OpPatternKind>("OpPattern");
+    auto op_node = source->safe_as<Node>();
     visited_nodes_.clear();
     CHECK(source != sink);
     auto sink_op_node = sink->safe_as<Node>();
     if (sink_op_node && GetRootPattern(source) == framework::kOutFusible &&
         op_pattern_dict[sink_op_node->op()] >= framework::kBroadcast) {
-      // verify conv and sink out shape. If sink's out shape is different from conv's, then no fuse for computeAt
-      // lowering incompatible
+      // verify conv and sink out shape. If sink's out shape is different from
+      // conv's, then no fuse for computeAt lowering incompatible
       if (!VerifyOutShape(source, sink)) {
         VLOG(2) << "source node: " << source->id();
         VLOG(2) << "sink node: " << sink->id();
@@ -364,7 +384,8 @@ class GraphPartition {
           // verify all the nodes in the fuse path recursively
           if (!CanFuse(new_source, sink, fn)) return false;
         } else {
-          CHECK(new_source->outlinks().empty()) << "only the first out_var of op_node links to other op_node";
+          CHECK(new_source->outlinks().empty())
+              << "only the first out_var of op_node links to other op_node";
         }
       }
     } else {
@@ -378,7 +399,7 @@ class GraphPartition {
     return true;
   }
   void MergeNodes(GroupNode* child, GroupNode* parent) {
-    child  = child->GetRootNode();
+    child = child->GetRootNode();
     parent = parent->GetRootNode();
     CHECK(child);
     CHECK(parent);
@@ -389,10 +410,12 @@ class GraphPartition {
     if (child->master_node) {
       CHECK(!parent->master_node);
       parent->master_node = child->master_node;
-      if (child->pattern > framework::kBroadcast && parent->pattern > framework::kBroadcast) {
+      if (child->pattern > framework::kBroadcast &&
+          parent->pattern > framework::kBroadcast) {
         LOG(FATAL) << "can't fuse 2 groups both with complex pattern";
       } else {
-        parent->pattern = child->pattern > parent->pattern ? child->pattern : parent->pattern;
+        parent->pattern =
+            child->pattern > parent->pattern ? child->pattern : parent->pattern;
       }
     }
   }
@@ -411,7 +434,8 @@ class GraphPartition {
         if (!i) {
           Fuse(new_source, sink, target);
         } else {
-          CHECK(new_source->outlinks().empty()) << "only the first out_var of op_node links to other op_node";
+          CHECK(new_source->outlinks().empty())
+              << "only the first out_var of op_node links to other op_node";
         }
       }
     } else {
@@ -429,28 +453,35 @@ class GraphPartition {
     CHECK(source != sink);
     Fuse(source, sink, group_node);
   }
-  void FuseGroups(const std::vector<GraphNode*>& graph_nodes, const std::vector<DomNode*>& dom_nodes, int phase) {
+  void FuseGroups(const std::vector<GraphNode*>& graph_nodes,
+                  const std::vector<DomNode*>& dom_nodes,
+                  int phase) {
     CHECK_EQ(graph_nodes.size(), dom_nodes.size());
     CHECK_EQ(group_nodes_.size(), dom_nodes.size());
     for (int i = 0; i < graph_nodes.size(); i++) {
       auto* graph_node = graph_nodes[i];
-      auto* dom_node   = dom_nodes[i];
+      auto* dom_node = dom_nodes[i];
       auto* group_node = group_nodes_[i];
       CHECK(graph_node);
       CHECK(dom_node);
       CHECK(group_node);
       if (!dom_node->parent) continue;
       if (group_node->pattern == framework::kNonFusible) continue;
-      int parent_index       = dom_node->parent->ref_node->get_index();
+      int parent_index = dom_node->parent->ref_node->get_index();
       auto parent_group_node = group_nodes_[parent_index];
-      if (parent_group_node && parent_group_node->GetRootNode() == group_node->GetRootNode()) continue;
+      if (parent_group_node &&
+          parent_group_node->GetRootNode() == group_node->GetRootNode())
+        continue;
 
       if (group_node->pattern == framework::kOutFusible) {
         if (dom_node->pattern <= framework::kBroadcast) {
-          auto fn       = [](OpPatternKind pattern, bool is_sink) { return pattern <= framework::kBroadcast; };
+          auto fn = [](OpPatternKind pattern, bool is_sink) {
+            return pattern <= framework::kBroadcast;
+          };
           auto lca_node = dom_node->parent->ref_node;
           if (VerifyFuse(graph_node, lca_node, fn)) {
-            VLOG(2) << "fuse between " << graph_node->id() << " and " << lca_node->id();
+            VLOG(2) << "fuse between " << graph_node->id() << " and "
+                    << lca_node->id();
             DoFuse(graph_node, lca_node);
           }
         }
@@ -465,17 +496,22 @@ class GraphPartition {
           };
           auto lca_node = dom_node->parent->ref_node;
           if (VerifyFuse(graph_node, lca_node, fn)) {
-            VLOG(2) << "fuse between " << graph_node->id() << " and " << lca_node->id();
+            VLOG(2) << "fuse between " << graph_node->id() << " and "
+                    << lca_node->id();
             DoFuse(graph_node, lca_node);
           }
         }
       } else if (group_node->pattern == framework::kInjective && phase == 1) {
-        // fuse injective ops in the second phase so that conv2d can always finish fusing
+        // fuse injective ops in the second phase so that conv2d can always
+        // finish fusing
         if (dom_node->pattern <= framework::kInjective) {
-          auto fn       = [](OpPatternKind pattern, bool is_sink) { return pattern <= framework::kInjective; };
+          auto fn = [](OpPatternKind pattern, bool is_sink) {
+            return pattern <= framework::kInjective;
+          };
           auto lca_node = dom_node->parent->ref_node;
           if (VerifyFuse(graph_node, lca_node, fn)) {
-            VLOG(2) << "fuse between " << graph_node->id() << " and " << lca_node->id();
+            VLOG(2) << "fuse between " << graph_node->id() << " and "
+                    << lca_node->id();
             DoFuse(graph_node, lca_node);
           }
         }
@@ -512,12 +548,13 @@ class GraphPartition {
 
 void OpFusionPass(Graph* graph) {
   auto store_nodes = std::get<0>(graph->topological_order());
-  int node_size    = store_nodes.size();
+  int node_size = store_nodes.size();
   // construct postdom tree, reverse topological_order
   DomTree tree;
   auto& dom_nodes = tree.CreatePostDomTree(store_nodes);
   // graph partition
-  auto& shape_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, framework::shape_t>>("infershape");
+  auto& shape_dict = graph->GetMutableAttrs<
+      absl::flat_hash_map<std::string, framework::shape_t>>("infershape");
   GraphPartition partition(shape_dict);
   graph->groups = partition.Partition(store_nodes, dom_nodes);
 }

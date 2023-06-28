@@ -37,8 +37,12 @@ struct Iterator {
   explicit Iterator(Iterator&& x) : id(std::move(x.id)) {}
 
   Iterator& operator=(const Iterator& other);
-  friend bool operator==(const Iterator& a, const Iterator& b) { return a.id == b.id; }
-  friend bool operator!=(const Iterator& a, const Iterator& b) { return !(a.id == b.id); }
+  friend bool operator==(const Iterator& a, const Iterator& b) {
+    return a.id == b.id;
+  }
+  friend bool operator!=(const Iterator& a, const Iterator& b) {
+    return !(a.id == b.id);
+  }
 
   friend std::ostream& operator<<(std::ostream& os, const Iterator& x);
 };
@@ -53,7 +57,9 @@ struct Condition {
     return os;
   }
 
-  std::string __str__() const { return utils::StringFormat("%s", cond.c_str()); }
+  std::string __str__() const {
+    return utils::StringFormat("%s", cond.c_str());
+  }
 };
 
 /**
@@ -102,7 +108,9 @@ class Aff : public Map {
 
 std::ostream& operator<<(std::ostream& os, const Map& x);
 std::ostream& operator<<(std::ostream& os, const Aff& x);
-static bool operator<(const Iterator& a, const Iterator& b) { return a.id < b.id; }
+static bool operator<(const Iterator& a, const Iterator& b) {
+  return a.id < b.id;
+}
 
 }  // namespace poly
 }  // namespace cinn

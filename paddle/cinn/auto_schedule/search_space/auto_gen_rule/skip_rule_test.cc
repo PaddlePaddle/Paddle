@@ -52,8 +52,9 @@ TEST(SkipRule, Basic) {
   ir::Tensor C = Compute(
       {M, N}, [&](Var i, Var j) { return A(i) + B(j); }, "C");
 
-  poly::StageMap stages              = CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("TestSkipRule_Basic", stages, {C}, {}, {}, nullptr, target, true);
+  poly::StageMap stages = CreateStages({C});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "TestSkipRule_Basic", stages, {C}, {}, {}, nullptr, target, true);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before SkipRule: ";
@@ -69,7 +70,8 @@ TEST(SkipRule, Basic) {
 
   // ApplyOnBlock
   EXPECT_EQ(skip_rule.AnalyseApplyType(state, "C"), RuleApplyType::kApply);
-  std::vector<cinn::auto_schedule::SearchState> states = skip_rule.ApplyOnBlock(state, "C");
+  std::vector<cinn::auto_schedule::SearchState> states =
+      skip_rule.ApplyOnBlock(state, "C");
 
   auto test_func = [&ast_expr](ir::IRSchedule* ir_sch) {
     std::vector<ir::Expr> exprs = ir_sch->GetModule().GetExprs();
@@ -99,8 +101,9 @@ TEST(SkipRule, ApplyOnSpecificBlock) {
   ir::Tensor C = Compute(
       {M, N}, [&](Var i, Var j) { return A(i) + B(j); }, "C");
 
-  poly::StageMap stages              = CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec("TestSkipRule_Basic", stages, {C}, {}, {}, nullptr, target, true);
+  poly::StageMap stages = CreateStages({C});
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "TestSkipRule_Basic", stages, {C}, {}, {}, nullptr, target, true);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before SkipRule: ";
@@ -111,7 +114,8 @@ TEST(SkipRule, ApplyOnSpecificBlock) {
   SearchState state(ir_schedule, 0, {});
 
   EXPECT_EQ(skip_rule.AnalyseApplyType(state, "C"), RuleApplyType::kApply);
-  std::vector<cinn::auto_schedule::SearchState> states = skip_rule.ApplyOnBlock(state, "C");
+  std::vector<cinn::auto_schedule::SearchState> states =
+      skip_rule.ApplyOnBlock(state, "C");
 
   std::vector<ir::Expr> exprs = states[0]->ir_schedule.GetModule().GetExprs();
   EXPECT_EQ(exprs.size(), 1UL);

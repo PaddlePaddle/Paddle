@@ -46,8 +46,8 @@ class Module;
 
 using common::Object;
 using common::Shared;
-// NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the IRVisitor or IRCopy on PrimitiveNode
-// will result in undefined behavior.
+// NOTE attr_t only support POD, can not contain Expr or other IR nodes, or the
+// IRVisitor or IRCopy on PrimitiveNode will result in undefined behavior.
 using attr_t = absl::variant<int, float, bool, std::string>;
 
 /**
@@ -71,7 +71,9 @@ struct Cast : public ExprNode<Cast> {
   static const IrNodeTy _node_type_ = IrNodeTy::Cast;
 
   std::vector<Expr*> expr_fields() override { return {&operand(0)}; }
-  std::vector<const Expr*> expr_fields() const override { return {&operand(0)}; }
+  std::vector<const Expr*> expr_fields() const override {
+    return {&operand(0)};
+  }
 };
 
 /**
@@ -349,17 +351,21 @@ struct Call : public ExprNode<Call> {
                    const std::vector<Expr>& read_args,
                    const std::vector<Expr>& write_args,
                    CallType call_type,
-                   FunctionRef func                           = FunctionRef(),
-                   int value_index                            = 0,
+                   FunctionRef func = FunctionRef(),
+                   int value_index = 0,
                    const std::map<std::string, attr_t>& attrs = {});
 
   void Verify() const override;
 
-  inline size_t total_args_count() const { return read_args.size() + write_args.size(); }
+  inline size_t total_args_count() const {
+    return read_args.size() + write_args.size();
+  }
 
   inline bool is_extern_call() const { return call_type == CallType::Extern; }
   inline bool is_cinn_call() const { return call_type == CallType::CINN; }
-  inline bool is_intrinsic_call() const { return call_type == CallType::Intrinsic; }
+  inline bool is_intrinsic_call() const {
+    return call_type == CallType::Intrinsic;
+  }
   inline bool is_isl_call() const { return call_type == CallType::ISL; }
 
   std::vector<Expr*> expr_fields() override;
@@ -385,11 +391,15 @@ struct _Var_ : public ExprNode<_Var_> {
   std::string tag;
 
   _Var_() = default;
-  _Var_(const std::string& name, Type type) : ExprNode<_Var_>(type), name(name) {}
+  _Var_(const std::string& name, Type type)
+      : ExprNode<_Var_>(type), name(name) {}
 
   static Expr Make(const std::string& name, const Type& type);
   //! Make a reduce axis.
-  static Expr Make(Expr lower_bound, Expr upper_bound, const std::string& name, bool is_reduce);
+  static Expr Make(Expr lower_bound,
+                   Expr upper_bound,
+                   const std::string& name,
+                   bool is_reduce);
 
   void Verify() const override;
 
@@ -402,11 +412,17 @@ struct _Var_ : public ExprNode<_Var_> {
 struct Var : public IrNodeRef {
   Var() = default;
   explicit Var(IrNode* n) : IrNodeRef(n) {}
-  explicit Var(const std::string& name_hint, Type t = type_of<int>()) : Var(_Var_::Make(name_hint, t).ptr()) {}
-  Var(Expr lower_bound, Expr upper_bound, const std::string& name, bool is_reduce = false)
+  explicit Var(const std::string& name_hint, Type t = type_of<int>())
+      : Var(_Var_::Make(name_hint, t).ptr()) {}
+  Var(Expr lower_bound,
+      Expr upper_bound,
+      const std::string& name,
+      bool is_reduce = false)
       : Var(_Var_::Make(lower_bound, upper_bound, name, is_reduce)) {}
-  Var(int upper_bound, const std::string& name) : Var(_Var_::Make(Expr(0), Expr(upper_bound), name, false)) {}
-  Var(Expr upper_bound, const std::string& name) : Var(_Var_::Make(Expr(0), upper_bound, name, false)) {}
+  Var(int upper_bound, const std::string& name)
+      : Var(_Var_::Make(Expr(0), Expr(upper_bound), name, false)) {}
+  Var(Expr upper_bound, const std::string& name)
+      : Var(_Var_::Make(Expr(0), upper_bound, name, false)) {}
 
   operator Expr() { return Expr(get()); }
   operator Expr() const {
@@ -449,7 +465,10 @@ struct Reduce : public ExprNode<Reduce> {
   //! The type of the reduce operation.
   ReduceType reduce_type;
 
-  static Expr Make(ReduceType reduce_type, Expr init, Expr body, const std::vector<Var>& reduce_aixs);
+  static Expr Make(ReduceType reduce_type,
+                   Expr init,
+                   Expr body,
+                   const std::vector<Var>& reduce_aixs);
 
   Type type() const override { return body.type().ElementOf(); }
 
@@ -462,7 +481,8 @@ struct Reduce : public ExprNode<Reduce> {
 };
 
 /**
- * Evaluates `true_value` and `false_value` then selects between them based on `condition`.
+ * Evaluates `true_value` and `false_value` then selects between them based on
+ * `condition`.
  */
 struct Select : public ExprNode<Select> {
   Expr condition;
@@ -470,7 +490,10 @@ struct Select : public ExprNode<Select> {
   Expr false_value;
 
   Select(Expr condition, Expr true_value, Expr false_value)
-      : ExprNode<Select>(true_value.type()), condition(condition), true_value(true_value), false_value(false_value) {
+      : ExprNode<Select>(true_value.type()),
+        condition(condition),
+        true_value(true_value),
+        false_value(false_value) {
     CHECK_EQ(true_value.type(), false_value.type());
     CHECK(condition.type().is_bool());
   }
@@ -487,8 +510,12 @@ struct Select : public ExprNode<Select> {
 
   void Verify() const override;
 
-  std::vector<Expr*> expr_fields() override { return {&condition, &true_value, &false_value}; }
-  std::vector<const Expr*> expr_fields() const override { return {&condition, &true_value, &false_value}; }
+  std::vector<Expr*> expr_fields() override {
+    return {&condition, &true_value, &false_value};
+  }
+  std::vector<const Expr*> expr_fields() const override {
+    return {&condition, &true_value, &false_value};
+  }
 
   static const IrNodeTy _node_type_ = IrNodeTy::Select;
 };
@@ -546,8 +573,8 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
 };
 
 /**
- * Allocate a buffer with the given type and size. The buffer lives for at most the duration of the body statement,
- * within which it is freed.
+ * Allocate a buffer with the given type and size. The buffer lives for at most
+ * the duration of the body statement, within which it is freed.
  */
 struct Alloc : public ExprNode<Alloc> {
   //! The destination of the allocation, this might be a buffer or a variable.
@@ -556,12 +583,17 @@ struct Alloc : public ExprNode<Alloc> {
   std::vector<Expr> extents;
   // NOTE the condition might be undefined, that means always true.
   Expr condition;
-  // NOTE the body might be undefined, that means no specific logic other than default.
+  // NOTE the body might be undefined, that means no specific logic other than
+  // default.
   Expr body;
 
   Alloc() : ExprNode(Type()) {}
 
-  static Expr Make(Expr dest, Type type, const std::vector<Expr>& extents, Expr condition, Expr body);
+  static Expr Make(Expr dest,
+                   Type type,
+                   const std::vector<Expr>& extents,
+                   Expr condition,
+                   Expr body);
 
   std::vector<Expr*> expr_fields() override;
   std::vector<const Expr*> expr_fields() const override;
@@ -611,14 +643,14 @@ struct IfThenElse : public ExprNode<IfThenElse> {
 };
 
 enum class ForType : int {
-  Serial     = 0,       //! Serial execution.
-  Parallel   = 1,       //! Parallel execution.
+  Serial = 0,           //! Serial execution.
+  Parallel = 1,         //! Parallel execution.
   Vectorized = 1 << 1,  //! Vector SIMD loop annotation.
-  Unrolled   = 1 << 2,  //! Unroll annotation.
-  GPUThread  = 1 << 3,  //! GPU Thread.
-  GPUBlock   = 1 << 4,  //! GPU Block.
-  GPULane    = 1 << 5,  //! GPU Lane.
-  Default    = 1 << 6,
+  Unrolled = 1 << 2,    //! Unroll annotation.
+  GPUThread = 1 << 3,   //! GPU Thread.
+  GPUBlock = 1 << 4,    //! GPU Block.
+  GPULane = 1 << 5,     //! GPU Lane.
+  Default = 1 << 6,
 };
 
 struct VectorizeInfo {
@@ -629,7 +661,7 @@ struct VectorizeInfo {
   int factor{-1};
 
   inline void set(int level, int factor) {
-    this->level  = level;
+    this->level = level;
     this->factor = factor;
   }
   inline bool valid() const { return level >= 0 && factor > 0; }
@@ -644,14 +676,17 @@ struct BindInfo {
   int offset{-1};
   DeviceAPI device{DeviceAPI::UNK};
 
-  inline void set(const ForType& for_type, const int& offset, const DeviceAPI& device) {
+  inline void set(const ForType& for_type,
+                  const int& offset,
+                  const DeviceAPI& device) {
     this->for_type = for_type;
-    this->offset   = offset;
-    this->device   = device;
+    this->offset = offset;
+    this->device = device;
   }
   // offset should be 0-2, should correspond to the thread of x, y, z
   inline bool valid() const {
-    return offset >= 0 && offset < 3 && (for_type == ForType::GPUThread || for_type == ForType::GPUBlock);
+    return offset >= 0 && offset < 3 &&
+           (for_type == ForType::GPUThread || for_type == ForType::GPUBlock);
   }
 };
 
@@ -673,7 +708,7 @@ struct ForBase {
   void reset_vectorize_info() {
     set_vectorized(false);
     vectorize_info_.factor = -1;
-    vectorize_info_.level  = -1;
+    vectorize_info_.level = -1;
   }
   void reset_bind_info() {
     set_binded(bind_info_.for_type, false);
@@ -710,19 +745,36 @@ struct ForBase {
 
   inline bool is_serial() const { return for_type_ == ForType::Serial; }
   inline bool is_default() const { return for_type_ == ForType::Default; }
-  inline bool is_unrolled() const { return tell_for_type_flag(ForType::Unrolled); }
-  inline bool is_vectorized() const { return tell_for_type_flag(ForType::Vectorized); }
-  inline bool is_parallel() const { return tell_for_type_flag(ForType::Parallel); }
-  inline bool is_binded() const {
-    return tell_for_type_flag(ForType::GPUBlock) || tell_for_type_flag(ForType::GPUThread);
+  inline bool is_unrolled() const {
+    return tell_for_type_flag(ForType::Unrolled);
   }
-  inline bool is_gpu_block_binded() const { return tell_for_type_flag(ForType::GPUBlock); }
-  inline bool is_gpu_thread_binded() const { return tell_for_type_flag(ForType::GPUThread); }
+  inline bool is_vectorized() const {
+    return tell_for_type_flag(ForType::Vectorized);
+  }
+  inline bool is_parallel() const {
+    return tell_for_type_flag(ForType::Parallel);
+  }
+  inline bool is_binded() const {
+    return tell_for_type_flag(ForType::GPUBlock) ||
+           tell_for_type_flag(ForType::GPUThread);
+  }
+  inline bool is_gpu_block_binded() const {
+    return tell_for_type_flag(ForType::GPUBlock);
+  }
+  inline bool is_gpu_thread_binded() const {
+    return tell_for_type_flag(ForType::GPUThread);
+  }
 
  private:
-  inline void set_for_type_flag(ForType type) { *reinterpret_cast<int*>(&for_type_) |= static_cast<int>(type); }
-  inline void unset_for_type_flag(ForType type) { *reinterpret_cast<int*>(&for_type_) &= ~static_cast<int>(type); }
-  inline bool tell_for_type_flag(ForType type) const { return static_cast<int>(for_type_) & static_cast<int>(type); }
+  inline void set_for_type_flag(ForType type) {
+    *reinterpret_cast<int*>(&for_type_) |= static_cast<int>(type);
+  }
+  inline void unset_for_type_flag(ForType type) {
+    *reinterpret_cast<int*>(&for_type_) &= ~static_cast<int>(type);
+  }
+  inline bool tell_for_type_flag(ForType type) const {
+    return static_cast<int>(for_type_) & static_cast<int>(type);
+  }
 
   ForType for_type_{ForType::Serial};
   VectorizeInfo vectorize_info_;
@@ -758,7 +810,7 @@ struct For : public ExprNode<For>, public ForBase {
                    DeviceAPI device_api,
                    Expr body,
                    VectorizeInfo vector_info = VectorizeInfo(),
-                   BindInfo bind_info        = BindInfo());
+                   BindInfo bind_info = BindInfo());
 
   void Verify() const override;
 
@@ -795,7 +847,7 @@ struct PolyFor : public ExprNode<PolyFor>, public ForBase {
                    DeviceAPI device_api,
                    Expr body,
                    VectorizeInfo vector_info = VectorizeInfo(),
-                   BindInfo bind_info        = BindInfo());
+                   BindInfo bind_info = BindInfo());
 
   void Verify() const override;
 
@@ -893,7 +945,8 @@ struct Block : public ExprNode<Block> {
   static const IrNodeTy _node_type_ = IrNodeTy::Block;
 };
 
-// ScheduleBlock is the unit of schedule IR which represents tensor's computation
+// ScheduleBlock is the unit of schedule IR which represents tensor's
+// computation
 struct ScheduleBlock : public ExprNode<ScheduleBlock> {
   std::vector<Var> iter_vars;
   // BufferRange(s) which is read in this schedule block, it is used to
@@ -922,13 +975,15 @@ struct ScheduleBlock : public ExprNode<ScheduleBlock> {
   static const IrNodeTy _node_type_ = IrNodeTy::ScheduleBlock;
 };
 
-// ScheduleBlockRealize is used to execute ScheduleBlock with the binding iter_values
+// ScheduleBlockRealize is used to execute ScheduleBlock with the binding
+// iter_values
 struct ScheduleBlockRealize : public ExprNode<ScheduleBlockRealize> {
   // values of the iter_vars
   std::vector<Expr> iter_values;
   Expr schedule_block;
 
-  static Expr Make(const std::vector<Expr>& iter_values, const Expr& schedule_block);
+  static Expr Make(const std::vector<Expr>& iter_values,
+                   const Expr& schedule_block);
 
   void Verify() const override;
 
@@ -957,33 +1012,41 @@ struct _Module_ : public ExprNode<_Module_> {
 
 /**
  * \brief PrimitiveNode holds the contept of Primitive in CINN.
- * A Primitive is a basic Call to some Expr function, it is introduced to create several level of coarsed-grained IR
- * nodes for better IR optimization and hardware adaption.
+ * A Primitive is a basic Call to some Expr function, it is introduced to create
+ * several level of coarsed-grained IR nodes for better IR optimization and
+ * hardware adaption.
  */
 struct PrimitiveNode : public ExprNode<PrimitiveNode> {
   std::string name;
-  //! the inputs of the PrimitiveNode, the vector<vector<Expr>> can hold variadic arguments.
+  //! the inputs of the PrimitiveNode, the vector<vector<Expr>> can hold
+  //! variadic arguments.
   std::vector<std::vector<Expr>> arguments;
   //! the attribute of this PrimitiveNode.
   std::map<std::string, attr_t> attrs;
 
-  static Expr Make(const std::string& name, const std::map<std::string, attr_t>& attrs);
+  static Expr Make(const std::string& name,
+                   const std::map<std::string, attr_t>& attrs);
 
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::PrimitiveNode;
 };
 
-// possiable keys of attributes in ir nodes with are listed in the following namespace
+// possiable keys of attributes in ir nodes with are listed in the following
+// namespace
 namespace attr {
 
 // max permitted steps for auto_unroll, used in unroll_loop pass
 constexpr const char* auto_unroll_max_step = "auto_unroll_max_step";
-// record the extra loop built during ComputeAt, used for calculate the size of temp buffer in post-processing
+// record the extra loop built during ComputeAt, used for calculate the size of
+// temp buffer in post-processing
 constexpr const char* compute_at_extra_var = "compute_at_extra_var";
-// record the extra loop built during ReverseComputeAt, used for calculate the size of temp buffer in post-processing
-constexpr const char* reverse_compute_at_extra_var = "reverse_compute_at_extra_var";
-// record the cooperative process info, used in post schedule rule(CooperativeProcess)
+// record the extra loop built during ReverseComputeAt, used for calculate the
+// size of temp buffer in post-processing
+constexpr const char* reverse_compute_at_extra_var =
+    "reverse_compute_at_extra_var";
+// record the cooperative process info, used in post schedule
+// rule(CooperativeProcess)
 constexpr const char* cooperative_process = "cooperative_process";
 
 }  // namespace attr

@@ -642,7 +642,8 @@ The ex-state means the state value in the ex-timestep or the previous time step
             RecurrentBase::kInitStateGrads));
     AddAttr<framework::BlockDesc *>(RecurrentBase::kStepBlock,
                                     "The step block inside RNN");
-    AddAttr<bool>(RecurrentBase::kReverse, R"DOC(Calculate RNN reversely or not.
+    AddAttr<bool>(RecurrentBase::kReverse,
+                  R"DOC(Calculate RNN reversely or not.
 By default reverse=False
 
 Assume the input data is [A, B, C, D]

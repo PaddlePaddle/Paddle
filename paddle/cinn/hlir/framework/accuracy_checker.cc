@@ -108,11 +108,14 @@ std::string GetTypeString() {
 }
 
 template <typename T>
-std::string DebugString(const Tensor& cpu_tensor, const std::string& name, const CheckResult& res) {
+std::string DebugString(const Tensor& cpu_tensor,
+                        const std::string& name,
+                        const CheckResult& res) {
   std::stringstream ss;
-  ss << "name=" << name << ", dtype=" << GetTypeString<T>() << ", shape=" << cpu_tensor->shape().data() << ", data=[";
-  size_t numel     = cpu_tensor->shape().numel();
-  const T* data    = cpu_tensor->data<T>();
+  ss << "name=" << name << ", dtype=" << GetTypeString<T>()
+     << ", shape=" << cpu_tensor->shape().data() << ", data=[";
+  size_t numel = cpu_tensor->shape().numel();
+  const T* data = cpu_tensor->data<T>();
   size_t print_num = 5L;
   if (FLAGS_cinn_self_check_accuracy_num < 0) {
     print_num = numel;
@@ -191,10 +194,12 @@ std::string AccuracyChecker::operator()(const std::string& arg_name) {
   }
 }
 
-std::string AccuracyChecker::operator()(const std::map<std::string, cinn_pod_value_t>* name2podargs,
-                                        const std::string& arg_name) {
+std::string AccuracyChecker::operator()(
+    const std::map<std::string, cinn_pod_value_t>* name2podargs,
+    const std::string& arg_name) {
   CHECK(name2podargs) << "name2podargs should not be nullptr.";
-  const cinn_buffer_t* buffer = cinn_pod_value_to_buffer_p(const_cast<cinn_pod_value_t*>(&name2podargs->at(arg_name)));
+  const cinn_buffer_t* buffer = cinn_pod_value_to_buffer_p(
+      const_cast<cinn_pod_value_t*>(&name2podargs->at(arg_name)));
   if (buffer->type == cinn_float32_t()) {
     return CheckBuffer<float>(buffer, arg_name);
   } else if (buffer->type == cinn_float64_t()) {
@@ -228,7 +233,8 @@ std::string AccuracyChecker::operator()(const std::map<std::string, cinn_pod_val
 }
 
 template <typename T>
-std::string AccuracyChecker::CheckTensor(const Tensor& tensor, const std::string& arg_name) {
+std::string AccuracyChecker::CheckTensor(const Tensor& tensor,
+                                         const std::string& arg_name) {
   Tensor cpu_tensor;
   cpu_tensor->Resize(tensor->shape());
   T* dst = cpu_tensor->mutable_data<T>(common::DefaultHostTarget());
@@ -237,13 +243,14 @@ std::string AccuracyChecker::CheckTensor(const Tensor& tensor, const std::string
   size_t numel = tensor->shape().numel();
   MemcpyDeviceToHost(src, numel, dst);
 
-  auto res        = CheckNanOrInf<T>(cpu_tensor);
+  auto res = CheckNanOrInf<T>(cpu_tensor);
   auto result_str = DebugString<T>(cpu_tensor, arg_name, res);
   return result_str;
 }
 
 template <typename T>
-std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer, const std::string& arg_name) {
+std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer,
+                                         const std::string& arg_name) {
   std::vector<int> shape;
   shape.resize(buffer->dimensions);
   for (size_t i = 0; i < shape.size(); ++i) {
@@ -258,7 +265,7 @@ std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer, const std:
   size_t numel = cpu_tensor->shape().numel();
   MemcpyDeviceToHost(src, numel, dst);
 
-  auto res        = CheckNanOrInf<T>(cpu_tensor);
+  auto res = CheckNanOrInf<T>(cpu_tensor);
   auto result_str = DebugString<T>(cpu_tensor, arg_name, res);
   return result_str;
 }
@@ -283,9 +290,9 @@ void AccuracyChecker::MemcpyDeviceToHost(const T* src, size_t numel, T* dst) {
 template <typename T>
 CheckResult AccuracyChecker::CheckNanOrInf(const Tensor& cpu_tensor) {
   bool zero_flag = true;
-  bool one_flag  = true;
-  size_t numel   = cpu_tensor->shape().numel();
-  const T* data  = cpu_tensor->data<T>();
+  bool one_flag = true;
+  size_t numel = cpu_tensor->shape().numel();
+  const T* data = cpu_tensor->data<T>();
   for (size_t i = 0; i < numel; ++i) {
     if (std::isnan(data[i])) {
       return CheckResult::kNaN;

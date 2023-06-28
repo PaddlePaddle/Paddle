@@ -26,7 +26,8 @@
 namespace cinn {
 namespace utils {
 
-SequenceDispatcher::SequenceDispatcher(int begin, int end, int step) : end_(end), step_(step), index_(begin) {
+SequenceDispatcher::SequenceDispatcher(int begin, int end, int step)
+    : end_(end), step_(step), index_(begin) {
   CHECK_LE(begin, end) << StringFormat("begin[%d] > end[%d]", begin, end);
   CHECK_GT(step, 0) << "step is less than 0";
 }
@@ -40,7 +41,9 @@ int SequenceDispatcher::Next() const {
   return idx;
 }
 
-void parallel_run(const WorkerFuncType& fn, JobDispatcher&& dispatcher, int num_threads) {
+void parallel_run(const WorkerFuncType& fn,
+                  JobDispatcher&& dispatcher,
+                  int num_threads) {
   if (num_threads == -1 || num_threads > std::thread::hardware_concurrency()) {
     num_threads = std::thread::hardware_concurrency();
   }
@@ -73,7 +76,7 @@ void parallel_run(const WorkerFuncType& fn, JobDispatcher&& dispatcher, int num_
 
   // wait results and catch exceptions
   try {
-    int tid     = 0;
+    int tid = 0;
     int counter = worker(tid);
     VLOG(4) << "Thread-0  process " << counter << " tasks.";
 

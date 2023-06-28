@@ -47,7 +47,8 @@ FeatureExtractor::FeatureExtractor() {}
 
 void FeatureExtractor::Visit(const Expr *x) { IRVisitor::Visit(x); }
 
-Feature FeatureExtractor::Extract(const ir::ModuleExpr &mod_expr, const common::Target &target) {
+Feature FeatureExtractor::Extract(const ir::ModuleExpr &mod_expr,
+                                  const common::Target &target) {
   feature_ = Feature(target);
   for (const ir::Expr &e : mod_expr.GetExprs()) {
     Visit(&e);
@@ -85,19 +86,20 @@ VisitDoNothing(_BufferRange_);
 
 NotVisitExprFields(_Tensor_)
 
-#define VisitForDtypePattern(NodeType, member)                                                    \
-  void FeatureExtractor::Visit(const NodeType *x) {                                               \
-    if (x->type() == common::F32() || x->type() == common::F16() || x->type() == common::F64()) { \
-      feature_.CurrentLoopBlock().float_##member += x->type().lanes();                            \
-    } else {                                                                                      \
-      feature_.CurrentLoopBlock().int_##member += x->type().lanes();                              \
-    }                                                                                             \
-    std::vector<const Expr *> sub_exprs = x->expr_fields();                                       \
-    for (const Expr *e : sub_exprs) {                                                             \
-      if (e->defined()) {                                                                         \
-        Visit(e);                                                                                 \
-      }                                                                                           \
-    }                                                                                             \
+#define VisitForDtypePattern(NodeType, member)                         \
+  void FeatureExtractor::Visit(const NodeType *x) {                    \
+    if (x->type() == common::F32() || x->type() == common::F16() ||    \
+        x->type() == common::F64()) {                                  \
+      feature_.CurrentLoopBlock().float_##member += x->type().lanes(); \
+    } else {                                                           \
+      feature_.CurrentLoopBlock().int_##member += x->type().lanes();   \
+    }                                                                  \
+    std::vector<const Expr *> sub_exprs = x->expr_fields();            \
+    for (const Expr *e : sub_exprs) {                                  \
+      if (e->defined()) {                                              \
+        Visit(e);                                                      \
+      }                                                                \
+    }                                                                  \
   }
 
     VisitForDtypePattern(Add, add_or_sub);
@@ -118,19 +120,21 @@ VisitForDtypePattern(PrimitiveNode, math_func);
 VisitForDtypePattern(Cast, other_call);
 VisitForDtypePattern(Let, other_call);
 
-#define VisitForMultiOperandsDtypePattern(NodeType, member)                                       \
-  void FeatureExtractor::Visit(const NodeType *x) {                                               \
-    if (x->type() == common::F32() || x->type() == common::F16() || x->type() == common::F64()) { \
-      feature_.CurrentLoopBlock().float_##member += (x->operands().size() - 1);                   \
-    } else {                                                                                      \
-      feature_.CurrentLoopBlock().int_##member += (x->operands().size() - 1);                     \
-    }                                                                                             \
-    std::vector<const Expr *> sub_exprs = x->expr_fields();                                       \
-    for (const Expr *e : sub_exprs) {                                                             \
-      if (e->defined()) {                                                                         \
-        Visit(e);                                                                                 \
-      }                                                                                           \
-    }                                                                                             \
+#define VisitForMultiOperandsDtypePattern(NodeType, member)                   \
+  void FeatureExtractor::Visit(const NodeType *x) {                           \
+    if (x->type() == common::F32() || x->type() == common::F16() ||           \
+        x->type() == common::F64()) {                                         \
+      feature_.CurrentLoopBlock().float_##member +=                           \
+          (x->operands().size() - 1);                                         \
+    } else {                                                                  \
+      feature_.CurrentLoopBlock().int_##member += (x->operands().size() - 1); \
+    }                                                                         \
+    std::vector<const Expr *> sub_exprs = x->expr_fields();                   \
+    for (const Expr *e : sub_exprs) {                                         \
+      if (e->defined()) {                                                     \
+        Visit(e);                                                             \
+      }                                                                       \
+    }                                                                         \
   }
 
 VisitForMultiOperandsDtypePattern(Sum, add_or_sub);
@@ -166,23 +170,24 @@ void FeatureExtractor::Visit(const For *x) {
 
   LoopBlockFeature &loop_feature = feature_.CurrentLoopBlock();
   if (x->min.is_constant() && x->extent.is_constant()) {
-    loop_feature.loop_length = (x->extent.get_constant() - x->min.get_constant());
+    loop_feature.loop_length =
+        (x->extent.get_constant() - x->min.get_constant());
   } else {
     loop_feature.loop_length = -1;  // -1 represents unknown
   }
 
   if (x->is_parallel()) {
     loop_feature.loop_opt_type = ForOptimizeFeatureEnum::kParallel;
-    loop_feature.len_vthread   = loop_feature.loop_length;
+    loop_feature.len_vthread = loop_feature.loop_length;
   } else if (x->is_unrolled()) {
     loop_feature.loop_opt_type = ForOptimizeFeatureEnum::kUnroll;
   } else if (x->is_vectorized()) {
-    loop_feature.loop_opt_type    = ForOptimizeFeatureEnum::kVectorize;
+    loop_feature.loop_opt_type = ForOptimizeFeatureEnum::kVectorize;
     loop_feature.vectorize_factor = x->vectorize_info().factor;
   } else if (x->is_binded()) {
     loop_feature.loop_opt_type = ForOptimizeFeatureEnum::kGpuBind;
-    const BindInfo &bind_info  = x->bind_info();
-    int offset                 = bind_info.offset;
+    const BindInfo &bind_info = x->bind_info();
+    int offset = bind_info.offset;
     if (bind_info.for_type == ForType::GPUBlock) {
       if (offset == 0) {
         loop_feature.len_blockIdx_x = loop_feature.loop_length;
@@ -223,13 +228,16 @@ void FeatureExtractor::Visit(const PolyFor *x) {
 /* Visit for Reduce and Broadcast */
 
 void FeatureExtractor::Visit(const Reduce *x) {
-  if (x->type() == common::F32() || x->type() == common::F16() || x->type() == common::F64()) {
+  if (x->type() == common::F32() || x->type() == common::F16() ||
+      x->type() == common::F64()) {
     switch (x->reduce_type) {
       case Reduce::ReduceType::kSum:
-        feature_.CurrentLoopBlock().float_reduce_sum_or_sub += x->type().lanes();
+        feature_.CurrentLoopBlock().float_reduce_sum_or_sub +=
+            x->type().lanes();
         break;
       case Reduce::ReduceType::kSub:
-        feature_.CurrentLoopBlock().float_reduce_sum_or_sub += x->type().lanes();
+        feature_.CurrentLoopBlock().float_reduce_sum_or_sub +=
+            x->type().lanes();
         break;
       case Reduce::ReduceType::kDiv:
         feature_.CurrentLoopBlock().float_reduce_div += x->type().lanes();
@@ -238,10 +246,12 @@ void FeatureExtractor::Visit(const Reduce *x) {
         feature_.CurrentLoopBlock().float_reduce_mul += x->type().lanes();
         break;
       case Reduce::ReduceType::kMax:
-        feature_.CurrentLoopBlock().float_reduce_max_or_min += x->type().lanes();
+        feature_.CurrentLoopBlock().float_reduce_max_or_min +=
+            x->type().lanes();
         break;
       case Reduce::ReduceType::kMin:
-        feature_.CurrentLoopBlock().float_reduce_max_or_min += x->type().lanes();
+        feature_.CurrentLoopBlock().float_reduce_max_or_min +=
+            x->type().lanes();
         break;
     }
   } else {

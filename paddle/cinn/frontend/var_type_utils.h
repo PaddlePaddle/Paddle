@@ -62,7 +62,8 @@ inline common::Type CppVarType2CommonType(paddle::cpp::VarDescAPI::Type type) {
                                                      "PSTRING",      // 29
                                                      "SPARSE_COO",   // 30
                                                      "SPARSE_CSR"};  // 31
-  CHECK_LT(static_cast<int>(type), var_type_names_.size()) << "Unknown VarDesc type: " << static_cast<int>(type);
+  CHECK_LT(static_cast<int>(type), var_type_names_.size())
+      << "Unknown VarDesc type: " << static_cast<int>(type);
 
   switch (type) {
     SET_TYPE_CASE_ITEM(BOOL, Bool)
@@ -81,14 +82,16 @@ inline common::Type CppVarType2CommonType(paddle::cpp::VarDescAPI::Type type) {
     // so here need convert back to unkown type.
     SET_TYPE_CASE_ITEM(RAW, Type)
     default:
-      LOG(FATAL) << "Unknown VarDesc type: " << var_type_names_[static_cast<int>(type)] << "(" << static_cast<int>(type)
-                 << ")";
+      LOG(FATAL) << "Unknown VarDesc type: "
+                 << var_type_names_[static_cast<int>(type)] << "("
+                 << static_cast<int>(type) << ")";
   }
 #undef SET_DATA_TYPE_CASE_ITEM
   return common::Type();
 }
 
-inline OpMapperContext::FeedInfo GetFeedInfoFromDesc(const paddle::cpp::VarDesc& desc) {
+inline OpMapperContext::FeedInfo GetFeedInfoFromDesc(
+    const paddle::cpp::VarDesc& desc) {
   OpMapperContext::FeedInfo info;
   for (auto num : desc.GetShape()) {
     info.shape.emplace_back(static_cast<int>(num));

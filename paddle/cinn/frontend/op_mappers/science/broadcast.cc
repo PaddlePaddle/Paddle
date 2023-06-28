@@ -20,20 +20,23 @@ namespace cinn {
 namespace frontend {
 namespace science_mappers {
 
-void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
+                          const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Output("Y").size(), 1UL);
   auto y_name = op_desc.Output("Y").front();
 
-  auto shape = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape"));
+  auto shape = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape"));
   auto value = utils::GetAttrOrDefault<float>(op_desc, "value", 0.0f);
 
-  auto dtype_id = utils::GetAttrOrDefault<int>(op_desc, "dtype", static_cast<int>(paddle::cpp::VarDescAPI::Type::FP32));
+  auto dtype_id = utils::GetAttrOrDefault<int>(
+      op_desc, "dtype", static_cast<int>(paddle::cpp::VarDescAPI::Type::FP32));
   auto dtype_pd = static_cast<paddle::cpp::VarDescAPI::Type>(dtype_id);
   auto dtype_cinn = utils::CppVarType2CommonType(dtype_pd);
-  auto dtype      = common::Type2Str(dtype_cinn);
+  auto dtype = common::Type2Str(dtype_cinn);
 
-  VLOG(4) << "fill constant (" << value << ") with shape (" << cinn::utils::Join(shape, ",") << ") and dtype [" << dtype
-          << "]";
+  VLOG(4) << "fill constant (" << value << ") with shape ("
+          << cinn::utils::Join(shape, ",") << ") and dtype [" << dtype << "]";
 
   const auto& cinn_name = cinn::utils::TransValidVarName(y_name);
   CheckVarNameValid(cinn_name);
@@ -44,19 +47,23 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperCont
   ctx.AddVarModelToProgram(y_name, out->id);
 }
 
-void BroadcastOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void BroadcastOpMapper(const paddle::cpp::OpDesc& op_desc,
+                       const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Y").size(), 1UL);
   auto y_name = op_desc.Output("Y").front();
 
-  CHECK(op_desc.HasAttr("shape")) << "The broadcast_p operator should has 'shape' attribute, but " << x_name
-                                  << "'s broadcast hasn't.";
+  CHECK(op_desc.HasAttr("shape"))
+      << "The broadcast_p operator should has 'shape' attribute, but " << x_name
+      << "'s broadcast hasn't.";
 
-  auto y_shape = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape"));
-  auto x       = ctx.GetVar(x_name);
+  auto y_shape = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape"));
+  auto x = ctx.GetVar(x_name);
 
-  VLOG(4) << "Broadcast " << x_name << " from shape (" << cinn::utils::Join(x->shape, ",") << ") to shape ("
+  VLOG(4) << "Broadcast " << x_name << " from shape ("
+          << cinn::utils::Join(x->shape, ",") << ") to shape ("
           << cinn::utils::Join(y_shape, ",") << ").";
 
   auto out = ctx.Builder()->BroadcastTo(x, y_shape);
@@ -70,8 +77,10 @@ void BroadcastOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(science_broadcast) {
-  CINN_REGISTER_OP_MAPPER(fill_constant_p, cinn::frontend::science_mappers::FillConstantOpMapper)
-  CINN_REGISTER_OP_MAPPER(broadcast_p, cinn::frontend::science_mappers::BroadcastOpMapper)
+  CINN_REGISTER_OP_MAPPER(fill_constant_p,
+                          cinn::frontend::science_mappers::FillConstantOpMapper)
+  CINN_REGISTER_OP_MAPPER(broadcast_p,
+                          cinn::frontend::science_mappers::BroadcastOpMapper)
 
   return true;
 }

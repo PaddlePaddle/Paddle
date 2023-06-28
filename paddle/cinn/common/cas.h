@@ -41,9 +41,11 @@ struct CasInterval {
   }
 
   /**
-   * @brief When iterator's upper_bound is an ir::Min of a constant value and a inconstant value, choose the constant
-   * value. When iterator's lower_bound is an ir::Max of a constant value and a inconstant value, choose the constant
-   * value. E.g: expr_l = max(x, 1) and expr_r = min(y,5): max(x, 1) <= iterator_i <= min(y,5)
+   * @brief When iterator's upper_bound is an ir::Min of a constant value and a
+   * inconstant value, choose the constant value. When iterator's lower_bound is
+   * an ir::Max of a constant value and a inconstant value, choose the constant
+   * value. E.g: expr_l = max(x, 1) and expr_r = min(y,5): max(x, 1) <=
+   * iterator_i <= min(y,5)
    *
    * the bounds will be simplified to e_l = 1 and e_r = 5:
    * 1 <= iterator_i <= 5
@@ -54,7 +56,8 @@ struct CasInterval {
     expr_l = detail::ReplaceMaxToConstant(expr_l);
     optim::Simplify(&expr_l);
     optim::Simplify(&expr_r);
-    VLOG(2) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r << "].";
+    VLOG(2) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
+            << "].";
 
     if (expr_l.is_constant() && expr_r.is_constant()) {
       CHECK(expr_l->type().is_integer());
@@ -82,16 +85,21 @@ struct CasInterval {
 
 using cas_intervals_t = absl::flat_hash_map<std::string, CasInterval>;
 
-Expr AutoSimplify(Expr u, const absl::flat_hash_map<std::string, CasInterval>& var_intervals = {});
+Expr AutoSimplify(
+    Expr u,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals = {});
 
 //! Simplify a CAS expression.
-Expr CasSimplify(Expr u, const absl::flat_hash_map<std::string, CasInterval>& var_intervals = {});
+Expr CasSimplify(
+    Expr u,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals = {});
 
 /**
  * \brief Solve an equality.
  * Currently this is an naive implementation using the GiNaC.
  *
- * @param inequality The inequality expression containing an LE or LT or GT or GE, such as 2x-1<3
+ * @param inequality The inequality expression containing an LE or LT or GT or
+ * GE, such as 2x-1<3
  * @param val The target variable.
  * @return an copied expression looks like x < 100.
  */
@@ -100,11 +108,14 @@ Expr SolveInequalityInt(Expr inequality, Var val);
 
 namespace detail {
 
-//! Whether to treat this expression as a symbol. e.g. Load, Min, Max are treated as symbol to avoid confusing the CAS.
+//! Whether to treat this expression as a symbol. e.g. Load, Min, Max are
+//! treated as symbol to avoid confusing the CAS.
 bool CASasSymbol(Expr expr);
-//! Convert some nodes to CAS representation, e.g. convert Mul, Add to Product and Sum.
+//! Convert some nodes to CAS representation, e.g. convert Mul, Add to Product
+//! and Sum.
 Expr ConvertCinnToCAS(Expr expr);
-//! Convert the CAS representation to CINN expression, e.g. convert Product and Sum to Mul and Add.
+//! Convert the CAS representation to CINN expression, e.g. convert Product and
+//! Sum to Mul and Add.
 Expr ConvertCasToCinn(Expr expr);
 //! Tell whether this expression is acceptable by CAS.
 bool IsExprCasCompatible(Expr expr);
@@ -114,7 +125,8 @@ struct ExprPosCmp {
 };
 
 struct CasSimplifyMutator {
-  explicit CasSimplifyMutator(const absl::flat_hash_map<std::string, CasInterval> var_intervals)
+  explicit CasSimplifyMutator(
+      const absl::flat_hash_map<std::string, CasInterval> var_intervals)
       : var_intervals(var_intervals) {}
 
   Expr operator()(Expr u);
@@ -130,33 +142,60 @@ struct CasSimplifyMutator {
   Expr SimplifyMod(Expr u);
   Expr SimplifyFracOp(Expr expr);
   Expr SimplifyCond(Expr u);
-  Expr FurtherSimplifyFracWithInterval(Expr expr, const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
+  Expr FurtherSimplifyFracWithInterval(
+      Expr expr,
+      const absl::flat_hash_map<std::string, CasInterval>& var_intervals);
   Expr SimplifyIntegerPower(Expr u);
   void AddBaseAndSimplify(Expr* base, Expr bound);
-  void UnfoldBound(Expr* lower_bound, Expr* upper_bound, Expr var, bool unfold_const_bound = true);
-  bool GetVarBound(Expr* lower_bound, Expr* upper_bound, Expr var, bool unfold_const_bound = true);
-  bool GetOperandBound(Expr* lower_bound, Expr* upper_bound, Expr var, bool unfold_const_bound = true);
-  bool GetSumBound(Expr* lower_bound, Expr* upper_bound, Expr sum, bool unfold_const_bound = true);
-  bool GetMinBound(Expr* lower_bound, Expr* upper_bound, Expr min, bool unfold_const_bound = true);
-  bool GetMaxBound(Expr* lower_bound, Expr* upper_bound, Expr max, bool unfold_const_bound = true);
-  bool GetExprBound(Expr* lower_bound, Expr* upper_bound, Expr min, bool unfold_const_bound = true);
+  void UnfoldBound(Expr* lower_bound,
+                   Expr* upper_bound,
+                   Expr var,
+                   bool unfold_const_bound = true);
+  bool GetVarBound(Expr* lower_bound,
+                   Expr* upper_bound,
+                   Expr var,
+                   bool unfold_const_bound = true);
+  bool GetOperandBound(Expr* lower_bound,
+                       Expr* upper_bound,
+                       Expr var,
+                       bool unfold_const_bound = true);
+  bool GetSumBound(Expr* lower_bound,
+                   Expr* upper_bound,
+                   Expr sum,
+                   bool unfold_const_bound = true);
+  bool GetMinBound(Expr* lower_bound,
+                   Expr* upper_bound,
+                   Expr min,
+                   bool unfold_const_bound = true);
+  bool GetMaxBound(Expr* lower_bound,
+                   Expr* upper_bound,
+                   Expr max,
+                   bool unfold_const_bound = true);
+  bool GetExprBound(Expr* lower_bound,
+                    Expr* upper_bound,
+                    Expr min,
+                    bool unfold_const_bound = true);
   bool SimplifySpecificSumMod(Expr* u, Expr a, Expr b);
   Expr SimplifySpecificSum(Expr u);
 
  private:
   std::vector<Expr> SimplifyBinaryProduct(Expr left, Expr right);
-  std::vector<Expr> MergeProduct(const std::vector<Expr>& p, const std::vector<Expr>& q);
+  std::vector<Expr> MergeProduct(const std::vector<Expr>& p,
+                                 const std::vector<Expr>& q);
 
   std::vector<Expr> SimplifyBinarySum(Expr left, Expr right);
-  std::vector<Expr> MergeSum(const std::vector<Expr>& p, const std::vector<Expr>& q);
-  std::vector<Expr> MergeExprs(const std::vector<Expr>& p,
-                               const std::vector<Expr>& q,
-                               const std::function<std::vector<Expr>(Expr, Expr)>& binary_merge);
+  std::vector<Expr> MergeSum(const std::vector<Expr>& p,
+                             const std::vector<Expr>& q);
+  std::vector<Expr> MergeExprs(
+      const std::vector<Expr>& p,
+      const std::vector<Expr>& q,
+      const std::function<std::vector<Expr>(Expr, Expr)>& binary_merge);
 
   const absl::flat_hash_map<std::string, CasInterval> var_intervals;
 
-  // Computation based on integer if set true(1/2 get 0), false if treat as rational number in mathematics(1/2 is still
-  // 1/2), currently it only works with true.
+  // Computation based on integer if set true(1/2 get 0), false if treat as
+  // rational number in mathematics(1/2 is still 1/2), currently it only works
+  // with true.
   bool int_compute_{true};
 };
 

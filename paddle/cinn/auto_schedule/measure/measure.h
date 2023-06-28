@@ -53,7 +53,8 @@ struct MeasureResult {
 
 // The result of building with input schedule
 struct BuildResult {
-  // The scope that owns detail compilation infos of parameters in the runtime program
+  // The scope that owns detail compilation infos of parameters in the runtime
+  // program
   const hlir::framework::Scope* compiled_scope;
   // The executable program
   std::unique_ptr<hlir::framework::Program> runtime_program;
@@ -68,11 +69,13 @@ class ScheduleBuilder {
   virtual BuildResult Build(const MeasureInput& input) = 0;
 };
 
-// This interface defines how to run the built result. Like above ScheduleBuilder,
-// a runner shoule be implemented with not bound to a specific task.
+// This interface defines how to run the built result. Like above
+// ScheduleBuilder, a runner shoule be implemented with not bound to a specific
+// task.
 class ScheduleRunner {
  public:
-  virtual MeasureResult Run(const MeasureInput& input, const BuildResult& build_result) = 0;
+  virtual MeasureResult Run(const MeasureInput& input,
+                            const BuildResult& build_result) = 0;
 };
 
 }  // namespace auto_schedule
