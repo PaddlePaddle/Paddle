@@ -25,13 +25,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsGradKernel(const Context& dev_ctx,
-                                             const DenseTensor& x,
-                                             const DenseTensor& label,
-                                             const DenseTensor& out_grad,
-                                             bool normalize,
-                                             int ignore_index,
-                                             DenseTensor* in_grad) {
+void SigmoidCrossEntropyWithLogitsGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& label,
+    const paddle::optional<DenseTensor>& pos_weight,
+    const DenseTensor& out_grad,
+    bool normalize,
+    int ignore_index,
+    DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
                     true,
