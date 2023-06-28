@@ -31,7 +31,7 @@ void ReshapeStridedKernel(const Context& dev_ctx,
   size_t x_offset = x.offset();
   if (xshape) {
     x_dims = DDim(xshape->dims().Get() + 1, xshape->dims().size() - 1);
-    x_stride = x.strides();
+    x_stride = xshape->strides();
   }
   DDim stride;
   if (ReshapeStride(x_dims, x_stride, out->dims(), stride)) {

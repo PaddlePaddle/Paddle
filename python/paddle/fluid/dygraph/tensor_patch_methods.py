@@ -112,7 +112,16 @@ def monkey_patch_tensor():
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
         # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
-        attr_not_need_keys = ['grad', 'T', 'place', '_place_str']
+        attr_not_need_keys = [
+            'grad',
+            'T',
+            'place',
+            '_place_str',
+            'data',
+            'grad_',
+            'strides',
+            'offset',
+        ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
             attr_kwargs = self.__dict__.copy()
