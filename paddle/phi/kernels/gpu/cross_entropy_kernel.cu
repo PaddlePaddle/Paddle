@@ -74,7 +74,7 @@ struct ExpAddFunctor {
 /*
   Cross entropy soft label with dynamic size on axis (log2_elements is
   varibale).
-  - if the input is softmax，compute loss with softmax
+  - if the input is softmax, compute loss with softmax
   - if the input is log_softmax, compute loss with log_softmax and update
   softmax
 */
@@ -1479,8 +1479,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,

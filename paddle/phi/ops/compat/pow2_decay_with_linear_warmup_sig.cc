@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature Pow2DecayWithLinearWarmupOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pow2_decay_with_linear_warmup",
                          {"LearningRate", "Step"},
                          {"warmup_steps", "total_steps", "base_lr", "end_lr"},

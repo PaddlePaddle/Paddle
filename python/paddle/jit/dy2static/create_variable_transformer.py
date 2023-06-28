@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 from .utils import FunctionNameLivenessAnalysis
 from .variable_trans_func import create_undefined_var
 
@@ -23,12 +22,8 @@ __all__ = []
 class CreateVariableTransformer(BaseTransformer):
     """ """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(wrapper_root, AstNodeWrapper), (
-            "Type of input node should be AstNodeWrapper, but received %s ."
-            % type(wrapper_root)
-        )
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         FunctionNameLivenessAnalysis(self.root)
 
     def transform(self):

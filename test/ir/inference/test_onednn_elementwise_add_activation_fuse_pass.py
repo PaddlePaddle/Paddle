@@ -83,7 +83,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={'X': ['eltwise_output']},
                 outputs={'Out': ['activation_output']},
-                beta=draw(st.floats(min_value=0.1, max_value=1.0)),
+                beta=1.0,
             )
         elif activation_type == 'clip':
             activation_op = OpConfig(
@@ -118,17 +118,17 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                'elt_act_mkldnn_fuse_pass',
+                'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )
-        yield config, ['elementwise_add'], (1e-5, 1e-5)
+        yield config, ['fused_elementwise_add'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
             quant=False,
             passes=[
-                'elt_act_mkldnn_fuse_pass',
+                'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )

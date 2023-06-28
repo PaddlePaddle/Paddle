@@ -28,6 +28,10 @@ limitations under the License. */
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
+
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/phi/core/kernel_factory.h"
 

@@ -104,6 +104,7 @@ class CPUDenseMomentumFunctor {
 };
 
 template <typename T,
+          typename TG,
           typename MT,
           RegularizationType kRegType,
           typename UpdateMethod>
@@ -112,11 +113,11 @@ class DenseMomentumFunctor;
 // NOTE(dzh) for performance.
 // avoid if/else in inside kernel, implement GPU UseNesterov/NoNesterov as two
 // functor.
-template <typename T, typename MT, RegularizationType kRegType>
-class DenseMomentumFunctor<T, MT, kRegType, UseNesterov> {
+template <typename T, typename TG, typename MT, RegularizationType kRegType>
+class DenseMomentumFunctor<T, TG, MT, kRegType, UseNesterov> {
  private:
   const T* param_;
-  const T* grad_;
+  const TG* grad_;
   const MT* velocity_;
   const MultiPrecisionType<MT>* lr_;
   const MT* master_param_;
@@ -130,7 +131,7 @@ class DenseMomentumFunctor<T, MT, kRegType, UseNesterov> {
 
  public:
   DenseMomentumFunctor(const T* param,
-                       const T* grad,
+                       const TG* grad,
                        const MT* velocity,
                        const MultiPrecisionType<MT>* learning_rate,
                        const MT* master_param,
@@ -167,7 +168,7 @@ class DenseMomentumFunctor<T, MT, kRegType, UseNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - (grad + velocity_out * mu_) * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -176,11 +177,11 @@ class DenseMomentumFunctor<T, MT, kRegType, UseNesterov> {
   }
 };
 
-template <typename T, typename MT, RegularizationType kRegType>
-class DenseMomentumFunctor<T, MT, kRegType, NoNesterov> {
+template <typename T, typename TG, typename MT, RegularizationType kRegType>
+class DenseMomentumFunctor<T, TG, MT, kRegType, NoNesterov> {
  private:
   const T* param_;
-  const T* grad_;
+  const TG* grad_;
   const MT* velocity_;
   const MultiPrecisionType<MT>* lr_;
   const MT* master_param_;
@@ -194,7 +195,7 @@ class DenseMomentumFunctor<T, MT, kRegType, NoNesterov> {
 
  public:
   DenseMomentumFunctor(const T* param,
-                       const T* grad,
+                       const TG* grad,
                        const MT* velocity,
                        const MultiPrecisionType<MT>* learning_rate,
                        const MT* master_param,
@@ -231,7 +232,7 @@ class DenseMomentumFunctor<T, MT, kRegType, NoNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - lr * velocity_out;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -314,7 +315,7 @@ class SparseMomentumFunctor<T, MT, UseNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - (grad + velocity_out * mu_) * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -394,7 +395,7 @@ class SparseMomentumFunctor<T, MT, NoNesterov> {
 
     MT velocity_out = velocity * mu_ + grad;
     MT param_out = param - velocity_out * lr;
-    // write reigster to memory
+    // write register to memory
     velocity_out_[i] = velocity_out;
     param_out_[i] = static_cast<T>(param_out);
     if (master_param_out_) {
@@ -459,21 +460,39 @@ void MomentumDenseImpl(const Context& ctx,
             velocity_out);
   } else if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
     funcs::ForRange<Context> for_range(ctx, param.numel());
-#define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type) \
-  DenseMomentumFunctor<T, MT, __reg_type, __nesterov> functor(      \
-      param.data<T>(),                                              \
-      grad.data<T>(),                                               \
-      velocity.data<MT>(),                                          \
-      learning_rate.data<MultiPrecisionType<T>>(),                  \
-      master_in_data,                                               \
-      mu,                                                           \
-      rescale_grad,                                                 \
-      param.numel(),                                                \
-      regularization_coeff,                                         \
-      ctx.template Alloc<T>(param_out),                             \
-      ctx.template Alloc<MT>(velocity_out),                         \
-      master_out_data);                                             \
-  for_range(functor);
+    const auto grad_type = grad.dtype();
+#define PADDLE_LAUNCH_DENSE_MOMENTUM_KERNEL(__nesterov, __reg_type)     \
+  if (grad_type == phi::DataType::FLOAT32) {                            \
+    DenseMomentumFunctor<T, float, MT, __reg_type, __nesterov> functor( \
+        param.data<T>(),                                                \
+        grad.data<float>(),                                             \
+        velocity.data<MT>(),                                            \
+        learning_rate.data<MultiPrecisionType<T>>(),                    \
+        master_in_data,                                                 \
+        mu,                                                             \
+        rescale_grad,                                                   \
+        param.numel(),                                                  \
+        regularization_coeff,                                           \
+        ctx.template Alloc<T>(param_out),                               \
+        ctx.template Alloc<MT>(velocity_out),                           \
+        master_out_data);                                               \
+    for_range(functor);                                                 \
+  } else {                                                              \
+    DenseMomentumFunctor<T, T, MT, __reg_type, __nesterov> functor(     \
+        param.data<T>(),                                                \
+        grad.data<T>(),                                                 \
+        velocity.data<MT>(),                                            \
+        learning_rate.data<MultiPrecisionType<T>>(),                    \
+        master_in_data,                                                 \
+        mu,                                                             \
+        rescale_grad,                                                   \
+        param.numel(),                                                  \
+        regularization_coeff,                                           \
+        ctx.template Alloc<T>(param_out),                               \
+        ctx.template Alloc<MT>(velocity_out),                           \
+        master_out_data);                                               \
+    for_range(functor);                                                 \
+  }
 
     if (use_nesterov) {
       if (regularization_flag == RegularizationType::kL2DECAY) {

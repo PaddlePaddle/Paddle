@@ -15,7 +15,8 @@
 
 namespace phi {
 
-KernelSignature CumsumOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature CumsumOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("cumsum_grad",
                          {"X", "Out@GRAD"},
                          {"axis", "flatten", "exclusive", "reverse"},

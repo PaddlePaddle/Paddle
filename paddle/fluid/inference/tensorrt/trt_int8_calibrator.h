@@ -35,7 +35,7 @@ namespace tensorrt {
 
 class TensorRTEngine;
 
-struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
+class TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
  public:
   TRTInt8Calibrator(const std::unordered_map<std::string, size_t>& buffers,
                     int batch_size,

@@ -51,9 +51,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/ir/core/builtin_dialect.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/program.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
@@ -198,6 +202,9 @@ void InitDevices() {
 }
 
 void InitDevices(const std::vector<int> devices) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
   std::vector<platform::Place> places;
 
   for (size_t i = 0; i < devices.size(); ++i) {
@@ -304,9 +311,9 @@ void SignalHandle(const char *data, int size) {
       signal_info.replace(start_pos, useless_substr.length(), "");
       *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
-      // NOTE3: Final singal error message print.
+      // NOTE3: Final signal error message print.
       // Here does not throw an exception,
-      // otherwise it will casue "terminate called recursively"
+      // otherwise it will cause "terminate called recursively"
       std::ostringstream sout;
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";

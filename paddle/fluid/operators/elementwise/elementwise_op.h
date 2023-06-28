@@ -225,7 +225,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
   virtual void AddOpComment() { AddComment(GetCommentExamples()); }
 
-  virtual std::string GetOpFuntionality() const { return ""; }
+  virtual std::string GetOpFunctionality() const { return ""; }
 
   virtual std::string GetName() const = 0;
   virtual std::string GetEquation() const = 0;
@@ -269,7 +269,7 @@ For example:
 
 )DOC",
                            GetName(),
-                           GetOpFuntionality(),
+                           GetOpFunctionality(),
                            GetEquation());
   }
 };

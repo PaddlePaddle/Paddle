@@ -233,21 +233,13 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec,
       dout_ptr, dout_vec.data(), size_z * sizeof(T), cudaMemcpyHostToDevice);
 
   int axis = -1;
-  bool use_mkldnn = false, use_quantizer = false;
+  bool use_mkldnn = false;
   std::string mkldnn_data_type = "float32";
-  std::string x_data_format = "", y_data_format = "";
-  float Scale_x = 1.0, Scale_y = 1.0, Scale_out = 1.0;
 
   framework::AttributeMap attrs;
   attrs.insert({"axis", axis});
   attrs.insert({"use_mkldnn", use_mkldnn});
-  attrs.insert({"x_data_format", x_data_format});
-  attrs.insert({"y_data_format", y_data_format});
-  attrs.insert({"use_quantizer", use_quantizer});
   attrs.insert({"mkldnn_data_type", mkldnn_data_type});
-  attrs.insert({"Scale_x", Scale_x});
-  attrs.insert({"Scale_y", Scale_y});
-  attrs.insert({"Scale_out", Scale_out});
 
   auto op = framework::OpRegistry::CreateOp(
       "elementwise_add_grad",

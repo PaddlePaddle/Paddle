@@ -112,9 +112,7 @@ class PADDLE_API CustomOpKernelContext {
   void EmplaceBackOutput(Tensor&& output);
   void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
   void EmplaceBackAttr(paddle::any attr);
-  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs) {
-    attrs_ = std::move(attrs);
-  }
+  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs);
   const std::pair<size_t, size_t>& InputRangeAt(size_t idx) const;
   const std::pair<size_t, size_t>& OutputRangeAt(size_t idx) const;
 
@@ -125,16 +123,12 @@ class PADDLE_API CustomOpKernelContext {
   paddle::optional<Tensor> OptionalInputAt(size_t idx);
   paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
                                                               size_t end);
-  const std::vector<paddle::any>& Attrs() const { return attrs_; }
-  const std::vector<std::pair<size_t, size_t>>& InputRange() {
-    return input_range_;
-  }
-  const std::vector<std::pair<size_t, size_t>>& OutputRange() {
-    return output_range_;
-  }
+  const std::vector<paddle::any>& Attrs() const;
+  const std::vector<std::pair<size_t, size_t>>& InputRange();
+  const std::vector<std::pair<size_t, size_t>>& OutputRange();
   Tensor* MutableOutputAt(size_t idx);
-  std::vector<Tensor*> MutableOutputBetweeen(size_t start, size_t end);
-  std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
+  std::vector<Tensor*> MutableOutputBetween(size_t start, size_t end);
+  std::vector<Tensor> OutputsBetween(size_t start, size_t end);
   std::vector<Tensor>* AllMutableOutput();
 
   template <typename AttrType>
@@ -391,7 +385,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->OutputRangeAt(out_idx);
-      auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
+      auto arg = ctx->MutableOutputBetween(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                     pargs...,
@@ -811,38 +805,20 @@ class PADDLE_API OpMetaInfo {
 //////////////// Op Meta Info Helper /////////////////
 class OpMetaInfoHelper {
  public:
-  static const std::string& GetOpName(const paddle::OpMetaInfo& info) {
-    return info.name_;
-  }
+  static const std::string& GetOpName(const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetInputs(
-      const paddle::OpMetaInfo& info) {
-    return info.inputs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetOutputs(
-      const paddle::OpMetaInfo& info) {
-    return info.outputs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::vector<std::string>& GetAttrs(
-      const paddle::OpMetaInfo& info) {
-    return info.attrs_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::unordered_map<std::string, std::string>& GetInplaceMap(
-      const paddle::OpMetaInfo& info) {
-    return info.inplace_map_;
-  }
+      const paddle::OpMetaInfo& info);
   static const std::unordered_map<std::string, std::string>&
-  GetInplaceReverseMap(const paddle::OpMetaInfo& info) {
-    return info.inplace_reverse_map_;
-  }
-  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info) {
-    return info.kernel_fn_;
-  }
-  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info) {
-    return info.infer_shape_fn_;
-  }
-  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info) {
-    return info.infer_dtype_fn_;
-  }
+  GetInplaceReverseMap(const paddle::OpMetaInfo& info);
+  static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info);
+  static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info);
+  static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
 };
 
 //////////////// Op Meta Info Map /////////////////

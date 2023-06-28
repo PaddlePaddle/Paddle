@@ -58,6 +58,93 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
+  // CINN ops in this white list support 0D-Tensor, wait-list = {"remainder"}
+  const std::unordered_set<std::string> white_op_list{"elementwise_add",
+                                                      "elementwise_sub",
+                                                      "elementwise_mul",
+                                                      "elementwise_div",
+                                                      "atan2",
+                                                      "floor_divide",
+                                                      "mod",
+                                                      "maximum",
+                                                      "minimum",
+                                                      "pow",
+                                                      "logical_and",
+                                                      "logical_or",
+                                                      "logical_xor",
+                                                      "equal",
+                                                      "not_equal",
+                                                      "greater_than",
+                                                      "greater_equal",
+                                                      "less_than",
+                                                      "less_equal",
+                                                      "tanh",
+                                                      "relu",
+                                                      "gelu",
+                                                      "sigmoid",
+                                                      "exp",
+                                                      "erf",
+                                                      "rsqrt",
+                                                      "log",
+                                                      "log2",
+                                                      "log10",
+                                                      "floor",
+                                                      "ceil",
+                                                      "round",
+                                                      "trunc",
+                                                      "sin",
+                                                      "cos",
+                                                      "tan",
+                                                      "sinh",
+                                                      "cosh",
+                                                      "asin",
+                                                      "acos",
+                                                      "atan",
+                                                      "asinh",
+                                                      "acosh",
+                                                      "atanh",
+                                                      "isnan",
+                                                      "isfinite",
+                                                      "isinf",
+                                                      "negative",
+                                                      "sign",
+                                                      "abs",
+                                                      "reciprocal",
+                                                      "logical_not",
+                                                      "bitwise_not"};
+
+  std::unordered_set<std::string> white_tensor_name;
+  // enable white_op_list only when graph_node_size = 1, which means single op
+  // test
+  int graph_node_size = 0;
+  for (const ir::Node* n : graph->Nodes()) {
+    if (n->IsOp()) {
+      graph_node_size++;
+      VLOG(6) << "Graph has op node " << n->Op()->Type();
+      if (white_op_list.find(n->Op()->Type()) != white_op_list.end()) {
+        for (const ir::Node* var : n->inputs) {
+          white_tensor_name.insert(var->Var()->Name());
+
+          std::vector<int64_t> shape = var->Var()->GetShape();
+          if (shape.empty()) {
+            VLOG(6) << "input var " << var->Name()
+                    << " dims is empty, keep it's 0D-Tensor status";
+          }
+        }
+        for (const ir::Node* var : n->outputs) {
+          white_tensor_name.insert(var->Var()->Name());
+
+          std::vector<int64_t> shape = var->Var()->GetShape();
+          if (shape.empty()) {
+            VLOG(6) << "output var " << var->Name()
+                    << " dims is empty, keep it's 0D-Tensor status";
+          }
+        }
+      }
+    }
+  }
+  VLOG(6) << "Graph has " << graph_node_size << " op node";
+
   for (const ir::Node* n : graph->Nodes()) {
     if (n->IsOp() && op_cases_fix_attr.count(n->Op()->Type())) {
       if (n->Op()->HasAttr("shape")) {
@@ -85,6 +172,11 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
     }
     if (n->IsVar()) {
       if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
+        if (graph_node_size == 1 && white_tensor_name.find(n->Var()->Name()) !=
+                                        white_tensor_name.end()) {
+          VLOG(6) << "Keep 0D-Tensor status of var " << n->Var()->Name();
+          continue;
+        }
         std::vector<int64_t> shape = n->Var()->GetShape();
         if (shape.empty()) {
           shape.push_back(1);

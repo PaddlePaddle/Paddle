@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
+import tempfile
 import unittest
 
 import numpy as np
@@ -41,7 +43,10 @@ class InferencePassTest(unittest.TestCase):
         self.dynamic_shape_params = None
         self.enable_lite = False
         self.lite_parameters = None
-        self.path = "./inference_pass/" + self.__class__.__name__ + "/"
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(
+            self.temp_dir.name, 'inference_pass', self.__class__.__name__
+        )
         np.random.seed(1)
         random.seed(1)
 

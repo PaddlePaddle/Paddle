@@ -13,11 +13,11 @@
 # limitations under the License.
 import unittest
 
-import config
 import numpy as np
 import parameterize as param
 import scipy.stats
-from config import ATOL, RTOL
+from distribution import config
+from distribution.config import ATOL, RTOL
 from parameterize import xrand
 
 import paddle
@@ -77,9 +77,7 @@ class TestBeta(unittest.TestCase):
             )
 
     def test_prob(self):
-
         with paddle.static.program_guard(self.program):
-
             value = paddle.static.data(
                 'value',
                 self._paddle_beta.alpha.shape,

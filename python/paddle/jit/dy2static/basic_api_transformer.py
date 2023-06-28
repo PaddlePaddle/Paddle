@@ -18,7 +18,6 @@ from paddle.utils import gast
 
 from . import utils
 from .base_transformer import BaseTransformer
-from .static_analysis import AstNodeWrapper
 
 __all__ = []
 
@@ -28,13 +27,8 @@ class BasicApiTransformer(BaseTransformer):
     Class to transform basic API from dygraph to static graph.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
-
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
         self.class_node_dict = {}
 
     def transform(self):
@@ -43,7 +37,7 @@ class BasicApiTransformer(BaseTransformer):
         attribute_transformer = AttributeJstTransformer(self.root)
         attribute_transformer.transform()
         self.visit(self.root)
-        return self.wrapper_root
+        return self.root
 
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
@@ -138,13 +132,8 @@ class NameloadJstTransformer(BaseTransformer):
     NOTE: we only deal with ctx=Load() case.
     """
 
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
-
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root):
+        self.root = root
 
     def transform(self):
         self.visit(self.root)

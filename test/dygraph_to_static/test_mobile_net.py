@@ -496,7 +496,6 @@ class Args:
 def train_mobilenet(args, to_static):
     paddle.jit.enable_to_static(to_static)
     with fluid.dygraph.guard(args.place):
-
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)

@@ -29,7 +29,7 @@ from paddle.fluid.framework import _current_expected_place, _set_expected_place
 from paddle.profiler.timer import benchmark
 from paddle.profiler.utils import in_profiler_mode
 
-from ...framework import core, in_dygraph_mode
+from ...framework import core, in_dynamic_mode
 from ..multiprocess_utils import (
     MP_STATUS_CHECK_INTERVAL,
     CleanupFuncRegistrar,
@@ -286,7 +286,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )
@@ -427,7 +427,21 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
-        from paddle.incubate import multiprocessing
+        # NOTE(zhangxiaoci): When trained in XPU multi-node RDMA environment, an unexpected
+        # segmentfault will be raised in dataloader process, where the traceback goes all
+        # back to a runtime error that dataloader workers exit unexpectedly. Similar problems
+        # have been discussed that lead to a misbehavior of OpenCV working in multiprocessing
+        # environment. A possible solution is to change default 'fork' mode of multiprocessing
+        # start method to 'spawn'. See https://stackoverflow.com/questions/54013846 for details.
+        # NOTE(zhangxiaoci): Replace multiprocessing with multiprocess since in some training
+        # environments the former will raise 'AttributeError: Can't pickle local object xxx',
+        # which is a side effect of changing the default start method.
+        if paddle.is_compiled_with_xpu():
+            import multiprocess as multiprocessing
+
+            multiprocessing.set_start_method('spawn', force=True)
+        else:
+            from paddle.incubate import multiprocessing
 
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
@@ -535,7 +549,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # in order not to restart the thread, we just clear
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )
@@ -752,7 +766,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     batch.reraise()
 
                 if idx == self._rcvd_idx:
-                    del self._task_infos[idx]
+                    if idx in self._task_infos:
+                        del self._task_infos[idx]
                     self._structure_infos.append(structure)
                     return batch
                 else:
@@ -820,7 +835,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._thread_done_event.set()
                     self._blocking_queue.close()
 
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )

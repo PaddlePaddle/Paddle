@@ -298,6 +298,7 @@ try:
     from .libpaddle import _set_paddle_lib_path
     from .libpaddle import _create_loaded_parameter
     from .libpaddle import _cuda_synchronize
+    from .libpaddle import _test_enforce_gpu_success
     from .libpaddle import _is_compiled_with_heterps
     from .libpaddle import _promote_types_if_complex_exists
     from .libpaddle import _set_cached_executor_build_strategy
@@ -337,6 +338,10 @@ try:
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
         from .libpaddle import _set_max_memory_map_allocation_pool_size
+
+    # CINN
+    from .libpaddle import is_run_with_cinn
+
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(
@@ -391,6 +396,7 @@ def set_paddle_lib_path():
 
 
 set_paddle_lib_path()
+
 
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy

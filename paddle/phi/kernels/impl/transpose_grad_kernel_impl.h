@@ -44,7 +44,7 @@ void TransposeGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void TransLayoutGradKernel(const Context& dev_ctx,
-                           const DenseTensor& x,
+                           const DenseTensor& x UNUSED,
                            const DenseTensor& out_grad,
                            const std::vector<int>& axis,
                            DenseTensor* x_grad) {

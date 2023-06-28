@@ -20,10 +20,8 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -226,6 +224,20 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
           ->SetAllNodesLowerToTrt(use_cuda_graph);
     }
   }
+
+  // some ops are only implemented in paddle-trt,
+  // but not in paddle ,we should revert it.
+  for (auto *op_node : framework::ir::TopologyVarientSort(
+           *graph, static_cast<framework::ir::SortKind>(0))) {
+    if (op_node->Op()->Type() == "matrix_multiply") {
+      auto origin_type =
+          op_node->Op()->GetAttrIfExists<std::string>("original_type");
+      LOG(WARNING) << "matrix_multiply can't enter into paddle-trt,"
+                   << "we will revert to " << origin_type;
+      op_node->Op()->SetType(origin_type);
+      op_node->RenameOp(origin_type);
+    }
+  }
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
@@ -386,9 +398,10 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
       graph_var_map[node->Name()] = node;
     }
   }
-  auto precision_mode = Get<AnalysisConfig::Precision>("precision_mode");
+  auto precision_mode = Get<int>("trt_precision_mode");
   bool enable_fp16 = false;
-  if (precision_mode == AnalysisConfig::Precision::kHalf) enable_fp16 = true;
+  if (precision_mode == static_cast<int>(phi::DataType::FLOAT16))
+    enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
   auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
@@ -435,7 +448,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
                                              &max_shape_tensor,
                                              &opt_shape_tensor);
       } else {
-        int fd = open(shape_range_info_path.c_str(), O_RDONLY | O_CREAT, 0644);
+        int fd = open(shape_range_info_path.c_str(), O_WRONLY | O_CREAT, 0644);
         close(fd);
       }
     }
@@ -524,9 +537,10 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
-  op_desc->SetAttr("use_sparse_weights", Get<bool>("use_sparse_weights"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
+  op_desc->SetAttr("enable_low_precision_io",
+                   Get<bool>("enable_low_precision_io"));
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -644,7 +658,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
           .Create(engine_key + std::to_string(predictor_id),
                   max_batch_size,
                   Get<int64_t>("workspace_size"),
-                  precision_mode,
+                  static_cast<phi::DataType>(precision_mode),
                   calibrator.get(),
                   Get<int>("gpu_device_id"),
                   with_dynamic_shape,
@@ -665,11 +679,11 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
   trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-  trt_engine->SetUseSparseWeights(Get<bool>("use_sparse_weights"));
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
+  trt_engine->SetLowPrecisionIO(Get<bool>("enable_low_precision_io"));
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -693,7 +707,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  // If with_dynamic_shape is configured，but min_input_shape is empty,
+  // If with_dynamic_shape is configured, but min_input_shape is empty,
   // create trt engine in runtime instead of in pass.
   if (with_dynamic_shape && min_input_shape.empty()) {
     return engine_key + std::to_string(predictor_id);

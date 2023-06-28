@@ -38,7 +38,11 @@ from paddle.distributed.collective import (
     _set_group_map_by_name,
     _valid_backend_list,
 )
-from paddle.distributed.communication.group import _add_new_group
+from paddle.distributed.communication.group import (
+    _add_new_group,
+    _get_global_group,
+    is_initialized,
+)
 from paddle.distributed.fleet.base.private_helper_function import (  # noqa: F401
     wait_server_ready,
 )
@@ -47,7 +51,7 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode
+from paddle.framework import core, in_dynamic_mode
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -101,7 +105,7 @@ def _reshape_inplace(x, shape):
 
 @framework.dygraph_only
 def _split_tensors(coalesced_grads_and_grad_vars):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         for (
             coalesced_grad,
             origin_grad_vars,
@@ -356,7 +360,7 @@ class DataParallel(layers.Layer):
         super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
-            in_dygraph_mode()
+            in_dynamic_mode()
         ), "It's not supported to construct DataParallel in static graph mode."
 
         self._layers = layers
@@ -381,7 +385,7 @@ class DataParallel(layers.Layer):
                 "constructing the DataParallel."
             )
 
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 self.group = (
                     paddle.distributed.collective._get_default_group()
                     if self.group is None
@@ -425,8 +429,7 @@ class DataParallel(layers.Layer):
                 params_set.add(param)
                 if not isinstance(param, self.var_dtype):
                     raise TypeError(
-                        "The data type of '%s' must be '%s'"
-                        % (param.name, self.var_dtype)
+                        f"The data type of '{param.name}' must be '{self.var_dtype}'"
                     )
                 if param.trainable:
                     layers_param.append((sublayer, param))
@@ -456,7 +459,7 @@ class DataParallel(layers.Layer):
             check_layer_sparse(sublayer) for sublayer, _ in layers_param
         ]
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             self.group_indices = core.eager_assign_group_by_size(
                 trainable_parameters,
                 is_sparse_gradient,
@@ -871,7 +874,6 @@ def _is_cpuonly(backend):
         backend in ['auto', 'nccl', 'bkcl', 'heter']
         and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu())
     ) or backend == 'xccl':
-
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
@@ -1019,7 +1021,6 @@ def init_parallel_env():
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
     _check_var_exists("PADDLE_TRAINERS_NUM")
-    _check_var_exists("PADDLE_TRAINER_ENDPOINTS")
 
     # NOTE(chenweihang): [ why config global place here? ]
     # the dygraph mode will be set to default mode,
@@ -1041,7 +1042,7 @@ def init_parallel_env():
 
     group = None
 
-    if backend in _valid_backend_list and in_dygraph_mode():
+    if backend in _valid_backend_list and in_dynamic_mode():
         if _default_group_name in _get_group_map_by_name():
             return _get_group_map_by_name()[_default_group_name]
         _set_default_backend(backend)
@@ -1212,7 +1213,7 @@ def get_rank(group=None):
             print("The rank is %d" % dist.get_rank())
             # The rank is 0
     """
-    if in_dygraph_mode() and group:
+    if in_dynamic_mode() and group:
         return group.rank
 
     assert group is None, "Only support group argument in eager mode."
@@ -1244,7 +1245,11 @@ def get_world_size(group=None):
             print("The world_size is %d" % dist.get_world_size())
             # The world_size is 1
     """
-    if in_dygraph_mode() and group:
+    if in_dynamic_mode() and (group is None):
+        if is_initialized():
+            group = _get_global_group()
+
+    if in_dynamic_mode() and group:
         return group.world_size
 
     assert group is None, "Only support group argument in eager mode."

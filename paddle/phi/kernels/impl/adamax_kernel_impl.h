@@ -28,15 +28,15 @@ void AdamaxKernel(const Context& dev_ctx,
                   const DenseTensor& moment,
                   const DenseTensor& inf_norm,
                   const DenseTensor& beta1_pow,
-                  const paddle::optional<DenseTensor>& master_param,
+                  const paddle::optional<DenseTensor>& master_param UNUSED,
                   float beta1,
                   float beta2,
                   float epsilon,
-                  bool multi_precision,
+                  bool multi_precision UNUSED,
                   DenseTensor* param_out,
                   DenseTensor* moment_out,
                   DenseTensor* inf_norm_out,
-                  DenseTensor* master_param_outs) {
+                  DenseTensor* master_param_outs UNUSED) {
   dev_ctx.template Alloc<T>(param_out);
   dev_ctx.template Alloc<T>(moment_out);
   dev_ctx.template Alloc<T>(inf_norm_out);

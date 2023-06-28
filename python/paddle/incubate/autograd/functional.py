@@ -69,7 +69,7 @@ def vjp(func, xs, v=None):
 
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if paddle.fluid._non_static_mode() or not utils.prim_enabled():
+    if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, ys)
@@ -130,12 +130,12 @@ def jvp(func, xs, v=None):
     _check_inputs(func, xs, v)
     # ``_seprate`` breaks the dependencies between ``xs`` and other
     # variables. See more ``_seprate`` .
-    if paddle.fluid._non_static_mode() or not utils.prim_enabled():
+    if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
     _check_v_shape(v, xs)
 
-    if not paddle.fluid._non_static_mode() and utils.prim_enabled():
+    if not framework.in_dygraph_mode() and utils.prim_enabled():
         return ys, primapi.forward_grad(ys, xs, v)
     else:
         return ys, _double_backward_trick(ys, xs, v)
@@ -352,7 +352,7 @@ class _Jacobian:
     def __init__(self, func, xs):
         # Skip separating in prim mode temporarily, as detach and clone are not
         # primitive operators.
-        if not paddle.fluid._non_static_mode() and utils.prim_enabled():
+        if not framework.in_dygraph_mode() and utils.prim_enabled():
             self._xs = xs
         else:
             self._xs = _separate(xs)
@@ -580,7 +580,7 @@ def _grad(ys, xs, v=None):
             Tensor is the sum of gradients of outputs with respect to the i-th
             inputs.
     """
-    if paddle.fluid._non_static_mode():
+    if framework.in_dygraph_mode():
         # paddle.grad returns a list though the inputs is a signle Tensor. The
         # follow code snippet fixes the problem by return the first element of
         # xs_grad when the xs is a signle Tensor.

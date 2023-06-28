@@ -12,29 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
-import paddle
-from paddle import static
-from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.dist_context import (
-    DistributedContext,
-    set_default_distributed_context,
-)
-from paddle.distributed.auto_parallel.planner_v2 import Planner
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.strategy import Strategy
-from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
-
-sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
     GPTModel,
     GPTPretrainingCriterion,
 )
+
+import paddle
+from paddle import static
+from paddle.distributed import fleet
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.cluster import Cluster
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+    set_default_distributed_context,
+)
+from paddle.distributed.auto_parallel.static.planner_v2 import Planner
+from paddle.distributed.auto_parallel.static.tuner.parallel_tuner import (
+    ParallelTuner,
+)
+from paddle.distributed.auto_parallel.strategy import Strategy
 
 paddle.enable_static()
 

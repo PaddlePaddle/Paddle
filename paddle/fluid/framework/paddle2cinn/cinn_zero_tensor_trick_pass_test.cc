@@ -27,7 +27,7 @@ TEST(CinnZeroTensorTrickPass, basic) {
   ir::Layers layers;
   auto* x = layers.data("x", {});
   auto* y = layers.data("y", {3, 4});
-  auto* add_out_0 = layers.elementwise_add(x, y, nullptr, 0);
+  auto* add_out_0 = layers.mul(x, y, nullptr, 0);
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = ir::PassRegistry::Instance().Get("cinn_zero_tensor_trick_pass");
   VLOG(3) << DebugString(graph);
@@ -43,7 +43,7 @@ TEST(CinnZeroTensorTrickPass, basic) {
             shape.empty(),
             false,
             platform::errors::PreconditionNotMet(
-                "The shape of elementwise_add should not be empty after fuse"));
+                "The shape of mul should not be empty after fuse"));
       }
     }
   }

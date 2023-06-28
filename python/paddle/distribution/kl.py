@@ -27,7 +27,7 @@ from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
-from paddle.fluid.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -73,7 +73,7 @@ def register_kl(cls_p, cls_q):
     functions registered by ``register_kl``, according to multi-dispatch pattern.
     If an implemention function is found, it will return the result, otherwise,
     it will raise ``NotImplementError`` exception. Users can register
-    implemention funciton by the decorator.
+    implemention function by the decorator.
 
     Args:
         cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
@@ -229,7 +229,7 @@ def _kl_expfamily_expfamily(p, q):
     p_log_norm = p._log_normalizer(*p_natural_params)
 
     try:
-        if _non_static_mode():
+        if in_dynamic_mode():
             p_grads = paddle.grad(
                 p_log_norm, p_natural_params, create_graph=True
             )

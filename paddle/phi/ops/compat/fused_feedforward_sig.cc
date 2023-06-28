@@ -14,7 +14,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature FeedForwardFuseOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_feedforward",
                          {"X",
                           "Dropout1Seed",
@@ -56,7 +56,7 @@ KernelSignature FeedForwardFuseOpArgumentMapping(
 }
 
 KernelSignature FeedForwardGradFuseOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_feedforward_grad",
                          {"Out@GRAD",      "X",
                           "Linear1Weight", "Linear1Bias",

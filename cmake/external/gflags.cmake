@@ -19,9 +19,8 @@ set(GFLAGS_PREFIX_DIR ${THIRD_PARTY_PATH}/gflags)
 set(GFLAGS_INCLUDE_DIR
     "${GFLAGS_INSTALL_DIR}/include"
     CACHE PATH "gflags include directory." FORCE)
-set(GFLAGS_REPOSITORY ${GIT_URL}/gflags/gflags.git)
 set(GFLAGS_TAG "v2.2.2")
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/gflags)
 if(WIN32)
   set(GFLAGS_LIBRARIES
       "${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib"
@@ -64,10 +63,9 @@ if(WITH_ARM_BRPC)
 else()
   ExternalProject_Add(
     extern_gflags
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${GFLAGS_REPOSITORY}
-    GIT_TAG ${GFLAGS_TAG}
+    ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${GFLAGS_PREFIX_DIR}
+    SOURCE_DIR ${SOURCE_DIR}
     UPDATE_COMMAND ""
     BUILD_COMMAND ${BUILD_COMMAND}
     INSTALL_COMMAND ${INSTALL_COMMAND}
