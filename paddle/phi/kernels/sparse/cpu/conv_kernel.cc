@@ -67,7 +67,6 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
         kernel.dims(), &subm_paddings, &subm_strides);
   }
 
-  // printf("hihihihihiihihhihi\n\n\n");
   phi::funcs::sparse::GetOutShape(
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = is2D == true ? kernel_dims[2] : kernel_dims[3];
@@ -119,7 +118,6 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
     phi::funcs::sparse::SaveToTable(
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
-  // int n = rulebook->dims()[1];
 
   // 2. gather
   DenseTensorMeta in_features_meta(
