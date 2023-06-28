@@ -100,7 +100,7 @@ class IR_API Dialect {
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
                                  ConcreteOp::attributes_name,
-                                 ConcreteOp::Verify);
+                                 ConcreteOp::VerifyInvariants);
   }
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);

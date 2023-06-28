@@ -40,7 +40,12 @@ phi::KernelKey GetKernelKey(
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair) {
   if (op->name() == "pd.feed") {
-    return {phi::Backend::CPU, phi::DataLayout::ANY, phi::DataType::FLOAT32};
+    // NOTE, for now feed op don't need a kernel, so the data type from Op
+    // Result the next op use base program datatype
+    return {phi::Backend::CPU,
+            phi::DataLayout::ANY,
+            TransToPhiDataType(
+                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
   }
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
@@ -86,7 +91,6 @@ phi::KernelKey GetKernelKey(
 
         dialect::DenseTensorType type =
             op->operand(in_index)
-                .source()
                 .type()
                 .dyn_cast<paddle::dialect::DenseTensorType>();
         kernel_data_type = TransToPhiDataType(type.dtype());
@@ -108,7 +112,7 @@ phi::KernelKey GetKernelKey(
       if (op->name() == "pd.uniform") {
         // try to process uniform, use shape to determin backend
         // TODO(phlrain): shuold support other initilize op
-        auto define_op = op->operand(0).source().GetDefiningOp();
+        auto define_op = op->operand(0).GetDefiningOp();
         if (define_op->name() == "pd.full_int_array") {
           auto shape = define_op->attributes()
                            .at("value")
@@ -140,8 +144,7 @@ phi::KernelKey GetKernelKey(
       if ((input_info.size() > i) && input_info[i].is_mutable_attribute) {
         continue;
       }
-      auto input_tmp = op->operand(i).source();
-
+      auto input_tmp = op->operand(i);
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
       auto input_type = new_input_tmp.type();
@@ -225,23 +228,27 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
                   result_type.dyn_cast<dialect::DenseTensorType>());
           op_output_types.push_back(allocated_dense_tensor_dtype);
         } else if (result_type.isa<ir::VectorType>()) {
-          auto pos1 = result_type.dyn_cast<ir::VectorType>().data()[0];
-
-          if (pos1.isa<dialect::DenseTensorType>()) {
-            auto allocated_dense_tensor_dtype =
-                paddle::dialect::AllocatedDenseTensorType::get(
-                    ctx,
-                    phi::TransToPhiPlace(kernel_key.backend()),
-                    pos1.dyn_cast<dialect::DenseTensorType>());
-            op_output_types.push_back(allocated_dense_tensor_dtype);
-          } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
-                "only support dense tensor in vector type for now"));
+          std::vector<ir::Type> vec_inner_types;
+          auto base_types = result_type.dyn_cast<ir::VectorType>().data();
+          for (size_t j = 0; j < base_types.size(); ++j) {
+            if (base_types[j].isa<dialect::DenseTensorType>()) {
+              auto allocated_dense_tensor_dtype =
+                  paddle::dialect::AllocatedDenseTensorType::get(
+                      ctx,
+                      phi::TransToPhiPlace(kernel_key.backend()),
+                      base_types[j].dyn_cast<dialect::DenseTensorType>());
+              vec_inner_types.push_back(allocated_dense_tensor_dtype);
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "only support dense tensor in vector type for now"));
+            }
           }
 
-          ir::Type t1 = ir::VectorType::get(ctx, op_output_types);
-          op_output_types.clear();
+          ir::Type t1 = ir::VectorType::get(ctx, vec_inner_types);
           op_output_types.push_back(t1);
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "Result type only support DenseTensorType and VectorType"));
         }
       }
     }
@@ -262,7 +269,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
 
     if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-        auto cur_in = (*it)->operand(i).source();
+        auto cur_in = (*it)->operand(i);
         auto new_in = map_value_pair.at(cur_in);
 
         auto new_in_type = new_in.type();

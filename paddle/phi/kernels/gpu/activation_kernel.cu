@@ -132,7 +132,6 @@ DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, CudaSoftShrinkFunctor, lambda)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, CudaELUFunctor, alpha)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, CudaSwishFunctor, beta)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CudaCELUFunctor, alpha)
 
@@ -167,6 +166,16 @@ void HardSwishKernel(const Context& dev_ctx,
       dev_ctx, x, out, functor);
 }
 
+template <typename T, typename Context>
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  funcs::CudaSwishFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = 1.0;
+  ActivationGPUImpl<T, Context, funcs::CudaSwishFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -262,7 +271,7 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)

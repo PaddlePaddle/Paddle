@@ -47,7 +47,7 @@ Operation *OpOperand::owner() const { return impl()->owner(); }
 void OpOperand::RemoveFromUdChain() { return impl()->RemoveFromUdChain(); }
 
 detail::OpOperandImpl *OpOperand::impl() const {
-  IR_ENFORCE(impl_, "Can't use impl() interface while operand is null.");
+  IR_ENFORCE(impl_, "Can't use impl() interface while op_operand is null.");
   return impl_;
 }
 // Value
@@ -84,6 +84,8 @@ Value::use_iterator Value::end() const { return Value::use_iterator(); }
 OpOperand Value::first_use() const { return impl()->first_use(); }
 
 bool Value::use_empty() const { return !first_use(); }
+
+bool Value::HasOneUse() const { return impl()->HasOneUse(); }
 
 void Value::ReplaceUsesWithIf(
     Value new_value,

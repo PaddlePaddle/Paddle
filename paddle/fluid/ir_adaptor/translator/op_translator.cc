@@ -327,6 +327,8 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     }
 
     bool is_vector = (info.type_name.find("VectorType") != std::string::npos);
+    is_vector |=
+        (info.type_name.find("IntArrayAttribute") != std::string::npos);
     VLOG(10) << "[op:" << op_desc.Type() << "][input]" << info.name << " "
              << is_vector << " " << info.type_name;
 

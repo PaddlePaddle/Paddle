@@ -59,12 +59,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
-    // TODO(Ruibiao): hack skip gc all vars for multiple jobs, improve it later
-    if (jobs.size() > 1) {
-      for (VarDesc* var : program->Block(0).AllVars()) {
-        execution_config.skip_gc_vars.insert(var->Name());
-      }
-    }
+    execution_config.skip_gc_vars = job->SkipGcVars();
 
     if (FLAGS_enable_new_ir_in_executor) {
       VLOG(6) << "begin to translate" << std::endl;

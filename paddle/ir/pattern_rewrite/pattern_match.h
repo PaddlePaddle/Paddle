@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation.h"
@@ -36,7 +37,7 @@ namespace ir {
 
 // This class reprensents the benefit of a pattern. The most common
 // unit to use is the `numver of operations` in the pattern.
-class PatternBenefit {
+class IR_API PatternBenefit {
  public:
   PatternBenefit() = default;
   PatternBenefit(uint32_t val) : val_(val) {}  // NOLINT
@@ -257,30 +258,21 @@ class RewriterBase : public Builder {
  public:
   // TODO(wilber): Supplementary methods of block and region.
 
-  // TODO(wilber): Support ValueRange.
-  // virtual void ReplaceOpWithIf(Operation* op,
-  //                              ValueRange new_values,
-  //                              bool* all_uses_replaced,
-  //                              std::function<bool(OpOperand&)> functor);
-  // void ReplaceOpWithIf(Operation* op,
-  //                      ValueRange new_values,
-  //                      std::function<bool(OpOperand&)> functor);
-  // virtual void ReplaceOp(Operation* op, ValueRange new_values);
+  virtual void ReplaceOpWithIf(Operation* op,
+                               const std::vector<Value>& new_values,
+                               bool* all_uses_replaced,
+                               const std::function<bool(OpOperand)>& functor);
 
-  // virtual void ReplaceOpWithNewOp()
+  void ReplaceOpWithIf(Operation* op,
+                       const std::vector<Value>& new_values,
+                       const std::function<bool(OpOperand)>& functor);
+
+  virtual void ReplaceOp(Operation* op, const std::vector<Value>& new_values);
+
+  // template <typename OpTy, typename... Args>
+  // OpTy ReplaceOpWithNewOp(Operation *op, Args &&...args);
 
   virtual void EraseOp(Operation* op);
-
-  virtual void StartRootUpdate(Operation* op) {}
-  virtual void FinalizeRootUpdate(Operation* op) {}
-  virtual void CancleRootUpdate(Operation* op) {}
-
-  template <typename CallableT>
-  void UpdateRootInplace(Operation* root, CallableT&& callable) {
-    StartRootUpdate(root);
-    callable();
-    FinalizeRootUpdate(root);
-  }
 
   void ReplaceAllUsesWith(Value from, Value to);
 
@@ -293,11 +285,25 @@ class RewriterBase : public Builder {
 
   virtual ~RewriterBase();
 
-  // virtual void NotifyRootReplaced(Operation* op, ValueRange replacement) {}
+  virtual void NotifyRootReplaced(Operation* op,
+                                  const std::vector<Value>& replacement) {}
 
   virtual void NotifyOperationRemoved(Operation* op) {}
 
-  // virtual bool NotifyMatchFailure()
+  virtual void NotifyOperationInserted(Operation* op) {}
+
+  virtual void StartRootUpdate(Operation* op) {}
+
+  virtual void FinalizeRootUpdate(Operation* op) {}
+
+  virtual void CancleRootUpdate(Operation* op) {}
+
+  template <typename CallableT>
+  void UpdateRootInplace(Operation* root, CallableT&& callable) {
+    StartRootUpdate(root);
+    callable();
+    FinalizeRootUpdate(root);
+  }
 
  private:
   void operator=(const RewriterBase&) = delete;
