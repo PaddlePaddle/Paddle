@@ -2064,9 +2064,6 @@ bool AnalysisPredictor::ZeroCopyRun() {
     fleet_exe_->Run(config_.dist_config().carrier_id());
     VLOG(3) << "Fleet executor inf runs once use: "
             << std::to_string(timer.toc()) << "ms";
-    // Fix TensorArray reuse not cleaned bug.
-    tensor_array_batch_cleaner_.CollectTensorArrays(scope_.get());
-    tensor_array_batch_cleaner_.ResetTensorArray();
     return true;
   }
 #endif
