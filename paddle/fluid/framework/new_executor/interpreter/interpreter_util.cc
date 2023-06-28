@@ -969,11 +969,16 @@ void BuildOpFuncList(
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    ::ir::BuildInferMetaContext((*it),
-                                value_2_name_map,
-                                scope,
-                                op_yaml_info_parser,
-                                &(op_func_node.infer_meta_context_));
+    ::ir::BuildInferMetaContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>((*it),
+               value_2_name_map,
+               scope,
+               op_yaml_info_parser,
+               &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
         attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
@@ -990,13 +995,17 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    ::ir::BuildPhiKernelContext((*it),
-                                value_2_name_map,
-                                scope,
-                                op_yaml_info_parser,
-                                &(op_func_node.kernel_context_),
-                                &(op_func_node.input_index),
-                                &(op_func_node.output_index));
+    ::ir::BuildPhiKernelContext<phi::KernelContext,
+                                const phi::TensorBase*,
+                                phi::TensorBase*,
+                                paddle::small_vector<const phi::TensorBase*>,
+                                true>((*it),
+                                      value_2_name_map,
+                                      scope,
+                                      op_yaml_info_parser,
+                                      &(op_func_node.kernel_context_),
+                                      &(op_func_node.input_index),
+                                      &(op_func_node.output_index));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(

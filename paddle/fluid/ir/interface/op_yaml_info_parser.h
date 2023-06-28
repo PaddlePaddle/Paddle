@@ -31,6 +31,8 @@ class OpYamlInfoParser {
   const std::string& AttrTypeName(const std::string& name) const;
   const std::string& TensorAttrTypeName(const std::string& name) const;
 
+  const std::vector<std::string>& TensorParams(bool is_kernel = false) const;
+  const std::vector<std::string>& AttrParams(bool is_kernel = false) const;
   const std::vector<std::string>& InferMetaTensorParams() const;
   const std::vector<std::string>& InferMetaAttrParams() const;
   const std::vector<std::string>& KernelFnTensorParams() const;

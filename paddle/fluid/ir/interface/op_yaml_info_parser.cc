@@ -62,6 +62,22 @@ const std::string& OpYamlInfoParser::TensorAttrTypeName(
       phi::errors::PreconditionNotMet("[%s] MUST be a tensor attribute", name));
   return it->second.type_name;
 }
+const std::vector<std::string>& OpYamlInfoParser::TensorParams(
+    bool is_kernel) const {
+  if (is_kernel) {
+    return vec_kernel_fn_tensor_params_;
+  } else {
+    return vec_infer_meta_tensor_params_;
+  }
+}
+const std::vector<std::string>& OpYamlInfoParser::AttrParams(
+    bool is_kernel) const {
+  if (is_kernel) {
+    return vec_kernel_fn_attr_params_;
+  } else {
+    return vec_infer_meta_attr_params_;
+  }
+}
 
 const std::vector<std::string>& OpYamlInfoParser::InferMetaTensorParams()
     const {
