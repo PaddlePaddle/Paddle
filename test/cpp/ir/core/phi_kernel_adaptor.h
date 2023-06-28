@@ -56,7 +56,7 @@ void BuildScope(ir::Block* block,
     int input = (*it)->num_operands();
     if (input > 0) {
       for (int i = 0; i < input; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -130,7 +130,7 @@ void build_context(ir::Operation* op,
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {

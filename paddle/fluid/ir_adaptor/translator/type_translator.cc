@@ -31,9 +31,33 @@ using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 
 TypeTranslator::TypeTranslator() {
   handlers = {
+      {VarType::BOOL,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::BoolType::get(ctx);
+       }},
+      {VarType::UINT8,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::UInt8Type::get(ctx);
+       }},
+      {VarType::INT8,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int8Type::get(ctx);
+       }},
+      {VarType::INT16,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int16Type::get(ctx);
+       }},
+      {VarType::INT32,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int32Type::get(ctx);
+       }},
       {VarType::INT64,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Int64Type::get(ctx);
+       }},
+      {VarType::FP16,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Float16Type::get(ctx);
        }},
       {VarType::FP32,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
@@ -43,10 +67,22 @@ TypeTranslator::TypeTranslator() {
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Float64Type::get(ctx);
        }},
+      {VarType::BF16,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::BFloat16Type::get(ctx);
+       }},
+      {VarType::COMPLEX64,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Complex64Type::get(ctx);
+       }},
+      {VarType::COMPLEX128,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Complex128Type::get(ctx);
+       }},
       {VarType::LOD_TENSOR,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          VLOG(10) << "[vartype translating]"
-                  << "[" << var_desc.Name() << "]" << var_desc.GetDataType();
+                  << "[" << var_desc.Name() << "] from LOD_TENSOR";
 
          ir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
