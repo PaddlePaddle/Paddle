@@ -403,10 +403,9 @@ struct XPUMishFunctor : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T, typename Context>
-void SwishRawKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    float beta,
-                    DenseTensor* out) {
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   int r = xpu::swish(dev_ctx.x_context(),
@@ -542,12 +541,8 @@ PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(swish_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::SwishRawKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(hard_sigmoid,
                    XPU,
                    ALL_LAYOUT,
@@ -572,6 +567,13 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(relu6_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::Relu6RawKernel,
+                   float,
+                   phi::dtype::float16) {}
+
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
 
@@ -581,7 +583,6 @@ PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
 PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)

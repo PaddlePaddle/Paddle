@@ -190,7 +190,6 @@ class TestMultipleGpus(unittest.TestCase):
 
 class TestMultipleWithGloo(unittest.TestCase):
     def run_mnist_2cpu(self, target_file_name):
-
         cluster, pod = get_cluster_from_args(
             [0, 1]
         )  # tmp use. for getting trainer_nranks()

@@ -1,14 +1,32 @@
-cc_test_old(test_egr_ds_eager_tensor SRCS eager_tensor_test.cc DEPS
-            ${eager_deps})
-cc_test_old(test_egr_ds_auotgrad_meta SRCS autograd_meta_test.cc DEPS
-            ${eager_deps})
+cc_test_old(
+  test_egr_ds_eager_tensor
+  SRCS
+  eager_tensor_test.cc
+  DEPS
+  fleet_executor
+  final_dygraph_function
+  ${eager_deps}
+  python)
+cc_test_old(
+  test_egr_ds_auotgrad_meta
+  SRCS
+  autograd_meta_test.cc
+  DEPS
+  fleet_executor
+  final_dygraph_function
+  ${eager_deps}
+  python)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  if(WITH_CINN)
+    set(eager_deps ${eager_deps} cinn_compiler python)
+  endif()
   cc_test_old(
     test_egr_ds_grad_tensor_holder
     SRCS
     grad_tensor_holder_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
@@ -17,6 +35,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     grad_node_info_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
@@ -25,6 +44,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     accumulation_node_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})
@@ -33,6 +53,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     SRCS
     tensor_wrapper_test.cc
     DEPS
+    fleet_executor
     conditional_block_op
     ${eager_deps}
     ${generated_deps})

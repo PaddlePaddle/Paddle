@@ -24,7 +24,6 @@ def make_program():
     main_program = paddle.fluid.Program()
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
-
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         y = paddle.static.data(name='y', shape=[4, 4, 8], dtype='float32')
         auto.shard_tensor(
@@ -61,7 +60,6 @@ def parallelizer(program_func, rank):
 
 class TestDistAssign(unittest.TestCase):
     def test_dist_assign(self):
-
         dist_main_prog, dist_context = parallelizer(make_program, 0)
         ops = dist_main_prog.global_block().ops
         for op in ops:

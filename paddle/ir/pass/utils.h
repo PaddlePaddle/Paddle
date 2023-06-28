@@ -1,5 +1,3 @@
-// paddle/pass/utils.h
-
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +14,8 @@
 
 #pragma once
 
+#include <ostream>
+#include <string>
 #include <type_traits>
 
 namespace ir {
@@ -40,6 +40,12 @@ struct detector<void_t<Op<Args...>>, Op, Args...> {
 
 template <template <class...> class Op, class... Args>
 using is_detected = typename detector<void, Op, Args...>::value_t;
+
+// Print content as follows.
+// ===-------------------------------------------------------------------------===
+//                                     header
+// ===-------------------------------------------------------------------------===
+void PrintHeader(const std::string &header, std::ostream &os);
 
 }  // namespace detail
 }  // namespace ir

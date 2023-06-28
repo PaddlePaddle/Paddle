@@ -102,7 +102,6 @@ class TestPrimForward(unittest.TestCase):
         self.assertTrue('layer_norm' not in fwd_ops)
 
     def test_cinn_prim_forward(self):
-
         for dtype in self.dtypes:
             if paddle.device.get_device() == "cpu":
                 print("need pass this case")

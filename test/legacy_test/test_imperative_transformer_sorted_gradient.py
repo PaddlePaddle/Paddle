@@ -534,7 +534,6 @@ class EncoderSubLayer(Layer):
         preprocess_cmd="n",
         postprocess_cmd="da",
     ):
-
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
@@ -602,7 +601,6 @@ class EncoderLayer(Layer):
         preprocess_cmd="n",
         postprocess_cmd="da",
     ):
-
         super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = []

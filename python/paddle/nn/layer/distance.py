@@ -70,7 +70,6 @@ class PairwiseDistance(Layer):
         self.name = name
 
     def forward(self, x, y):
-
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
         )

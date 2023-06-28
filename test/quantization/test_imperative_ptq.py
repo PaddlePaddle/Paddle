@@ -253,8 +253,7 @@ class TestImperativePTQ(unittest.TestCase):
 
             self.assertTrue(
                 after_acc_top1 >= self.eval_acc_top1,
-                msg="The test acc {%f} is less than {%f}."
-                % (after_acc_top1, self.eval_acc_top1),
+                msg=f"The test acc {{{after_acc_top1:f}}} is less than {{{self.eval_acc_top1:f}}}.",
             )
             self.assertTrue(
                 infer_acc_top1 >= after_acc_top1,
@@ -322,8 +321,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
             # The acc of quantized model should be higher than 0.95.
             self.assertTrue(
                 after_acc_top1 >= self.eval_acc_top1,
-                msg="The test acc {%f} is less than {%f}."
-                % (after_acc_top1, self.eval_acc_top1),
+                msg=f"The test acc {{{after_acc_top1:f}}} is less than {{{self.eval_acc_top1:f}}}.",
             )
             # Check the saved infer_model.The acc of infer model
             # should not be lower than the one of dygraph model.

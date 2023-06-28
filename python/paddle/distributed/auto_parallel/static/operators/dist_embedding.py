@@ -70,7 +70,6 @@ register_distributed_operator_impl_container(
 
 
 def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
-
     assert (
         len(Ids_var.shape) == 3
     ), "input Ids to lookup_table should have 3 dimensions but got [{}] with shape [{}]".format(
@@ -577,7 +576,6 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block

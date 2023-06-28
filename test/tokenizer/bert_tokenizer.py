@@ -325,7 +325,6 @@ class BertTokenizer(PretrainedTokenizer):
         cls_token="[CLS]",
         mask_token="[MASK]",
     ):
-
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the "

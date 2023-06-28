@@ -80,7 +80,6 @@ class TestDygraphModel(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def setUp(self):
-
         self.seed = 2021
         self.in_dim = 10
         self.out_dim = 64

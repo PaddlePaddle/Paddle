@@ -91,6 +91,11 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 if(WITH_TESTING)
+  if(CINN_ONLY)
+    add_subdirectory(cpp/cinn)
+    add_subdirectory(cinn)
+    return()
+  endif()
   add_subdirectory(amp)
   add_subdirectory(asp)
   add_subdirectory(autograd)
@@ -168,7 +173,12 @@ if(${len} GREATER_EQUAL 1)
       add_executable(${test_name} ${test_src})
       target_link_libraries(${test_name} paddle_gtest_main_new)
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
-      target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+      if(WITH_SHARED_PHI)
+        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+      endif()
+      if(WITH_SHARED_IR)
+        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:ir>)
+      endif()
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
@@ -180,7 +190,7 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(
           ${test_name}
-          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi>"
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:ir>"
         )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
@@ -211,6 +221,14 @@ if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
   if(NOT WIN32)
     add_dependencies(standalone_executor_test download_program)
+  endif()
+endif()
+
+if(TARGET standalone_executor_new_ir_test)
+  if(NOT WIN32)
+    set_tests_properties(
+      standalone_executor_new_ir_test
+      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
   endif()
 endif()
 

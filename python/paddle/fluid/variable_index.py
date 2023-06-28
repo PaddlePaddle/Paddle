@@ -151,7 +151,6 @@ class SliceInfo:
         return paddle.gather_nd(tensor, index)
 
     def set_item(self, tensor_origin, value):
-
         if not isinstance(value, paddle.fluid.Variable):
             value = paddle.assign(value)
         tensor_type = None
@@ -491,7 +490,6 @@ def _getitem_impl_(var, item):
 
         elif isinstance(slice_item, (Variable, core.eager.Tensor)):
             if len(item) == 1:
-
                 from ..tensor import index_select
 
                 if slice_item.dtype == paddle.bool:
