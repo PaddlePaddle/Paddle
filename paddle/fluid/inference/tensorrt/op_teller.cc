@@ -79,6 +79,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("set_value");
     teller_set.insert("index_select");
     int8_teller_set.insert("index_select");
+    int8_teller_set.insert("einsum");
+    teller_set.insert("einsum");
 #endif
   }
 
@@ -2713,6 +2715,39 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "using TRT TemporalShift layer.";
         return false;
       }
+    }
+
+    if (op_type == "einsum") {
+#if !IS_TRT_VERSION_GE(8200)
+      VLOG(3) << "einsum is not supported when TensorRT < 8.2";
+      return false;
+#else
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the einsum does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto operand_inputs = desc.Input("Operands");
+      if (operand_inputs.size() > 2) {
+        VLOG(3) << "TensorRT currently supports up to 2 input tensors"
+                << "to einsum but operation had" << operand_inputs.size()
+                << "input tensors !";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto equation = PADDLE_GET_CONST(std::string, desc.GetAttr("equation"));
+      if (equation.find("...") != std::string::npos) {
+        VLOG(3) << "TensorRT currently does not support ellipses !";
+        return false;
+      }
+#endif
     }
 
     if (use_no_calib_int8) {
