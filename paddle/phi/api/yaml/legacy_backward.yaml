@@ -159,18 +159,6 @@
     data_type : x
   backward : conv2d_transpose_double_grad
 
-- backward_op : cumsum_grad
-  forward : cumsum(Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : cumsum_grad
-    data_type: x
-  composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
-
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)

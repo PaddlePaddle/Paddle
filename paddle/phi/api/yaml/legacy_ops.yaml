@@ -166,15 +166,6 @@
   output : Tensor(out)
   invoke : copy_to_impl(x, place, blocking)
 
-- op : cumsum
-  args : (Tensor x, Scalar axis, bool flatten, bool exclusive, bool reverse)
-  output : Tensor(out)
-  infer_meta :
-    func : CumScalarAxisInferMeta
-  kernel :
-    func : cumsum
-  backward : cumsum_grad
-
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)
   output : Tensor(out)

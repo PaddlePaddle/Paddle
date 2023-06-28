@@ -493,6 +493,18 @@
   kernel :
     func : cumprod_grad
 
+- backward_op : cumsum_grad
+  forward : cumsum(Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, Scalar axis, bool flatten, bool exclusive, bool reverse)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : cumsum_grad
+    data_type: x
+  composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
+
 - backward_op : depthwise_conv2d_double_grad
   forward : depthwise_conv2d_grad (Tensor input, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
   args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
