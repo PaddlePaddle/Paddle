@@ -47,7 +47,7 @@ Operation *OpOperand::owner() const { return impl()->owner(); }
 void OpOperand::RemoveFromUdChain() { return impl()->RemoveFromUdChain(); }
 
 detail::OpOperandImpl *OpOperand::impl() const {
-  IR_ENFORCE(impl_, "Can't use impl() interface while operand is null.");
+  IR_ENFORCE(impl_, "Can't use impl() interface while op_operand is null.");
   return impl_;
 }
 // Value

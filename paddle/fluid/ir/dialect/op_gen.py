@@ -78,7 +78,7 @@ op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
 
-OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->operand({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->op_operand({input_index}); }}
 """
 OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->result({output_index}); }}
 """
@@ -1046,7 +1046,7 @@ def GenBuildOutputs(
                 name=op_output_name_list[idx]
             )
 
-    build_output_str += "  argument.AddTypes(argument_outputs.begin(), argument_outputs.end());\n"
+    build_output_str += "  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"
 
     return build_output_str
 

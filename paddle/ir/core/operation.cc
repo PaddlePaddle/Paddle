@@ -130,7 +130,7 @@ void Operation::Destroy() {
 
   // 4. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
-    operand(idx).impl()->~OpOperandImpl();
+    op_operand(idx).impl()->~OpOperandImpl();
   }
   // 5. Free memory.
   uint32_t max_inline_result_num =
@@ -184,13 +184,18 @@ ir::OpResult Operation::result(uint32_t index) const {
   }
 }
 
-ir::OpOperand Operation::operand(uint32_t index) const {
+OpOperand Operation::op_operand(uint32_t index) const {
   if (index >= num_operands_) {
     IR_THROW("index exceeds OP input range.");
   }
   const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
                     (index) * sizeof(detail::OpOperandImpl);
-  return ir::OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+  return OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
+}
+
+Value Operation::operand(uint32_t index) const {
+  OpOperand val = op_operand(index);
+  return val ? val.source() : Value();
 }
 
 std::string Operation::name() const {
