@@ -133,16 +133,6 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
                   "concat", {{"X", names}}, {{"Out", {Output("Out")}}}, attrs);
 
     op->Run(scope, place);
-
-    // clear input tensor array items
-    for (const auto &name : names) {
-      auto *var = scope.FindVar(name);
-      if (var != nullptr) {
-        var->Clear();
-        const_cast<framework::Scope &>(scope).EraseVars({name});
-      }
-    }
-    const_cast<phi::TensorArray &>(inx).clear();
   }
 };
 
