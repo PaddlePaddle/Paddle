@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import paddle
-from . import layers
-from .data_feeder import check_variable_and_dtype, convert_dtype
-from ..utils import deprecated
-import paddle
+from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
+from paddle.utils import deprecated
 
 __all__ = [
     "simple_img_conv_pool",
@@ -494,9 +492,8 @@ def scaled_dot_product_attention(
     if not (queries.dtype == keys.dtype == values.dtype):
         raise TypeError(
             "The dtype of keys, values and queries should be the same."
-            "But received queries.dtype = %s, "
-            " keys.dtype = %s, values.dtype) = %s."
-            % (
+            "But received queries.dtype = {}, "
+            " keys.dtype = {}, values.dtype) = {}.".format(
                 convert_dtype(queries.dtype),
                 convert_dtype(keys.dtype),
                 convert_dtype(values.dtype),
