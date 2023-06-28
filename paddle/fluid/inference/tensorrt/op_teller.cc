@@ -2667,9 +2667,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "unbind") {
-      if (with_dynamic_shape) {
+      if (!with_dynamic_shape) {
         VLOG(3) << "the unbind does not support "
-                   "dynamic shape yet";
+                   "static shape yet";
         return false;
       }
       auto* block = desc.Block();
