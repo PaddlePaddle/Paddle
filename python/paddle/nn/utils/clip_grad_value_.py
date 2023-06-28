@@ -54,6 +54,5 @@ def clip_grad_value_(
     clip_value = float(clip_value)
 
     for _, p in enumerate(parameters):
-        g = p.grad
-        if g is not None:
-            p.grad = g.clip_(min=-clip_value, max=clip_value)
+        if p.grad:
+            p.grad.clip_(min=-clip_value, max=clip_value)

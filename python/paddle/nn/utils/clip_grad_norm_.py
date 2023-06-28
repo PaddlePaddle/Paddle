@@ -102,7 +102,6 @@ def clip_grad_norm_(
     clip_coef_clamped = clip_coef.clip_(max=1.0)
 
     for _, p in enumerate(parameters):
-        g = p.grad
-        if g is not None:
-            p.grad = paddle.multiply(x=g, y=clip_coef_clamped)
+        if p.grad:
+            p.grad = paddle.multiply(x=p.grad, y=clip_coef_clamped)
     return total_norm
