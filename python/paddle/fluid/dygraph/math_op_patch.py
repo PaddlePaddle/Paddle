@@ -153,6 +153,14 @@ def monkey_patch_math_tensor():
         return len(var.shape)
 
     @property
+    def _ndimension_(var):
+        return len(var.shape)
+
+    @property
+    def _dim_(var):
+        return len(var.shape)
+
+    @property
     def _size_(var):
         return int(np.prod(var.shape))
 
@@ -174,8 +182,8 @@ def monkey_patch_math_tensor():
         ('__len__', _len_),
         ('__index__', _index_),
         ('astype', astype),
-        ('dim', lambda x: len(x.shape)),
-        ('ndimension', lambda x: len(x.shape)),
+        ('dim', _dim_),
+        ('ndimension', _ndimension_),
         ('ndim', _ndim_),
         ('size', _size_),
         ('T', _T_),
