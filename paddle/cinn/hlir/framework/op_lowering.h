@@ -45,12 +45,6 @@ typedef std::vector<Expr> (OpLowerer::*IRComputeFunction)(poly::StageMap&,
                                                           const GroupPtr&,
                                                           const GroupPtr&,
                                                           bool);
-typedef void (OpLowerer::*IRScheduleFunction)(ir::IRSchedule& ir_sch,
-                                              std::unordered_map<std::string, ir::Tensor>&,
-                                              const GroupPtr&,
-                                              const GroupPtr&,
-                                              Node*&,
-                                              Node*&);
 
 class OpLowerer {
  public:
@@ -61,27 +55,21 @@ class OpLowerer {
   std::vector<ir::LoweredFunc> LowerWithoutSchedule(GroupPtr& group);
 
  private:
-  std::vector<ir::LoweredFunc> IRLowerOp(IRComputeFunction, IRScheduleFunction, GroupPtr&);
+  std::vector<ir::LoweredFunc> IRLowerOp(IRComputeFunction, GroupPtr&);
   std::vector<ir::LoweredFunc> IRLowerNonFusibleOp(GroupPtr&, bool);
   std::vector<ir::LoweredFunc> IRLowerOpWithoutSchedule(IRComputeFunction, GroupPtr&);
-#define DEFINE_IR_COMPUTE_SCHDULE(type)                                                        \
+#define DEFINE_IR_COMPUTE(type)                                                                \
   std::vector<Expr> IR##type##Compute(poly::StageMap& stages,                                  \
                                       std::vector<ir::Tensor>& func_args,                      \
                                       std::unordered_map<std::string, ir::Tensor>& tensor_map, \
                                       const GroupPtr& group,                                   \
                                       const GroupPtr& sub_group,                               \
-                                      bool apply_impl_schedule = false);                       \
-  void IR##type##Schedule(ir::IRSchedule& ir_sch,                                              \
-                          std::unordered_map<std::string, ir::Tensor>& tensor_map,             \
-                          const GroupPtr& group,                                               \
-                          const GroupPtr& sub_group,                                           \
-                          Node*& first,                                                        \
-                          Node*& second);
+                                      bool apply_impl_schedule = false);
 
   // compute and schedule
-  DEFINE_IR_COMPUTE_SCHDULE(Elementwise);
-  DEFINE_IR_COMPUTE_SCHDULE(Reduce);
-  DEFINE_IR_COMPUTE_SCHDULE(OutEWiseFusable);
+  DEFINE_IR_COMPUTE(Elementwise);
+  DEFINE_IR_COMPUTE(Reduce);
+  DEFINE_IR_COMPUTE(OutEWiseFusable);
 
   void IRSchedule(ir::IRSchedule& ir_sch,
                   const GroupPtr& group,

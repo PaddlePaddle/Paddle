@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from typing import List
+
+from paddle.fluid import core
+from paddle.fluid.framework import Program
 
 
 def list_to_ordered_dict(list_obj, ordered_dict=None):
@@ -133,3 +137,109 @@ def split_program(program, op_indices):
                     break
     valid_output_vars = [list(item.keys()) for item in valid_output_vars]
     return splitted_programs, input_vars, valid_output_vars
+
+
+class OpInOutInfo:
+    """
+    Record unused buffer input_vars of op and other var_names except unused buffer input_vars
+    """
+
+    def __init__(self):
+        self._is_build = False
+        self._no_need_buffer_slots = set()
+        self._other_arg_names_set = set()
+
+    @property
+    def is_build(self):
+        return self._is_build
+
+    def _get_op_attrs(self, op):
+        inputs = {}
+        for input_name in op.input_names:
+            inputs[input_name] = op.input(input_name)
+        outputs = {}
+        for output_name in op.output_names:
+            outputs[output_name] = op.output(output_name)
+        attrs = {}
+        for attr_name in op.attr_names:
+            attrs[attr_name] = op.attr(attr_name)
+
+        return inputs, outputs, attrs
+
+    def build_info(self, op):
+        inputs, outputs, attrs = self._get_op_attrs(op)
+        self._no_need_buffer_slots = core.infer_no_need_buffer_slots(
+            op.type, inputs, outputs, attrs
+        )
+        if len(self._no_need_buffer_slots) == 0:
+            return
+
+        for slot_name in op.input_names:
+            if slot_name in self._no_need_buffer_slots:
+                continue
+
+            for in_name in op.input(slot_name):
+                self._other_arg_names_set.add(in_name)
+
+        for slot_name in op.output_names:
+            for out_name in op.output(slot_name):
+                self._other_arg_names_set.add(out_name)
+
+        self._is_build = True
+
+    def is_needed(self, arg_name):
+        return (
+            len(self._no_need_buffer_slots) == 0
+            or arg_name in self._other_arg_names_set
+        )
+
+
+def var_can_be_deleted(var_name, program):
+    var = program.global_block()._find_var_recursive(var_name)
+    if var is None or var.persistable:
+        return False
+
+    return var.type in [
+        core.VarDesc.VarType.LOD_TENSOR,
+        core.VarDesc.VarType.SELECTED_ROWS,
+        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+    ]
+
+
+def get_skip_gc_vars(program_list: List[Program]):
+    """
+    Get `skip_gc_vars` for every sub_program of program_list.
+
+    A whole_program is split up into sub_programs according to the schedule mode,
+    thus a sub_program's vars might be used as the op's input of the later sub_program,
+    and these vars cannot be gc after executing current sub_program.
+    """
+
+    # step1: Get all vars of every sub_program of program_list that are non-persistable and not in op's no_need_buffer.
+    vars_list = [set() for _ in range(len(program_list))]
+    for ip, program in enumerate(program_list):
+        for op in program.global_block().ops:
+            op_info = OpInOutInfo()
+            for in_name in op.input_arg_names:
+                if not var_can_be_deleted(in_name, program):
+                    continue
+
+                if not op_info.is_build:
+                    op_info.build_info(op)
+
+                if op_info.is_needed(in_name):
+                    vars_list[ip].add(in_name)
+
+            for out_name in op.output_arg_names:
+                if var_can_be_deleted(out_name, program):
+                    vars_list[ip].add(out_name)
+
+    # step2: get the `skip_gc_vars` that vars of current sub_program might be used in the later sub_program
+    union_set = set()
+    skip_gc_vars = [set()] * len(program_list)
+    for idx, vars_set in reversed(list(enumerate(vars_list))):
+        if idx < len(vars_list) - 1:
+            union_set = union_set.union(vars_list[idx + 1])
+        skip_gc_vars[idx] = vars_set & union_set
+
+    return skip_gc_vars

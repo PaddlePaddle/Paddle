@@ -111,7 +111,6 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
 
 template <typename CodeGenT>
 void SimpleJIT::Link(ir::Module module, bool optimize) {
-  VLOG(-1) << "dddddd";
   std::string runtime_ir(backends::kRuntimeLlvmIr);
   llvm::SMDiagnostic error;
   auto m = llvm::parseAssemblyString(runtime_ir, error, context());
@@ -119,17 +118,11 @@ void SimpleJIT::Link(ir::Module module, bool optimize) {
   auto b = std::make_unique<llvm::IRBuilder<>>(context());
 
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
-  VLOG(-1) << "dddddd";
   ir_emitter->Compile(module);
-  VLOG(-1) << "dddddd";
 
-  VLOG(-1) << "dddddd";
   CHECK(!llvm::verifyModule(*m, &llvm::errs())) << "Invalid module found";
-  VLOG(-1) << "dddddd";
 
-  VLOG(-1) << "dddddd";
   AddModule(std::move(m), optimize);
-  VLOG(-1) << "dddddd";
 }
 
 template void SimpleJIT::Link<CodeGenLLVM>(ir::Module module, bool optimize);

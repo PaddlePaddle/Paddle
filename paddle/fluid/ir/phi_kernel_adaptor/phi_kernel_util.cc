@@ -34,6 +34,7 @@
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
+#include "paddle/fluid/ir/dialect/kernel_type.h"
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -74,8 +75,6 @@ void BuildScope(ir::Block* block,
       // TODO(phlrain): need to update here, support StringTensor
       auto out_tensor = var->GetMutable<phi::DenseTensor>();
 
-      name_map->emplace(ptr, name);
-
       auto feed_var = scope->Var("feed");
       int index =
           (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
@@ -103,7 +102,7 @@ void BuildScope(ir::Block* block,
       auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
 
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
 
         PADDLE_ENFORCE_EQ(name_map->count(ptr),
                           true,
@@ -117,9 +116,11 @@ void BuildScope(ir::Block* block,
       continue;
     }
 
+    // TODO(zhangbo): support builtin.slice
+
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -145,9 +146,29 @@ void BuildScope(ir::Block* block,
           name_map->emplace(ptr, name);
         }
         auto var = scope->Var(name);
-
-        // need to update here, only support DenseTensor
-        var->GetMutable<phi::DenseTensor>();
+        // Only support DenseTensor or Vector<DenseTensor>
+        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+          var->GetMutable<phi::DenseTensor>();
+        } else if (ptr.type().isa<ir::VectorType>()) {
+          auto tensor_array =
+              var->GetMutable<paddle::framework::TensorRefArray>();
+          for (size_t i = 0; i < ptr.type().dyn_cast<ir::VectorType>().size();
+               i++) {
+            PADDLE_ENFORCE(
+                ptr.type()
+                    .dyn_cast<ir::VectorType>()[i]
+                    .isa<paddle::dialect::AllocatedDenseTensorType>(),
+                paddle::platform::errors::Fatal(
+                    "Element of VectorType output only support "
+                    "DenseTensorType"));
+            std::string name_i = "inner_var_" + std::to_string(count++);
+            auto var_i = scope->Var(name_i);
+            tensor_array->emplace_back(var_i->GetMutable<phi::DenseTensor>());
+          }
+        } else {
+          PADDLE_THROW(phi::errors::PreconditionNotMet(
+              "Output only support DenseTensorType or VectorType"));
+        }
       }
     }
   }
@@ -191,7 +212,7 @@ void BuildInferMetaContext(
     auto& t = vec_param_list[input_index];
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {
@@ -316,7 +337,7 @@ void BuildPhiKernelContext(
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
       if (input_map != nullptr) {
         // only deal with single input for now, [todo] need support multi input
