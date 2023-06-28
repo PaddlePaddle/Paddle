@@ -18,8 +18,6 @@ limitations under the License. */
 
 namespace phi {
 
-// TODO(wanghuancoder) delete output_rank and output_stride if they are same
-// with input's
 template <typename T, size_t IN_RANK, size_t OUT_RANK>
 __global__ void StridedCopyFunc(
     const T* input_data,
@@ -63,6 +61,20 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
 
+  PADDLE_ENFORCE_EQ(input.dims(),
+                    out->dims(),
+                    phi::errors::InvalidArgument(
+                        "Input shape(%s) must be equal with out shape(%s).",
+                        input.dims(),
+                        out->dims()));
+
+  PADDLE_ENFORCE_EQ(input.numel(),
+                    out->numel(),
+                    phi::errors::InvalidArgument(
+                        "Input numel(%d) must be equal with out numel(%d).",
+                        input.numel(),
+                        out->numel()));
+
   const T* input_data = input.data<T>();
   int input_rank = input.dims().size();
   phi::Array<int64_t, phi::DDim::kMaxRank + 1> input_stride;
@@ -81,23 +93,17 @@ void StridedCopyKernel(const Context& dev_ctx,
     output_stride[i] = meta.strides[i];
   }
 
-  PADDLE_ENFORCE_EQ(input.dims(),
-                    out->dims(),
-                    phi::errors::InvalidArgument(
-                        "Input shape(%s) must be equal with out shape(%s).",
-                        input.dims(),
-                        out->dims()));
-
-  PADDLE_ENFORCE_EQ(input.numel(),
-                    out->numel(),
-                    phi::errors::InvalidArgument(
-                        "Input numel(%d) must be equal with out numel(%d).",
-                        input.numel(),
-                        out->numel()));
-
   auto numel = input.numel();
   int64_t block = 512;
   int64_t grid = (numel + block - 1) / block;
+
+  if (numel == 1) {
+    cudaMemcpy(output_data,
+               input_data,
+               phi::SizeOf(input.dtype()),
+               cudaMemcpyDeviceToDevice);
+    return;
+  }
 
   switch (input_rank) {
     case 1: {

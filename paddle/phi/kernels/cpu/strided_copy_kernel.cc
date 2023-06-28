@@ -34,16 +34,6 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
 
-  const T* input_data = input.data<T>();
-  int input_rank = input.dims().size();
-  const int64_t* input_dims = input.dims().Get();
-  const int64_t* input_stride = input.strides().Get();
-
-  T* output_data = dev_ctx.template Alloc<T>(out);
-  int output_rank = meta.dims.size();
-  const int64_t* output_dims = meta.dims.Get();
-  const int64_t* output_stride = meta.strides.Get();
-
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
                     phi::errors::InvalidArgument(
@@ -57,6 +47,20 @@ void StridedCopyKernel(const Context& dev_ctx,
                         "Input numel(%d) must be equal with out numel(%d).",
                         input.numel(),
                         out->numel()));
+
+  if (input.numel() <= 0) {
+    return;
+  }
+
+  const T* input_data = input.data<T>();
+  int input_rank = input.dims().size();
+  const int64_t* input_dims = input.dims().Get();
+  const int64_t* input_stride = input.strides().Get();
+
+  T* output_data = dev_ctx.template Alloc<T>(out);
+  int output_rank = meta.dims.size();
+  const int64_t* output_dims = meta.dims.Get();
+  const int64_t* output_stride = meta.strides.Get();
 
   auto numel = input.numel();
 

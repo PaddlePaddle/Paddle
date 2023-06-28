@@ -58,6 +58,24 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
 
+  PADDLE_ENFORCE_EQ(input.dims(),
+                    out->dims(),
+                    phi::errors::InvalidArgument(
+                        "Input shape(%s) must be equal with out shape(%s).",
+                        input.dims(),
+                        out->dims()));
+
+  PADDLE_ENFORCE_EQ(input.numel(),
+                    out->numel(),
+                    phi::errors::InvalidArgument(
+                        "Input numel(%d) must be equal with out numel(%d).",
+                        input.numel(),
+                        out->numel()));
+
+  if (input.numel() <= 0) {
+    return;
+  }
+
   const T* input_data = input.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int rank = input.dims().size();
