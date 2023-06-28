@@ -95,7 +95,6 @@ class AdamW(Optimizer):
 
     Examples:
         .. code-block:: python
-            :name: example1
 
             import paddle
 
