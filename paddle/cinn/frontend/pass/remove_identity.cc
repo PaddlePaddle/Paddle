@@ -24,8 +24,8 @@ namespace cinn {
 namespace frontend {
 namespace pass {
 
-#define SHAPE_SAME_REMOVE(op_name)                  \
-  {                                                 \
+#define SHAPE_SAME_REMOVE(op_name)                 \
+  {                                                \
 #op_name, [](const Instruction& instr) -> bool { \
     const auto& input_shape = instr->inputs[0]->shape; \
     const auto& output_shape = instr->outputs[0]->shape; \

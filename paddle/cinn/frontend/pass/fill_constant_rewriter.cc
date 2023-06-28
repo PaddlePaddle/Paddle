@@ -39,8 +39,8 @@ namespace pass {
   else                                                          \
     LOG(FATAL) << "fill_constant Only support float32/float64/int32/int64";
 
-#define MATH_FUNC_REWRITER(op_name)                                             \
-  {                                                                             \
+#define MATH_FUNC_REWRITER(op_name)                                            \
+  {                                                                            \
 #op_name, [](const Instruction& fill_constant, Instruction* instr) -> void { \
        (*instr)->op_type = "fill_constant"; \
        (*instr)->inputs.clear(); \
