@@ -181,7 +181,7 @@ class TransposePatternRewrite
 
   bool MatchAndRewrite(paddle::dialect::TransposeOp op,
                        ir::PatternRewriter &rewriter) const override {
-    auto prev_op = op->operand(0).source().GetDefiningOp();
+    auto prev_op = op->operand(0).GetDefiningOp();
     std::vector<int> axis_last = GetAxis(op);
     auto prev_trans_op = prev_op->dyn_cast<paddle::dialect::TransposeOp>();
     if (prev_trans_op) {
@@ -191,7 +191,7 @@ class TransposePatternRewrite
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.SetInsertionPoint(op);
       auto new_op = rewriter.Build<paddle::dialect::TransposeOp>(
-          prev_op->operand(0).source().GetDefiningOp()->result(0), new_perm);
+          prev_op->operand(0).GetDefiningOp()->result(0), new_perm);
       rewriter.ReplaceOp(op, {new_op.out()});
       return true;
     }

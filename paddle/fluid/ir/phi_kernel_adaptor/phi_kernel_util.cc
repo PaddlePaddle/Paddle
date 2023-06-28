@@ -102,7 +102,7 @@ void BuildScope(ir::Block* block,
       auto tensor_array = var->GetMutable<paddle::framework::TensorRefArray>();
 
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
 
         PADDLE_ENFORCE_EQ(name_map->count(ptr),
                           true,
@@ -120,7 +120,7 @@ void BuildScope(ir::Block* block,
 
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
-        auto ptr = (*it)->operand(i).source();
+        auto ptr = (*it)->operand(i);
         std::string name;
         if (name_map->find(ptr) != name_map->end()) {
           name = name_map->at(ptr);
@@ -212,7 +212,7 @@ void BuildInferMetaContext(
     auto& t = vec_param_list[input_index];
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
 
       if (mutable_attr_type_map.count(t)) {
@@ -337,7 +337,7 @@ void BuildPhiKernelContext(
   for (auto& t : vec_param_list) {
     if (input_index_map.count(t)) {
       // get information from input
-      ir::Value ptr = op->operand(input_index_map[t]).source();
+      ir::Value ptr = op->operand(input_index_map[t]);
       auto in_var_name = name_map.at(ptr);
       if (input_map != nullptr) {
         // only deal with single input for now, [todo] need support multi input
