@@ -95,13 +95,10 @@ class FakeQuanterChannelWiseAbsMaxObserverLayer(BaseQuanter):
     ):
         super().__init__()
         self._bit_length = bit_length
-        try:
-            self._quant_axis = CHANNEL_AXIS[type(layer)]
-        except:
-            for key in CHANNEL_AXIS.keys():
-                if issubclass(type(layer), key):
-                    self._quant_axis = CHANNEL_AXIS[key]
-                    break
+        for key in CHANNEL_AXIS.keys():
+            if issubclass(type(layer), key):
+                self._quant_axis = CHANNEL_AXIS[key]
+                break
         self._channel_num = layer.weight.shape[self._quant_axis]
 
         scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'

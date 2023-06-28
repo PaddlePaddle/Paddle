@@ -18,9 +18,15 @@ import unittest
 
 import paddle
 from paddle.quantization import QAT, QuantConfig
-from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+from paddle.quantization.quanters import (
+    FakeQuanterChannelWiseAbsMaxObserver,
+    FakeQuanterWithAbsMaxObserver,
+)
 from paddle.quantization.quanters.abs_max import (
     FakeQuanterWithAbsMaxObserverLayer,
+)
+from paddle.quantization.quanters.channel_wise_abs_max import (
+    FakeQuanterChannelWiseAbsMaxObserverLayer,
 )
 from paddle.vision.models import resnet18
 
@@ -33,8 +39,7 @@ class TestPTQ(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def _get_model_for_qat(self):
-        observer = FakeQuanterWithAbsMaxObserver()
+    def _get_model_for_qat(self, observer):
         model = resnet18()
         model.train()
         q_config = QuantConfig(activation=None, weight=None)
@@ -53,7 +58,8 @@ class TestPTQ(unittest.TestCase):
         return count
 
     def test_trace(self):
-        quant_model, ptq = self._get_model_for_qat()
+        observer = FakeQuanterWithAbsMaxObserver()
+        quant_model, ptq = self._get_model_for_qat(observer)
         image = paddle.rand([1, 3, 32, 32], dtype="float32")
         quantizer_count_in_dygraph = self._count_layers(
             quant_model, FakeQuanterWithAbsMaxObserverLayer
@@ -75,6 +81,36 @@ class TestPTQ(unittest.TestCase):
         quantizer_count_in_static_model = 0
         for _op in inference_program.global_block().ops:
             if _op.type == "fake_quantize_dequantize_moving_average_abs_max":
+                quantizer_count_in_static_model += 1
+        self.assertEqual(
+            quantizer_count_in_dygraph, quantizer_count_in_static_model
+        )
+        paddle.disable_static()
+
+    def test_trace_channel_wise(self):
+        observer = FakeQuanterChannelWiseAbsMaxObserver()
+        quant_model, ptq = self._get_model_for_qat(observer)
+        image = paddle.rand([1, 3, 32, 32], dtype="float32")
+        quantizer_count_in_dygraph = self._count_layers(
+            quant_model, FakeQuanterChannelWiseAbsMaxObserverLayer
+        )
+        save_path = os.path.join(self.path, 'int8_infer_channelwise')
+        paddle.jit.save(quant_model, save_path, [image])
+        print(f"quant_model is saved into {save_path}")
+
+        paddle.enable_static()
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.load_inference_model(save_path, exe)
+        quantizer_count_in_static_model = 0
+        for _op in inference_program.global_block().ops:
+            if _op.type == "fake_channel_wise_quantize_dequantize_abs_max":
                 quantizer_count_in_static_model += 1
         self.assertEqual(
             quantizer_count_in_dygraph, quantizer_count_in_static_model
