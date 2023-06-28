@@ -643,6 +643,7 @@ class PipelineLayer(nn.Layer):
 
         orig_rng_state = paddle.get_rng_state()
         orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         for i in range(len(self._start_poss)):
             start = self._start_poss[i]
             end = self._end_poss[i]
@@ -652,6 +653,7 @@ class PipelineLayer(nn.Layer):
             # Add the chunk to all chunks and add this chunk to the sublayer
             self._model_chunks.append(chunk)
             self.add_sublayer(str(start), chunk)
+
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
@@ -662,9 +664,11 @@ class PipelineLayer(nn.Layer):
 
         orig_rng_state = paddle.get_rng_state()
         orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         start = self._start_pos
         end = self._end_pos
         self.run_function = self._build_layer_impl(start, end)
+
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
 
