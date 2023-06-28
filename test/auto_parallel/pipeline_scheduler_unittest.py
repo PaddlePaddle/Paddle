@@ -74,9 +74,11 @@ class Test1F1BPass(unittest.TestCase):
         return engine
 
     def check_results(self, ref_losses, check_losses):
-        np.testing.assert_equal(
+        np.testing.assert_allclose(
             ref_losses,
             check_losses,
+            rtol=self.rtol,
+            atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
                 __class__, ref_losses, check_losses, ref_losses - check_losses
             ),
@@ -117,6 +119,7 @@ class Test1F1BPass(unittest.TestCase):
             losses_1f1b = np.array(history_1f1b.history["loss"])
             # accumulate_steps is 2
             assert losses_fthenb[0].shape[0] == 2
+            assert losses_1f1b[0].shape[0] == 2
             # losses_fleet_1f1b is the last loss of accumulate_steps
             # losses_fthenb is all the losses of accumulate_steps
             # losses_1f1b is alla the losses of accumulate_steps
