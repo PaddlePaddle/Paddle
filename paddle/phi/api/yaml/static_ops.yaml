@@ -369,6 +369,16 @@
     param : [x, axis, keepdim, reduce_all]
   backward : min_grad
 
+- op : norm
+  args : (Tensor x, int axis, float epsilon=1.0e-10f, bool is_test=false)
+  output : Tensor(out), Tensor(norm)
+  infer_meta :
+    func : NormInferMeta
+  kernel :
+    func : norm
+  backward : norm_grad
+  intermediate : norm
+
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
