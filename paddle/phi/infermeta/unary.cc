@@ -136,6 +136,13 @@ void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(x.dims());
 }
 
+void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
+  auto dim = x.dims();
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,

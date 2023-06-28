@@ -602,6 +602,24 @@
     func : mean
   backward : mean_grad
 
+- op : memcpy_d2h
+  args : (Tensor x, int dst_place_type)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : memcpy_d2h
+
+- op : memcpy_h2d
+  args : (Tensor x, int dst_place_type)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : memcpy_h2d
+
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)

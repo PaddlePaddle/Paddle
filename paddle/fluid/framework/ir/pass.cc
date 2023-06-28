@@ -52,6 +52,7 @@ static const std::vector<std::string> support_subgraph_passes = {
 };
 
 static const std::vector<std::string> xpu_support_subgraph_passes = {
+    "delete_assign_op_pass",
     "delete_dropout_op_pass",
     "delete_concat_op_pass",
     "identity_op_clean_pass",

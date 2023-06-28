@@ -45,9 +45,7 @@ class OperationTest
   static const char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
-  static void Verify(const std::vector<ir::OpResult> &inputs,
-                     const std::vector<ir::Type> &outputs,
-                     const ir::AttributeMap &attributes) {}
+  static void Verify() {}
   static void InferShape(phi::InferMetaContext *infer_meta) {
     auto fn = PD_INFER_META(phi::CreateInferMeta);
     fn(infer_meta);

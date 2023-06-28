@@ -21,12 +21,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/ir/core/dll_decl.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 namespace ir {
 
-class FrozenRewritePatternSet {
+class IR_API FrozenRewritePatternSet {
   using NativePatternListT = std::vector<std::unique_ptr<RewritePattern>>;
 
  public:
