@@ -969,7 +969,7 @@ void BuildOpFuncList(
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    ::ir::BuildInferMetaContext<
+    ::ir::BuildPhiKernelContext<
         phi::InferMetaContext,
         phi::MetaTensor,
         phi::MetaTensor,
