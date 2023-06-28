@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import os
 from collections import OrderedDict
 
 import paddle
@@ -38,6 +39,8 @@ from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
+g_calc_shard_locally = int(os.environ.get("CALC_SHARD_LOCALLY", 0))
+
 
 class ChunkNormer:
     def __init__(self):
@@ -48,11 +51,16 @@ class ChunkNormer:
         self.sum_square_not_dist_bf16 = []
         self.sum_square_not_dist_fp32 = []
 
-    def add(self, p, g):
+    def add(self, p, g, local_sharding_only=False):
         if g is None:
             return
         if getattr(p, 'need_clip', True) is False:
             return
+        local_shard = getattr(p, 'local_shard', True)
+        if local_sharding_only and not local_shard:
+            logger.debug("skip sharded param")
+            return
+
         merge_grad = g
         if g.type == core.VarDesc.VarType.SELECTED_ROWS:
             merge_grad = clip.merge_selected_rows(g)
@@ -154,10 +162,10 @@ class LocalNormGather:
         self.chunks = OrderedDict()
         self._hcg = hcg
 
-    def add_grad(self, p, g, chunk_id=0):
+    def add_grad(self, p, g, chunk_id=0, local_sharding_only=False):
         if chunk_id not in self.chunks:
             self.chunks[chunk_id] = ChunkNormer()
-        self.chunks[chunk_id].add(p, g)
+        self.chunks[chunk_id].add(p, g, local_sharding_only)
 
     def get_result(self):
         assert len(self.chunks), "no chunks"
@@ -396,26 +404,38 @@ class HybridParallelClipGrad:
             )
         return global_norm_var_dist, global_norm_var_not_dist
 
-    def _global_norm_v2(self, params_grads):
+    def _global_norm_v2(self, params_grads, locally_calc_shard=False):
 
         local_norm = LocalNormGather(self._hcg)
         for p, g in params_grads:
             chunk_id = getattr(p, "chunk_id", 0)
-            local_norm.add_grad(p, g, chunk_id)
+            local_norm.add_grad(p, g, chunk_id, locally_calc_shard)
 
         (
             global_norm_var_dist,
             global_norm_var_not_dist,
-        ) = local_norm.get_strict_result()
+        ) = local_norm.get_result()
+
+        sharding_flag = False
+        if (
+            self._hcg.get_sharding_parallel_world_size() > 1
+            and self._hcg.get_data_parallel_world_size() == 1
+        ):
+            sharding_flag = True
+
+        if sharding_flag and locally_calc_shard:
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_sharding_parallel_group(),
+            )
+
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group(),
+            )
 
         # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
-            sharding_flag = False
-            if (
-                self._hcg.get_sharding_parallel_world_size() > 1
-                and self._hcg.get_data_parallel_world_size() == 1
-            ):
-                sharding_flag = True
             paddle.distributed.all_reduce(
                 global_norm_var_dist,
                 group=self._hcg.get_check_parallel_group(sharding_flag),
@@ -446,7 +466,7 @@ class HybridParallelClipGrad:
     def _dygraph_clip(self, params_grads):
 
         global_norm_var_dist, global_norm_var_not_dist = self._global_norm_v2(
-            params_grads
+            params_grads, g_calc_shard_locally
         )
 
         global_norm_var_fp32 = paddle.sqrt(

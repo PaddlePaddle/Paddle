@@ -712,9 +712,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._tag_parameters()
 
     def _tag_parameters(self):
-        for (i, chunk) in enumerate(self.model_chunks):   
+        for (i, chunk) in enumerate(self.model_chunks):
             for _, param in chunk._obtain_parameters_buffers().items():
-                param.chunk_id = i  
+                param.chunk_id = i
 
     def _get_virtual_pp_rank(self, micro_step, forward):
         virtual_pp_stage = micro_step % (

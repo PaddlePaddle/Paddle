@@ -14,6 +14,7 @@
 
 ######
 
+import os
 from functools import reduce
 
 import paddle
@@ -21,6 +22,8 @@ from paddle import framework
 from paddle.fluid.dygraph import base as imperative_base
 
 from ...utils.log_util import logger
+
+g_shard_use_reduce = int(os.environ.get("SHARD_USE_REDUCE", 0))
 
 
 def _is_trainable(param):
@@ -137,6 +140,8 @@ class DygraphShardingOptimizer:
         with framework.no_grad():
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
+                # tag param
+                param.reduced = False
                 g_var = None
                 if param.trainable and (param._grad_ivar() is not None):
                     g_var = param._grad_ivar()
@@ -148,18 +153,26 @@ class DygraphShardingOptimizer:
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
                     param_rank = self._param2rank[param.name]
-                    paddle.distributed.all_reduce(
-                        g_var,
-                        group=hcg.get_sharding_parallel_group(),
-                        sync_op=True,
-                    )
-                    # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
-                    # paddle.distributed.reduce(
-                    #     g_var,
-                    #     dst=hcg.get_sharding_parallel_group().ranks[param_rank],
-                    #     group=hcg.get_sharding_parallel_group(),
-                    #     sync_op=True,
-                    # )
+                    # reduced
+                    param.reduced = True
+                    # sharded to local
+                    param.local_shard = self._sharding_rank == param_rank
+                    if not g_shard_use_reduce:
+                        paddle.distributed.all_reduce(
+                            g_var,
+                            group=hcg.get_sharding_parallel_group(),
+                            sync_op=True,
+                        )
+                    else:
+                        # TODO(pangengzheng): change to reduce operation when there is no diff in calculating global norm values in HybridParallelClipGrad compared to dp.
+                        paddle.distributed.reduce(
+                            g_var,
+                            dst=hcg.get_sharding_parallel_group().ranks[
+                                param_rank
+                            ],
+                            group=hcg.get_sharding_parallel_group(),
+                            sync_op=True,
+                        )
 
     def _sharding_sync_parameters(self):
         """
