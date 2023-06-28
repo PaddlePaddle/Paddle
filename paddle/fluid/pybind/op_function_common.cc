@@ -111,7 +111,7 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
 }
 
 bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
-  if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
+  if (PyComplex_Check(*obj) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||  // NOLINT
       PyObject_TypeCheck(*obj, g_varbase_pytype) ||  // NOLINT
       PyObject_TypeCheck(*obj, p_tensor_type)) {     // NOLINT
