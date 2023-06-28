@@ -115,7 +115,6 @@ class TestAssignApi(unittest.TestCase):
         with eager_op_test.paddle_static_guard():
             main_program = fluid.Program()
             with fluid.program_guard(main_program):
-                x = paddle.tensor.create_tensor(dtype=self.dtype)
                 x = paddle.assign(self.value)
 
             exe = fluid.Executor(self.place)
