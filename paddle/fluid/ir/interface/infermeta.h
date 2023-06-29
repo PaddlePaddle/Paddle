@@ -18,28 +18,28 @@
 
 namespace paddle {
 namespace dialect {
-class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
+class InferMetaInterface : public ir::OpInterfaceBase<InferMetaInterface> {
  public:
   struct Concept {
-    explicit Concept(void (*infer_shape)(phi::InferMetaContext *))
-        : infer_shape_(infer_shape) {}
-    void (*infer_shape_)(phi::InferMetaContext *);
+    explicit Concept(void (*infer_meta)(phi::InferMetaContext *))
+        : infer_meta_(infer_meta) {}
+    void (*infer_meta_)(phi::InferMetaContext *);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferShape(phi::InferMetaContext *infer_meta) {
-      return ConcreteOp::InferShape(infer_meta);
+    static void InferMeta(phi::InferMetaContext *infer_meta) {
+      return ConcreteOp::InferMeta(infer_meta);
     }
 
-    Model() : Concept(InferShape) {}
+    Model() : Concept(InferMeta) {}
   };
 
-  InferShapeInterface(ir::Operation *op, Concept *impl)
-      : ir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
+  InferMetaInterface(ir::Operation *op, Concept *impl)
+      : ir::OpInterfaceBase<InferMetaInterface>(op), impl_(impl) {}
 
-  void InferShape(phi::InferMetaContext *infer_meta) {
-    impl_->infer_shape_(infer_meta);
+  void InferMeta(phi::InferMetaContext *infer_meta) {
+    impl_->infer_meta_(infer_meta);
   }
 
  private:
@@ -49,4 +49,4 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
 }  // namespace dialect
 }  // namespace paddle
 
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InferShapeInterface)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)

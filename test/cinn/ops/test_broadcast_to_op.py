@@ -45,11 +45,11 @@ class TestBroadcastToOp(OpTest):
         builder = NetBuilder("BroadcastTo")
         x = builder.create_input(Float(32), self.inputs["x"].shape, "x")
         out = builder.broadcast_to(
-            x, out_shape=self.out_shape, broadcast_axes=self.broadcast_axes)
+            x, out_shape=self.out_shape, broadcast_axes=self.broadcast_axes
+        )
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -119,8 +119,7 @@ class TestBroadcastToOpNoAxes(OpTest):
         out = builder.broadcast_to(x, out_shape=self.out_shape)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 

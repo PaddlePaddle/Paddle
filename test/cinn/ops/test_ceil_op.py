@@ -21,8 +21,9 @@ from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestCeilOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -31,8 +32,9 @@ class TestCeilOp(OpTest):
 
     def prepare_inputs(self):
         self.inputs = {
-            "x":
-            self.random(self.case["shape"], self.case["dtype"], -100.0, 100.0),
+            "x": self.random(
+                self.case["shape"], self.case["dtype"], -100.0, 100.0
+            ),
         }
 
     def build_paddle_program(self, target):
@@ -47,12 +49,13 @@ class TestCeilOp(OpTest):
         builder = NetBuilder("ceil")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.ceil(x)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -103,9 +106,7 @@ class TestCeilOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -126,15 +127,9 @@ class TestCeilOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = []
 

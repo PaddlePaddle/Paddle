@@ -403,12 +403,10 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           x_mean_out,
                           x_sub_mean,
                           x_sub_mean_out,
-                          sqr_pow,
                           x_sub_mean_sqr,
                           x_sub_mean_sqr_out,
                           std_dev,
                           std_dev_out,
-                          eps,
                           std_dev_eps,
                           std_dev_eps_out,
                           std_dev_eps_sqrt,
@@ -417,9 +415,7 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
                           division_out,
                           scale,
                           scale_out,
-                          shift,
-                          gamma,
-                          beta});
+                          shift});
     found_layer_norm_count++;
   };
 

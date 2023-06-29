@@ -30,10 +30,13 @@ void BuiltinDialect::initialize() {
                 Float32Type,
                 Float64Type,
                 Int8Type,
+                UInt8Type,
                 Int16Type,
                 Int32Type,
                 Int64Type,
                 BoolType,
+                Complex64Type,
+                Complex128Type,
                 VectorType>();
 
   RegisterAttributes<StrAttribute,
