@@ -12,8 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/interface/infermeta.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#pragma once
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
+#include <memory>
+#include "paddle/ir/core/dll_decl.h"
+
+namespace ir {
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateDCEPass();
+
+}  // namespace ir

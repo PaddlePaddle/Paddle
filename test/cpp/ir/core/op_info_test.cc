@@ -21,6 +21,7 @@
 #include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/program.h"
+#include "paddle/ir/core/verify.h"
 
 TEST(ir_op_info_test, op_op_info_test) {
   ir::IrContext* context = ir::IrContext::Instance();
@@ -41,4 +42,5 @@ TEST(ir_op_info_test, op_op_info_test) {
   void* info_1 = op->info().AsOpaquePointer();
   auto info_2 = ir::OpInfo::RecoverFromOpaquePointer(info_1);
   EXPECT_EQ(op->info(), info_2);
+  ir::Verify(program.module_op());
 }

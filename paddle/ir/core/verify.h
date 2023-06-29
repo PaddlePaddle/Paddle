@@ -11,9 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#include "paddle/fluid/ir/interface/infermeta.h"
-#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/ir/core/dll_decl.h"
 
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
+namespace ir {
+
+class Operation;
+
+/// Perform (potentially expensive) checks of invariants, used to detect
+/// compiler bugs, on this operation and any nested operations. On error, It
+/// will throw exception. `verifyRecursively` is false, this assumes that nested
+/// operations have already been properly verified, and does not recursively
+/// invoke the verifier on nested operations.
+IR_API void Verify(Operation *op, bool verifyRecursively = true);
+
+}  // namespace ir
