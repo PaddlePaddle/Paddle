@@ -408,5 +408,14 @@ phi::KernelKey GetConvExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetBincountExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = ctx.HasInput("Weights")
+                       ? op_ptr->IndicateVarDataType(ctx, "Weights")
+                       : op_ptr->IndicateVarDataType(ctx, "X");
+  return phi::KernelKey(data_type, ctx.device_context().GetPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle

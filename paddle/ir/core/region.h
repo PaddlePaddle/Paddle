@@ -23,6 +23,7 @@ namespace ir {
 
 class Block;
 class Operation;
+class IrContext;
 
 class IR_API Region {
  public:
@@ -48,11 +49,14 @@ class IR_API Region {
   void emplace_back();
   void push_front(Block *block);
   iterator insert(const_iterator position, Block *block);
+  iterator erase(const_iterator position);
   void clear();
 
   void TakeBody(Region &&other);
 
   Operation *GetParent() const { return parent_; }
+
+  IrContext *ir_context() const;
 
  private:
   Region(Region &) = delete;
