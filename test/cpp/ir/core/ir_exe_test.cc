@@ -42,8 +42,8 @@
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);

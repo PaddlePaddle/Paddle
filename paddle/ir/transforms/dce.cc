@@ -39,6 +39,8 @@ class DCEPass : public ir::Pass {
       for (uint32_t i = 0; i < (*it)->num_results(); ++i) {
         use_empty &= (*it)->result(i).use_empty();
       }
+
+      // TODO(wilber): Support end trait.
       if (use_empty && (*it)->name() != "pd.fetch") {
         erased_op.push_back(**it);
       }
