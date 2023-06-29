@@ -167,6 +167,7 @@ void ReduceMaxFusePass::FuseReduceMax(ir::Graph* graph) const {
     reduce_op_desc.SetInput("X", {x->Name()});
     reduce_op_desc.SetAttr("dim", std::vector<int>{-2});
     reduce_op_desc.SetAttr("reduce_all", false);
+    reduce_op_desc.SetAttr("keep_dim", true);
     reduce_op_desc.SetOutput("Out", {transpose2_2_out->Name()});
 
     auto* reduce = graph->CreateOpNode(&reduce_op_desc);
