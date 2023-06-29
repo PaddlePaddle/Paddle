@@ -109,7 +109,7 @@ EltMulAddXPUPattern::EltMulAddXPUPattern(PDPattern* pattern,
                          if (node1_shape.size() != node2_shape.size() &&
                              node1_shape.size() != 2)
                            return false;
-                         for (int i = 0; i < node1_shape.size(); i++) {
+                         for (size_t i = 0; i < node1_shape.size(); i++) {
                            if (node1_shape[i] != node2_shape[i] &&
                                (node1_shape[i] != 1 && node2_shape[i] != 1)) {
                              return false;
@@ -133,7 +133,7 @@ EltMulAddXPUPattern::EltMulAddXPUPattern(PDPattern* pattern,
                          if (node1_shape.size() != node2_shape.size() &&
                              node1_shape.size() != 2)
                            return false;
-                         for (int i = 0; i < node1_shape.size(); i++) {
+                         for (size_t i = 0; i < node1_shape.size(); i++) {
                            if (node1_shape[i] != node2_shape[i] &&
                                (node1_shape[i] != 1 && node2_shape[i] != 1)) {
                              return false;
