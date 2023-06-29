@@ -40,15 +40,15 @@ TEST(GenerateCode_Cpu, Repeat) {
   ir::Expr m(4);
   ir::Expr n(4);
   const int repeats = 2;
-  const int axis    = 0;
+  const int axis = 0;
 
   lang::Placeholder<int32_t> in("in", {m, n});
 
   std::vector<ir::Tensor> res = Repeat(in, repeats, axis, "test_repeat");
 
   poly::StageMap stages = poly::CreateStages({res});
-  std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestGenerateCodeCpu_Repeat", stages, res, {}, {}, nullptr, target, true);
+  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
+      "TestGenerateCodeCpu_Repeat", stages, res, {}, {}, nullptr, target, true);
 
   VLOG(6) << "Expr before CPU codegen:";
   VLOG(6) << funcs[0]->body;
@@ -82,7 +82,8 @@ function TestGenerateCodeCpu_Repeat (_test_repeat)
 
   backends::CodeGenCX86 codegen(target, backends::CodeGenCX86::Feature::AVX512);
   codegen.SetInlineBuiltinCodes(false);
-  std::string code = codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  std::string code =
+      codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
   VLOG(6) << "Cpu Codegen result:";
   VLOG(6) << code << std::endl;
 

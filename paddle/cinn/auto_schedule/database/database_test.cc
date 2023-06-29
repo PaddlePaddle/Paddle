@@ -57,8 +57,10 @@ TEST_F(TestDatabase, GetTopK) {
   ASSERT_TRUE(test_db.GetTopK("k5", 2).empty());
   ASSERT_EQ(test_db.GetTopK("k4", 3).size(), 1);
 
-  test_db.AddRecord(TuningRecord("k4", SearchState(ir::IRSchedule(), 1.2), 2.0));
-  test_db.AddRecord(TuningRecord("k4", SearchState(ir::IRSchedule(), 1.0), 3.0));
+  test_db.AddRecord(
+      TuningRecord("k4", SearchState(ir::IRSchedule(), 1.2), 2.0));
+  test_db.AddRecord(
+      TuningRecord("k4", SearchState(ir::IRSchedule(), 1.0), 3.0));
 
   auto records = test_db.GetTopK("k4", 3);
   ASSERT_EQ(records.size(), 2);

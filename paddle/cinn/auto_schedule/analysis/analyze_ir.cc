@@ -41,7 +41,7 @@ std::vector<ir::Var> IndicesToVars(const std::vector<ir::Expr>& indices) {
   for (const ir::Expr& e : indices) {
     // Whether we have to convert other types, like const numbers to Var?
     if (e.As<ir::_Var_>() != nullptr) {
-      ir::Expr copy_e    = optim::IRCopy(e);
+      ir::Expr copy_e = optim::IRCopy(e);
       ir::_Var_* var_ref = copy_e.As<ir::_Var_>();
       result.emplace_back(ir::Var(var_ref));
     }
@@ -58,26 +58,32 @@ void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block) {
     const ir::Load* load_expr = x->As<ir::Load>();
     if (load_expr != nullptr) {
       const ir::Tensor t = load_expr->tensor.as_tensor_ref();
-      sche_block->read_buffers.emplace_back(ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
+      sche_block->read_buffers.emplace_back(
+          ir::BufferRange(t->buffer, IndicesToVars(load_expr->indices)));
       return false;
     }
     const ir::Store* store_expr = x->As<ir::Store>();
     if (store_expr != nullptr) {
       const ir::Tensor t = store_expr->tensor.as_tensor_ref();
-      sche_block->write_buffers.emplace_back(ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
+      sche_block->write_buffers.emplace_back(
+          ir::BufferRange(t->buffer, IndicesToVars(store_expr->indices)));
       return false;
     }
     return false;
   });
 }
 
-bool ContainsNodeType(ir::Expr expr, const std::unordered_set<ir::IrNodeTy>& node_types) {
-  std::set<ir::Expr> collection = ir::CollectIRNodesWithoutTensor(
-      expr, [&](const Expr* x) { return node_types.find(x->node_type()) != node_types.end(); });
+bool ContainsNodeType(ir::Expr expr,
+                      const std::unordered_set<ir::IrNodeTy>& node_types) {
+  std::set<ir::Expr> collection =
+      ir::CollectIRNodesWithoutTensor(expr, [&](const Expr* x) {
+        return node_types.find(x->node_type()) != node_types.end();
+      });
   return !collection.empty();
 }
 
-std::unordered_set<std::string> GetOutputNamesFromLoweredFunc(const std::vector<ir::LoweredFunc>& lowered_funcs) {
+std::unordered_set<std::string> GetOutputNamesFromLoweredFunc(
+    const std::vector<ir::LoweredFunc>& lowered_funcs) {
   std::unordered_set<std::string> result;
   for (const ir::LoweredFunc& func : lowered_funcs) {
     for (const ir::Argument& arg : func->args) {
@@ -90,18 +96,22 @@ std::unordered_set<std::string> GetOutputNamesFromLoweredFunc(const std::vector<
 }
 
 bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize) {
-  const ir::ScheduleBlock* sche_block = sche_block_realize.schedule_block.As<ir::ScheduleBlock>();
-  if (sche_block->write_buffers.size() != 1 || sche_block->read_buffers.empty()) {
+  const ir::ScheduleBlock* sche_block =
+      sche_block_realize.schedule_block.As<ir::ScheduleBlock>();
+  if (sche_block->write_buffers.size() != 1 ||
+      sche_block->read_buffers.empty()) {
     return false;
   }
-  const ir::Expr& write_buffer = sche_block->write_buffers[0].As<ir::_BufferRange_>()->buffer;
+  const ir::Expr& write_buffer =
+      sche_block->write_buffers[0].As<ir::_BufferRange_>()->buffer;
 
   // Enumerate each read region, get the number of schedule block iter vars
   // which  are not used to index the read region
   int total_unused_iter_vars = 0;
 
   for (const ir::Expr& read_buffer_expr : sche_block->read_buffers) {
-    const ir::_BufferRange_* read_buffer = read_buffer_expr.As<ir::_BufferRange_>();
+    const ir::_BufferRange_* read_buffer =
+        read_buffer_expr.As<ir::_BufferRange_>();
     // Skip the reduction buffer
     if (read_buffer->buffer == write_buffer) {
       continue;
@@ -133,18 +143,22 @@ bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize) {
   return total_unused_iter_vars >= 1;
 }
 
-ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target, const ir::LoweredFunc& old_func, ir::Expr& body) {
+ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
+                                      const ir::LoweredFunc& old_func,
+                                      ir::Expr& body) {
   ir::ModuleExpr mod_expr(std::vector<ir::Expr>({body}));
   ir::IRSchedule ir_sch(mod_expr);
 
   // temp_bufs may be deleted during auto tuning (such as auto inline),
   // we have to check from old temp bufs and set them as local buffer.
   for (const ir::Buffer& buf : old_func->temp_bufs) {
-    const std::string& buf_name              = buf->name;
+    const std::string& buf_name = buf->name;
     std::vector<ir::Expr> all_block_realizes = ir_sch.GetAllBlocks();
     for (ir::Expr& e : all_block_realizes) {
-      const ir::ScheduleBlockRealize* sche_block_realize = e.As<ir::ScheduleBlockRealize>();
-      const std::string& sche_name = sche_block_realize->schedule_block.As<ir::ScheduleBlock>()->name;
+      const ir::ScheduleBlockRealize* sche_block_realize =
+          e.As<ir::ScheduleBlockRealize>();
+      const std::string& sche_name =
+          sche_block_realize->schedule_block.As<ir::ScheduleBlock>()->name;
       if (buf_name == "_" + sche_name) {
         VLOG(6) << "Set local buffer for temp buffer " << buf_name;
         ir_sch.SetBuffer(e, "local", true);
@@ -159,14 +173,17 @@ ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target, const ir::Lo
 #endif
 
   // Get new temp bufs by analyzing.
-  std::vector<ir::Buffer> new_temp_bufs = lang::GetTempBuffers(old_func->args, updated_body);
-  ir::LoweredFunc new_func = ir::_LoweredFunc_::Make(old_func->name, old_func->args, updated_body, new_temp_bufs);
+  std::vector<ir::Buffer> new_temp_bufs =
+      lang::GetTempBuffers(old_func->args, updated_body);
+  ir::LoweredFunc new_func = ir::_LoweredFunc_::Make(
+      old_func->name, old_func->args, updated_body, new_temp_bufs);
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
     new_func->PrepareCudaAxisInfoFromBody();
   }
 #endif
-  new_func = optim::Optimize(Expr(new_func), target, false).as_lowered_func_ref();
+  new_func =
+      optim::Optimize(Expr(new_func), target, false).as_lowered_func_ref();
   new_func->PrepareBufferCastExprs(/*with_expr_gen_tensor = */ false);
 
   return new_func;

@@ -22,7 +22,8 @@ namespace cinn::frontend::paddle::pb {
 
 namespace framework_proto = ::cinn::frontend::paddle::proto;
 
-using Attribute       = absl::variant<int, float, bool, std::vector<std::string>, std::vector<int>>;
+using Attribute =
+    absl::variant<int, float, bool, std::vector<std::string>, std::vector<int>>;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 
 /*
@@ -49,9 +50,12 @@ class OpDesc : public cpp::OpDescAPI {
     return GetArguments(desc_->inputs(), param);
   }
 
-  std::vector<std::string> InputArgumentNames() const override { return GetArgumentNames(desc_->inputs()); }
+  std::vector<std::string> InputArgumentNames() const override {
+    return GetArgumentNames(desc_->inputs());
+  }
 
-  void SetInput(const std::string &param, const std::vector<std::string> &args) override {
+  void SetInput(const std::string &param,
+                const std::vector<std::string> &args) override {
     SetArgument(desc_->mutable_inputs(), param, args);
   }
 
@@ -59,23 +63,30 @@ class OpDesc : public cpp::OpDescAPI {
     return GetArguments(desc_->outputs(), param);
   }
 
-  std::vector<std::string> OutputArgumentNames() const override { return GetArgumentNames(desc_->outputs()); }
+  std::vector<std::string> OutputArgumentNames() const override {
+    return GetArgumentNames(desc_->outputs());
+  }
 
-  void SetOutput(const std::string &param, const std::vector<std::string> &args) override {
+  void SetOutput(const std::string &param,
+                 const std::vector<std::string> &args) override {
     SetArgument(desc_->mutable_outputs(), param, args);
   }
 
   bool HasAttr(const std::string &name) const override {
     const auto &xs = desc_->attrs();
-    auto it =
-        std::find_if(xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) { return x.name() == name; });
+    auto it = std::find_if(
+        xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) {
+          return x.name() == name;
+        });
     return it != xs.end();
   }
 
   AttrType GetAttrType(const std::string &name) const override {
     const auto &xs = desc_->attrs();
-    auto it =
-        std::find_if(xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) { return x.name() == name; });
+    auto it = std::find_if(
+        xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) {
+          return x.name() == name;
+        });
     CHECK(it != xs.end());
 #define DEF_ONE(type__)                   \
   case framework_proto::AttrType::type__: \
@@ -105,7 +116,10 @@ class OpDesc : public cpp::OpDescAPI {
     std::vector<std::string> res;
     const auto &xs = desc_->attrs();
     std::transform(
-        xs.begin(), xs.end(), std::back_inserter(res), [](const framework_proto::OpDesc_Attr &x) { return x.name(); });
+        xs.begin(),
+        xs.end(),
+        std::back_inserter(res),
+        [](const framework_proto::OpDesc_Attr &x) { return x.name(); });
     return res;
   }
 
@@ -116,23 +130,32 @@ class OpDesc : public cpp::OpDescAPI {
   T GetAttr(const std::string &name) const;
 
  private:
-  std::vector<std::string> GetArguments(const google::protobuf::RepeatedPtrField<framework_proto::OpDesc_Var> &xs,
-                                        const std::string &param) const {
+  std::vector<std::string> GetArguments(
+      const google::protobuf::RepeatedPtrField<framework_proto::OpDesc_Var> &xs,
+      const std::string &param) const {
     std::vector<std::string> res;
     auto it = std::find_if(
-        xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Var &it) { return it.parameter() == param; });
+        xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Var &it) {
+          return it.parameter() == param;
+        });
     CHECK(it != xs.end());
 
     const auto &ys = it->arguments();
-    std::transform(ys.begin(), ys.end(), std::back_inserter(res), [](const std::string &x) { return x; });
+    std::transform(ys.begin(),
+                   ys.end(),
+                   std::back_inserter(res),
+                   [](const std::string &x) { return x; });
     return res;
   }
 
-  void SetArgument(google::protobuf::RepeatedPtrField<framework_proto::OpDesc_Var> *xs,
-                   const std::string &param,
-                   const std::vector<std::string> &args) {
+  void SetArgument(
+      google::protobuf::RepeatedPtrField<framework_proto::OpDesc_Var> *xs,
+      const std::string &param,
+      const std::vector<std::string> &args) {
     auto it = std::find_if(
-        xs->begin(), xs->end(), [&](const framework_proto::OpDesc_Var &it) { return it.parameter() == param; });
+        xs->begin(), xs->end(), [&](const framework_proto::OpDesc_Var &it) {
+          return it.parameter() == param;
+        });
     if (it == xs->end()) {
       auto *new_arg = xs->Add();
       new_arg->set_parameter(param);
@@ -148,11 +171,14 @@ class OpDesc : public cpp::OpDescAPI {
   }
 
   std::vector<std::string> GetArgumentNames(
-      const google::protobuf::RepeatedPtrField<framework_proto::OpDesc_Var> &xs) const {
+      const google::protobuf::RepeatedPtrField<framework_proto::OpDesc_Var> &xs)
+      const {
     std::vector<std::string> res;
-    std::transform(xs.begin(), xs.end(), std::back_inserter(res), [](const framework_proto::OpDesc_Var &x) {
-      return x.parameter();
-    });
+    std::transform(
+        xs.begin(),
+        xs.end(),
+        std::back_inserter(res),
+        [](const framework_proto::OpDesc_Var &x) { return x.parameter(); });
     return res;
   }
 
@@ -161,9 +187,11 @@ class OpDesc : public cpp::OpDescAPI {
 };
 
 template <>
-void OpDesc::SetAttr<std::string>(const std::string &name, const std::string &v);
+void OpDesc::SetAttr<std::string>(const std::string &name,
+                                  const std::string &v);
 
 template <>
-void OpDesc::SetAttr<std::vector<int>>(const std::string &name, const std::vector<int> &v);
+void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
+                                       const std::vector<int> &v);
 
 }  // namespace cinn::frontend::paddle::pb

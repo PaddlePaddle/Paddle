@@ -22,7 +22,9 @@ namespace lang {
 using cinn::common::bfloat16;
 using cinn::common::float16;
 
-ir::Tensor CreatePlaceHolder(const std::vector<int> &shape, Type type, const std::string &name) {
+ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
+                             Type type,
+                             const std::string &name) {
   std::vector<Expr> expr_shape;
   for (int s : shape) {
     expr_shape.push_back(Expr(s));
@@ -30,7 +32,9 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape, Type type, const std
   return CreatePlaceHolder(expr_shape, type, name);
 }
 
-ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape, Type type, const std::string &name) {
+ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape,
+                             Type type,
+                             const std::string &name) {
   if (type.is_float(32)) {
     return Placeholder<float>(name, shape);
   } else if (type.is_float(64)) {

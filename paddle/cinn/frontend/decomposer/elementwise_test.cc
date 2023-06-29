@@ -20,26 +20,29 @@ namespace cinn::frontend {
 
 TEST(Decomposer, sum) {
   NetBuilder builder("sum");
-  auto x   = builder.CreateInput(Float(32), {32, 16});
-  auto y   = builder.CreateInput(Float(32), {32, 16});
-  auto z   = builder.CreateInput(Float(32), {32, 16});
+  auto x = builder.CreateInput(Float(32), {32, 16});
+  auto y = builder.CreateInput(Float(32), {32, 16});
+  auto z = builder.CreateInput(Float(32), {32, 16});
   auto out = builder.Sum({x, y, z});
 
-  auto sum_cpu = [](const std::vector<size_t>& lengths, const std::vector<void*>& ptrs) {
-    size_t n   = lengths[0];
-    float* x   = static_cast<float*>(ptrs[0]);
-    float* y   = static_cast<float*>(ptrs[1]);
-    float* z   = static_cast<float*>(ptrs[2]);
+  auto sum_cpu = [](const std::vector<size_t>& lengths,
+                    const std::vector<void*>& ptrs) {
+    size_t n = lengths[0];
+    float* x = static_cast<float*>(ptrs[0]);
+    float* y = static_cast<float*>(ptrs[1]);
+    float* z = static_cast<float*>(ptrs[2]);
     float* out = static_cast<float*>(ptrs[3]);
     for (size_t i = 0; i < n; ++i) {
       out[i] = x[i] + y[i] + z[i];
     }
   };
 
-  std::vector<std::string> input_names        = {x.id().data(), y.id().data(), z.id().data()};
-  std::vector<std::string> output_names       = {out->id};
+  std::vector<std::string> input_names = {
+      x.id().data(), y.id().data(), z.id().data()};
+  std::vector<std::string> output_names = {out->id};
   std::vector<std::vector<int>> output_shapes = {{32, 16}};
-  RunAndCheck<float>(builder, input_names, output_names, output_shapes, sum_cpu);
+  RunAndCheck<float>(
+      builder, input_names, output_names, output_shapes, sum_cpu);
 }
 
 }  // namespace cinn::frontend

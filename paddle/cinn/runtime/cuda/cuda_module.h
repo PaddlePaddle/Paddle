@@ -36,7 +36,7 @@ namespace cuda {
 class CUDAModule {
  public:
   enum class Kind {
-    PTX   = 0,
+    PTX = 0,
     CUBIN = 1,
   };
 
@@ -48,7 +48,7 @@ class CUDAModule {
                     dim3 blockDim,
                     void** args,
                     size_t share_memory_size = 0,
-                    CUstream stream          = nullptr);
+                    CUstream stream = nullptr);
 
   //! Get a function.
   CUfunction GetFunction(int device_id, const std::string& func_name);

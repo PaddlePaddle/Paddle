@@ -31,10 +31,12 @@ void Module::Builder::AddFunction(ir::LoweredFunc func) {
 }
 
 void Module::Builder::AddBuffer(ir::Buffer buffer) {
-  CHECK(buffer->target.defined()) << "buffer [" << buffer->name << "]'s target is undefined";
-  if (std::find_if(module_->buffers.begin(), module_->buffers.end(), [&](const Expr &x) {
-        return x.as_buffer()->name == buffer->name;
-      }) == std::end(module_->buffers)) {
+  CHECK(buffer->target.defined())
+      << "buffer [" << buffer->name << "]'s target is undefined";
+  if (std::find_if(
+          module_->buffers.begin(), module_->buffers.end(), [&](const Expr &x) {
+            return x.as_buffer()->name == buffer->name;
+          }) == std::end(module_->buffers)) {
     module_->buffers.push_back(buffer);
     if (module_->target.arch == Target::Arch::X86) {
       module_->buffers.back().as_buffer()->data_alignment = 32;

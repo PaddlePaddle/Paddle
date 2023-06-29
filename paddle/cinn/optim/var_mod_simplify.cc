@@ -30,11 +30,11 @@ struct ReplaceModWithDivMutator : public ir::IRMutator<> {
 
   void Visit(const Mod* op, Expr* expr) override {
     auto* node = expr->As<ir::Mod>();
-    auto a     = node->operand(0);
-    auto b     = node->operand(1);
-    *expr      = ir::Div::Make(a, b);
-    *expr      = ir::Mul::Make(b, *expr);
-    *expr      = ir::Sub::Make(a, *expr);
+    auto a = node->operand(0);
+    auto b = node->operand(1);
+    *expr = ir::Div::Make(a, b);
+    *expr = ir::Mul::Make(b, *expr);
+    *expr = ir::Sub::Make(a, *expr);
   }
 };
 
@@ -53,16 +53,17 @@ struct ReplaceDivWithVarMutator : public ir::IRMutator<> {
       auto b_int = b.As<IntImm>();
       CHECK(a_var);
       CHECK(b_int);
-      std::string var_name   = a_var->name + "/" + std::to_string(b_int->value);
+      std::string var_name = a_var->name + "/" + std::to_string(b_int->value);
       div_var_map_[var_name] = ir::Div::Make(a, b);
-      *expr                  = Var(var_name);
+      *expr = Var(var_name);
     }
   }
 };
 
 struct ReplaceVarWithDivMutator : public ir::IRMutator<> {
   absl::flat_hash_map<std::string, Expr> div_var_map_;
-  void operator()(Expr* x, const absl::flat_hash_map<std::string, Expr>& div_var_map) {
+  void operator()(Expr* x,
+                  const absl::flat_hash_map<std::string, Expr>& div_var_map) {
     div_var_map_ = div_var_map;
     ir::IRMutator<>::Visit(x, x);
   }
@@ -83,7 +84,7 @@ void VarModSimplify(Expr* e) {
   ReplaceModWithDivMutator()(e);
   ReplaceDivWithVarMutator mutator;
   mutator(e);
-  *e               = common::AutoSimplify(*e);
+  *e = common::AutoSimplify(*e);
   auto div_var_map = mutator.div_var_map_;
   ReplaceVarWithDivMutator()(e, mutator.div_var_map_);
 }

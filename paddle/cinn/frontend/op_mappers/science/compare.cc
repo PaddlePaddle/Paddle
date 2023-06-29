@@ -19,19 +19,20 @@ namespace cinn {
 namespace frontend {
 namespace science_mappers {
 
-#define COMPARE_OPMAPPER_FUNCTION(OP_NAME)                                                 \
-  void OP_NAME##OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) { \
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);                                              \
-    auto x_name = op_desc.Input("X").front();                                              \
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);                                              \
-    auto y_name = op_desc.Input("Y").front();                                              \
-    CHECK_EQ(op_desc.Output("Z").size(), 1UL);                                             \
-    auto out_name = op_desc.Output("Z").front();                                           \
-    auto x        = ctx.GetVar(x_name);                                                    \
-    auto y        = ctx.GetVar(y_name);                                                    \
-    auto out      = ctx.Builder()->OP_NAME(x, y);                                          \
-    ctx.AddVar(out_name, out);                                                             \
-    ctx.AddVarModelToProgram(out_name, out->id);                                           \
+#define COMPARE_OPMAPPER_FUNCTION(OP_NAME)                   \
+  void OP_NAME##OpMapper(const paddle::cpp::OpDesc& op_desc, \
+                         const OpMapperContext& ctx) {       \
+    CHECK_EQ(op_desc.Input("X").size(), 1UL);                \
+    auto x_name = op_desc.Input("X").front();                \
+    CHECK_EQ(op_desc.Input("Y").size(), 1UL);                \
+    auto y_name = op_desc.Input("Y").front();                \
+    CHECK_EQ(op_desc.Output("Z").size(), 1UL);               \
+    auto out_name = op_desc.Output("Z").front();             \
+    auto x = ctx.GetVar(x_name);                             \
+    auto y = ctx.GetVar(y_name);                             \
+    auto out = ctx.Builder()->OP_NAME(x, y);                 \
+    ctx.AddVar(out_name, out);                               \
+    ctx.AddVarModelToProgram(out_name, out->id);             \
   }
 
 COMPARE_OPMAPPER_FUNCTION(GreaterThan)
@@ -49,7 +50,8 @@ COMPARE_OPMAPPER_FUNCTION(NotEqual)
 
 CINN_REGISTER_HELPER(science_compare) {
 #define COMPARE_OPMAPPER_REGISTER(PD_OP, CINN_OP) \
-  CINN_REGISTER_OP_MAPPER(PD_OP, cinn::frontend::science_mappers::CINN_OP##OpMapper)
+  CINN_REGISTER_OP_MAPPER(PD_OP,                  \
+                          cinn::frontend::science_mappers::CINN_OP##OpMapper)
 
   COMPARE_OPMAPPER_REGISTER(gt_p, GreaterThan)
   COMPARE_OPMAPPER_REGISTER(ge_p, GreaterEqual)

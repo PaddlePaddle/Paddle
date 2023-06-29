@@ -36,7 +36,8 @@ using ::cinn::hlir::framework::NodeData;
 std::vector<TuneTask> TaskCreator::CreateTuneTaskOpLevel(Graph* graph) {
   std::vector<TuneTask> ret_tasks;
 
-  const std::vector<std::shared_ptr<Graph::Group>>* groups = &graph->fusion_groups;
+  const std::vector<std::shared_ptr<Graph::Group>>* groups =
+      &graph->fusion_groups;
   std::vector<std::shared_ptr<Graph::Group>> non_fused_groups;
   // The input graph doesn't run Op Fusion
   if (graph->fusion_groups.empty()) {
@@ -48,7 +49,7 @@ std::vector<TuneTask> TaskCreator::CreateTuneTaskOpLevel(Graph* graph) {
   for (const auto& sub_graph : *groups) {
     ret_tasks.emplace_back(TuneTask());
     ret_tasks.back().subgraph = sub_graph;
-    ret_tasks.back().target   = graph->target_;
+    ret_tasks.back().target = graph->target_;
   }
   return ret_tasks;
 }

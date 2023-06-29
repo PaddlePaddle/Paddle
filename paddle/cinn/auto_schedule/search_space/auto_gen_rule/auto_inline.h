@@ -41,7 +41,8 @@ enum class AutoInlineType : int {
 
 class AutoInline : public AutoGenRule {
  public:
-  AutoInline(const common::Target& target, const std::unordered_set<std::string>& no_inline_output_names);
+  AutoInline(const common::Target& target,
+             const std::unordered_set<std::string>& no_inline_output_names);
   ~AutoInline() = default;
 
   RuleApplyType Init(ir::IRSchedule* ir_schedule) override;
@@ -50,13 +51,17 @@ class AutoInline : public AutoGenRule {
 
   std::string GetRuleName() const override;
 
-  AutoInlineType AnalyzeInlineType(const Expr& sche_block_realize_expr, ir::IRSchedule* ir_sch) const;
+  AutoInlineType AnalyzeInlineType(const Expr& sche_block_realize_expr,
+                                   ir::IRSchedule* ir_sch) const;
 
-  bool CanInlineIntoConsumer(const Expr& sche_block_realize_expr, ir::IRSchedule* ir_sch) const;
+  bool CanInlineIntoConsumer(const Expr& sche_block_realize_expr,
+                             ir::IRSchedule* ir_sch) const;
 
-  RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const override;
+  RuleApplyType AnalyseApplyType(SearchState state,
+                                 const std::string& block_name) const override;
 
-  std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) override;
+  std::vector<SearchState> ApplyOnBlock(SearchState state,
+                                        const std::string& block_name) override;
 
  private:
   void Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);

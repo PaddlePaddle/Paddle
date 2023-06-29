@@ -33,15 +33,17 @@ namespace std {
 // for float16
 template <>
 struct is_pod<cinn::common::float16> {
-  static const bool value =
-      is_trivial<cinn::common::float16>::value && is_standard_layout<cinn::common::float16>::value;
+  static const bool value = is_trivial<cinn::common::float16>::value &&
+                            is_standard_layout<cinn::common::float16>::value;
 };
 
 template <>
 struct is_floating_point<cinn::common::float16>
     : std::integral_constant<
           bool,
-          std::is_same<cinn::common::float16, typename std::remove_cv<cinn::common::float16>::type>::value> {};
+          std::is_same<
+              cinn::common::float16,
+              typename std::remove_cv<cinn::common::float16>::type>::value> {};
 template <>
 struct is_signed<cinn::common::float16> {
   static const bool value = true;
@@ -52,65 +54,92 @@ struct is_unsigned<cinn::common::float16> {
   static const bool value = false;
 };
 
-__host__ __device__ inline cinn::common::float16 abs(const cinn::common::float16& a) { return cinn::common::abs(a); }
+__host__ __device__ inline cinn::common::float16 abs(
+    const cinn::common::float16& a) {
+  return cinn::common::abs(a);
+}
 
-inline bool isnan(const cinn::common::float16& a) { return cinn::common::isnan(a); }
+inline bool isnan(const cinn::common::float16& a) {
+  return cinn::common::isnan(a);
+}
 
-inline bool isinf(const cinn::common::float16& a) { return cinn::common::isinf(a); }
+inline bool isinf(const cinn::common::float16& a) {
+  return cinn::common::isinf(a);
+}
 
-inline bool isfinite(const cinn::common::float16& a) { return cinn::common::isfinite(a); }
+inline bool isfinite(const cinn::common::float16& a) {
+  return cinn::common::isfinite(a);
+}
 
 template <>
 struct numeric_limits<cinn::common::float16> {
-  static const bool is_specialized                = true;
-  static const bool is_signed                     = true;
-  static const bool is_integer                    = false;
-  static const bool is_exact                      = false;
-  static const bool has_infinity                  = true;
-  static const bool has_quiet_NaN                 = true;
-  static const bool has_signaling_NaN             = true;
-  static const float_denorm_style has_denorm      = denorm_present;
-  static const bool has_denorm_loss               = false;
+  static const bool is_specialized = true;
+  static const bool is_signed = true;
+  static const bool is_integer = false;
+  static const bool is_exact = false;
+  static const bool has_infinity = true;
+  static const bool has_quiet_NaN = true;
+  static const bool has_signaling_NaN = true;
+  static const float_denorm_style has_denorm = denorm_present;
+  static const bool has_denorm_loss = false;
   static const std::float_round_style round_style = std::round_to_nearest;
-  static const bool is_iec559                     = false;
-  static const bool is_bounded                    = false;
-  static const bool is_modulo                     = false;
-  static const int digits                         = 11;
-  static const int digits10                       = 3;
-  static const int max_digits10                   = 5;
-  static const int radix                          = 2;
-  static const int min_exponent                   = -13;
-  static const int min_exponent10                 = -4;
-  static const int max_exponent                   = 16;
-  static const int max_exponent10                 = 4;
-  static const bool traps                         = true;
-  static const bool tinyness_before               = false;
+  static const bool is_iec559 = false;
+  static const bool is_bounded = false;
+  static const bool is_modulo = false;
+  static const int digits = 11;
+  static const int digits10 = 3;
+  static const int max_digits10 = 5;
+  static const int radix = 2;
+  static const int min_exponent = -13;
+  static const int min_exponent10 = -4;
+  static const int max_exponent = 16;
+  static const int max_exponent10 = 4;
+  static const bool traps = true;
+  static const bool tinyness_before = false;
 
-  __host__ __device__ static cinn::common::float16(min)() { return cinn::common::raw_uint16_to_float16(0x400); }
-  __host__ __device__ static cinn::common::float16 lowest() { return cinn::common::raw_uint16_to_float16(0xfbff); }
-  __host__ __device__ static cinn::common::float16(max)() { return cinn::common::raw_uint16_to_float16(0x7bff); }
-  __host__ __device__ static cinn::common::float16 epsilon() { return cinn::common::raw_uint16_to_float16(0x0800); }
-  __host__ __device__ static cinn::common::float16 round_error() { return cinn::common::float16(0.5); }
-  __host__ __device__ static cinn::common::float16 infinity() { return cinn::common::raw_uint16_to_float16(0x7c00); }
-  __host__ __device__ static cinn::common::float16 quiet_NaN() { return cinn::common::raw_uint16_to_float16(0x7e00); }
+  __host__ __device__ static cinn::common::float16(min)() {
+    return cinn::common::raw_uint16_to_float16(0x400);
+  }
+  __host__ __device__ static cinn::common::float16 lowest() {
+    return cinn::common::raw_uint16_to_float16(0xfbff);
+  }
+  __host__ __device__ static cinn::common::float16(max)() {
+    return cinn::common::raw_uint16_to_float16(0x7bff);
+  }
+  __host__ __device__ static cinn::common::float16 epsilon() {
+    return cinn::common::raw_uint16_to_float16(0x0800);
+  }
+  __host__ __device__ static cinn::common::float16 round_error() {
+    return cinn::common::float16(0.5);
+  }
+  __host__ __device__ static cinn::common::float16 infinity() {
+    return cinn::common::raw_uint16_to_float16(0x7c00);
+  }
+  __host__ __device__ static cinn::common::float16 quiet_NaN() {
+    return cinn::common::raw_uint16_to_float16(0x7e00);
+  }
   __host__ __device__ static cinn::common::float16 signaling_NaN() {
     return cinn::common::raw_uint16_to_float16(0x7e00);
   }
-  __host__ __device__ static cinn::common::float16 denorm_min() { return cinn::common::raw_uint16_to_float16(0x1); }
+  __host__ __device__ static cinn::common::float16 denorm_min() {
+    return cinn::common::raw_uint16_to_float16(0x1);
+  }
 };
 
 // for bfloat16
 template <>
 struct is_pod<cinn::common::bfloat16> {
-  static const bool value =
-      is_trivial<cinn::common::bfloat16>::value && is_standard_layout<cinn::common::bfloat16>::value;
+  static const bool value = is_trivial<cinn::common::bfloat16>::value &&
+                            is_standard_layout<cinn::common::bfloat16>::value;
 };
 
 template <>
 struct is_floating_point<cinn::common::bfloat16>
     : std::integral_constant<
           bool,
-          std::is_same<cinn::common::bfloat16, typename std::remove_cv<cinn::common::bfloat16>::type>::value> {};
+          std::is_same<
+              cinn::common::bfloat16,
+              typename std::remove_cv<cinn::common::bfloat16>::type>::value> {};
 template <>
 struct is_signed<cinn::common::bfloat16> {
   static const bool value = true;
@@ -121,43 +150,61 @@ struct is_unsigned<cinn::common::bfloat16> {
   static const bool value = false;
 };
 
-inline bool isnan(const cinn::common::bfloat16& a) { return cinn::common::isnan(a); }
+inline bool isnan(const cinn::common::bfloat16& a) {
+  return cinn::common::isnan(a);
+}
 
-inline bool isinf(const cinn::common::bfloat16& a) { return cinn::common::isinf(a); }
+inline bool isinf(const cinn::common::bfloat16& a) {
+  return cinn::common::isinf(a);
+}
 
 template <>
 struct numeric_limits<cinn::common::bfloat16> {
-  static const bool is_specialized                = true;
-  static const bool is_signed                     = true;
-  static const bool is_integer                    = false;
-  static const bool is_exact                      = false;
-  static const bool has_infinity                  = true;
-  static const bool has_quiet_NaN                 = true;
-  static const bool has_signaling_NaN             = true;
-  static const float_denorm_style has_denorm      = denorm_present;
-  static const bool has_denorm_loss               = false;
+  static const bool is_specialized = true;
+  static const bool is_signed = true;
+  static const bool is_integer = false;
+  static const bool is_exact = false;
+  static const bool has_infinity = true;
+  static const bool has_quiet_NaN = true;
+  static const bool has_signaling_NaN = true;
+  static const float_denorm_style has_denorm = denorm_present;
+  static const bool has_denorm_loss = false;
   static const std::float_round_style round_style = std::round_to_nearest;
-  static const bool is_iec559                     = false;
-  static const bool is_bounded                    = false;
-  static const bool is_modulo                     = false;
-  static const int digits                         = 8;
-  static const int digits10                       = 2;
-  static const int max_digits10                   = 9;
-  static const int radix                          = 2;
-  static const int min_exponent                   = -125;
-  static const int min_exponent10                 = -37;
-  static const int max_exponent                   = 128;
-  static const int max_exponent10                 = 38;
-  static const bool traps                         = true;
-  static const bool tinyness_before               = false;
+  static const bool is_iec559 = false;
+  static const bool is_bounded = false;
+  static const bool is_modulo = false;
+  static const int digits = 8;
+  static const int digits10 = 2;
+  static const int max_digits10 = 9;
+  static const int radix = 2;
+  static const int min_exponent = -125;
+  static const int min_exponent10 = -37;
+  static const int max_exponent = 128;
+  static const int max_exponent10 = 38;
+  static const bool traps = true;
+  static const bool tinyness_before = false;
 
-  __host__ __device__ static cinn::common::bfloat16(min)() { return cinn::common::raw_uint16_to_bfloat16(0x007f); }
-  __host__ __device__ static cinn::common::bfloat16 lowest() { return cinn::common::raw_uint16_to_bfloat16(0xff7f); }
-  __host__ __device__ static cinn::common::bfloat16(max)() { return cinn::common::raw_uint16_to_bfloat16(0x7f7f); }
-  __host__ __device__ static cinn::common::bfloat16 epsilon() { return cinn::common::raw_uint16_to_bfloat16(0x3400); }
-  __host__ __device__ static cinn::common::bfloat16 round_error() { return cinn::common::bfloat16(0.5); }
-  __host__ __device__ static cinn::common::bfloat16 infinity() { return cinn::common::raw_uint16_to_bfloat16(0x7f80); }
-  __host__ __device__ static cinn::common::bfloat16 quiet_NaN() { return cinn::common::raw_uint16_to_bfloat16(0xffc1); }
+  __host__ __device__ static cinn::common::bfloat16(min)() {
+    return cinn::common::raw_uint16_to_bfloat16(0x007f);
+  }
+  __host__ __device__ static cinn::common::bfloat16 lowest() {
+    return cinn::common::raw_uint16_to_bfloat16(0xff7f);
+  }
+  __host__ __device__ static cinn::common::bfloat16(max)() {
+    return cinn::common::raw_uint16_to_bfloat16(0x7f7f);
+  }
+  __host__ __device__ static cinn::common::bfloat16 epsilon() {
+    return cinn::common::raw_uint16_to_bfloat16(0x3400);
+  }
+  __host__ __device__ static cinn::common::bfloat16 round_error() {
+    return cinn::common::bfloat16(0.5);
+  }
+  __host__ __device__ static cinn::common::bfloat16 infinity() {
+    return cinn::common::raw_uint16_to_bfloat16(0x7f80);
+  }
+  __host__ __device__ static cinn::common::bfloat16 quiet_NaN() {
+    return cinn::common::raw_uint16_to_bfloat16(0xffc1);
+  }
   __host__ __device__ static cinn::common::bfloat16 signaling_NaN() {
     return cinn::common::raw_uint16_to_bfloat16(0xff81);
   }
