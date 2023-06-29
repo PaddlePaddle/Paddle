@@ -217,6 +217,9 @@ DDim make_ddim(std::initializer_list<int64_t> dims);
 
 template <typename T = int64_t>
 std::vector<T> vectorize(const DDim& ddim) {
+  if (ddim.size() == -1) {
+    return std::vector<T>({0});
+  }
   std::vector<T> result(DDim::kMaxRank);
   dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
   result.resize(ddim.size());
