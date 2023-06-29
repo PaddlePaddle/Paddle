@@ -15,11 +15,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import cinn
-from cinn import ir
-from cinn import CINNValue
 from math import isclose
+
+import cinn
+import numpy as np
+from cinn import CINNValue, ir
 
 
 class TestPackedFunc(unittest.TestCase):
