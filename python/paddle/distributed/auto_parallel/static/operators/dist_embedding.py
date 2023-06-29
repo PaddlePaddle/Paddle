@@ -189,7 +189,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         attrs = {
             "use_calc_stream": True,
             "use_model_parallel": True,
-            "reduce_type": dist.ReduceType.SUM,
+            "reduce_type": dist.ReduceOp.SUM,
         }
         var_names = serial_op.output("Out")
         allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(

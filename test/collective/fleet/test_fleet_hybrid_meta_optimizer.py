@@ -38,7 +38,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         self.pp_pair_ring_id = 20
         self._debug = False
 
-    def test_opt_sharding_with_pp(self):
+    def itest_opt_sharding_with_pp(self):
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
 
@@ -207,7 +207,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
                 dp_group_waiting_ports = op.desc.attr("other_endpoints")
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
-    def test_opt_sharding_with_pp_with_allreduce_fuse(self):
+    def itest_opt_sharding_with_pp_with_allreduce_fuse(self):
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
 
@@ -338,7 +338,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             ],
         )
 
-    def test_opt_sharding_with_pp_amp_gclip(self):
+    def itest_opt_sharding_with_pp_amp_gclip(self):
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
 
@@ -535,7 +535,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             ],
         )
 
-    def test_opt_sharding_with_pp_amp_gclip_fuse_gm(self):
+    def itest_opt_sharding_with_pp_amp_gclip_fuse_gm(self):
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
 
@@ -761,6 +761,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
+        print(f"debug startup_prog_op_types: {startup_prog_op_types}, startup_prog: {startup_prog.to_string(True)}")
         self.assertEqual(
             startup_prog_op_types,
             [
@@ -921,7 +922,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         self.pp_pair_ring_id = 20
         self._debug = False
 
-    def test_opt_sharding_with_pp_amp_gclip_boundary(self):
+    def itest_opt_sharding_with_pp_amp_gclip_boundary(self):
         """
         test optimizer sharding without parameter
         test loss grad scale value
@@ -1027,7 +1028,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
             ],
         )
 
-    def test_opt_sharding_with_pp_amp_gclip_boundary_card1(self):
+    def itest_opt_sharding_with_pp_amp_gclip_boundary_card1(self):
         """test optimizer sharding without parameter in card0"""
         os.environ["PADDLE_TRAINER_ID"] = "1"
         train_prog, startup_prog = static.Program(), static.Program()

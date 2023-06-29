@@ -21,13 +21,14 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import paddle
 import paddle.distributed as dist
 from paddle import fluid, framework
+from paddle.distributed.communication.reduce import _get_reduce_op
 from paddle.fluid import data_feeder
 
 paddle.enable_static()
 
 
-def reduce_new(tensor, dst, reduce_type=str(dist.ReduceOp.SUM), group=None):
-    op_type = "reduce"
+def reduce(tensor, dst, op=dist.ReduceOp.SUM, group=None, sync_op=True):
+    op_type = _get_reduce_op(op, "reduce")
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
@@ -48,16 +49,14 @@ def reduce_new(tensor, dst, reduce_type=str(dist.ReduceOp.SUM), group=None):
     ring_id = 0 if group is None else group.id
 
     helper = framework.LayerHelper(op_type, **locals())
-    if not reduce_type.isdigit():
-        raise ValueError("The type of 'reduce_type' for reduce should be int.")
     helper.append_op(
         type=op_type,
-        inputs={'x': [tensor]},
-        outputs={'out': [tensor]},
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
         attrs={
             'ring_id': ring_id,
             'root_id': dst,
-            'reduce_type': int(reduce_type),
+            'use_calc_stream': sync_op,
         },
     )
     return None
@@ -73,7 +72,7 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
                 name="tindata", shape=[-1, 10, 1000], dtype='float32'
             )
             tindata.desc.set_need_check_feed(False)
-            paddle.distributed.reduce(tindata, dst=0)
+            reduce(tindata, dst=0)
             return [tindata]
 
     def get_model_new(
@@ -82,14 +81,14 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
         startup_program,
         rank,
         dtype='float32',
-        reduce_type=str(dist.ReduceOp.SUM),
+        reduce_type=dist.ReduceOp.SUM,
     ):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
             tindata.desc.set_need_check_feed(False)
-            reduce_new(tindata, dst=0, reduce_type=reduce_type)
+            paddle.distributed.reduce(tindata, dst=0, op=int(reduce_type))
             return [tindata]
 
 
