@@ -15,12 +15,10 @@
 
 
 from . import extend_optimizer
-from .extend_optimizer import *
 
 from . import optimizer
 from .optimizer import *
 
 __all__ = []
 
-__all__ += extend_optimizer.__all__
 __all__ += optimizer.__all__
