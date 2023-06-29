@@ -164,7 +164,7 @@ struct SelectedRowsTypeStorage : public ir::TypeStorage {
   /// \brief Each derived TypeStorage must provide a HashValue method.
   ///
   static std::size_t HashValue(const ParamKey &key) {
-    std::size_t hash_value = 0;
+    std::size_t hash_value = 317;
     // hash dtype
     hash_value =
         ir::hash_combine(hash_value, std::hash<ir::Type>()(std::get<0>(key)));

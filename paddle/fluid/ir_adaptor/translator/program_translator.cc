@@ -157,6 +157,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
+    std::cerr << "op name " << op->Type() << std::endl;
     OpTranslateFn& fn = op_translator[op->Type()];
     ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;

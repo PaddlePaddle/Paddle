@@ -28,6 +28,8 @@ using VarDesc = paddle::framework::VarDesc;
 using VarType = paddle::framework::proto::VarType;
 using DenseTensorType = paddle::dialect::DenseTensorType;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
+using SelectedRowsType = paddle::dialect::SelectedRowsType;
+using SelectedRowsTypeStorage = paddle::dialect::SelectedRowsTypeStorage;
 
 TypeTranslator::TypeTranslator() {
   handlers = {
@@ -81,7 +83,26 @@ TypeTranslator::TypeTranslator() {
          VLOG(10) << "[vartype translating]"
                   << "[" << var_desc.Name() << "] from SELECTED_ROWS";
 
-         return this->operator[](VarType::LOD_TENSOR)(ctx, var_desc);
+         //  std::cerr << "convert 11 " << std::endl;
+         //  ir::Type dtype =
+         //      this->operator[](var_desc.GetDataType())(ctx, var_desc);
+         //  std::cerr << "convert 22 " << std::endl;
+         //  SelectedRowsTypeStorage::Dim dim =
+         //  phi::make_ddim(var_desc.GetShape()); std::cerr << "convert 33 " <<
+         //  std::endl; SelectedRowsTypeStorage::DataLayout layout =
+         //      SelectedRowsTypeStorage::DataLayout::UNDEFINED;
+         // std::cerr << "convert 55 " << std::endl;
+         //  SelectedRowsTypeStorage::LoD lod = {};
+         //  size_t offset = 0;
+         //  return SelectedRowsType::get(ctx, dtype, dim, layout, lod, offset);
+         ir::Type dtype =
+             this->operator[](var_desc.GetDataType())(ctx, var_desc);
+         DenseTensorTypeStorage::Dim dim = phi::make_ddim(var_desc.GetShape());
+         DenseTensorTypeStorage::DataLayout layout =
+             DenseTensorTypeStorage::DataLayout::UNDEFINED;
+         DenseTensorTypeStorage::LoD lod = {};
+         size_t offset = 0;
+         return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
        }},
   };
 }

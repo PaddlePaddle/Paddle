@@ -244,6 +244,8 @@ void BuildInferMetaContext(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
       } else if (type_name == "ir::Int32Attribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+      } else if (type_name == "ir::Int64Attribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
       } else if (type_name == "ir::FloatAttribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
       } else if (type_name == "ir::BoolAttribute") {
@@ -389,6 +391,8 @@ void BuildPhiKernelContext(
             attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
       } else if (type_name == "ir::Int32Attribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+      } else if (type_name == "ir::Int64Attribute") {
+        ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
       } else if (type_name == "ir::FloatAttribute") {
         ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
       } else if (type_name == "ir::BoolAttribute") {
