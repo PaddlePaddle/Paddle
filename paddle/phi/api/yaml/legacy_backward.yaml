@@ -119,25 +119,6 @@
   kernel :
     func : channel_shuffle_grad
 
-- backward_op : concat_double_grad
-  forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
-  args : (Tensor[] grad_x_grad, Scalar axis = 0)
-  output : Tensor(grad_out_grad)
-  invoke : concat(grad_x_grad, axis)
-
-- backward_op : concat_grad
-  forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad, Scalar axis = 0)
-  output : Tensor[](x_grad){x.size()}
-  infer_meta :
-    func : UnchangedMultiInferMeta
-    param : [x]
-  kernel :
-    func : concat_grad
-  composite : concat_grad(x, out_grad, axis, x_grad)
-  no_need_buffer : x
-  backward : concat_double_grad
-
 - backward_op : conv2d_transpose_double_grad
   forward : conv2d_transpose_grad(Tensor x, Tensor filter, Tensor grad_out, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format) -> Tensor(grad_x), Tensor(grad_filter)
   args : (Tensor x, Tensor filter, Tensor grad_out, Tensor grad_x_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, int[] output_padding, IntArray output_size, str padding_algorithm, int groups, int[] dilations, str data_format)
@@ -704,6 +685,20 @@
   kernel :
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
+
+- backward_op : split_grad
+  forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, Scalar axis = -1)
+  output : Tensor(x_grad)
+  invoke : concat( out_grad, axis)
+  composite : split_grad(out_grad, axis, x_grad)
+
+- backward_op : split_with_num_grad
+  forward : split_with_num (Tensor x, int num, Scalar axis) -> Tensor[](out)
+  args : (Tensor[] out_grad, Scalar axis = -1)
+  output : Tensor(x_grad)
+  invoke : concat( out_grad, axis)
+  composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
