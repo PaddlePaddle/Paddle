@@ -80,7 +80,6 @@ op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
 
-
 # =====================================
 # String Template for cc file code gen
 # =====================================
