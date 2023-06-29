@@ -57,11 +57,11 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                             SparseCooTensor* x_grad,
                             DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
-  bool is2D = kernel_dims.size() == 4 ? true : false;
-  const int kernel_size = is2D == true ? kernel_dims[0] * kernel_dims[1] : 
+  const bool is2D = kernel_dims.size() == 4 ? true : false;
+  const int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1] : 
                                          kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  const int in_channels = is2D == true ? kernel_dims[2] : kernel_dims[3];
-  const int out_channels = is2D == true ? kernel_dims[3] : kernel_dims[4];
+  const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
+  const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
 
   int rulebook_len = 0;
   const IntT* rulebook_ptr = phi::funcs::sparse::GetRulebookPtr<IntT>(

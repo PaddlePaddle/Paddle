@@ -42,13 +42,12 @@ void ProductRuleBook(const Context& dev_ctx,
                      const bool subm,
                      DenseTensor* rulebook,
                      int* counter_per_kernel) {
-  bool is2D = out_dims.size() == 4 ? true : false;
+  const bool is2D = out_dims.size() == 4 ? true : false;
   const int64_t non_zero_num = x.nnz();
   const auto& indices = x.indices();
   const IntT* indices_ptr = indices.data<IntT>();
-  int kernel_size = is2D == true
-                        ? kernel_sizes[0] * kernel_sizes[1]
-                        : kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
+  int kernel_size = is2D ? kernel_sizes[0] * kernel_sizes[1]
+                         : kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
   memset(counter_per_kernel, 0, kernel_size * sizeof(int));
 
   int rulebook_len = 0;
@@ -63,34 +62,34 @@ void ProductRuleBook(const Context& dev_ctx,
   int ddim0, ddim1, ddim2, ddim3;
 
   xdim0 = x_dims[0];
-  xdim1 = is2D == true ? x_dims[2] : x_dims[3];
-  xdim2 = is2D == true ? x_dims[1] : x_dims[2];
-  xdim3 = is2D == true ? 1 : x_dims[1];
+  xdim1 = is2D ? x_dims[2] : x_dims[3];
+  xdim2 = is2D ? x_dims[1] : x_dims[2];
+  xdim3 = is2D ? 1 : x_dims[1];
 
   kdim0 = 1;
-  kdim1 = is2D == true ? kernel_sizes[1] : kernel_sizes[2];
-  kdim2 = is2D == true ? kernel_sizes[0] : kernel_sizes[1];
-  kdim3 = is2D == true ? 1 : kernel_sizes[0];
+  kdim1 = is2D ? kernel_sizes[1] : kernel_sizes[2];
+  kdim2 = is2D ? kernel_sizes[0] : kernel_sizes[1];
+  kdim3 = is2D ? 1 : kernel_sizes[0];
 
   odim0 = out_dims[0];
-  odim1 = is2D == true ? out_dims[2] : out_dims[3];
-  odim2 = is2D == true ? out_dims[1] : out_dims[2];
-  odim3 = is2D == true ? 1 : out_dims[1];
+  odim1 = is2D ? out_dims[2] : out_dims[3];
+  odim2 = is2D ? out_dims[1] : out_dims[2];
+  odim3 = is2D ? 1 : out_dims[1];
 
   pdim0 = 1;
-  pdim1 = is2D == true ? paddings[1] : paddings[2];
-  pdim2 = is2D == true ? paddings[0] : paddings[1];
-  pdim3 = is2D == true ? 1 : paddings[0];
+  pdim1 = is2D ? paddings[1] : paddings[2];
+  pdim2 = is2D ? paddings[0] : paddings[1];
+  pdim3 = is2D ? 1 : paddings[0];
 
   sdim0 = 1;
-  sdim1 = is2D == true ? strides[1] : strides[2];
-  sdim2 = is2D == true ? strides[0] : strides[1];
-  sdim3 = is2D == true ? 1 : strides[0];
+  sdim1 = is2D ? strides[1] : strides[2];
+  sdim2 = is2D ? strides[0] : strides[1];
+  sdim3 = is2D ? 1 : strides[0];
 
   ddim0 = 1;
-  ddim1 = is2D == true ? dilations[1] : dilations[2];
-  ddim2 = is2D == true ? dilations[0] : dilations[1];
-  ddim3 = is2D == true ? 1 : dilations[0];
+  ddim1 = is2D ? dilations[1] : dilations[2];
+  ddim2 = is2D ? dilations[0] : dilations[1];
+  ddim3 = is2D ? 1 : dilations[0];
 
   const Dims4D c_x_dims(xdim0, xdim1, xdim2, xdim3);
   const Dims4D c_kernel_dims(kdim0, kdim1, kdim2, kdim3);
@@ -103,10 +102,10 @@ void ProductRuleBook(const Context& dev_ctx,
   if (subm) {
     for (int i = 0; i < non_zero_num; i++) {
       IntT batch = indices_ptr[i];
-      IntT in_z = is2D == true ? 0 : indices_ptr[i + non_zero_num];
-      IntT in_y = is2D == true ? indices_ptr[i + non_zero_num]
+      IntT in_z = is2D ? 0 : indices_ptr[i + non_zero_num];
+      IntT in_y = is2D ? indices_ptr[i + non_zero_num]
                                : indices_ptr[i + 2 * non_zero_num];
-      IntT in_x = is2D == true ? indices_ptr[i + 2 * non_zero_num]
+      IntT in_x = is2D ? indices_ptr[i + 2 * non_zero_num]
                                : indices_ptr[i + 3 * non_zero_num];
       IntT index = phi::funcs::sparse::PointToIndex<Dims4D>(
           batch, in_x, in_y, in_z, c_x_dims);
@@ -116,22 +115,22 @@ void ProductRuleBook(const Context& dev_ctx,
 
   auto f_calc_rulebook = [&](IntT* rulebook_ptr) {
     int kernel_index = 0, rulebook_index = 0;
-    int zceil = is2D == true ? 1 : kernel_sizes[0];
-    int yceil = is2D == true ? kernel_sizes[0] : kernel_sizes[1];
-    int xceil = is2D == true ? kernel_sizes[1] : kernel_sizes[2];
+    int zceil = is2D ? 1 : kernel_sizes[0];
+    int yceil = is2D ? kernel_sizes[0] : kernel_sizes[1];
+    int xceil = is2D ? kernel_sizes[1] : kernel_sizes[2];
     for (int kz = 0; kz < zceil; kz++) {
       for (int ky = 0; ky < yceil; ky++) {
         for (int kx = 0; kx < xceil; kx++) {
           ++kernel_index;
           for (int64_t i = 0; i < non_zero_num; i++) {
             IntT batch = indices_ptr[i];
-            IntT in_z = is2D == true ? 0 : indices_ptr[i + non_zero_num];
-            IntT in_y = is2D == true ? indices_ptr[i + non_zero_num]
+            IntT in_z = is2D ? 0 : indices_ptr[i + non_zero_num];
+            IntT in_y = is2D ? indices_ptr[i + non_zero_num]
                                      : indices_ptr[i + 2 * non_zero_num];
-            IntT in_x = is2D == true ? indices_ptr[i + 2 * non_zero_num]
+            IntT in_x = is2D ? indices_ptr[i + 2 * non_zero_num]
                                      : indices_ptr[i + 3 * non_zero_num];
                                      
-            IntT out_z = is2D == true ? 0 : (in_z + paddings[0] - kz * dilations[0]) / strides[0];;
+            IntT out_z = is2D ? 0 : (in_z + paddings[0] - kz * dilations[0]) / strides[0];;
             IntT out_y =
                 (in_y + c_paddings[2] - ky * c_dilations[2]) / c_strides[2];
             IntT out_x =
@@ -191,7 +190,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
                                const DDim& out_dims,
                                DenseTensor* rulebook,
                                SparseCooTensor* out) {
-  bool is2D = out_dims.size() == 4 ? true : false;
+  const bool is2D = out_dims.size() == 4 ? true : false;
 
   std::set<IntT> out_indexs;
   int n = rulebook->dims()[1];
@@ -201,8 +200,7 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
   }
 
   int out_non_zero_num = out_indexs.size();
-  int tmpindex = is2D == true ? 3 : 4;
-  const int64_t sparse_dim = tmpindex;
+  const int64_t sparse_dim = is2D ? 3 : 4;
   DenseTensorMeta indices_meta(phi::CppTypeToDataType<IntT>::Type(),
                                {sparse_dim, out_non_zero_num},
                                DataLayout::NCHW);
@@ -215,9 +213,9 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
 
   int odim0, odim1, odim2, odim3;
   odim0 = out_dims[0];
-  odim1 = is2D == true ? out_dims[2] : out_dims[3];
-  odim2 = is2D == true ? out_dims[1] : out_dims[2];
-  odim3 = is2D == true ? 1 : out_dims[1];
+  odim1 = is2D ? out_dims[2] : out_dims[3];
+  odim2 = is2D ? out_dims[1] : out_dims[2];
+  odim3 = is2D ? 1 : out_dims[1];
   const Dims4D c_out_dims(odim0, odim1, odim2, odim3);
 
   for (auto it = out_indexs.begin(); it != out_indexs.end(); it++, i++) {

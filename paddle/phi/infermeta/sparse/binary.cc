@@ -23,7 +23,7 @@ inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
                         DDim* out_dims) {
-  bool is2D = out_dims->size() == 4 ? true : false;
+  const bool is2D = out_dims->size() == 4 ? true : false;
   if (is2D) {
     PADDLE_ENFORCE_EQ(
           x_dims.size(),
@@ -87,11 +87,11 @@ void Conv3dInferMeta(const MetaTensor& x,
                      MetaTensor* rulebook,
                      MetaTensor* counter) {
   const auto& x_dims = x.dims();
-  bool is2D = x_dims.size() == 4 ? true : false;
+  const bool is2D = x_dims.size() == 4 ? true : false;
   const auto& kernel_dims = kernel.dims();
 
-  int count_tmp = is2D == true ? 4 : 5;
-  std::vector<int> out_dims_vec(count_tmp, 1);
+  int rank = is2D ? 4 : 5;
+  std::vector<int> out_dims_vec(rank, 1);
   DDim out_dims = make_ddim(out_dims_vec);
 
   std::vector<int> kernel_sizes(kernel_dims.size());

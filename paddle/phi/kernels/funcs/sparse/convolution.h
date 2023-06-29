@@ -101,8 +101,7 @@ inline void GetOutShape(const DDim& x_dims,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
                         DDim* out_dims) {
-  bool is2D = out_dims->size() == 4 ? true : false;
-  printf("dim = %d\n", out_dims->size());
+  const bool is2D = out_dims->size() == 4 ? true : false;
   if (is2D) {
     PADDLE_ENFORCE_EQ(
           x_dims.size(),
