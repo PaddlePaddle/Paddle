@@ -172,4 +172,3 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
   // Returns
   return out;
 }
-
