@@ -41,6 +41,22 @@ struct InverseAddFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const { return b + a; }
 };
 
+// Float32Bfloat16Add
+template <typename T>
+struct Float32Bfloat16AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const phi::bfloat16 y) {
+    return x + static_cast<T>(y);
+  }
+};
+
+// Float32Float16Add
+template <typename T>
+struct Float32Float16AddFunctor {
+  inline HOSTDEVICE T operator()(const T x, const phi::float16 y) {
+    return x + static_cast<T>(y);
+  }
+};
+
 // Subtract
 template <typename T>
 struct SubtractFunctor {
