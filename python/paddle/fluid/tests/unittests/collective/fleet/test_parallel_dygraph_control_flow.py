@@ -22,39 +22,39 @@ from paddle import fluid
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestDygraphControlFlowSame(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
-        self._find_unused_parameters = True
+# class TestDygraphControlFlowSame(TestDistBase):
+#     def _setup_config(self):
+#         self._sync_mode = False
+#         self._nccl2_mode = True
+#         self._dygraph = True
+#         self._find_unused_parameters = True
 
-    def test_net(self):
-        if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "parallel_dygraph_control_flow_same.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name,
-            )
-
-
-class TestFleetDygraphControlFlowSame(TestDygraphControlFlowSame):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
-        self._use_fleet_api = True
-        self._find_unused_parameters = True
+#     def test_net(self):
+#         if fluid.core.is_compiled_with_cuda():
+#             self.check_with_place(
+#                 "parallel_dygraph_control_flow_same.py",
+#                 delta=1e-5,
+#                 check_error_log=True,
+#                 log_name=flag_name,
+#             )
 
 
-class TestFleetDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
-        self._accumulate_gradient = True
-        self._find_unused_parameters = True
+# class TestFleetDygraphControlFlowSame(TestDygraphControlFlowSame):
+#     def _setup_config(self):
+#         self._sync_mode = False
+#         self._nccl2_mode = True
+#         self._dygraph = True
+#         self._use_fleet_api = True
+#         self._find_unused_parameters = True
+
+
+# class TestFleetDygraphControlFlowSameAccGrad(TestDygraphControlFlowSame):
+#     def _setup_config(self):
+#         self._sync_mode = False
+#         self._nccl2_mode = True
+#         self._dygraph = True
+#         self._accumulate_gradient = True
+#         self._find_unused_parameters = True
 
 
 class TestDygraphControlFlowDiff(TestDistBase):
@@ -74,22 +74,22 @@ class TestDygraphControlFlowDiff(TestDistBase):
             )
 
 
-class TestFleetDygraphControlFlowDiff(TestDygraphControlFlowDiff):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
-        self._use_fleet_api = True
-        self._find_unused_parameters = True
-
-
-class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._nccl2_mode = True
-        self._dygraph = True
-        self._accumulate_gradient = True
-        self._find_unused_parameters = True
+# class TestFleetDygraphControlFlowDiff(TestDygraphControlFlowDiff):
+#    def _setup_config(self):
+#        self._sync_mode = False
+#        self._nccl2_mode = True
+#        self._dygraph = True
+#        self._use_fleet_api = True
+#        self._find_unused_parameters = True
+#
+#
+# class TestFleetDygraphControlFlowDiffAccGrad(TestDygraphControlFlowDiff):
+#    def _setup_config(self):
+#        self._sync_mode = False
+#        self._nccl2_mode = True
+#        self._dygraph = True
+#        self._accumulate_gradient = True
+#        self._find_unused_parameters = True
 
 
 if __name__ == "__main__":

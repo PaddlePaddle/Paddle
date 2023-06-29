@@ -31,6 +31,7 @@ DECLARE_bool(use_stream_safe_cuda_allocator);
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 constexpr int64_t kWaitBlockTImeout = 10;
+thread_local uint64_t ProcessGroupNCCL::GroupCallCounter_ = 0;
 
 namespace paddle {
 namespace distributed {
@@ -96,9 +97,13 @@ ProcessGroupNCCL::ProcessGroupNCCL(
 
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
+  ++GroupCallCounter_;
 }
 
-void ProcessGroupNCCL::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
+void ProcessGroupNCCL::GroupEnd() {
+  NCCL_CHECK(phi::dynload::ncclGroupEnd());
+  --GroupCallCounter_;
+}
 
 phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     const Place& place) const {
@@ -148,7 +153,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
                                                      /*dst_rank*/ rank_,
                                                      /*cur_rank*/ rank_,
                                                      size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
@@ -181,7 +186,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
                                                /*dst_rank*/ rank_,
                                                /*cur_rank*/ rank_,
                                                size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
@@ -246,7 +251,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
                                                 size_,
                                                 /*out_size_factor*/ 0,
                                                 /*in_size_factor*/ 0);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
@@ -322,7 +327,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
                                                /*dst_rank*/ rank_,
                                                /*cur_rank*/ rank_,
                                                size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
         if (FLAGS_enable_nccl_dynamic_check) {
@@ -355,7 +360,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
                                                /*dst_rank*/ opts.root_rank,
                                                /*cur_rank*/ rank_,
                                                size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
@@ -391,7 +396,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
                                                       /*dst_rank*/ rank_,
                                                       /*cur_rank*/ rank_,
                                                       size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
@@ -426,7 +431,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       /*dst_rank*/ opts.root_rank,
       /*cur_rank*/ rank_,
       size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
@@ -536,7 +541,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
                                       stream));
     GroupEnd();
   };
-  return RunFnInNCCLEnv(
+  return Collective(
       gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
 }
 
@@ -555,7 +560,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
   }
 
   phi::distributed::CommStaticCheck::CheckShape(*tensor, rank_, size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(*tensor,
@@ -589,7 +594,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
 
   phi::distributed::CommStaticCheck::CheckShape(
       tensor_maybe_partial, rank_, size_);
-  return RunFnInNCCLEnv(
+  return Collective(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(tensor_maybe_partial,
@@ -621,44 +626,70 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
       place, rank, comm_type, is_sync, use_calc_stream);
 }
 
-void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id) {
-  const std::string key =
-      "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/0";
-  if (rank_ == 0) {
+void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
+                                             bool is_p2p_op,
+                                             const std::string& p2p_key,
+                                             int p2p_rank) {
+  std::string store_key;
+
+  if (!is_p2p_op) {
+    store_key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" +
+                std::to_string(nccl_comm_count_++);
+  } else {
+    store_key =
+        "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" + p2p_key;
+  }
+
+  if (rank_ == 0 || (is_p2p_op && p2p_rank == 0)) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(nccl_id),
         reinterpret_cast<uint8_t*>(nccl_id) + NCCL_UNIQUE_ID_BYTES);
-    store_->set(key, nccl_id_wrapper);
+    store_->set(store_key, nccl_id_wrapper);
   } else {
-    const auto& nccl_id_wrapper = store_->get(key);
+    const auto& nccl_id_wrapper = store_->get(store_key);
     std::memcpy(nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
 }
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
-                                          const std::string& place_key) {
+                                          const std::string& place_key,
+                                          CommType comm_type,
+                                          int p2p_rank) {
   if (place_to_comm_ctx_.size() > 0) {
     VLOG(3) << "Warning: Tensors from multiple devices are not supported yet.";
   }
 
   ncclUniqueId nccl_id;
-  if (rank_ == 0) {
+
+  bool is_batch_p2p = GroupCallCounter_ > 0;
+  bool is_p2p_op = IsP2POP(comm_type, is_batch_p2p);
+
+  if (rank_ == 0 || (is_p2p_op && p2p_rank == 0)) {
     NCCL_CHECK(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
-  BroadcastUniqueNCCLID(&nccl_id);
 
   VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
           << ", place: " << place_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
-  auto* calc_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto comm_ctx = std::make_unique<phi::GPUContext>(place);
+  for (const auto i : GroupCallCounter_) {
+    NCCL_CHECK(phi::dynload::ncclGroupEnd());
+  }
+
+  int num_ranks = is_p2p_op ? 2 : GetSize();
+  int rank = is_p2p_op ? p2p_rank : GetRank();
+
+  NCCL_CHECK(phi::dynload::ncclGroupStart());
   ncclComm_t nccl_comm;
-  NCCL_CHECK(phi::dynload::ncclCommInitRank(
-      &nccl_comm, GetSize(), nccl_id, GetRank()));
+  NCCL_CHECK(
+      phi::dynload::ncclCommInitRank(&nccl_comm, num_ranks, nccl_id, rank));
+  NCCL_CHECK(phi::dynload::ncclGroupEnd());
+
+  auto comm_ctx = std::make_unique<phi::GPUContext>(place);
   comm_ctx->set_nccl_comm(nccl_comm);
 
+  auto* calc_ctx = static_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
   place_to_calc_event_.emplace(place_key, place);
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
@@ -667,6 +698,10 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   std::vector<phi::GPUContext*> comm_ctx_wrapper{
       place_to_comm_ctx_[place_key].get()};
   places_to_ctx_.emplace(place_key, comm_ctx_wrapper);
+
+  for (const auto i : GroupCallCounter_) {
+    NCCL_CHECK(phi::dynload::ncclGroupStart());
+  }
 }
 
 void ProcessGroupNCCL::SyncCalcStream(const Place& place) {
@@ -678,7 +713,7 @@ void ProcessGroupNCCL::SyncCalcStream(const Place& place) {
   calc_event.Wait(platform::Place2DeviceType(place), comm_ctx);
 }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     std::function<void(ncclComm_t, gpuStream_t)> fn,
     const phi::DenseTensor& tensor,
     CommType comm_type,
@@ -690,7 +725,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
   platform::CUDADeviceGuard cuda_guard(place);
 
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-    CreateNCCLEnvCache(place, key);
+    CreateNCCLEnvCache(place, key, comm_type);
   }
 
   if (!use_calc_stream) {
@@ -720,16 +755,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::RunFnInNCCLEnv(
 }
 
 // TODO(sunyilun): methods below will be removed later
-void SyncDefaultStream(const std::vector<Place>& places,
-                       platform::DeviceEvent& nccl_event,         // NOLINT
-                       std::vector<phi::GPUContext*>& dev_ctx) {  // NOLINT
-  for (size_t i = 0; i < places.size(); ++i) {
-    auto* default_ctx = static_cast<phi::GPUContext*>(
-        platform::DeviceContextPool::Instance().Get(places[i]));
-    nccl_event.Record(default_ctx);
-    nccl_event.Wait(platform::Place2DeviceType(places[i]), dev_ctx[i]);
-  }
-}
+// void SyncDefaultStream(const std::vector<Place>& places,
+//                        platform::DeviceEvent& nccl_event,         // NOLINT
+//                        std::vector<phi::GPUContext*>& dev_ctx) {  // NOLINT
+//   for (size_t i = 0; i < places.size(); ++i) {
+//     auto* default_ctx = static_cast<phi::GPUContext*>(
+//         platform::DeviceContextPool::Instance().Get(places[i]));
+//     nccl_event.Record(default_ctx);
+//     nccl_event.Wait(platform::Place2DeviceType(places[i]), dev_ctx[i]);
+//   }
+// }
 
 std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
     std::vector<Place> places,
@@ -750,471 +785,492 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(
       task_place_(places[0]) {}
 
 // create NCCLManager cache for places_key
-void ProcessGroupNCCL::CreateNCCLManagerCache(
-    const std::string& places_key, const std::vector<Place>& places) {
-  PADDLE_ENFORCE_EQ(places_key.empty(),
-                    false,
-                    phi::errors::PreconditionNotMet(
-                        "Not able to create/get the NCCL Communicator since "
-                        "the GPU place are not known"));
+// void ProcessGroupNCCL::CreateNCCLManagerCache(const std::string& places_key,
+//                                               const std::vector<Place>&
+//                                               places, CommType comm_type, int
+//                                               p2p_rank) {
+//   PADDLE_ENFORCE_EQ(places_key.empty(),
+//                     false,
+//                     phi::errors::PreconditionNotMet(
+//                         "Not able to create/get the NCCL Communicator since "
+//                         "the GPU place are not known"));
 
-  ncclUniqueId nccl_id;
-  if (rank_ == 0) {
-    NCCL_CHECK(phi::dynload::ncclGetUniqueId(&nccl_id));
-  }
-  BroadcastUniqueNCCLID(&nccl_id);
+//   ncclUniqueId nccl_id;
+//   if (rank_ == 0) {
+//     NCCL_CHECK(phi::dynload::ncclGetUniqueId(&nccl_id));
+//   }
+//   BroadcastUniqueNCCLID(&nccl_id);
 
-  VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
-          << ", place: " << places_key
-          << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
+//   VLOG(3) << "init nccl rank: " << rank_ << ", nranks: " << size_
+//           << ", place: " << places_key
+//           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
 
-  std::vector<std::unique_ptr<phi::GPUContext>> dev_ctx;
-  dev_ctx.resize(places.size());
+//   std::vector<std::unique_ptr<phi::GPUContext>> dev_ctx;
+//   dev_ctx.resize(places.size());
 
-  std::vector<phi::GPUContext*> dev_ctx_raw;
-  dev_ctx_raw.resize(places.size());
+//   std::vector<phi::GPUContext*> dev_ctx_raw;
+//   dev_ctx_raw.resize(places.size());
 
-  GroupStart();
+//   GroupStart();
 
-  for (size_t i = 0; i < places.size(); ++i) {
-    platform::CUDADeviceGuard guard(places[i]);
+//   for (size_t i = 0; i < places.size(); ++i) {
+//     platform::CUDADeviceGuard guard(places[i]);
 
-    dev_ctx[i].reset(new phi::GPUContext(places[i]));
-    ncclComm_t nccl_comm;
-    NCCL_CHECK(phi::dynload::ncclCommInitRank(
-        &nccl_comm, GetSize(), nccl_id, GetRank()));
-    dev_ctx[i]->set_nccl_comm(nccl_comm);
-    dev_ctx_raw[i] = dev_ctx[i].get();
-  }
+//     dev_ctx[i].reset(new phi::GPUContext(places[i]));
+//     ncclComm_t nccl_comm;
+//     NCCL_CHECK(phi::dynload::ncclCommInitRank(
+//         &nccl_comm, GetSize(), nccl_id, GetRank()));
+//     dev_ctx[i]->set_nccl_comm(nccl_comm);
+//     dev_ctx_raw[i] = dev_ctx[i].get();
+//   }
 
-  GroupEnd();
+//   GroupEnd();
 
-  // TODO(sunyilun): for compatibility, will be removed later
-  place_to_calc_event_.emplace(places_key, places[0]);
-  place_to_calc_ctx_.emplace(
-      places_key,
-      static_cast<phi::GPUContext*>(
-          platform::DeviceContextPool::Instance().Get(places[0])));
-  place_to_comm_ctx_.emplace(places_key, std::move(dev_ctx[0]));
+//   // TODO(sunyilun): for compatibility, will be removed later
+//   place_to_calc_event_.emplace(places_key, places[0]);
+//   place_to_calc_ctx_.emplace(
+//       places_key,
+//       static_cast<phi::GPUContext*>(
+//           platform::DeviceContextPool::Instance().Get(places[0])));
+//   place_to_comm_ctx_.emplace(places_key, std::move(dev_ctx[0]));
 
-  // These caches will be useful to process sync/wait/communicate
-  places_to_ctx_.emplace(places_key, std::move(dev_ctx_raw));
-}
+//   // These caches will be useful to process sync/wait/communicate
+//   places_to_ctx_.emplace(places_key, std::move(dev_ctx_raw));
+// }
 
-template <typename Fn>
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
-    std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs,
-    Fn fn,
-    CommType op_type) {
-  const auto places = GetPlaceList(inputs);
-  const auto key = GetKeyFromPlaces(places);
+// template <typename Fn>
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
+//     std::vector<phi::DenseTensor>& inputs,
+//     std::vector<phi::DenseTensor>& outputs,
+//     Fn fn,
+//     CommType op_type) {
+//   const auto places = GetPlaceList(inputs);
+//   const auto key = GetKeyFromPlaces(places);
 
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-      CreateNCCLManagerCache(key, places);
-    }
-  }
+//   {
+//     std::lock_guard<std::mutex> lock(mutex_);
+//     if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+//       CreateNCCLManagerCache(key, places);
+//     }
+//   }
 
-  SyncDefaultStream(
-      places, place_to_calc_event_.at(key), places_to_ctx_.at(key));
+//   SyncDefaultStream(
+//       places, place_to_calc_event_.at(key), places_to_ctx_.at(key));
 
-  auto task = CreateTask(places, rank_, op_type, inputs);
+//   auto task = CreateTask(places, rank_, op_type, inputs);
 
-  // construct uninitialize guard for device
-  platform::CUDADeviceGuard cuda_guard;
+//   // construct uninitialize guard for device
+//   platform::CUDADeviceGuard cuda_guard;
 
-  {
-    platform::NCCLGroupGuard nccl_guard;
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      const auto& nccl_stream = places_to_ctx_.at(key)[i]->stream();
-      fn(inputs[i],
-         outputs[i],
-         places_to_ctx_.at(key)[i]->nccl_comm(),
-         nccl_stream);
-    }
-  }
+//   {
+//     platform::NCCLGroupGuard nccl_guard;
+//     for (size_t i = 0; i < inputs.size(); ++i) {
+//       cuda_guard.SetDevice(places[i]);
+//       const auto& nccl_stream = places_to_ctx_.at(key)[i]->stream();
+//       fn(inputs[i],
+//          outputs[i],
+//          places_to_ctx_.at(key)[i]->nccl_comm(),
+//          nccl_stream);
+//     }
+//   }
 
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      memory::RecordStream(inputs[i].Holder(),
-                           places_to_ctx_.at(key)[i]->stream());
-    }
-  }
+//   if (FLAGS_use_stream_safe_cuda_allocator) {
+//     for (size_t i = 0; i < inputs.size(); ++i) {
+//       cuda_guard.SetDevice(places[i]);
+//       memory::RecordStream(inputs[i].Holder(),
+//                            places_to_ctx_.at(key)[i]->stream());
+//     }
+//   }
 
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    cuda_guard.SetDevice(places[i]);
-    task->UpdateWaitChain(*places_to_ctx_.at(key)[i]);
-  }
-  return task;
-}
+//   for (size_t i = 0; i < inputs.size(); ++i) {
+//     cuda_guard.SetDevice(places[i]);
+//     task->UpdateWaitChain(*places_to_ctx_.at(key)[i]);
+//   }
+//   return task;
+// }
 
-template <typename Fn>
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
-    std::vector<phi::DenseTensor>& tensors,
-    Fn fn,
-    int dst_rank,
-    CommType op_type) {
-  const auto places = GetPlaceList(tensors);
-  const auto key = GetKeyFromPlaces(places);
+// template <typename Fn>
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::PointToPoint(
+//     std::vector<phi::DenseTensor>& tensors,
+//     Fn fn,
+//     int dst_rank,
+//     CommType op_type) {
+//   const auto places = GetPlaceList(tensors);
 
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
-      CreateNCCLManagerCache(key, places);
-    }
-  }
+//   int p2p_rank = 0;
+//   int p2p_target_rank = 0;
+//   bool is_batch_p2p = GroupCallCounter_ > 0;
+//   std::string key = "";
 
-  SyncDefaultStream(
-      places, place_to_calc_event_.at(key), places_to_ctx_.at(key));
+//   if (is_batch_p2p) {
+//     key = GetKeyFromPlaces(places);
+//     p2p_rank = rank_;
+//     p2p_target_rank = dst_rank;
+//   } else {
+//     int low_rank = rank_ < dst_rank ? rank_ : dst_rank;
+//     int high_rank = rank_ < dst_rank ? dst_rank : rank_;
+//     key = std::to_string(low_rank) + "->" + std::to_string(high_rank);
+//     p2p_rank = rank_ < dst_rank ? 0 : 1;
+//     p2p_target_rank = rank_ < dst_rank ? 1 : 0;
+//   }
 
-  auto task = CreateTask(places, rank_, op_type, tensors);
+//   {
+//     std::lock_guard<std::mutex> lock(mutex_);
+//     if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+//       CreateNCCLManagerCache(key, places);
+//     }
+//   }
 
-  // construct uninitialize guard for device
-  platform::CUDADeviceGuard cuda_guard;
+//   SyncDefaultStream(
+//       places, place_to_calc_event_.at(key), places_to_ctx_.at(key));
 
-  {
-    platform::NCCLGroupGuard nccl_guard;
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      const auto& nccl_stream = places_to_ctx_.at(key)[i]->stream();
-      fn(tensors[i],
-         places_to_ctx_.at(key)[i]->nccl_comm(),
-         nccl_stream,
-         dst_rank);
-    }
-  }
+//   auto task = CreateTask(places, rank_, op_type, tensors);
 
-  if (FLAGS_use_stream_safe_cuda_allocator) {
-    for (size_t i = 0; i < tensors.size(); ++i) {
-      cuda_guard.SetDevice(places[i]);
-      memory::RecordStream(tensors[i].Holder(),
-                           places_to_ctx_.at(key)[i]->stream());
-    }
-  }
+//   // construct uninitialize guard for device
+//   platform::CUDADeviceGuard cuda_guard;
 
-  for (size_t i = 0; i < tensors.size(); ++i) {
-    cuda_guard.SetDevice(places[i]);
-    task->UpdateWaitChain(*places_to_ctx_.at(key)[i]);
-  }
-  return task;
-}
+//   {
+//     platform::NCCLGroupGuard nccl_guard;
+//     for (size_t i = 0; i < tensors.size(); ++i) {
+//       cuda_guard.SetDevice(places[i]);
+//       const auto& nccl_stream = places_to_ctx_.at(key)[i]->stream();
+//       fn(tensors[i],
+//          places_to_ctx_.at(key)[i]->nccl_comm(),
+//          nccl_stream,
+//          dst_rank);
+//     }
+//   }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const AllreduceOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](const phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        return phi::dynload::ncclAllReduce(input.data(),
-                                           output.data(),
-                                           input.numel(),
-                                           phi::ToNCCLDataType(input.type()),
-                                           ToNCCLRedType(opts.reduce_op),
-                                           comm,
-                                           stream);
-      },
-      CommType::ALLREDUCE);
-}
+//   if (FLAGS_use_stream_safe_cuda_allocator) {
+//     for (size_t i = 0; i < tensors.size(); ++i) {
+//       cuda_guard.SetDevice(places[i]);
+//       memory::RecordStream(tensors[i].Holder(),
+//                            places_to_ctx_.at(key)[i]->stream());
+//     }
+//   }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const BroadcastOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   for (size_t i = 0; i < tensors.size(); ++i) {
+//     cuda_guard.SetDevice(places[i]);
+//     task->UpdateWaitChain(*places_to_ctx_.at(key)[i]);
+//   }
+//   return task;
+// }
 
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        const auto root =
-            opts.source_rank * in_tensors.size() + opts.source_root;
-        return phi::dynload::ncclBroadcast(input.data(),
-                                           output.data(),
-                                           input.numel(),
-                                           phi::ToNCCLDataType(input.type()),
-                                           root,
-                                           comm,
-                                           stream);
-      },
-      CommType::BROADCAST);
-}
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
+//     std::vector<phi::DenseTensor>& in_tensors,
+//     std::vector<phi::DenseTensor>& out_tensors,
+//     const AllreduceOptions& opts) {
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(in_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   return Collective(
+//       in_tensors,
+//       out_tensors,
+//       [&](const phi::DenseTensor& input,
+//           phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream) {
+//         return phi::dynload::ncclAllReduce(input.data(),
+//                                            output.data(),
+//                                            input.numel(),
+//                                            phi::ToNCCLDataType(input.type()),
+//                                            ToNCCLRedType(opts.reduce_op),
+//                                            comm,
+//                                            stream);
+//       },
+//       CommType::ALLREDUCE);
+// }
 
-void CheckTensorsInDifferentDevices(
-    const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
-  PADDLE_ENFORCE_EQ(
-      tensors.size() == 0,
-      false,
-      phi::errors::InvalidArgument("Tensor list must be nonempty."));
-  PADDLE_ENFORCE_LE(
-      tensors.size(),
-      num_devices,
-      phi::errors::InvalidArgument(
-          "Tensor list mustn't be larger than the number of available GPUs."));
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
+//     std::vector<phi::DenseTensor>& in_tensors,
+//     std::vector<phi::DenseTensor>& out_tensors,
+//     const BroadcastOptions& opts) {
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(in_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
 
-  std::set<Place> used_devices;
+//   return Collective(
+//       in_tensors,
+//       out_tensors,
+//       [&](phi::DenseTensor& input,
+//           phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream) {
+//         const auto root =
+//             opts.source_rank * in_tensors.size() + opts.source_root;
+//         return phi::dynload::ncclBroadcast(input.data(),
+//                                            output.data(),
+//                                            input.numel(),
+//                                            phi::ToNCCLDataType(input.type()),
+//                                            root,
+//                                            comm,
+//                                            stream);
+//       },
+//       CommType::BROADCAST);
+// }
 
-  for (const auto& t : tensors) {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(t.place()),
-        true,
-        phi::errors::InvalidArgument("Tensors must be CUDA and dense tensor."));
+// void CheckTensorsInDifferentDevices(
+//     const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
+//   PADDLE_ENFORCE_EQ(
+//       tensors.size() == 0,
+//       false,
+//       phi::errors::InvalidArgument("Tensor list must be nonempty."));
+//   PADDLE_ENFORCE_LE(
+//       tensors.size(),
+//       num_devices,
+//       phi::errors::InvalidArgument(
+//           "Tensor list mustn't be larger than the number of available
+//           GPUs."));
 
-    const auto inserted = used_devices.insert(t.place()).second;
-    PADDLE_ENFORCE_EQ(inserted,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Tensors must be on distinct GPU devices."));
-  }
-}
+//   std::set<Place> used_devices;
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
-    std::vector<phi::DenseTensor>& tensors, int dst_rank) {
-  CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
+//   for (const auto& t : tensors) {
+//     PADDLE_ENFORCE_EQ(
+//         platform::is_gpu_place(t.place()),
+//         true,
+//         phi::errors::InvalidArgument("Tensors must be CUDA and dense
+//         tensor."));
 
-  auto task = PointToPoint(
-      tensors,
-      [&](phi::DenseTensor& input,
-          ncclComm_t comm,
-          const gpuStream_t& stream,
-          int dst_rank) {
-        return phi::dynload::ncclSend(input.data(),
-                                      input.numel(),
-                                      phi::ToNCCLDataType(input.dtype()),
-                                      dst_rank,
-                                      comm,
-                                      stream);
-      },
-      dst_rank,
-      CommType::SEND);
-  return task;
-}
+//     const auto inserted = used_devices.insert(t.place()).second;
+//     PADDLE_ENFORCE_EQ(inserted,
+//                       true,
+//                       phi::errors::InvalidArgument(
+//                           "Tensors must be on distinct GPU devices."));
+//   }
+// }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
-    std::vector<phi::DenseTensor>& tensors, int src_rank) {
-  CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
+//     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
+//   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
 
-  auto task = PointToPoint(
-      tensors,
-      [&](phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream,
-          int src_rank) {
-        return phi::dynload::ncclRecv(output.data(),
-                                      output.numel(),
-                                      phi::ToNCCLDataType(output.dtype()),
-                                      src_rank,
-                                      comm,
-                                      stream);
-      },
-      src_rank,
-      CommType::RECV);
-  return task;
-}
+//   auto task = PointToPoint(
+//       tensors,
+//       [&](phi::DenseTensor& input,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream,
+//           int dst_rank) {
+//         return phi::dynload::ncclSend(input.data(),
+//                                       input.numel(),
+//                                       phi::ToNCCLDataType(input.dtype()),
+//                                       dst_rank,
+//                                       comm,
+//                                       stream);
+//       },
+//       dst_rank,
+//       CommType::SEND);
+//   return task;
+// }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors),
-      true,
-      phi::errors::InvalidArgument("All outputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](const phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        return phi::dynload::ncclAllGather(input.data(),
-                                           output.data(),
-                                           input.numel(),
-                                           phi::ToNCCLDataType(input.dtype()),
-                                           comm,
-                                           stream);
-      },
-      CommType::ALLGATHER);
-}
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
+//     std::vector<phi::DenseTensor>& tensors, int src_rank) {
+//   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
 
-void* GetPointerByOffset(void* raw_pointer, size_t offset, phi::DataType type) {
-  if (type == phi::DataType::FLOAT32) {
-    return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::FLOAT64) {
-    return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::FLOAT16) {
-    return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::INT32) {
-    return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::INT64) {
-    return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::INT8) {
-    return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::UINT8) {
-    return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::BOOL) {
-    return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
-                                   offset);
-  } else if (type == phi::DataType::BFLOAT16) {
-    return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
-                                   offset);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Datatype %s in NCCL is not supported.", type));
-  }
-  return nullptr;
-}
+//   auto task = PointToPoint(
+//       tensors,
+//       [&](phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream,
+//           int src_rank) {
+//         return phi::dynload::ncclRecv(output.data(),
+//                                       output.numel(),
+//                                       phi::ToNCCLDataType(output.dtype()),
+//                                       src_rank,
+//                                       comm,
+//                                       stream);
+//       },
+//       src_rank,
+//       CommType::RECV);
+//   return task;
+// }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        size_t offset = 0;
-        GroupStart();
-        for (auto i = 0; i < size_; i++) {
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
-              GetPointerByOffset(input.data(), offset, input.dtype()),
-              input.numel() / size_,
-              phi::ToNCCLDataType(input.dtype()),
-              i,
-              comm,
-              stream));
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRecv(
-              GetPointerByOffset(output.data(), offset, input.dtype()),
-              input.numel() / size_,
-              phi::ToNCCLDataType(input.dtype()),
-              i,
-              comm,
-              stream));
-          offset += input.numel() / size_;
-        }
-        GroupEnd();
-      },
-      CommType::ALLTOALL);
-}
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
+//     std::vector<phi::DenseTensor>& in_tensors,
+//     std::vector<phi::DenseTensor>& out_tensors) {
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(in_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(out_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All outputs should be in CudaPlace."));
+//   return Collective(
+//       in_tensors,
+//       out_tensors,
+//       [&](const phi::DenseTensor& input,
+//           phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream) {
+//         return phi::dynload::ncclAllGather(input.data(),
+//                                            output.data(),
+//                                            input.numel(),
+//                                            phi::ToNCCLDataType(input.dtype()),
+//                                            comm,
+//                                            stream);
+//       },
+//       CommType::ALLGATHER);
+// }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ReduceOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](const phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::ncclReduce(input.data(),
-                                     output.data(),
-                                     input.numel(),
-                                     phi::ToNCCLDataType(input.dtype()),
-                                     ToNCCLRedType(opts.reduce_op),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
-      },
-      CommType::REDUCE);
-}
+// void* GetPointerByOffset(void* raw_pointer, size_t offset, phi::DataType
+// type) {
+//   if (type == phi::DataType::FLOAT32) {
+//     return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::FLOAT64) {
+//     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::FLOAT16) {
+//     return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::INT32) {
+//     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::INT64) {
+//     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::INT8) {
+//     return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::UINT8) {
+//     return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::BOOL) {
+//     return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
+//                                    offset);
+//   } else if (type == phi::DataType::BFLOAT16) {
+//     return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
+//                                    offset);
+//   } else {
+//     PADDLE_THROW(phi::errors::Unimplemented(
+//         "Datatype %s in NCCL is not supported.", type));
+//   }
+//   return nullptr;
+// }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ScatterOptions& opts) {
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(in_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  PADDLE_ENFORCE_EQ(
-      CheckTensorsInCudaPlace(out_tensors),
-      true,
-      phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
-  return Collective(
-      in_tensors,
-      out_tensors,
-      [&](phi::DenseTensor& input,
-          phi::DenseTensor& output,
-          ncclComm_t comm,
-          const gpuStream_t& stream) {
-        size_t offset = 0;
-        if (rank_ == opts.root_rank) {
-          GroupStart();
-          for (auto i = 0; i < size_; i++) {
-            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
-                GetPointerByOffset(input.data(), offset, input.dtype()),
-                input.numel() / size_,
-                phi::ToNCCLDataType(input.dtype()),
-                i,
-                comm,
-                stream));
-            offset += input.numel() / size_;
-          }
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::ncclRecv(output.data(),
-                                     input.numel() / size_,
-                                     phi::ToNCCLDataType(input.dtype()),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
-          GroupEnd();
-        } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::ncclRecv(output.data(),
-                                     input.numel() / size_,
-                                     phi::ToNCCLDataType(input.dtype()),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
-        }
-      },
-      CommType::SCATTER);
-}
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
+//     std::vector<phi::DenseTensor>& in_tensors,
+//     std::vector<phi::DenseTensor>& out_tensors) {
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(in_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(out_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   return Collective(
+//       in_tensors,
+//       out_tensors,
+//       [&](phi::DenseTensor& input,
+//           phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream) {
+//         size_t offset = 0;
+//         GroupStart();
+//         for (auto i = 0; i < size_; i++) {
+//           PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
+//               GetPointerByOffset(input.data(), offset, input.dtype()),
+//               input.numel() / size_,
+//               phi::ToNCCLDataType(input.dtype()),
+//               i,
+//               comm,
+//               stream));
+//           PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRecv(
+//               GetPointerByOffset(output.data(), offset, input.dtype()),
+//               input.numel() / size_,
+//               phi::ToNCCLDataType(input.dtype()),
+//               i,
+//               comm,
+//               stream));
+//           offset += input.numel() / size_;
+//         }
+//         GroupEnd();
+//       },
+//       CommType::ALLTOALL);
+// }
+
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
+//     std::vector<phi::DenseTensor>& in_tensors,
+//     std::vector<phi::DenseTensor>& out_tensors,
+//     const ReduceOptions& opts) {
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(in_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   return Collective(
+//       in_tensors,
+//       out_tensors,
+//       [&](const phi::DenseTensor& input,
+//           phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream) {
+//         PADDLE_ENFORCE_GPU_SUCCESS(
+//             phi::dynload::ncclReduce(input.data(),
+//                                      output.data(),
+//                                      input.numel(),
+//                                      phi::ToNCCLDataType(input.dtype()),
+//                                      ToNCCLRedType(opts.reduce_op),
+//                                      opts.root_rank,
+//                                      comm,
+//                                      stream));
+//       },
+//       CommType::REDUCE);
+// }
+
+// std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
+//     std::vector<phi::DenseTensor>& in_tensors,
+//     std::vector<phi::DenseTensor>& out_tensors,
+//     const ScatterOptions& opts) {
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(in_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   PADDLE_ENFORCE_EQ(
+//       CheckTensorsInCudaPlace(out_tensors),
+//       true,
+//       phi::errors::InvalidArgument("All inputs should be in CudaPlace."));
+//   return Collective(
+//       in_tensors,
+//       out_tensors,
+//       [&](phi::DenseTensor& input,
+//           phi::DenseTensor& output,
+//           ncclComm_t comm,
+//           const gpuStream_t& stream) {
+//         size_t offset = 0;
+//         if (rank_ == opts.root_rank) {
+//           GroupStart();
+//           for (auto i = 0; i < size_; i++) {
+//             PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
+//                 GetPointerByOffset(input.data(), offset, input.dtype()),
+//                 input.numel() / size_,
+//                 phi::ToNCCLDataType(input.dtype()),
+//                 i,
+//                 comm,
+//                 stream));
+//             offset += input.numel() / size_;
+//           }
+//           PADDLE_ENFORCE_GPU_SUCCESS(
+//               phi::dynload::ncclRecv(output.data(),
+//                                      input.numel() / size_,
+//                                      phi::ToNCCLDataType(input.dtype()),
+//                                      opts.root_rank,
+//                                      comm,
+//                                      stream));
+//           GroupEnd();
+//         } else {
+//           PADDLE_ENFORCE_GPU_SUCCESS(
+//               phi::dynload::ncclRecv(output.data(),
+//                                      input.numel() / size_,
+//                                      phi::ToNCCLDataType(input.dtype()),
+//                                      opts.root_rank,
+//                                      comm,
+//                                      stream));
+//         }
+//       },
+//       CommType::SCATTER);
+// }
 
 std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     const std::shared_ptr<phi::distributed::Store>& store,

@@ -237,11 +237,6 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
         # three in the future.
         _add_new_group(group)
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of
-        # hang caused by tcp
-        paddle.distributed.barrier(group=group)
-        if paddle.distributed.get_world_size() > 1:
-            paddle.distributed.barrier()
         return group
 
     if not backend:
