@@ -215,6 +215,8 @@ void AdanDenseKernel(const Context& dev_ctx,
   const auto grad_type = grad.dtype();
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
+  VLOG(4) << "multi_precision:" << multi_precision;
+  VLOG(4) << "no_prox:" << no_prox;
 
   MPDType beta1_ = beta1.to<MPDType>();
   MPDType beta2_ = beta2.to<MPDType>();
@@ -246,48 +248,48 @@ void AdanDenseKernel(const Context& dev_ctx,
       errors::InvalidArgument("beta3 pow output size should be 1, but received "
                               "value is:%d.",
                               beta3_pow_out->numel()));
-
   const MPDType* master_in_data =
       multi_precision ? master_param->data<MPDType>() : nullptr;
   MPDType* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
-
   // update param and moment
   int threads = 512;
   int blocks = (param.numel() + threads - 1) / threads;
-
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace() && beta3_pow.place() == CPUPlace()){
-      // Compute with betapow in REG
-      if (grad_type == phi::DataType::FLOAT32) {
-         AdanKernelREG<T, float, MPDType>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1_,
-            beta2_,
-            beta3_,
-            epsilon_,
-            weight_decay_,
-            *beta1_pow.data<MPDType>(),
-            *beta2_pow.data<MPDType>(),
-            *beta3_pow.data<MPDType>(),
-            no_prox,
-            moment1.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment2_out),
-            moment3.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment3_out),
-            learning_rate.data<MPDType>(),
-            grad.data<float>(),
-            pre_grad.data<float>(),
-            dev_ctx.template Alloc<float>(pre_grad_out),
-            param.data<T>(),
-            dev_ctx.template Alloc<T>(param_out),
-            master_in_data,
-            master_out_data,
-            param.numel());
+    VLOG(3) << "beta_pow place in cpu";
+    // Compute with betapow in REG
+    if (grad_type == phi::DataType::FLOAT32) {
+      VLOG(3) << "CPU: grad type FLOAT32";
+        AdanKernelREG<T, float, MPDType>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          beta3_,
+          epsilon_,
+          weight_decay_,
+          *beta1_pow.data<MPDType>(),
+          *beta2_pow.data<MPDType>(),
+          *beta3_pow.data<MPDType>(),
+          no_prox,
+          moment1.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out),
+          moment2.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_out),
+          moment3.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment3_out),
+          learning_rate.data<MPDType>(),
+          grad.data<float>(),
+          pre_grad.data<float>(),
+          dev_ctx.template Alloc<float>(pre_grad_out),
+          param.data<T>(),
+          dev_ctx.template Alloc<T>(param_out),
+          master_in_data,
+          master_out_data,
+          param.numel());
       }else
       {
+        VLOG(3) << "CPU: grad type Not FLOAT32";
         AdanKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
@@ -327,7 +329,9 @@ void AdanDenseKernel(const Context& dev_ctx,
       
 
   }else{
+    VLOG(3) << "beta_pow place in GPU";
      if (grad_type == phi::DataType::FLOAT32) {
+      VLOG(3) << "GPU: grad type FLOAT32";
       AdanKernelMEM<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
@@ -358,6 +362,7 @@ void AdanDenseKernel(const Context& dev_ctx,
           );
       }else
       {
+        VLOG(3) << "GPU: grad type not FLOAT32";
         AdanKernelMEM<T, T, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1_,
