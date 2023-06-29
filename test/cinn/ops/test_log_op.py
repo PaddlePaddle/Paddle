@@ -27,7 +27,8 @@ class TestLogOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
         self.base = self.case["base"]
 
     def paddle_op(self, x):
@@ -58,7 +59,8 @@ class TestLogOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("add")
         x = builder.create_input(
-            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x")
+            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x"
+        )
         out = self.cinn_op(builder, x)
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.x_np], [out])
