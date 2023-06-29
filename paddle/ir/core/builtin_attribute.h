@@ -103,6 +103,15 @@ class IR_API PointerAttribute : public Attribute {
   void* data() const;
 };
 
+class IR_API TypeAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TypeAttribute, TypeAttributeStorage);
+
+  Type GetValue() const;
+};
+
 }  // namespace ir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::StrAttribute)
@@ -113,3 +122,4 @@ IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int32Attribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::Int64Attribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::ArrayAttribute)
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::PointerAttribute)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(ir::TypeAttribute)

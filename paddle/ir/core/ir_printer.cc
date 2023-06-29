@@ -95,6 +95,8 @@ void BasicIrPrinter::PrintAttribute(const Attribute& attr) {
         [this](Attribute v) { this->PrintAttribute(v); },
         [this]() { this->os << ","; });
     os << "]";
+  } else if (auto type = attr.dyn_cast<TypeAttribute>()) {
+    os << type.GetValue();
   } else {
     auto& dialect = attr.dialect();
     dialect.PrintAttribute(attr, os);
