@@ -35,7 +35,7 @@ std::vector<Attribute> ArrayAttribute::data() const {
 
 void* PointerAttribute::data() const { return storage()->GetAsKey(); }
 
-Type TypeAttribute::GetValue() const { return storage()->GetAsKey(); }
+Type TypeAttribute::data() const { return storage()->GetAsKey(); }
 
 }  // namespace ir
 

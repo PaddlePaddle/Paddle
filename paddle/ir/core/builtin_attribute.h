@@ -109,7 +109,7 @@ class IR_API TypeAttribute : public Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(TypeAttribute, TypeAttributeStorage);
 
-  Type GetValue() const;
+  Type data() const;
 };
 
 }  // namespace ir
