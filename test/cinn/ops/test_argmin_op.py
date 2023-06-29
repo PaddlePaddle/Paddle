@@ -28,7 +28,6 @@ from cinn.common import *
 )
 class TestArgMinOp(OpTest):
     def setUp(self):
-        # print(f"\n{self.__class__.__name__}: {self.case}")
         self.prepare_inputs()
 
     def prepare_inputs(self):
