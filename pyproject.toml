@@ -120,7 +120,6 @@ ignore = [
     "UP027",
     "UP032",
     "UP034",
-    "PLE1205",
 ]
 "paddle/cinn/**" = [
     "UP032",
