@@ -1175,4 +1175,31 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+                            const MetaTensor& dout_k,
+                            const MetaTensor& dout_v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv) {
+  auto input_dims = dout_q.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  if (dout_q) {
+    dq->set_dims(dout_q.dims());
+    dq->set_dtype(dout_q.dtype());
+  }
+  if (dout_k) {
+    dk->set_dims(dout_k.dims());
+    dk->set_dtype(dout_k.dtype());
+  }
+  if (dout_v) {
+    dv->set_dims(dout_v.dims());
+    dv->set_dtype(dout_v.dtype());
+  }
+}
+
 }  // namespace phi
