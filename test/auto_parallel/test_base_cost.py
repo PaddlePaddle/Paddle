@@ -188,22 +188,23 @@ class TestBaseCost(unittest.TestCase):
                 var_names = None
                 if op.input_arg_names:
                     var_names = op.input_arg_names[0]
+                    attrs = {"reduce_type": paddle.distributed.ReduceOp.SUM}
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
-                        attrs=None,
+                        attrs=attrs,
                         parallel_axis=0,
                         group_ranks=None,
                     )
                     self.assertTrue(isinstance(comm_descs, dict) and comm_descs)
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
-                        attrs=None,
+                        attrs=attrs,
                         parallel_axis=None,
                         group_ranks=processes,
                     )

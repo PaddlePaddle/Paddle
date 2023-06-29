@@ -24,8 +24,8 @@ from paddle.fluid import data_feeder
 paddle.enable_static()
 
 
-def broadcast_new(tensor, src, group=None, sync_op=True):
-    op_type = 'broadcast'
+def broadcast(tensor, src, group=None, sync_op=True):
+    op_type = 'c_broadcast'
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
@@ -48,11 +48,12 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
 
     helper.append_op(
         type=op_type,
-        inputs={'x': [tensor]},
-        outputs={'out': [tensor]},
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
         attrs={
             'root': src,
             'ring_id': ring_id,
+            'use_calc_stream': sync_op,
         },
     )
 
@@ -67,7 +68,7 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
                 name="tindata", shape=[-1, 10, 1000], dtype=dtype
             )
             tindata.desc.set_need_check_feed(False)
-            paddle.distributed.broadcast(tindata, src=1)
+            broadcast(tindata, src=1)
             return [tindata]
 
     def get_model_new(
@@ -78,7 +79,7 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
                 name="tindata", shape=[-1, 10, 1000], dtype=dtype
             )
             tindata.desc.set_need_check_feed(False)
-            broadcast_new(tindata, src=1)
+            paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 
 

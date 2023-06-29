@@ -25,13 +25,13 @@ from paddle.fluid import data_feeder
 paddle.enable_static()
 
 
-def alltoall_new(
+def alltoall(
     in_tensor_or_tensor_list,
     out_tensor_or_tensor_list,
     group=None,
     sync_op=True,
 ):
-    op_type = 'all_to_all'
+    op_type = 'alltoall'
 
     ring_id = 0 if group is None else group.id
     nranks = dist.get_world_size()
@@ -75,10 +75,11 @@ def alltoall_new(
     )
     helper.append_op(
         type=op_type,
-        inputs={'x': [in_tensor]},
-        outputs={'out': [out_tensor]},
+        inputs={'X': [in_tensor]},
+        outputs={'Out': [out_tensor]},
         attrs={
             'ring_id': ring_id,
+            'use_calc_stream': sync_op,
         },
     )
     # NOTE(liyurui): If the argument `out_tensor_or_tensor_list` is a tensor_list,
@@ -110,7 +111,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
             tindata.desc.set_need_check_feed(False)
             tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
-            paddle.distributed.alltoall(tindata, tout_data)
+            alltoall(tindata, tout_data)
             return tout_data
 
     def get_model_new(
@@ -123,7 +124,7 @@ class TestCollectiveAllToAllAPI(TestCollectiveAPIRunnerBase):
             tindata.desc.set_need_check_feed(False)
             tindata = paddle.split(tindata, 2, axis=0)
             tout_data = []
-            alltoall_new(tindata, tout_data)
+            paddle.distributed.alltoall(tindata, tout_data)
             return tout_data
 
 

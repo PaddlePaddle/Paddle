@@ -67,16 +67,17 @@ class TestDistPNorm(unittest.TestCase):
             for op in ops:
                 op_types.append(op.type)
 
+            print(f"debug op_types: {op_types}")
             assert op_types == [
                 'reshape2',
                 'c_embedding',
-                'c_allreduce_sum',
+                'all_reduce',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
                 'c_identity',
                 'c_embedding_grad',
-                'c_allreduce_sum',
+                'all_reduce',
                 'scale',
             ]
 

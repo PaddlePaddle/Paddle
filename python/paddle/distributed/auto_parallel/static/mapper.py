@@ -75,7 +75,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     if src_rank == tgt_rank:
         return comm_volume
     comm_op_type = comm_op.type
-    if comm_op_type != "recv_v2":
+    if comm_op_type != "p_recv":
         tensor_name = comm_op.input_arg_names[0]
     else:
         tensor_name = comm_op.output_arg_names[0]
@@ -114,7 +114,9 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     elif "p_recv" in comm_op_type:
         comm_volume = None
     else:
-        raise ValueError("Unrecognized communication operator.")
+        raise ValueError(
+            f"Unrecognized communication operator. comm_op_type: {comm_op_type}"
+        )
     return comm_volume
 
 

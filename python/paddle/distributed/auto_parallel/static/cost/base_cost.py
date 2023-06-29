@@ -309,7 +309,7 @@ def build_comm_desc_from_dist_op(
                 input_list.append((var.dtype, shape))
 
             # NOTE: The input_name of comm ops used usually is X.
-            desc["inputs"] = {"X": input_list}
+            desc["inputs"] = {"x": input_list}
 
             # Get comm group by parallel_axis or the given group_ranks.
             if parallel_axis is not None:
@@ -412,7 +412,10 @@ def build_dp_costs(
     if not has_found:
         return
 
-    attrs['reduce_type'] = paddle.distributed.ReduceType.SUM
+    if attrs is None:
+        attrs = {'reduce_type': paddle.distributed.ReduceOp.SUM}
+    else:
+        attrs['reduce_type'] = paddle.distributed.ReduceOp.SUM
     allreduce_sum_descs = build_comm_desc_from_dist_op(
         "all_reduce",
         dist_op,
