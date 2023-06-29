@@ -163,6 +163,10 @@ class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
         self.out = np.multiply(self.x, self.y)
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestBF16ElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"

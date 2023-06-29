@@ -294,6 +294,15 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- op : bincount
+  args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
+  output: Tensor(out)
+  infer_meta:
+    func: BincountInferMeta
+  kernel:
+    func: bincount
+  optional: weights
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -930,6 +939,16 @@
     param : [value, dtype]
     data_type : dtype
     backend : place
+
+- op : gather
+  args : (Tensor x, Tensor index, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+    data_type: x
+  backward : gather_grad
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
@@ -1813,6 +1832,7 @@
   kernel :
     func : pow
     data_type : x
+  inplace: (x -> out)
   backward : pow_grad
 
 - op : prelu
@@ -2106,7 +2126,7 @@
   backward : sigmoid_grad
 
 - op : sigmoid_cross_entropy_with_logits
-  args : (Tensor x, Tensor label, bool normalize=false, int ignore_index=-100)
+  args : (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100)
   output : Tensor
   infer_meta :
     func : SigmoidCrossEntropyWithLogitsInferMeta
@@ -2114,6 +2134,7 @@
     func : sigmoid_cross_entropy_with_logits
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
+  optional : pos_weight
 
 - op : sign
   args : (Tensor x)
@@ -2524,7 +2545,7 @@
     func : WeightedSampleNeighborsInferMeta
   kernel :
     func : weighted_sample_neighbors
-  optional: eids
+  optional : eids
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)

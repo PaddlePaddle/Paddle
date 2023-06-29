@@ -937,7 +937,12 @@ void topk_grad(const Tensor& x,
                const bool& sorted,
                Tensor* x_grad) {
   if (x_grad) {
-    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+    // put_along_axis doesn't support zero dim
+    if (x.dims().size() == 0) {
+      by_pass<T>(out_grad, x_grad);
+      return;
+    }
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0, x.dtype());
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
     set_output<T>(x_grad_tmp, x_grad);
   }
@@ -1307,7 +1312,7 @@ void batch_norm_grad(const Tensor& x,
         set_output<T>(scale_grad_data, scale_grad);
       }
       if (bias_grad) {
-        set_output<T>(nhwc_out_grad_sum, bias_grad);
+        set_output<T>(assign<T>(nhwc_out_grad_sum), bias_grad);
       }
       break;
     }
@@ -1343,7 +1348,7 @@ void batch_norm_grad(const Tensor& x,
           set_output<T>(scale_grad_data, scale_grad);
         }
         if (bias_grad) {
-          set_output<T>(out_grad_data_sum, bias_grad);
+          set_output<T>(assign<T>(out_grad_data_sum), bias_grad);
         }
       }
       break;

@@ -248,7 +248,7 @@ def mean_composite(x, axis, keepdim):
     from paddle.fluid.data_feeder import convert_dtype
 
     dtype = convert_dtype(x.dtype)
-    if dtype == ["float16", "uint16"]:
+    if dtype in ["float16", "uint16"]:
         is_amp = True
         x = cast(x, "float32")
 
@@ -554,6 +554,8 @@ def squeeze2_composite(x, axis):
     axis can only be list, not int
     """
     rank = len(x.shape)
+    if rank == 0:
+        return [assign(x), None]
     if len(axis) == 0:
         dims = set(range(rank))
     else:
