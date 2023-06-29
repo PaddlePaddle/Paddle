@@ -361,7 +361,6 @@ def launch():
         recorder = History_recorder()
 
         job_id = 0
-<<<<<<< HEAD
         if tuner_cfg.get("global_batch_size") == "auto":
             # search and set global batch size
             # adjust micron batch with fixed dp mp pp
@@ -382,17 +381,11 @@ def launch():
             c.run()
             # Process generated result
 
-=======
-        raw_ctx = copy.deepcopy(ctx)
->>>>>>> ebd4d85b44 (deepcopy ctx)
         while cur_cfg:
             ctx = copy.deepcopy(raw_ctx)
-<<<<<<< HEAD
             if is_first_task:
                 ctx.max_time_per_task = warmup_time
             is_first_task = False
-=======
->>>>>>> dda7aa8154 (deepcopy ctx)
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],
@@ -469,7 +462,6 @@ def launch():
         recorder.store_history()
 
         # get best config to run
-        signal.alarm(0)
         best_cfg = None
         ctx = copy.deepcopy(raw_ctx)
         if nnodes > 1:
