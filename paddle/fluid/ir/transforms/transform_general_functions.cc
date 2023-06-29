@@ -36,6 +36,7 @@ ir::Parameter* GetParameterFromValue(ir::Value value) {
 }
 
 const phi::DDim& GetShapeFromValue(ir::Value value) {
+  // TODO(dev): Support other types like DenseTensor.
   PADDLE_ENFORCE_EQ(
       value.type().isa<paddle::dialect::DenseTensorType>(),
       true,

@@ -190,7 +190,7 @@ class TransposePatternRewrite
 
   bool MatchAndRewrite(paddle::dialect::TransposeOp op,
                        ir::PatternRewriter &rewriter) const override {
-    auto prev_op = ir::GetPreviousOperation(op);
+    auto prev_op = ir::GetDefiningOpForInput<0>(op);
     std::vector<int> axis_last = GetAxis(op);
     auto prev_trans_op = prev_op->dyn_cast<paddle::dialect::TransposeOp>();
     if (prev_trans_op) {
@@ -200,7 +200,7 @@ class TransposePatternRewrite
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.SetInsertionPoint(op);
       auto new_transpose_op = rewriter.Build<paddle::dialect::TransposeOp>(
-          ir::GetPreviousOperation(prev_trans_op)->result(0), new_perm);
+          ir::GetDefiningOpForInput<0>(prev_trans_op)->result(0), new_perm);
       rewriter.ReplaceOp(op, {new_transpose_op.out()});
       return true;
     }
@@ -210,9 +210,7 @@ class TransposePatternRewrite
 
  private:
   std::vector<int> GetAxis(paddle::dialect::TransposeOp op) const {
-    auto attr_map = op->attributes();
-    ir::ArrayAttribute array_attr =
-        attr_map.at("perm").dyn_cast<ir::ArrayAttribute>();
+    auto array_attr = op.attribute<ir::ArrayAttribute>("perm").data();
     std::vector<int> axis(array_attr.size());
     for (size_t i = 0; i < array_attr.size(); ++i) {
       axis[i] = array_attr[i].dyn_cast<ir::Int32Attribute>().data();
@@ -244,7 +242,7 @@ class Conv2dBnFusePattern
       ir::PatternRewriter &rewriter) const override {  // NOLINT
     // The next op should be batch_norm.
     paddle::dialect::Conv2dOp conv2d_op =
-        ir::GetPreviousOperation(op)->dyn_cast<paddle::dialect::Conv2dOp>();
+        ir::GetDefiningOpForInput(op)->dyn_cast<paddle::dialect::Conv2dOp>();
     if (!conv2d_op) return false;
 
     ir::OpResult conv2d_out = conv2d_op.out();
@@ -280,10 +278,7 @@ class Conv2dBnFusePattern
     rewriter.SetInsertionPoint(conv2d_op);
     phi::DDim bn_variance_shape =
         bn_variance.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    float epsilon = op->attributes()
-                        .at(op.attributes_name[2 /*epsilon*/])
-                        .dyn_cast<ir::FloatAttribute>()
-                        .data();
+    float epsilon = op.attribute<ir::FloatAttribute>("epsilon").data();
     paddle::dialect::FullOp full_op = rewriter.Build<paddle::dialect::FullOp>(
         phi::vectorize(bn_variance_shape), epsilon);
     paddle::dialect::AddOp add_op = rewriter.Build<paddle::dialect::AddOp>(
@@ -308,7 +303,7 @@ class Conv2dBnFusePattern
     paddle::dialect::MultiplyOp mul_op =
         rewriter.Build<paddle::dialect::MultiplyOp>(conv2d_filter_result,
                                                     reshape_scale_op.out());
-
+    // TODO(liuyuanle): Use rewriter.
     conv2d_op->op_operand(1).set_source(mul_op.out());
 
     // --- deal with bias ---
@@ -325,10 +320,8 @@ class Conv2dBnFusePattern
     phi::DDim conv2d_out_shape = ir::GetShapeFromValue(conv2d_out);
     std::vector<int64_t> new_bias_new_shape(conv2d_out_shape.size(), 1);
     std::string data_format =
-        conv2d_op->attributes()
-            .at(conv2d_op.attributes_name[5 /*data_format*/])
-            .dyn_cast<ir::StrAttribute>()
-            .data();
+        conv2d_op.attribute<ir::StrAttribute>("data_format").data();
+
     IR_ENFORCE(data_format == "NCHW", "Only support NCHW now.");
     new_bias_new_shape[0] = conv2d_out_shape[0];
     new_bias_new_shape[1] = conv2d_out_shape[1];
@@ -339,8 +332,8 @@ class Conv2dBnFusePattern
 
     paddle::dialect::AddOp add_bias_op = rewriter.Build<paddle::dialect::AddOp>(
         conv2d_out, reshape_bias_op.out());
-    auto next_op = ir::GetNextFirstUseOperation(op);
-    next_op->op_operand(0).set_source(add_bias_op.out());
+    auto next_op = ir::GetFirstUseOperationForOutput<0>(op);
+    rewriter.ReplaceAllUsesWith(next_op->operand(0), add_bias_op.out());
 
     rewriter.EraseOp(op);
     return true;

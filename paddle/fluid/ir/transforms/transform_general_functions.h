@@ -24,9 +24,9 @@
 namespace ir {
 
 /**
- * @brief
+ * @brief Get the parameter from a value.
  *
- * @note
+ * @note The value must be a output of a GetParameterOp.
  *
  * @param ir::Value
  *
@@ -35,9 +35,7 @@ namespace ir {
 ir::Parameter* GetParameterFromValue(ir::Value value);
 
 /**
- * @brief
- *
- * @note
+ * @brief Get tensor's shape from a value.
  *
  * @param ir::Value
  *
@@ -46,16 +44,14 @@ ir::Parameter* GetParameterFromValue(ir::Value value);
 const phi::DDim& GetShapeFromValue(ir::Value value);
 
 /**
- * @brief
- *
- * @note
+ * @brief Get an operation that defines the specific input of the operation.
  *
  * @param Operation*
  *
  * @return Operation*
  */
 template <uint32_t Index = 0>
-Operation* GetPreviousOperation(Operation* op) {
+Operation* GetDefiningOpForInput(Operation* op) {
   PADDLE_ENFORCE_EQ(
       Index < op->num_operands(),
       true,
@@ -64,16 +60,15 @@ Operation* GetPreviousOperation(Operation* op) {
 }
 
 /**
- * @brief
- *
- * @note
+ * @brief Get an operation that is the first to use the specific output of the
+ * operation.
  *
  * @param Operation*
  *
  * @return Operation*
  */
 template <uint32_t Index = 0>
-Operation* GetNextFirstUseOperation(Operation* op) {
+Operation* GetFirstUseOperationForOutput(Operation* op) {
   PADDLE_ENFORCE_EQ(
       Index < op->num_results(),
       true,
