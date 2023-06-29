@@ -101,6 +101,7 @@
   complex_promote : [X, Y]
   manual_signature : [add]
   get_expected_kernel_type :
+    add : GetElementwiseOpExpectedKernelType
     add_grad : GetElementwiseOpGradExpectedKernelType
     add_double_grad : GetElementwiseOpDoubleGradWithoutDXDYExpectedKernelType
     add_triple_grad : GetElementwiseOpTripleGradExpectedKernelType

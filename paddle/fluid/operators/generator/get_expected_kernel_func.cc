@@ -85,6 +85,14 @@ phi::KernelKey GetCheckFiniteAndUnscaleExpectedKernelType(
   return phi::KernelKey(dtype, ctx.GetPlace());
 }
 
+phi::KernelKey GetElementwiseOpExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type =
+      op_ptr->OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
 phi::KernelKey GetElementwiseOpGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
@@ -111,17 +119,20 @@ phi::KernelKey GetElementwiseOpDoubleGradWithoutDXDYExpectedKernelType(
 
   VLOG(7) << "DDX_name: " << DDX_name << " DDY_name: " << DDY_name;
 
-  if (ctx.HasInput(DDX_name) == false) {
-    VLOG(7) << "ctx.HasInput(DDX_name) == false";
+  if (ctx.HasInput(DDX_name) && ctx.HasInput(DDY_name)) {
+    VLOG(7) << "ctx.HasInput(DDX_name) && ctx.HasInput(DDY_name)";
+    input_data_type = op_ptr->OperatorWithKernel::IndicateOrPromoteVarDataTypes(
+        ctx, DDX_name, DDY_name);
+  } else if (ctx.HasInput(DDY_name)) {
+    VLOG(7) << "ctx.HasInput(DDY_name)";
     input_data_type =
         op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, DDY_name);
-  } else if (ctx.HasInput(DDY_name) == false) {
-    VLOG(7) << "ctx.HasInput(DDY_name) == false";
+  } else if (ctx.HasInput(DDX_name)) {
+    VLOG(7) << "ctx.HasInput(DDX_name)";
     input_data_type =
         op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, DDX_name);
   } else {
-    VLOG(7)
-        << "ctx.HasInput(DDX_name) == true && ctx.HasInput(DDY_name) == true";
+    VLOG(7) << "not ctx.HasInput(DDX_name) && not ctx.HasInput(DDY_name)";
     input_data_type = op_ptr->OperatorWithKernel::IndicateOrPromoteVarDataTypes(
         ctx, DDX_name, DDY_name);
   }
