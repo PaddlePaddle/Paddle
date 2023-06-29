@@ -19,7 +19,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 namespace phi {
-
+namespace fusion {
 template <typename T, typename MPType, int VecSize = 2>
 __global__ void VectorizedFusedRopeGradKernel(phi::Array<const T*, 3> ins_data,
                                               int batch_size,
@@ -145,12 +145,14 @@ void FusedRopeGradKernel(const Context& dev_ctx,
                                    num_inputs,
                                    div_c);
 }
+
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_rotary_position_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusedRopeGradKernel,
+                   phi::fusion::FusedRopeGradKernel,
                    float,
                    double,
                    phi::dtype::float16,
