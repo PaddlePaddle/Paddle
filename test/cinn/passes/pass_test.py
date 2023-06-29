@@ -24,7 +24,7 @@ logger = logging.getLogger(name="pass_test")
 
 class PassTest(OpTest):
     def __init__(self, *args, **kwargs):
-        super(PassTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.init_input_data()
 
     def init_input_data(self) -> dict:

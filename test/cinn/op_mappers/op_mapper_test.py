@@ -39,7 +39,7 @@ paddle.enable_static()
 
 class OpMapperTest(OpTest):
     def __init__(self, *args, **kwargs):
-        super(OpMapperTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._init_place()
         self.init_input_data()
 

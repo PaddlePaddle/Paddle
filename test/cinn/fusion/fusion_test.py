@@ -22,7 +22,7 @@ logger = logging.getLogger(name="pass_test")
 
 class FusionTest(PassTest):
     def __init__(self, *args, **kwargs):
-        super(FusionTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def init_input_data(self):
         """Set feed data"""

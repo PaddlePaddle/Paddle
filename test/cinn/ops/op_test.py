@@ -57,7 +57,7 @@ def convert_uint16_to_float(data):
 
 class OpTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(OpTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._init_target()
         self._init_results()
         self._init_seed()
