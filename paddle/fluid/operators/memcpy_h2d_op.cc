@@ -91,13 +91,12 @@ class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                  "Determine the dst place of tensor copy. "
                  "By Now it support:"
                  "0. CUDAPinnedPlace/CPU <->CUDAPlace"
-                 "1. NPUPinnedPlace/CPU <-> NPUPlace"
-                 "2. CPU <->XPUPlace"
-                 "3. CPU <->IPUPlace"
+                 "1. CPU <->XPUPlace"
+                 "2. CPU <->IPUPlace"
                  "Other place type is Unimplemented and will cause ERROR.");
     AddComment(R"DOC(
     MemcpyD2H Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> CUDAPlace.
     You would have to update it if you want other more capacities.
 Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.

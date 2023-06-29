@@ -25,11 +25,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiplyRawKernel(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       int axis,
-                       DenseTensor* out) {
+void MultiplyKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -40,15 +39,15 @@ void MultiplyRawKernel(const Context& dev_ctx,
     return xpu::broadcast_mul<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
+  XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(multiply,
                    XPU,
                    ALL_LAYOUT,
-                   phi::MultiplyRawKernel,
+                   phi::MultiplyKernel,
                    phi::dtype::float16,
                    float,
                    int,

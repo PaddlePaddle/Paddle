@@ -34,6 +34,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#endif
 
 namespace paddle {
 
@@ -97,7 +100,7 @@ int64_t Tensor::size() const { return impl_->numel(); }
 const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 
 std::vector<int64_t> Tensor::shape() const {
-  auto dims = impl_->dims();
+  const auto &dims = impl_->dims();
   return phi::vectorize<int64_t>(dims);
 }
 
@@ -127,6 +130,13 @@ DataLayout Tensor::layout() const { return impl_->layout(); }
 
 bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
+}
+bool Tensor::is_dist_tensor() const {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  return phi::distributed::auto_parallel::DistTensor::classof(impl_.get());
+#else
+  return false;
+#endif
 }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
@@ -357,6 +367,10 @@ gpuStream_t Tensor::stream() const {
   return gpu_context->stream();
 }
 #endif
+
+const std::string &Tensor::name() const { return name_; }
+
+void Tensor::set_name(const std::string &name) { name_ = name; }
 
 /* Part 5: Status utils methods */
 

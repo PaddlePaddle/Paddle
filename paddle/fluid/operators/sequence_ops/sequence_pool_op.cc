@@ -12,10 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
-
-#include <memory>
-#include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -196,7 +193,3 @@ REGISTER_OPERATOR(sequence_pool,
 REGISTER_OPERATOR(sequence_pool_grad,
                   ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(sequence_pool_grad,
-                       ops::SequencePoolGradKernel<phi::CPUContext, float>,
-                       ops::SequencePoolGradKernel<phi::CPUContext, double>);

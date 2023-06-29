@@ -27,7 +27,7 @@ class TestDLPack(unittest.TestCase):
         tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
-        if paddle.fluid.framework.in_dygraph_mode():
+        if paddle.in_dynamic_mode():
             self.assertTrue(
                 isinstance(out_from_dlpack, paddle.fluid.core.eager.Tensor)
             )

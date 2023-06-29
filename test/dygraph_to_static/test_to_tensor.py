@@ -84,6 +84,17 @@ def case6(x):
     return a
 
 
+def case7(x):
+    a = paddle.to_tensor(10.0)
+
+    return a
+
+
+def case8(x):
+    a = paddle.to_tensor({1: 1})
+    return a
+
+
 class TestToTensorReturnVal(unittest.TestCase):
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
@@ -130,6 +141,23 @@ class TestToTensorReturnVal(unittest.TestCase):
         self.assertTrue(a.dtype == b.dtype)
         self.assertTrue(a.stop_gradient == b.stop_gradient)
         self.assertTrue(a.place._equals(b.place))
+
+        a = paddle.jit.to_static(case7)(x)
+        b = case7(x)
+        self.assertTrue(a.dtype == b.dtype)
+        self.assertTrue(a.stop_gradient == b.stop_gradient)
+        self.assertTrue(a.place._equals(b.place))
+
+    def test_to_tensor_err_log(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([3])
+        try:
+            a = paddle.jit.to_static(case8)(x)
+        except Exception as e:
+            self.assertTrue(
+                "Do not support transform type `<class 'dict'>` to tensor"
+                in str(e)
+            )
 
 
 class TestStatic(unittest.TestCase):

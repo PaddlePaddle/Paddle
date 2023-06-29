@@ -84,7 +84,7 @@ def set_config(config=None):
     if config is None:
         core.enable_autotune()
         core.enable_layout_autotune()
-        paddle.fluid.reader.set_autotune_config(use_autotune=True)
+        paddle.io.reader.set_autotune_config(use_autotune=True)
         return
 
     config_dict = {}
@@ -147,7 +147,7 @@ def set_config(config=None):
                 )
         if "tuning_steps" in dataloader_config:
             if isinstance(dataloader_config['tuning_steps'], int):
-                paddle.fluid.reader.set_autotune_config(
+                paddle.io.reader.set_autotune_config(
                     use_autoune, dataloader_config['tuning_steps']
                 )
             else:
@@ -155,4 +155,4 @@ def set_config(config=None):
                     "The auto-tuning configuration of the dataloader is incorrect."
                     "The `tuning_steps` should be int. Use default parameter instead."
                 )
-                paddle.fluid.reader.set_autotune_config(use_autoune)
+                paddle.io.reader.set_autotune_config(use_autoune)

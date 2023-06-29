@@ -29,7 +29,6 @@ void GraphReindexKernel(const Context& dev_ctx,
                         const DenseTensor& count,
                         const paddle::optional<DenseTensor>& hashtable_value,
                         const paddle::optional<DenseTensor>& hashtable_index,
-                        bool flag_buffer_hashtable,
                         DenseTensor* reindex_src,
                         DenseTensor* reindex_dst,
                         DenseTensor* out_nodes) {

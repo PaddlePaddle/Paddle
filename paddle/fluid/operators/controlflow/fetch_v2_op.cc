@@ -140,6 +140,8 @@ class FetchV2Kernel {
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
             col));
+    VLOG(3) << "Fetch variable " << fetch_var_name << "'s " << col
+            << " column.";
 
     auto *fetch_list = out_var->GetMutable<framework::FetchList>();
 
@@ -156,7 +158,8 @@ class FetchV2Kernel {
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       bool check_place = platform::is_cpu_place(src_item.place()) ||
-                         platform::is_cuda_pinned_place(src_item.place());
+                         platform::is_cuda_pinned_place(src_item.place()) ||
+                         platform::is_custom_place(src_item.place());
       PADDLE_ENFORCE_EQ(
           check_place,
           true,

@@ -19,10 +19,11 @@
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_double(eager_delete_tensor_gb);
-DECLARE_double(memory_fraction_of_eager_deletion);
-DECLARE_bool(fast_eager_deletion_mode);
+PHI_DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(memory_fraction_of_eager_deletion);
+PHI_DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle {
 namespace framework {

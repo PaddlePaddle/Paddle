@@ -27,6 +27,7 @@ void Conv2dXPUKernel(const Context& ctx,
                      const DenseTensor& filter_max,
                      const paddle::optional<DenseTensor>& bias,
                      const paddle::optional<DenseTensor>& branch,
+                     const paddle::optional<DenseTensor>& branch_max,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
@@ -69,10 +70,12 @@ void Conv2dXPUKernel(const Context& ctx,
       branch.get_ptr() == nullptr
           ? nullptr
           : reinterpret_cast<const XPUType*>(branch.get_ptr()->data<T>());
+  const float* branch_max_data = branch_max.get_ptr() == nullptr
+                                     ? nullptr
+                                     : branch_max.get_ptr()->data<float>();
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_param;
@@ -102,7 +105,7 @@ void Conv2dXPUKernel(const Context& ctx,
           /* const float* bias */ bias_data,
           /* const TY* branch */ branch_data,
           /* const baidu::xpu::api::Activation_t& act */ act,
-          /* const float* branch_maxptr */ nullptr,
+          /* const float* branch_maxptr */ branch_max_data,
           /* const float* scale */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_xpu");
 }

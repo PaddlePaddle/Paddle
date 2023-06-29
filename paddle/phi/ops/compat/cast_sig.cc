@@ -16,7 +16,8 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature CastOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature CastOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("cast", {"X"}, {"out_dtype"}, {"Out"});
 }
 

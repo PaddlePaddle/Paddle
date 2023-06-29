@@ -85,7 +85,7 @@ def distributed_model(model):
     fleet_env = fleet.fleet
 
     assert model is not None, "model should not be None"
-    if fleet_env.worker_num() <= 1:
+    if paddle.distributed.get_world_size() <= 1:
         return model
 
     amp_enable = False
@@ -134,7 +134,6 @@ def distributed_model(model):
     if fleet_env._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
         model = ShardingParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
-
         # NOTE (JZ-LIANG) init parameters broadcast within sharding group
         # normally it should be done inside DataParallel
         if fleet_env.sharding_degree > 1:

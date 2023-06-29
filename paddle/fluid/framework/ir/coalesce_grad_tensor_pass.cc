@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-
+#include "paddle/fluid/platform/flags.h"
 namespace paddle {
 namespace framework {
 class ProgramDesc;
@@ -53,7 +53,7 @@ namespace ir {
 static constexpr double kMB = 1048576.0;
 
 // SetFuseParameterGroupsSize and SetFuseParameterMemorySize are used in unit
-// test, because it is invalid that seting 'FLAGS_fuse_parameter_memory_size'
+// test, because it is invalid that setting 'FLAGS_fuse_parameter_memory_size'
 // and 'FLAGS_fuse_parameter_groups_size' in unit test.
 void SetFuseParameterGroupsSize(int group_size) {
   FLAGS_fuse_parameter_groups_size = group_size;
@@ -567,7 +567,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     // coalesce_tensor op needs to be executed again after the execution
     // of DropScope().
 
-    // we can make fused_output persistable, so the memeory is not cleared
+    // we can make fused_output persistable, so the memory is not cleared
     // and coalesce_tensor op do nothing if the inputs are already continue.
 
     result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();

@@ -349,7 +349,7 @@ class ScopedDropoutDescriptor {
   }
 
   inline cudnnDropoutDescriptor_t descriptor(const cudnnHandle_t& handle,
-                                             const phi::Place& place,
+                                             const phi::Place& place UNUSED,
                                              bool initialized,
                                              float dropout_prob_,
                                              phi::DenseTensor* dropout_state_,

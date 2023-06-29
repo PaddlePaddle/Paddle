@@ -233,7 +233,7 @@ class MultiHeadAttention(nn.Layer):
         product = paddle.matmul(x=q, y=k, transpose_y=True)
         product = paddle.multiply(
             product,
-            paddle.to_tensor(self.head_dim**-0.5, dtype=product.dtype),
+            paddle.to_tensor([self.head_dim**-0.5], dtype=product.dtype),
         )
         if attn_mask is not None:
             product = product + attn_mask
@@ -350,32 +350,17 @@ class TransformerDecoder(nn.Layer):
         output = tgt
         new_caches = []
         self.checkpoints = []
-        if _global_parallel_strategy == "pp":
-            auto.shard_tensor(
-                output,
-                PP_MESH_LIST[0],
-                [None for i in range(len(output.shape))],
-            )
-        if _global_parallel_strategy == "dp_pp":
-            auto.shard_tensor(
-                output,
-                DPPP_MESH_LIST[0],
-                ["x"] + [None for i in range(len(output.shape) - 1)],
-            )
-        if _global_parallel_strategy == "mp_pp":
-            auto.shard_tensor(
-                output,
-                MPPP_MESH_LIST[0],
-                [None for i in range(len(output.shape))],
-            )
-        if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(
-                output,
-                DPMPPP_MESH_LIST[0],
-                ["x"] + [None for i in range(len(output.shape) - 1)],
-            )
 
         for i, mod in enumerate(self.layers):
+            if _global_parallel_strategy == "pp":
+                mod = auto.shard_op(mod, PP_MESH_LIST[mod.mesh_idx])
+            elif _global_parallel_strategy == "dp_pp":
+                mod = auto.shard_op(mod, DPPP_MESH_LIST[mod.mesh_idx])
+            elif _global_parallel_strategy == "mp_pp":
+                mod = auto.shard_op(mod, MPPP_MESH_LIST[mod.mesh_idx])
+            elif _global_parallel_strategy == "dp_mp_pp":
+                mod = auto.shard_op(mod, DPMPPP_MESH_LIST[mod.mesh_idx])
+
             if self.use_new_recompute and self.recompute_granularity == "full":
                 mod = auto.recompute(mod)
 

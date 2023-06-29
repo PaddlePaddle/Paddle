@@ -44,7 +44,7 @@ static int get_seed(const framework::ExecutionContext& context) {
   return seed;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

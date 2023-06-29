@@ -24,8 +24,8 @@ template <typename T, typename Context>
 void MatrixRankKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       float tol,
-                      bool hermitian,
                       bool use_default_tol,
+                      bool hermitian,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
   if (use_default_tol) {

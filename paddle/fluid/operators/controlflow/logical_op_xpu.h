@@ -156,7 +156,12 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+#define DEFINE_BINARY_LOGICAL_OP_XPU_KERNEL(op_name, xpu_type) \
+  template <typename T, typename DeviceContext>                \
+  class BinaryLogical##op_name##CPUKernel                      \
+      : public CReduceOpCPUKernel<xpu_type, T> {};
+
+template <typename T, typename DeviceContext>
 class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

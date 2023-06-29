@@ -29,9 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(benchmark);
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {

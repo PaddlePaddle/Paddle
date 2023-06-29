@@ -123,5 +123,6 @@ PD_REGISTER_KERNEL(index_add,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

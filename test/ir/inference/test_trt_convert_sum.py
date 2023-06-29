@@ -37,6 +37,8 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
                 return np.ones([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
+            elif self.dims == 0:
+                return np.ones([]).astype(np.float32)
 
         def generate_input2(batch):
             if self.dims == 4:
@@ -47,6 +49,8 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
                 return np.ones([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
+            elif self.dims == 0:
+                return np.ones([]).astype(np.float32)
 
         def generate_input3(batch):
             if self.dims == 4:
@@ -57,8 +61,10 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
                 return np.ones([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
+            elif self.dims == 0:
+                return np.ones([]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
                 self.dims = dims
                 ops_config = [
@@ -157,6 +163,22 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
                     "input2": [24],
                     "input3": [24],
                 }
+            elif self.dims == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "input1": [],
+                    "input2": [],
+                    "input3": [],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input1": [],
+                    "input2": [],
+                    "input3": [],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input1": [],
+                    "input2": [],
+                    "input3": [],
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -164,7 +186,7 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(dynamic_shape):
-            if self.dims == 1 and not dynamic_shape:
+            if (self.dims == 1 or self.dims == 0) and not dynamic_shape:
                 return 0, 5
             return 1, 4
 
@@ -205,8 +227,10 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
                 return np.ones([batch, 24]).astype(np.float32)
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
+            else:
+                return np.ones([]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
                 self.dims = dims
                 ops_config = [
@@ -263,6 +287,16 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {
                     "input1": [24],
                 }
+            elif self.dims == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "input1": [],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input1": [],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input1": [],
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -270,7 +304,7 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(dynamic_shape):
-            if self.dims == 1 and not dynamic_shape:
+            if (self.dims == 1 or self.dims == 0) and not dynamic_shape:
                 return 0, 3
             return 1, 2
 

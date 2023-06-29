@@ -27,7 +27,7 @@ namespace phi {
 
 template <typename Context, typename T, int64_t Rank>
 struct ArgMaxFunctor {
-  void operator()(const Context& ctx,
+  void operator()(const Context& ctx UNUSED,
                   const DenseTensor& in,
                   DenseTensor* index_tensor,
                   const int64_t& axis) {

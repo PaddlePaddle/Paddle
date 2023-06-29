@@ -25,7 +25,7 @@ from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
@@ -39,12 +39,12 @@ def argsort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
-        axis(int, optional): Axis to compute indices along. The effective range
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is -1.
-        descending(bool, optional) : Descending is a flag, if set to true,
+        descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -94,7 +94,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [1 1 0 2]
             #  [0 2 1 1]]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         _, ids = _C_ops.argsort(x, axis, descending)
         return ids
     else:
@@ -135,13 +135,13 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
-        axis(int, optional): Axis to compute indices along. The effective range
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
-        dtype(str|np.dtype, optional): Data type of the output tensor which can
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        dtype (str|np.dtype, optional): Data type of the output tensor which can
                     be int32, int64. The default value is ``int64`` , and it will
                     return the int64 indices.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -186,7 +186,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
@@ -225,16 +225,16 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
-        axis(int, optional): Axis to compute indices along. The effective range
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
-        dtype(str, optional): Data type of the output tensor which can
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        dtype (str, optional): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
@@ -276,7 +276,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmin", **locals())
@@ -321,7 +321,7 @@ def index_select(x, index, axis=0, name=None):
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A Tensor with same data type as ``x``.
@@ -345,7 +345,7 @@ def index_select(x, index, axis=0, name=None):
             # [ 9. 10. 10.]]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.index_select(x, index, axis)
     else:
         helper = LayerHelper("index_select", **locals())
@@ -429,7 +429,7 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         outs = _C_ops.nonzero(x)
     else:
         check_variable_and_dtype(
@@ -476,12 +476,12 @@ def sort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+        x (Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
-        axis(int, optional): Axis to compute indices along. The effective range
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is -1.
-        descending(bool, optional) : Descending is a flag, if set to true,
+        descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -526,7 +526,7 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
     else:
@@ -551,15 +551,15 @@ def mode(x, axis=-1, keepdim=False, name=None):
     Used to find values and indices of the modes at the optional axis.
 
     Args:
-        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
-        axis(int, optional): Axis to compute indices along. The effective range
+        x (Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is -1.
-        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+        tuple (Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
 
     Examples:
 
@@ -573,11 +573,11 @@ def mode(x, axis=-1, keepdim=False, name=None):
            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
            #   [[2., 3.],
            #    [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-           #   [[1, 1],
-           #    [1, 0]]))
+           #   [[2, 2],
+           #    [2, 1]]))
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.mode(x, axis, keepdim)
     else:
         helper = LayerHelper("mode", **locals())
@@ -676,7 +676,7 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
@@ -781,7 +781,7 @@ def index_sample(x, index):
             # [1200 1100]]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.index_sample(x, index)
     else:
         helper = LayerHelper("index_sample", **locals())
@@ -815,7 +815,7 @@ def masked_select(x, mask, name=None):
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A 1-D Tensor which is the same data type  as ``x``.
@@ -836,7 +836,7 @@ def masked_select(x, mask, name=None):
             #[1.0 5.0 6.0 9.0]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.masked_select(x, mask)
 
     else:
@@ -866,15 +866,15 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     If the input is a Tensor with higher rank, this operator computes the top k values and indices along the :attr:`axis`.
 
     Args:
-        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
-        k(int, Tensor): The number of top elements to look for along the axis.
-        axis(int, optional): Axis to compute indices along. The effective range
+        x (Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        k (int, Tensor): The number of top elements to look for along the axis.
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is -1.
-        largest(bool, optional) : largest is a flag, if set to true,
+        largest (bool, optional) : largest is a flag, if set to true,
             algorithm will sort by descending order, otherwise sort by
             ascending order. Default is True.
-        sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value.
+        sorted (bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -907,7 +907,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if axis is None:
             axis = -1
         out, indices = _C_ops.topk(x, k, axis, largest, sorted)
@@ -943,15 +943,15 @@ def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
     This API is used to find the index of the corresponding 1D tensor `sorted_sequence` in the innermost dimension based on the given `x`.
 
     Args:
-        x(Tensor): An input N-D tensor value with type int32, int64, float32, float64.
-        sorted_sequence(Tensor): An input 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
-        out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
-        right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `x`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
+        x (Tensor): An input N-D tensor value with type int32, int64, float32, float64.
+        sorted_sequence (Tensor): An input 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
+        out_int32 (bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
+        right (bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `x`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                The default value is False and it shows the lower bounds.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor（the same sizes of the `x`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
+        Tensor (the same sizes of the `x`), return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
 
     Examples:
 
@@ -1003,15 +1003,15 @@ def searchsorted(
     Find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
 
     Args:
-        sorted_sequence(Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
-        values(Tensor): An input N-D tensor value with type int32, int64, float32, float64.
-        out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
-        right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
+        sorted_sequence (Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
+        values (Tensor): An input N-D tensor value with type int32, int64, float32, float64.
+        out_int32 (bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
+        right (bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                The default value is False and it shows the lower bounds.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor（the same sizes of the `values`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
+        Tensor (the same sizes of the `values`), return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
 
     Examples:
 
@@ -1040,7 +1040,7 @@ def searchsorted(
             #         [1, 3, 4, 5]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
     else:
         check_variable_and_dtype(
@@ -1074,12 +1074,12 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     Find values and indices of the k-th smallest at the axis.
 
     Args:
-        x(Tensor): A N-D Tensor with type float32, float64, int32, int64.
-        k(int): The k for the k-th smallest number to look for along the axis.
-        axis(int, optional): Axis to compute indices along. The effective range
+        x (Tensor): A N-D Tensor with type float16, float32, float64, int32, int64.
+        k (int): The k for the k-th smallest number to look for along the axis.
+        axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. The default is None. And if the axis is None, it will computed as -1 by default.
-        keepdim(bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1107,7 +1107,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             #  [[0, 2],
             #  [1, 2]]))
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if axis is not None:
             return _C_ops.kthvalue(x, k, axis, keepdim)
         else:

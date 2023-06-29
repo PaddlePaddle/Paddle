@@ -491,7 +491,6 @@ def plan_summation(
     for ax, dim1, dim2 in zip(
         range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]
     ):
-
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
                 J1.append(ax)
@@ -966,8 +965,8 @@ def einsum(equation, *operands):
 
             # dot
             print(paddle.einsum('i,i->', x, x))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [1.45936954])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #   1.45936954)
 
             # outer
             print(paddle.einsum("i,j->ij", x, y))

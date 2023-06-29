@@ -42,4 +42,13 @@ void TransposeGradKernel(const Context& dev_ctx,
   TransposeKernel<T, Context>(dev_ctx, out_grad, reversed_axis, x_grad);
 }
 
+template <typename T, typename Context>
+void TransLayoutGradKernel(const Context& dev_ctx,
+                           const DenseTensor& x UNUSED,
+                           const DenseTensor& out_grad,
+                           const std::vector<int>& axis,
+                           DenseTensor* x_grad) {
+  TransposeGradKernel<T, Context>(dev_ctx, out_grad, axis, x_grad);
+}
+
 }  // namespace phi

@@ -23,7 +23,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/target.h"
+#include "paddle/cinn/common/target.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -37,9 +37,10 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(allow_cinn_ops);
-DECLARE_string(deny_cinn_ops);
+PHI_DECLARE_string(allow_cinn_ops);
+PHI_DECLARE_string(deny_cinn_ops);
 
 namespace paddle {
 namespace framework {

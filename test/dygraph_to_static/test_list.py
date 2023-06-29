@@ -228,7 +228,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
             test_list_pop_without_control_flow_2,
         ]
 
-    def varbase_to_numpy(self, res):
+    def result_to_numpy(self, res):
         if isinstance(res, (list, tuple)):
             res = paddle.utils.map_structure(lambda x: x.numpy(), res)
         else:
@@ -242,13 +242,12 @@ class TestListWithoutControlFlow(unittest.TestCase):
         return self.train(to_static=False)
 
     def train(self, to_static=False):
-
         with fluid.dygraph.guard():
             if to_static:
                 res = paddle.jit.to_static(self.dygraph_func)(self.input)
             else:
                 res = self.dygraph_func(self.input)
-            return self.varbase_to_numpy(res)
+            return self.result_to_numpy(res)
 
     def test_transformed_static_result(self):
         for dyfunc in self.all_dygraph_funcs:
@@ -285,7 +284,6 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
         ]
 
     def train(self, to_static=False):
-
         with fluid.dygraph.guard():
             if to_static:
                 print(paddle.jit.to_static(self.dygraph_func).code)
@@ -294,7 +292,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
                 )
             else:
                 res = self.dygraph_func(self.input, self.iter_num)
-            return self.varbase_to_numpy(res)
+            return self.result_to_numpy(res)
 
 
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
@@ -364,7 +362,7 @@ class TestListWithCondGradInferVarType(unittest.TestCase):
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
         index = paddle.to_tensor([1])
         res = net(x, index)
-        self.assertEqual(res[0], 48.0)
+        self.assertEqual(res, 48.0)
 
 
 if __name__ == '__main__':

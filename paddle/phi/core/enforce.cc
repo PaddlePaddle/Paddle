@@ -270,24 +270,27 @@ std::string GetExternalErrorMsg(T status) {
   bool _initSucceed = false;
   phi::proto::ExternalErrorDesc externalError;
   if (externalError.ByteSizeLong() == 0) {
-    std::string filePath;
+    std::string search_path_1;
+    std::string search_path_2;
+    std::string search_path_3;
 #if !defined(_WIN32)
     Dl_info info;
     if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
-      std::string strModule(info.dli_fname);
-      const size_t last_slash_idx = strModule.find_last_of("/");
-      std::string compare_path = strModule.substr(strModule.length() - 6);
+      std::string phi_so_path(info.dli_fname);
+      const size_t last_slash_idx = phi_so_path.find_last_of("/");
       if (std::string::npos != last_slash_idx) {
-        strModule.erase(last_slash_idx, std::string::npos);
+        phi_so_path.erase(last_slash_idx, std::string::npos);
       }
-      if (compare_path.compare("avx.so") == 0) {
-        filePath =
-            strModule +
-            "/../include/third_party/externalError/data/externalErrorMsg.pb";
-      } else {
-        filePath = strModule +
-                   "/../../third_party/externalError/data/externalErrorMsg.pb";
-      }
+      // due to 'phi_so_path' may be 'site-packages/paddle/libs/libphi.so' or
+      // 'build/paddle/phi/libphi.so', we have different search path
+      search_path_1 =
+          phi_so_path +
+          "/../include/third_party/externalError/data/externalErrorMsg.pb";
+      search_path_2 = phi_so_path +
+                      "/../third_party/externalError/data/externalErrorMsg.pb";
+      search_path_3 =
+          phi_so_path +
+          "/../../third_party/externalError/data/externalErrorMsg.pb";
     }
 #else
     char buf[512];
@@ -297,24 +300,34 @@ std::string GetExternalErrorMsg(T status) {
             ? (HMODULE)mbi.AllocationBase
             : NULL;
     GetModuleFileName(h_module, buf, 512);
-    std::string strModule(buf);
-    const size_t last_slash_idx = strModule.find_last_of("\\");
-    std::string compare_path = strModule.substr(strModule.length() - 7);
+    std::string exe_path(buf);
+    const size_t last_slash_idx = exe_path.find_last_of("\\");
     if (std::string::npos != last_slash_idx) {
-      strModule.erase(last_slash_idx, std::string::npos);
+      exe_path.erase(last_slash_idx, std::string::npos);
     }
-    if (compare_path.compare("avx.pyd") == 0) {
-      filePath = strModule +
-                 "\\..\\include\\third_"
-                 "party\\externalerror\\data\\externalErrorMsg.pb";
-    } else {
-      filePath =
-          strModule +
-          "\\..\\..\\third_party\\externalerror\\data\\externalErrorMsg.pb";
-    }
+    // due to 'exe_path' may be 'site-packages\\paddle\\fluid\\libpaddle.pyd' or
+    // 'build\\paddle\\fluid\\platform\\enforce_test.exe', we have different
+    // search path
+    search_path_1 =
+        exe_path +
+        "\\..\\include\\third_party\\externalError\\data\\externalErrorMsg.pb";
+    search_path_2 =
+        exe_path +
+        "\\..\\third_party\\externalError\\data\\externalErrorMsg.pb";
+    search_path_3 =
+        exe_path +
+        "\\..\\..\\third_party\\externalError\\data\\externalErrorMsg.pb";
 #endif
-    std::ifstream fin(filePath, std::ios::in | std::ios::binary);
+    std::ifstream fin(search_path_1, std::ios::in | std::ios::binary);
     _initSucceed = externalError.ParseFromIstream(&fin);
+    if (!_initSucceed) {
+      std::ifstream fin(search_path_2, std::ios::in | std::ios::binary);
+      _initSucceed = externalError.ParseFromIstream(&fin);
+    }
+    if (!_initSucceed) {
+      std::ifstream fin(search_path_3, std::ios::in | std::ios::binary);
+      _initSucceed = externalError.ParseFromIstream(&fin);
+    }
   }
   using __CUDA_STATUS_TYPE__ = decltype(status);
   phi::proto::ApiType proto_type =

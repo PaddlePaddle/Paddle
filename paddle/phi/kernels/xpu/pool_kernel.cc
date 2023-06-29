@@ -90,11 +90,11 @@ void Pool2dKernel(const Context& ctx,
   int* index_data = nullptr;
   int r = xpu::Error_t::SUCCESS;
   if (!adaptive) {
-    if (kernel_size[0] > in_h) {
-      kernel_size[0] = in_h;
+    if (kernel_size[0] > (in_h + paddings[0] + paddings[1])) {
+      kernel_size[0] = in_h + paddings[0] + paddings[1];
     }
-    if (kernel_size[1] > in_w) {
-      kernel_size[1] = in_w;
+    if (kernel_size[1] > (in_w + paddings[2] + paddings[3])) {
+      kernel_size[1] = in_w + paddings[2] + paddings[3];
     }
     if (pooling_type == "max") {
       r = xpu::max_pool2d<XPUType>(
@@ -369,4 +369,6 @@ PD_REGISTER_KERNEL(max_pool2d_with_index,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

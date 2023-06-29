@@ -123,11 +123,15 @@ REGISTER_OPERATOR(shuffle_channel,
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 
-REGISTER_OP_CPU_KERNEL(shuffle_channel,
-                       ops::ShuffleChannelOpKernel<phi::CPUContext, float>,
-                       ops::ShuffleChannelOpKernel<phi::CPUContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    shuffle_channel_grad,
-    ops::ShuffleChannelGradOpKernel<phi::CPUContext, float>,
-    ops::ShuffleChannelGradOpKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleChannelOpKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleChannelGradOpKernel,
+                          float,
+                          double) {}

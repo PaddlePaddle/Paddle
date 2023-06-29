@@ -143,6 +143,9 @@ void StreamAnalyzer::ConstructEvents(
 DeviceContext* StreamAnalyzer::ParseDeviceContext(
     const OpFuncNode& op_func_node) const {
   auto& op = op_func_node.operator_base_;
+  if (op == nullptr) {
+    return op_func_node.dev_ctx_;
+  }
   auto& op_type = op->Type();
   const std::string& execution_stream = op_func_node.execution_stream_;
   const int stream_priority = op_func_node.stream_priority_;
@@ -150,10 +153,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 
   DeviceContext* dev_ctx = nullptr;
 
-  // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
+  // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (platform::is_gpu_place(place_) || platform::is_npu_place(place_) ||
-      platform::is_custom_place(place_)) {
+  if (platform::is_gpu_place(place_) || platform::is_custom_place(place_)) {
     VLOG(6) << "Parse DeviceContext for " << op_type
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
@@ -202,7 +204,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 #endif
   }
 
-  SetDeviceCommContext(op.get(), op_func_node.dev_ctx_);
+  if (op != nullptr) {
+    SetDeviceCommContext(op.get(), op_func_node.dev_ctx_);
+  }
   return op_func_node.dev_ctx_;
 }
 
@@ -447,8 +451,6 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(
   } else {
     if (platform::is_xpu_place(place_)) {
       return platform::kXPU;
-    } else if (platform::is_npu_place(place_)) {
-      return platform::kNPU;
     } else if (platform::is_custom_place(place_)) {
       return platform::kCUSTOM_DEVICE;
     }
@@ -464,7 +466,7 @@ DownstreamRunType StreamAnalyzer::AnalyseRunTypeForTwoInstructions(
   }
 
   // npu d2h kernel is asynchronous.
-  if (platform::is_npu_place(place_) || platform::is_custom_place(place_)) {
+  if (platform::is_custom_place(place_)) {
     if (interpreter::IsCpuOp(cur_instr) ||
         interpreter::IsMemcpyH2D(next_instr)) {
       return DownstreamRunType::kDirectRun;

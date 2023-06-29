@@ -19,7 +19,7 @@ import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.fluid import core
-from paddle.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 from .communication.group import Group, _add_new_group, is_initialized
 from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
@@ -128,7 +128,7 @@ def _set_group_map_backend(group, backend):
 
 def _new_ring_id():
     # NOTE(liyurui): For compatible reason, auto parallel and eager mode relay on previous syntax.
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         global _start_ring_id
         _start_ring_id += 1
         return _start_ring_id + max(_get_global_env().nrings, 9)
@@ -198,7 +198,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
     global _custom_gid
     global _group_map
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         global _default_group_name
         gid = _custom_gid if _custom_gid else _new_ring_id()
         group_name = _default_group_name + str(gid)
@@ -292,7 +292,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
     # hang caused by cross-creation of new_group
     tmp = (
         paddle.to_tensor([1], dtype="int32")
-        if in_dygraph_mode()
+        if in_dynamic_mode()
         else paddle.full([0], 1, dtype="int32")
     )
     paddle.distributed.all_reduce(tmp, sync_op=True)

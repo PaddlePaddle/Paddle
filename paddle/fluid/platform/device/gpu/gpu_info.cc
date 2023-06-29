@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -31,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -46,11 +46,11 @@ limitations under the License. */
 #endif
 #endif
 
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
-DECLARE_bool(enable_cublas_tensor_op_math);
-DECLARE_uint64(gpu_memory_limit_mb);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PHI_DECLARE_bool(enable_cublas_tensor_op_math);
+PHI_DECLARE_uint64(gpu_memory_limit_mb);
 
 PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
                             false,

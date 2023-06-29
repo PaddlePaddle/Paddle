@@ -44,6 +44,7 @@ disable_wingpu_test="^test_model$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
 ^test_fuse_bn_act_pass$|\
+^test_fuse_bn_act_pass_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_gather_op$|\
 ^test_activation_op$|\
@@ -165,6 +166,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_sync_batch_norm_op$|\
 ^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass$|\
+^test_fuse_bn_act_pass_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
@@ -178,7 +180,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_convert_multihead_matmul$|\
 ^test_trt_convert_prelu$|\
 ^test_trt_fc_fuse_quant_dequant_pass$|\
-^test_unsqueeze2_eltwise_fuse_pass$|\
 ^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\

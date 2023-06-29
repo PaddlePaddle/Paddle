@@ -25,10 +25,10 @@ paddle.enable_static()
 def build_resnet50(use_amp=False):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-
+    dtype = 'float16' if use_amp else 'float32'
     with paddle.static.program_guard(main_program, startup_program):
         image = paddle.static.data(
-            name='image', shape=[32, 3, 224, 224], dtype='float32'
+            name='image', shape=[32, 3, 224, 224], dtype=dtype
         )
         label = paddle.static.data(name='label', shape=[32], dtype='int64')
         model = paddle.vision.models.resnet50()

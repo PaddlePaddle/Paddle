@@ -25,8 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
-#include "cinn/frontend/op_mappers/use_op_mappers.h"
-#include "cinn/frontend/var_type_utils.h"
+#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
+#include "paddle/cinn/frontend/var_type_utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -94,13 +94,8 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
       feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
     }
 
-    PADDLE_ENFORCE_NE(
-        feed_map[feed_name].shape.size(),
-        0UL,
-        platform::errors::PreconditionNotMet(
-            "The input variable %s's tensor shape cannot be empty,"
-            "we need the variable's dtype and shape from tensor.",
-            feed_name.c_str()));
+    VLOG_IF(4, feed_map[feed_name].shape.size() == 0UL)
+        << "Shape is empty, Create 0D-Tensor for " << feed_name;
   }
   return feed_map;
 }

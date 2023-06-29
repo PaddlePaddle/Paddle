@@ -12,12 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from paddle import _C_ops
+from paddle.fluid import framework
+from paddle.fluid.framework import in_dygraph_mode
+
 __all__ = ['L1Decay', 'L2Decay']
 
-from paddle import fluid
+
+class WeightDecayRegularizer:
+    """Base class for weight decay regularizers
+
+    Defines the common interface of weight-decay regularizers.
+    Weight-decay regularizers are added only during the backward
+    pass for faster regularization. They add operations to the network
+    that correspond to gradient of the regularization function.
+    Users should not use this class directly, but need to use one
+    of its implementations
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(self, param, grad, block):
+        """Add corresponding weight decay operations to the network"""
+        raise NotImplementedError()
+
+    def __str__(self):
+        """Debug string"""
+        raise NotImplementedError()
 
 
-class L1Decay(fluid.regularizer.L1Decay):
+class L1Decay(WeightDecayRegularizer):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
 
@@ -76,10 +102,55 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super().__init__(coeff)
+        assert coeff is not None
+        super().__init__()
+        self._coeff = coeff
+
+    def __call__(self, param, grad, block):
+        """Add L1 weight decay ops to network
+
+        Adds L1 weight decay ops.
+        L1WeightDecay = reg_coeff * sign(parameter)
+
+        Args:
+            param: parameter variable for which regularization is applied
+            block: block in which variable is to be created
+
+        Returns:
+            new variable for weight decay
+        """
+        assert isinstance(param, framework.Variable)
+        assert isinstance(block, framework.Block)
+
+        if in_dygraph_mode():
+            sign = _C_ops.sign(param)
+            return _C_ops.scale(sign, self._coeff, 0.0, True)
+        else:
+            sign = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
+            )
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
+            )
+            # Append sign op
+            block.append_op(
+                type='sign', inputs={"X": param}, outputs={"Out": sign}
+            )
+
+            # Append scale op to the output of sign op
+            block.append_op(
+                type='scale',
+                inputs={"X": sign},
+                outputs={"Out": decay},
+                attrs={"scale": self._coeff},
+            )
+            return decay
+
+    def __str__(self):
+        return "L1Decay, coeff=%f" % self._coeff
 
 
-class L2Decay(fluid.regularizer.L2Decay):
+class L2Decay(WeightDecayRegularizer):
     r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
@@ -97,7 +168,7 @@ class L2Decay(fluid.regularizer.L2Decay):
         loss = 0.5 * coeff * reduce\_sum(square(x))
 
     Args:
-        regularization_coeff(float, optional): regularization coeff. Default:0.0
+        coeff(float, optional): regularization coeff. Default:0.0
 
     Examples:
         .. code-block:: python
@@ -137,4 +208,42 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super().__init__(coeff)
+        assert coeff is not None
+        super().__init__()
+        self._coeff = coeff
+
+    def __call__(self, param, grad, block):
+        """Add L2 weight decay ops to network
+
+        Adds L2 weight decay ops.
+        L2WeightDecay = reg_coeff * parameter
+
+        Args:
+            param: parameter variable for which regularization is applied
+            block: block in which variable is to be created
+
+        Returns:
+            new variable for weight decay
+        """
+        assert isinstance(param, framework.Variable)
+        assert isinstance(block, framework.Block)
+
+        if in_dygraph_mode():
+            return _C_ops.scale(param, self._coeff, 0.0, True)
+        else:
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
+            )
+
+            # Append Op to calculate decay
+            block.append_op(
+                type='scale',
+                inputs={"X": param},
+                outputs={"Out": decay},
+                attrs={"scale": self._coeff},
+            )
+
+            return decay
+
+    def __str__(self):
+        return "L2Decay, coeff=%f" % self._coeff

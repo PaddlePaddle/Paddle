@@ -103,6 +103,38 @@ class OneBeamSizeFusePass : public FusePassBase {
   */
   void RemoveBeamSearchAssociatedOps(ir::Graph* graph) const;
 
+  /*
+  Origin subgraph:
+    (x: persistable)    (index)
+            \            /
+            write_to_array
+                  |
+            read_from_array
+                  |
+                any_op
+
+  Fused subgraph:
+              (x: persistable)
+                  |
+                any_op
+  */
+  void RemoveWriteReadArrayOps(ir::Graph* graph) const;
+
+  /*
+  Origin subgraph:
+      (x: dims0=1)   (index=[0])
+                \    /
+              gather(axis=0)
+                  |
+                any_op
+
+  Fused subgraph:
+                 (x)
+                  |
+                any_op
+  */
+  void RemoveGatherOps(ir::Graph* graph) const;
+
   const std::string name_scope_{"one_beam_size_fuse_pass"};
 };
 

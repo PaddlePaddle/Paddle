@@ -166,8 +166,8 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.ExponentialDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -228,8 +228,8 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NaturalExpDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.NaturalExpDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -288,8 +288,8 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.InverseTimeDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.InverseTimeDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -359,9 +359,11 @@ def polynomial_decay(
                     shape=[1], dtype='float32', value=1.0
                 )
 
-                with control_flow.Switch() as switch:
-                    with switch.case(global_step == zero_var):
-                        paddle.assign(one_var, output=div_res)
+                div_val = paddle.static.nn.cond(
+                    global_step == zero_var, lambda: one_var, lambda: div_res
+                )
+                paddle.assign(div_val, output=div_res)
+
                 decay_steps = decay_steps * div_res
             else:
                 decay_steps_var = paddle.tensor.fill_constant(
@@ -408,10 +410,10 @@ def piecewise_decay(boundaries, values):
               paddle.enable_static()
               boundaries = [10000, 20000]
               values = [1.0, 0.5, 0.1]
-              optimizer = fluid.optimizer.Momentum(
+              optimizer = paddle.optimizer.Momentum(
                   momentum=0.9,
-                  learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
-                  regularization=fluid.regularizer.L2Decay(1e-4))
+                  learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
+                  weight_decay=paddle.regularizer.L2Decay(1e-4))
 
 
     """
@@ -420,7 +422,7 @@ def piecewise_decay(boundaries, values):
             raise ValueError("len(values) - len(boundaries) should be 1")
 
         if in_dygraph_mode():
-            decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
+            decay = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
             return decay
         else:
             global_step = _decay_step_counter()
@@ -432,7 +434,7 @@ def piecewise_decay(boundaries, values):
                 persistable=True,
                 name="learning_rate",
             )
-
+            # TODO: fluid.layers.control_flow.Switch should be replaced by paddle.static.nn.case(or cond) if possible
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
                     boundary_val = paddle.tensor.fill_constant(
@@ -455,7 +457,6 @@ def piecewise_decay(boundaries, values):
                         value=float(values[len(values) - 1]),
                         out=lr,
                     )
-
             return lr
 
 
@@ -494,8 +495,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.CosineDecay(
-                learning_rate, step_each_epoch, epochs
+            decay = paddle.optimizer.lr.CosineAnnealingDecay(
+                learning_rate, epochs
             )
             return decay
         else:
@@ -573,7 +574,6 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
-
         if in_dygraph_mode():
             lr = imperate_lr.LinearLrWarmup(
                 learning_rate, warmup_steps, start_lr, end_lr
@@ -589,17 +589,19 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             )
 
             global_step = _decay_step_counter()
-
-            with control_flow.Switch() as switch:
-                with switch.case(global_step < warmup_steps):
-                    decayed_lr = start_lr + linear_step * (
-                        global_step / float(warmup_steps)
+            if not isinstance(learning_rate, Variable):
+                learning_rate = paddle.tensor.fill_constant(
+                    shape=[1], dtype=dtype, value=float(learning_rate)
+                )
+            lr_val = paddle.static.nn.case(
+                pred_fn_pairs=[
+                    (
+                        global_step < warmup_steps,
+                        lambda: start_lr
+                        + linear_step * (global_step / float(warmup_steps)),
                     )
-                    paddle.assign(decayed_lr, lr)
-                with switch.default():
-                    if not isinstance(learning_rate, Variable):
-                        learning_rate = paddle.tensor.fill_constant(
-                            shape=[1], dtype=dtype, value=float(learning_rate)
-                        )
-                    paddle.assign(learning_rate, lr)
+                ],
+                default=lambda: learning_rate,
+            )
+            paddle.assign(lr_val, lr)
             return lr

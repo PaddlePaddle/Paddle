@@ -834,7 +834,6 @@ def get_grad_device(grad_name, shard):
 
 
 def get_first_check_finite_and_unscale_op_idx(block, raise_error=True):
-
     for idx, op in enumerate(block.ops):
         if op.type == "check_finite_and_unscale":
             return idx
@@ -898,7 +897,7 @@ def get_var_size(param):
     """
     assert -1 not in param.shape
     return (
-        reduce(lambda x, y: x * y, param.shape)
+        reduce(lambda x, y: x * y, param.shape, 1)
         * DtypeToSize[param.dtype]
         / 1024.0
         / 1024.0

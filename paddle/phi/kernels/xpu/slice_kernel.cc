@@ -97,6 +97,12 @@ void SliceKernel(const Context& ctx,
   }
 
   ctx.template Alloc<T>(out);
+  for (size_t i = 0; i < shape_size; ++i) {
+    if (starts_extension[i] == ends_extension[i] || shape[i] == 0) {
+      return;
+    }
+  }
+
   int r = xpu::slice<XPUType>(ctx.x_context(),
                               reinterpret_cast<const XPUType*>(input.data<T>()),
                               reinterpret_cast<XPUType*>(out->data<T>()),

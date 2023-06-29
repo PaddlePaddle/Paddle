@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "gflags/gflags.h"
-#include "paddle/include/paddle_inference_api.h"
+#include "paddle_inference_api.h"  // NOLINT
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");

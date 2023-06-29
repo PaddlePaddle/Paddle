@@ -40,6 +40,9 @@ message InterceptorMessage {
   optional bool ctrl_message = 4 [ default = false ];
   optional int64 scope_idx = 5 [ default = 0 ];
   repeated VarList vars_list = 6;
+  optional int64 gen_step = 7 [ default = -1 ];
+  optional int64 start_micro_step = 8 [ default = -1 ];
+  optional int64 num_micro_step = 9 [ default = -1 ];
 }
 
 message InterceptorResponse { optional bool rst = 1 [ default = false ]; }

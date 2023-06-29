@@ -52,7 +52,7 @@ def launch():
 
         - ``--job_id``: The job unique id, it affects the log files' name. e.g., ``--job_id=job1``. Default ``--job_id=default``.
 
-        - ``--devices``: The selected accelerate devices on nodes, can be gpu/xpu/npu/mlu etc.. e.g., ``--devices=0,1,2,3`` will launch four training processes each bound to one device.
+        - ``--devices``: The selected accelerate devices on nodes, can be gpu/xpu etc.. e.g., ``--devices=0,1,2,3`` will launch four training processes each bound to one device.
 
         - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``training.py``
 
@@ -287,14 +287,141 @@ def launch():
     ctx = Context()
 
     if ctx.is_legacy_mode():
-
         # legacy mode
         from paddle.distributed.fleet import launch
 
         launch.launch()
 
-    else:
+    elif ctx.is_auto_tuner_mode():
+        import copy
+        import json
+        import signal
+        import sys
+        import time
 
+        from ..auto_tuner.recorder import History_recorder
+        from ..auto_tuner.tuner import AutoTuner
+        from ..auto_tuner.utils import gen_new_args, read_log
+        from . import controllers
+
+        # read user defined tuner config json
+        try:
+            with open(ctx.args.auto_tuner_json, "r") as f:
+                tuner_cfg = json.load(f)
+        except:
+            raise ValueError("Please check your auto tuner json whether valid.")
+
+        # copy training script args
+        if ctx.args.training_script.endswith('.py'):
+            entrypoint = [sys.executable, "-u", ctx.args.training_script]
+        else:
+            entrypoint = [ctx.args.training_script]
+        entrypoint.extend(ctx.args.training_script_args)
+        raw_args = copy.deepcopy(ctx.args.training_script_args)
+
+        # get nodes and gpus from args
+        if not ctx.args.devices:
+            gpus_per_node = 8
+        else:
+            gpus_per_node = len(ctx.args.devices.split(","))
+        nnodes = ctx.args.nnodes
+        if isinstance(nnodes, str):
+            tuner_cfg["nodes"] = int(nnodes.split(":")[0])
+        else:
+            tuner_cfg["nodes"] = int(nnodes)
+        tuner_cfg["num_gpus"] = gpus_per_node * tuner_cfg["nodes"]
+
+        # build AutoTuner to get new config
+        auto_tuner = AutoTuner(tuner_cfg)
+        cur_cfg = auto_tuner.search_once()
+
+        # get max time per task run
+        max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
+
+        # build history recorder
+        recorder = History_recorder()
+
+        job_id = 0
+        while cur_cfg:
+            ctx.status._current_status = None
+            # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
+            log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
+                cur_cfg["dp_degree"],
+                cur_cfg["mp_degree"],
+                cur_cfg["pp_degree"],
+                cur_cfg["sharding_degree"],
+                cur_cfg["sharding_stage"],
+                cur_cfg["micro_batch_size"],
+                cur_cfg["use_recompute"],
+                cur_cfg["recompute_granularity"],
+            )
+
+            ctx.args.log_dir = log_dir
+
+            # every task has own job id
+            job_id += 1
+            task_job_id = "auto_tuner_" + str(job_id)
+            ctx.args.job_id = task_job_id
+
+            # generate script args of task
+            new_args = gen_new_args(raw_args, cur_cfg, tuner_cfg)
+            ctx.args.training_script_args = new_args
+
+            # launch task
+            ctx.logger.info(
+                "Launch task from auto tuner: job_id {}, log_dir {}, config {}".format(
+                    task_job_id, log_dir, cur_cfg
+                )
+            )
+
+            c = controllers.init(ctx)
+            # set per task timeout
+            signal.signal(signal.SIGALRM, c.not_exit_signal_handler)
+            signal.alarm(max_time_per_task)
+            c.run()
+
+            # Process generated result
+            metric, err = read_log(
+                path=ctx.args.log_dir,
+                file="workerlog.0",
+                target_metric=tuner_cfg["metric_cfg"]["name"],
+            )
+            if err:
+                ctx.logger.warning(f"Read log failed for parameters: {log_dir}")
+                cur_cfg['time'] = None  # for pruner use.
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
+            else:
+                cur_cfg['time'] = metric  # for pruner use.
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = metric
+                # record history
+            cur_cfg['job_id'] = job_id
+            recorder.add_cfg(**cur_cfg)
+            cur_best_cfgs, err = recorder.get_best(
+                metric=tuner_cfg['metric_cfg']['name'],
+                direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
+            )
+            if not err:
+                ctx.logger.info(f"Current best config: {cur_best_cfgs}")
+                recorder.store_history(
+                    ctx.args.auto_tuner_json.split(".")[0] + "_history.csv"
+                )
+            else:
+                ctx.logger.info(
+                    "Get best config failed. Currently there are no appropriate configs."
+                )
+
+            new_cfg = auto_tuner.search_once()
+            if new_cfg:
+                c.finalize(exit=False)
+            else:
+                c.finalize(exit=True)
+
+            # per task launch interval
+            time.sleep(5)
+
+            cur_cfg = copy.deepcopy(new_cfg)
+        recorder.store_history()
+    else:
         from . import controllers
 
         # initialize the selected controller

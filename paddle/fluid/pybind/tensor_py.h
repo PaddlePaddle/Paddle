@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -45,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/kernels/strings/unicode.h"
@@ -433,7 +435,7 @@ void SetTensorFromPyArrayT(
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use IPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
 #endif
   } else if (paddle::platform::is_custom_place(place)) {
@@ -844,7 +846,7 @@ void _sliceDapper(const phi::DenseTensor *in,
 template <typename T>
 inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        const phi::CPUContext &ctx,
-                                       py::object obj,
+                                       py::object obj UNUSED,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {
@@ -960,8 +962,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
-  bool is_npu_tensor = platform::is_npu_place(tensor.place());
-  bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
   bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
@@ -982,8 +982,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor &&
-      !is_custom_device_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),
@@ -1108,7 +1107,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use CustomPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use CustomPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with CustomPlace "
         "support."));
 #endif

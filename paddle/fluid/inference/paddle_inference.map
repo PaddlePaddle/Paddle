@@ -21,6 +21,7 @@
 			*paddle::internal*;
 			*paddle::get_version*;
 			*paddle::LiteNNAdapterConfig*;
+			*paddle::XpuConfig*;
 			*paddle::AnalysisConfig::*;
 			*paddle::PaddlePredictor::*;
 			*paddle::CreatePaddlePredictor*;

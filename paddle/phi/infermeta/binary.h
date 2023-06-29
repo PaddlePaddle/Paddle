@@ -203,7 +203,8 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
@@ -381,9 +382,9 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,
@@ -399,6 +400,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool right,
                            MetaTensor* out);
 
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y);
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);
@@ -409,13 +416,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* out,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
-
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config = MetaConfig());
 
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,

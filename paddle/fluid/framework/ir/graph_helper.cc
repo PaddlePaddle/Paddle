@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
-
+#include "paddle/fluid/platform/flags.h"
 DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "",

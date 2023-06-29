@@ -91,6 +91,11 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 if(WITH_TESTING)
+  if(CINN_ONLY)
+    add_subdirectory(cpp/cinn)
+    add_subdirectory(cinn)
+    return()
+  endif()
   add_subdirectory(amp)
   add_subdirectory(asp)
   add_subdirectory(autograd)
@@ -102,6 +107,7 @@ if(WITH_TESTING)
   add_subdirectory(custom_op)
   add_subdirectory(custom_runtime)
   add_subdirectory(dataset)
+  add_subdirectory(cpp_extension)
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
     add_subdirectory(auto_parallel)
@@ -126,12 +132,21 @@ if(WITH_TESTING)
   add_subdirectory(quantization)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
-  # add_subdirectory(sequence)
+  add_subdirectory(sequence)
   add_subdirectory(standalone_executor)
   add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
   if(WITH_XPU)
     add_subdirectory(xpu)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  add_test(NAME test_paddle_lib
+           COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib)
+  if(WITH_GPU)
+    add_test(NAME test_paddle_lib_gpu
+             COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib_gpu)
   endif()
 endif()
 
@@ -158,6 +173,12 @@ if(${len} GREATER_EQUAL 1)
       add_executable(${test_name} ${test_src})
       target_link_libraries(${test_name} paddle_gtest_main_new)
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
+      if(WITH_SHARED_PHI)
+        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+      endif()
+      if(WITH_SHARED_IR)
+        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:ir>)
+      endif()
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
@@ -167,8 +188,10 @@ if(${len} GREATER_EQUAL 1)
         target_link_libraries(${test_name} ${ROCM_HIPRTC_LIB})
       endif()
       if(APPLE)
-        target_link_libraries(${test_name}
-                              "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
+        target_link_libraries(
+          ${test_name}
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:ir>"
+        )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
         target_link_libraries(${test_name} ${PYTHON_LIBRARIES})
@@ -176,24 +199,14 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
       endif()
-      if(NOT
-         ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_max_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reducescatter_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allgather_op_npu_test"
-          OR "${test_name}" STREQUAL "send_v2_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "recv_v2_op_npu_test"))
-        cc_test_run(
-          ${test_name}
-          COMMAND
-          ${test_name}
-          ARGS
-          ${test_arg}
-          DIR
-          ${CC_TESTS_DIR})
-      endif()
+      cc_test_run(
+        ${test_name}
+        COMMAND
+        ${test_name}
+        ARGS
+        ${test_arg}
+        DIR
+        ${CC_TESTS_DIR})
     elseif(WITH_TESTING AND NOT TEST ${test_name})
       add_test(NAME ${test_name} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${test_name}.)
@@ -208,6 +221,14 @@ if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
   if(NOT WIN32)
     add_dependencies(standalone_executor_test download_program)
+  endif()
+endif()
+
+if(TARGET standalone_executor_new_ir_test)
+  if(NOT WIN32)
+    set_tests_properties(
+      standalone_executor_new_ir_test
+      PROPERTIES ENVIRONMENT "FLAGS_enable_new_ir_in_executor=true")
   endif()
 endif()
 

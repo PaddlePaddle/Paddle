@@ -1135,10 +1135,10 @@ struct ElementwiseOp : public PatternBase {
 };
 
 struct MatmulElementwiseAdd : public PatternBase {
-  MatmulElementwiseAdd(PDPattern* pattern,
-                       const std::string& name_scope,
-                       const std::string& matmul_type,
-                       bool as_x)
+  MatmulElementwiseAdd(PDPattern* pattern UNUSED,
+                       const std::string& name_scope UNUSED,
+                       const std::string& matmul_type UNUSED,
+                       bool as_x UNUSED)
       : PatternBase(pattern, name_scope, "matmul_elementwise_add") {}
 
   PDNode* operator()(const std::string& matmul_type, bool as_x);
@@ -1155,7 +1155,7 @@ struct MatmulElementwiseAdd : public PatternBase {
 struct ResidualElementwise : public PatternBase {
   ResidualElementwise(PDPattern* pattern,
                       const std::string& name_scope,
-                      bool as_x)
+                      bool as_x UNUSED)
       : PatternBase(pattern, name_scope, "residual_elementwise") {}
   PDNode* operator()(PDNode* op_var,
                      PDNode* residual_var,
@@ -1489,6 +1489,33 @@ struct VitAttention : public PatternBase {
 
   PATTERN_DECL_NODE(reshape2_op);
   PATTERN_DECL_NODE(reshape2_out);
+};
+
+// self_attention in vit
+struct SelfAttention : public PatternBase {
+  SelfAttention(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "vit_block") {}
+
+  PDNode* operator()(PDNode* in);
+
+  PATTERN_DECL_NODE(transpose2_0_op);
+  PATTERN_DECL_NODE(transpose2_0_out);
+  PATTERN_DECL_NODE(transpose2_1_op);
+  PATTERN_DECL_NODE(transpose2_1_out);
+  PATTERN_DECL_NODE(transpose2_2_op);
+  PATTERN_DECL_NODE(transpose2_2_out);
+  PATTERN_DECL_NODE(matmul_0_op);
+  PATTERN_DECL_NODE(matmul_0_out);
+  PATTERN_DECL_NODE(matmul_1_op);
+  PATTERN_DECL_NODE(matmul_1_out);
+  PATTERN_DECL_NODE(slice_0_op);
+  PATTERN_DECL_NODE(slice_0_out);
+  PATTERN_DECL_NODE(slice_1_op);
+  PATTERN_DECL_NODE(slice_1_out);
+  PATTERN_DECL_NODE(slice_2_op);
+  PATTERN_DECL_NODE(slice_2_out);
+  PATTERN_DECL_NODE(softmax_op);
+  PATTERN_DECL_NODE(softmax_out);
 };
 
 // Conv + ElementwiseAdd + an activation

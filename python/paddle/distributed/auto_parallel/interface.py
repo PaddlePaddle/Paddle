@@ -14,11 +14,11 @@
 
 import paddle
 
-from .dist_context import get_default_distributed_context
-from .dist_op import DistributedOperatorHelper
-from .dist_tensor import DistributedTensor
 from .process_mesh import ProcessMesh, get_current_process_mesh
-from .utils import (
+from .static.dist_context import get_default_distributed_context
+from .static.dist_op import DistributedOperatorHelper
+from .static.dist_tensor import DistributedTensor
+from .static.utils import (
     __no_shape_var_type__,
     convert_to_dims_mapping,
     verify_shard_spec,

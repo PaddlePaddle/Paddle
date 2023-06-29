@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 namespace distributed {
 
@@ -26,7 +27,7 @@ class GraphEdgeBlob {
   size_t size() { return id_arr.size(); }
   virtual void add_edge(int64_t id, float weight);
   int64_t get_id(int idx) { return id_arr[idx]; }
-  virtual float get_weight(int idx) { return 1; }
+  virtual float get_weight(int idx UNUSED) { return 1; }
   std::vector<int64_t>& export_id_array() { return id_arr; }
 
  protected:

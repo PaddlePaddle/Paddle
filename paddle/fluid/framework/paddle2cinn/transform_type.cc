@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 
-#include "cinn/common/type.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/utils/string/string_helper.h"
@@ -40,6 +40,7 @@ namespace paddle::framework::paddle2cinn {
   SET_TYPE_CASE_ITEM(UI32, UINT32)
   SET_TYPE_CASE_ITEM(UI64, UINT64)
 
+  SET_TYPE_CASE_ITEM(BF16, BFLOAT16)
   SET_TYPE_CASE_ITEM(F16, FLOAT16)
   SET_TYPE_CASE_ITEM(F32, FLOAT32)
   SET_TYPE_CASE_ITEM(F64, FLOAT64)
@@ -70,6 +71,9 @@ namespace paddle::framework::paddle2cinn {
 
   SET_TYPE_CASE_ITEM(cinn_float32_t, FLOAT32)
   SET_TYPE_CASE_ITEM(cinn_float64_t, FLOAT64)
+#ifdef CINN_COMMON_BFLOAT16_H
+  SET_TYPE_CASE_ITEM(cinn_bfloat16_t, BFLOAT16)
+#endif  // CINN_COMMON_BFLOAT16_H
 #ifdef CINN_COMMON_FLOAT16_H
   SET_TYPE_CASE_ITEM(cinn_float16_t, FLOAT16)
 #endif  // CINN_COMMON_FLOAT16_H

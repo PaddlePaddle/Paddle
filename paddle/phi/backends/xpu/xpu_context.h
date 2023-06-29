@@ -47,14 +47,13 @@ class XPUContext : public DeviceContext,
 
   xpu::Context* x_context() const;
 
-  // For multi-thread dataloader,
-  // check if the current thread is Dataloader thread
-  bool IsDataloader() const;
-
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
   void CreateStream();
+
+  // For share external stream.
+  void SetStream(void* stream);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
@@ -72,6 +71,12 @@ class XPUContext : public DeviceContext,
   void SetXContext(xpu::Context*);
 
   void SetL3Cache(int l3_size = 14155776);
+
+  void SetXpuVersion(int version);
+
+  void SetRuntimeVersion(int runtime_version);
+
+  void SetDriverVersion(int driver_version);
 
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 

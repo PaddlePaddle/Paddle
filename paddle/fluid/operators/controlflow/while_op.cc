@@ -22,6 +22,7 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     cache_inference_while_scope,
@@ -218,6 +219,8 @@ class WhileOp : public framework::OperatorBase {
       core_.reset(new framework::InterpreterCore(
           dev_place, *block, &placeholder, execution_config));
     }
+
+    core_->SetOutputHooks(hookfuncs_);
 
     if (!is_test) {
       while (cond_data) {

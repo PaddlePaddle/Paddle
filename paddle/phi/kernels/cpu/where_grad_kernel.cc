@@ -21,8 +21,8 @@ namespace phi {
 template <typename T, typename Context>
 void WhereGradKernel(const Context& ctx,
                      const DenseTensor& condition,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
+                     const DenseTensor& x UNUSED,
+                     const DenseTensor& y UNUSED,
                      const DenseTensor& out_grad,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {

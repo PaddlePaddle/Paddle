@@ -25,7 +25,7 @@ namespace math {
 template <typename T>
 class BeamSearchFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &context,
+  void operator()(const phi::CPUContext &context UNUSED,
                   const phi::DenseTensor *pre_ids,
                   const phi::DenseTensor *pre_scores,
                   const phi::DenseTensor *ids,

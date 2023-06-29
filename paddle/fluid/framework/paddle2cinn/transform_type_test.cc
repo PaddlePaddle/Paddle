@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 
-#include "cinn/common/type.h"
-#include "cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -39,6 +39,8 @@ TEST(TransToPaddleDataType, common_type) {
             TransToPaddleDataType(::cinn::common::UI32()));
   ASSERT_EQ(::phi::DataType::UINT64,
             TransToPaddleDataType(::cinn::common::UI64()));
+  ASSERT_EQ(::phi::DataType::BFLOAT16,
+            TransToPaddleDataType(::cinn::common::BF16()));
   ASSERT_EQ(::phi::DataType::FLOAT16,
             TransToPaddleDataType(::cinn::common::F16()));
   ASSERT_EQ(::phi::DataType::FLOAT32,

@@ -22,6 +22,10 @@ import unittest
 
 import numpy
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
 from paddle.static.amp import decorate
@@ -76,7 +80,7 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
+        return nets.img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
@@ -314,8 +318,14 @@ class TestImageClassification(unittest.TestCase):
         # infer(use_cuda, save_dirname)
 
     def test_amp_lists(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists()
@@ -324,8 +334,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_1(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 1. w={'exp}, b=None
@@ -338,8 +354,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_2(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 2. w={'tanh'}, b=None
@@ -352,8 +374,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_3(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 3. w={'lstm'}, b=None
@@ -365,8 +393,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_4(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 4. w=None, b={'conv2d'}
@@ -381,8 +415,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_5(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 5. w=None, b={'tanh'}
@@ -397,8 +437,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_6(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
-        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
+        black_list = copy.copy(
+            paddle.static.amp.fp16_lists.black_list
+            | paddle.static.amp.fp16_lists._extra_black_list
+        )
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 6. w=None, b={'lstm'}

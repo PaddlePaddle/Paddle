@@ -342,7 +342,6 @@ def bmn_loss_func(
         return loss
 
     def pem_reg_loss_func(pred_score, gt_iou_map, mask):
-
         gt_iou_map = paddle.multiply(gt_iou_map, mask)
 
         u_hmask = paddle.cast(x=gt_iou_map > 0.7, dtype=DATATYPE)
@@ -451,9 +450,7 @@ def optimizer(cfg, parameter_list):
     optimizer = fluid.optimizer.Adam(
         fluid.layers.piecewise_decay(boundaries=bd, values=lr),
         parameter_list=parameter_list,
-        regularization=fluid.regularizer.L2DecayRegularizer(
-            regularization_coeff=l2_weight_decay
-        ),
+        regularization=paddle.regularizer.L2Decay(coeff=l2_weight_decay),
     )
     return optimizer
 
@@ -752,7 +749,6 @@ class TestTrain(unittest.TestCase):
             return np.array(loss_data)
 
     def test_train(self):
-
         static_res = self.train_bmn(self.args, self.place, to_static=True)
         dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
         np.testing.assert_allclose(

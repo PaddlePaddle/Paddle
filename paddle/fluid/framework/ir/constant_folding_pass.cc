@@ -62,9 +62,10 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
-          "scope must not be null when applying constant floding."));
+          "scope must not be null when applying constant folding."));
 
-  std::vector<std::string> blacklist{"feed", "matrix_multiply"};
+  std::vector<std::string> blacklist{"feed", "matrix_multiply", "save"};
+  int folded_op_num = 0;
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));
@@ -75,7 +76,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       continue;
 
     bool input_persis = true;
-    // map is used to record how many time a name string occures in the whole
+    // map is used to record how many time a name string occurs in the whole
     // graph's nodes
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
@@ -130,6 +131,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
       }
       op->Run(*local_scope, platform::CPUPlace());
+      folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable
         if (out_node->outputs.size() == 0L) continue;
@@ -155,6 +157,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
+  LOG(INFO) << folded_op_num << " Ops are folded";
 }
 
 }  // namespace ir

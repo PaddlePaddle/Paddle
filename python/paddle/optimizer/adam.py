@@ -105,7 +105,7 @@ class Adam(Optimizer):
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=0.1,
                     parameters=linear.parameters())
-            out.backward()
+            loss.backward()
             adam.step()
             adam.clear_grad()
 
@@ -127,7 +127,7 @@ class Adam(Optimizer):
                     beta1=beta1,
                     beta2=beta2,
                     weight_decay=0.01)
-            out.backward()
+            loss.backward()
             adam.step()
             adam.clear_grad()
 
@@ -150,7 +150,7 @@ class Adam(Optimizer):
                 }],
                 weight_decay=0.01,
                 beta1=0.9)
-            out.backward()
+            loss.backward()
             adam.step()
             adam.clear_grad()
 
