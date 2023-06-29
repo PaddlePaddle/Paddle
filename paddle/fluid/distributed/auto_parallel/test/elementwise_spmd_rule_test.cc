@@ -58,7 +58,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDim) {
       infered_dist_attrs = element_rule.InferForward(
           {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
   size_t input_size = 2;
-  size_t output_size = 1 EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  size_t output_size = 1;
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
   EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, -1}));
@@ -131,13 +132,17 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
 
   ElementwiseSPMDRule element_rule = ElementwiseSPMDRule();
 
+  size_t input_size = 2;
+  size_t output_size = 1;
+
   // [0, -1, -1], [-1] --> [0, -1, -1], [-1], [0, -1, -1]
   x_dist_tensor_spec.set_dims_mapping({0, -1, -1});
   y_dist_tensor_spec.set_dims_mapping({-1});
-  std::vector<TensorDistAttr> infered_dist_attrs = element_rule.InferForward(
-      {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+      infered_dist_attrs = element_rule.InferForward(
+          {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, -1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -153,8 +158,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({-1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, 0, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -170,6 +175,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({-1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -185,6 +192,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({0});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -202,8 +211,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({-1, -1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, 0, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -222,8 +231,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({-1, -1, -1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, -1, -1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -240,6 +249,8 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({0, -1, -1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, -1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -260,9 +271,10 @@ TEST(ElementwiseSMPDRuleTest, SingleMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({0});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, mid_spec, y_dist_tensor_spec}, attrs);
-  nreturn = 4;
-  EXPECT_EQ(infered_dist_attrs.first.size(), 3);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  input_size = 3;
+  output_size = 1;
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, 0}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -297,15 +309,19 @@ TEST(ElementwiseSMPDRuleTest, MultiMeshDim) {
 
   paddle::framework::AttributeMap attrs;
   ElementwiseSPMDRule element_rule = ElementwiseSPMDRule();
-  std::vector<TensorDistAttr> infered_dist_attrs;
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+      infered_dist_attrs;
+
+  size_t input_size = 2;
+  size_t output_size = 1;
 
   // [0, 1, -1], [-1, -1, -1] --> [0, 1, -1], [0, 1, -1], [0, 1, -1]
   x_dist_tensor_spec.set_dims_mapping({0, 1, -1});
   y_dist_tensor_spec.set_dims_mapping({-1, -1, -1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -319,8 +335,8 @@ TEST(ElementwiseSMPDRuleTest, MultiMeshDim) {
   y_dist_tensor_spec.set_dims_mapping({-1, 1, 0});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -351,16 +367,19 @@ TEST(ElementwiseSMPDRuleTest, MultiMeshDimBroadcast) {
 
   paddle::framework::AttributeMap attrs;
   ElementwiseSPMDRule element_rule = ElementwiseSPMDRule();
-  std::vector<TensorDistAttr> infered_dist_attrs;
+  std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+      infered_dist_attrs;
+
+  size_t input_size = 2;
+  size_t output_size = 1;
 
   // [0, -1, -1], [1] --> [0, -1, 1], [1], [0, -1, 1]
   x_dist_tensor_spec.set_dims_mapping({0, -1, -1});
   y_dist_tensor_spec.set_dims_mapping({1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  size_t nreturn = 3;
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, -1, 1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -376,8 +395,8 @@ TEST(ElementwiseSMPDRuleTest, MultiMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({0});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({0, 1, -1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),
@@ -395,8 +414,8 @@ TEST(ElementwiseSMPDRuleTest, MultiMeshDimBroadcast) {
   y_dist_tensor_spec.set_dims_mapping({0, -1, 1});
   infered_dist_attrs = element_rule.InferForward(
       {x_dist_tensor_spec, y_dist_tensor_spec}, attrs);
-  EXPECT_EQ(infered_dist_attrs.first.size(), 2);
-  EXPECT_EQ(infered_dist_attrs.second.size(), 1);
+  EXPECT_EQ(infered_dist_attrs.first.size(), input_size);
+  EXPECT_EQ(infered_dist_attrs.second.size(), output_size);
   EXPECT_EQ(infered_dist_attrs.first[0].dims_mapping(),
             std::vector<int64_t>({-1, -1, -1, 1}));
   EXPECT_EQ(infered_dist_attrs.first[1].dims_mapping(),

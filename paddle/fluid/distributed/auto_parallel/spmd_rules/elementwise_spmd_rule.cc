@@ -20,10 +20,10 @@ namespace distributed {
 namespace auto_parallel {
 using phi::distributed::auto_parallel::str_join;
 
-std::pair < std::vector<TensorDistAttr>,
-    std::vector<TensorDistAttr> ElementwiseSPMDRule::InferForward(
-        const std::vector<DistTensorSpec>& input_specs,
-        const paddle::framework::AttributeMap& attrs) {
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+ElementwiseSPMDRule::InferForward(
+    const std::vector<DistTensorSpec>& input_specs,
+    const paddle::framework::AttributeMap& attrs) {
   // step0: Verify Input Args Based on Elementwise Logic
   int64_t ninputs = input_specs.size();
   PADDLE_ENFORCE_GT(
@@ -39,7 +39,7 @@ std::pair < std::vector<TensorDistAttr>,
   std::vector<std::string> input_axes_vec;
   int64_t max_ndim = 0;
   for (int64_t i = 0; i < ninputs; ++i) {
-    int64_t ndim = input_specs[i].get_shape().size();
+    int64_t ndim = input_specs[i].shape().size();
     if (ndim > max_ndim) {
       max_ndim = ndim;
     }
@@ -48,7 +48,7 @@ std::pair < std::vector<TensorDistAttr>,
   // get einsum notation for each input, deal with broadcast
   std::vector<int64_t> broadcast_axis_count(max_ndim, 0);
   for (int64_t i = 0; i < ninputs; ++i) {
-    std::vector<int64_t> shape = input_specs[i].get_shape();
+    std::vector<int64_t> shape = input_specs[i].shape();
     int64_t ndim = shape.size();
     int64_t start_dim = max_ndim - ndim;
     std::string axes_notation = GetBroadcastAxes(ndim, max_ndim, alphabet);
@@ -58,10 +58,10 @@ std::pair < std::vector<TensorDistAttr>,
         // input number at each broadcast axis
         if (idim < start_dim) {
           broadcast_axis_count[idim] += 1;
-        } else if (shape[idim] == 1) {
+        } else if (shape[idim - start_dim] == 1) {
           broadcast_axis_count[idim] += 1;
           // mark the broadcast axis to a special "1"
-          axes_notation[idim] = '1';
+          axes_notation[idim - start_dim] = '1';
         }
       }
     }
@@ -86,19 +86,13 @@ std::pair < std::vector<TensorDistAttr>,
       ShardingMergeForTensors(axes_sharding_info);
 
   // step2.2: infer output dimsmapping from merged input dimsmapping
-  std::vector<int64_t> output_dims_mapping;
-  for (int64_t i = 0, n = output_axes.size(); i < n; i++) {
-    std::string axis = output_axes.substr(i, 1);
-    if (axis == "1") {
-      output_dims_mapping.emplace_back(-1);
-    } else {
-      output_dims_mapping.emplace_back(axis_to_dim_map[axis]);
-    }
-  }
+  std::vector<int64_t> output_dims_mapping =
+      GetDimsMappingForAxes(output_axes, axis_to_dim_map);
+
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
   // input dist_attr.
   TensorDistAttr output_dist_attr =
-      CopyTensorDistAttrForOutput(input_specs[0].get_dist_attr());
+      CopyTensorDistAttrForOutput(input_specs[0].dist_attr());
   output_dist_attr.set_dims_mapping(output_dims_mapping);
 
   std::vector<TensorDistAttr> new_input_dist_attrs;
@@ -121,23 +115,15 @@ std::pair < std::vector<TensorDistAttr>,
 
   // Step2.3.2  handle input tensor partial (TODO)
   VLOG(4) << "ElementwiseSPMDRule InferForward: "
-          << "X shape: [" << str_join(input_specs[0].get_shape())
-          << "], src_dims_mapping: ["
-          << str_join(input_specs[0].get_dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(new_dist_attrs[0].dims_mapping()) << "]; Y shape: ["
-          << str_join(input_specs[1].get_shape()) << "], src_dims_mapping: ["
-          << str_join(input_specs[1].get_dims_mapping())
-          << "], dst_dims_mapping: ["
-          << str_join(new_dist_attrs[1].dims_mapping())
-          << "]; Output dims_mapping: [" << str_join(output_dims_mapping)
+          << " Output dims_mapping: [" << str_join(output_dims_mapping)
           << "], partial_on_dims: [" << str_join(partial_on_dims) << "]";
 
   output_dist_attrs.emplace_back(output_dist_attr);
   return {new_input_dist_attrs, output_dist_attrs};
 }
 
-std::vector<TensorDistAttr> ElementwiseSPMDRule::InferBackward(
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+ElementwiseSPMDRule::InferBackward(
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(phi::errors::Unimplemented(
