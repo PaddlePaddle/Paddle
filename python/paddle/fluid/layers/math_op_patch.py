@@ -301,7 +301,6 @@ def monkey_patch_variable():
     def _neg_(var):
         return _scalar_op_(var, -1.0, 0.0)
 
-    @property
     def _ndim_(self):
         """
         Returns the dimension of current Variable
@@ -323,7 +322,6 @@ def monkey_patch_variable():
         """
         return len(self.shape)
 
-    @property
     def _ndimension_(self):
         """
         Returns the dimension of current Variable

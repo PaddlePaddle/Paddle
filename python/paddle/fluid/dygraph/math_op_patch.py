@@ -152,11 +152,9 @@ def monkey_patch_math_tensor():
     def _ndim_(var):
         return len(var.shape)
 
-    @property
     def _ndimension_(var):
         return len(var.shape)
 
-    @property
     def _dim_(var):
         return len(var.shape)
 
