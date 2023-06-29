@@ -151,7 +151,7 @@ class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
         self._init_config()
-        self.optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+        self.optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         self.attr = {}
 
     def _init_config(self):

@@ -75,8 +75,8 @@ class AmpScaler:
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         model = paddle.nn.Conv2D(3, 2, 3)
-        optimizer = paddle.optimizer.SGDOptimizer(
-                learning_rate=0.01, parameter_list=model.parameters())
+        optimizer = paddle.optimizer.SGD(
+                learning_rate=0.01, parameters=model.parameters())
         scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
         data = paddle.to_tensor(data)
         with paddle.amp.amp_guard():
@@ -168,8 +168,8 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 model = paddle.nn.Conv2D(3, 2, 3)
-                optimizer = paddle.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
+                optimizer = paddle.optimizer.SGD(
+                        learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard():
@@ -221,8 +221,8 @@ class AmpScaler:
 
                 data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
                 model = paddle.nn.Conv2D(3, 2, 3)
-                optimizer = paddle.optimizer.SGDOptimizer(
-                        learning_rate=0.01, parameter_list=model.parameters())
+                optimizer = paddle.optimizer.SGD(
+                        learning_rate=0.01, parameters=model.parameters())
                 scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
                 data = paddle.to_tensor(data)
                 with paddle.amp.amp_guard():
