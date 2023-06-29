@@ -17,6 +17,7 @@
 #include <list>
 
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
