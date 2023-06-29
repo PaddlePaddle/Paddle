@@ -87,6 +87,24 @@ class TestDropoutOp(OpTest):
         self.check_grad(['X'], 'Out', check_prim=False)
 
 
+class TestDropoutOp_ZeroDim(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.prim_op_type = "comp"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones(()).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
+
+
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
@@ -123,6 +141,20 @@ class TestDropoutOp2(TestDropoutOp):
         self.outputs = {
             'Out': np.zeros((32, 64)).astype('float32'),
             'Mask': np.zeros((32, 64)).astype('uint8'),
+        }
+
+
+class TestDropoutOp2_ZeroDim(TestDropoutOp2):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': np.zeros(()).astype('float32'),
+            'Mask': np.zeros(()).astype('uint8'),
         }
 
 
