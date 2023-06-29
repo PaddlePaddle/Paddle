@@ -23,6 +23,8 @@ from paddle.fluid import core
 
 def np_masked_select(x, mask):
     result = np.empty(shape=(0), dtype=x.dtype)
+    broadcast_shape = np.broadcast_shapes(x.shape, mask.shape)
+    mask = np.broadcast_to(mask, shape=broadcast_shape)
     for ele, ma in zip(np.nditer(x), np.nditer(mask)):
         if ma:
             result = np.append(result, ele)
@@ -35,7 +37,7 @@ class TestMaskedSelectOp(OpTest):
         self.op_type = "masked_select"
         self.python_api = paddle.masked_select
         x = np.random.random(self.shape).astype("float64")
-        mask = np.array(np.random.randint(2, size=self.shape, dtype=bool))
+        mask = np.array(np.random.randint(2, size=self.mask_shape, dtype=bool))
         out = np_masked_select(x, mask)
         self.inputs = {'X': x, 'Mask': mask}
         self.outputs = {'Y': out}
@@ -48,16 +50,19 @@ class TestMaskedSelectOp(OpTest):
 
     def init(self):
         self.shape = (50, 3)
+        self.mask_shape = self.shape
 
 
 class TestMaskedSelectOp1(TestMaskedSelectOp):
     def init(self):
         self.shape = (6, 8, 9, 18)
+        self.mask_shape = self.shape
 
 
 class TestMaskedSelectOp2(TestMaskedSelectOp):
     def init(self):
         self.shape = (168,)
+        self.mask_shape = self.shape
 
 
 class TestMaskedSelectFP16Op(OpTest):
@@ -240,6 +245,12 @@ class TestMaskedSelectBroadcast(unittest.TestCase):
         out.sum().backward()
         np_out = np.ones(shape)
         np.testing.assert_allclose(x.grad.numpy(), np_out, rtol=1e-05)
+
+
+class TestMaskedSelectOpBroadcast(TestMaskedSelectOp):
+    def init(self):
+        self.shape = (3, 40)
+        self.mask_shape = (3, 1)
 
 
 if __name__ == '__main__':

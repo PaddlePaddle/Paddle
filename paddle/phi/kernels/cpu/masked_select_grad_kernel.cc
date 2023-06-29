@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/masked_select_grad_kernel.h"
-#include "paddle/phi/common/broadcast_shape.h"
+
 #include "paddle/phi/kernels/expand_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 
@@ -29,7 +30,8 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad) {
   DenseTensor mask_expand;
   if (mask.dims() != x.dims()) {
-    auto expanded_size = InferBroadcastShape(x.dims(), mask.dims());
+    auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+        vectorize(x.dims()), vectorize(mask.dims()));
     ExpandKernel<bool, Context>(
         dev_ctx, mask, IntArray(expanded_size), &mask_expand);
   } else {
