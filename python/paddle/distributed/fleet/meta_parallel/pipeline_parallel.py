@@ -86,13 +86,17 @@ class FakeMicroDataset:
     def _load_micro_batch(self, micro_step):
         inputs = self._data
 
-        if self._is_first_stage or self._is_last_stage:
+        data = None
+        label = None
+        if self._is_first_stage:
             assert len(inputs) == 2, "length of input should be 2"
             data = self._load_micro_batch_impl(inputs[0], micro_step)
+
+        if self._is_last_stage:
+            assert len(inputs) == 2, "length of input should be 2"
             label = self._load_micro_batch_impl(inputs[1], micro_step)
-            return (data, label)
-        else:
-            return (None, None)
+
+        return (data, label)
 
     def _load_micro_batch_impl(self, inputs, micro_step):
         begin = micro_step * self._micro_batch_size
