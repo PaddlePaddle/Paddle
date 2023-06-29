@@ -21,12 +21,7 @@ from .. import unique_name
 from ..framework import Variable
 from ..data_feeder import check_type
 
-__all__ = [
-    'NoamDecay',
-    'PolynomialDecay',
-    'LinearLrWarmup',
-    'ReduceLROnPlateau',
-]
+__all__ = []
 
 
 class LearningRateDecay:
