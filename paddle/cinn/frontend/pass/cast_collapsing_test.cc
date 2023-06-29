@@ -37,17 +37,18 @@ TEST(CastCollapsing, FuseTwoCast) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_t     = builder.Cast(x, "float16");
-  auto out     = builder.Cast(x_t, "float32");
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_t = builder.Cast(x, "float16");
+  auto out = builder.Cast(x_t, "float32");
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 
@@ -56,18 +57,19 @@ TEST(CastCollapsing, FuseThreeCast) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Cast(x, "int32");
-  auto x_2t    = builder.Cast(x_1t, "int64");
-  auto out     = builder.Cast(x_2t, "float32");
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Cast(x, "int32");
+  auto x_2t = builder.Cast(x_1t, "int64");
+  auto out = builder.Cast(x_2t, "float32");
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
   CompareResult(&program, target, input_ids, {out->id}, 2, passes, 123, true);
 }
 
@@ -76,16 +78,17 @@ TEST(CastCollapsing, ReplaceUselessCastWithIndentity) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto out     = builder.Cast(x, "float32");
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto out = builder.Cast(x, "float32");
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
@@ -94,19 +97,20 @@ TEST(CastCollapsing, FuseCastToUseless) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Cast(x, "int32");
-  auto x_2t    = builder.Cast(x_1t, "int64");
-  auto x_3t    = builder.Cast(x_2t, "float32");
-  auto out     = builder.Add(x_3t, x_3t);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Cast(x, "int32");
+  auto x_2t = builder.Cast(x_1t, "int64");
+  auto x_3t = builder.Cast(x_2t, "float32");
+  auto out = builder.Add(x_3t, x_3t);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
   CompareResult(&program, target, input_ids, {out->id}, 3, passes, 123, true);
 }
 
@@ -115,22 +119,30 @@ TEST(TransposeCollapsing, FuseTransposeWithMultiOutput) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Cast(x, "int32");
-  auto x_2t    = builder.Cast(x_1t, "float32");
-  auto x_3t    = builder.Cast(x_2t, "int32");
-  auto out1    = builder.Transpose(x_1t, {0, 2, 1});
-  auto out2    = builder.Transpose(x_2t, {0, 2, 1});
-  auto out3    = builder.Transpose(x_3t, {0, 2, 1});
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Cast(x, "int32");
+  auto x_2t = builder.Cast(x_1t, "float32");
+  auto x_3t = builder.Cast(x_2t, "int32");
+  auto out1 = builder.Transpose(x_1t, {0, 2, 1});
+  auto out2 = builder.Transpose(x_2t, {0, 2, 1});
+  auto out3 = builder.Transpose(x_3t, {0, 2, 1});
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
-  CompareResult(&program, target, input_ids, {out1->id, out2->id, out3->id}, 1, passes, 123, true);
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
+  CompareResult(&program,
+                target,
+                input_ids,
+                {out1->id, out2->id, out3->id},
+                1,
+                passes,
+                123,
+                true);
 }
 
 TEST(TransposeCollapsing, FuseTwoSecTranspose) {
@@ -138,22 +150,24 @@ TEST(TransposeCollapsing, FuseTwoSecTranspose) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Cast(x, "int32");
-  auto x_2t    = builder.Cast(x_1t, "float32");
-  auto out1    = builder.Reshape(x_2t, {5, 3, 4});
-  auto x_3t    = builder.Cast(out1, "int32");
-  auto x_4t    = builder.Cast(x_3t, "float32");
-  auto out2    = builder.Transpose(x_2t, {0, 2, 1});
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Cast(x, "int32");
+  auto x_2t = builder.Cast(x_1t, "float32");
+  auto out1 = builder.Reshape(x_2t, {5, 3, 4});
+  auto x_3t = builder.Cast(out1, "int32");
+  auto x_4t = builder.Cast(x_3t, "float32");
+  auto out2 = builder.Transpose(x_2t, {0, 2, 1});
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
-  CompareResult(&program, target, input_ids, {out1->id, out2->id}, 4, passes, 123, true);
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
+  CompareResult(
+      &program, target, input_ids, {out1->id, out2->id}, 4, passes, 123, true);
 }
 
 TEST(TransposeCollapsing, FuseTwoHorizontalTranspose) {
@@ -161,18 +175,19 @@ TEST(TransposeCollapsing, FuseTwoHorizontalTranspose) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto y_t1    = builder.Cast(x, "int32");
-  auto y_t2    = builder.Cast(x, "int32");
-  auto out     = builder.Add(y_t1, y_t2);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto y_t1 = builder.Cast(x, "int32");
+  auto y_t2 = builder.Cast(x, "int32");
+  auto out = builder.Add(y_t1, y_t2);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
   CompareResult(&program, target, input_ids, {out->id}, 0, passes, 123, true);
 }
 
@@ -181,19 +196,20 @@ TEST(TransposeCollapsing, FuseVerAndHorTranspose) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto y_t1    = builder.Cast(x, "int32");
-  auto y_t2    = builder.Cast(y_t1, "float32");
-  auto y_t3    = builder.Cast(x, "float32");
-  auto out     = builder.Add(y_t2, y_t3);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto y_t1 = builder.Cast(x, "int32");
+  auto y_t2 = builder.Cast(y_t1, "float32");
+  auto y_t3 = builder.Cast(x, "float32");
+  auto out = builder.Add(y_t2, y_t3);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
-  absl::c_transform(std::vector<absl::string_view>{x.id()}, std::back_inserter(input_ids), [](absl::string_view id) {
-    return std::string(id);
-  });
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"CastCollapsing"}};
+  absl::c_transform(std::vector<absl::string_view>{x.id()},
+                    std::back_inserter(input_ids),
+                    [](absl::string_view id) { return std::string(id); });
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"CastCollapsing"}};
   CompareResult(&program, target, input_ids, {out->id}, 3, passes, 123, true);
 }
 

@@ -17,6 +17,7 @@
 #include <type_traits>
 
 #include "paddle/ir/core/type.h"
+#include "paddle/ir/core/type_base.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/core/tensor_meta.h"
 

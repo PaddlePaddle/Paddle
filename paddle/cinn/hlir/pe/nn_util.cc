@@ -24,23 +24,35 @@ namespace pe {
 using cinn::lang::Compute;
 using ir::Tensor;
 
-std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_size, const int& kernel_size) {
-  std::unordered_map<std::string, std::vector<std::vector<std::vector<float>>>> all_vals;
+std::vector<std::vector<std::vector<float>>> get_winograd_val(
+    const int& tile_size, const int& kernel_size) {
+  std::unordered_map<std::string, std::vector<std::vector<std::vector<float>>>>
+      all_vals;
   {
     std::string keys = "2+3";
     std::vector<std::vector<std::vector<float>>> nums;
-    std::vector<std::vector<float>> A = {{1., 0.}, {1., -1.}, {1., 1.}, {0., 1.}};
+    std::vector<std::vector<float>> A = {
+        {1., 0.}, {1., -1.}, {1., 1.}, {0., 1.}};
     nums.push_back(A);
-    std::vector<std::vector<float>> B = {{1., 0., 0., 0.}, {0., -1., 1., -1.}, {-1., 1., 1., 0.}, {0., 0., 0., 1.}};
+    std::vector<std::vector<float>> B = {{1., 0., 0., 0.},
+                                         {0., -1., 1., -1.},
+                                         {-1., 1., 1., 0.},
+                                         {0., 0., 0., 1.}};
     nums.push_back(B);
-    std::vector<std::vector<float>> G = {{1., 0., 0.}, {0.5, -0.5, 0.5}, {0.5, 0.5, 0.5}, {0., 0., 1.}};
+    std::vector<std::vector<float>> G = {
+        {1., 0., 0.}, {0.5, -0.5, 0.5}, {0.5, 0.5, 0.5}, {0., 0., 1.}};
     nums.push_back(G);
     all_vals[keys] = nums;
   }
   {
     std::string keys = "2+5";
     std::vector<std::vector<std::vector<float>>> nums;
-    std::vector<std::vector<float>> A = {{1.0, 0.0}, {1.0, -1.0}, {1.0, 1.0}, {1.0, 0.5}, {1.0, -2.0}, {0.0, 1.0}};
+    std::vector<std::vector<float>> A = {{1.0, 0.0},
+                                         {1.0, -1.0},
+                                         {1.0, 1.0},
+                                         {1.0, 0.5},
+                                         {1.0, -2.0},
+                                         {0.0, 1.0}};
     nums.push_back(A);
     std::vector<std::vector<float>> B = {{1.0, 0.0, 0.0, 0.0, 0.0, 0.0},
                                          {-1.5, 1.0, -1.0, -2.0, 0.5, 1.0},
@@ -49,30 +61,52 @@ std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_si
                                          {1.0, 1.0, 1.0, 1.0, 1.0, 1.5},
                                          {0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(B);
-    std::vector<std::vector<float>> G = {
-        {1.0, 0.0, 0.0, 0.0, 0.0},
-        {-0.3333333333333333, 0.3333333333333333, -0.3333333333333333, 0.3333333333333333, -0.3333333333333333},
-        {0.3333333333333333, 0.3333333333333333, 0.3333333333333333, 0.3333333333333333, 0.3333333333333333},
-        {-1.0666666666666667, -0.5333333333333333, -0.26666666666666666, -0.13333333333333333, -0.06666666666666667},
-        {0.06666666666666667, -0.13333333333333333, 0.26666666666666666, -0.5333333333333333, 1.0666666666666667},
-        {0.0, 0.0, 0.0, 0.0, 1.0}};
+    std::vector<std::vector<float>> G = {{1.0, 0.0, 0.0, 0.0, 0.0},
+                                         {-0.3333333333333333,
+                                          0.3333333333333333,
+                                          -0.3333333333333333,
+                                          0.3333333333333333,
+                                          -0.3333333333333333},
+                                         {0.3333333333333333,
+                                          0.3333333333333333,
+                                          0.3333333333333333,
+                                          0.3333333333333333,
+                                          0.3333333333333333},
+                                         {-1.0666666666666667,
+                                          -0.5333333333333333,
+                                          -0.26666666666666666,
+                                          -0.13333333333333333,
+                                          -0.06666666666666667},
+                                         {0.06666666666666667,
+                                          -0.13333333333333333,
+                                          0.26666666666666666,
+                                          -0.5333333333333333,
+                                          1.0666666666666667},
+                                         {0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(G);
     all_vals[keys] = nums;
   }
   {
     std::string keys = "2+7";
     std::vector<std::vector<std::vector<float>>> nums;
-    std::vector<std::vector<float>> A = {
-        {1.0, 0.0}, {1.0, -1.0}, {1.0, 1.0}, {1.0, 0.5}, {1.0, -0.5}, {1.0, 2.0}, {1.0, -2.0}, {0.0, 1.0}};
+    std::vector<std::vector<float>> A = {{1.0, 0.0},
+                                         {1.0, -1.0},
+                                         {1.0, 1.0},
+                                         {1.0, 0.5},
+                                         {1.0, -0.5},
+                                         {1.0, 2.0},
+                                         {1.0, -2.0},
+                                         {0.0, 1.0}};
     nums.push_back(A);
-    std::vector<std::vector<float>> B = {{1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-                                         {0.0, -1.0, 1.0, 2.0, -2.0, 0.5, -0.5, -1.0},
-                                         {-5.25, 1.0, 1.0, 4.0, 4.0, 0.25, 0.25, 0.0},
-                                         {0.0, 4.25, -4.25, -2.5, 2.5, -2.5, 2.5, 5.25},
-                                         {5.25, -4.25, -4.25, -5.0, -5.0, -1.25, -1.25, 0.0},
-                                         {0.0, -1.0, 1.0, 0.5, -0.5, 2.0, -2.0, -5.25},
-                                         {-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0},
-                                         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
+    std::vector<std::vector<float>> B = {
+        {1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, -1.0, 1.0, 2.0, -2.0, 0.5, -0.5, -1.0},
+        {-5.25, 1.0, 1.0, 4.0, 4.0, 0.25, 0.25, 0.0},
+        {0.0, 4.25, -4.25, -2.5, 2.5, -2.5, 2.5, 5.25},
+        {5.25, -4.25, -4.25, -5.0, -5.0, -1.25, -1.25, 0.0},
+        {0.0, -1.0, 1.0, 0.5, -0.5, 2.0, -2.0, -5.25},
+        {-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(B);
     std::vector<std::vector<float>> G = {{1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
                                          {-0.2222222222222222,
@@ -138,12 +172,13 @@ std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_si
                                          {1.0, 1.0, 1.0, 1.0, 1.0, 1.5},
                                          {0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(B);
-    std::vector<std::vector<float>> G = {{1.0, 0.0, 0.0},
-                                         {-0.3333333333333333, 0.3333333333333333, -0.3333333333333333},
-                                         {0.3333333333333333, 0.3333333333333333, 0.3333333333333333},
-                                         {-1.0666666666666667, -0.5333333333333333, -0.26666666666666666},
-                                         {0.06666666666666667, -0.13333333333333333, 0.26666666666666666},
-                                         {0.0, 0.0, 1.0}};
+    std::vector<std::vector<float>> G = {
+        {1.0, 0.0, 0.0},
+        {-0.3333333333333333, 0.3333333333333333, -0.3333333333333333},
+        {0.3333333333333333, 0.3333333333333333, 0.3333333333333333},
+        {-1.0666666666666667, -0.5333333333333333, -0.26666666666666666},
+        {0.06666666666666667, -0.13333333333333333, 0.26666666666666666},
+        {0.0, 0.0, 1.0}};
     nums.push_back(G);
     all_vals[keys] = nums;
   }
@@ -159,24 +194,48 @@ std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_si
                                          {1.0, -2.0, 4.0, -8.0},
                                          {0.0, 0.0, 0.0, 1.0}};
     nums.push_back(A);
-    std::vector<std::vector<float>> B = {{1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-                                         {0.0, -1.0, 1.0, 2.0, -2.0, 0.5, -0.5, -1.0},
-                                         {-5.25, 1.0, 1.0, 4.0, 4.0, 0.25, 0.25, 0.0},
-                                         {0.0, 4.25, -4.25, -2.5, 2.5, -2.5, 2.5, 5.25},
-                                         {5.25, -4.25, -4.25, -5.0, -5.0, -1.25, -1.25, 0.0},
-                                         {0.0, -1.0, 1.0, 0.5, -0.5, 2.0, -2.0, -5.25},
-                                         {-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0},
-                                         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
+    std::vector<std::vector<float>> B = {
+        {1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+        {0.0, -1.0, 1.0, 2.0, -2.0, 0.5, -0.5, -1.0},
+        {-5.25, 1.0, 1.0, 4.0, 4.0, 0.25, 0.25, 0.0},
+        {0.0, 4.25, -4.25, -2.5, 2.5, -2.5, 2.5, 5.25},
+        {5.25, -4.25, -4.25, -5.0, -5.0, -1.25, -1.25, 0.0},
+        {0.0, -1.0, 1.0, 0.5, -0.5, 2.0, -2.0, -5.25},
+        {-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0},
+        {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(B);
-    std::vector<std::vector<float>> G = {
-        {1.0, 0.0, 0.0, 0.0, 0.0},
-        {-0.2222222222222222, 0.2222222222222222, -0.2222222222222222, 0.2222222222222222, -0.2222222222222222},
-        {-0.2222222222222222, -0.2222222222222222, -0.2222222222222222, -0.2222222222222222, -0.2222222222222222},
-        {0.7111111111111111, 0.35555555555555557, 0.17777777777777778, 0.08888888888888889, 0.044444444444444446},
-        {0.7111111111111111, -0.35555555555555557, 0.17777777777777778, -0.08888888888888889, 0.044444444444444446},
-        {0.011111111111111112, 0.022222222222222223, 0.044444444444444446, 0.08888888888888889, 0.17777777777777778},
-        {0.011111111111111112, -0.022222222222222223, 0.044444444444444446, -0.08888888888888889, 0.17777777777777778},
-        {0.0, 0.0, 0.0, 0.0, 1.0}};
+    std::vector<std::vector<float>> G = {{1.0, 0.0, 0.0, 0.0, 0.0},
+                                         {-0.2222222222222222,
+                                          0.2222222222222222,
+                                          -0.2222222222222222,
+                                          0.2222222222222222,
+                                          -0.2222222222222222},
+                                         {-0.2222222222222222,
+                                          -0.2222222222222222,
+                                          -0.2222222222222222,
+                                          -0.2222222222222222,
+                                          -0.2222222222222222},
+                                         {0.7111111111111111,
+                                          0.35555555555555557,
+                                          0.17777777777777778,
+                                          0.08888888888888889,
+                                          0.044444444444444446},
+                                         {0.7111111111111111,
+                                          -0.35555555555555557,
+                                          0.17777777777777778,
+                                          -0.08888888888888889,
+                                          0.044444444444444446},
+                                         {0.011111111111111112,
+                                          0.022222222222222223,
+                                          0.044444444444444446,
+                                          0.08888888888888889,
+                                          0.17777777777777778},
+                                         {0.011111111111111112,
+                                          -0.022222222222222223,
+                                          0.044444444444444446,
+                                          -0.08888888888888889,
+                                          0.17777777777777778},
+                                         {0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(G);
     all_vals[keys] = nums;
   }
@@ -197,12 +256,57 @@ std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_si
     std::vector<std::vector<float>> B = {
         {1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
         {3.75, 1.0, -1.0, -2.0, 2.0, -0.5, 0.5, 4.0, -0.25, 1.0},
-        {-6.25, 2.75, -4.75, -11.5, 3.4999999999999996, -2.125, 1.625, -1.0, -1.0, 3.75},
-        {-19.6875, -9.0, 1.5, -10.5, -19.5, 2.0625, -3.9375, -21.0, 1.3125, -6.25},
-        {10.5, -10.6875, 21.1875, 18.375, -0.375, 10.875, -7.875, 5.25, 5.25, -19.6875},
-        {19.6875, 21.1875, 10.6875, 15.75, 21.75, 0.1875, 9.1875, 21.0, -1.3125, 10.5},
+        {-6.25,
+         2.75,
+         -4.75,
+         -11.5,
+         3.4999999999999996,
+         -2.125,
+         1.625,
+         -1.0,
+         -1.0,
+         3.75},
+        {-19.6875,
+         -9.0,
+         1.5,
+         -10.5,
+         -19.5,
+         2.0625,
+         -3.9375,
+         -21.0,
+         1.3125,
+         -6.25},
+        {10.5,
+         -10.6875,
+         21.1875,
+         18.375,
+         -0.375,
+         10.875,
+         -7.875,
+         5.25,
+         5.25,
+         -19.6875},
+        {19.6875,
+         21.1875,
+         10.6875,
+         15.75,
+         21.75,
+         0.1875,
+         9.1875,
+         21.0,
+         -1.3125,
+         10.5},
         {-6.25, -1.5, -9.0, -7.875, -4.125, -9.75, 5.25, -5.25, -5.25, 19.6875},
-        {-3.75, -4.75, -2.75, -3.25, -4.25, -1.7499999999999998, -5.75, -4.0, 0.25, -6.25},
+        {-3.75,
+         -4.75,
+         -2.75,
+         -3.25,
+         -4.25,
+         -1.7499999999999998,
+         -5.75,
+         -4.0,
+         0.25,
+         -6.25},
         {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -3.7500000000000004},
         {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0}};
     nums.push_back(B);
@@ -267,25 +371,30 @@ std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_si
     nums.push_back(G);
     all_vals[keys] = nums;
   }
-  std::string keys = std::to_string(tile_size) + "+" + std::to_string(kernel_size);
+  std::string keys =
+      std::to_string(tile_size) + "+" + std::to_string(kernel_size);
   return all_vals[keys];
 }
 
-ir::Tensor const_matrix(const std::vector<std::vector<float>>& input, const std::string& name) {
-  int row                        = input.size();
-  int col                        = input[0].size();
+ir::Tensor const_matrix(const std::vector<std::vector<float>>& input,
+                        const std::string& name) {
+  int row = input.size();
+  int col = input[0].size();
   std::vector<Expr> tensor_shape = {Expr(row), Expr(col)};
-  auto result                    = Compute(
+  auto result = Compute(
       tensor_shape,
       [=](Expr yy, Expr xx) {
         auto now = cinn::common::make_const(1.0f);
         for (int ii = 0; ii < row; ii++) {
           for (int jj = 0; jj < col; jj++) {
-            // if (common::is_zero(Expr(ii)-yy) && common::is_zero(Expr(jj)-xx)) {
+            // if (common::is_zero(Expr(ii)-yy) && common::is_zero(Expr(jj)-xx))
+            // {
             //     now = cinn::common::make_const(input[ii][jj]);
             // }
-            auto cond = common::and_all({Expr(ii) - yy == 0, Expr(jj) - xx == 0});
-            now       = common::select(cond, cinn::common::make_const(input[ii][jj]), now);
+            auto cond =
+                common::and_all({Expr(ii) - yy == 0, Expr(jj) - xx == 0});
+            now = common::select(
+                cond, cinn::common::make_const(input[ii][jj]), now);
           }
         }
         return now;
@@ -294,8 +403,10 @@ ir::Tensor const_matrix(const std::vector<std::vector<float>>& input, const std:
   return result;
 }
 
-std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size, const int& kernel_size) {
-  std::vector<std::vector<std::vector<float>>> vals = get_winograd_val(tile_size, kernel_size);
+std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size,
+                                                    const int& kernel_size) {
+  std::vector<std::vector<std::vector<float>>> vals =
+      get_winograd_val(tile_size, kernel_size);
   CHECK_EQ(vals.size(), 3U) << "vals_size of winograd is not 3! Please check.";
 
   std::vector<std::vector<float>> A = vals[0];
@@ -303,18 +414,19 @@ std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size, const 
   std::vector<std::vector<float>> G = vals[2];
 
   std::string name_a = "A_matrix";
-  auto tensor_a      = const_matrix(A, name_a);
+  auto tensor_a = const_matrix(A, name_a);
 
   std::string name_b = "B_matrix";
-  auto tensor_b      = const_matrix(B, name_b);
+  auto tensor_b = const_matrix(B, name_b);
 
   std::string name_g = "G_matrix";
-  auto tensor_g      = const_matrix(G, name_g);
+  auto tensor_g = const_matrix(G, name_g);
 
   return {tensor_a, tensor_b, tensor_g};
 }
 
-int GetPostParallelSize(const std::vector<int>& inshape, const std::vector<int>& axes) {
+int GetPostParallelSize(const std::vector<int>& inshape,
+                        const std::vector<int>& axes) {
   int parallel_size = 1;
   for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
     parallel_size *= inshape[idx];
@@ -322,7 +434,8 @@ int GetPostParallelSize(const std::vector<int>& inshape, const std::vector<int>&
   return parallel_size;
 }
 
-int GetParallelSize(const std::vector<int>& inshape, const std::vector<int>& axes) {
+int GetParallelSize(const std::vector<int>& inshape,
+                    const std::vector<int>& axes) {
   int parallel_size = 1;
   for (int idx = 0; idx < inshape.size(); ++idx) {
     if (std::find(axes.begin(), axes.end(), idx) != axes.end()) {
@@ -352,8 +465,8 @@ std::vector<int> GetFirstStepReduceShape(const std::vector<int>& shape,
   CHECK_GT(unfold_size, 1);
 
   // fuse reduce axis.
-  int insert_zero_num  = 0;
-  int last_axis_index  = axes.size() - 1;
+  int insert_zero_num = 0;
+  int last_axis_index = axes.size() - 1;
   int last_reduce_size = shape[axes.back()];
   for (; last_axis_index >= 1; --last_axis_index) {
     if (axes[last_axis_index] - 1 != axes[last_axis_index - 1]) {

@@ -32,31 +32,36 @@ class GraphAlterHelper {
  public:
   GraphAlterHelper(Graph* graph) : graph_(graph) {
     if (!FLAGS_cinn_custom_call_deny_ops.empty()) {
-      auto splited_names = cinn::utils::Split(FLAGS_cinn_custom_call_deny_ops, ";");
-      deny_ops_          = {splited_names.begin(), splited_names.end()};
+      auto splited_names =
+          cinn::utils::Split(FLAGS_cinn_custom_call_deny_ops, ";");
+      deny_ops_ = {splited_names.begin(), splited_names.end()};
     }
   }
   void TransToCustomCall(const common::Target& target) {
     // collect candidate nodes
-    auto mark_nodes = graph_->CollectNodes([this, &target](const common::GraphNode* graph_node) -> bool {
-      if (graph_node->safe_as<Node>()) {
-        auto node      = graph_node->safe_as<Node>();
-        auto&& op_name = node->op()->name;
-        // a op with external_api registered and not excluded explicitly will be selected
-        if (!IsExcluded(op_name) && ExternalApiRegistry::Global()->Has(op_name, target)) {
-          VLOG(4) << "Op:" << op_name << " will use custom_call";
-          return true;
-        }
-      }
+    auto mark_nodes = graph_->CollectNodes(
+        [this, &target](const common::GraphNode* graph_node) -> bool {
+          if (graph_node->safe_as<Node>()) {
+            auto node = graph_node->safe_as<Node>();
+            auto&& op_name = node->op()->name;
+            // a op with external_api registered and not excluded explicitly
+            // will be selected
+            if (!IsExcluded(op_name) &&
+                ExternalApiRegistry::Global()->Has(op_name, target)) {
+              VLOG(4) << "Op:" << op_name << " will use custom_call";
+              return true;
+            }
+          }
 
-      return false;
-    });
+          return false;
+        });
 
     for (auto* graph_node : mark_nodes) {
       auto* node = graph_node->safe_as<Node>();
       // revise the output edges for conv2d because the compute implement of
       // codegen-registered is not consistent with cudnn
-      if ((node->op()->name == "conv2d" || node->op()->name == "depthwise_conv2d") &&
+      if ((node->op()->name == "conv2d" ||
+           node->op()->name == "depthwise_conv2d") &&
           target == common::DefaultNVGPUTarget()) {
         auto out_links = node->outlinks_in_order();
         for (int idx = 1; idx < out_links.size(); ++idx) {
@@ -68,7 +73,7 @@ class GraphAlterHelper {
       }
 
       node->attrs.attr_store["original_op"] = node->op()->name;
-      node->attrs.op                        = framework::Operator::Get("custom_call");
+      node->attrs.op = framework::Operator::Get("custom_call");
     }
   }
 
@@ -76,7 +81,9 @@ class GraphAlterHelper {
   Graph* graph_;
   std::unordered_set<std::string> deny_ops_;
 
-  bool IsExcluded(const std::string& op_name) { return deny_ops_.count(op_name); }
+  bool IsExcluded(const std::string& op_name) {
+    return deny_ops_.count(op_name);
+  }
 };
 
 void TransToCustomCallInternal(Graph* graph) {
@@ -92,7 +99,8 @@ void TransToCustomCallInternal(Graph* graph) {
 CINN_REGISTER_HELPER(TransToCustomCallPass) {
   CINN_REGISTER_PASS(TransToCustomCallPass)
       .describe(
-          "This pass replaces every op with external_api registered on the specified target to be custom_call op, "
+          "This pass replaces every op with external_api registered on the "
+          "specified target to be custom_call op, "
           "except the blacklist specified by FLAGS_cinn_custom_call_deny_ops")
       .set_change_structure(false)
       .set_body(cinn::hlir::pass::TransToCustomCallInternal);

@@ -66,13 +66,17 @@ CONDITION_FUNC(is_same_size) {
     return true;
   }
 
-  auto size_0 = std::accumulate(output_var_0.begin(), output_var_0.end(), 1, std::multiplies<int>());
-  auto size_1 = std::accumulate(output_var_1.begin(), output_var_1.end(), 1, std::multiplies<int>());
+  auto size_0 = std::accumulate(
+      output_var_0.begin(), output_var_0.end(), 1, std::multiplies<int>());
+  auto size_1 = std::accumulate(
+      output_var_1.begin(), output_var_1.end(), 1, std::multiplies<int>());
   return size_0 == size_1;
 }
 
-bool is_const_group(const FusionHelperBase* helper, const std::shared_ptr<Graph::Group>& group) {
-  return group->CollectNodes().size() == 1 && helper->IsConstOp(group->CollectNodes()[0]);
+bool is_const_group(const FusionHelperBase* helper,
+                    const std::shared_ptr<Graph::Group>& group) {
+  return group->CollectNodes().size() == 1 &&
+         helper->IsConstOp(group->CollectNodes()[0]);
 };
 
 CONDITION_FUNC(elementwise_fuse_broadcast) {
@@ -104,10 +108,10 @@ CONDITION_FUNC(elementwise_fuse_broadcast) {
 CONDITION_FUNC(honrizontal_elementwise_fuse_reduce) {
   std::shared_ptr<Graph::Group> ele_group, reduce_group;
   if (first->op_pattern_kind == framework::kReduction) {
-    ele_group    = second;
+    ele_group = second;
     reduce_group = first;
   } else {
-    ele_group    = first;
+    ele_group = first;
     reduce_group = second;
   }
   // if same shape with horizontal relation
@@ -115,12 +119,16 @@ CONDITION_FUNC(honrizontal_elementwise_fuse_reduce) {
     return true;
   }
 
-  shape_t ele_node_shape = helper->GetNodeDataShape(*ele_group->master_nodes.begin());
-  int32_t size_ele       = std::accumulate(ele_node_shape.begin(), ele_node_shape.end(), 1, std::multiplies<int>());
+  shape_t ele_node_shape =
+      helper->GetNodeDataShape(*ele_group->master_nodes.begin());
+  int32_t size_ele = std::accumulate(
+      ele_node_shape.begin(), ele_node_shape.end(), 1, std::multiplies<int>());
   for (Node* master : reduce_group->master_nodes) {
     shape_t master_node_shape = helper->GetNodeDataShape(master);
-    int32_t size_master =
-        std::accumulate(master_node_shape.begin(), master_node_shape.end(), 1, std::multiplies<int>());
+    int32_t size_master = std::accumulate(master_node_shape.begin(),
+                                          master_node_shape.end(),
+                                          1,
+                                          std::multiplies<int>());
     if (size_ele == size_master) {
       return true;
     }
@@ -140,7 +148,7 @@ CONDITION_FUNC(elementwise_fuse_reduce) {
 
   // if reduce nodes not in consumers of first group
   std::queue<Node*> candidates;
-  std::unordered_set<Node*> first_node_set  = first->NodeSet();
+  std::unordered_set<Node*> first_node_set = first->NodeSet();
   std::unordered_set<Node*> second_node_set = second->NodeSet();
   for (const auto& pair : second->input_nodes) {
     if (first_node_set.find(pair.first) != first_node_set.end()) {
@@ -169,13 +177,19 @@ CONDITION_FUNC(elementwise_fuse_reduce) {
     }
   }
   if (!masters_in_consumers.empty()) {
-    bool flag                = true;
-    shape_t first_node_shape = helper->GetNodeDataShape(*first->master_nodes.begin());
-    int32_t size_first = std::accumulate(first_node_shape.begin(), first_node_shape.end(), 1, std::multiplies<int>());
+    bool flag = true;
+    shape_t first_node_shape =
+        helper->GetNodeDataShape(*first->master_nodes.begin());
+    int32_t size_first = std::accumulate(first_node_shape.begin(),
+                                         first_node_shape.end(),
+                                         1,
+                                         std::multiplies<int>());
     for (Node* master : masters_in_consumers) {
       shape_t second_node_shape = helper->GetNodeDataShape(master);
-      int32_t size_second =
-          std::accumulate(second_node_shape.begin(), second_node_shape.end(), 1, std::multiplies<int>());
+      int32_t size_second = std::accumulate(second_node_shape.begin(),
+                                            second_node_shape.end(),
+                                            1,
+                                            std::multiplies<int>());
       if (size_first != size_second) {
         flag = false;
         break;
@@ -196,15 +210,18 @@ CONDITION_FUNC(elementwise_fuse_reduce) {
   }
   CHECK(reducer) << "Can't find reduce op in group " << second->group_id;
 
-  // If the elementwise's output should be fetched, the output var cannot be computed inline
-  // into reduce's loop, in other words, the elementwise's cannot fused into reduce's loop
-  // Like: group1 = {cast_0}, group2={broadcast_0 -> elementwise_0 -> cast_1 -> reduce_max_0}
+  // If the elementwise's output should be fetched, the output var cannot be
+  // computed inline into reduce's loop, in other words, the elementwise's
+  // cannot fused into reduce's loop Like: group1 = {cast_0},
+  // group2={broadcast_0 -> elementwise_0 -> cast_1 -> reduce_max_0}
   if (helper->output_nodes_set_.count(*first->master_nodes.begin())) {
     return false;
   }
 
-  auto input_shape = helper->shape_dict_.at(reducer->inlinks_in_order()[0]->source()->id());
-  auto reduce_axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+  auto input_shape =
+      helper->shape_dict_.at(reducer->inlinks_in_order()[0]->source()->id());
+  auto reduce_axes =
+      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
 
   int max_num_threads = helper->target_.max_num_threads();
   // if without last dimension in reduce.
@@ -220,7 +237,8 @@ CONDITION_FUNC(elementwise_fuse_reduce) {
 
   int index = reduce_axes.size() - 1;
   for (; index >= 0; --index) {
-    if (index + 1 < reduce_axes.size() && reduce_axes[index] + 1 != reduce_axes[index + 1]) {
+    if (index + 1 < reduce_axes.size() &&
+        reduce_axes[index] + 1 != reduce_axes[index + 1]) {
       break;
     }
     lane *= input_shape[reduce_axes[index]];
@@ -233,8 +251,9 @@ CONDITION_FUNC(elementwise_fuse_reduce) {
     return true;
   } else {
     int prefix = input_shape[reduce_axes[index]];
-    int tail   = lane / prefix;
-    for (int idx = max_num_threads / tail; idx > (max_num_threads / 2) / tail; --idx) {
+    int tail = lane / prefix;
+    for (int idx = max_num_threads / tail; idx > (max_num_threads / 2) / tail;
+         --idx) {
       if (prefix % idx == 0) {
         return true;
       }
@@ -257,11 +276,14 @@ CONDITION_FUNC(broadcast_fuse_reduce) {
   }
   CHECK(reducer) << "Can't find reduce op in group " << second->group_id;
 
-  auto input_shape = helper->shape_dict_.at(reducer->inlinks_in_order()[0]->source()->id());
-  auto input_size  = std::accumulate(input_shape.begin(), input_shape.end(), 1, std::multiplies<int>());
+  auto input_shape =
+      helper->shape_dict_.at(reducer->inlinks_in_order()[0]->source()->id());
+  auto input_size = std::accumulate(
+      input_shape.begin(), input_shape.end(), 1, std::multiplies<int>());
 
   auto output_shape = helper->GetNodeDataShape(*first->master_nodes.begin());
-  auto output_size  = std::accumulate(output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
+  auto output_size = std::accumulate(
+      output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
 
   if (input_size == output_size) {
     return elementwise_fuse_reduce(helper, first, second);
@@ -279,22 +301,25 @@ CONDITION_FUNC(reduce_fuse_elementwise) {
   return true;
 }
 
-inline bool horizontal_relation(const FusionHelperBase* helper,
-                                const std::shared_ptr<Graph::Group>& first,
-                                const std::shared_ptr<Graph::Group>& second,
-                                const framework::OpPatternKind op_pattern_kind) {
+inline bool horizontal_relation(
+    const FusionHelperBase* helper,
+    const std::shared_ptr<Graph::Group>& first,
+    const std::shared_ptr<Graph::Group>& second,
+    const framework::OpPatternKind op_pattern_kind) {
   // merge injective
   auto merge_nodes_set = [](const std::shared_ptr<Graph::Group>& group) {
     std::unordered_set<Node*> nodes_set = group->nodes_set;
     for (auto& sub_group : group->fused_sub_groups) {
-      nodes_set.insert(sub_group->nodes_set.begin(), sub_group->nodes_set.end());
+      nodes_set.insert(sub_group->nodes_set.begin(),
+                       sub_group->nodes_set.end());
     }
     return nodes_set;
   };
-  auto first_set  = merge_nodes_set(first);
+  auto first_set = merge_nodes_set(first);
   auto second_set = merge_nodes_set(second);
 
-  auto select_node_set = [helper](const std::unordered_set<Node*>& nodes, framework::OpPatternKind kind) {
+  auto select_node_set = [helper](const std::unordered_set<Node*>& nodes,
+                                  framework::OpPatternKind kind) {
     std::unordered_set<Node*> selected;
     for (auto node : nodes) {
       if (helper->GetOpKind(node) == kind) {
@@ -351,12 +376,14 @@ CONDITION_FUNC(horizontal_with_injective) {
   if (!is_same_size(helper, first, second)) {
     return false;
   }
-  return horizontal_relation(helper, first, second, framework::OpPatternKind::kInjective);
+  return horizontal_relation(
+      helper, first, second, framework::OpPatternKind::kInjective);
 }
 
 CONDITION_FUNC(injective_horizontal_with_reduce) {
   // check injective with injective.
-  if (!horizontal_relation(helper, first, second, framework::OpPatternKind::kInjective)) {
+  if (!horizontal_relation(
+          helper, first, second, framework::OpPatternKind::kInjective)) {
     return false;
   }
   return elementwise_fuse_reduce(helper, first, second);
@@ -368,11 +395,12 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     return true;
   }
 
-  // Traversing all reducers in all producers requires two types of conditions to be met.
-  // The first type is the condition that the reducer itself needs to meet,
-  // and the second type is the condition that the relationship between each reducer and its consumers with type of
-  // Broadcast needs to meet. It is required that each consumer of type Broadcast meet the same shape after broadcast as
-  // before reduce.
+  // Traversing all reducers in all producers requires two types of conditions
+  // to be met. The first type is the condition that the reducer itself needs to
+  // meet, and the second type is the condition that the relationship between
+  // each reducer and its consumers with type of Broadcast needs to meet. It is
+  // required that each consumer of type Broadcast meet the same shape after
+  // broadcast as before reduce.
   for (auto& node_in_master : first->master_nodes) {
     if (helper->GetOpKind(node_in_master) != OpPatternKind::kReduction) {
       continue;
@@ -380,10 +408,11 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     Node* reducer = node_in_master;
     // First type conditions
     // Get some reduce information
-    auto reducer_input_shape  = helper->GetNodeInputShape(reducer);
+    auto reducer_input_shape = helper->GetNodeInputShape(reducer);
     auto reducer_output_shape = helper->GetNodeDataShape(reducer);
-    auto reduce_axes          = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
-    auto keep_dim             = absl::get<bool>(reducer->attrs.attr_store.at("keep_dim"));
+    auto reduce_axes =
+        absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+    auto keep_dim = absl::get<bool>(reducer->attrs.attr_store.at("keep_dim"));
     for (auto& axis : reduce_axes) {
       if (axis == -1) {
         axis = reducer_input_shape.size() - 1;
@@ -398,13 +427,16 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
       reduce_size *= reducer_input_shape[idx - 1];
     }
     // Check if the reduce size exceeds the hardware limit
-    if (helper->target_ == common::DefaultNVGPUTarget() && reduce_size > helper->target_.max_num_threads()) {
+    if (helper->target_ == common::DefaultNVGPUTarget() &&
+        reduce_size > helper->target_.max_num_threads()) {
       return false;
     }
 
     // Second type conditions
-    // Find directly or indirectly consumers with type of Broadcast in the second group
-    auto find_broadcasters_in_descendants = [&](const Node* producer) -> std::unordered_set<const Node*> {
+    // Find directly or indirectly consumers with type of Broadcast in the
+    // second group
+    auto find_broadcasters_in_descendants =
+        [&](const Node* producer) -> std::unordered_set<const Node*> {
       std::queue<const Node*> candidates;
       std::unordered_set<const Node*> visited_set;
       std::unordered_set<const Node*> broadcasters;
@@ -430,10 +462,13 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     };
 
     // Check if each broadcast node meets the conditions
-    std::unordered_set<const Node*> broadcasters_in_consumers = find_broadcasters_in_descendants(reducer);
+    std::unordered_set<const Node*> broadcasters_in_consumers =
+        find_broadcasters_in_descendants(reducer);
     for (auto broadcaster : broadcasters_in_consumers) {
-      auto broadcaster_output_shape = absl::get<std::vector<int>>(broadcaster->attrs.attr_store.at("out_shape"));
-      auto broadcast_axes           = absl::get<std::vector<int>>(broadcaster->attrs.attr_store.at("broadcast_axes"));
+      auto broadcaster_output_shape = absl::get<std::vector<int>>(
+          broadcaster->attrs.attr_store.at("out_shape"));
+      auto broadcast_axes = absl::get<std::vector<int>>(
+          broadcaster->attrs.attr_store.at("broadcast_axes"));
       for (auto& axis : broadcast_axes) {
         if (axis == -1) {
           axis = broadcaster_output_shape.size() - 1;
@@ -453,8 +488,10 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
         }
         // check union [reduce_axes, broadcast_axes] = reducer_input_shape
         for (int idx = 0; idx < reducer_input_shape.size(); ++idx) {
-          if (!(std::find(broadcast_axes.begin(), broadcast_axes.end(), idx) == broadcast_axes.end()) ^
-              std::find(reduce_axes.begin(), reduce_axes.end(), idx) == reduce_axes.end()) {
+          if (!(std::find(broadcast_axes.begin(), broadcast_axes.end(), idx) ==
+                broadcast_axes.end()) ^
+              std::find(reduce_axes.begin(), reduce_axes.end(), idx) ==
+                  reduce_axes.end()) {
             return false;
           }
         }
@@ -488,14 +525,20 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   CHECK(reducer_1) << "Can't find reduce op in group " << second->group_id;
 
   // check reduce has same input shape and output shape
-  auto reducer_0_input_shape  = helper->shape_dict_.at(reducer_0->inlinks_in_order()[0]->source()->id());
-  auto reducer_0_output_shape = helper->shape_dict_.at(reducer_0->outlinks_in_order()[0]->sink()->id());
+  auto reducer_0_input_shape =
+      helper->shape_dict_.at(reducer_0->inlinks_in_order()[0]->source()->id());
+  auto reducer_0_output_shape =
+      helper->shape_dict_.at(reducer_0->outlinks_in_order()[0]->sink()->id());
 
-  auto reducer_1_input_shape  = helper->shape_dict_.at(reducer_1->inlinks_in_order()[0]->source()->id());
-  auto reducer_1_output_shape = helper->shape_dict_.at(reducer_1->outlinks_in_order()[0]->sink()->id());
+  auto reducer_1_input_shape =
+      helper->shape_dict_.at(reducer_1->inlinks_in_order()[0]->source()->id());
+  auto reducer_1_output_shape =
+      helper->shape_dict_.at(reducer_1->outlinks_in_order()[0]->sink()->id());
 
-  auto reducer_0_reduce_dim = absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("dim"));
-  auto reducer_1_reduce_dim = absl::get<std::vector<int>>(reducer_1->attrs.attr_store.at("dim"));
+  auto reducer_0_reduce_dim =
+      absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("dim"));
+  auto reducer_1_reduce_dim =
+      absl::get<std::vector<int>>(reducer_1->attrs.attr_store.at("dim"));
 
   for (auto& dim : reducer_0_reduce_dim) {
     // if dim = -1, set as shape.size() - 1
@@ -512,7 +555,8 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   }
 
   // check shape is same
-  if (reducer_0_input_shape == reducer_1_input_shape && reducer_0_output_shape == reducer_1_output_shape &&
+  if (reducer_0_input_shape == reducer_1_input_shape &&
+      reducer_0_output_shape == reducer_1_output_shape &&
       reducer_0_reduce_dim == reducer_1_reduce_dim) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
@@ -531,9 +575,12 @@ CONDITION_FUNC(reduce_fuse_reduce) {
     return true;
   }
 
-  if (helper->WithoutLastDimInReduce(reducer_0_input_shape, reducer_0_reduce_dim) &&
-      helper->WithoutLastDimInReduce(reducer_1_input_shape, reducer_1_reduce_dim) &&
-      reducer_0_output_shape == reducer_1_output_shape && reducer_0_reduce_dim == reducer_1_reduce_dim) {
+  if (helper->WithoutLastDimInReduce(reducer_0_input_shape,
+                                     reducer_0_reduce_dim) &&
+      helper->WithoutLastDimInReduce(reducer_1_input_shape,
+                                     reducer_1_reduce_dim) &&
+      reducer_0_output_shape == reducer_1_output_shape &&
+      reducer_0_reduce_dim == reducer_1_reduce_dim) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_nodes) {

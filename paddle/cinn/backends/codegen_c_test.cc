@@ -62,11 +62,11 @@ TEST(CodeGenC, module) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
   Module::Builder builder("module1", target);
 
   auto stages = CreateStages({A, B, C});
-  auto func   = Lower("add1", stages, {A, B, C});
+  auto func = Lower("add1", stages, {A, B, C});
 
   builder.AddFunction(func);
 
@@ -124,7 +124,8 @@ void add1(void* _args, int32_t num_args);
     CodeGenC compiler(target);
     compiler.SetInlineBuiltinCodes(false);
     Outputs outputs;
-    outputs = outputs.c_header("./generated_module1.h").c_source("./_generated_module1.cc");
+    outputs = outputs.c_header("./generated_module1.h")
+                  .c_source("./_generated_module1.cc");
     compiler.Compile(builder.Build(), outputs);
   }
 }
@@ -144,7 +145,9 @@ TEST(CodeGenC, matmul) {
   Var k(20, "k0");
 
   Tensor C = Compute(
-      {Expr(100), Expr(50)}, [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {Expr(100), Expr(50)},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
   auto stages = CreateStages({A, B, C});
 
@@ -154,7 +157,8 @@ TEST(CodeGenC, matmul) {
   builder.AddBuffer(C->buffer);
 
   {  // main
-    std::vector<lang::ReturnType> returns({lang::ReturnType{Float(32), C->shape, C->name}});
+    std::vector<lang::ReturnType> returns(
+        {lang::ReturnType{Float(32), C->shape, C->name}});
 
     auto tensors = lang::CallLowered("matmul", {A, B}, returns);
 
@@ -242,33 +246,39 @@ TEST(CodeGenC, matmul_tile) {
       {M, N}, [&](Var i, Var j) { return Expr(0.f); }, "C_init");
 
   Tensor C = Compute(
-      {M, N}, [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
   auto stages = CreateStages({C, C_init});
   stages[C]->ShareBufferWith(stages[C_init]);
 
   {
-    auto _i_outer_i_inner_j_outer_j_inner_ = stages[C_init]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _i_outer_i_inner_j_outer_j_inner_ =
+        stages[C_init]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
     stages[C_init]->Reorder({i_outer, j_outer, i_inner, j_inner});
   }
 
   {
-    auto _i_outer_i_inner_j_outer_j_inner_ = stages[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-    auto _k_outer_k_inner_                 = stages[C]->Split(poly::Iterator("k0"), 4);  // NOLINT
-    auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-    auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+    auto _i_outer_i_inner_j_outer_j_inner_ =
+        stages[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _k_outer_k_inner_ =
+        stages[C]->Split(poly::Iterator("k0"), 4);  // NOLINT
+    auto &k_outer = std::get<0>(_k_outer_k_inner_);
+    auto &k_inner = std::get<1>(_k_outer_k_inner_);
     stages[C]->Reorder({i_outer, j_outer, i_inner, j_inner, k_outer, k_inner});
   }
 
-  stages[C_init]->ComputeAtSchedule(stages[C], 3, poly::Stage::kComputeAtBefore);
+  stages[C_init]->ComputeAtSchedule(
+      stages[C], 3, poly::Stage::kComputeAtBefore);
 
   // Code gen
   auto func = Lower("matmul", stages, {A, B, C});
@@ -332,21 +342,28 @@ TEST(CodeGenC, matmul_packed) {
   // TODO(Superjomn) Make sure the domain works.
   Var k(K.as_int32(), "k0");
   auto packedB = Compute(
-      {N / bn, K, bn}, [&](Expr x, Expr y, Expr z) { return B(y, x * bn + z); }, "PackedB");
+      {N / bn, K, bn},
+      [&](Expr x, Expr y, Expr z) { return B(y, x * bn + z); },
+      "PackedB");
   auto C = Compute(
-      {M, N}, [&](Expr i, Expr j) { return ReduceSum(A(i, k) * packedB(j / bn, k, j % bn), {k}); }, "C");
+      {M, N},
+      [&](Expr i, Expr j) {
+        return ReduceSum(A(i, k) * packedB(j / bn, k, j % bn), {k});
+      },
+      "C");
 
   auto stages = CreateStages({packedB, C});
 
   {
-    auto _i_outer_i_inner_j_outer_j_inner_ = stages[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-    auto _k_outer_k_inner_                 = stages[C]->Split(poly::Iterator("k0"), 4);
-    auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-    auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+    auto _i_outer_i_inner_j_outer_j_inner_ =
+        stages[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _k_outer_k_inner_ = stages[C]->Split(poly::Iterator("k0"), 4);
+    auto &k_outer = std::get<0>(_k_outer_k_inner_);
+    auto &k_inner = std::get<1>(_k_outer_k_inner_);
     stages[C]->Reorder({i_outer, j_outer, i_inner, j_inner, k_outer, k_inner});
   }
 
@@ -417,7 +434,9 @@ TEST(CodeGenC, call_extern) {
   Placeholder<float> x("x", {M});
 
   ir::Tensor y = Compute(
-      {M}, [=](Var i) -> Expr { return lang::CallExtern("tanh", {x(i)}); }, "y");
+      {M},
+      [=](Var i) -> Expr { return lang::CallExtern("tanh", {x(i)}); },
+      "y");
 
   auto stages = CreateStages({y});
 

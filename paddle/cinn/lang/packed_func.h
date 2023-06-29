@@ -54,7 +54,9 @@ class Args {
   ArgValue& operator[](int i) { return values_[i]; }
   const ArgValue& operator[](int i) const { return values_[i]; }
 
-  common::CINNValuePack ToValuePack() const { return common::CINNValuePack(values_); }
+  common::CINNValuePack ToValuePack() const {
+    return common::CINNValuePack(values_);
+  }
 
  private:
   std::vector<ArgValue> values_;
@@ -67,7 +69,8 @@ struct for_each_dispatcher {
   template <typename T, typename... Args>
   static void Run(const F& f, T&& value, Args&&... args) {
     f(I, std::forward<T>(value));
-    for_each_dispatcher<sizeof...(Args) == 0, I + 1, F>::Run(f, std::forward<Args>(args)...);
+    for_each_dispatcher<sizeof...(Args) == 0, I + 1, F>::Run(
+        f, std::forward<Args>(args)...);
   }
 };
 
@@ -78,7 +81,8 @@ struct for_each_dispatcher<true, I, F> {
 
 template <typename F, typename... Args>
 inline void for_each(const F& f, Args&&... args) {
-  for_each_dispatcher<sizeof...(Args) == 0, 0, F>::Run(f, std::forward<Args>(args)...);
+  for_each_dispatcher<sizeof...(Args) == 0, 0, F>::Run(
+      f, std::forward<Args>(args)...);
 }
 
 struct FuncArgsSetter {
@@ -96,7 +100,8 @@ struct FuncArgsSetter {
 }  // namespace detail
 
 /**
- * A function defininer with the arguments packed, all the PackedFuncs have the same signature.
+ * A function defininer with the arguments packed, all the PackedFuncs have the
+ * same signature.
  */
 class PackedFunc {
  public:

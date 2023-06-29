@@ -40,7 +40,7 @@ using ir::DeviceAPI;
 struct ComputeAtRelation;
 
 enum class ScopeKind {
-  kLocal  = 0,
+  kLocal = 0,
   kShared = 1,
   kGlobal = 2,
 };
@@ -53,7 +53,8 @@ struct StageForloopInfo {
       : for_type(for_type), device(device), offset(offset) {}
 
   ir::ForType for_type;
-  //! The offset in the \p for_type. e.g. for GPUBlock, 0 represents blockIdx.x, 1 is blockIdx.y, 2 is blockIdx.z.
+  //! The offset in the \p for_type. e.g. for GPUBlock, 0 represents blockIdx.x,
+  //! 1 is blockIdx.y, 2 is blockIdx.z.
   uint8_t offset;
   ir::DeviceAPI device;
 };
@@ -76,8 +77,9 @@ struct ComputeAtInfo {
   //! The shape of the buffer belong to the producer tensor after compute_at.
   //! NOTE this doesn't support dynamic dimension yet.
   std::vector<int> adjusted_producer_shape;
-  //! The preceding offsets for the indice in the Loads for the producers, the offset will make the minimum indice to be
-  //! 0, size of this should equal to level+1.
+  //! The preceding offsets for the indice in the Loads for the producers, the
+  //! offset will make the minimum indice to be 0, size of this should equal to
+  //! level+1.
   std::vector<int> preceding_offset_for_producer_load;
   //! the level of the consumer tensor's transformed range.
   int level{-1};
@@ -87,7 +89,8 @@ struct ComputeAtInfo {
  * Meta infomation for tensor.
  */
 struct TensorScheduleMeta {
-  //! Store the information of all the other producer tensors `compute_at` this tensor.
+  //! Store the information of all the other producer tensors `compute_at` this
+  //! tensor.
   std::vector<ComputeAtInfo> compute_at_infos;
 
   bool compute_inline{false};
@@ -102,7 +105,9 @@ struct TensorScheduleMeta {
  */
 class Stage : public Object {
  public:
-  static Shared<Stage> New(const isl::set& domain, Expr expr = Expr(), ir::_Tensor_* tensor = nullptr);
+  static Shared<Stage> New(const isl::set& domain,
+                           Expr expr = Expr(),
+                           ir::_Tensor_* tensor = nullptr);
 
   TensorScheduleMeta meta;
 
@@ -188,7 +193,10 @@ class Stage : public Object {
    * @return the new iterators.
    */
   std::tuple<Iterator, Iterator, Iterator, Iterator>  //
-  Tile(const Iterator& level0, const Iterator& level1, int factor0, int factor1);
+  Tile(const Iterator& level0,
+       const Iterator& level1,
+       int factor0,
+       int factor1);
   std::tuple<Iterator, Iterator, Iterator, Iterator>  //
   Tile(int level0, int level1, int factor0, int factor1);
 
@@ -226,7 +234,8 @@ class Stage : public Object {
   };
 
   /**
-   * Apply loop skewing on the loop levels \p i and \p j with a skewing factor of \p factor.
+   * Apply loop skewing on the loop levels \p i and \p j with a skewing factor
+   * of \p factor.
    * TODO(Superjomn) Refine this transform.
    */
   std::tuple<Iterator, Iterator>  //
@@ -239,46 +248,53 @@ class Stage : public Object {
 
   /**
    * Set the memory type of this stage's tensor.
-   * @param memory_type the memory type of this tensor. For example, memory_type="shared".
+   * @param memory_type the memory type of this tensor. For example,
+   * memory_type="shared".
    */
   void SetBuffer(const std::string& memory_type);
 
   /**
-   * Given two stages already satisfy ComputeAtRelation.IsCompatible, set compute_ats_ for them.
+   * Given two stages already satisfy ComputeAtRelation.IsCompatible, set
+   * compute_ats_ for them.
    * @param other the other stage to set compute_ats_.
    * @param level the level of ComputeAtRelation.
    */
   void SimpleComputeAt(Stage* other, int level);
 
   /**
-   * Create a cache Tensor and load the \p source into this buffer, replace all the reading in the readers with the
-   * cache.
+   * Create a cache Tensor and load the \p source into this buffer, replace all
+   * the reading in the readers with the cache.
    * @param tensor the source memory to cache.
-   * @param memory_type the memory type, "share" for CUDA share memory, "local" for CUDA local memory.
+   * @param memory_type the memory type, "share" for CUDA share memory, "local"
+   * for CUDA local memory.
    * @param readers the readers of the \p tensor
    */
-  ir::Tensor CacheRead(const std::string& memory_type, std::vector<ir::Tensor>& readers, poly::StageMap stages);
+  ir::Tensor CacheRead(const std::string& memory_type,
+                       std::vector<ir::Tensor>& readers,
+                       poly::StageMap stages);
 
   /**
-   * \brief Mark the stage compute at the level of some other stage. Usually used when there is no access relation
-   * between two tensors.
+   * \brief Mark the stage compute at the level of some other stage. Usually
+   * used when there is no access relation between two tensors.
    *
-   * The difference bewteen ComputeAt2 and ComputeAt is that ComputeAt2 can be used when there is no access relation
-   * between two tensors.
+   * The difference bewteen ComputeAt2 and ComputeAt is that ComputeAt2 can be
+   * used when there is no access relation between two tensors.
    *
    * @param other the target stage to compute at.
    * @param level the level of \p other's forloop to compute at
    */
   void ComputeAt2(Stage* other, int level);
 
-  // Do ComputeAt2 except for setting the ComputeAt level, which is moving the computations together.
+  // Do ComputeAt2 except for setting the ComputeAt level, which is moving the
+  // computations together.
   void ComputeAt3(Stage* other, int level);
 
   /**
    * \brief Mark the stage compute at the level of some other stage.
    *
-   * NOTE This can only be called after all transformations are preformed, and once called, no further transform can
-   * perform for that if the iterators are changed, the original `ComputeAt` level will become invalid.
+   * NOTE This can only be called after all transformations are preformed, and
+   * once called, no further transform can perform for that if the iterators are
+   * changed, the original `ComputeAt` level will become invalid.
    *
    * @param other the target stage to compute at.
    * @param level the level of \p other's forloop to compute at
@@ -291,13 +307,17 @@ class Stage : public Object {
   /**
    * Create a cache for write to the original tensor.
    * @param tensor the tensor to create the cache for.
-   * @param memory_type "share" for CUDA share memory, "local" for CUDA local memory.
+   * @param memory_type "share" for CUDA share memory, "local" for CUDA local
+   * memory.
    */
-  ir::Tensor CacheWrite(const std::string& memory_type, poly::StageMap stages, ir::Tensor& key_tensor);
+  ir::Tensor CacheWrite(const std::string& memory_type,
+                        poly::StageMap stages,
+                        ir::Tensor& key_tensor);
 
   /**
    * Generate the `syncthreads()` code to sync all threads on CUDA backends.
-   * For other backends like Opencl, generate corresponding code to sync multi threads.
+   * For other backends like Opencl, generate corresponding code to sync multi
+   * threads.
    * @param tensor the exact tensor computed just before syncthreads.
    * @param stages the stagemap of all tensor.
    */
@@ -305,8 +325,10 @@ class Stage : public Object {
 
   /**
    * Generate the `syncthreads()` code to sync all threads on CUDA backends.
-   * For other backends like Opencl, generate corresponding code to sync multi threads.
-   * @param level the ComputeAt level of syncthreads in this tensor's computation.
+   * For other backends like Opencl, generate corresponding code to sync multi
+   * threads.
+   * @param level the ComputeAt level of syncthreads in this tensor's
+   * computation.
    * @param before_tensors the tensors computed before syncthreads.
    * @param stages the stagemap of all tensor.
    * Example Code :
@@ -320,7 +342,9 @@ class Stage : public Object {
    *   for (j = 0:9)
    *     A[i,j]
    */
-  void SyncThreads(int level, const std::vector<ir::Tensor>& before_tensors, StageMap stages);
+  void SyncThreads(int level,
+                   const std::vector<ir::Tensor>& before_tensors,
+                   StageMap stages);
 
   /**
    * Set thread scope.
@@ -357,7 +381,8 @@ class Stage : public Object {
   Iterator ith_iterator(int level);
 
   /** Get the final level after all the transforms.
-   * The level will be affected by some schedule like ComputeAt, this will return the right level.
+   * The level will be affected by some schedule like ComputeAt, this will
+   * return the right level.
    *
    * @param level the level in schedule.
    */
@@ -368,38 +393,58 @@ class Stage : public Object {
 
   virtual const char* type_info() const { return __type_info__; }
 
-  inline const ir::VectorizeInfo& vectorize_info() const { return vectorize_info_; }
+  inline const ir::VectorizeInfo& vectorize_info() const {
+    return vectorize_info_;
+  }
   inline const std::set<int>& unroll_info() const { return unroll_info_; }
   inline const std::set<int>& parallel_info() const { return parallel_info_; }
-  inline std::map<std::string, ComputeAtRelation>& GetComputeAts() { return compute_ats_; }
-  inline void SetComputeAts(const std::map<std::string, ComputeAtRelation>& compute_ats) { compute_ats_ = compute_ats; }
+  inline std::map<std::string, ComputeAtRelation>& GetComputeAts() {
+    return compute_ats_;
+  }
+  inline void SetComputeAts(
+      const std::map<std::string, ComputeAtRelation>& compute_ats) {
+    compute_ats_ = compute_ats;
+  }
 
   /*
-  const std::set<std::string>& extra_depend_stages() const { return extra_depend_stages_; }
-  void set_extra_depend_stages(const std::set<std::string>& x) { extra_depend_stages_ = x; }
-  void add_extra_depend_stage(const std::string& statement) { extra_depend_stages_.insert(statement); }
+  const std::set<std::string>& extra_depend_stages() const { return
+  extra_depend_stages_; } void set_extra_depend_stages(const
+  std::set<std::string>& x) { extra_depend_stages_ = x; } void
+  add_extra_depend_stage(const std::string& statement) {
+  extra_depend_stages_.insert(statement); }
    */
 
-  const std::map<int /*level*/, StageForloopInfo>& forloop_infos() const { return forloop_infos_; }
+  const std::map<int /*level*/, StageForloopInfo>& forloop_infos() const {
+    return forloop_infos_;
+  }
 
   bool has_expression() const;
 
   Stage() = default;
 
-  void ComputeAtSchedule(Stage* other, int level, ComputeAtKind kind = kComputeAtAuto);
+  void ComputeAtSchedule(Stage* other,
+                         int level,
+                         ComputeAtKind kind = kComputeAtAuto);
 
   ir::Tensor LookupCtrlDepend(const std::string& tensor_name) const;
 
-  //! Get number of transform output dimensions, this equals to the number of forloops in generated code.
-  inline int n_in_dims() const { return isl_map_dim(transform_.get(), isl_dim_in); }
-  //! Get number of transform output dimensions, this equals to the number of dimensions of corresponding tensor.
-  inline int n_out_dims() const { return isl_map_dim(transform_.get(), isl_dim_out); }
+  //! Get number of transform output dimensions, this equals to the number of
+  //! forloops in generated code.
+  inline int n_in_dims() const {
+    return isl_map_dim(transform_.get(), isl_dim_in);
+  }
+  //! Get number of transform output dimensions, this equals to the number of
+  //! dimensions of corresponding tensor.
+  inline int n_out_dims() const {
+    return isl_map_dim(transform_.get(), isl_dim_out);
+  }
 
   //! Copy other stage's transform.
   //! For example, if the target_transform is `Split(0,1)`,
   //! this api will apply `Split(0,1)` on itself.
   void CopyTransform(Stage* other, int level = -1);
-  //! Edit temp tensor's shape, its buffer's shape and index when doing ComputeAt2.
+  //! Edit temp tensor's shape, its buffer's shape and index when doing
+  //! ComputeAt2.
   void EditTempTensor(Stage* other, int level);
   //! Copy other stage's LoopInfo.
   //! For example, if the target_forloop_infos is `Bind(0,"threadIdx.x")`,
@@ -408,12 +453,16 @@ class Stage : public Object {
   //! Set stage's transform_
   void SetTransform(isl::map new_transform) { transform_ = new_transform; }
   //! Set stage's forloop_infos_
-  void SetForloopInfo(std::map<int, StageForloopInfo> forloop_infos) { forloop_infos_ = forloop_infos; }
+  void SetForloopInfo(std::map<int, StageForloopInfo> forloop_infos) {
+    forloop_infos_ = forloop_infos;
+  }
   void AddForloopInfo(int level, const StageForloopInfo& info);
   bool IfCudaBind() { return cuda_bind_info_; }
 
  private:
-  explicit Stage(const isl::set& domain, Expr expr = Expr(), ir::_Tensor_* tensor = nullptr);
+  explicit Stage(const isl::set& domain,
+                 Expr expr = Expr(),
+                 ir::_Tensor_* tensor = nullptr);
 
   /**
    * Initialize with an identity schedule.
@@ -453,11 +502,13 @@ class Stage : public Object {
   std::set<int> locked_axis_;
   bool cuda_bind_info_{false};
 
-  friend isl_map* __isl_give GatherAccesses(Stage* stage, const std::string& tensor_name);
+  friend isl_map* __isl_give GatherAccesses(Stage* stage,
+                                            const std::string& tensor_name);
   friend class PolyGroupScheduler;
 };
 
-std::vector<std::pair<std::string, std::string>> ExtractExtraDepLinksFromStages(const std::vector<Stage*>& stages);
+std::vector<std::pair<std::string, std::string>> ExtractExtraDepLinksFromStages(
+    const std::vector<Stage*>& stages);
 
 //! This stage compute_at some other stage.
 struct ComputeAtRelation {
@@ -476,12 +527,15 @@ inline std::string InnerName(const Iterator& iterator);
 inline std::string OuterName(const std::string& name);
 inline std::string OuterName(const Iterator& iterator);
 
-inline Iterator DefaultIterator(int i) { return Iterator(common::axis_name(i)); }
+inline Iterator DefaultIterator(int i) {
+  return Iterator(common::axis_name(i));
+}
 
 /**
  * Collect the access to a tensor named \p tensor_name in \p stage.
  */
-std::vector<isl::map> GatherAccesses(const Stage* stage, const std::string& tensor_name);
+std::vector<isl::map> GatherAccesses(const Stage* stage,
+                                     const std::string& tensor_name);
 
 class _StageMap_ : public Object {
  public:
@@ -523,9 +577,13 @@ class StageMap : public Shared<_StageMap_> {
   StageMap() : Shared(new _StageMap_) {}
 
   Stage* operator[](const ir::Tensor& tensor) { return (*self())[tensor]; }
-  const Stage* operator[](const ir::Tensor& tensor) const { return (*self())[tensor]; }
+  const Stage* operator[](const ir::Tensor& tensor) const {
+    return (*self())[tensor];
+  }
   Stage* operator[](const ir::_Tensor_* tensor) { return (*self())[tensor]; }
-  const Stage* operator[](const ir::_Tensor_* tensor) const { return (*self())[tensor]; }
+  const Stage* operator[](const ir::_Tensor_* tensor) const {
+    return (*self())[tensor];
+  }
 
   auto begin() const { return self()->data_.begin(); }
   auto end() const { return self()->data_.end(); }

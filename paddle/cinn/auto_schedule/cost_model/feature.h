@@ -24,10 +24,18 @@ namespace cinn {
 namespace auto_schedule {
 
 /* Loop feature enums */
-enum class ForOptimizeFeatureEnum : int { kNone, kGpuBind, kParallel, kUnroll, kVectorize };
+enum class ForOptimizeFeatureEnum : int {
+  kNone,
+  kGpuBind,
+  kParallel,
+  kUnroll,
+  kVectorize
+};
 
 /* function to scale feature numbers */
-inline float slog(float x) { return x < 0 ? std::log2(-x + 1) : std::log2(x + 1); }
+inline float slog(float x) {
+  return x < 0 ? std::log2(-x + 1) : std::log2(x + 1);
+}
 
 class LoopBlockFeature {
  public:
@@ -36,20 +44,20 @@ class LoopBlockFeature {
   // different bits, so we just distinguished int and float here
   /* Arithmetic features */
   int float_add_or_sub = 0;
-  int float_mul        = 0;
+  int float_mul = 0;
   int float_div_or_mod = 0;
-  int float_cmp        = 0;
-  int float_math_func  = 0;
+  int float_cmp = 0;
+  int float_math_func = 0;
   int float_other_call = 0;  // like simple assign, cast, etc.
 
   int int_add_or_sub = 0;
-  int int_mul        = 0;
+  int int_mul = 0;
   int int_div_or_mod = 0;
-  int int_cmp        = 0;
-  int int_math_func  = 0;
+  int int_cmp = 0;
+  int int_math_func = 0;
   int int_other_call = 0;  // like simple assign, cast, etc.
 
-  int bool_op   = 0;
+  int bool_op = 0;
   int select_op = 0;
 
   static constexpr int kArithSize = 6 * 2 + 2;
@@ -61,8 +69,8 @@ class LoopBlockFeature {
    * may be collect operand sizes (like alloc size, write size, or so)
    */
   int mem_alloc = 0;
-  int mem_free  = 0;
-  int mem_read  = 0;
+  int mem_free = 0;
+  int mem_read = 0;
   int mem_write = 0;
 
   static constexpr int kMemSize = 4;
@@ -71,16 +79,16 @@ class LoopBlockFeature {
    * Reduce and Broadcast features
    */
   int float_reduce_sum_or_sub = 0;
-  int float_reduce_mul        = 0;
-  int float_reduce_div        = 0;
+  int float_reduce_mul = 0;
+  int float_reduce_div = 0;
   int float_reduce_max_or_min = 0;
-  int float_broadcast         = 0;
+  int float_broadcast = 0;
 
   int int_reduce_sum_or_sub = 0;
-  int int_reduce_mul        = 0;
-  int int_reduce_div        = 0;
+  int int_reduce_mul = 0;
+  int int_reduce_div = 0;
   int int_reduce_max_or_min = 0;
-  int int_broadcast         = 0;
+  int int_broadcast = 0;
 
   static constexpr int kReduceBroadcastSize = 10;
 
@@ -95,18 +103,20 @@ class LoopBlockFeature {
   /* Thread features if loop is optimized by GPU or CPU parallelism.
    * Useless in other cases.
    */
-  int len_blockIdx_x   = 0;
-  int len_blockIdx_y   = 0;
-  int len_blockIdx_z   = 0;
-  int len_threadIdx_x  = 0;
-  int len_threadIdx_y  = 0;
-  int len_threadIdx_z  = 0;
-  int len_vthread      = 0;  // length of virtual thread
+  int len_blockIdx_x = 0;
+  int len_blockIdx_y = 0;
+  int len_blockIdx_z = 0;
+  int len_threadIdx_x = 0;
+  int len_threadIdx_y = 0;
+  int len_threadIdx_z = 0;
+  int len_vthread = 0;  // length of virtual thread
   int vectorize_factor = 0;
 
   static constexpr int kThreadFeatureSize = 8;
 
-  static constexpr int kTotalSize = kArithSize + kMemSize + kReduceBroadcastSize + kOptApplySize + kThreadFeatureSize;
+  static constexpr int kTotalSize = kArithSize + kMemSize +
+                                    kReduceBroadcastSize + kOptApplySize +
+                                    kThreadFeatureSize;
 
   /* Non-feature attributes, used to maintain during feature_extractor */
 
@@ -158,10 +168,11 @@ class Feature {
   //   some_compute_3
   // }
   //
-  // We go through the code and push loops into stack, then the features are encoded as
-  // [loop_block_feature_0, loop_block_feature_1, loop_block_feature_2, loop_block_feature_3]
-  // where loop_block_feature_i stores the features of some_compute_i (such
-  // as number of arithmetic operations)
+  // We go through the code and push loops into stack, then the features are
+  // encoded as [loop_block_feature_0, loop_block_feature_1,
+  // loop_block_feature_2, loop_block_feature_3] where loop_block_feature_i
+  // stores the features of some_compute_i (such as number of arithmetic
+  // operations)
   //
   // loop_block_feature_0.num_sub_loops = 2
   // loop_block_feature_1.num_sub_loops = 1

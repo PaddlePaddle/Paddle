@@ -45,7 +45,8 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
         std::swap(auto_max_step_, value);
         return;
       } else {
-        LOG(WARNING) << "Get invalid value of attr:" << ir::attr::auto_unroll_max_step;
+        LOG(WARNING) << "Get invalid value of attr:"
+                     << ir::attr::auto_unroll_max_step;
       }
     }
     ir::IRMutator<>::Visit(op, expr);
@@ -68,10 +69,12 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
 
     // predicate this for-loop can be unrolled by auto-unroll conditions
     bool unrollable =
-        (op->is_serial() && extent >= 0 && not_unrolled_depth_ == 0 && extent * flat_step_ <= auto_max_step_);
+        (op->is_serial() && extent >= 0 && not_unrolled_depth_ == 0 &&
+         extent * flat_step_ <= auto_max_step_);
 
     // predicate this for-loop can be unrolled by the unrolled tag
-    unrollable = (unrollable || op->is_unrolled()) && extent <= max_unroll_extent_;
+    unrollable =
+        (unrollable || op->is_unrolled()) && extent <= max_unroll_extent_;
 
     if (unrollable) {
       Unroll(op, expr);
@@ -85,7 +88,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
   void Unroll(const ir::For* op, Expr* expr) {
     std::vector<Expr> body;
 
-    auto* min    = op->min.As<ir::IntImm>();
+    auto* min = op->min.As<ir::IntImm>();
     auto* extent = op->extent.As<ir::IntImm>();
     if (!(min && extent)) return;
 

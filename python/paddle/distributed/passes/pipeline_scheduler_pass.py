@@ -326,9 +326,10 @@ class Pipeline1F1BPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_job_list(self):
+    def _create_job_list(self, type_to_skip_vars):
         job_list = []
         lr_job = core.Job("lr")
+        lr_job.set_skip_gc_vars(type_to_skip_vars["lr"])
         job_list.append(lr_job)
 
         assert (
@@ -342,6 +343,7 @@ class Pipeline1F1BPass(PassBase):
         for i in range(micro_batch_in_warmup):
             forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(forward_micro_batch_id)
+            forward_job.set_skip_gc_vars(type_to_skip_vars["forward"])
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
@@ -349,20 +351,24 @@ class Pipeline1F1BPass(PassBase):
         for i in range(micro_batch_in_1f1b):
             backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(backward_micro_batch_id)
+            backward_job.set_skip_gc_vars(type_to_skip_vars["backward"])
             job_list.append(backward_job)
             backward_micro_batch_id += 1
             forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(forward_micro_batch_id)
+            forward_job.set_skip_gc_vars(type_to_skip_vars["forward"])
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         for i in range(micro_batch_in_warmup):
             backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(backward_micro_batch_id)
+            backward_job.set_skip_gc_vars(type_to_skip_vars["backward"])
             job_list.append(backward_job)
             backward_micro_batch_id += 1
 
         opt_job = core.Job("optimizer")
+        opt_job.set_skip_gc_vars(type_to_skip_vars["optimizer"])
         job_list.append(opt_job)
         return job_list
 
@@ -373,8 +379,10 @@ class Pipeline1F1BPass(PassBase):
         self._program = main_program
 
         _insert_sync_for_fthenb_1f1b(self._program)
-        type_to_program = _program_for_fthenb_and_1f1b(self._program)
-        job_list = self._create_job_list()
+        type_to_program, type_to_skip_vars = _program_for_fthenb_and_1f1b(
+            self._program
+        )
+        job_list = self._create_job_list(type_to_skip_vars)
 
         plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)

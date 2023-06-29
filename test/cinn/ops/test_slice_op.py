@@ -21,8 +21,9 @@ from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSliceOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -41,8 +42,9 @@ class TestSliceOp(OpTest):
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.inputs["inputs"], stop_gradient=True)
-        res = paddle.strided_slice(x, self.axes, self.starts, self.ends,
-                                   self.strides)
+        res = paddle.strided_slice(
+            x, self.axes, self.starts, self.ends, self.strides
+        )
         out_shape = []
         for i in range(len(res.shape)):
             if i in self.decrease_axis:
@@ -59,18 +61,22 @@ class TestSliceOp(OpTest):
         builder = NetBuilder("slice")
         inputs = builder.create_input(
             self.nptype2cinntype(self.inputs["inputs"].dtype),
-            self.inputs["inputs"].shape, "inputs")
+            self.inputs["inputs"].shape,
+            "inputs",
+        )
         out = builder.slice(
             inputs,
             axes=self.axes,
             starts=self.starts,
             ends=self.ends,
             strides=self.strides,
-            decrease_axis=self.decrease_axis)
+            decrease_axis=self.decrease_axis,
+        )
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [inputs],
-                                   [self.inputs["inputs"]], [out])
+        res = self.get_cinn_output(
+            prog, target, [inputs], [self.inputs["inputs"]], [out]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -88,7 +94,7 @@ class TestSliceOpLegacyTestCase(TestCaseHelper):
                 "starts": [2, 2],
                 "ends": [5, 5],
                 "strides": [1, 1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12],
@@ -96,7 +102,7 @@ class TestSliceOpLegacyTestCase(TestCaseHelper):
                 "starts": [1, 2],
                 "ends": [6, 1000],
                 "strides": [1, 2],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12],
@@ -104,7 +110,7 @@ class TestSliceOpLegacyTestCase(TestCaseHelper):
                 "starts": [2, 1],
                 "ends": [-1, 7],
                 "strides": [3, 2],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12],
@@ -112,7 +118,7 @@ class TestSliceOpLegacyTestCase(TestCaseHelper):
                 "starts": [2, 1000],
                 "ends": [8, 1],
                 "strides": [1, -2],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12],
@@ -120,7 +126,7 @@ class TestSliceOpLegacyTestCase(TestCaseHelper):
                 "starts": [-1, -2],
                 "ends": [-5, -8],
                 "strides": [-1, -2],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12],
@@ -154,7 +160,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [2],
                 "ends": [5],
                 "strides": [1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [128, 32],
@@ -162,7 +168,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [24, 10],
                 "ends": [56, 26],
                 "strides": [1, 1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [32, 10, 64],
@@ -170,7 +176,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [24, 4, 0],
                 "ends": [32, 8, 64],
                 "strides": [1, 1, 4],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12, 9, 5],
@@ -178,7 +184,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [2, 4, 0],
                 "ends": [5, 9, 7],
                 "strides": [1, 1, 2],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [1],
@@ -186,7 +192,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [0],
                 "ends": [1],
                 "strides": [1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [1, 1, 1, 1, 1],
@@ -194,7 +200,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [0],
                 "ends": [1],
                 "strides": [1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [1024, 1, 2],
@@ -202,7 +208,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [128],
                 "ends": [640],
                 "strides": [1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [2, 4096, 8],
@@ -210,7 +216,7 @@ class TestSliceOpShapeTest(TestCaseHelper):
                 "starts": [1024],
                 "ends": [3072],
                 "strides": [1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
@@ -228,25 +234,15 @@ class TestSliceOpDtypeTest(TestCaseHelper):
                 "starts": [2, 2, 0],
                 "ends": [5, 5, 6],
                 "strides": [1, 2, 4],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
-            {
-                "dtype": "bool"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
+            {"dtype": "bool"},
         ]
         self.attrs = []
 
@@ -262,7 +258,7 @@ class TestSliceOpAxesTest(TestCaseHelper):
                 "starts": [10],
                 "ends": [26],
                 "strides": [1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [32, 10, 64],
@@ -270,7 +266,7 @@ class TestSliceOpAxesTest(TestCaseHelper):
                 "starts": [24, 0],
                 "ends": [32, 64],
                 "strides": [1, 4],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [10, 12, 9, 5],
@@ -278,7 +274,7 @@ class TestSliceOpAxesTest(TestCaseHelper):
                 "starts": [2, 0],
                 "ends": [5, 3],
                 "strides": [1, 1],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
@@ -296,7 +292,7 @@ class TestSliceOpStridesTest(TestCaseHelper):
                 "starts": [0, 0],
                 "ends": [128, 32],
                 "strides": [16, 2],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [32, 10, 64],
@@ -304,7 +300,7 @@ class TestSliceOpStridesTest(TestCaseHelper):
                 "starts": [16, 0],
                 "ends": [32, 64],
                 "strides": [2, 4],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
             {
                 "shape": [8, 16, 32, 64, 128],
@@ -312,7 +308,7 @@ class TestSliceOpStridesTest(TestCaseHelper):
                 "starts": [0, 0, 0, 0, 0],
                 "ends": [8, 16, 32, 64, 128],
                 "strides": [1, 2, 4, 8, 16],
-                "decrease_axis": []
+                "decrease_axis": [],
             },
         ]
         self.dtypes = [{"dtype": "float32"}]
@@ -330,7 +326,7 @@ class TestSliceOpDecreaseAxisTest(TestCaseHelper):
                 "starts": [0],
                 "ends": [1],
                 "strides": [1],
-                "decrease_axis": [0]
+                "decrease_axis": [0],
             },
             {
                 "shape": [1, 1, 1, 1, 1],
@@ -338,7 +334,7 @@ class TestSliceOpDecreaseAxisTest(TestCaseHelper):
                 "starts": [0],
                 "ends": [1],
                 "strides": [1],
-                "decrease_axis": [1, 2, 3]
+                "decrease_axis": [1, 2, 3],
             },
             {
                 "shape": [1, 1, 1, 1, 1],
@@ -346,7 +342,7 @@ class TestSliceOpDecreaseAxisTest(TestCaseHelper):
                 "starts": [0],
                 "ends": [1],
                 "strides": [1],
-                "decrease_axis": [0, 1, 2, 3, 4]
+                "decrease_axis": [0, 1, 2, 3, 4],
             },
             {
                 "shape": [128, 32],
@@ -354,7 +350,7 @@ class TestSliceOpDecreaseAxisTest(TestCaseHelper):
                 "starts": [127, 0],
                 "ends": [128, 32],
                 "strides": [16, 2],
-                "decrease_axis": [0]
+                "decrease_axis": [0],
             },
             {
                 "shape": [32, 10, 64],
@@ -362,7 +358,7 @@ class TestSliceOpDecreaseAxisTest(TestCaseHelper):
                 "starts": [31, 32],
                 "ends": [32, 33],
                 "strides": [2, 4],
-                "decrease_axis": [0, 2]
+                "decrease_axis": [0, 2],
             },
         ]
         self.dtypes = [{"dtype": "float32"}]

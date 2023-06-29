@@ -30,9 +30,10 @@ namespace cinn {
 namespace common {
 
 /**
- * Types in the CINN type system. They can be ints, unsigned ints, or floats of various bit-widths.
- * They can also be vectors of the same (by setting the `lanes` field to something larger than one).
- * NOTE: Front-end code other than vectorize shouldn't use vector types.
+ * Types in the CINN type system. They can be ints, unsigned ints, or floats of
+ * various bit-widths. They can also be vectors of the same (by setting the
+ * `lanes` field to something larger than one). NOTE: Front-end code other than
+ * vectorize shouldn't use vector types.
  */
 struct Type {
   enum class type_t {
@@ -42,15 +43,17 @@ struct Type {
     Float,
     String,
     Void,
-    // stupid idea to mix the Customized with other primitive types, large refactor needs here.
+    // stupid idea to mix the Customized with other primitive types, large
+    // refactor needs here.
     Customized,  // Customized type
   };
 
-  // CINN use type_t and bits to distinguish data types, like is_float(64) for double,
-  // is_float(32) for float, but for Float16 and BFloat16, the bits are both 16, so we need
-  // some other info to distinguish them.
+  // CINN use type_t and bits to distinguish data types, like is_float(64) for
+  // double, is_float(32) for float, but for Float16 and BFloat16, the bits are
+  // both 16, so we need some other info to distinguish them.
   enum class specific_type_t {
-    // None for some cases we only care about the bits, e.g. vectorize for hardwares
+    // None for some cases we only care about the bits, e.g. vectorize for
+    // hardwares
     None = -1,
     FP16,
     BF16,
@@ -61,9 +64,9 @@ struct Type {
 
   //! type decorators in C++, the different code can used together.
   enum class cpp_type_t : uint8_t {
-    None         = 0,       // None information.
-    Const        = 1,       // const.
-    Handle       = 1 << 1,  // pointer type, such as `cinn_buffer_t*`.
+    None = 0,               // None information.
+    Const = 1,              // const.
+    Handle = 1 << 1,        // pointer type, such as `cinn_buffer_t*`.
     HandleHandle = 1 << 2,  // pointer of pointer, such as `cinn_buffer_t**`.
   };
 
@@ -84,7 +87,8 @@ struct Type {
   CINN_NODISCARD bool is_bool() const;
   CINN_NODISCARD bool is_vector() const;
   CINN_NODISCARD bool is_scalar() const;
-  CINN_NODISCARD bool is_float(int bits = -1, specific_type_t st = specific_type_t::None) const;
+  CINN_NODISCARD bool is_float(
+      int bits = -1, specific_type_t st = specific_type_t::None) const;
   CINN_NODISCARD bool is_float16() const;
   CINN_NODISCARD bool is_bfloat16() const;
   CINN_NODISCARD bool is_int(int bits = -1) const;
@@ -160,14 +164,26 @@ struct Type {
 };  // namespace common
 
 inline Type Void() { return Type(Type::type_t ::Void, 1, 0); }
-inline Type Int(int bits, int lanes = 1) { return Type(Type::type_t ::Int, bits, lanes); }
-inline Type UInt(int bits, int lanes = 1) { return Type(Type::type_t ::UInt, bits, lanes); }
-inline Type BFloat16(int lanes = 1) { return Type(Type::type_t ::Float, 16, lanes, Type::specific_type_t::BF16); }
-inline Type Float16(int lanes = 1) { return Type(Type::type_t ::Float, 16, lanes, Type::specific_type_t::FP16); }
-inline Type Float(int bits, int lanes = 1, Type::specific_type_t st = Type::specific_type_t::None) {
+inline Type Int(int bits, int lanes = 1) {
+  return Type(Type::type_t ::Int, bits, lanes);
+}
+inline Type UInt(int bits, int lanes = 1) {
+  return Type(Type::type_t ::UInt, bits, lanes);
+}
+inline Type BFloat16(int lanes = 1) {
+  return Type(Type::type_t ::Float, 16, lanes, Type::specific_type_t::BF16);
+}
+inline Type Float16(int lanes = 1) {
+  return Type(Type::type_t ::Float, 16, lanes, Type::specific_type_t::FP16);
+}
+inline Type Float(int bits,
+                  int lanes = 1,
+                  Type::specific_type_t st = Type::specific_type_t::None) {
   if (bits == 16) {
-    CHECK(st == Type::specific_type_t::FP16 || st == Type::specific_type_t::BF16)
-        << "When creating a 16 bits Float, the specific_type_t must be FP16 or BF16.";
+    CHECK(st == Type::specific_type_t::FP16 ||
+          st == Type::specific_type_t::BF16)
+        << "When creating a 16 bits Float, the specific_type_t must be FP16 or "
+           "BF16.";
   }
   return Type(Type::type_t ::Float, bits, lanes, st);
 }
@@ -273,10 +289,10 @@ std::ostream& operator<<(std::ostream& os, Type::type_t t);
 
 namespace customized_type {
 
-static const char* kArgs_type_repr        = "Args";
-static const char* kArgValue_type_repr    = "ArgValue";
-static const char* kbuffer_t              = "cinn_buffer_t";
-static const char* kpod_value_t           = "cinn_pod_value_t";
+static const char* kArgs_type_repr = "Args";
+static const char* kArgValue_type_repr = "ArgValue";
+static const char* kbuffer_t = "cinn_buffer_t";
+static const char* kpod_value_t = "cinn_pod_value_t";
 static const char* kcuda_builtin_vector_t = "CudaVectorType::";
 
 }  // namespace customized_type
@@ -287,11 +303,16 @@ inline Type type_of<cinn_buffer_t>() {
 }
 template <>
 inline Type type_of<cinn_buffer_t*>() {
-  return Type().set_customized_type(customized_type::kbuffer_t).set_cpp_handle();
+  return Type()
+      .set_customized_type(customized_type::kbuffer_t)
+      .set_cpp_handle();
 }
 template <>
 inline Type type_of<const cinn_buffer_t*>() {
-  return Type().set_customized_type(customized_type::kbuffer_t).set_cpp_handle().set_cpp_const();
+  return Type()
+      .set_customized_type(customized_type::kbuffer_t)
+      .set_cpp_handle()
+      .set_cpp_const();
 }
 template <>
 inline Type type_of<cinn_pod_value_t>() {
@@ -299,7 +320,9 @@ inline Type type_of<cinn_pod_value_t>() {
 }
 template <>
 inline Type type_of<cinn_pod_value_t*>() {
-  return Type().set_customized_type(customized_type::kpod_value_t).set_cpp_handle();
+  return Type()
+      .set_customized_type(customized_type::kpod_value_t)
+      .set_cpp_handle();
 }
 
 Type Str2Type(const std::string& type);

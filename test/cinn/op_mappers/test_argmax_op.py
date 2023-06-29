@@ -40,7 +40,8 @@ class TestArgmaxOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -48,7 +49,7 @@ class TestArgmaxOp(OpMapperTest):
             "axis": self.axis,
             "flatten": self.flatten,
             "keepdims": self.keepdims,
-            "dtype": self.nptype2paddledtype(self.output_dtype)
+            "dtype": self.nptype2paddledtype(self.output_dtype),
         }
 
     def set_op_outputs(self):
@@ -77,7 +78,7 @@ class TestArgmaxCase1(TestArgmaxOp):
 
 class TestArgmaxCase2(TestArgmaxOp):
     """
-    Test case with true keepdims 
+    Test case with true keepdims
     """
 
     def init_input_data(self):

@@ -19,8 +19,8 @@
 
 #include <iostream>
 
-#include "paddle/cinn/runtime/flags.h"
 #include "gflags/gflags_declare.h"
+#include "paddle/cinn/runtime/flags.h"
 
 DECLARE_bool(verbose_function_register);
 
@@ -51,7 +51,8 @@ void RuntimeSymbols::Register(const std::string &name, void *address) {
   std::lock_guard<std::mutex> lock(mu_);
   auto it = symbols_.find(name);
   if (it != symbols_.end()) {
-    CHECK_EQ(it->second, address) << "Duplicate register symbol [" << name << "]";
+    CHECK_EQ(it->second, address)
+        << "Duplicate register symbol [" << name << "]";
     return;
   }
 

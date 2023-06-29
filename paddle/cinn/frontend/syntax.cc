@@ -41,19 +41,22 @@ void Instruction::PrepareOutputs() {
   }
 }
 
-Instruction::Instruction(absl::string_view op_type, const std::vector<Variable>& inputs, Program* parent)
+Instruction::Instruction(absl::string_view op_type,
+                         const std::vector<Variable>& inputs,
+                         Program* parent)
     : common::Shared<_Instruction_>(common::make_shared<_Instruction_>()) {
-  get()->op_type        = std::string(op_type);
+  get()->op_type = std::string(op_type);
   get()->parent_program = parent;
-  get()->inputs         = inputs;
+  get()->inputs = inputs;
   PrepareOutputs();
 }
 
 Placeholder::operator Variable() const { return var_; }
 
-Variable Program::conv2d(const Variable& a,
-                         const Variable& b,
-                         const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::conv2d(
+    const Variable& a,
+    const Variable& b,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("conv2d");
   instr.SetInputs({a, b});
   for (auto& iter : attr_store) {
@@ -63,7 +66,9 @@ Variable Program::conv2d(const Variable& a,
   return instr.GetOutput(0);
 }
 
-Variable Program::layout_transform(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::layout_transform(
+    const Variable& a,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("layout_transform");
   instr.SetInputs({a});
   for (auto& iter : attr_store) {
@@ -73,9 +78,10 @@ Variable Program::layout_transform(const Variable& a, const absl::flat_hash_map<
   return instr.GetOutput(0);
 }
 
-Variable Program::conv2d_NCHWc(const Variable& a,
-                               const Variable& b,
-                               const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::conv2d_NCHWc(
+    const Variable& a,
+    const Variable& b,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("conv2d_NCHWc");
   instr.SetInputs({a, b});
   for (auto& iter : attr_store) {
@@ -85,9 +91,10 @@ Variable Program::conv2d_NCHWc(const Variable& a,
   return instr.GetOutput(0);
 }
 
-Variable Program::depthwise_conv2d(const Variable& a,
-                                   const Variable& b,
-                                   const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::depthwise_conv2d(
+    const Variable& a,
+    const Variable& b,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("depthwise_conv2d");
   instr.SetInputs({a, b});
   for (auto& iter : attr_store) {
@@ -97,7 +104,9 @@ Variable Program::depthwise_conv2d(const Variable& a,
   return instr.GetOutput(0);
 }
 
-Variable Program::pool2d(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::pool2d(
+    const Variable& a,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("pool2d");
   instr.SetInputs({a});
   for (auto& iter : attr_store) {
@@ -107,12 +116,13 @@ Variable Program::pool2d(const Variable& a, const absl::flat_hash_map<std::strin
   return instr.GetOutput(0);
 }
 
-Variable Program::batchnorm(const Variable& a,
-                            const Variable& scale,
-                            const Variable& bias,
-                            const Variable& mean,
-                            const Variable& variance,
-                            const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::batchnorm(
+    const Variable& a,
+    const Variable& scale,
+    const Variable& bias,
+    const Variable& mean,
+    const Variable& variance,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("batch_norm");
   instr.SetInputs({a, scale, bias, mean, variance});
   for (auto& iter : attr_store) {
@@ -123,7 +133,8 @@ Variable Program::batchnorm(const Variable& a,
 }
 
 template <typename PrimType>
-Variable Program::primitive_const_scalar(PrimType value, const std::string& name) {
+Variable Program::primitive_const_scalar(PrimType value,
+                                         const std::string& name) {
   Instruction instr("const_scalar");
   instr.SetInputs({});
   instr.SetAttr("value", value);
@@ -131,15 +142,17 @@ Variable Program::primitive_const_scalar(PrimType value, const std::string& name
   auto out = instr.GetOutput(0);
   out.set_id(name);
   auto out_type = type_of<PrimType>();
-  CHECK(out_type.is_float() || out_type.is_int() || out_type.is_bool()) << "no supported type: " << out_type;
+  CHECK(out_type.is_float() || out_type.is_int() || out_type.is_bool())
+      << "no supported type: " << out_type;
   out->type = out_type;
   out.set_const(true);
   return out;
 }
 
-Variable Program::primitive_broadcast_to(const Variable& a,
-                                         const std::vector<int>& out_shape,
-                                         const std::vector<int>& broadcast_axes) {
+Variable Program::primitive_broadcast_to(
+    const Variable& a,
+    const std::vector<int>& out_shape,
+    const std::vector<int>& broadcast_axes) {
   Instruction instr("broadcast_to");
   instr.SetInputs({a});
   instr.SetAttr("out_shape", out_shape);
@@ -148,59 +161,65 @@ Variable Program::primitive_broadcast_to(const Variable& a,
   return instr.GetOutput(0);
 }
 
-Variable Program::fused_meta_batchnorm_inference(const Variable& a,
-                                                 const Variable& scale,
-                                                 const Variable& bias,
-                                                 const Variable& mean,
-                                                 const Variable& variance,
-                                                 const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::fused_meta_batchnorm_inference(
+    const Variable& a,
+    const Variable& scale,
+    const Variable& bias,
+    const Variable& mean,
+    const Variable& variance,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   float epsilon = 0.00001f;
   if (attr_store.find("epsilon") != attr_store.end()) {
     epsilon = absl::get<float>(attr_store.at("epsilon"));
   }
-  auto eps_var = primitive_const_scalar<float>(epsilon, common::UniqName("epsilon"));
+  auto eps_var =
+      primitive_const_scalar<float>(epsilon, common::UniqName("epsilon"));
   CHECK(!scale->shape.empty()) << "scale's shape is empty.";
   auto broadcast_eps = primitive_broadcast_to(eps_var, scale->shape, {0});
-  auto var_add_eps   = add(variance, broadcast_eps);
-  auto rsrqt_var     = primitive_rsqrt(var_add_eps);
-  auto new_scale     = multiply(rsrqt_var, scale);
-  auto neg_mean      = primitive_negative(mean);
-  auto new_shift     = multiply(new_scale, neg_mean);
-  auto shift_bias    = add(new_shift, bias);
+  auto var_add_eps = add(variance, broadcast_eps);
+  auto rsrqt_var = primitive_rsqrt(var_add_eps);
+  auto new_scale = multiply(rsrqt_var, scale);
+  auto neg_mean = primitive_negative(mean);
+  auto new_shift = multiply(new_scale, neg_mean);
+  auto shift_bias = add(new_shift, bias);
   CHECK(!a->shape.empty()) << "variable a's shape is empty.";
-  auto broadcast_new_scale  = primitive_broadcast_to(new_scale, a->shape, {1});
+  auto broadcast_new_scale = primitive_broadcast_to(new_scale, a->shape, {1});
   auto broadcast_shift_bias = primitive_broadcast_to(shift_bias, a->shape, {1});
-  auto temp_out             = multiply(broadcast_new_scale, a);
-  auto bn_out               = add(temp_out, broadcast_shift_bias);
+  auto temp_out = multiply(broadcast_new_scale, a);
+  auto bn_out = add(temp_out, broadcast_shift_bias);
 
   return bn_out;
 }
 
-Variable Program::fused_batchnorm_inference(const Variable& a,
-                                            const Variable& scale,
-                                            const Variable& bias,
-                                            const Variable& mean,
-                                            const Variable& variance,
-                                            const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::fused_batchnorm_inference(
+    const Variable& a,
+    const Variable& scale,
+    const Variable& bias,
+    const Variable& mean,
+    const Variable& variance,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   float epsilon = 0.00001f;
   if (attr_store.find("epsilon") != attr_store.end()) {
     epsilon = absl::get<float>(attr_store.at("epsilon"));
   }
-  auto eps_var = primitive_const_scalar<float>(epsilon, common::UniqName("epsilon"));
+  auto eps_var =
+      primitive_const_scalar<float>(epsilon, common::UniqName("epsilon"));
   CHECK(!scale->shape.empty()) << "scale's shape is empty.";
   auto var_add_eps = elementwise_add(variance, eps_var);
-  auto rsrqt_var   = primitive_rsqrt(var_add_eps);
-  auto new_scale   = elementwise_mul(rsrqt_var, scale);
-  auto neg_mean    = primitive_negative(mean);
-  auto new_shift   = elementwise_mul(new_scale, neg_mean);
-  auto shift_bias  = elementwise_add(new_shift, bias);
-  auto temp_out    = elementwise_mul(a, new_scale, 1);
-  auto bn_out      = elementwise_add(temp_out, shift_bias, 1);
+  auto rsrqt_var = primitive_rsqrt(var_add_eps);
+  auto new_scale = elementwise_mul(rsrqt_var, scale);
+  auto neg_mean = primitive_negative(mean);
+  auto new_shift = elementwise_mul(new_scale, neg_mean);
+  auto shift_bias = elementwise_add(new_shift, bias);
+  auto temp_out = elementwise_mul(a, new_scale, 1);
+  auto bn_out = elementwise_add(temp_out, shift_bias, 1);
 
   return bn_out;
 }
 
-Variable Program::scale(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::scale(
+    const Variable& a,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("scale", {a});
   for (auto& iter : attr_store) {
     instr.SetAttr(iter.first, iter.second);
@@ -209,7 +228,9 @@ Variable Program::scale(const Variable& a, const absl::flat_hash_map<std::string
   return instr.GetOutput(0);
 }
 
-Variable Program::softmax(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::softmax(
+    const Variable& a,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("softmax", {a});
   for (auto& iter : attr_store) {
     instr.SetAttr(iter.first, iter.second);
@@ -224,7 +245,9 @@ Variable Program::sigmoid(const Variable& a) {
   return instr.GetOutput(0);
 }
 
-Variable Program::slice(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::slice(
+    const Variable& a,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("slice", {a});
   for (auto& iter : attr_store) {
     instr.SetAttr(iter.first, iter.second);
@@ -233,7 +256,9 @@ Variable Program::slice(const Variable& a, const absl::flat_hash_map<std::string
   return instr.GetOutput(0);
 }
 
-Variable Program::dropout_infer(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store) {
+Variable Program::dropout_infer(
+    const Variable& a,
+    const absl::flat_hash_map<std::string, attr_t>& attr_store) {
   Instruction instr("dropout_infer", {a});
   for (auto& iter : attr_store) {
     instr.SetAttr(iter.first, iter.second);
@@ -253,7 +278,8 @@ const Instruction& Program::operator[](size_t i) const {
 }
 
 std::ostream& operator<<(std::ostream& os, const Variable& x) {
-  os << "Var(" << x->id << ": shape=[" << utils::Join(x->shape, ", ") << "], dtype=" << x->type;
+  os << "Var(" << x->id << ": shape=[" << utils::Join(x->shape, ", ")
+     << "], dtype=" << x->type;
   if (x->is_const) {
     os << ", CONST";
   }
@@ -270,11 +296,12 @@ std::tuple<std::unique_ptr<Program>,
            absl::flat_hash_map<std::string, Variable>,
            absl::flat_hash_map<std::string, std::string>,
            absl::flat_hash_set<std::string>>
-LoadPaddleProgram(const std::string& model_dir,
-                  Scope* scope,
-                  std::unordered_map<std::string, std::vector<int>>& input_shape_map,
-                  bool is_combined,
-                  const common::Target& target) {
+LoadPaddleProgram(
+    const std::string& model_dir,
+    Scope* scope,
+    std::unordered_map<std::string, std::vector<int>>& input_shape_map,
+    bool is_combined,
+    const common::Target& target) {
   VLOG(1) << "Loading Paddle model from " << model_dir;
   PaddleModelToProgram paddle_to_program(scope, input_shape_map, target);
   return std::make_tuple(paddle_to_program(model_dir, is_combined),
@@ -286,15 +313,18 @@ LoadPaddleProgram(const std::string& model_dir,
 void Program::SetInputs(const std::vector<Variable>& xs) {
   CHECK(!xs.empty()) << "At least one input is needed for a program!";
   for (int i = 0; i < xs.size(); i++) {
-    CHECK(!xs[i]->shape.empty()) << "Found " << i << "-th input's shape is not set yet";
-    CHECK(!xs[i]->type.is_unk()) << "Found " << i << "-th input's type is not set yet";
+    CHECK(!xs[i]->shape.empty())
+        << "Found " << i << "-th input's shape is not set yet";
+    CHECK(!xs[i]->type.is_unk())
+        << "Found " << i << "-th input's type is not set yet";
     inputs_.push_back(xs[i]);
   }
 }
 
 void Program::Validate() const {
-  // Existing some program don't have input, such as a program only has `fill_constant`
-  // CHECK(!inputs_.empty()) << "Inputs of the program is not set yet";
+  // Existing some program don't have input, such as a program only has
+  // `fill_constant` CHECK(!inputs_.empty()) << "Inputs of the program is not
+  // set yet";
   CHECK(!instrs_.empty()) << "No instruction is added yet";
 }
 
@@ -383,41 +413,50 @@ SYNTAX_PRIM_BINARY_IMPL(bitwise_and)
 SYNTAX_PRIM_BINARY_IMPL(left_shift)
 SYNTAX_PRIM_BINARY_IMPL(right_shift)
 
-Variable Program::elementwise_add(const Variable& a, const Variable& b, int axis) {
+Variable Program::elementwise_add(const Variable& a,
+                                  const Variable& b,
+                                  int axis) {
   Instruction instr("elementwise_add", {a, b});
   instr.SetAttr("axis", axis);
   AppendInstruction(instr);
   return instr.GetOutput(0);
 }
 
-Variable Program::elementwise_mul(const Variable& a, const Variable& b, int axis) {
+Variable Program::elementwise_mul(const Variable& a,
+                                  const Variable& b,
+                                  int axis) {
   Instruction instr("elementwise_mul", {a, b});
   instr.SetAttr("axis", axis);
   AppendInstruction(instr);
   return instr.GetOutput(0);
 }
 
-Variable Program::elementwise_div(const Variable& a, const Variable& b, int axis) {
+Variable Program::elementwise_div(const Variable& a,
+                                  const Variable& b,
+                                  int axis) {
   Instruction instr("divide", {a, b});
   instr.SetAttr("axis", axis);
   AppendInstruction(instr);
   return instr.GetOutput(0);
 }
 
-Variable Program::elementwise_sub(const Variable& a, const Variable& b, int axis) {
+Variable Program::elementwise_sub(const Variable& a,
+                                  const Variable& b,
+                                  int axis) {
   Instruction instr("subtract", {a, b});
   instr.SetAttr("axis", axis);
   AppendInstruction(instr);
   return instr.GetOutput(0);
 }
 
-#define SYNTAX_PRIM_REDUCE_IMPL(name__)                                                              \
-  Variable Program::reduce_##name__(const Variable& a, const std::vector<int>& dim, bool keep_dim) { \
-    Instruction instr("reduce_" #name__, {a});                                                       \
-    instr.SetAttr("dim", dim);                                                                       \
-    instr.SetAttr("keep_dim", keep_dim);                                                             \
-    AppendInstruction(instr);                                                                        \
-    return instr.GetOutput(0);                                                                       \
+#define SYNTAX_PRIM_REDUCE_IMPL(name__)                                \
+  Variable Program::reduce_##name__(                                   \
+      const Variable& a, const std::vector<int>& dim, bool keep_dim) { \
+    Instruction instr("reduce_" #name__, {a});                         \
+    instr.SetAttr("dim", dim);                                         \
+    instr.SetAttr("keep_dim", keep_dim);                               \
+    AppendInstruction(instr);                                          \
+    return instr.GetOutput(0);                                         \
   }
 
 SYNTAX_PRIM_REDUCE_IMPL(sum)
@@ -443,7 +482,10 @@ Variable Program::relu6(const Variable& a) {
   return instr.GetOutput(0);
 }
 
-Variable Program::mul(const Variable& a, const Variable& b, int x_num_col_dims, int y_num_col_dims) {
+Variable Program::mul(const Variable& a,
+                      const Variable& b,
+                      int x_num_col_dims,
+                      int y_num_col_dims) {
   Instruction instr("mul", {a, b});
   instr.SetAttr("x_num_col_dims", x_num_col_dims);
   instr.SetAttr("y_num_col_dims", y_num_col_dims);
@@ -451,7 +493,11 @@ Variable Program::mul(const Variable& a, const Variable& b, int x_num_col_dims, 
   return instr.GetOutput(0);
 }
 
-Variable Program::matmul(const Variable& a, const Variable& b, bool trans_a, bool trans_b, float alpha) {
+Variable Program::matmul(const Variable& a,
+                         const Variable& b,
+                         bool trans_a,
+                         bool trans_b,
+                         float alpha) {
   Instruction instr("matmul", {a, b});
   instr.SetAttr("trans_a", trans_a);
   instr.SetAttr("trans_b", trans_b);
@@ -491,20 +537,36 @@ std::string _Instruction_::debug_string() const {
     void operator()(double x) { s_ << x; }
     void operator()(bool x) { s_ << (x ? "true" : "false"); }
     void operator()(const std::string& x) { s_ << x; }
-    void operator()(const std::vector<int>& x) { s_ << "[" + utils::Join(x, ",") + "]"; }
-    void operator()(const std::vector<int64_t>& x) { s_ << "[" + utils::Join(x, ",") + "]"; }
-    void operator()(const std::vector<float>& x) { s_ << "[" + utils::Join(x, ",") + "]"; }
-    void operator()(const std::vector<double>& x) { s_ << "[" + utils::Join(x, ",") + "]"; }
-    void operator()(const std::vector<bool>& x) { s_ << "[" + utils::Join(x, ",") + "]"; }
-    void operator()(const std::vector<std::string>& x) { s_ << "[" + utils::Join(x, ",") + "]"; }
+    void operator()(const std::vector<int>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<int64_t>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<float>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<double>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<bool>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<std::string>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
   };
 
   std::stringstream ss;
   std::vector<std::string> input_names, output_names;
-  std::transform(
-      inputs.begin(), inputs.end(), std::back_inserter(input_names), [](const Variable& x) { return x->id; });
-  std::transform(
-      outputs.begin(), outputs.end(), std::back_inserter(output_names), [](const Variable& x) { return x->id; });
+  std::transform(inputs.begin(),
+                 inputs.end(),
+                 std::back_inserter(input_names),
+                 [](const Variable& x) { return x->id; });
+  std::transform(outputs.begin(),
+                 outputs.end(),
+                 std::back_inserter(output_names),
+                 [](const Variable& x) { return x->id; });
 
   ss << utils::Join(output_names, ", ");
   ss << " = ";
@@ -535,11 +597,14 @@ std::string _Instruction_::debug_string() const {
 
 struct HashVariable {
   bool operator()(const Variable& lhs, const Variable& rhs) const {
-    return lhs->id == rhs->id && lhs->shape == rhs->shape && lhs->type == rhs->type;
+    return lhs->id == rhs->id && lhs->shape == rhs->shape &&
+           lhs->type == rhs->type;
   }
 
   std::size_t operator()(const Variable& var) const {
-    return std::hash<std::string>()(var->id + cinn::utils::Join(var->shape, ", ") + cinn::common::Type2Str(var->type));
+    return std::hash<std::string>()(var->id +
+                                    cinn::utils::Join(var->shape, ", ") +
+                                    cinn::common::Type2Str(var->type));
   }
 };
 

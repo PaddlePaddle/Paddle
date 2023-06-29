@@ -23,8 +23,9 @@ from cinn.frontend import *
 from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestUnaryOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -48,12 +49,13 @@ class TestUnaryOp(OpTest):
         builder = NetBuilder("unary_elementwise_test")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = self.cinn_func(builder, x)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 

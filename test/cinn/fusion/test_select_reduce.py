@@ -27,13 +27,19 @@ class TestGroup1(FusionTest):
     def build_program(self, builder, target):
         cond = builder.create_input(
             self.nptype2cinntype(self.feed_data['cond'].dtype),
-            self.feed_data['cond'].shape, "cond")
+            self.feed_data['cond'].shape,
+            "cond",
+        )
         true_value = builder.create_input(
             self.nptype2cinntype(self.feed_data['true_value'].dtype),
-            self.feed_data['true_value'].shape, "true_value")
+            self.feed_data['true_value'].shape,
+            "true_value",
+        )
         false_value = builder.create_input(
             self.nptype2cinntype(self.feed_data['false_value'].dtype),
-            self.feed_data['false_value'].shape, "false_value")
+            self.feed_data['false_value'].shape,
+            "false_value",
+        )
 
         var_1 = builder.select(cond, true_value, false_value)
         var_2 = builder.reduce_sum(var_1, dim=[2], keep_dim=False)

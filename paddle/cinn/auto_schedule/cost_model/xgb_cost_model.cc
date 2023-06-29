@@ -57,7 +57,8 @@ pybind11::array VectorToNumpy(const std::vector<std::vector<Dtype>>& vec) {
 
   Dtype* py_data = static_cast<Dtype*>(ret.mutable_data());
   for (size_t i = 0; i < vec.size(); ++i) {
-    assert(vec[i].size() == shape[1] && "Sub vectors must have same size in VectorToNumpy");
+    assert(vec[i].size() == shape[1] &&
+           "Sub vectors must have same size in VectorToNumpy");
     memcpy(py_data + (shape[1] * i), vec[i].data(), shape[1] * sizeof(Dtype));
   }
   return ret;
@@ -71,19 +72,23 @@ pybind11::array VectorToNumpy(const std::vector<std::vector<Dtype>>& vec) {
 void AddDistPkgToPythonSysPath() {
   pybind11::module sys_py_mod = pybind11::module::import("sys");
   // short version such as "3.7", "3.8", ...
-  std::string py_short_version = sys_py_mod.attr("version").cast<std::string>().substr(0, 3);
+  std::string py_short_version =
+      sys_py_mod.attr("version").cast<std::string>().substr(0, 3);
 
-  std::string site_pkg_str = "/usr/local/lib/python" + py_short_version + "/dist-packages";
+  std::string site_pkg_str =
+      "/usr/local/lib/python" + py_short_version + "/dist-packages";
   sys_py_mod.attr("path").attr("append")(site_pkg_str);
 
   // TODO(zhhsplendid): warning to users if setuptools hasn't been installed
   DIR* site_pkg_dir = opendir(site_pkg_str.c_str());
   if (site_pkg_dir != nullptr) {
-    std::regex setuptool_regex("setuptools-.*-py" + py_short_version + "\\.egg");
+    std::regex setuptool_regex("setuptools-.*-py" + py_short_version +
+                               "\\.egg");
     struct dirent* entry = nullptr;
     while ((entry = readdir(site_pkg_dir)) != nullptr) {
       if (std::regex_match(entry->d_name, setuptool_regex)) {
-        sys_py_mod.attr("path").attr("append")(site_pkg_str + "/" + entry->d_name);
+        sys_py_mod.attr("path").attr("append")(site_pkg_str + "/" +
+                                               entry->d_name);
       }
     }
     closedir(site_pkg_dir);
@@ -96,40 +101,49 @@ XgbCostModel::XgbCostModel() {
   if (previous == 0) {
     AddDistPkgToPythonSysPath();
   }
-  xgb_module_  = pybind11::module::import("xgboost");
+  xgb_module_ = pybind11::module::import("xgboost");
   xgb_booster_ = xgb_module_.attr("Booster")();
 }
 
-void XgbCostModel::Train(const std::vector<std::vector<float>>& samples, const std::vector<float>& labels) {
-  update_samples_            = samples;
-  update_labels_             = labels;
+void XgbCostModel::Train(const std::vector<std::vector<float>>& samples,
+                         const std::vector<float>& labels) {
+  update_samples_ = samples;
+  update_labels_ = labels;
   pybind11::array np_samples = VectorToNumpy<float>(samples);
-  pybind11::array np_labels  = VectorToNumpy<float>(labels);
+  pybind11::array np_labels = VectorToNumpy<float>(labels);
 
   pybind11::object dmatrix = xgb_module_.attr("DMatrix")(np_samples, np_labels);
-  xgb_booster_             = xgb_module_.attr("train")(pybind11::dict(), dmatrix, pybind11::int_(kTrainRound_));
+  xgb_booster_ = xgb_module_.attr("train")(
+      pybind11::dict(), dmatrix, pybind11::int_(kTrainRound_));
 }
 
-std::vector<float> XgbCostModel::Predict(const std::vector<std::vector<float>>& samples) const {
+std::vector<float> XgbCostModel::Predict(
+    const std::vector<std::vector<float>>& samples) const {
   pybind11::array np_samples = VectorToNumpy<float>(samples);
-  pybind11::object dmatrix   = xgb_module_.attr("DMatrix")(np_samples);
-  pybind11::array py_result  = xgb_booster_.attr("predict")(dmatrix);
+  pybind11::object dmatrix = xgb_module_.attr("DMatrix")(np_samples);
+  pybind11::array py_result = xgb_booster_.attr("predict")(dmatrix);
   return py_result.cast<std::vector<float>>();
 }
 
-void XgbCostModel::Update(const std::vector<std::vector<float>>& samples, const std::vector<float>& labels) {
+void XgbCostModel::Update(const std::vector<std::vector<float>>& samples,
+                          const std::vector<float>& labels) {
   update_samples_.insert(update_samples_.end(), samples.begin(), samples.end());
   update_labels_.insert(update_labels_.end(), labels.begin(), labels.end());
   pybind11::array np_samples = VectorToNumpy<float>(update_samples_);
-  pybind11::array np_labels  = VectorToNumpy<float>(update_labels_);
+  pybind11::array np_labels = VectorToNumpy<float>(update_labels_);
 
   pybind11::object dmatrix = xgb_module_.attr("DMatrix")(np_samples, np_labels);
-  xgb_booster_             = xgb_module_.attr("train")(pybind11::dict(), dmatrix, pybind11::int_(kTrainRound_));
+  xgb_booster_ = xgb_module_.attr("train")(
+      pybind11::dict(), dmatrix, pybind11::int_(kTrainRound_));
 }
 
-void XgbCostModel::Save(const std::string& path) { xgb_booster_.attr("save_model")(pybind11::str(path)); }
+void XgbCostModel::Save(const std::string& path) {
+  xgb_booster_.attr("save_model")(pybind11::str(path));
+}
 
-void XgbCostModel::Load(const std::string& path) { xgb_booster_.attr("load_model")(pybind11::str(path)); }
+void XgbCostModel::Load(const std::string& path) {
+  xgb_booster_.attr("load_model")(pybind11::str(path));
+}
 
 }  // namespace auto_schedule
 }  // namespace cinn

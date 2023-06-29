@@ -41,7 +41,7 @@ using cinn::hlir::framework::GenerateAccCheckNodeId;
 using common::GraphEdge;
 using common::GraphNode;
 
-using GroupPtr  = std::shared_ptr<Graph::Group>;
+using GroupPtr = std::shared_ptr<Graph::Group>;
 using GroupList = std::vector<GroupPtr>;
 
 using ShapeDict = absl::flat_hash_map<std::string, framework::shape_t>;
@@ -52,10 +52,13 @@ class AssertMsg {
  public:
   AssertMsg(int group_id) : group_id_(group_id) {}
 
-  void SetMsg(const std::string& title, const std::string& msg) { msg_info_[title] = msg; }
+  void SetMsg(const std::string& title, const std::string& msg) {
+    msg_info_[title] = msg;
+  }
 
   const std::string& GetMsg(const std::string& title) const {
-    CHECK(msg_info_.count(title)) << "Msg of group " << group_id_ << " not has title: " << title;
+    CHECK(msg_info_.count(title))
+        << "Msg of group " << group_id_ << " not has title: " << title;
     return msg_info_.at(title);
   }
 
@@ -113,15 +116,20 @@ class CheckFusionAccuracyPass {
 
   std::pair<NodePtr, NodeData*> CreateAllNode(const std::string& node_id);
 
-  std::pair<NodePtr, NodeData*> CreateAssertNode(const std::string& node_id, utils::AssertMsg* assert_msg);
+  std::pair<NodePtr, NodeData*> CreateAssertNode(const std::string& node_id,
+                                                 utils::AssertMsg* assert_msg);
 
   // the AssertAllClose operator are composed of isclose+all+assert
-  std::vector<NodePtr> CreateAssertAllClose(const std::string& node_id,
-                                            utils::AssertMsg* assert_msg,
-                                            const std::vector<NodeData*>& inputs);
+  std::vector<NodePtr> CreateAssertAllClose(
+      const std::string& node_id,
+      utils::AssertMsg* assert_msg,
+      const std::vector<NodeData*>& inputs);
 
-  // link origin group's output and pass group's output to the AssertAllClose nodes
-  GroupList LinkToAssertAllClose(const std::unordered_set<NodeData*>& group_outputs, utils::AssertMsg* msg);
+  // link origin group's output and pass group's output to the AssertAllClose
+  // nodes
+  GroupList LinkToAssertAllClose(
+      const std::unordered_set<NodeData*>& group_outputs,
+      utils::AssertMsg* msg);
 
   // skip check some op and var, now only support check float dtype
   bool IsSkipVar(const NodeData* var);
@@ -139,16 +147,20 @@ class CheckFusionAccuracyPass {
 
 std::atomic_int CheckFusionAccuracyPass::key_count_{0};
 
-bool CheckFusionAccuracyPass::IsSkipVar(const NodeData* var) { return !dtype_dict_.at(var->id()).is_float(); }
+bool CheckFusionAccuracyPass::IsSkipVar(const NodeData* var) {
+  return !dtype_dict_.at(var->id()).is_float();
+}
 
 std::string CheckFusionAccuracyPass::DebugNodeData(NodeData* node) {
   std::stringstream ss;
-  ss << node->id() << "{shape=[" << cinn::utils::Join(shape_dict_.at(node->id()), ", ")
+  ss << node->id() << "{shape=["
+     << cinn::utils::Join(shape_dict_.at(node->id()), ", ")
      << "], dtype=" << dtype_dict_.at(node->id()) << "}";
   return ss.str();
 }
 
-NodeData* CheckFusionAccuracyPass::CreateOutputNode(NodePtr node, const std::string& output_id) {
+NodeData* CheckFusionAccuracyPass::CreateOutputNode(
+    NodePtr node, const std::string& output_id) {
   // create node's output data node
   auto node_id = output_id;
   if (node_id.empty()) {
@@ -156,7 +168,8 @@ NodeData* CheckFusionAccuracyPass::CreateOutputNode(NodePtr node, const std::str
   }
 
   CHECK(graph_->RetrieveNode(node_id) == nullptr)
-      << "The node " << node->op()->name << "'s output " << node_id << " had been registered in graph! Please check.";
+      << "The node " << node->op()->name << "'s output " << node_id
+      << " had been registered in graph! Please check.";
 
   auto* output_data = new NodeData(node, 0, 0, node_id);
   node->LinkTo(output_data);
@@ -165,23 +178,26 @@ NodeData* CheckFusionAccuracyPass::CreateOutputNode(NodePtr node, const std::str
   return output_data;
 }
 
-void CheckFusionAccuracyPass::CreateCheckNodeOutputs(Node* old_node, NodePtr new_node) {
+void CheckFusionAccuracyPass::CreateCheckNodeOutputs(Node* old_node,
+                                                     NodePtr new_node) {
   const auto& outlinks = old_node->outlinks_in_order();
   for (const auto& out_edge : outlinks) {
     auto out_node = out_edge->sink()->safe_as<NodeData>();
-    CHECK(out_node) << "Node " << old_node->id() << "'s output node is nullptr! Please check.";
+    CHECK(out_node) << "Node " << old_node->id()
+                    << "'s output node is nullptr! Please check.";
 
     const auto& out_node_id = out_node->id();
     // If the check node's output variable node not created
     if (!FusionHelperBase::IsConstOp(old_node)) {
-      // note the const op will recompute in group, so that the op may appear in many group
-      // CHECK_EQ(old2new_nodedata_map_.count(out_node), 0)
-      //    << "Var " << out_node_id << " repeated! The graph is not a SSA graph! Please check.";
+      // note the const op will recompute in group, so that the op may appear in
+      // many group CHECK_EQ(old2new_nodedata_map_.count(out_node), 0)
+      //    << "Var " << out_node_id << " repeated! The graph is not a SSA
+      //    graph! Please check.";
     }
 
     const auto& check_out_node_id = GenerateAccCheckNodeId(out_node_id);
 
-    auto check_out_node          = CreateOutputNode(new_node, check_out_node_id);
+    auto check_out_node = CreateOutputNode(new_node, check_out_node_id);
     check_out_node->output_index = out_node->output_index;
 
     auto check_out_shape = shape_dict_.at(out_node_id);
@@ -190,18 +206,21 @@ void CheckFusionAccuracyPass::CreateCheckNodeOutputs(Node* old_node, NodePtr new
     auto check_out_dtype = dtype_dict_.at(out_node_id);
     dtype_dict_.emplace(check_out_node_id, std::move(check_out_dtype));
 
-    VLOG(4) << "Create the check fusion accuracy node of node " << old_node->id() << "'s output node "
-            << DebugNodeData(out_node) << " success, which is " << DebugNodeData(check_out_node);
+    VLOG(4) << "Create the check fusion accuracy node of node "
+            << old_node->id() << "'s output node " << DebugNodeData(out_node)
+            << " success, which is " << DebugNodeData(check_out_node);
 
     old2new_nodedata_map_[out_node] = check_out_node;
   }
 }
 
-void CheckFusionAccuracyPass::RelinkNodeInputs(Node* old_node, NodePtr new_node) {
+void CheckFusionAccuracyPass::RelinkNodeInputs(Node* old_node,
+                                               NodePtr new_node) {
   const auto& inlinks = old_node->inlinks_in_order();
   for (const auto& in_edge : inlinks) {
     auto in_node = in_edge->source()->safe_as<NodeData>();
-    CHECK(in_node) << "Node " << old_node->id() << "'s input node is nullptr! Please check.";
+    CHECK(in_node) << "Node " << old_node->id()
+                   << "'s input node is nullptr! Please check.";
 
     if (old2new_nodedata_map_.count(in_node)) {
       old2new_nodedata_map_[in_node]->LinkTo(new_node.get());
@@ -212,15 +231,17 @@ void CheckFusionAccuracyPass::RelinkNodeInputs(Node* old_node, NodePtr new_node)
 }
 
 NodePtr CheckFusionAccuracyPass::CreateCheckNode(Node* node) {
-  CHECK(node->op()) << "Node " << node->id() << " is not operator! Please check.";
+  CHECK(node->op()) << "Node " << node->id()
+                    << " is not operator! Please check.";
 
   const auto& check_node_id = GenerateAccCheckNodeId(node->id());
 
   CHECK(graph_->RetrieveNode(check_node_id) == nullptr)
-      << "The node " << node->id() << "'s check fusion accuracy node" << check_node_id
-      << " had been registered in graph! Please check.";
+      << "The node " << node->id() << "'s check fusion accuracy node"
+      << check_node_id << " had been registered in graph! Please check.";
 
-  auto check_node              = Node::Create(node->op(), GenerateAccCheckNodeId(node->attrs.node_name), check_node_id);
+  auto check_node = Node::Create(
+      node->op(), GenerateAccCheckNodeId(node->attrs.node_name), check_node_id);
   check_node->attrs.attr_store = node->attrs.attr_store;
 
   graph_->RegisterNode(check_node_id, check_node.get());
@@ -228,19 +249,23 @@ NodePtr CheckFusionAccuracyPass::CreateCheckNode(Node* node) {
   CreateCheckNodeOutputs(node, check_node);
   RelinkNodeInputs(node, check_node);
 
-  VLOG(4) << "Create node " << framework::DebugString(node) << "'s check fusion accuracy node success, which is "
+  VLOG(4) << "Create node " << framework::DebugString(node)
+          << "'s check fusion accuracy node success, which is "
           << framework::DebugString(check_node.get());
 
   return check_node;
 }
 
 OpPatternKind CheckFusionAccuracyPass::GetOpKind(const framework::Node* node) {
-  auto op_pattern_dict_ = &framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
-  CHECK(op_pattern_dict_->Find(node->op())) << "Don't find the pattern of op : " << node->id();
+  auto op_pattern_dict_ =
+      &framework::Operator::GetAttrs<OpPatternKind>("OpPattern");
+  CHECK(op_pattern_dict_->Find(node->op()))
+      << "Don't find the pattern of op : " << node->id();
   auto kind = op_pattern_dict_[0][node->op()];
 
   if (kind == framework::kBroadcast) {
-    // As binary op was defined as broadcast, actually it should be element-wise.
+    // As binary op was defined as broadcast, actually it should be
+    // element-wise.
     if (node->op()->name != "broadcast_to") {
       return framework::kElementWise;
     }
@@ -250,7 +275,7 @@ OpPatternKind CheckFusionAccuracyPass::GetOpKind(const framework::Node* node) {
 }
 
 GroupPtr CheckFusionAccuracyPass::CreateSingleNodeGroup(NodePtr node_ptr) {
-  auto node  = node_ptr.get();
+  auto node = node_ptr.get();
   auto group = std::make_shared<Graph::Group>();
   // init group
   group->nodes.push_back(node);
@@ -259,7 +284,7 @@ GroupPtr CheckFusionAccuracyPass::CreateSingleNodeGroup(NodePtr node_ptr) {
   // input node
   for (auto& edge : node->inlinks()) {
     auto input_graph_node = edge->source();
-    auto input_node_data  = input_graph_node->safe_as<NodeData>();
+    auto input_node_data = input_graph_node->safe_as<NodeData>();
     CHECK(input_node_data);
     // input data has no source node
     if (input_node_data->source_node.get()) {
@@ -276,16 +301,22 @@ GroupPtr CheckFusionAccuracyPass::CreateSingleNodeGroup(NodePtr node_ptr) {
   return group;
 }
 
-std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateIsCloseNode(const std::string& node_id) {
+std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateIsCloseNode(
+    const std::string& node_id) {
   const auto& is_close_node_id = "isclose_" + node_id;
 
-  auto is_close_node = Node::Create(Operator::Get("isclose"), GenerateAccCheckNodeId("isclose"), is_close_node_id);
+  auto is_close_node = Node::Create(Operator::Get("isclose"),
+                                    GenerateAccCheckNodeId("isclose"),
+                                    is_close_node_id);
   is_close_node->attrs.attr_store["rtol"] =
-      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->GetFlagValue<float>("rtol");
+      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()
+          ->GetFlagValue<float>("rtol");
   is_close_node->attrs.attr_store["atol"] =
-      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->GetFlagValue<float>("atol");
+      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()
+          ->GetFlagValue<float>("atol");
   is_close_node->attrs.attr_store["equal_nan"] =
-      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->GetFlagValue<bool>("equal_nan");
+      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()
+          ->GetFlagValue<bool>("equal_nan");
 
   graph_->RegisterNode(is_close_node_id, is_close_node.get());
 
@@ -296,23 +327,27 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateIsCloseNode(const s
   shape_dict_.emplace(output_data->id(), std::move(check_out_shape));
   dtype_dict_.emplace(output_data->id(), common::Bool());
 
-  VLOG(4) << "Create node " << node_id << "'s isclose node success, whose id is " << is_close_node_id
+  VLOG(4) << "Create node " << node_id
+          << "'s isclose node success, whose id is " << is_close_node_id
           << ", whose output is " << DebugNodeData(output_data);
 
   return {is_close_node, output_data};
 }
 
-std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAllNode(const std::string& node_id) {
+std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAllNode(
+    const std::string& node_id) {
   const auto& all_node_id = "all_" + node_id;
 
-  auto all_node = Node::Create(Operator::Get("reduce_all"), GenerateAccCheckNodeId("reduce_all"), all_node_id);
+  auto all_node = Node::Create(Operator::Get("reduce_all"),
+                               GenerateAccCheckNodeId("reduce_all"),
+                               all_node_id);
 
   int shape_size = shape_dict_[node_id].size();
   std::vector<int> axes(shape_size);
   for (int i = 0; i < shape_size; ++i) {
     axes[i] = i;
   }
-  all_node->attrs.attr_store["dim"]      = axes;
+  all_node->attrs.attr_store["dim"] = axes;
   all_node->attrs.attr_store["keep_dim"] = false;
 
   graph_->RegisterNode(all_node_id, all_node.get());
@@ -323,23 +358,28 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAllNode(const std::
   shape_dict_.emplace(output_data->id(), framework::shape_t{1});
   dtype_dict_.emplace(output_data->id(), common::Bool());
 
-  VLOG(4) << "Create node " << node_id << "'s all node success, whose id is " << all_node_id << ", whose output is "
-          << DebugNodeData(output_data);
+  VLOG(4) << "Create node " << node_id << "'s all node success, whose id is "
+          << all_node_id << ", whose output is " << DebugNodeData(output_data);
 
   return {all_node, output_data};
 }
 
-std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAssertNode(const std::string& node_id,
-                                                                        utils::AssertMsg* assert_msg) {
+std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAssertNode(
+    const std::string& node_id, utils::AssertMsg* assert_msg) {
   const auto& assert_node_id = "assert_" + node_id;
 
-  auto assert_node = Node::Create(Operator::Get("assert_true"), GenerateAccCheckNodeId("assert_true"), assert_node_id);
-  // TODO(thisjiang): change type from 'int' to 'std::string' when custom call support 'std::string' type
-  int msg_key                          = key_count_.fetch_add(1);
+  auto assert_node = Node::Create(Operator::Get("assert_true"),
+                                  GenerateAccCheckNodeId("assert_true"),
+                                  assert_node_id);
+  // TODO(thisjiang): change type from 'int' to 'std::string' when custom call
+  // support 'std::string' type
+  int msg_key = key_count_.fetch_add(1);
   assert_node->attrs.attr_store["msg"] = msg_key;
-  cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->SetMsg(msg_key, assert_msg->str());
+  cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->SetMsg(
+      msg_key, assert_msg->str());
   assert_node->attrs.attr_store["only_warning"] =
-      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()->GetFlagValue<bool>("only_warning");
+      cinn::runtime::utils::AssertTrueMsgTool::GetInstance()
+          ->GetFlagValue<bool>("only_warning");
 
   graph_->RegisterNode(assert_node_id, assert_node.get());
 
@@ -349,15 +389,17 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAssertNode(const st
   shape_dict_.emplace(output_data->id(), framework::shape_t{1});
   dtype_dict_.emplace(output_data->id(), common::Bool());
 
-  VLOG(4) << "Create node " << node_id << "'s assert node success, whose id is " << assert_node_id
-          << ", whose output is " << DebugNodeData(output_data);
+  VLOG(4) << "Create node " << node_id << "'s assert node success, whose id is "
+          << assert_node_id << ", whose output is "
+          << DebugNodeData(output_data);
 
   return {assert_node, output_data};
 }
 
-std::vector<NodePtr> CheckFusionAccuracyPass::CreateAssertAllClose(const std::string& node_id,
-                                                                   utils::AssertMsg* assert_msg,
-                                                                   const std::vector<NodeData*>& inputs) {
+std::vector<NodePtr> CheckFusionAccuracyPass::CreateAssertAllClose(
+    const std::string& node_id,
+    utils::AssertMsg* assert_msg,
+    const std::vector<NodeData*>& inputs) {
   std::vector<NodePtr> group_nodes;
   // create isclose + all + assert nodes
   // create isclose node and link inputs to the node
@@ -372,7 +414,8 @@ std::vector<NodePtr> CheckFusionAccuracyPass::CreateAssertAllClose(const std::st
 
   // check and create all node
   auto in_shape = shape_dict_[node_id];
-  int prod_size = std::accumulate(in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
+  int prod_size = std::accumulate(
+      in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
   if (prod_size > 1) {
     // need reduce
     const auto& all_node = CreateAllNode(node_id);
@@ -390,29 +433,35 @@ std::vector<NodePtr> CheckFusionAccuracyPass::CreateAssertAllClose(const std::st
   return group_nodes;
 }
 
-GroupList CheckFusionAccuracyPass::LinkToAssertAllClose(const std::unordered_set<NodeData*>& group_outputs,
-                                                        utils::AssertMsg* msg) {
+GroupList CheckFusionAccuracyPass::LinkToAssertAllClose(
+    const std::unordered_set<NodeData*>& group_outputs, utils::AssertMsg* msg) {
   GroupList assert_groups;
   for (auto* group_out : group_outputs) {
     const auto& out_node_id = group_out->id();
     if (IsSkipVar(group_out)) {
-      LOG(WARNING) << "The CheckFusionAccuracyPass only support check float point dtype data now, skip check node \""
-                   << out_node_id << "\", who's dtype=" << dtype_dict_.at(out_node_id);
+      LOG(WARNING) << "The CheckFusionAccuracyPass only support check float "
+                      "point dtype data now, skip check node \""
+                   << out_node_id
+                   << "\", who's dtype=" << dtype_dict_.at(out_node_id);
       continue;
     }
-    CHECK(old2new_nodedata_map_.count(group_out)) << "The check fusion accuracy's node corresponding to " << out_node_id
-                                                  << " had not been created! Please check.";
-    auto pass_out                = old2new_nodedata_map_.at(group_out);
+    CHECK(old2new_nodedata_map_.count(group_out))
+        << "The check fusion accuracy's node corresponding to " << out_node_id
+        << " had not been created! Please check.";
+    auto pass_out = old2new_nodedata_map_.at(group_out);
     const auto& acc_check_out_id = pass_out->id();
 
     msg->SetMsg("Var Name", out_node_id);
-    msg->SetMsg("Suggestion",
-                cinn::utils::StringFormat("You can check the value by set FLAGS_cinn_self_check_accuracy and compare "
-                                          "the result between \"%s\" and \"%s\"",
-                                          out_node_id.c_str(),
-                                          acc_check_out_id.c_str()));
+    msg->SetMsg(
+        "Suggestion",
+        cinn::utils::StringFormat("You can check the value by set "
+                                  "FLAGS_cinn_self_check_accuracy and compare "
+                                  "the result between \"%s\" and \"%s\"",
+                                  out_node_id.c_str(),
+                                  acc_check_out_id.c_str()));
 
-    const auto& nodes = CreateAssertAllClose(acc_check_out_id, msg, {group_out, pass_out});
+    const auto& nodes =
+        CreateAssertAllClose(acc_check_out_id, msg, {group_out, pass_out});
 
     for (const auto& node : nodes) {
       assert_groups.emplace_back(CreateSingleNodeGroup(node));
@@ -421,9 +470,12 @@ GroupList CheckFusionAccuracyPass::LinkToAssertAllClose(const std::unordered_set
   return assert_groups;
 }
 
-std::vector<Node*> CheckFusionAccuracyPass::TopologicalOrder(const std::vector<Node*>& nodes) {
+std::vector<Node*> CheckFusionAccuracyPass::TopologicalOrder(
+    const std::vector<Node*>& nodes) {
   struct NodeCompare {
-    bool operator()(Node* lhs, Node* rhs) const { return lhs->id() < rhs->id(); }
+    bool operator()(Node* lhs, Node* rhs) const {
+      return lhs->id() < rhs->id();
+    }
   };
 
   std::set<Node*, NodeCompare> node_set(nodes.begin(), nodes.end());
@@ -469,14 +521,16 @@ std::vector<Node*> CheckFusionAccuracyPass::TopologicalOrder(const std::vector<N
         // the variable node's output are the required output nodes
         auto out_node = out_data_edge->sink()->safe_as<Node>();
         if (indegree.count(out_node) && (--indegree[out_node]) == 0) {
-          // if the output node in group and its input nodes are all visited, push
+          // if the output node in group and its input nodes are all visited,
+          // push
           queue.push_back(out_node);
         }
       }
     }
   }
 
-  CHECK_EQ(ordered_nodes.size(), nodes.size()) << "There has circle in group! Please check.";
+  CHECK_EQ(ordered_nodes.size(), nodes.size())
+      << "There has circle in group! Please check.";
 
   return ordered_nodes;
 }
@@ -497,17 +551,20 @@ GroupList CheckFusionAccuracyPass::Apply() {
 
     // fusion group only has one node, do not need check, skip
     if (group_nodes.size() <= 1) {
-      VLOG(4) << "The Group " << group->GetFuncName() << " just has one node, skip.";
+      VLOG(4) << "The Group " << group->GetFuncName()
+              << " just has one node, skip.";
       continue;
     }
 
     // split orign group and create group for each node
     const auto& ordered_nodes = TopologicalOrder(group_nodes);
-    VLOG(4) << "Check the accuracy of group " << graph_->DebugGroupedGraph(ordered_nodes);
+    VLOG(4) << "Check the accuracy of group "
+            << graph_->DebugGroupedGraph(ordered_nodes);
 
     for (auto* node : ordered_nodes) {
       if (node->is_variable()) {
-        VLOG(4) << "The node " << node->id() << " is variable, skip check fusion accuracy.";
+        VLOG(4) << "The node " << node->id()
+                << " is variable, skip check fusion accuracy.";
         continue;
       }
 
@@ -521,18 +578,25 @@ GroupList CheckFusionAccuracyPass::Apply() {
     msg.SetMsg("Group id", std::to_string(i));
     msg.SetMsg(
         "Group structure",
-        cinn::utils::StringFormat("\nGroup %d {\n%s}", i, graph_->DebugGroupedGraph(ordered_nodes, fetch_ids).c_str()));
+        cinn::utils::StringFormat(
+            "\nGroup %d {\n%s}",
+            i,
+            graph_->DebugGroupedGraph(ordered_nodes, fetch_ids).c_str()));
 
     // link the group's output data node to assert all close node
-    const auto& assert_group = LinkToAssertAllClose(group->GetOutputNodeDatas(), &msg);
-    check_fusion_groups.insert(check_fusion_groups.end(), assert_group.begin(), assert_group.end());
+    const auto& assert_group =
+        LinkToAssertAllClose(group->GetOutputNodeDatas(), &msg);
+    check_fusion_groups.insert(
+        check_fusion_groups.end(), assert_group.begin(), assert_group.end());
 
     i++;
   }
   return check_fusion_groups;
 }
 
-void CheckFusionAccuracyPassImpl(Graph* graph) { graph->fusion_groups = CheckFusionAccuracyPass(graph).Apply(); }
+void CheckFusionAccuracyPassImpl(Graph* graph) {
+  graph->fusion_groups = CheckFusionAccuracyPass(graph).Apply();
+}
 
 }  // namespace cinn::hlir::pass
 

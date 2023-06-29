@@ -27,12 +27,14 @@ namespace auto_schedule {
 
 void AnalyzeScheduleBlockReadWriteBuffer(ir::ScheduleBlock* sche_block);
 
-bool ContainsNodeType(ir::Expr expr, const std::unordered_set<ir::IrNodeTy>& node_types);
+bool ContainsNodeType(ir::Expr expr,
+                      const std::unordered_set<ir::IrNodeTy>& node_types);
 
 /**
  * Collects all input lowered_funcs and return names of all output arguments
  */
-std::unordered_set<std::string> GetOutputNamesFromLoweredFunc(const std::vector<ir::LoweredFunc>& lowered_funcs);
+std::unordered_set<std::string> GetOutputNamesFromLoweredFunc(
+    const std::vector<ir::LoweredFunc>& lowered_funcs);
 
 /**
  * Determine whether a schedule block needs multileveltiling
@@ -42,7 +44,9 @@ bool NeedsMultiLevelTiling(const ir::ScheduleBlockRealize& sche_block_realize);
 /**
  * Update a LoweredFunc by regenerating related fields with a new function body
  */
-ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target, const ir::LoweredFunc& old_func, ir::Expr& body);
+ir::LoweredFunc UpdateFuncWithNewBody(const common::Target& target,
+                                      const ir::LoweredFunc& old_func,
+                                      ir::Expr& body);
 
 }  // namespace auto_schedule
 }  // namespace cinn
