@@ -19,6 +19,7 @@
 #include <type_traits>
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {

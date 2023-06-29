@@ -21,8 +21,9 @@ from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSplitOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -49,9 +50,12 @@ class TestSplitOp(OpTest):
         builder = NetBuilder("split")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.split(
-            x, num_or_sections=self.num_or_sections, axis=self.axis)
+            x, num_or_sections=self.num_or_sections, axis=self.axis
+        )
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], out)
         self.cinn_outputs = res
@@ -65,51 +69,17 @@ class TestSplitOpLegacy(TestCaseHelper):
         self.class_name = "TestSplitOpLegacy"
         self.cls = TestSplitOp
         self.inputs = [
-            {
-                "shape": [9, 9, 5],
-                "num_or_sections": [2, 3, 4],
-                "axis": 0
-            },
-            {
-                "shape": [9, 9, 5],
-                "num_or_sections": [3],
-                "axis": 0
-            },
-            {
-                "shape": [9, 9, 5],
-                "num_or_sections": [3],
-                "axis": 1
-            },
-            {
-                "shape": [9, 9, 5],
-                "num_or_sections": [2, 3, -1],
-                "axis": 1
-            },
-            {
-                "shape": [8, 9, 5],
-                "num_or_sections": [2],
-                "axis": 0
-            },
-            {
-                "shape": [8, 9, 5],
-                "num_or_sections": [-1, 2, 2, 2],
-                "axis": 0
-            },
-            {
-                "shape": [2048, 9, 6],
-                "num_or_sections": [2],
-                "axis": 2
-            },
-            {
-                "shape": [10, 128, 4096],
-                "num_or_sections": [2],
-                "axis": 2
-            },
+            {"shape": [9, 9, 5], "num_or_sections": [2, 3, 4], "axis": 0},
+            {"shape": [9, 9, 5], "num_or_sections": [3], "axis": 0},
+            {"shape": [9, 9, 5], "num_or_sections": [3], "axis": 1},
+            {"shape": [9, 9, 5], "num_or_sections": [2, 3, -1], "axis": 1},
+            {"shape": [8, 9, 5], "num_or_sections": [2], "axis": 0},
+            {"shape": [8, 9, 5], "num_or_sections": [-1, 2, 2, 2], "axis": 0},
+            {"shape": [2048, 9, 6], "num_or_sections": [2], "axis": 2},
+            {"shape": [10, 128, 4096], "num_or_sections": [2], "axis": 2},
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -160,9 +130,7 @@ class TestSplitOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [{"num_or_sections": [2], "axis": 0}]
 
@@ -172,36 +140,14 @@ class TestSplitOpOnes(TestCaseHelper):
         self.class_name = "TestSplitOpOnes"
         self.cls = TestSplitOp
         self.inputs = [
-            {
-                "shape": [1],
-                "num_or_sections": [1],
-                "axis": 0
-            },
-            {
-                "shape": [1],
-                "num_or_sections": [1],
-                "axis": 0
-            },
-            {
-                "shape": [1, 1, 1, 1],
-                "num_or_sections": [1],
-                "axis": 0
-            },
-            {
-                "shape": [1, 1, 1, 1],
-                "num_or_sections": [1],
-                "axis": 2
-            },
-            {
-                "shape": [1, 1, 1, 1, 1],
-                "num_or_sections": [1],
-                "axis": 4
-            },
+            {"shape": [1], "num_or_sections": [1], "axis": 0},
+            {"shape": [1], "num_or_sections": [1], "axis": 0},
+            {"shape": [1, 1, 1, 1], "num_or_sections": [1], "axis": 0},
+            {"shape": [1, 1, 1, 1], "num_or_sections": [1], "axis": 2},
+            {"shape": [1, 1, 1, 1, 1], "num_or_sections": [1], "axis": 4},
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -222,21 +168,11 @@ class TestSplitOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [{"num_or_sections": [2], "axis": 0}]
 
@@ -246,36 +182,18 @@ class TestSplitOpAttributeNum(TestCaseHelper):
         self.class_name = "TestSplitOpAttributeNum"
         self.cls = TestSplitOp
         self.inputs = [
-            {
-                "shape": [1024],
-                "num_or_sections": [16],
-                "axis": 0
-            },
-            {
-                "shape": [1024],
-                "num_or_sections": [-1, 256, 256],
-                "axis": 0
-            },
-            {
-                "shape": [256, 32],
-                "num_or_sections": [-1, 16],
-                "axis": 1
-            },
-            {
-                "shape": [16, 8, 32, 64],
-                "num_or_sections": [2, 3, 3],
-                "axis": 1
-            },
+            {"shape": [1024], "num_or_sections": [16], "axis": 0},
+            {"shape": [1024], "num_or_sections": [-1, 256, 256], "axis": 0},
+            {"shape": [256, 32], "num_or_sections": [-1, 16], "axis": 1},
+            {"shape": [16, 8, 32, 64], "num_or_sections": [2, 3, 3], "axis": 1},
             {
                 "shape": [1, 1, 1, 16, 1],
                 "num_or_sections": [4, 4, 4, 4],
-                "axis": 3
+                "axis": 3,
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -288,28 +206,26 @@ class TestSplitOpAttributeAxis(TestCaseHelper):
             {
                 "shape": [16, 8, 32, 64],
                 "num_or_sections": [3, -1, 3],
-                "axis": 0
+                "axis": 0,
             },
             {
                 "shape": [16, 8, 32, 64],
                 "num_or_sections": [3, -1, 3],
-                "axis": 1
+                "axis": 1,
             },
             {
                 "shape": [16, 8, 32, 64],
                 "num_or_sections": [3, -1, 3],
-                "axis": 2
+                "axis": 2,
             },
             {
                 "shape": [16, 8, 32, 64],
                 "num_or_sections": [3, -1, 3],
-                "axis": 3
+                "axis": 3,
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -319,41 +235,15 @@ class TestSplitOpAttributeLargeNum(TestCaseHelper):
         self.class_name = "TestSplitOpAttributeLargeNum"
         self.cls = TestSplitOp
         self.inputs = [
-            {
-                "shape": [1024],
-                "num_or_sections": [16],
-                "axis": 0
-            },
-            {
-                "shape": [1024],
-                "num_or_sections": [256],
-                "axis": 0
-            },
-            {
-                "shape": [1024],
-                "num_or_sections": [1024],
-                "axis": 0
-            },
-            {
-                "shape": [1024],
-                "num_or_sections": [512],
-                "axis": 0
-            },
-            {
-                "shape": [131072],
-                "num_or_sections": [131072],
-                "axis": 0
-            },
-            {
-                "shape": [131072],
-                "num_or_sections": [65536],
-                "axis": 0
-            },
+            {"shape": [1024], "num_or_sections": [16], "axis": 0},
+            {"shape": [1024], "num_or_sections": [256], "axis": 0},
+            {"shape": [1024], "num_or_sections": [1024], "axis": 0},
+            {"shape": [1024], "num_or_sections": [512], "axis": 0},
+            {"shape": [131072], "num_or_sections": [131072], "axis": 0},
+            {"shape": [131072], "num_or_sections": [65536], "axis": 0},
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 

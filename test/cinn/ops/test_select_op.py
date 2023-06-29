@@ -19,8 +19,9 @@ from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSelectOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -31,7 +32,7 @@ class TestSelectOp(OpTest):
         self.inputs = {
             "Condition": self.random(self.case["shape"], "bool"),
             "X": self.random(self.case["shape"], self.case["dtype"]),
-            "Y": self.random(self.case["shape"], self.case["dtype"])
+            "Y": self.random(self.case["shape"], self.case["dtype"]),
         }
 
     def build_paddle_program(self, target):
@@ -46,20 +47,29 @@ class TestSelectOp(OpTest):
         builder = NetBuilder("select")
         c = builder.create_input(
             self.nptype2cinntype(self.inputs["Condition"].dtype),
-            self.inputs["Condition"].shape, "Condition")
+            self.inputs["Condition"].shape,
+            "Condition",
+        )
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["X"].dtype),
-            self.inputs["X"].shape, "X")
+            self.inputs["X"].shape,
+            "X",
+        )
         y = builder.create_input(
             self.nptype2cinntype(self.inputs["Y"].dtype),
-            self.inputs["Y"].shape, "Y")
+            self.inputs["Y"].shape,
+            "Y",
+        )
 
         out = builder.select(c, x, y)
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [c, x, y],
+            prog,
+            target,
+            [c, x, y],
             [self.inputs["Condition"], self.inputs["X"], self.inputs["Y"]],
-            [out])
+            [out],
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -109,9 +119,7 @@ class TestSelectOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -132,18 +140,10 @@ class TestSelectOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = []
 

@@ -44,6 +44,7 @@
 
 #include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
+#include "paddle/ir/core/attribute.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
@@ -73,6 +74,11 @@ TEST(program_test, program) {
   EXPECT_EQ(uniform1->result(0).type().isa<paddle::dialect::DenseTensorType>(),
             true);
   EXPECT_EQ(block->size(), 4u);
+
+  ir::Attribute seed_attr = uniform1.attribute("seed");
+  ir::Int32Attribute seed_attr1 =
+      uniform1.attribute<ir::Int32Attribute>("seed");
+  EXPECT_EQ(seed_attr.dyn_cast<ir::Int32Attribute>().data(), seed_attr1.data());
 
   // Def: B = paddle::dialect::UniformOp(...)
   paddle::dialect::UniformOp uniform2 =

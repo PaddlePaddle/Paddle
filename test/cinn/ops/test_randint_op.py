@@ -24,8 +24,9 @@ from cinn.frontend import *
 from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestRandIntOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -39,13 +40,15 @@ class TestRandIntOp(OpTest):
 
     def build_paddle_program(self, target):
         out = paddle.randint(
-            shape=self.shape, low=self.min, high=self.max, dtype=self.dtype)
+            shape=self.shape, low=self.min, high=self.max, dtype=self.dtype
+        )
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("randint")
-        out = builder.randint(self.shape, self.min, self.max, self.seed,
-                              self.dtype)
+        out = builder.randint(
+            self.shape, self.min, self.max, self.seed, self.dtype
+        )
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [], [], [out], passes=[])
         self.cinn_outputs = [res[0]]
