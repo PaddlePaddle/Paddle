@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,10 +91,6 @@ __inline__ __device__ T Div(T a, T b);
 
 template <>
 __inline__ __device__ float Div<float>(float a, float b) {
-  // Author(zhengzekang): use fast math
-  // return __fdividef(a, b);
-
-  // If you want higher precision. use below naive divide.
   return a / b;
 }
 
@@ -108,10 +104,6 @@ __inline__ __device__ T Rsqrt(T x);
 
 template <>
 __inline__ __device__ float Rsqrt<float>(float x) {
-  // Author(zhengzekang): use fast math
-  // return __frsqrt_rn(x);
-
-  // If you want higher precision. use below naive divide.
   return rsqrt(x);
 }
 
