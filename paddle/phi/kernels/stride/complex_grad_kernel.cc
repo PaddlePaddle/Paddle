@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#if !defined(PADDLE_WITH_XPU)
 #include "paddle/phi/kernels/complex_grad_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/type_traits.h"
@@ -79,3 +80,4 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
     imag_grad, STRIDED, phi::ImagGradStridedKernel) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+#endif  //! defined(PADDLE_WITH_XPU)

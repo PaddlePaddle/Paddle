@@ -50,13 +50,94 @@ void StridedCopyKernel(const Context& dev_ctx,
   auto input_data = reinterpret_cast<const XPUT*>(input.data<T>());
   auto output_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out));
 
-  int r = xpu::strided_copy<XPUT>(dev_ctx.x_context(),
+  int r = 0;
+  if (std::is_same<T, float>::value) {
+    r = xpu::strided_copy<float>(dev_ctx.x_context(),
+                                 input_data,
+                                 output_data,
+                                 phi::vectorize<int64_t>(input.dims()),
+                                 phi::vectorize<int64_t>(out->dims()),
+                                 phi::vectorize<int64_t>(input.strides()),
+                                 phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, double>::value) {
+    r = xpu::strided_copy<int64_t>(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   phi::vectorize<int64_t>(input.dims()),
+                                   phi::vectorize<int64_t>(out->dims()),
+                                   phi::vectorize<int64_t>(input.strides()),
+                                   phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, ::phi::dtype::float16>::value) {
+    r = xpu::strided_copy<::phi::dtype::float16>(
+        dev_ctx.x_context(),
+        input_data,
+        output_data,
+        phi::vectorize<int64_t>(input.dims()),
+        phi::vectorize<int64_t>(out->dims()),
+        phi::vectorize<int64_t>(input.strides()),
+        phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, ::phi::dtype::bfloat16>::value) {
+    r = xpu::strided_copy<::phi::dtype::float16>(
+        dev_ctx.x_context(),
+        input_data,
+        output_data,
+        phi::vectorize<int64_t>(input.dims()),
+        phi::vectorize<int64_t>(out->dims()),
+        phi::vectorize<int64_t>(input.strides()),
+        phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, int16_t>::value) {
+    r = xpu::strided_copy<::phi::dtype::float16>(
+        dev_ctx.x_context(),
+        input_data,
+        output_data,
+        phi::vectorize<int64_t>(input.dims()),
+        phi::vectorize<int64_t>(out->dims()),
+        phi::vectorize<int64_t>(input.strides()),
+        phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, uint8_t>::value) {
+    r = xpu::strided_copy<int8_t>(dev_ctx.x_context(),
                                   input_data,
                                   output_data,
                                   phi::vectorize<int64_t>(input.dims()),
                                   phi::vectorize<int64_t>(out->dims()),
                                   phi::vectorize<int64_t>(input.strides()),
                                   phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, int8_t>::value) {
+    r = xpu::strided_copy<int8_t>(dev_ctx.x_context(),
+                                  input_data,
+                                  output_data,
+                                  phi::vectorize<int64_t>(input.dims()),
+                                  phi::vectorize<int64_t>(out->dims()),
+                                  phi::vectorize<int64_t>(input.strides()),
+                                  phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, int32_t>::value) {
+    r = xpu::strided_copy<int32_t>(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   phi::vectorize<int64_t>(input.dims()),
+                                   phi::vectorize<int64_t>(out->dims()),
+                                   phi::vectorize<int64_t>(input.strides()),
+                                   phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, int64_t>::value) {
+    r = xpu::strided_copy<int64_t>(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   phi::vectorize<int64_t>(input.dims()),
+                                   phi::vectorize<int64_t>(out->dims()),
+                                   phi::vectorize<int64_t>(input.strides()),
+                                   phi::vectorize<int64_t>(out->strides()));
+  } else if (std::is_same<T, bool>::value) {
+    r = xpu::strided_copy<bool>(dev_ctx.x_context(),
+                                input_data,
+                                output_data,
+                                phi::vectorize<int64_t>(input.dims()),
+                                phi::vectorize<int64_t>(out->dims()),
+                                phi::vectorize<int64_t>(input.strides()),
+                                phi::vectorize<int64_t>(out->strides()));
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Received unsupported dtype : %s.", input.dtype()));
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");
 }
 
@@ -75,6 +156,4 @@ PD_REGISTER_KERNEL(strided_copy,
                    float,
                    double,
                    ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16,
-                   ::phi::dtype::complex<float>,
-                   ::phi::dtype::complex<double>) {}
+                   ::phi::dtype::bfloat16) {}

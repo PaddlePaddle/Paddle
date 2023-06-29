@@ -55,14 +55,18 @@ def create_model(input_names, input_shapes, input_dtypes, fn, attrs=None):
             static.data(
                 name=input_names[i],
                 shape=input_shapes[i],
-                dtype=input_dtypes[i]))
+                dtype=input_dtypes[i],
+            )
+        )
         fn_str += "input_args[" + str(i) + "],"
         input_args_names.append(input_args[i].name)
     input_args.append(
         static.data(
             name=input_names[dim - 1],
             shape=input_shapes[dim - 1],
-            dtype=input_dtypes[dim - 1]))
+            dtype=input_dtypes[dim - 1],
+        )
+    )
     input_args_names.append(input_args[dim - 1].name)
     fn_str += "input_args[" + str(dim - 1) + "]"
     if attrs is not None:
@@ -132,31 +136,31 @@ def test_unary():
     input_names = ["A"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.exp",
-            "paddle.erf",
-            "paddle.nn.functional.sigmoid",
-            "paddle.sqrt",
-            "paddle.log",
-            #         "log2",
-            #         "log10",
-            "paddle.floor",
-            "paddle.ceil",
-            "paddle.round",
-            #         "trunc",
-            "paddle.cos",
-            "paddle.cosh",
-            #         "tan",
-            "paddle.tanh",
-            "paddle.sin",
-            "paddle.sinh",
-            "paddle.acos",
-            #         "acosh",
-            "paddle.asin",
-            #         "asinh",
-            "paddle.atan",
-            #         "atanh",
-            "paddle.nn.functional.softmax",
-            "paddle.scale",
+        "paddle.exp",
+        "paddle.erf",
+        "paddle.nn.functional.sigmoid",
+        "paddle.sqrt",
+        "paddle.log",
+        #         "log2",
+        #         "log10",
+        "paddle.floor",
+        "paddle.ceil",
+        "paddle.round",
+        #         "trunc",
+        "paddle.cos",
+        "paddle.cosh",
+        #         "tan",
+        "paddle.tanh",
+        "paddle.sin",
+        "paddle.sinh",
+        "paddle.acos",
+        #         "acosh",
+        "paddle.asin",
+        #         "asinh",
+        "paddle.atan",
+        #         "atanh",
+        "paddle.nn.functional.softmax",
+        "paddle.scale",
     ]:
         test_benchmark(input_names, input_shapes, input_dtypes, fn)
 
@@ -167,8 +171,8 @@ def test_binary():
     input_names = ["A", "B"]
     input_dtypes = ["float32", "float32"]
     for fn in [
-            "paddle.add",
-            "paddle.multiply",
+        "paddle.add",
+        "paddle.multiply",
     ]:
         test_benchmark(input_names, input_shapes, input_dtypes, fn)
 
@@ -178,8 +182,8 @@ def test_relu():
     input_names = ["A"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.nn.functional.relu",
-            "paddle.nn.functional.relu6",
+        "paddle.nn.functional.relu",
+        "paddle.nn.functional.relu6",
     ]:
         test_benchmark(input_names, input_shapes, input_dtypes, fn)
 
@@ -189,10 +193,15 @@ def test_conv2d():
     input_names = ["data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.static.nn.conv2d",
+        "paddle.static.nn.conv2d",
     ]:
-        test_benchmark(input_names, input_shapes, input_dtypes, fn,
-                       "num_filters=512, filter_size=3")
+        test_benchmark(
+            input_names,
+            input_shapes,
+            input_dtypes,
+            fn,
+            "num_filters=512, filter_size=3",
+        )
 
 
 def test_conv2d_resnet():
@@ -200,11 +209,14 @@ def test_conv2d_resnet():
     input_names = ["conv2d_resnet_data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.static.nn.conv2d",
+        "paddle.static.nn.conv2d",
     ]:
         test_benchmark(
-            input_names, input_shapes, input_dtypes, fn,
-            "num_filters=64, filter_size=7, stride=[2,2], padding=[3,3], groups=1, dilation=[1,1]"
+            input_names,
+            input_shapes,
+            input_dtypes,
+            fn,
+            "num_filters=64, filter_size=7, stride=[2,2], padding=[3,3], groups=1, dilation=[1,1]",
         )
 
 
@@ -213,10 +225,15 @@ def test_depthwise_conv2d():
     input_names = ["depthwise_conv2d_data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.static.nn.conv2d",
+        "paddle.static.nn.conv2d",
     ]:
-        test_benchmark(input_names, input_shapes, input_dtypes, fn,
-                       "num_filters=32, filter_size=3,groups=1")
+        test_benchmark(
+            input_names,
+            input_shapes,
+            input_dtypes,
+            fn,
+            "num_filters=32, filter_size=3,groups=1",
+        )
 
 
 def test_pool2d():
@@ -224,11 +241,15 @@ def test_pool2d():
     input_names = ["pool2d_data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.nn.functional.max_pool2d",
+        "paddle.nn.functional.max_pool2d",
     ]:
         test_benchmark(
-            input_names, input_shapes, input_dtypes, fn,
-            "kernel_size=[3,3],stride=[2,2],padding=[1,1],ceil_mode=False")
+            input_names,
+            input_shapes,
+            input_dtypes,
+            fn,
+            "kernel_size=[3,3],stride=[2,2],padding=[1,1],ceil_mode=False",
+        )
 
 
 def test_batchnorm():
@@ -236,7 +257,7 @@ def test_batchnorm():
     input_names = ["batchnorm_data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.static.nn.batch_norm",
+        "paddle.static.nn.batch_norm",
     ]:
         test_benchmark(input_names, input_shapes, input_dtypes, fn)
 
@@ -246,10 +267,15 @@ def test_slice():
     input_names = ["slice_data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.slice",
+        "paddle.slice",
     ]:
-        test_benchmark(input_names, input_shapes, input_dtypes, fn,
-                       "axes=[2,3],starts=[1,1],ends=[10000000, 10000000]")
+        test_benchmark(
+            input_names,
+            input_shapes,
+            input_dtypes,
+            fn,
+            "axes=[2,3],starts=[1,1],ends=[10000000, 10000000]",
+        )
 
 
 def test_dropout():
@@ -257,7 +283,7 @@ def test_dropout():
     input_names = ["dropout_data"]
     input_dtypes = ["float32"]
     for fn in [
-            "paddle.nn.functional.dropout",
+        "paddle.nn.functional.dropout",
     ]:
         test_benchmark(input_names, input_shapes, input_dtypes, fn, "p=0")
 

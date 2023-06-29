@@ -130,8 +130,9 @@ class TestLoadPaddleModel_FC(unittest.TestCase):
     def test_model(self):
         np.random.seed(0)
         self.x_shape = [4, 30]
-        x_data = np.random.random(
-            self.x_shape).astype("float16").astype("float32")
+        x_data = (
+            np.random.random(self.x_shape).astype("float16").astype("float32")
+        )
         print('x_data', x_data)
 
         self.executor = Interpreter(["A"], [self.x_shape])

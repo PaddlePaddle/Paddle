@@ -412,6 +412,48 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
+class TestSliceOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "slice"
+        self.python_api = slice_wrapper
+        self.config()
+
+        starts_tensor = []
+        ends_tensor = []
+
+        for index, ele in enumerate(self.starts):
+            starts_tensor.append(
+                ("x" + str(index), np.array(1).astype('int32'))
+            )
+
+        for index, ele in enumerate(self.ends):
+            ends_tensor.append(("y" + str(index), np.array(3).astype('int32')))
+        self.inputs = {
+            'Input': self.input,
+            "StartsTensorList": starts_tensor,
+            'EndsTensorList': ends_tensor,
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'infer_flags': self.infer_flags,
+        }
+
+    def config(self):
+        self.input = np.random.random([20, 3, 3]).astype("float64")
+        self.starts = [1, 1]
+        self.ends = [3, 3]
+        self.axes = [1, 2]
+        self.infer_flags = [-1, -1]
+        self.out = self.input[0:20, 1:3, 1:3]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out')
+
+
 # Test CUDA float16
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"

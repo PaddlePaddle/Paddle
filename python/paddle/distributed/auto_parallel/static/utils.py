@@ -2382,6 +2382,15 @@ def use_new_executor():
     ]
 
 
+def get_pp_stage(dist_context, rank):
+    pp_idx = None
+    for idx, process_mesh in enumerate(dist_context.process_meshes):
+        if rank in process_mesh.process_ids:
+            pp_idx = idx
+            break
+    return pp_idx
+
+
 def wrap_data_for_completion(
     dist_op, input_names: list, output_names: list, attr_names: list
 ):

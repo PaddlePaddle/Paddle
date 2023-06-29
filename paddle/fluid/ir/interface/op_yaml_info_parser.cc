@@ -22,7 +22,7 @@ OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
   parse();
 }
 
-bool OpYamlInfoParser::IsTensorArrtibute(size_t index) const {
+bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       InputInfo().size(),
@@ -48,6 +48,21 @@ const std::string& OpYamlInfoParser::AttrTypeName(
   return it->second.type_name;
 }
 
+const std::string& OpYamlInfoParser::TensorAttrTypeName(
+    const std::string& name) const {
+  auto it = map_input_info_.find(name);
+
+  PADDLE_ENFORCE_NE(it,
+                    map_input_info_.end(),
+                    phi::errors::NotFound("Not found [%s] in input map", name));
+
+  PADDLE_ENFORCE_EQ(
+      it->second.is_mutable_attribute,
+      true,
+      phi::errors::PreconditionNotMet("[%s] MUST be a tensor attribute", name));
+  return it->second.type_name;
+}
+
 const std::vector<std::string>& OpYamlInfoParser::InferMetaTensorParams()
     const {
   return vec_infer_meta_tensor_params_;
@@ -60,6 +75,14 @@ const std::vector<std::string>& OpYamlInfoParser::KernelFnTensorParams() const {
 }
 const std::vector<std::string>& OpYamlInfoParser::KernelFnAttrParams() const {
   return vec_kernel_fn_attr_params_;
+}
+
+const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
+  return std::get<3>(op_info_tuple_);
+}
+
+const std::map<std::string, int>& OpYamlInfoParser::Name2Id() const {
+  return map_name2id_;
 }
 
 void OpYamlInfoParser::parse() {
@@ -91,7 +114,8 @@ void OpYamlInfoParser::parse() {
   auto runtime_info = std::get<3>(op_info_tuple_);
 
   for (auto& name : runtime_info.infer_meta_param) {
-    if (map_name2id_.count(name)) {
+    if (map_name2id_.count(name) &&
+        !map_input_info_[name].is_mutable_attribute) {
       vec_infer_meta_tensor_params_.push_back(name);
     } else {
       vec_infer_meta_attr_params_.push_back(name);
@@ -99,7 +123,8 @@ void OpYamlInfoParser::parse() {
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (map_name2id_.count(name)) {
+    if (map_name2id_.count(name) &&
+        !map_input_info_[name].is_mutable_attribute) {
       vec_kernel_fn_tensor_params_.push_back(name);
     } else {
       vec_kernel_fn_attr_params_.push_back(name);
