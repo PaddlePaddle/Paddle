@@ -165,6 +165,7 @@
   kernel :
     func : einsum
   backward : einsum_grad
+  intermediate : inner_cache, xshape
 
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)

@@ -83,6 +83,7 @@
     param : [x_shape]
   kernel :
     func : einsum_grad
+    data_type : out_grad
 
 - backward_op : embedding_grad
   forward : embedding (Tensor x, Tensor weight, int64_t padding_idx=-1) -> Tensor(out)

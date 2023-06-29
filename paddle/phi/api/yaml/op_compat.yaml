@@ -849,6 +849,9 @@
     x : Operands
   outputs:
     {out : Out, inner_cache: InnerCache, xshape : XShape}
+  drop_empty_grad: [ x_grad ]
+  extra:
+    outputs: [ inner_cache, xshape ]
 
 - op : elementwise_pow
   backward : elementwise_pow_grad
