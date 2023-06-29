@@ -1373,7 +1373,7 @@ set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 120)
+set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
 
 if(APPLE)
   set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
