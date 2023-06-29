@@ -1333,3 +1333,49 @@ set_tests_properties(test_sync_batch_norm_op_static_build
                      PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
                                                                      250)
+
+set(STRIED_TESTS
+    test_complex_getitem
+    test_complex_grad_accumulated
+    test_complex_simplenet
+    test_conv1d_layer
+    test_conv1d_transpose_layer
+    test_conv2d_layer
+    test_diagonal_op
+    test_imperative_ocr_attention_model
+    test_imperative_ptb_rnn
+    test_imperative_ptb_rnn_sorted_gradient
+    test_imperative_transformer_sorted_gradient
+    test_initializer
+    test_inplace
+    test_real_imag_op
+    test_reshape_op
+    test_set_value_op
+    test_signal
+    test_slice_op
+    test_solve_op
+    test_squeeze_op
+    test_squeeze2_op
+    test_unbind_op
+    test_unsqueeze_op
+    test_unsqueeze2_op
+    test_var_base)
+
+foreach(STRIED_TEST ${STRIED_TESTS})
+  py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
+                  FLAGS_use_stride_kernel=true)
+endforeach()
+
+set_tests_properties(test_imperative_ocr_attention_model_with_stride
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_ptb_rnn_with_stride PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_ptb_rnn_sorted_gradient_with_stride
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 120)
+
+if(APPLE)
+  set_tests_properties(test_imperative_transformer_sorted_gradient_with_stride
+                       PROPERTIES TIMEOUT 300)
+endif()

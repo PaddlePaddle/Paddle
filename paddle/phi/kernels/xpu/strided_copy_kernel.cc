@@ -26,7 +26,6 @@ void StridedCopyKernel(const Context& dev_ctx,
                        const std::vector<int64_t>& out_stride,
                        int64_t offset,
                        DenseTensor* out) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = phi::make_ddim(out_stride);
   meta.dims = phi::make_ddim(dims);
@@ -47,11 +46,10 @@ void StridedCopyKernel(const Context& dev_ctx,
                         input.numel(),
                         out->numel()));
 
-  auto input_data = reinterpret_cast<const XPUT*>(input.data<T>());
-  auto output_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out));
-
   int r = 0;
   if (std::is_same<T, float>::value) {
+    auto input_data = reinterpret_cast<const float*>(input.data<T>());
+    auto output_data = reinterpret_cast<float*>(dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<float>(dev_ctx.x_context(),
                                  input_data,
                                  output_data,
@@ -60,6 +58,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                                  phi::vectorize<int64_t>(input.strides()),
                                  phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, double>::value) {
+    auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int64_t*>(dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<int64_t>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
@@ -68,6 +69,10 @@ void StridedCopyKernel(const Context& dev_ctx,
                                    phi::vectorize<int64_t>(input.strides()),
                                    phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, ::phi::dtype::float16>::value) {
+    auto input_data =
+        reinterpret_cast<const ::phi::dtype::float16*>(input.data<T>());
+    auto output_data = reinterpret_cast<::phi::dtype::float16*>(
+        dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<::phi::dtype::float16>(
         dev_ctx.x_context(),
         input_data,
@@ -77,6 +82,10 @@ void StridedCopyKernel(const Context& dev_ctx,
         phi::vectorize<int64_t>(input.strides()),
         phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, ::phi::dtype::bfloat16>::value) {
+    auto input_data =
+        reinterpret_cast<const ::phi::dtype::float16*>(input.data<T>());
+    auto output_data = reinterpret_cast<::phi::dtype::float16*>(
+        dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<::phi::dtype::float16>(
         dev_ctx.x_context(),
         input_data,
@@ -86,6 +95,10 @@ void StridedCopyKernel(const Context& dev_ctx,
         phi::vectorize<int64_t>(input.strides()),
         phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, int16_t>::value) {
+    auto input_data =
+        reinterpret_cast<const ::phi::dtype::float16*>(input.data<T>());
+    auto output_data = reinterpret_cast<::phi::dtype::float16*>(
+        dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<::phi::dtype::float16>(
         dev_ctx.x_context(),
         input_data,
@@ -95,6 +108,9 @@ void StridedCopyKernel(const Context& dev_ctx,
         phi::vectorize<int64_t>(input.strides()),
         phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, uint8_t>::value) {
+    auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int8_t*>(dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<int8_t>(dev_ctx.x_context(),
                                   input_data,
                                   output_data,
@@ -103,6 +119,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                                   phi::vectorize<int64_t>(input.strides()),
                                   phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, int8_t>::value) {
+    auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int8_t*>(dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<int8_t>(dev_ctx.x_context(),
                                   input_data,
                                   output_data,
@@ -111,6 +130,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                                   phi::vectorize<int64_t>(input.strides()),
                                   phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, int32_t>::value) {
+    auto input_data = reinterpret_cast<const int32_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int32_t*>(dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<int32_t>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
@@ -119,6 +141,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                                    phi::vectorize<int64_t>(input.strides()),
                                    phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, int64_t>::value) {
+    auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int64_t*>(dev_ctx.template Alloc<T>(out));
     r = xpu::strided_copy<int64_t>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
@@ -127,6 +152,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                                    phi::vectorize<int64_t>(input.strides()),
                                    phi::vectorize<int64_t>(out->strides()));
   } else if (std::is_same<T, bool>::value) {
+    auto input_data = reinterpret_cast<const bool*>(input.data<T>());
+    auto output_data = reinterpret_cast<bool*>(dev_ctx.template Alloc<T>(out));
+
     r = xpu::strided_copy<bool>(dev_ctx.x_context(),
                                 input_data,
                                 output_data,

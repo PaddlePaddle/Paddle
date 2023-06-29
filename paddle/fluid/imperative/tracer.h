@@ -199,7 +199,13 @@ class Tracer {
 
   void EnableLayoutAutoTune() {
     use_layout_autotune_ = true;
-    FLAGS_use_stride_kernel = false;
+    if (FLAGS_use_stride_kernel) {
+      LOG(WARNING) << "When the layout_autotune policy is on, Paddle will turn "
+                      "off the Stride policy. This will cause the input and "
+                      "output of the Strided API no longer share memory, which "
+                      "may cause problems with model accuracy.";
+      FLAGS_use_stride_kernel = false;
+    }
   }
 
   bool UseLayoutAutoTune() {
