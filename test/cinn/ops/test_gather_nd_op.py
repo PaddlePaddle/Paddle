@@ -53,7 +53,7 @@ class TestGatherNdOp(OpTest):
             x = paddle.to_tensor(x, stop_gradient=False)
             index = paddle.to_tensor(index, stop_gradient=False)
             out = paddle.gather_nd(x, index)
-            logger.debug(" -- The output of Paddle:\n{}".format(out))
+            logger.debug(f" -- The output of Paddle:\n{out}")
             self.paddle_outputs.append(out)
 
     def build_cinn_program(self, target):
@@ -68,7 +68,7 @@ class TestGatherNdOp(OpTest):
             res = self.get_cinn_output(
                 prog, target, [x, index], self.data[i], [out]
             )
-            logger.debug(" -- The output of CINN:\n{}".format(res))
+            logger.debug(f" -- The output of CINN:\n{res}")
             self.cinn_outputs.extend(res)
 
     def test_check_results(self):

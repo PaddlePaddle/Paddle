@@ -78,7 +78,7 @@ class TestScatterAddOp(OpTest):
                                 [i, j, k, self.inputs["index"][l]]
                             )
         else:
-            self.assertTrue(False, "Axis {} No Implement".format(pos_axis))
+            self.assertTrue(False, f"Axis {pos_axis} No Implement")
 
         index = paddle.to_tensor(index_nd, stop_gradient=True)
         res = paddle.scatter_nd_add(x, index, y)

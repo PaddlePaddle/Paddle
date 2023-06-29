@@ -44,9 +44,7 @@ class FusionTest(PassTest):
         fusion_passes = ["OpFusionPass", "FusionMergePass"]
 
         real_group_size = self.get_pass_size(base_passes + fusion_passes)
-        logger.debug(
-            "The model has been fused into {} groups".format(real_group_size)
-        )
+        logger.debug(f"The model has been fused into {real_group_size} groups")
         self.assertEqual(
             real_group_size,
             group_size,

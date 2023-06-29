@@ -303,7 +303,7 @@ class OpTest(unittest.TestCase):
 
             error_message = "[Check " + name + "] " + error_message
 
-            logger.debug("{} {}".format(is_allclose, error_message))
+            logger.debug(f"{is_allclose} {error_message}")
             self.assertTrue(is_allclose, msg=error_message)
 
     @staticmethod
