@@ -5007,6 +5007,7 @@ def as_strided(x, shape, stride, offset=0, name=None):
         .. code-block:: python
 
             import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5038,6 +5039,7 @@ def view(x, shape_or_dtype, name=None):
         .. code-block:: python
 
             import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5046,6 +5048,7 @@ def view(x, shape_or_dtype, name=None):
 
 
             import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
 
@@ -5080,6 +5083,7 @@ def view_as(x, other, name=None):
         .. code-block:: python
 
             import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.rand([2, 4, 6], dtype="float32")
             y = paddle.rand([8, 6], dtype="float32")
@@ -5093,7 +5097,7 @@ def view_as(x, other, name=None):
 @dygraph_only
 def unfold(x, axis, size, step, name=None):
     """
-    View x with specified shape, stride and offset, which contains all slices of size size from x in the dimension axis.
+    View x with specified shape, stride and offset, which contains all slices of size from x in the dimension axis.
 
     Note that the output Tensor will share data with origin Tensor and doesn't
     have a Tensor copy in ``dygraph`` mode.
@@ -5112,10 +5116,11 @@ def unfold(x, axis, size, step, name=None):
         .. code-block:: python
 
             import paddle
+            paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
 
             x = paddle.arange(9, dtype="float64")
 
-            out = paddle.unfold(0, 2, 4)
+            out = paddle.unfold(x, 0, 2, 4)
             print(out) # [[0, 1], [4, 5]]
     """
     return _C_ops.tensor_unfold(x, axis, size, step)
