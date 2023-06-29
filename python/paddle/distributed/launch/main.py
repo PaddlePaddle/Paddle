@@ -352,6 +352,7 @@ def launch():
         recorder = History_recorder()
 
         job_id = 0
+        ctx.args.max_restart = -1
         raw_ctx = copy.deepcopy(ctx)
         while cur_cfg:
             ctx = copy.deepcopy(raw_ctx)
