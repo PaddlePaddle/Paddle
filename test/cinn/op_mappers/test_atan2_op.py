@@ -34,11 +34,13 @@ class TestAtan2Op(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         y = paddle.static.data(
             name='y',
             shape=self.feed_data['y'].shape,
-            dtype=self.feed_data['y'].dtype)
+            dtype=self.feed_data['y'].dtype,
+        )
         return {'X1': [x], 'X2': [y]}
 
     def set_op_attrs(self):

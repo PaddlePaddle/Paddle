@@ -26,8 +26,10 @@ TEST(RecordEvent, HOST) {
   ProfilerHelper::EnableCPU();
 
   LOG(INFO) << "Usage 1: RecordEvent for HOST";
-  std::vector<EventType> types = {
-      EventType::kOrdinary, EventType::kCompile, EventType::kCompile, EventType::kInstruction};
+  std::vector<EventType> types = {EventType::kOrdinary,
+                                  EventType::kCompile,
+                                  EventType::kCompile,
+                                  EventType::kInstruction};
   for (int i = 0; i < 4; ++i) {
     std::string name = "evs_op_" + std::to_string(i);
     RecordEvent record_event(name, types[i]);
@@ -38,7 +40,7 @@ TEST(RecordEvent, HOST) {
   auto &events = HostEventRecorder::GetInstance().Events();
   EXPECT_EQ(events.size(), 4U);
   for (int i = 0; i < 4; ++i) {
-    auto &event      = events[i];
+    auto &event = events[i];
     std::string name = "evs_op_" + std::to_string(i);
     EXPECT_EQ(event.annotation_, name);
     EXPECT_GT(event.duration_, 0.0);

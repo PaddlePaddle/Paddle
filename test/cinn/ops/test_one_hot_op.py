@@ -25,8 +25,9 @@ from cinn.frontend import *
 from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestOneHotOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -34,7 +35,8 @@ class TestOneHotOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["x_shape"], dtype=self.case["x_dtype"])
+            shape=self.case["x_shape"], dtype=self.case["x_dtype"]
+        )
         self.dtype = "float32"
 
     def build_paddle_program(self, target):
@@ -48,23 +50,24 @@ class TestOneHotOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("one_hot")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["x_dtype"]), self.case["x_shape"],
-            "x")
-        on_value = builder.fill_constant([1],
-                                         1,
-                                         'on_value',
-                                         dtype=self.case["x_dtype"])
-        off_value = builder.fill_constant([1],
-                                          0,
-                                          'off_value',
-                                          dtype=self.case["x_dtype"])
+            self.nptype2cinntype(self.case["x_dtype"]),
+            self.case["x_shape"],
+            "x",
+        )
+        on_value = builder.fill_constant(
+            [1], 1, 'on_value', dtype=self.case["x_dtype"]
+        )
+        off_value = builder.fill_constant(
+            [1], 0, 'off_value', dtype=self.case["x_dtype"]
+        )
         out = builder.one_hot(
             x,
             on_value,
             off_value,
             depth=self.case["depth"],
             axis=self.case["axis"],
-            dtype=self.dtype)
+            dtype=self.dtype,
+        )
 
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.x_np], [out])
@@ -72,8 +75,11 @@ class TestOneHotOp(OpTest):
         self.cinn_outputs = [res[0]]
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 
@@ -113,11 +119,14 @@ class TestOneHotOpTest(TestCaseHelper):
                 "axis": -1,
             },
         ]
-        self.dtypes = [{
-            "x_dtype": "int32",
-        }, {
-            "x_dtype": "int64",
-        }]
+        self.dtypes = [
+            {
+                "x_dtype": "int32",
+            },
+            {
+                "x_dtype": "int64",
+            },
+        ]
         self.attrs = []
 
 

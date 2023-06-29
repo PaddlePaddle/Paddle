@@ -23,8 +23,9 @@ from cinn.frontend import *
 from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestNegativeOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -35,7 +36,8 @@ class TestNegativeOp(OpTest):
             shape=self.case["x_shape"],
             dtype=self.case["x_dtype"],
             low=-100,
-            high=100)
+            high=100,
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=True)
@@ -45,8 +47,10 @@ class TestNegativeOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("unary_elementwise_test")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["x_dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["x_dtype"]),
+            self.case["x_shape"],
+            "x",
+        )
         out = builder.negative(x)
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.x_np], [out])
@@ -61,24 +65,34 @@ class TestNegativeOpShape(TestCaseHelper):
     def init_attrs(self):
         self.class_name = "TestNegativeOpShape"
         self.cls = TestNegativeOp
-        self.inputs = [{
-            "x_shape": [1],
-        }, {
-            "x_shape": [1024],
-        }, {
-            "x_shape": [1, 2048],
-        }, {
-            "x_shape": [32, 64],
-        }, {
-            "x_shape": [1, 1, 1],
-        }, {
-            "x_shape": [16, 8, 4, 2],
-        }, {
-            "x_shape": [16, 8, 4, 2, 1],
-        }]
-        self.dtypes = [{
-            "x_dtype": "float32",
-        }]
+        self.inputs = [
+            {
+                "x_shape": [1],
+            },
+            {
+                "x_shape": [1024],
+            },
+            {
+                "x_shape": [1, 2048],
+            },
+            {
+                "x_shape": [32, 64],
+            },
+            {
+                "x_shape": [1, 1, 1],
+            },
+            {
+                "x_shape": [16, 8, 4, 2],
+            },
+            {
+                "x_shape": [16, 8, 4, 2, 1],
+            },
+        ]
+        self.dtypes = [
+            {
+                "x_dtype": "float32",
+            }
+        ]
         self.attrs = []
 
 
@@ -86,9 +100,11 @@ class TestNegativeOpDtype(TestCaseHelper):
     def init_attrs(self):
         self.class_name = "TestNegativeOpDtype"
         self.cls = TestNegativeOp
-        self.inputs = [{
-            "x_shape": [32, 64],
-        }]
+        self.inputs = [
+            {
+                "x_shape": [32, 64],
+            }
+        ]
         self.dtypes = [
             {
                 "x_dtype": "int8",
@@ -102,10 +118,7 @@ class TestNegativeOpDtype(TestCaseHelper):
             {
                 "x_dtype": "int64",
             },
-            {
-                "x_dtype": "float16",
-                "max_relative_error": 1e-3
-            },
+            {"x_dtype": "float16", "max_relative_error": 1e-3},
             {
                 "x_dtype": "float32",
             },

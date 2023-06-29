@@ -20,8 +20,9 @@ from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSoftmaxOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -38,7 +39,8 @@ class TestSoftmaxOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("softmax")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x"
+        )
         out = builder.softmax(x, axes=[self.case["axis"]])
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.x_np], [out])

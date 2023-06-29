@@ -255,9 +255,11 @@ def mean_composite(x, axis, keepdim):
     axes = axis or list(range(0, len(x.shape)))
     axes = [axes] if isinstance(axes, int) else axes
     sum_x = sum(x, axis=axes, keepdim=keepdim)
-    value_to_fill = functools.reduce(
-        operator.mul, [x.shape[axis] for axis in axes]
-    )
+    ele_nums_list = [x.shape[axis] for axis in axes]
+    if ele_nums_list == []:
+        value_to_fill = 1
+    else:
+        value_to_fill = functools.reduce(operator.mul, ele_nums_list)
     norm = fill_constant(
         shape=[],
         value=value_to_fill,

@@ -54,7 +54,9 @@ void BindUtils(py::module *m) {
       .def(py::init<const std::string &, double, EventType>())
       .def_property(
           "annotation",
-          [](HostEvent &self) -> const std::string & { return self.annotation_; },
+          [](HostEvent &self) -> const std::string & {
+            return self.annotation_;
+          },
           [](HostEvent &self, const std::string &v) { self.annotation_ = v; })
       .def_property(
           "duration",
