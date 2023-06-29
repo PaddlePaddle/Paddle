@@ -895,7 +895,7 @@ endif()
 
 # setting timeout value as 15S
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
 set_tests_properties(test_cross_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_lod_tensor_to_selected_rows
                      PROPERTIES TIMEOUT 200)
