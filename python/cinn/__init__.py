@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 cinndir = os.path.dirname(os.path.abspath(__file__))
 runtime_include_dir = os.path.join(cinndir, "libs")
 cuhfile = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")

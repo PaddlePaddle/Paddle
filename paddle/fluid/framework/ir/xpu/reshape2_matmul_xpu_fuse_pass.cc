@@ -24,16 +24,6 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -163,9 +153,8 @@ Squeeze2MatmulPattern::Squeeze2MatmulPattern(PDPattern* pattern,
           ->assert_more([](Node* node) {
             auto squeeze2_in_x_shape = node->Var()->GetShape();
             size_t squeeze2_in_rank = squeeze2_in_x_shape.size();
-            bool nice_shape =
-                squeeze2_in_x_shape[2] == 1 && squeeze2_in_x_shape[3] == 1;
-            return squeeze2_in_rank == 4 && nice_shape;
+            return squeeze2_in_rank == 4 &&
+                   (squeeze2_in_x_shape[2] == 1 && squeeze2_in_x_shape[3] == 1);
           });
   auto* squeeze2 = pattern->NewNode(squeeze2_repr())
                        ->assert_is_op("squeeze2")
