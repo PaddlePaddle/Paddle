@@ -858,6 +858,10 @@ std::vector<Type> InferDtypeForArange(const std::vector<Type> &inputs_type, cons
   return {common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
 }
 
+std::vector<Type> InferDtypeForLogicalNot(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
+  return {common::Bool()};
+}
+
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -901,7 +905,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
 
   CINN_REGISTER_UNARY(negative, Negative)
   CINN_REGISTER_UNARY(identity, Identity)
-  CINN_REGISTER_UNARY(logical_not, LogicalNot)
   CINN_REGISTER_UNARY(sign, Sign)
   CINN_REGISTER_UNARY(abs, Abs)
   CINN_REGISTER_UNARY(rsqrt, Rsqrt)
@@ -1051,6 +1054,17 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
+
+  CINN_REGISTER_OP(logical_not)
+      .describe("Logical not function")
+      .set_num_inputs(1)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForLogicalNot)
+      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalNot))
+      .set_attr("inferlayout", MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
+      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
+      .set_support_level(4);
 
   return true;
 }

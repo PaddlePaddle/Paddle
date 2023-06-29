@@ -122,6 +122,33 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestGatherNdOpWithIndex1_ZeroDim(TestGatherNdOpWithIndex1):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        self.config_dtype()
+        self.if_enable_cinn()
+        if self.dtype == np.float64:
+            target_dtype = "float64"
+        elif self.dtype == np.float16:
+            target_dtype = "float16"
+        else:
+            target_dtype = "float32"
+        xnp = np.random.random((100,)).astype(target_dtype)
+        index = np.array([1]).astype("int32")
+        output = xnp[index[-1]]
+        if self.dtype == np.uint16:
+            xnp = convert_float_to_uint16(xnp)
+            output = convert_float_to_uint16(output)
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
 class TestGatherNdOpWithIndex1FP16(TestGatherNdOpWithIndex1):
     def config_dtype(self):
         self.dtype = np.float16

@@ -25,6 +25,9 @@ class OpResult;
 class Type;
 class Attribute;
 class Dialect;
+class Operation;
+
+typedef void (*VerifyPtr)(Operation *op);
 
 class IR_API OpInfo {
  public:
@@ -49,9 +52,7 @@ class IR_API OpInfo {
 
   TypeId id() const;
 
-  void Verify(const std::vector<OpResult> &inputs,
-              const std::vector<Type> &outputs,
-              const std::unordered_map<std::string, Attribute> &attributes);
+  void Verify(Operation *) const;
 
   template <typename Trait>
   bool HasTrait() const {

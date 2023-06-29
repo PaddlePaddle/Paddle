@@ -17,6 +17,7 @@ import re
 import string
 import tarfile
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
@@ -63,7 +64,7 @@ def conv_net(
         ),
     )
 
-    conv_3 = fluid.nets.sequence_conv_pool(
+    conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=num_filters,
         filter_size=window_size,

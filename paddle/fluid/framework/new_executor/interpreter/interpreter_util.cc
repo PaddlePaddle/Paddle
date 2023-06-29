@@ -967,8 +967,8 @@ void BuildOpFuncList(
 
     auto attr_info = std::get<1>(yaml_info);
 
-    op_func_node.infer_shape_interface_ =
-        op_info.GetInterfaceImpl<paddle::dialect::InferShapeInterface>();
+    op_func_node.infer_meta_interface_ =
+        op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
 

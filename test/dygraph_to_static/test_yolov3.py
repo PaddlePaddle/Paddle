@@ -95,7 +95,7 @@ def train(to_static):
         values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
 
         lr = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=boundaries, values=values, last_epoch=0
+            boundaries=boundaries, values=values
         )
 
         lr = paddle.optimizer.lr.LinearWarmup(

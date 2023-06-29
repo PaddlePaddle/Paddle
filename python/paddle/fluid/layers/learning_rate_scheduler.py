@@ -410,10 +410,10 @@ def piecewise_decay(boundaries, values):
               paddle.enable_static()
               boundaries = [10000, 20000]
               values = [1.0, 0.5, 0.1]
-              optimizer = fluid.optimizer.Momentum(
+              optimizer = paddle.optimizer.Momentum(
                   momentum=0.9,
-                  learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
-                  regularization=paddle.regularizer.L2Decay(1e-4))
+                  learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
+                  weight_decay=paddle.regularizer.L2Decay(1e-4))
 
 
     """
@@ -422,7 +422,7 @@ def piecewise_decay(boundaries, values):
             raise ValueError("len(values) - len(boundaries) should be 1")
 
         if in_dygraph_mode():
-            decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
+            decay = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
             return decay
         else:
             global_step = _decay_step_counter()
