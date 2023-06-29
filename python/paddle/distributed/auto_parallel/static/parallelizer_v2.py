@@ -25,7 +25,7 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import set_grad_var_shape, use_new_executor
+from .utils import get_pp_stage, set_grad_var_shape, use_new_executor
 
 
 class Parallelizer:
@@ -400,4 +400,6 @@ class Parallelizer:
             main_program._pipeline_opt["standalone_opt"] = {
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
+                "pp_degree": len(self._dist_context.process_meshes),
+                "pp_stage": get_pp_stage(self._dist_context, rank),
             }

@@ -14,16 +14,6 @@ cc_test_old(
   gtest)
 
 cc_test_old(
-  ir_phi_kernel_op_test
-  SRCS
-  ir_phi_kernel_op_test.cc
-  DEPS
-  pd_dialect
-  ir
-  phi
-  gtest)
-
-cc_test_old(
   ir_infershape_test
   SRCS
   ir_infershape_test.cc
@@ -38,6 +28,7 @@ cc_test_old(
   SRCS
   ir_exe_test.cc
   DEPS
+  pd_op_to_kernel_pass
   pd_dialect
   phi_kernel_adaptor
   ir
@@ -83,4 +74,14 @@ cc_test_old(
   gtest
   pd_dialect
   pd_interface
+  ir)
+
+cc_test_old(
+  ir_type_converter_test
+  SRCS
+  ir_type_converter_test.cc
+  DEPS
+  gtest
+  program_translator
+  pd_dialect
   ir)

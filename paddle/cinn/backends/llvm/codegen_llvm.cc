@@ -1086,9 +1086,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Sum *op) {
 
 #undef __IR_EMITTER_CINN_NOT_IMPLEMENTED
 
-void CodeGenLLVM::Compile(const ir::Module &module) {
-  Visit(module.self());
-}
+void CodeGenLLVM::Compile(const ir::Module &module) { Visit(module.self()); }
 
 llvm::Value *CodeGenLLVM::EmitCall_buffer_malloc(const ir::Call *op) { return nullptr; }
 
