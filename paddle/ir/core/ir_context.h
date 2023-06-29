@@ -47,6 +47,9 @@ class IR_API IrContext {
   ///
   static IrContext *Instance();
 
+  IrContext();
+  ~IrContext();
+
   ///
   /// \brief Get an instance of IrContextImpl, a private member of IrContext.
   /// For the specific definition of IrContextImpl, see ir_context.cc.
@@ -184,8 +187,6 @@ class IR_API IrContext {
   void operator=(const IrContext &) = delete;
 
  private:
-  IrContext();
-  ~IrContext();
   IrContextImpl *impl_;
 };
 
