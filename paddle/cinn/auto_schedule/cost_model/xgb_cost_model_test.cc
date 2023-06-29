@@ -38,7 +38,7 @@ TEST(CostModel, Basic) {
                                           std::vector<float>(feature_size));
   for (int i = 0; i < batch_size; ++i) {
     for (int j = 0; j < feature_size; ++j) {
-      samples[i][j] = rand() % 10;
+      samples[i][j] = rand() % 10;  // NOLINT
     }
   }
 
