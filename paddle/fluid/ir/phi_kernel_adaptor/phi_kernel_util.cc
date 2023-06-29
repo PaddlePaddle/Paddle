@@ -63,7 +63,9 @@ void BuildScope(ir::Block* block,
         auto var = scope->Var("fetch");
         auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
         // for now only support one fetch
-        fetch_list->resize(1);
+        int index =
+            (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+        fetch_list->resize(index + 1);
       }
       continue;
     }
@@ -148,7 +150,10 @@ void BuildScope(ir::Block* block,
         }
         auto var = scope->Var(name);
         // Only support DenseTensor or Vector<DenseTensor>
-        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+        if (!ptr.type()) {
+          var->GetMutable<phi::DenseTensor>();
+        } else if (ptr.type()
+                       .isa<paddle::dialect::AllocatedDenseTensorType>()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type().isa<ir::VectorType>()) {
           auto tensor_array =
@@ -251,6 +256,20 @@ void BuildInferMetaContext(
           attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+    } else if (attr_type_name == "ir::ArrayAttribute<ir::Int32Attribute>") {
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      if (array_list[0].isa<ir::Int32Attribute>()) {
+        std::vector<int32_t> vec_res;
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[0].dyn_cast<ir::Int32Attribute>().data());
+        }
+        ctx->EmplaceBackAttr(vec_res);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
+                                                attr_type_name));
+      }
+
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
     } else if (attr_type_name == "ir::BoolAttribute") {
@@ -275,13 +294,21 @@ void BuildInferMetaContext(
     // process fetch op
     auto fetch_var = scope->Var("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(index)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
-      auto name = name_map.at(out_ptr);
-      ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+
+      if (out_ptr.type()) {
+        auto name = name_map.at(out_ptr);
+        ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+      } else {
+        std::cerr << "emplace null ptr " << i << std::endl;
+        ctx->EmplaceBackOutput(nullptr);
+      }
     }
   }
 }
@@ -386,6 +413,20 @@ void BuildPhiKernelContext(
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
+    } else if (attr_type_name == "ir::ArrayAttribute<ir::Int32Attribute>") {
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      if (array_list[0].isa<ir::Int32Attribute>()) {
+        std::vector<int32_t> vec_res;
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          vec_res.push_back(
+              array_list[0].dyn_cast<ir::Int32Attribute>().data());
+        }
+        ctx->EmplaceBackAttr(vec_res);
+      } else {
+        PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
+                                                attr_type_name));
+      }
+
     } else if (attr_type_name == "ir::BoolAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
@@ -408,14 +449,21 @@ void BuildPhiKernelContext(
     // process fetch op
     auto fetch_var = scope->Var("fetch");
     auto* fetch_list = fetch_var->GetMutable<paddle::framework::FetchList>();
-    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(0)));
+    int index =
+        op->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+    auto* out_tensor = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(index)));
     ctx->EmplaceBackOutput(out_tensor);
   } else {
     for (size_t i = 0; i < op->num_results(); ++i) {
       ir::Value out_ptr = op->result(i);
       auto name = name_map.at(out_ptr);
-      ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
-          &(scope->Var(name)->Get<phi::DenseTensor>())));
+      if (out_ptr.type()) {
+        ctx->EmplaceBackOutput(const_cast<phi::DenseTensor*>(
+            &(scope->Var(name)->Get<phi::DenseTensor>())));
+      } else {
+        std::cerr << "emplace null ptr " << i << std::endl;
+        ctx->EmplaceBackOutput(nullptr);
+      }
 
       if (output_map != nullptr) {
         // only deal with single input for now, [todo] need support multi input

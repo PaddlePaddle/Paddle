@@ -451,7 +451,7 @@ OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
       VLOG(10) << "[output translating]"
                << "[" << op_desc.Type() << "] optional " << info.name << " :"
                << info.type_name << " " << legacy_output_name;
-      IR_ENFORCE(info.optional,
+      IR_ENFORCE(info.optional || info.intermediate,
                  "Op %s arg %s should be optional if it can be empty",
                  op_desc.Type(),
                  legacy_output_name);
@@ -916,6 +916,8 @@ struct FetchOpTranscriber : public OpTranscriber {
     OpOutputTypeList op_output_types;
     ir::AttributeMap attribute_map = {
         {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
+        {"col",
+         ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
 
     op_output_types.push_back(op_inputs[0].type());

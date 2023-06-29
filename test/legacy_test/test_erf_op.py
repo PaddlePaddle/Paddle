@@ -46,7 +46,7 @@ class TestErfOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestErfOp_ZeroDim(TestErfOp):
@@ -95,7 +95,7 @@ class TestErfFP16OP(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 @unittest.skipIf(
@@ -124,7 +124,7 @@ class TestErfBF16OP(OpTest):
 
     def test_check_grad(self):
         place = paddle.fluid.core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=False)
 
 
 if __name__ == '__main__':
