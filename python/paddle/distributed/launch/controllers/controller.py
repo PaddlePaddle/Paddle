@@ -177,7 +177,6 @@ class ControllerBase:
 
         self.sigint = sigint
         self.stop(sigint=sigint)
-        self.ctx.status._current_status = None
         self.ctx.logger.info(f"Exit with signal {sigint}")
 
 

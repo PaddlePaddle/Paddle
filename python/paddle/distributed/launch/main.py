@@ -353,8 +353,9 @@ def launch():
         recorder = History_recorder()
 
         job_id = 0
+        raw_ctx = copy.deepcopy(ctx)
         while cur_cfg:
-            ctx.status._current_status = None
+            ctx = copy.deepcopy(raw_ctx)
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],
@@ -423,7 +424,6 @@ def launch():
                     "Get best config failed. Currently there are no appropriate configs."
                 )
             c.finalize(exit=False)
-            ctx.status._current_status = None
 
             # generate a new config
             new_cfg = auto_tuner.search_once()
@@ -437,6 +437,7 @@ def launch():
         # get best config to run
         signal.alarm(0)
         best_cfg = None
+        ctx = copy.deepcopy(raw_ctx)
         if nnodes > 1:
             import socket
 
@@ -484,7 +485,6 @@ def launch():
         end_time = time.time()
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
-        ctx.status._current_status = None
         new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
         ctx.args.training_script_args = new_args
         ctx.args.job_id = "best_cfg"
