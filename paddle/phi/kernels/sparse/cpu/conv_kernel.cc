@@ -47,13 +47,13 @@ void Conv3dCooCPUKernel(const CPUContext& dev_ctx,
   const auto& x_dims = x.dims();
   const bool is2D = x_dims.size() == 4 ? true : false;
   const auto& kernel_dims = kernel.dims();
-  int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1] : 
-                           kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
-  
+  int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1]
+                         : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+
   int count_tmp = is2D ? 4 : 5;
   std::vector<int> out_dims_vec(count_tmp, 1);
   DDim out_dims = make_ddim(out_dims_vec);
-  
+
   std::vector<int> kernel_sizes(kernel_dims.size());
   for (int i = 0; i < kernel_dims.size(); i++) {
     kernel_sizes[i] = kernel_dims[i];

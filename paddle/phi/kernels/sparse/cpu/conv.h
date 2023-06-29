@@ -104,9 +104,9 @@ void ProductRuleBook(const Context& dev_ctx,
       IntT batch = indices_ptr[i];
       IntT in_z = is2D ? 0 : indices_ptr[i + non_zero_num];
       IntT in_y = is2D ? indices_ptr[i + non_zero_num]
-                               : indices_ptr[i + 2 * non_zero_num];
+                       : indices_ptr[i + 2 * non_zero_num];
       IntT in_x = is2D ? indices_ptr[i + 2 * non_zero_num]
-                               : indices_ptr[i + 3 * non_zero_num];
+                       : indices_ptr[i + 3 * non_zero_num];
       IntT index = phi::funcs::sparse::PointToIndex<Dims4D>(
           batch, in_x, in_y, in_z, c_x_dims);
       hash_in.insert(index);
@@ -126,11 +126,13 @@ void ProductRuleBook(const Context& dev_ctx,
             IntT batch = indices_ptr[i];
             IntT in_z = is2D ? 0 : indices_ptr[i + non_zero_num];
             IntT in_y = is2D ? indices_ptr[i + non_zero_num]
-                                     : indices_ptr[i + 2 * non_zero_num];
+                             : indices_ptr[i + 2 * non_zero_num];
             IntT in_x = is2D ? indices_ptr[i + 2 * non_zero_num]
-                                     : indices_ptr[i + 3 * non_zero_num];
-                                     
-            IntT out_z = is2D ? 0 : (in_z + paddings[0] - kz * dilations[0]) / strides[0];;
+                             : indices_ptr[i + 3 * non_zero_num];
+
+            IntT out_z =
+                is2D ? 0
+                     : (in_z + paddings[0] - kz * dilations[0]) / strides[0];
             IntT out_y =
                 (in_y + c_paddings[2] - ky * c_dilations[2]) / c_strides[2];
             IntT out_x =

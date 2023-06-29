@@ -48,8 +48,9 @@ void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
                             DenseTensor* kernel_grad) {
   const auto& kernel_dims = kernel.dims();
   const bool is2D = kernel_dims.size() == 4 ? true : false;
-  const int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1] :
-                                         kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  const int kernel_size =
+      is2D ? kernel_dims[0] * kernel_dims[1]
+           : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
   const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
   const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
 

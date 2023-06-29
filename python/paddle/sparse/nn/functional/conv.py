@@ -14,14 +14,12 @@
 
 __all__ = []
 
-import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.utils import convert_to_list
 
 from ...binary import add
-from ...unary import reshape
 
 
 def _conv3d(
@@ -204,6 +202,7 @@ def _conv2d(
         return add(pre_bias, bias)
     else:
         return pre_bias
+
 
 def conv3d(
     x,

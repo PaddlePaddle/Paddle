@@ -86,8 +86,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   const auto& x_dims = x.dims();
   const auto& kernel_dims = kernel.dims();
   const bool is2D = x_dims.size() == 4 ? true : false;
-  int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1] :
-                                   kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
+  int kernel_size = is2D ? kernel_dims[0] * kernel_dims[1]
+                         : kernel_dims[0] * kernel_dims[1] * kernel_dims[2];
 
   int rank = is2D ? 4 : 5;
   std::vector<int> out_dims_vec(rank, 1);
@@ -125,9 +125,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
 
   if (is2D) {
-    VLOG(6) << "call SubmConv2D or Conv2D " << subm << " and the key is " << key;
+    VLOG(6) << "call SubmConv2D or Conv2D " << subm << " and the key is "
+            << key;
   } else {
-    VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is " << key;
+    VLOG(6) << "call SubmConv3D or Conv3D " << subm << " and the key is "
+            << key;
   }
 
   int rulebook_len = 0;
