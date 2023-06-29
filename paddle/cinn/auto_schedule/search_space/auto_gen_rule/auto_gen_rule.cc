@@ -37,7 +37,7 @@ void AutoGenRule::ApplyRandomly() {
   CHECK_GT(num_applicable_, 0)
       << "Call " << GetRuleName()
       << "::ApplyRandomly() with NumberApplicable() == 0";
-  int index = rand() % num_applicable_;
+  int index = rand_r() % num_applicable_;
   return Apply(index);
 }
 

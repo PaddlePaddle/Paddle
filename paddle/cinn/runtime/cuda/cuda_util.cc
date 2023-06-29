@@ -1979,13 +1979,13 @@ class CurandGenerator {
 
   curandGenerator_t &GetGenerator() { return generator_; }
 
-  CurandGenerator &SetOffset(unsigned long long offset = 0ULL) {
+  CurandGenerator &SetOffset(uint64_t offset = 0ULL) {
     CURAND_CALL(curandSetGeneratorOffset(generator_, offset));
     VLOG(4) << "Set curand generator offset to: " << offset;
     return *this;
   }
 
-  CurandGenerator &SetSeed(unsigned long long seed = 0ULL) {
+  CurandGenerator &SetSeed(uint64_t seed = 0ULL) {
     // set global seed if seed is zero
     auto rand_seed = (seed == 0ULL) ? RandomSeed::GetOrSet() : seed;
     if (rand_seed != 0ULL && rand_seed != seed_) {
@@ -2009,7 +2009,7 @@ class CurandGenerator {
 
  private:
   curandGenerator_t generator_;
-  unsigned long long seed_ = 0ULL;
+  uint64_t seed_ = 0ULL;
   cudaStream_t stream_ = nullptr;
 };
 

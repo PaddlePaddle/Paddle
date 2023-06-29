@@ -218,10 +218,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
       ir_sch.SetBuffer(blocks[0], "local");
       ir_sch.SetBuffer(blocks[1], "local");
 
-      long prod_size = std::accumulate(output_shapes[0].begin(),
-                                       output_shapes[0].end(),
-                                       1,
-                                       std::multiplies<int>());
+      int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                          output_shapes[0].end(),
+                                          1,
+                                          std::multiplies<int>());
       if (prod_size > 1 && target.arch == Target::Arch::X86) {
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }
@@ -311,10 +311,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
       // the size will exceed the limit.
       // TODO: There is a bug, setting buffer to "local" here will cause the var
       // declared twice at CodeGen. ir_sch.SetBuffer(blocks[0], "local");
-      long prod_size = std::accumulate(output_shapes[0].begin(),
-                                       output_shapes[0].end(),
-                                       1,
-                                       std::multiplies<int>());
+      int64_t prod_size = std::accumulate(output_shapes[0].begin(),
+                                          output_shapes[0].end(),
+                                          1,
+                                          std::multiplies<int>());
       if (prod_size > 1 && target.arch == Target::Arch::X86) {
         pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
       }

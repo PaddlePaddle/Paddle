@@ -261,16 +261,16 @@ TEST_DEFAULT1(depthwise_conv2d,
 
 // layout_transform
 std::vector<std::vector<int>> shapes_layout_transform = {{512, 512, 3, 3}};
-std::string src_layout = "OIHW";
-std::string dst_layout = "OIHW16i16o";
+std::string src_layout = "OIHW";        // NOLINT
+std::string dst_layout = "OIHW16i16o";  // NOLINT
 absl::flat_hash_map<std::string, AttrType> attr_store_layout_transform = {
     {"src_layout", src_layout}, {"dst_layout", dst_layout}};
 TEST_DEFAULT1(
     layout_transform, layout_transform, type, type, attr_store_layout_transform)
 
 std::vector<std::vector<int>> shapes_layout_transform1 = {{64, 3, 7, 7}};
-std::string src_layout1 = "OIHW";
-std::string dst_layout1 = "OIHW3i32o";
+std::string src_layout1 = "OIHW";       // NOLINT
+std::string dst_layout1 = "OIHW3i32o";  // NOLINT
 absl::flat_hash_map<std::string, AttrType> attr_store_layout_transform1 = {
     {"src_layout", src_layout1}, {"dst_layout", dst_layout1}};
 TEST_DEFAULT1(layout_transform,
@@ -284,7 +284,7 @@ hlir::framework::NodeAttr attrs;
 std::vector<int> kernel_size = {3, 3};
 std::vector<int> stride_size = {2, 2};
 std::vector<int> padding_size = {1, 1, 1, 1};
-std::string pool_type = "max";
+std::string pool_type = "max";  // NOLINT
 absl::flat_hash_map<std::string, AttrType> attr_store_pool2d = {
     {"kernel_size", kernel_size},
     {"stride_size", stride_size},

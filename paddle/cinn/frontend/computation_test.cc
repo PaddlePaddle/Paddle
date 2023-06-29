@@ -88,8 +88,8 @@ TEST(cinn_computation, basic_cpu) {
   std::vector<float> hostD(M * N);
   std::vector<float> hostD_expected(M * N);
   for (int i = 0; i < M * N; i++) {
-    hostA[i] = static_cast<float>(rand()) / INT_MAX;
-    hostB[i] = static_cast<float>(rand()) / INT_MAX;
+    hostA[i] = static_cast<float>(rand_r()) / INT_MAX;
+    hostB[i] = static_cast<float>(rand_r()) / INT_MAX;
     hostD_expected[i] = hostA[i] * 2 + hostB[i];
   }
 
@@ -126,8 +126,8 @@ TEST(cinn_computation, basic_gpu) {
   std::vector<float> hostD(M * N);
   std::vector<float> hostD_expected(M * N);
   for (int i = 0; i < M * N; i++) {
-    hostA[i] = static_cast<float>(rand()) / INT_MAX;
-    hostB[i] = static_cast<float>(rand()) / INT_MAX;
+    hostA[i] = static_cast<float>(rand_r()) / INT_MAX;
+    hostB[i] = static_cast<float>(rand_r()) / INT_MAX;
     hostD_expected[i] = hostA[i] * 2 + hostB[i];
   }
 
@@ -165,7 +165,7 @@ TEST(cinn_computation, net_builder_cpu) {
   auto load_input = [=](hlir::framework::Tensor t) {
     float *ptr = t->mutable_data<float>(target);
     for (int i = 0; i < t->shape().numel(); i++) {
-      ptr[i] = static_cast<float>(rand()) / INT_MAX;
+      ptr[i] = static_cast<float>(rand_r()) / INT_MAX;
     }
   };
 
@@ -232,7 +232,7 @@ TEST(cinn_computation, fc_execute_cpu) {
   auto A = inputs[0];
   ASSERT_EQ(A->shape().numel(), 1 * 30);
   float *ptrA = A->mutable_data<float>(target);
-  for (int i = 0; i < 30; i++) ptrA[i] = static_cast<float>(rand()) / INT_MAX;
+  for (int i = 0; i < 30; i++) ptrA[i] = static_cast<float>(rand_r()) / INT_MAX;
   for (int i = 0; i < 30; i++) ptrA[i] = static_cast<float>(0);
   compute->Execute();
 }
@@ -253,7 +253,7 @@ TEST(cinn_computation, fc_execute_gpu) {
   auto out = outputs[0];
 
   std::vector<float> hostA(30);
-  for (float &v : hostA) v = static_cast<float>(rand()) / INT_MAX;
+  for (float &v : hostA) v = static_cast<float>(rand_r()) / INT_MAX;
   compute->SetTensorData(
       A, reinterpret_cast<void *>(hostA.data()), hostA.size() * sizeof(float));
 

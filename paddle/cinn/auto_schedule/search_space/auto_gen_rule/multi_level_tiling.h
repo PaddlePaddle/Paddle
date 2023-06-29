@@ -90,9 +90,9 @@ class MultiLevelTiling : public AutoGenRule {
     if (candidates.size() == 0) {
       return {1, T(extent)};
     }
-    int index = rand() % candidates.size();
+    int index = rand_r() % candidates.size();
     std::vector<T> pick = candidates[index];
-    if (rand() % 2 != 0) {
+    if (rand_r() % 2 != 0) {
       T tmp = pick[0];
       pick[0] = pick[1];
       pick[1] = tmp;
