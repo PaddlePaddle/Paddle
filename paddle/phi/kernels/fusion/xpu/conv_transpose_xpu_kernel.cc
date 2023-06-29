@@ -18,6 +18,7 @@
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
+namespace fusion {
 template <typename T, typename Context>
 void Conv2dTransposeXPUKernel(const Context& ctx,
                               const DenseTensor& x,
@@ -97,12 +98,12 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
       is_nchw);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
 }
-
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_transpose_xpu,
                    XPU,
                    ALL_LAYOUT,
-                   phi::Conv2dTransposeXPUKernel,
+                   phi::fusion::Conv2dTransposeXPUKernel,
                    float,
                    phi::dtype::float16) {}
