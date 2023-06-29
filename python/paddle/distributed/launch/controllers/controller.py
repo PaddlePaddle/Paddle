@@ -36,6 +36,10 @@ class ControllerBase:
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
         signal.signal(signal.SIGINT, self.signal_handler)
+        if ctx.is_auto_tuner_mode() and not ctx.run_best:
+            # set per task timeout
+            signal.signal(signal.SIGALRM, self.not_exit_signal_handler)
+            signal.alarm(ctx.max_time_per_task)
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
