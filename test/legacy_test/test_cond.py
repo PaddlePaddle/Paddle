@@ -695,7 +695,7 @@ class TestCondBackward(unittest.TestCase):
             )
             i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

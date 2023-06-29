@@ -186,7 +186,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
                 name='label', shape=[-1, 1], dtype='int64'
             )
             loss = simple_fc_net(img, label, use_py_func_op)
-            optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
+            optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

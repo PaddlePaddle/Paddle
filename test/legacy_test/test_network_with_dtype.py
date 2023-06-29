@@ -37,7 +37,7 @@ class TestNetWithDtype(unittest.TestCase):
                 input=y_predict, label=y
             )
             avg_cost = paddle.mean(cost)
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost)
 
         fetch_list = [avg_cost]

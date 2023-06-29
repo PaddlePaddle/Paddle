@@ -283,9 +283,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             linear2_origin = linear2.weight.numpy()
             linear2.weight.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.003,
-                parameter_list=(linear.parameters() + linear2.parameters()),
+                parameters=(linear.parameters() + linear2.parameters()),
             )
             optimizer.minimize(out2)
             np.testing.assert_array_equal(
@@ -311,9 +311,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             linear2_origin = linear2.weight.numpy()
             out2.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=0.003,
-                parameter_list=(linear.parameters() + linear2.parameters()),
+                parameters=(linear.parameters() + linear2.parameters()),
             )
             optimizer.minimize(out2)
             np.testing.assert_array_equal(

@@ -90,7 +90,7 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
-        optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
 
@@ -132,7 +132,7 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
 
         fleet.init()
         strategy = paddle.distributed.fleet.DistributedStrategy()
-        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
         if fleet.is_server():

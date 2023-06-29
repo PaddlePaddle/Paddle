@@ -181,8 +181,8 @@ def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
         adam = fluid.optimizer.Adam(
             learning_rate=LR, parameter_list=dy_layer.parameters()
         )
-        sgd = fluid.optimizer.SGD(
-            learning_rate=LR, parameter_list=dy_layer.parameters()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=LR, parameters=dy_layer.parameters()
         )
 
         for epoch in range(EPOCH_NUM):

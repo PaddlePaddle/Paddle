@@ -211,8 +211,8 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             layer = SimpleFCLayer(
                 self.feature_size, self.batch_size, self.fc_size
             )
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=layer.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=layer.parameters()
             )
 
             for i in range(5):

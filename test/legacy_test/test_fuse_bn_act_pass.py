@@ -61,7 +61,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 input=prediction, label=y, reduction='none', use_softmax=False
             )
             loss = paddle.mean(loss)
-            sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd = paddle.optimizer.SGD(learning_rate=0.001)
             if use_cuda:
                 sgd = paddle.static.amp.decorate(
                     sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0

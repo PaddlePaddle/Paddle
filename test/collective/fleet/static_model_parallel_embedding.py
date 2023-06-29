@@ -85,7 +85,7 @@ class TestModelParallel(TestDistRunnerBase):
 
         rank = fleet.worker_index() if dist_strategy else None
         avg_cost = create_model(data_in, rank)
-        opt = fluid.optimizer.SGD(0.1)
+        opt = paddle.optimizer.SGD(0.1)
 
         if dist_strategy:
             dist_opt = fleet.distributed_optimizer(

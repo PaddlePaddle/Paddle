@@ -1330,7 +1330,7 @@ class Optimizer:
 
                 import paddle.fluid as fluid
                 loss = network()
-                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 params_grads = optimizer.backward(loss)
                 # you may append operations for params_grads here
                 # ...
@@ -1525,7 +1525,7 @@ class SGDOptimizer(Optimizer):
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
 
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
                 sgd_optimizer.minimize(avg_cost)
 
                 fetch_list = [avg_cost]
@@ -3887,7 +3887,7 @@ class LambOptimizer(AdamOptimizer):
 #
 # import paddle.fluid as fluid
 #
-# sgd = fluid.optimizer.SGD(...)
+# sgd = paddle.optimizer.SGD(...)
 #
 # It is no need to add an `Optimizer` as the class suffix
 Momentum = MomentumOptimizer
@@ -4527,7 +4527,7 @@ class PipelineOptimizer:
                 concat = layers.concat([emb_x, emb_y], axis=1)
                 fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
                 loss = paddle.mean(fc)
-            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.5)
             optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
             optimizer.minimize(loss)
 
@@ -7275,7 +7275,7 @@ class LookaheadOptimizer:
                 reduction='none', use_softmax=False
             )
             loss = paddle.mean(x=loss)
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd = paddle.optimizer.SGD(learning_rate=0.01)
             optimizer = fluid.optimizer.LookaheadOptimizer(sgd,
                                                 alpha=0.5,
                                                 k=5)

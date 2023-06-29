@@ -36,9 +36,9 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = init_data()
 
         def _optimizer(learning_rate=1e-6):
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=paddle.regularizer.L2Decay(1e-6),
+                weight_decay=paddle.regularizer.L2Decay(1e-6),
             )
             return optimizer
 
@@ -103,7 +103,7 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
             Out2 = F.relu(Out1)
             prediction = paddle.tensor.math._add_with_axis(Y, Out2, axis=1)
             loss = paddle.mean(prediction)
-            sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd = paddle.optimizer.SGD(learning_rate=0.001)
             sgd.minimize(loss)
         return X, Y, loss
 

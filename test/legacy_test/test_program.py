@@ -109,7 +109,7 @@ class TestProgram(unittest.TestCase):
         data = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
-        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+        paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         # NOTE: here the parameters are fc_0.w_0 and fc_0.b_0
         param_list = program.all_parameters()

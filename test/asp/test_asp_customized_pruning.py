@@ -275,7 +275,7 @@ class TestASPStaticCustomerizedPruneFunc(unittest.TestCase):
                 )
             )
             optimizer = sparsity.decorate(
-                fluid.optimizer.SGD(learning_rate=0.01)
+                paddle.optimizer.SGD(learning_rate=0.01)
             )
             optimizer.minimize(loss, self.startup_program)
 

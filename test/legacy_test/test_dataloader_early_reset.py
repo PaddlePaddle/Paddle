@@ -36,7 +36,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         y = paddle.static.nn.fc(self.x, size=10)
         loss = paddle.mean(y)
 
-        optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
+        optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
         optimizer.minimize(loss)
 
     def get_place(self):

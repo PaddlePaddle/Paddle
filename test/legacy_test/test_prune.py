@@ -298,7 +298,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
@@ -329,7 +329,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
@@ -390,7 +390,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
@@ -425,7 +425,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             with fluid.scope_guard(scope):
                 with fluid.program_guard(program, startup_program):
                     (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                     sgd_optimizer.minimize(loss1)
                     exe.run(startup_program)
                     x_np = np.random.random(size=(10, 2)).astype('float32')
@@ -531,7 +531,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             with fluid.scope_guard(scope):
                 with fluid.program_guard(program, startup_program):
                     (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                     sgd_optimizer.minimize(loss1)
                     exe.run(startup_program)
                     x_np = np.random.random(size=(10, 2)).astype('float32')
@@ -564,7 +564,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1, _ = sgd_optimizer.minimize(loss1)
                 cloned_program = program.clone()
                 train2, _ = sgd_optimizer.minimize(loss2)
@@ -625,7 +625,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1 = sgd_optimizer.minimize(loss1)
                 cloned_program = program.clone()
 
@@ -699,9 +699,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 ) = self.net2()
                 loss1.persistable = True
                 loss2.persistable = True
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1 = sgd_optimizer.minimize(loss1)
-                sgd_optimizer1 = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer1 = paddle.optimizer.SGD(learning_rate=0.5)
                 train2 = sgd_optimizer1.minimize(loss2)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
@@ -749,7 +749,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.5)
                 train1, _ = sgd_optimizer.minimize(loss1)
                 cloned_program = program.clone()
                 train2, _ = sgd_optimizer.minimize(loss2)

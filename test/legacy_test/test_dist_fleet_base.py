@@ -126,7 +126,7 @@ class FleetDistRunnerBase:
             scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=LEARNING_RATE, gamma=0.999, verbose=True
             )
-            optimizer = fluid.optimizer.SGD(scheduler, grad_clip=grad_clip)
+            optimizer = paddle.optimizer.SGD(scheduler, grad_clip=grad_clip)
             """
             # learning rate decay method before 2.0
             optimizer = fluid.optimizer.SGD(
@@ -137,7 +137,7 @@ class FleetDistRunnerBase:
                     staircase=True))
             """
         else:
-            optimizer = fluid.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
+            optimizer = paddle.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

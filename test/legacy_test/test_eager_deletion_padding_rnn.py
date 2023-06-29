@@ -509,7 +509,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                     persistable=True,
                 )
 
-                optimizer = fluid.optimizer.SGD(
+                optimizer = paddle.optimizer.SGD(
                     learning_rate=self.learning_rate
                 )
                 optimizer.minimize(self.loss)

@@ -70,7 +70,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def run_pserver(self, role, strategy):
         fleet.init(role)
         avg_cost, x, z, y = self.net()
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
@@ -83,7 +83,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
         fleet.init(role)
         avg_cost, x, z, y = self.net()
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 

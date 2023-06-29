@@ -27,7 +27,6 @@ import unittest
 from contextlib import closing
 
 import paddle
-from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -150,7 +149,7 @@ class FleetDistHeterRunnerBase:
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+        optimizer = paddle.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

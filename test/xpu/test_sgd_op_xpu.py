@@ -76,7 +76,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
         place = paddle.XPUPlace(0)

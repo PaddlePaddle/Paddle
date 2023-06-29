@@ -57,7 +57,7 @@ def static_train_net(img, label):
     )
     avg_loss = paddle.mean(loss)
 
-    optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     return prediction, avg_loss

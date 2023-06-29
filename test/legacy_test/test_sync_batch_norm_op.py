@@ -188,7 +188,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 if not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
-                    sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                    sgd_opt = paddle.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
         return main, startup, [out, conv, bn]
 

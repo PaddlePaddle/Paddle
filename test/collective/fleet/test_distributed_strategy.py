@@ -242,7 +242,7 @@ class TestCreateDefaultStrategy(unittest.TestCase):
         fleet.init(role)
 
         def type_error_optimizer():
-            optimizer = fluid.optimizer.SGD(0.0001)
+            optimizer = paddle.optimizer.SGD(0.0001)
             optimizer = fleet.distributed_optimizer(optimizer)
 
         self.assertRaises(TypeError, type_error_optimizer)
@@ -264,7 +264,7 @@ class TestHalfAsyncStrategy(unittest.TestCase):
         half_async_config.geo_sgd_mode = False
         half_async_config.runtime_split_send_recv = False
 
-        optimizer = fluid.optimizer.SGD(0.0001)
+        optimizer = paddle.optimizer.SGD(0.0001)
         optimizer = fleet.distributed_optimizer(optimizer, half_async_config)
 
 
@@ -284,7 +284,7 @@ class TestDebugInfo(unittest.TestCase):
         )
         fleet.init(role)
 
-        optimizer = fluid.optimizer.SGD(0.0001)
+        optimizer = paddle.optimizer.SGD(0.0001)
         strategy = StrategyFactory.create_sync_strategy()
         strategy.set_debug_opt(
             {

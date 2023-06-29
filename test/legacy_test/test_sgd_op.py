@@ -217,7 +217,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
         place = fluid.CPUPlace()
@@ -434,9 +434,9 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.fluid.optimizer.SGD(
+        optimizer = paddle.optimizer.SGD(
             learning_rate=0.001,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
             multi_precision=mp,
         )
         if mp:
@@ -467,7 +467,7 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.SGD(
+        optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, multi_precision=mp
         )
 

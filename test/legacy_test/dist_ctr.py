@@ -122,8 +122,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 gamma=0.999,
             )
 
-        sgd_optimizer = fluid.optimizer.SGD(
-            learning_rate=lr, regularization=regularization
+        sgd_optimizer = paddle.optimizer.SGD(
+            learning_rate=lr, weight_decay=regularization
         )
         sgd_optimizer.minimize(avg_cost)
 
