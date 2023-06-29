@@ -128,8 +128,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 gamma=0.5,
             )
             Step_scheduler = paddle.optimizer.lr.StepDecay(0.5, step_size=3)
-            Reducelr_scheduler = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Reducelr_scheduler = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
             adam1 = fluid.optimizer.Adam(
@@ -166,8 +166,8 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
             Step_scheduler_test = paddle.optimizer.lr.StepDecay(
                 0.5, step_size=3
             )
-            Reducelr_scheduler_test = fluid.dygraph.ReduceLROnPlateau(
-                learning_rate=1.0, decay_rate=0.5, patience=5, cooldown=3
+            Reducelr_scheduler_test = paddle.optimizer.lr.ReduceOnPlateau(
+                learning_rate=1.0, factor=0.5, patience=5, cooldown=3
             )
 
             paddle.save(adam1.state_dict(), "save_path.pdopt")
