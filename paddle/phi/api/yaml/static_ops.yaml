@@ -446,7 +446,7 @@
   backward : relu6_grad
 
 - op : repeat_interleave
-  args : (Tensor x, Tensor repeats, int repeats = 0, int axis = 0)
+  args : (Tensor x, Tensor repeats, int repeat = 0, int axis = 0)
   output : Tensor(out)
   optional : repeats
   infer_meta :

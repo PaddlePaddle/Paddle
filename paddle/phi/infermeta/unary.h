@@ -454,7 +454,7 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
 void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
-                               int repeats,
+                               int repeat,
                                int dim,
                                MetaTensor* out);
 

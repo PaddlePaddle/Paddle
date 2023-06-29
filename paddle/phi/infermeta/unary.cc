@@ -3225,7 +3225,7 @@ void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
 }
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
-                               int repeats,
+                               int repeat,
                                int dim,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
@@ -3254,16 +3254,16 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
           dim));
 
   PADDLE_ENFORCE_GT(
-      repeats,
+      repeat,
       0,
-      phi::errors::InvalidArgument("repeats should be larger than zero"));
+      phi::errors::InvalidArgument("repeat should be larger than zero"));
 
   PADDLE_ENFORCE_NOT_NULL(
       out,
       phi::errors::InvalidArgument(
           "repeat_interleave's output tensor can't be nullptr"));
 
-  output_dim[n_dim] = input_dim[n_dim] * repeats;
+  output_dim[n_dim] = input_dim[n_dim] * repeat;
   out->set_dims(phi::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());

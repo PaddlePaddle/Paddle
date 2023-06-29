@@ -191,8 +191,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : repeat_interleave_grad
-  forward : repeat_interleave(Tensor x, Tensor repeats, int repeats = 0, int axis = 0) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int repeats = 0, int axis)
+  forward : repeat_interleave(Tensor x, Tensor repeats, int repeat = 0, int axis = 0) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int repeat = 0, int axis)
   output : Tensor(x_grad)
   infer_meta :
     func : RepeatInterleaveForStaticInferMeta

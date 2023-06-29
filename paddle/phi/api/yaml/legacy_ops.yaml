@@ -799,8 +799,9 @@
   inplace : (x -> out)
 
 - op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
+  args : (Tensor x, Tensor repeats, int repeat, int axis)
   output : Tensor(out)
+  optional : repeats
   infer_meta :
     func : RepeatInterleaveInferMeta
   kernel :
