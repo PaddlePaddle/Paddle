@@ -16,8 +16,8 @@ import numpy
 import paddle
 import sys, os
 import numpy as np
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid
+from paddle import static
 
 paddle.enable_static()
 

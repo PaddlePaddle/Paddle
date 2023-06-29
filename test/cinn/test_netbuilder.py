@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.static as static
+from paddle import static
 from cinn.frontend import *
 from cinn import Target
 from cinn.framework import *

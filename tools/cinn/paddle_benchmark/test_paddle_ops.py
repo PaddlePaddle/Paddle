@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys, os
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.static as static
-import time
 import argparse
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+import os
+import sys
+import time
+
+import numpy as np
+
+import paddle
+from paddle import fluid, static
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 def set_config(op_name, input_shapes, enable_gpu=False):

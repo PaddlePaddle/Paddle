@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
-import paddle.static as static
+from paddle import fluid
+from paddle import static
 from cinn.frontend import *
 from cinn import Target
 from cinn.framework import *

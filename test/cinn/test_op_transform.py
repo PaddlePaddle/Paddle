@@ -28,7 +28,7 @@ from cinn.poly import create_stages
 import logging
 from test_utils import SingleOpTester
 import paddle
-import paddle.static as static
+from paddle import static
 import os
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"

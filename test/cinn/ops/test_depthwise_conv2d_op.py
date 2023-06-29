@@ -15,7 +15,7 @@
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 import paddle
-import paddle.nn as nn
+from paddle import nn
 import cinn
 from cinn.frontend import *
 from cinn.common import *

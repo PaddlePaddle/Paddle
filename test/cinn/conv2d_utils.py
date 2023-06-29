@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import paddle
-import paddle.static as static
+from paddle import static
 import numpy as np
 
 
