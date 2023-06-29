@@ -23,21 +23,121 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims, meta.layout);
   meta.offset = 0;
   out->set_meta(meta);
 
-  auto input_data = reinterpret_cast<const XPUT*>(input.data<T>());
-  auto output_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out));
-
-  int r = xpu::as_strided<XPUT>(dev_ctx.x_context(),
+  int r = 0;
+  if (std::is_same<T, float>::value) {
+    auto input_data = reinterpret_cast<const float*>(input.data<T>());
+    auto output_data = reinterpret_cast<float*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<float>(dev_ctx.x_context(),
+                               input_data,
+                               output_data,
+                               phi::vectorize<int64_t>(input.dims()),
+                               phi::vectorize<int64_t>(input.strides()),
+                               0);
+  } else if (std::is_same<T, double>::value) {
+    auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int64_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<int64_t>(dev_ctx.x_context(),
+                                 input_data,
+                                 output_data,
+                                 phi::vectorize<int64_t>(input.dims()),
+                                 phi::vectorize<int64_t>(input.strides()),
+                                 0);
+  } else if (std::is_same<T, ::phi::dtype::float16>::value) {
+    auto input_data =
+        reinterpret_cast<const ::phi::dtype::float16*>(input.data<T>());
+    auto output_data = reinterpret_cast<::phi::dtype::float16*>(
+        dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<::phi::dtype::float16>(
+        dev_ctx.x_context(),
+        input_data,
+        output_data,
+        phi::vectorize<int64_t>(input.dims()),
+        phi::vectorize<int64_t>(input.strides()),
+        0);
+  } else if (std::is_same<T, ::phi::dtype::bfloat16>::value) {
+    auto input_data =
+        reinterpret_cast<const ::phi::dtype::float16*>(input.data<T>());
+    auto output_data = reinterpret_cast<::phi::dtype::float16*>(
+        dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<::phi::dtype::float16>(
+        dev_ctx.x_context(),
+        input_data,
+        output_data,
+        phi::vectorize<int64_t>(input.dims()),
+        phi::vectorize<int64_t>(input.strides()),
+        0);
+  } else if (std::is_same<T, int16_t>::value) {
+    auto input_data =
+        reinterpret_cast<const ::phi::dtype::float16*>(input.data<T>());
+    auto output_data = reinterpret_cast<::phi::dtype::float16*>(
+        dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<::phi::dtype::float16>(
+        dev_ctx.x_context(),
+        input_data,
+        output_data,
+        phi::vectorize<int64_t>(input.dims()),
+        phi::vectorize<int64_t>(input.strides()),
+        0);
+  } else if (std::is_same<T, uint8_t>::value) {
+    auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int8_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
                                 input_data,
                                 output_data,
                                 phi::vectorize<int64_t>(input.dims()),
                                 phi::vectorize<int64_t>(input.strides()),
                                 0);
+  } else if (std::is_same<T, int8_t>::value) {
+    auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int8_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
+                                input_data,
+                                output_data,
+                                phi::vectorize<int64_t>(input.dims()),
+                                phi::vectorize<int64_t>(input.strides()),
+                                0);
+  } else if (std::is_same<T, int32_t>::value) {
+    auto input_data = reinterpret_cast<const int32_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int32_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<int32_t>(dev_ctx.x_context(),
+                                 input_data,
+                                 output_data,
+                                 phi::vectorize<int64_t>(input.dims()),
+                                 phi::vectorize<int64_t>(input.strides()),
+                                 0);
+  } else if (std::is_same<T, int64_t>::value) {
+    auto input_data = reinterpret_cast<const int64_t*>(input.data<T>());
+    auto output_data =
+        reinterpret_cast<int64_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<int64_t>(dev_ctx.x_context(),
+                                 input_data,
+                                 output_data,
+                                 phi::vectorize<int64_t>(input.dims()),
+                                 phi::vectorize<int64_t>(input.strides()),
+                                 0);
+  } else if (std::is_same<T, bool>::value) {
+    auto input_data = reinterpret_cast<const bool*>(input.data<T>());
+    auto output_data = reinterpret_cast<bool*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<bool>(dev_ctx.x_context(),
+                              input_data,
+                              output_data,
+                              phi::vectorize<int64_t>(input.dims()),
+                              phi::vectorize<int64_t>(input.strides()),
+                              0);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Received unsupported dtype : %s.", input.dtype()));
+  }
+
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
 }
 }  // namespace phi
