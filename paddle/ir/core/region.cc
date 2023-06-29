@@ -14,31 +14,34 @@
 
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/enforce.h"
+#include "paddle/ir/core/operation.h"
 
 namespace ir {
 Region::~Region() { clear(); }
 
-void Region::push_back(Block *block) {
-  block->set_parent(this);
-  blocks_.push_back(block);
-}
+void Region::push_back(Block *block) { insert(blocks_.end(), block); }
 
 void Region::emplace_back() { push_back(new Block); }
 
-void Region::push_front(Block *block) {
-  block->set_parent(this);
-  blocks_.push_front(block);
-}
+void Region::push_front(Block *block) { insert(blocks_.begin(), block); }
 
 Region::iterator Region::insert(const_iterator position, Block *block) {
-  block->set_parent(this);
-  return blocks_.insert(position, block);
+  Region::iterator iter = blocks_.insert(position, block);
+  block->SetParent(this, iter);
+  return iter;
+}
+
+Region::iterator Region::erase(const_iterator position) {
+  IR_ENFORCE((*position)->GetParent() == this, "iterator not own this region.");
+  delete *position;
+  return blocks_.erase(position);
 }
 void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
-  for (auto &block : blocks_) {
-    block->set_parent(this);
+  for (auto iter = blocks_.begin(); iter != blocks_.end(); ++iter) {
+    (*iter)->SetParent(this, iter);
   }
 }
 
@@ -47,5 +50,10 @@ void Region::clear() {
     delete blocks_.back();
     blocks_.pop_back();
   }
+}
+
+IrContext *Region::ir_context() const {
+  IR_ENFORCE(parent_, "Region is not attached to a container.");
+  return parent_->ir_context();
 }
 }  // namespace ir

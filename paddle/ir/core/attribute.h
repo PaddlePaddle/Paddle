@@ -22,11 +22,11 @@ namespace ir {
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
 /// classes only derives interfaces, not members.
 ///
-class Attribute {
+class IR_API Attribute {
  public:
   using Storage = AttributeStorage;
 
-  constexpr Attribute() = default;
+  Attribute() = default;
 
   Attribute(const Storage *storage)  // NOLINT
       : storage_(storage) {}
@@ -60,6 +60,10 @@ class Attribute {
 
   IrContext *ir_context() const;
 
+  /// @brief print attribute
+  /// @param os
+  void Print(std::ostream &os) const;
+
   ///
   /// \brief Methods for type judgment and cast.
   ///
@@ -80,6 +84,8 @@ class Attribute {
  protected:
   const Storage *storage_{nullptr};
 };
+
+IR_API std::ostream &operator<<(std::ostream &os, Attribute attr);
 }  // namespace ir
 
 namespace std {

@@ -133,7 +133,6 @@ def get_program():
     train_program = static.Program()
     start_program = static.Program()
     with static.program_guard(train_program, start_program):
-
         # 循环计数器
         i = paddle.full(shape=[1], fill_value=0, dtype='int64')
         # 循环次数

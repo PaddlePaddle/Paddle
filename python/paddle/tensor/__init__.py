@@ -46,6 +46,7 @@ from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
 from .linalg import corrcoef  # noqa: F401
 from .linalg import norm  # noqa: F401
+from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
 from .linalg import lstsq  # noqa: F401
@@ -149,6 +150,8 @@ from .math import cos  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
+from .math import cummax  # noqa: F401
+from .math import cummin  # noqa: F401
 from .math import cumprod  # noqa: F401
 from .math import logcumsumexp  # noqa: F401
 from .math import logit  # noqa: F401
@@ -161,6 +164,7 @@ from .math import increment  # noqa: F401
 from .math import log  # noqa: F401
 from .math import multiplex  # noqa: F401
 from .math import pow  # noqa: F401
+from .math import pow_  # noqa: F401
 from .math import reciprocal  # noqa: F401
 from .math import reciprocal_  # noqa: F401
 from .math import round  # noqa: F401
@@ -251,6 +255,7 @@ from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
+from .math import ldexp  # noqa: F401
 from .math import trapezoid  # noqa: F401
 from .math import cumulative_trapezoid  # noqa: F401
 from .math import sigmoid  # noqa: F401
@@ -261,6 +266,7 @@ from .math import i0  # noqa: F401
 from .math import i0e  # noqa: F401
 from .math import i1  # noqa: F401
 from .math import i1e  # noqa: F401
+from .math import polygamma  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -329,6 +335,7 @@ tensor_method_func = [  # noqa
     'mv',
     'matrix_power',
     'qr',
+    'pca_lowrank',
     'eigvals',
     'eigvalsh',
     'abs',
@@ -342,11 +349,14 @@ tensor_method_func = [  # noqa
     'cos',
     'cosh',
     'cumsum',
+    'cummax',
+    'cummin',
     'cumprod',
     'logcumsumexp',
     'logit',
     'exp',
     'exp_',
+    'expm1',
     'floor',
     'floor_',
     'increment',
@@ -357,6 +367,7 @@ tensor_method_func = [  # noqa
     'logsumexp',
     'multiplex',
     'pow',
+    'pow_',
     'prod',
     'reciprocal',
     'reciprocal_',
@@ -548,6 +559,7 @@ tensor_method_func = [  # noqa
     'bucketize',
     'sgn',
     'frexp',
+    'ldexp',
     'trapezoid',
     'cumulative_trapezoid',
     'polar',
@@ -560,6 +572,7 @@ tensor_method_func = [  # noqa
     'i0e',
     'i1',
     'i1e',
+    'polygamma',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

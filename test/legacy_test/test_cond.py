@@ -718,7 +718,6 @@ class TestCondBackward(unittest.TestCase):
             )
 
     def test_cond_backward(self):
-
         paddle.enable_static()
 
         def cond_func(i, img, label):

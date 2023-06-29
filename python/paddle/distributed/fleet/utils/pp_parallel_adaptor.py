@@ -65,7 +65,7 @@ class LayerReNamingManager:
 
     def get_new_layer_name(self, old_name: str):
         layer_name = ""
-        for (k, v) in self._renaming_helpers.items():
+        for k, v in self._renaming_helpers.items():
             if old_name.startswith(k):
                 layer_name = v.get_new_layer_name(old_name)
                 break
@@ -128,12 +128,12 @@ class PipeLineModelAdaptor:
                 ]
 
                 # 4、merge layers belonging to the same node
-                for (layer_segment, dir_) in zip(layer_segments, dst_dirs):
+                for layer_segment, dir_ in zip(layer_segments, dst_dirs):
                     print(f"merge {len(layer_segment)} layers to {dir_}")
                     self.merge_layers(layer_segment, dir_)
 
                 # 5、copy meta_state.pdopt
-                for (src_dir, dst_dir) in zip(src_dirs, dst_dirs):
+                for src_dir, dst_dir in zip(src_dirs, dst_dirs):
                     shutil.copyfile(
                         f"{src_dir}/meta_state.pdopt",
                         f"{dst_dir}/meta_state.pdopt",
@@ -155,7 +155,7 @@ class PipeLineModelAdaptor:
 
     def peek_partial_model(self, sub_dir: str):
         state_dict = paddle.load(f"{sub_dir}/model.pdparams")
-        for (k, v) in state_dict.items():
+        for k, v in state_dict.items():
             print(f"\t{k} -> {v.name}")
 
     def extract_layers(self, dir: str, with_shared: bool):
@@ -164,7 +164,7 @@ class PipeLineModelAdaptor:
         shared_layer_parsed = False
         # tname -> (layer, param_name)
         tname_to_layer_and_pname = {}
-        for (k, v) in params.items():
+        for k, v in params.items():
             layer = self._extract_layer_name(k)
             assert layer
             # special treatment for embedding layer, skip duplicated shared layer
@@ -192,7 +192,7 @@ class PipeLineModelAdaptor:
         opt_to_t = self._opt_name_to_tname(tensor_names, opt_names)
         # gather tensors belonging to one layer togather
         layers = OrderedDict()
-        for (k, v) in params.items():
+        for k, v in params.items():
             layer, p = tname_to_layer_and_pname[v.name]
             if layer not in layers:
                 layers[layer] = {}
@@ -201,14 +201,14 @@ class PipeLineModelAdaptor:
                 layers[layer]["master_weights"] = OrderedDict()
             layers[layer]["params"][p] = v
 
-        for (k, v) in opt.items():
+        for k, v in opt.items():
             if k in ["master_weights", "LR_Scheduler"]:
                 continue
             layer, _ = tname_to_layer_and_pname[opt_to_t[v.name]]
             layers[layer]["opt"][k] = v
 
         if "master_weights" in opt:
-            for (k, v) in opt["master_weights"].items():
+            for k, v in opt["master_weights"].items():
                 layer, _ = tname_to_layer_and_pname[k]
                 layers[layer]["master_weights"][k] = v
 
@@ -218,7 +218,7 @@ class PipeLineModelAdaptor:
 
         ans = []
 
-        for (layer_name, layer) in layers.items():
+        for layer_name, layer in layers.items():
             # special treatment for embedding layer
             if (not with_shared) and "shared_layers" in layer_name:
                 continue
@@ -311,7 +311,7 @@ class PipeLineModelAdaptor:
         # name layers
         segments = [[] for i in range(config.pp)]
         for i in range(config.pp):
-            for (start, end) in index_segments[i]:
+            for start, end in index_segments[i]:
                 for j in range(start, end):
                     if config.vpp > 1:
                         segments[i].append(
@@ -338,7 +338,7 @@ class PipeLineModelAdaptor:
             for i in range(1, config.pp):
                 segments[i] = [([layers[0][0]], layers[0][1])] + segments[i]
 
-        for (pp_rank, segs) in enumerate(segments):
+        for pp_rank, segs in enumerate(segments):
             print(f"segmentment result for pp_rank {pp_rank}:")
             print(50 * "=")
             for seg in segs:
@@ -352,12 +352,12 @@ class PipeLineModelAdaptor:
         renaming_manager = LayerReNamingManager()
 
         def merge(src, dst, map_k=None):
-            for (k, v) in src.items():
+            for k, v in src.items():
                 k = map_k(k) if map_k is not None else k
                 dst[k] = v
 
         lr_scheduler = None
-        for (layer_names, file_path) in layers_segment:
+        for layer_names, file_path in layers_segment:
             print("load %s" % file_path)
             layer = paddle.load(file_path)
 
@@ -425,14 +425,14 @@ class PipeLineModelAdaptor:
         # old name to new name
         t_name_mapping = {}
         # map tensor names
-        for (k, v) in params.items():
+        for k, v in params.items():
             t_name_mapping[v.name] = renaming_manager.get_new_param_name(v.name)
             v.name = t_name_mapping[v.name]
         # map opt names
         opt_to_tname = self._opt_name_to_tname(
             t_name_mapping.keys(), opt.keys()
         )
-        for (k, v) in opt.items():
+        for k, v in opt.items():
             old_t_name = opt_to_tname[k]
             t_name = t_name_mapping[old_t_name]
             opt_name = t_name + k[len(old_t_name) :]
@@ -440,7 +440,7 @@ class PipeLineModelAdaptor:
             opt_renamed[opt_name] = v
 
         # map master names
-        for (k, v) in master_weights.items():
+        for k, v in master_weights.items():
             t_name = t_name_mapping[k]
             v.name = t_name + v.name[len(k) :]
             master_weights_renamed[t_name] = v
@@ -448,7 +448,6 @@ class PipeLineModelAdaptor:
 
 
 def parse_args():
-
     parser = argparse.ArgumentParser(
         prog='model converter', description='converter a model'
     )
@@ -591,7 +590,6 @@ def adaptor_from_args(args):
 
 
 def main():
-
     args = parse_args()
     adaptor = adaptor_from_args(args)
     if args.method == "peek_model":

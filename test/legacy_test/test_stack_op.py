@@ -167,7 +167,6 @@ class TestStackBF16Op(OpTest):
         self.initParameters()
         self.op_type = 'stack'
         self.prim_op_type = "comp"
-        self.enable_cinn = False
         self.python_api = paddle.stack
         self.public_python_api = paddle.stack
         self.x = []
@@ -191,8 +190,7 @@ class TestStackBF16Op(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        # concat_grad unspport bfloat16 dtype, skip check_prim
-        self.check_grad(self.get_x_names(), 'Y')
+        self.check_grad(self.get_x_names(), 'Y', check_prim=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

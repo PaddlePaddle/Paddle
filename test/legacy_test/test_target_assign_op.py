@@ -159,7 +159,12 @@ class TestTargetAssginIntType(OpTest):
             num_prior, gt_lod, neg_lod
         )
 
-        _, _, out, out_wt, = target_assign(
+        (
+            _,
+            _,
+            out,
+            out_wt,
+        ) = target_assign(
             encoded_box,
             gt_label,
             match_indices,

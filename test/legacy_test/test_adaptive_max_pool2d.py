@@ -34,7 +34,6 @@ def adaptive_end_index(index, input_size, output_size):
 def adaptive_pool2d_forward(
     x, output_size, data_format='NCHW', pool_type="max"
 ):
-
     N = x.shape[0]
     C, H, W = (
         [x.shape[1], x.shape[2], x.shape[3]]

@@ -14,7 +14,9 @@
 
 #pragma once
 
-#include <iostream>
+#include <ostream>
+#include <vector>
+#include "paddle/ir/core/block.h"
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
@@ -22,11 +24,10 @@
 namespace ir {
 class OpBase;
 class Program;
-class Block;
 class OpOperand;
 class OpResult;
 
-class alignas(8) Operation final {
+class IR_API alignas(8) Operation final {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -34,25 +35,32 @@ class alignas(8) Operation final {
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  static Operation *create(const std::vector<ir::OpResult> &inputs,
+  static Operation *Create(const std::vector<ir::OpResult> &inputs,
                            const AttributeMap &attributes,
                            const std::vector<ir::Type> &output_types,
                            ir::OpInfo op_info,
                            size_t num_regions = 0);
-  static Operation *create(OperationArgument &&op_argument);
+  static Operation *Create(OperationArgument &&op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
-  void destroy();
+  void Destroy();
 
   IrContext *ir_context() const;
 
-  OpResult GetResultByIndex(uint32_t index) const;
+  Dialect *dialect() const;
 
-  OpOperand GetOperandByIndex(uint32_t index) const;
+  OpResult result(uint32_t index) const;
 
-  std::string print();
+  OpOperand op_operand(uint32_t index) const;
+
+  Value operand(uint32_t index) const;
+
+  /// Returns the region held by this operation at position 'index'.
+  Region &region(unsigned index);
+
+  void Print(std::ostream &os);
 
   const AttributeMap &attributes() const { return attributes_; }
 
@@ -60,7 +68,7 @@ class alignas(8) Operation final {
     attributes_[key] = value;
   }
 
-  ir::OpInfo op_info() const { return op_info_; }
+  ir::OpInfo info() const { return info_; }
 
   uint32_t num_results() const { return num_results_; }
 
@@ -68,7 +76,7 @@ class alignas(8) Operation final {
 
   uint32_t num_regions() const { return num_regions_; }
 
-  std::string op_name() const;
+  std::string name() const;
 
   template <typename T>
   T dyn_cast() {
@@ -77,15 +85,15 @@ class alignas(8) Operation final {
 
   template <typename Trait>
   bool HasTrait() const {
-    return op_info_.HasTrait<Trait>();
+    return info_.HasTrait<Trait>();
   }
 
   template <typename Interface>
   bool HasInterface() const {
-    return op_info_.HasInterface<Interface>();
+    return info_.HasInterface<Interface>();
   }
 
-  Block *GetParentBlock() const { return parent_; }
+  Block *GetParent() const { return parent_; }
 
   Region *GetParentRegion() const;
 
@@ -93,8 +101,18 @@ class alignas(8) Operation final {
 
   Program *GetParentProgram();
 
-  /// Returns the region held by this operation at position 'index'.
-  Region &GetRegion(unsigned index);
+  operator Block::iterator() { return position_; }
+
+  operator Block::const_iterator() const { return position_; }
+
+  /// Replace all uses of results of this operation with the provided 'values'.
+  void ReplaceAllUsesWith(const std::vector<Value> &values);
+
+  inline void ReplaceAllUsesWith(Value value) {
+    ReplaceAllUsesWith(std::vector<Value>{value});
+  }
+
+  void Verify();
 
  private:
   Operation(const AttributeMap &attribute,
@@ -110,8 +128,9 @@ class alignas(8) Operation final {
     }
   };
 
+  // Allow access to 'SetParent'.
   friend class Block;
-  void set_parent(Block *parent) { parent_ = parent; }
+  void SetParent(Block *parent, const Block::iterator &position);
 
   template <typename T>
   struct CastUtil<
@@ -122,7 +141,7 @@ class alignas(8) Operation final {
 
   AttributeMap attributes_;
 
-  OpInfo op_info_;
+  OpInfo info_;
 
   const uint32_t num_results_ = 0;
   const uint32_t num_operands_ = 0;
@@ -130,6 +149,7 @@ class alignas(8) Operation final {
 
   Region *regions_{nullptr};
   Block *parent_{nullptr};
+  Block::iterator position_;
 };
 
 }  // namespace ir
