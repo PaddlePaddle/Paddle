@@ -166,8 +166,8 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.ExponentialDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.ExponentialDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -228,8 +228,8 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NaturalExpDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.NaturalExpDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -288,8 +288,8 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.InverseTimeDecay(
-                learning_rate, decay_steps, decay_rate, staircase
+            decay = paddle.optimizer.lr.InverseTimeDecay(
+                learning_rate, decay_rate
             )
             return decay
         else:
@@ -410,10 +410,10 @@ def piecewise_decay(boundaries, values):
               paddle.enable_static()
               boundaries = [10000, 20000]
               values = [1.0, 0.5, 0.1]
-              optimizer = fluid.optimizer.Momentum(
+              optimizer = paddle.optimizer.Momentum(
                   momentum=0.9,
-                  learning_rate=fluid.layers.piecewise_decay(boundaries=boundaries, values=values),
-                  regularization=paddle.regularizer.L2Decay(1e-4))
+                  learning_rate=paddle.optimizer.lr.PiecewiseDecay(boundaries, values),
+                  weight_decay=paddle.regularizer.L2Decay(1e-4))
 
 
     """
@@ -422,7 +422,7 @@ def piecewise_decay(boundaries, values):
             raise ValueError("len(values) - len(boundaries) should be 1")
 
         if in_dygraph_mode():
-            decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
+            decay = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
             return decay
         else:
             global_step = _decay_step_counter()
@@ -495,8 +495,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.CosineDecay(
-                learning_rate, step_each_epoch, epochs
+            decay = paddle.optimizer.lr.CosineAnnealingDecay(
+                learning_rate, epochs
             )
             return decay
         else:

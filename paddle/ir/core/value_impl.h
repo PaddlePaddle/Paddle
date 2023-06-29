@@ -33,10 +33,10 @@ class OpOperandImpl {
 
   ir::Value source() const;
 
-  void release_source();
+  void set_source(Value value);
 
-  /// Remove this operand from the current use list.
-  void remove_from_ud_chain();
+  /// Remove this op_operand from the current use list.
+  void RemoveFromUdChain();
 
   ~OpOperandImpl();
 
@@ -45,20 +45,24 @@ class OpOperandImpl {
  private:
   OpOperandImpl(ir::Value source, ir::Operation *owner);
 
+  // Insert self to the UD chain holded by source_;
+  // It is not safe. So set provate.
+  void InsertToUdChain();
+
   ir::detail::OpOperandImpl *next_use_ = nullptr;
 
   ir::detail::OpOperandImpl **prev_use_addr_ = nullptr;
 
   ir::Value source_;
 
-  ir::Operation *owner_ = nullptr;
+  ir::Operation *const owner_ = nullptr;
 };
 
 ///
 /// \brief ValueImpl is the base class of all derived Value classes such as
 /// OpResultImpl. This class defines all the information and usage interface in
 /// the IR Value. Each Value include three attributes:
-/// (1) type: ir::Type; (2) UD-chain of value: OpOperandImpl*, first operand
+/// (1) type: ir::Type; (2) UD-chain of value: OpOperandImpl*, first op_operand
 /// address with offset of this value; (3) index: the position where the output
 /// list of the parent operator.
 ///
@@ -69,7 +73,7 @@ class alignas(8) ValueImpl {
   ///
   ir::Type type() const { return type_; }
 
-  void SetType(ir::Type type) { type_ = type; }
+  void set_type(ir::Type type) { type_ = type; }
 
   ///
   /// \brief Interface functions of "first_use_offseted_by_index_" attribute.
@@ -94,7 +98,11 @@ class alignas(8) ValueImpl {
 
   bool use_empty() const { return first_use() == nullptr; }
 
-  std::string print_ud_chain();
+  bool HasOneUse() const {
+    return (first_use() != nullptr) && (first_use()->next_use() == nullptr);
+  }
+
+  std::string PrintUdChain();
 
  protected:
   ///

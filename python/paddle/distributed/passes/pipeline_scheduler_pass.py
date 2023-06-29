@@ -22,7 +22,8 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Program
 
-from .pass_base import PassBase, register_pass
+from .pass_base import PassBase, PassContext, new_pass, register_pass
+from .pass_utils import get_skip_gc_vars
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -249,15 +250,24 @@ def _program_for_fthenb_and_1f1b(program):
     bwd_prog._rollback()
     opt_prog._rollback()
 
+    lr_vars, fwd_vars, bwd_vars, opt_vars = get_skip_gc_vars(
+        [lr_prog, fwd_prog, bwd_prog, opt_prog]
+    )
+
     return {
         "lr": lr_prog.desc,
         "forward": fwd_prog.desc,
         "backward": bwd_prog.desc,
         "optimizer": opt_prog.desc,
+    }, {
+        "lr": lr_vars,
+        "forward": fwd_vars,
+        "backward": bwd_vars,
+        "optimizer": opt_vars,
     }
 
 
-@register_pass("pipeline_fthenb_scheduler")
+@register_pass("pipeline_scheduler_FThenB")
 class PipelineFThenBPass(PassBase):
     def __init__(self):
         super().__init__()
@@ -268,31 +278,125 @@ class PipelineFThenBPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_job_list(self):
+    def _create_job_list(self, type_to_skip_vars):
         job_list = []
         lr_job = core.Job("lr")
+        lr_job.set_skip_gc_vars(type_to_skip_vars["lr"])
         job_list.append(lr_job)
-        for i in range(self._micro_batch_size):
+
+        for i in range(self._num_micro_batches):
             forward_job = core.Job("forward")
             forward_job.set_micro_batch_id(i)
+            forward_job.set_skip_gc_vars(type_to_skip_vars["forward"])
             job_list.append(forward_job)
 
-        for i in range(self._micro_batch_size):
+        for i in range(self._num_micro_batches):
             backward_job = core.Job("backward")
             backward_job.set_micro_batch_id(i)
+            backward_job.set_skip_gc_vars(type_to_skip_vars["backward"])
             job_list.append(backward_job)
 
         opt_job = core.Job("optimizer")
+        opt_job.set_skip_gc_vars(type_to_skip_vars["optimizer"])
         job_list.append(opt_job)
         return job_list
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        self._micro_batch_size = self.get_attr("micro_batch_size")
+        self._num_micro_batches = self.get_attr("num_micro_batches")
         self._program = main_program
 
         _insert_sync_for_fthenb_1f1b(self._program)
-        type_to_program = _program_for_fthenb_and_1f1b(self._program)
-        job_list = self._create_job_list()
+        type_to_program, type_to_skip_vars = _program_for_fthenb_and_1f1b(
+            self._program
+        )
+        job_list = self._create_job_list(type_to_skip_vars)
 
         plan = core.Plan(job_list, type_to_program)
         context.set_attr("plan", plan)
+
+
+@register_pass("pipeline_scheduler_1F1B")
+class Pipeline1F1BPass(PassBase):
+    def __init__(self):
+        super().__init__()
+
+    def _check_self(self):
+        return True
+
+    def _check_conflict(self, other_pass):
+        return True
+
+    def _create_job_list(self, type_to_skip_vars):
+        job_list = []
+        lr_job = core.Job("lr")
+        lr_job.set_skip_gc_vars(type_to_skip_vars["lr"])
+        job_list.append(lr_job)
+
+        assert (
+            self._pp_degree <= self._num_micro_batches
+        ), "Num of micro batches should larger than pp degree."
+
+        micro_batch_in_warmup = self._pp_degree - self._pp_stage
+        micro_batch_in_1f1b = self._num_micro_batches - micro_batch_in_warmup
+
+        forward_micro_batch_id = 0
+        for i in range(micro_batch_in_warmup):
+            forward_job = core.Job("forward")
+            forward_job.set_micro_batch_id(forward_micro_batch_id)
+            forward_job.set_skip_gc_vars(type_to_skip_vars["forward"])
+            job_list.append(forward_job)
+            forward_micro_batch_id += 1
+
+        backward_micro_batch_id = 0
+        for i in range(micro_batch_in_1f1b):
+            backward_job = core.Job("backward")
+            backward_job.set_micro_batch_id(backward_micro_batch_id)
+            backward_job.set_skip_gc_vars(type_to_skip_vars["backward"])
+            job_list.append(backward_job)
+            backward_micro_batch_id += 1
+            forward_job = core.Job("forward")
+            forward_job.set_micro_batch_id(forward_micro_batch_id)
+            forward_job.set_skip_gc_vars(type_to_skip_vars["forward"])
+            job_list.append(forward_job)
+            forward_micro_batch_id += 1
+
+        for i in range(micro_batch_in_warmup):
+            backward_job = core.Job("backward")
+            backward_job.set_micro_batch_id(backward_micro_batch_id)
+            backward_job.set_skip_gc_vars(type_to_skip_vars["backward"])
+            job_list.append(backward_job)
+            backward_micro_batch_id += 1
+
+        opt_job = core.Job("optimizer")
+        opt_job.set_skip_gc_vars(type_to_skip_vars["optimizer"])
+        job_list.append(opt_job)
+        return job_list
+
+    def _apply_single_impl(self, main_program, startup_program, context):
+        self._num_micro_batches = self.get_attr("num_micro_batches")
+        self._pp_stage = self.get_attr("pp_stage")
+        self._pp_degree = self.get_attr("pp_degree")
+        self._program = main_program
+
+        _insert_sync_for_fthenb_1f1b(self._program)
+        type_to_program, type_to_skip_vars = _program_for_fthenb_and_1f1b(
+            self._program
+        )
+        job_list = self._create_job_list(type_to_skip_vars)
+
+        plan = core.Plan(job_list, type_to_program)
+        context.set_attr("plan", plan)
+
+
+def apply_pass(main_program, startup_program, pass_name, pass_attr={}):
+    assert pass_name in [
+        "FThenB",
+        "1F1B",
+    ], "pipeline scheduler only support FThenB and 1F1B, but recieve {}".format(
+        pass_name
+    )
+    pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
+    pass_context = PassContext()
+    pipeline_pass.apply([main_program], [startup_program], pass_context)
+    plan = pass_context.get_attr("plan")
+    return plan

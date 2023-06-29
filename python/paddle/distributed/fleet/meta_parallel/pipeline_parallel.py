@@ -175,6 +175,7 @@ class PipelineParallel(MetaParallelBase):
         self._enable_timer = self._strategy.hybrid_configs[
             "pp_configs"
         ].enable_timer
+
         self._profiling = self._strategy.hybrid_configs["pp_configs"].profiling
         self._records = []
         self._record_format = (
@@ -302,6 +303,7 @@ class PipelineParallel(MetaParallelBase):
         for model in models:
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
+
             parameter_list = [
                 p for p in model.parameters() if not p.stop_gradient
             ]

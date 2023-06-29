@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/fluid/ir/dialect/utils.h"
@@ -41,7 +42,9 @@
 
 #include "paddle/fluid/ir/dialect/pd_attribute.h"
 
+#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_adaptor.h"
+#include "paddle/ir/core/attribute.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
@@ -72,6 +75,11 @@ TEST(program_test, program) {
             true);
   EXPECT_EQ(block->size(), 4u);
 
+  ir::Attribute seed_attr = uniform1.attribute("seed");
+  ir::Int32Attribute seed_attr1 =
+      uniform1.attribute<ir::Int32Attribute>("seed");
+  EXPECT_EQ(seed_attr.dyn_cast<ir::Int32Attribute>().data(), seed_attr1.data());
+
   // Def: B = paddle::dialect::UniformOp(...)
   paddle::dialect::UniformOp uniform2 =
       builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
@@ -92,9 +100,10 @@ TEST(program_test, program) {
   EXPECT_EQ(block->size(), 9u);
 
   // Execute program
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
   paddle::framework::Scope scope;
   PhiKernelAdaptor phi_kernel_adaptor(&scope);
-  phi_kernel_adaptor.run(&program);
+  phi_kernel_adaptor.run_kernel_prog(kernel_program.get());
 
   auto out_tensor =
       scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
@@ -158,9 +167,10 @@ TEST(program_test, mutable_attribute) {
   EXPECT_EQ(block->size(), 6u);
 
   // Execute program
+  auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
   paddle::framework::Scope scope;
   PhiKernelAdaptor phi_kernel_adaptor(&scope);
-  phi_kernel_adaptor.run(&program);
+  phi_kernel_adaptor.run_kernel_prog(kernel_program.get());
 
   auto out_tensor =
       scope.Var(phi_kernel_adaptor.out_name)->Get<phi::DenseTensor>();
