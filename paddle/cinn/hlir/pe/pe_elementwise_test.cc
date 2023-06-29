@@ -37,8 +37,8 @@ template <typename FuncOp, typename FuncRuntime>
 void TestElementwisePE(const std::string &fn_name,
                        const FuncOp &func_op,
                        const FuncRuntime &fn_runtime,
-                       Type type           = Float(32),
-                       int set_value       = 0,
+                       Type type = Float(32),
+                       int set_value = 0,
                        bool test_benchmark = true) {
   Expr M(1024), N(2048);
 
@@ -60,7 +60,7 @@ void TestElementwisePE(const std::string &fn_name,
   LOG(INFO) << "func:\n" << func;
   builder.AddFunction(func);
 
-  auto jit    = backends::ExecutionEngine::Create({});
+  auto jit = backends::ExecutionEngine::Create({});
   auto module = builder.Build();
 
   jit->Link<backends::CodeGenX86>(module);
@@ -70,11 +70,17 @@ void TestElementwisePE(const std::string &fn_name,
 
   cinn_buffer_t *A_buf;
   if (set_value != 0) {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_val(set_value).Build();
+    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                .set_val(set_value)
+                .Build();
   } else {
-    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
+    A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                .set_random()
+                .Build();
   }
-  auto *B_buf = common::BufferBuilder(type, {M.as_int32(), N.as_int32()}).set_align(type.bits()).Build();
+  auto *B_buf = common::BufferBuilder(type, {M.as_int32(), N.as_int32()})
+                    .set_align(type.bits())
+                    .Build();
 
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg};
@@ -91,7 +97,8 @@ void TestElementwisePE(const std::string &fn_name,
       fn_(args, 2);
     }
     test_op_time = timer.Stop() / repeat_;
-    LOG(INFO) << "repeat times: " << repeat_ << ", kernel run time: " << test_op_time << " ms";
+    LOG(INFO) << "repeat times: " << repeat_
+              << ", kernel run time: " << test_op_time << " ms";
   } else {
     fn_(args, 2);
   }
@@ -115,17 +122,23 @@ bool isfinite(float e) { return std::isfinite(e); }
 bool isinf(float e) { return std::isinf(e); }
 float rsqrt(float e) { return 1.0f / sqrtf(e); }
 
-#define TEST_ELEMENTWISE_PE_FP32(test_name__, PE__)                                               \
-  TEST(elementwise_pe, test_name__) {                                                             \
-    cinn::hlir::pe::TestElementwisePE("PE_Elementwise_" #test_name__ "_fp32", PE__, test_name__); \
+#define TEST_ELEMENTWISE_PE_FP32(test_name__, PE__)                 \
+  TEST(elementwise_pe, test_name__) {                               \
+    cinn::hlir::pe::TestElementwisePE(                              \
+        "PE_Elementwise_" #test_name__ "_fp32", PE__, test_name__); \
   }
-#define TEST_ELEMENTWISE_PE_FP32_BOOL(test_name__, PE__)                                                  \
-  TEST(elementwise_pe, test_name__) {                                                                     \
-    cinn::hlir::pe::TestElementwisePE("PE_Elementwise_" #test_name__ "_fp32", PE__, test_name__, Bool()); \
+#define TEST_ELEMENTWISE_PE_FP32_BOOL(test_name__, PE__)                    \
+  TEST(elementwise_pe, test_name__) {                                       \
+    cinn::hlir::pe::TestElementwisePE(                                      \
+        "PE_Elementwise_" #test_name__ "_fp32", PE__, test_name__, Bool()); \
   }
-#define TEST_ELEMENTWISE_PE_FP32_SET(test_name__, PE__, value__)                                                      \
-  TEST(elementwise_pe, test_name__) {                                                                                 \
-    cinn::hlir::pe::TestElementwisePE("PE_Elementwise_" #test_name__ "_fp32", PE__, test_name__, Float(32), value__); \
+#define TEST_ELEMENTWISE_PE_FP32_SET(test_name__, PE__, value__)              \
+  TEST(elementwise_pe, test_name__) {                                         \
+    cinn::hlir::pe::TestElementwisePE("PE_Elementwise_" #test_name__ "_fp32", \
+                                      PE__,                                   \
+                                      test_name__,                            \
+                                      Float(32),                              \
+                                      value__);                               \
   }
 
 TEST_ELEMENTWISE_PE_FP32(expf, Exp)

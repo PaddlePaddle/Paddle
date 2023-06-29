@@ -28,7 +28,9 @@ namespace cinn {
 namespace optim {
 
 struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
-  ReplaceVarWithExprMutator(const Var& var, const Expr& expr, const std::string& tensor_name)
+  ReplaceVarWithExprMutator(const Var& var,
+                            const Expr& expr,
+                            const std::string& tensor_name)
       : var_(var), expr_(expr), tensor_name_(tensor_name) {}
 
   void operator()(Expr* expr) {
@@ -40,7 +42,7 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
   void Visit(const ir::_Var_* expr, Expr* op) override {
     if (expr->name == var_->name && (do_replace_ || visit_all_)) {
       auto copied = IRCopy(expr_);
-      *op         = copied;
+      *op = copied;
     }
   }
 
@@ -49,7 +51,8 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&node->min, &node->min);
     ir::IRMutator<>::Visit(&node->extent, &node->extent);
     ir::IRMutator<>::Visit(&node->body, &node->body);
-    if (node->loop_var->name == var_->name && expr_.As<ir::_Var_>() && visit_all_) {
+    if (node->loop_var->name == var_->name && expr_.As<ir::_Var_>() &&
+        visit_all_) {
       node->loop_var = expr_.As<ir::_Var_>();
     }
   }
@@ -60,13 +63,14 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&node->condition, &node->condition);
     ir::IRMutator<>::Visit(&node->inc, &node->inc);
     ir::IRMutator<>::Visit(&node->body, &node->body);
-    if (node->iterator->name == var_->name && expr_.As<ir::_Var_>() && visit_all_) {
+    if (node->iterator->name == var_->name && expr_.As<ir::_Var_>() &&
+        visit_all_) {
       node->iterator = expr_.As<ir::_Var_>();
     }
   }
 
   void Visit(const ir::Store* op, Expr* expr) override {
-    auto* node   = expr->As<ir::Store>();
+    auto* node = expr->As<ir::Store>();
     auto* tensor = node->tensor.as_tensor();
 
     if (tensor->name == tensor_name_) {
@@ -83,7 +87,7 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
   }
 
   void Visit(const ir::Load* expr, Expr* op) override {
-    auto* node   = op->As<ir::Load>();
+    auto* node = op->As<ir::Load>();
     auto* tensor = node->tensor.as_tensor();
     if (tensor->name == tensor_name_) {
       do_replace_ = true;
@@ -103,13 +107,17 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
   const std::string& tensor_name_;
 };
 
-void ReplaceVarWithExpr(Expr* source, const Var& var, const Expr& expr, const std::string& tensor_name) {
+void ReplaceVarWithExpr(Expr* source,
+                        const Var& var,
+                        const Expr& expr,
+                        const std::string& tensor_name) {
   ReplaceVarWithExprMutator mutator(var, expr, tensor_name);
   mutator(source);
 }
 
 struct CollectTensorIndexMutator : public ir::IRMutator<> {
-  CollectTensorIndexMutator(const std::string& tensor_name) : tensor_name_(tensor_name) {}
+  CollectTensorIndexMutator(const std::string& tensor_name)
+      : tensor_name_(tensor_name) {}
 
   std::vector<std::vector<Expr>> operator()(Expr* expr) {
     IRMutator::Visit(expr, expr);
@@ -128,7 +136,7 @@ struct CollectTensorIndexMutator : public ir::IRMutator<> {
   }
 
   void Visit(const ir::Load* expr, Expr* op) override {
-    auto* node   = op->As<ir::Load>();
+    auto* node = op->As<ir::Load>();
     auto* tensor = node->tensor.as_tensor();
     if (tensor->name == tensor_name_) {
       ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
@@ -144,7 +152,8 @@ struct CollectTensorIndexMutator : public ir::IRMutator<> {
   const std::string& tensor_name_;
 };
 
-std::vector<std::vector<Expr>> CollectTensorIndex(Expr* source, const std::string& tensor_name) {
+std::vector<std::vector<Expr>> CollectTensorIndex(
+    Expr* source, const std::string& tensor_name) {
   CollectTensorIndexMutator mutator(tensor_name);
   std::vector<std::vector<Expr>> result = mutator(source);
   for (auto& i : result) {

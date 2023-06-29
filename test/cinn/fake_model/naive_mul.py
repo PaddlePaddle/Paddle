@@ -26,7 +26,8 @@ a = static.data(name="A", shape=[-1, size], dtype='float32')
 label = static.data(name="label", shape=[size], dtype='float32')
 
 a1 = static.nn.fc(
-    x=a, size=size, activation="relu", bias_attr=None, num_flatten_dims=1)
+    x=a, size=size, activation="relu", bias_attr=None, num_flatten_dims=1
+)
 
 cost = paddle.nn.functional.square_error_cost(a1, label)
 avg_cost = paddle.mean(cost)

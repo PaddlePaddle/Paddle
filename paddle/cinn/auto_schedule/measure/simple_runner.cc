@@ -35,48 +35,64 @@ using hlir::framework::Tensor;
 
 // Parameters that needs to be initialized to 0.
 // Key is the Op name, and value is the index of the input parameter in the Op.
-static const std::unordered_map<std::string, std::vector<int>> kInitWithZeroParams = {
-    {"lookup_table", {1}},
-    {"gather", {1}},
-    {"gather_nd", {1}},
-    {"scatter_assign", {2}},
-    {"scatter_add", {2}},
+static const std::unordered_map<std::string, std::vector<int>>
+    kInitWithZeroParams = {
+        {"lookup_table", {1}},
+        {"gather", {1}},
+        {"gather_nd", {1}},
+        {"scatter_assign", {2}},
+        {"scatter_add", {2}},
 };
 
 // Generate random value and populate them to the output address of memory
-static void PopulateRandomValue(const common::Type& type, const int numel, void* raw_ptr) {
+static void PopulateRandomValue(const common::Type& type,
+                                const int numel,
+                                void* raw_ptr) {
   std::random_device seed;
   std::default_random_engine engine(seed());
 
   if (type == common::Bool()) {
     auto* fmt_ptr = reinterpret_cast<bool*>(raw_ptr);
     std::bernoulli_distribution dist(0.5);
-    std::generate_n(fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
+    std::generate_n(
+        fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
   } else if (type == common::I32()) {
     auto* fmt_ptr = reinterpret_cast<int*>(raw_ptr);
-    std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-    std::generate_n(fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
+    std::uniform_int_distribution<int> dist(std::numeric_limits<int>::min(),
+                                            std::numeric_limits<int>::max());
+    std::generate_n(
+        fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
   } else if (type == common::I64()) {
     auto* fmt_ptr = reinterpret_cast<int64_t*>(raw_ptr);
-    std::uniform_int_distribution<int64_t> dist(std::numeric_limits<int64_t>::min(),
-                                                std::numeric_limits<int64_t>::max());
-    std::generate_n(fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
+    std::uniform_int_distribution<int64_t> dist(
+        std::numeric_limits<int64_t>::min(),
+        std::numeric_limits<int64_t>::max());
+    std::generate_n(
+        fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
   } else if (type == common::F32()) {
     auto* fmt_ptr = reinterpret_cast<float*>(raw_ptr);
-    std::uniform_real_distribution<float> dist(std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
-    std::generate_n(fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
+    std::uniform_real_distribution<float> dist(
+        std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
+    std::generate_n(
+        fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
   } else {
-    CHECK_EQ(type.bytes(), 8) << "Unsupported type: " << type << ", type.bytes = " << type.bytes();
+    CHECK_EQ(type.bytes(), 8)
+        << "Unsupported type: " << type << ", type.bytes = " << type.bytes();
     auto* fmt_ptr = reinterpret_cast<uint8_t*>(raw_ptr);
-    std::uniform_int_distribution<uint8_t> dist(std::numeric_limits<uint8_t>::min(),
-                                                std::numeric_limits<uint8_t>::max());
-    std::generate_n(fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
+    std::uniform_int_distribution<uint8_t> dist(
+        std::numeric_limits<uint8_t>::min(),
+        std::numeric_limits<uint8_t>::max());
+    std::generate_n(
+        fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
   }
 }
 
-// Initialize a tensor with 0 if init_with_zero == true, otherwise initialize the tensor with random value.
-static void InitTensorData(Tensor tensor, const common::Target& target, bool init_with_zero) {
-  int mem_size      = tensor->shape().numel() * tensor->type().bytes();
+// Initialize a tensor with 0 if init_with_zero == true, otherwise initialize
+// the tensor with random value.
+static void InitTensorData(Tensor tensor,
+                           const common::Target& target,
+                           bool init_with_zero) {
+  int mem_size = tensor->shape().numel() * tensor->type().bytes();
   auto* tensor_data = tensor->mutable_data(target, tensor->type());
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
@@ -101,17 +117,20 @@ static void InitTensorData(Tensor tensor, const common::Target& target, bool ini
 
 // Find all parameter names in the task corresponding to the MeasureInput
 // that need to be initialized to 0 when measuring.
-static std::unordered_set<std::string> ParamsNeedInitWithZero(const MeasureInput& input) {
+static std::unordered_set<std::string> ParamsNeedInitWithZero(
+    const MeasureInput& input) {
   std::unordered_set<std::string> res;
-  std::vector<hlir::framework::Node*> nodes = input.task->subgraph->CollectNodes();
+  std::vector<hlir::framework::Node*> nodes =
+      input.task->subgraph->CollectNodes();
   for (auto* node : nodes) {
     if (kInitWithZeroParams.count(node->op()->name) != 0) {
       std::vector<int> param_idxs = kInitWithZeroParams.at(node->op()->name);
-      const auto& inlinks         = node->inlinks_in_order();
+      const auto& inlinks = node->inlinks_in_order();
       for (int param_idx : param_idxs) {
         CHECK_GT(inlinks.size(), param_idx);
-        auto& edge             = inlinks.at(param_idx);
-        std::string param_name = edge->source()->as<hlir::framework::NodeData>()->id();
+        auto& edge = inlinks.at(param_idx);
+        std::string param_name =
+            edge->source()->as<hlir::framework::NodeData>()->id();
         VLOG(6) << "param needs to be init with 0: " << param_name;
         res.insert(param_name);
       }
@@ -128,17 +147,19 @@ SimpleRunner::SimpleRunner(int repeat_times) : repeat_times_(repeat_times) {
 // Prepare execution arguments of all instructions to run, a argument
 // may be obtained from the input of measurement or allocating new buffer
 // with random value.
-std::map<std::string, cinn_pod_value_t> SimpleRunner::PrepareArgs(const MeasureInput& input,
-                                                                  const BuildResult& build_result,
-                                                                  hlir::framework::Scope* temp_scope) {
+std::map<std::string, cinn_pod_value_t> SimpleRunner::PrepareArgs(
+    const MeasureInput& input,
+    const BuildResult& build_result,
+    hlir::framework::Scope* temp_scope) {
   std::map<std::string, cinn_pod_value_t> result;
 
-  const auto& target         = input.task->target;
-  const auto* input_args     = input.execution_args;
+  const auto& target = input.task->target;
+  const auto* input_args = input.execution_args;
   const auto* compiled_scope = build_result.compiled_scope;
-  const auto& instructions   = build_result.runtime_program->GetRunInstructions();
+  const auto& instructions = build_result.runtime_program->GetRunInstructions();
 
-  std::unordered_set<std::string> params_need_init_with_zero = ParamsNeedInitWithZero(input);
+  std::unordered_set<std::string> params_need_init_with_zero =
+      ParamsNeedInitWithZero(input);
 
   auto fill_arg_fn = [&](const std::string& param) {
     VLOG(6) << "Filling argument:" << param;
@@ -169,7 +190,8 @@ std::map<std::string, cinn_pod_value_t> SimpleRunner::PrepareArgs(const MeasureI
     temp_tensor->Resize(compiled_tensor->shape());
     temp_tensor->set_type(compiled_tensor->type());
     temp_tensor->mutable_data(target, compiled_tensor->type());
-    InitTensorData(temp_tensor, target, params_need_init_with_zero.count(param) != 0);
+    InitTensorData(
+        temp_tensor, target, params_need_init_with_zero.count(param) != 0);
 
     result.emplace(param, temp_tensor->buffer());
   };
@@ -186,7 +208,8 @@ std::map<std::string, cinn_pod_value_t> SimpleRunner::PrepareArgs(const MeasureI
   return result;
 }
 
-MeasureResult SimpleRunner::Run(const MeasureInput& input, const BuildResult& build_result) {
+MeasureResult SimpleRunner::Run(const MeasureInput& input,
+                                const BuildResult& build_result) {
   MeasureResult result;
   auto t_start = std::chrono::steady_clock::now();
   // prepare execution arguments
@@ -195,7 +218,7 @@ MeasureResult SimpleRunner::Run(const MeasureInput& input, const BuildResult& bu
   auto execution_args = PrepareArgs(input, build_result, &temp_scope);
 
   // Execute each instruction repeatedly and take the average as cost.
-  result.execution_cost    = 0;
+  result.execution_cost = 0;
   const auto& instructions = build_result.runtime_program->GetRunInstructions();
   for (auto ct = 0; ct < instructions.size(); ++ct) {
     auto&& instr = instructions.at(ct);
@@ -209,16 +232,18 @@ MeasureResult SimpleRunner::Run(const MeasureInput& input, const BuildResult& bu
       CUDA_CALL(cudaDeviceSynchronize());
     }
 #endif
-    auto time_span =
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - run_start);
+    auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - run_start);
     auto cost_avg = static_cast<double>(time_span.count()) / repeat_times_;
     result.execution_cost += cost_avg;
   }
 
-  auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t_start);
+  auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::steady_clock::now() - t_start);
   result.elapsed_time = static_cast<double>(time_span.count());
 
-  VLOG(4) << "A measurement done:repeat_times[" << repeat_times_ << "]total_elapsed_time[" << result.elapsed_time
+  VLOG(4) << "A measurement done:repeat_times[" << repeat_times_
+          << "]total_elapsed_time[" << result.elapsed_time
           << "]us,execution_cost[" << result.execution_cost << "]us";
   return result;
 }

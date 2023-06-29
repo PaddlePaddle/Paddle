@@ -39,7 +39,7 @@ class TestFillConstantOp(OpMapperTest):
             "shape": self.shape,
             "value": float(self.value),
             "str_value": self.str_value,
-            "dtype": self.nptype2paddledtype(self.dtype)
+            "dtype": self.nptype2paddledtype(self.dtype),
         }
 
     def set_op_outputs(self):
@@ -72,7 +72,8 @@ class TestFillConstantByValueTensor(TestFillConstantOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {"ValueTensor": [x]}
 
 

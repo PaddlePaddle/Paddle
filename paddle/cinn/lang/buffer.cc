@@ -22,7 +22,7 @@ namespace lang {
 using ir::_Buffer_;
 
 Buffer::Buffer(Type type, const std::string& name) {
-  buffer_        = _Buffer_::Make();
+  buffer_ = _Buffer_::Make();
   buffer_->dtype = type;
   buffer_->set_type(type_of<cinn_buffer_t*>());
   buffer_->elem_offset = Expr(0);

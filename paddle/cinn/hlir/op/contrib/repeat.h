@@ -25,7 +25,10 @@ namespace cinn {
 namespace hlir {
 namespace op {
 
-std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor, int repeats, int axis, const std::string &output_name);
+std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
+                               int repeats,
+                               int axis,
+                               const std::string &output_name);
 
 }  // namespace op
 }  // namespace hlir

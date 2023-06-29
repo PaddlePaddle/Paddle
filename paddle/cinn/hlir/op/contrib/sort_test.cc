@@ -42,10 +42,18 @@ TEST(GenerateCode_Cpu, ArgSort) {
 
   lang::Placeholder<int32_t> in("in", {n, h});
   poly::StageMap stages = poly::CreateStages({in});
-  ir::Tensor res        = ArgSort(in.tensor(), target, stages, 1, true, "test_arg_sort_out").at(0);
+  ir::Tensor res =
+      ArgSort(in.tensor(), target, stages, 1, true, "test_arg_sort_out").at(0);
   stages->InsertLazily(res);
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestGenerateCodeCpu_ArgSort", stages, {in, res}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestGenerateCodeCpu_ArgSort",
+                     stages,
+                     {in, res},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   VLOG(6) << "Expr before CPU codegen:";
   VLOG(6) << funcs[0]->body;
@@ -57,7 +65,8 @@ TEST(GenerateCode_Cpu, ArgSort) {
 
   backends::CodeGenCX86 codegen(target, backends::CodeGenCX86::Feature::AVX512);
   codegen.SetInlineBuiltinCodes(false);
-  std::string code = codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  std::string code =
+      codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
   VLOG(6) << "Cpu Codegen result:";
   VLOG(6) << code << std::endl;
 }
@@ -71,11 +80,18 @@ TEST(GenerateCode_Cpu, Sort) {
   ir::Expr h(28);
 
   lang::Placeholder<int32_t> in("in", {n, h});
-  auto stages    = poly::CreateStages({in});
+  auto stages = poly::CreateStages({in});
   ir::Tensor out = Sort(in, target, stages, 1, true, "test_sort_out").at(0);
   stages->InsertLazily(out);
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestGenerateCodeCpu_Sort", stages, {in, out}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestGenerateCodeCpu_Sort",
+                     stages,
+                     {in, out},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   VLOG(6) << "Expr before CPU codegen:";
   VLOG(6) << funcs[0]->body;
@@ -87,7 +103,8 @@ TEST(GenerateCode_Cpu, Sort) {
 
   backends::CodeGenCX86 codegen(target, backends::CodeGenCX86::Feature::AVX512);
   codegen.SetInlineBuiltinCodes(false);
-  std::string code   = codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  std::string code =
+      codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
   auto target_source = R"ROC(
 #include <cinn_runtime.h>
 #include <stdio.h>

@@ -42,32 +42,45 @@ TEST(MutateTileSize, Basic) {
 
   Var k(K.as_int32(), "reduce_axis_k");
   ir::Tensor C = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
   poly::StageMap stages = CreateStages({A, B, C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestMutateTileSize_Basic", stages, {A, B, C}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestMutateTileSize_Basic",
+                     stages,
+                     {A, B, C},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Original Expr: ";
   VLOG(6) << ast_expr;
   ir::ModuleExpr module_expr({ast_expr});
-  // We need to fix the seed as a constant to ensure that the result can be repeated.
+  // We need to fix the seed as a constant to ensure that the result can be
+  // repeated.
   utils::LinearRandomEngine::StateType rand_seed = 123;
   ir::IRSchedule ir_schedule(module_expr, rand_seed);
   ir::IRSchedule new_ir_schedule(ir_schedule);
 
   // apply schedule
-  auto loops   = ir_schedule.GetLoops("C");
+  auto loops = ir_schedule.GetLoops("C");
   auto factors = ir_schedule.SamplePerfectTile(loops[0], 2, kSize);
   auto splited = ir_schedule.Split(loops[0], factors);
 
   // apply mutate
   MutateTileSize mutator;
-  ir::ScheduleDesc sch_desc = mutator.Apply(ir_schedule.GetTraceDesc(), &rand_seed);
+  ir::ScheduleDesc sch_desc =
+      mutator.Apply(ir_schedule.GetTraceDesc(), &rand_seed);
   sch_desc.Replay(&new_ir_schedule, true);
-  VLOG(6) << "Expr before mutate tile size: \n" << ir_schedule.GetModule().GetExprs()[0];
-  VLOG(6) << "Expr after mutate tile size: \n" << new_ir_schedule.GetModule().GetExprs()[0];
+  VLOG(6) << "Expr before mutate tile size: \n"
+          << ir_schedule.GetModule().GetExprs()[0];
+  VLOG(6) << "Expr after mutate tile size: \n"
+          << new_ir_schedule.GetModule().GetExprs()[0];
 
   std::string target_new_ir = R"ROC({
   ScheduleBlock(root)
@@ -111,7 +124,8 @@ TEST(MutateTileSize, Basic) {
     sch_desc = mutator.Apply(sch_desc, &rand_seed);
     for (auto&& step : sch_desc.Steps()) {
       if (step.type == "SamplePerfectTile") {
-        std::vector<int> tile_factors = absl::get<std::vector<int>>(step.attrs.at("decision"));
+        std::vector<int> tile_factors =
+            absl::get<std::vector<int>>(step.attrs.at("decision"));
         ASSERT_EQ(tile_factors.size(), last_tile_factors.size());
         ASSERT_NE(tile_factors[0], last_tile_factors[0]);
         ASSERT_NE(tile_factors[1], last_tile_factors[1]);

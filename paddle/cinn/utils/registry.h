@@ -1,7 +1,7 @@
 /**
- * This file is copied from dmlc-core project, all the rights are resolved by original project. Following are the
- * original header comment.
- *  Copyright (c) 2015 by Contributors
+ * This file is copied from dmlc-core project, all the rights are resolved by
+ * original project. Following are the original header comment. Copyright (c)
+ * 2015 by Contributors
  * @file registry.h
  * \brief Registry utility that helps to build registry singletons.
  */
@@ -39,7 +39,8 @@ class Registry {
    * @return the corresponding function, can be NULL
    */
   inline const EntryType *Find(const std::string &name) {
-    typename std::map<std::string, EntryType *>::const_iterator p = fmap_.find(name);
+    typename std::map<std::string, EntryType *>::const_iterator p =
+        fmap_.find(name);
     if (p != fmap_.end()) {
       return p->second;
     } else {
@@ -51,10 +52,10 @@ class Registry {
    * @param key_name The original entry key
    * @param alias The alias key.
    */
-  /*   inline void AddAlias(const std::string &key_name, const std::string &alias) {
-      EntryType *e = fmap_.at(key_name);
-      if (fmap_.count(alias)) {
-        CHECK_EQ(e, fmap_.at(alias)) << "Trying to register alias " << alias << " for key " << key_name << " but "
+  /*   inline void AddAlias(const std::string &key_name, const std::string
+    &alias) { EntryType *e = fmap_.at(key_name); if (fmap_.count(alias)) {
+        CHECK_EQ(e, fmap_.at(alias)) << "Trying to register alias " << alias <<
+    " for key " << key_name << " but "
                                      << alias << " is already taken";
       } else {
         fmap_[alias] = e;
@@ -72,8 +73,8 @@ class Registry {
     }
 
     EntryType *e = new EntryType();
-    e->name      = name;
-    fmap_[name]  = e;
+    e->name = name;
+    fmap_[name] = e;
     const_list_.push_back(e);
     entry_list_.push_back(e);
     return *e;
@@ -85,7 +86,8 @@ class Registry {
    * @return ref to the registered entry, used to set properties
    */
   inline EntryType &__REGISTER_OR_GET__(const std::string &name) {
-    // Here if we use VLOG, we will get Seg Fault. Todo: Add VLOG and fix this. @Haoze
+    // Here if we use VLOG, we will get Seg Fault. Todo: Add VLOG and fix this.
+    // @Haoze
     if (!fmap_.count(name)) {
       return __REGISTER__(name);
     } else {
@@ -127,9 +129,9 @@ class Registry {
  * \brief Common base class for function registry.
  *
  * \code
- *  // This example demonstrates how to use Registry to create a factory of trees.
- *  struct TreeFactory :
- *      public FunctionRegEntryBase<TreeFactory, std::function<Tree*()> > {
+ *  // This example demonstrates how to use Registry to create a factory of
+ * trees. struct TreeFactory : public FunctionRegEntryBase<TreeFactory,
+ * std::function<Tree*()> > {
  *  };
  *
  *  // in a independent cc file
@@ -199,12 +201,14 @@ class FunctionRegEntryBase {
  *  There is a complete example in FactoryRegistryEntryBase.
  *
  * @param EntryType The type of registry entry.
- * @param EntryTypeName The typename of EntryType, must do not contain namespace :: .
+ * @param EntryTypeName The typename of EntryType, must do not contain namespace
+ * :: .
  * @param Name The name to be registered.
  * @sa FactoryRegistryEntryBase
  */
 #define CINN_REGISTRY_REGISTER(EntryType, EntryTypeName, Name) \
-  static EntryType &__make_##EntryTypeName##_##Name##__ = ::Registry<EntryType>::Global()->__REGISTER__(#Name)
+  static EntryType &__make_##EntryTypeName##_##Name##__ =      \
+      ::Registry<EntryType>::Global()->__REGISTER__(#Name)
 
 #define CINN_STR_CONCAT_(__x, __y) __x##__y
 #define CINN_STR_CONCAT(__x, __y) CINN_STR_CONCAT_(__x, __y)

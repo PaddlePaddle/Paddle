@@ -22,7 +22,7 @@ class TestLookupTableOp(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {
             "w": self.random([10, 3], "float32"),
-            "ids": self.random([5, 1], "int64", 0, 9)
+            "ids": self.random([5, 1], "int64", 0, 9),
         }
 
     def set_op_type(self):
@@ -32,11 +32,13 @@ class TestLookupTableOp(OpMapperTest):
         w = paddle.static.data(
             name="w",
             shape=self.feed_data["w"].shape,
-            dtype=self.feed_data["w"].dtype)
+            dtype=self.feed_data["w"].dtype,
+        )
         ids = paddle.static.data(
             name="ids",
             shape=self.feed_data["ids"].shape,
-            dtype=self.feed_data["ids"].dtype)
+            dtype=self.feed_data["ids"].dtype,
+        )
         return {"W": [w], "Ids": [ids]}
 
     def set_op_attrs(self):
@@ -53,7 +55,7 @@ class TestLookupTableOpCase1(TestLookupTableOp):
     def init_input_data(self):
         self.feed_data = {
             "w": self.random([32, 64], "float64"),
-            "ids": self.random([10, 1], "int64", 0, 31)
+            "ids": self.random([10, 1], "int64", 0, 31),
         }
 
     def set_op_attrs(self):
@@ -64,7 +66,7 @@ class TestLookupTableV2Op(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {
             "w": self.random([10, 3], "float32"),
-            "ids": self.random([5, 2], "int32", 0, 9)
+            "ids": self.random([5, 2], "int32", 0, 9),
         }
 
     def set_op_type(self):
@@ -74,11 +76,13 @@ class TestLookupTableV2Op(OpMapperTest):
         w = paddle.static.data(
             name="w",
             shape=self.feed_data["w"].shape,
-            dtype=self.feed_data["w"].dtype)
+            dtype=self.feed_data["w"].dtype,
+        )
         ids = paddle.static.data(
             name="ids",
             shape=self.feed_data["ids"].shape,
-            dtype=self.feed_data["ids"].dtype)
+            dtype=self.feed_data["ids"].dtype,
+        )
         return {"W": [w], "Ids": [ids]}
 
     def set_op_attrs(self):
@@ -95,7 +99,7 @@ class TestLookupTableV2OpCase1(TestLookupTableV2Op):
     def init_input_data(self):
         self.feed_data = {
             "w": self.random([32, 64], "float64"),
-            "ids": self.random([10, 3], "int64", 0, 31)
+            "ids": self.random([10, 3], "int64", 0, 31),
         }
 
     def set_op_attrs(self):

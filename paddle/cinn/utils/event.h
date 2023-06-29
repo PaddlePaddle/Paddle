@@ -79,7 +79,9 @@ class Summary {
     Raito total_raito{0.0};  // precentage of total process
 
     Item(const HostEvent& e) : info(e) {}
-    bool operator<(const Item& other) const { return total_raito.value > other.total_raito.value; }
+    bool operator<(const Item& other) const {
+      return total_raito.value > other.total_raito.value;
+    }
   };
 
   static std::string Format(const std::vector<HostEvent>& events);
@@ -101,7 +103,9 @@ class HostEventRecorder {
 
   std::vector<HostEvent>& Events() { return events_; }
 
-  void RecordEvent(const std::string& annotation, double duration, EventType type) {
+  void RecordEvent(const std::string& annotation,
+                   double duration,
+                   EventType type) {
     GetInstance().Events().emplace_back(annotation, duration, type);
   }
 

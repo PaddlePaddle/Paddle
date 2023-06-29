@@ -23,7 +23,8 @@
 namespace cinn {
 namespace hlir {
 namespace op {
-ir::Tensor Reciprocal(const ir::Tensor& input, const std::string& name = "T_Reciprocal_out");
+ir::Tensor Reciprocal(const ir::Tensor& input,
+                      const std::string& name = "T_Reciprocal_out");
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

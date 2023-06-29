@@ -33,7 +33,8 @@ fc_out = static.nn.fc(
     size=size,
     activation="relu",
     bias_attr=paddle.ParamAttr(name="fc_bias"),
-    num_flatten_dims=1)
+    num_flatten_dims=1,
+)
 
 for i in range(num_layers - 1):
     fc_out = static.nn.fc(
@@ -41,7 +42,8 @@ for i in range(num_layers - 1):
         size=size,
         activation="relu",
         bias_attr=paddle.ParamAttr(name="fc_bias"),
-        num_flatten_dims=1)
+        num_flatten_dims=1,
+    )
 
 cost = paddle.nn.functional.square_error_cost(fc_out, label)
 avg_cost = paddle.mean(cost)

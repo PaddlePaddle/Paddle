@@ -11,11 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include <thrust/random.h>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
@@ -37,7 +38,7 @@ struct GaussianGenerator {
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
-    using MT = typename details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     thrust::normal_distribution<MT> dist(static_cast<MT>(mean_),
                                          static_cast<MT>(std_));
     unsigned int new_n = n + offset_;

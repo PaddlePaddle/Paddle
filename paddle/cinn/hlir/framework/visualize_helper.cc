@@ -38,44 +38,55 @@ namespace framework {
 
 bool PassPrinter::Begin(const std::unordered_set<std::string>& fetch_ids) {
   if (FLAGS_cinn_pass_visualize_dir.empty()) {
-    VLOG(3) << "No set \"FLAGS_cinn_pass_visualize_dir\", the pass visualize information will print directly.";
+    VLOG(3) << "No set \"FLAGS_cinn_pass_visualize_dir\", the pass visualize "
+               "information will print directly.";
     save_path_.clear();
     return false;
   }
-  pass_id_   = 0;
+  pass_id_ = 0;
   fetch_ids_ = fetch_ids;
 
-  save_path_ = utils::StringFormat("%s/fusion_groups_%d/", FLAGS_cinn_pass_visualize_dir.c_str(), graph_id_);
-  if (!MakeDirectory(save_path_, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
-    LOG_IF(WARNING, graph_id_ == 0) << "Failed to make directory: \"" << save_path_
-                                    << "\", the CINN subgraph's pass visualize information will not print.";
+  save_path_ = utils::StringFormat(
+      "%s/fusion_groups_%d/", FLAGS_cinn_pass_visualize_dir.c_str(), graph_id_);
+  if (!MakeDirectory(save_path_,
+                     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+    LOG_IF(WARNING, graph_id_ == 0)
+        << "Failed to make directory: \"" << save_path_
+        << "\", the CINN subgraph's pass visualize information will not print.";
     return false;
   }
-  LOG_IF(INFO, graph_id_ == 0) << "The CINN subgraph's pass visualize information will writing into path: \""
+  LOG_IF(INFO, graph_id_ == 0) << "The CINN subgraph's pass visualize "
+                                  "information will writing into path: \""
                                << FLAGS_cinn_pass_visualize_dir << "\"";
   return true;
 }
 
-bool PassPrinter::PassBegin(const std::string& pass_name, const frontend::Program& program) {
+bool PassPrinter::PassBegin(const std::string& pass_name,
+                            const frontend::Program& program) {
   if (save_path_.empty()) {
     return false;
   }
   const auto& program_info = utils::GetStreamCnt(program);
   VLOG(3) << "Before " << pass_name << " Pass:\n" << program_info;
-  const std::string& file_path =
-      utils::StringFormat("%s/pass_%d_%s_before.txt", save_path_.c_str(), pass_id_, pass_name.c_str());
+  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_before.txt",
+                                                     save_path_.c_str(),
+                                                     pass_id_,
+                                                     pass_name.c_str());
   WriteToFile(file_path, program_info);
   return true;
 }
 
-bool PassPrinter::PassEnd(const std::string& pass_name, const frontend::Program& program) {
+bool PassPrinter::PassEnd(const std::string& pass_name,
+                          const frontend::Program& program) {
   if (save_path_.empty()) {
     return false;
   }
   const auto& program_info = utils::GetStreamCnt(program);
   VLOG(3) << "After " << pass_name << " Pass:\n" << program_info;
-  const std::string& file_path =
-      utils::StringFormat("%s/pass_%d_%s_after.txt", save_path_.c_str(), pass_id_, pass_name.c_str());
+  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_after.txt",
+                                                     save_path_.c_str(),
+                                                     pass_id_,
+                                                     pass_name.c_str());
   WriteToFile(file_path, program_info);
 
   ++pass_id_;
@@ -88,13 +99,17 @@ bool PassPrinter::PassBegin(const std::string& pass_name, Graph* g) {
   }
   const auto& graph_info = g->DebugGroupedGraph(fetch_ids_);
   VLOG(3) << "Before " << pass_name << " Pass:\n" << graph_info;
-  const std::string& file_path =
-      utils::StringFormat("%s/pass_%d_%s_before.txt", save_path_.c_str(), pass_id_, pass_name.c_str());
+  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_before.txt",
+                                                     save_path_.c_str(),
+                                                     pass_id_,
+                                                     pass_name.c_str());
   WriteToFile(file_path, graph_info);
 
   const auto& dot_info = g->VisualizeGraph(fetch_ids_);
-  const std::string& dot_path =
-      utils::StringFormat("%s/pass_%d_%s_before.dot", save_path_.c_str(), pass_id_, pass_name.c_str());
+  const std::string& dot_path = utils::StringFormat("%s/pass_%d_%s_before.dot",
+                                                    save_path_.c_str(),
+                                                    pass_id_,
+                                                    pass_name.c_str());
   WriteToFile(dot_path, dot_info);
   return true;
 }
@@ -106,13 +121,17 @@ bool PassPrinter::PassEnd(const std::string& pass_name, Graph* g) {
   const auto& graph_info = g->DebugGroupedGraph(fetch_ids_);
   VLOG(3) << "After " << pass_name << " Pass:\n" << graph_info;
 
-  const std::string& file_path =
-      utils::StringFormat("%s/pass_%d_%s_after.txt", save_path_.c_str(), pass_id_, pass_name.c_str());
+  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_after.txt",
+                                                     save_path_.c_str(),
+                                                     pass_id_,
+                                                     pass_name.c_str());
   WriteToFile(file_path, graph_info);
 
   const auto& dot_info = g->VisualizeGraph(fetch_ids_);
-  const std::string& dot_path =
-      utils::StringFormat("%s/pass_%d_%s_after.dot", save_path_.c_str(), pass_id_, pass_name.c_str());
+  const std::string& dot_path = utils::StringFormat("%s/pass_%d_%s_after.dot",
+                                                    save_path_.c_str(),
+                                                    pass_id_,
+                                                    pass_name.c_str());
   WriteToFile(dot_path, dot_info);
 
   ++pass_id_;
@@ -154,21 +173,22 @@ std::string GetFilePathForGroup(const std::vector<std::vector<Node*>>& groups,
     filename += "_" + node->id();
   }
 
-  int max_len                     = 50;
+  int max_len = 50;
   std::string simplified_filename = filename;
   if (filename.size() > max_len) {
-    static std::unordered_map<std::string, std::string> funcname_map = {{"const_scalar", "scalar"},
-                                                                        {"fill_constant", "fill"},
-                                                                        {"identity", "copy"},
-                                                                        {"broadcast_to", "broadcast"},
-                                                                        {"elementwise_add", "add"},
-                                                                        {"subtract", "sub"},
-                                                                        {"elementwise_mul", "mul"},
-                                                                        {"divide", "div"},
-                                                                        {"reduce_sum", "reduce"},
-                                                                        {"reduce_prod", "reduce"},
-                                                                        {"reduce_max", "reduce"},
-                                                                        {"reduce_min", "reduce"}};
+    static std::unordered_map<std::string, std::string> funcname_map = {
+        {"const_scalar", "scalar"},
+        {"fill_constant", "fill"},
+        {"identity", "copy"},
+        {"broadcast_to", "broadcast"},
+        {"elementwise_add", "add"},
+        {"subtract", "sub"},
+        {"elementwise_mul", "mul"},
+        {"divide", "div"},
+        {"reduce_sum", "reduce"},
+        {"reduce_prod", "reduce"},
+        {"reduce_max", "reduce"},
+        {"reduce_min", "reduce"}};
     for (auto& item : funcname_map) {
       size_t index = 0;
       while (true) {
@@ -190,10 +210,11 @@ std::string GetFilePathForGroup(const std::vector<std::vector<Node*>>& groups,
   return ss.str();
 }
 
-std::string GenNodeDataLabel(const NodeData* node,
-                             const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-                             const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
-                             const std::string dot_nodedata_id) {
+std::string GenNodeDataLabel(
+    const NodeData* node,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
+    const std::string dot_nodedata_id) {
   std::stringstream ss;
   ss << dot_nodedata_id;
   if (shape_dict.count(node->id())) {
@@ -215,7 +236,8 @@ std::string GenNodeDataLabel(const NodeData* node,
   return ss.str();
 }
 
-void Summary(const std::vector<std::vector<Node*>>& groups, const std::string& viz_path) {
+void Summary(const std::vector<std::vector<Node*>>& groups,
+             const std::string& viz_path) {
   std::map<std::string, size_t> group_summary;
   std::map<std::string, size_t> single_group_detail;
   std::map<std::string, size_t> fusion_group_detail;
@@ -226,7 +248,7 @@ void Summary(const std::vector<std::vector<Node*>>& groups, const std::string& v
     if (group_size == 1) {
       // Like "fill_constant_1", remove the "_1" at the end of the string.
       std::string node_id = group[0]->id();
-      int index           = node_id.size() - 1;
+      int index = node_id.size() - 1;
       while (index != -1) {
         if (node_id[index] >= '0' && node_id[index] <= '9') {
           index--;
@@ -313,8 +335,8 @@ std::string DebugString(const Node* node) {
   }
 
   std::stringstream ss;
-  ss << cinn::utils::Join(out_names, ", ") << " = builder." << node->op()->name << "("
-     << cinn::utils::Join(in_names, ", ");
+  ss << cinn::utils::Join(out_names, ", ") << " = builder." << node->op()->name
+     << "(" << cinn::utils::Join(in_names, ", ");
 
   bool first = true;
   std::map<std::string, std::string> attr_str_map;
@@ -353,17 +375,18 @@ void FindRecomputeNodes(const std::vector<std::vector<Node*>>& groups,
   }
 }
 
-void AddGroupNode(const Node* node,
-                  const std::string& dot_cluster_id,
-                  const std::unordered_set<std::string>& fetch_var_ids,
-                  const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-                  const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
-                  std::unordered_map<std::string, int>* recompute_nodes,
-                  std::unordered_map<std::string, std::string>* outnode2dot_id,
-                  std::unordered_set<std::string>* nodedatas_set,
-                  utils::DotLang* dot) {
+void AddGroupNode(
+    const Node* node,
+    const std::string& dot_cluster_id,
+    const std::unordered_set<std::string>& fetch_var_ids,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const absl::flat_hash_map<std::string, common::Type>& dtype_dict,
+    std::unordered_map<std::string, int>* recompute_nodes,
+    std::unordered_map<std::string, std::string>* outnode2dot_id,
+    std::unordered_set<std::string>* nodedatas_set,
+    utils::DotLang* dot) {
   bool is_recomputed = recompute_nodes->count(node->id());
-  int recompute_id   = is_recomputed ? (*recompute_nodes)[node->id()]++ : -1;
+  int recompute_id = is_recomputed ? (*recompute_nodes)[node->id()]++ : -1;
 
   std::string dot_node_id = GenNodeId(node, is_recomputed, recompute_id);
   dot->AddNode(dot_node_id, GetGroupOpAttrs(is_recomputed), "", dot_cluster_id);
@@ -376,8 +399,13 @@ void AddGroupNode(const Node* node,
       }
       std::string dot_innode_id = outnode2dot_id->at(innode->id());
       if (!nodedatas_set || !nodedatas_set->count(dot_innode_id)) {
-        std::string label = GenNodeDataLabel(innode, shape_dict, dtype_dict, dot_innode_id);
-        dot->AddNode(dot_innode_id, GetGroupVarAttrs(false), label, dot_cluster_id, true);
+        std::string label =
+            GenNodeDataLabel(innode, shape_dict, dtype_dict, dot_innode_id);
+        dot->AddNode(dot_innode_id,
+                     GetGroupVarAttrs(false),
+                     label,
+                     dot_cluster_id,
+                     true);
         if (nodedatas_set) {
           nodedatas_set->insert(dot_innode_id);
         }
@@ -389,12 +417,18 @@ void AddGroupNode(const Node* node,
   for (auto& outlink : node->outlinks()) {
     auto* outnode = outlink->sink()->safe_as<NodeData>();
     if (outnode) {
-      std::string dot_outnode_id       = GenNodeDataId(outnode, is_recomputed, recompute_id);
+      std::string dot_outnode_id =
+          GenNodeDataId(outnode, is_recomputed, recompute_id);
       (*outnode2dot_id)[outnode->id()] = dot_outnode_id;
       if (!nodedatas_set || !nodedatas_set->count(dot_outnode_id)) {
-        bool is_fetched   = fetch_var_ids.count(outnode->id());
-        std::string label = GenNodeDataLabel(outnode, shape_dict, dtype_dict, dot_outnode_id);
-        dot->AddNode(dot_outnode_id, GetGroupVarAttrs(is_fetched), label, dot_cluster_id, true);
+        bool is_fetched = fetch_var_ids.count(outnode->id());
+        std::string label =
+            GenNodeDataLabel(outnode, shape_dict, dtype_dict, dot_outnode_id);
+        dot->AddNode(dot_outnode_id,
+                     GetGroupVarAttrs(is_fetched),
+                     label,
+                     dot_cluster_id,
+                     true);
         if (nodedatas_set) {
           nodedatas_set->insert(dot_outnode_id);
         }
@@ -404,8 +438,12 @@ void AddGroupNode(const Node* node,
   }
 }
 
-bool IsAccCheckOp(const Node* op) { return op->attrs.node_name.find("_acc_check") != std::string::npos; }
-bool IsAccCheckVar(const NodeData* var) { return var->id().find("_acc_check") != std::string::npos; }
+bool IsAccCheckOp(const Node* op) {
+  return op->attrs.node_name.find("_acc_check") != std::string::npos;
+}
+bool IsAccCheckVar(const NodeData* var) {
+  return var->id().find("_acc_check") != std::string::npos;
+}
 
 std::string GenerateAccCheckNodeId(const std::string& node_id) {
   return node_id + cinn::common::UniqName("_acc_check");
@@ -420,8 +458,10 @@ bool IsAccCheckGroup(const std::vector<Node*>& group) {
   return false;
 }
 
-std::vector<std::vector<Node*>> RemoveAccCheckGroups(const std::vector<std::vector<Node*>>& groups) {
-  if (cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_check_fusion_accuracy_pass)) {
+std::vector<std::vector<Node*>> RemoveAccCheckGroups(
+    const std::vector<std::vector<Node*>>& groups) {
+  if (cinn::runtime::CheckStringFlagFalse(
+          FLAGS_cinn_check_fusion_accuracy_pass)) {
     // no set acc check flag
     return groups;
   }

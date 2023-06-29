@@ -38,17 +38,19 @@ namespace ir {
 using common::bfloat16;
 using common::float16;
 
-const _LoweredFunc_* LoweredFunc::operator->() const { return As<_LoweredFunc_>(); }
+const _LoweredFunc_* LoweredFunc::operator->() const {
+  return As<_LoweredFunc_>();
+}
 _LoweredFunc_* LoweredFunc::operator->() { return As<_LoweredFunc_>(); }
 
 LoweredFunc _LoweredFunc_::Make(const std::string& name,
                                 const std::vector<Argument>& args,
                                 const Expr& body,
                                 const std::vector<ir::Buffer>& temp_bufs) {
-  auto* n      = make_shared<_LoweredFunc_>();
-  n->name      = name;
-  n->args      = args;
-  n->body      = body;
+  auto* n = make_shared<_LoweredFunc_>();
+  n->name = name;
+  n->args = args;
+  n->body = body;
   n->temp_bufs = temp_bufs;
 
   n->CheckValid();
@@ -68,22 +70,25 @@ LoweredFunc _LoweredFunc_::Make(const std::string& name,
 void _LoweredFunc_::CheckValid() const {
   // check there is at least one output
   int out_count = 0;
-  int in_count  = 0;
+  int in_count = 0;
   for (auto& arg : args) {
     in_count += arg.is_input();
     out_count += arg.is_output();
   }
-  CHECK_GT(out_count, 0) << "At least one output argument is needed for a function\n" << body;
+  CHECK_GT(out_count, 0)
+      << "At least one output argument is needed for a function\n"
+      << body;
 }
 
 std::vector<Expr*> _LoweredFunc_::expr_fields() { return {&body}; }
 std::vector<const Expr*> _LoweredFunc_::expr_fields() const { return {&body}; }
 
 void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
-  std::set<Expr> bound_for_exprs = ir::CollectIRNodes(body, [](const Expr* expr) {
-    const ir::For* for_expr = expr->As<ir::For>();
-    return for_expr != nullptr && for_expr->is_binded();
-  });
+  std::set<Expr> bound_for_exprs =
+      ir::CollectIRNodes(body, [](const Expr* expr) {
+        const ir::For* for_expr = expr->As<ir::For>();
+        return for_expr != nullptr && for_expr->is_binded();
+      });
 
   if (bound_for_exprs.empty()) {
     device_api = ir::DeviceAPI::GPU;
@@ -97,9 +102,11 @@ void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
   for (const Expr& expr : bound_for_exprs) {
     const ir::For* for_expr = expr.As<ir::For>();
     if (for_expr->for_type() == ir::ForType::GPUBlock) {
-      cuda_axis_info.set_grid_dim(for_expr->bind_info().offset, for_expr->extent.as_int32());
+      cuda_axis_info.set_grid_dim(for_expr->bind_info().offset,
+                                  for_expr->extent.as_int32());
     } else if (for_expr->for_type() == ir::ForType::GPUThread) {
-      cuda_axis_info.set_block_dim(for_expr->bind_info().offset, for_expr->extent.as_int32());
+      cuda_axis_info.set_block_dim(for_expr->bind_info().offset,
+                                   for_expr->extent.as_int32());
     }
   }
   device_api = ir::DeviceAPI::GPU;
@@ -107,16 +114,23 @@ void _LoweredFunc_::PrepareCudaAxisInfoFromBody() {
 }
 
 void _LoweredFunc_::PrepareAllocOutputBufferExprs() {
-  CHECK(alloc_output_buffer_exprs.empty()) << "duplicate prepare the allocate buffer for outputs";
+  CHECK(alloc_output_buffer_exprs.empty())
+      << "duplicate prepare the allocate buffer for outputs";
 
   std::set<std::string> buffer_names;
   for (auto& arg : args) {
     if (arg.is_output()) {
-      CHECK(arg.type().valid()) << "argument [" << arg.name() << "]'s type should be set";
-      if (arg.is_buffer() && !buffer_names.count(arg.name())) {  // only buffer need allocation.
-        buffer_names.insert(arg.name());                         // Avoid duplicate
+      CHECK(arg.type().valid())
+          << "argument [" << arg.name() << "]'s type should be set";
+      if (arg.is_buffer() &&
+          !buffer_names.count(arg.name())) {  // only buffer need allocation.
+        buffer_names.insert(arg.name());      // Avoid duplicate
         alloc_output_buffer_exprs.push_back(
-            Alloc::Make(arg.buffer_arg(), arg.buffer_arg()->type(), arg.buffer_arg()->shape, Expr(), Expr()));
+            Alloc::Make(arg.buffer_arg(),
+                        arg.buffer_arg()->type(),
+                        arg.buffer_arg()->shape,
+                        Expr(),
+                        Expr()));
       }
     }
   }
@@ -126,7 +140,8 @@ std::vector<Expr> _LoweredFunc_::PrepareAllocTempBufferExprs() const {
   std::vector<Expr> alloc_temp_buffer_exprs;
   for (auto& temp_buf : temp_bufs) {
     if (!temp_buf->shape.empty() && temp_buf->type() != Void()) {
-      alloc_temp_buffer_exprs.push_back(Alloc::Make(temp_buf, temp_buf->type(), temp_buf->shape, Expr(), Expr()));
+      alloc_temp_buffer_exprs.push_back(Alloc::Make(
+          temp_buf, temp_buf->type(), temp_buf->shape, Expr(), Expr()));
     }
   }
   return alloc_temp_buffer_exprs;
@@ -146,10 +161,13 @@ std::vector<Expr> _LoweredFunc_::PrepareCreateTempBufferExprs() const {
   std::vector<Expr> create_temp_buffer_exprs;
   for (auto& temp_buf : temp_bufs) {
     if (!temp_buf->shape.empty() && temp_buf->type() != Void()) {
-      auto expr            = ir::intrinsics::BufferCreate::Make(temp_buf);
-      auto buffer_ptr_type = Type().set_customized_type(common::customized_type::kbuffer_t).set_cpp_handle();
-      Var variable         = ir::_Var_::Make(temp_buf->name, buffer_ptr_type);
-      expr                 = ir::Let::Make(variable, expr);
+      auto expr = ir::intrinsics::BufferCreate::Make(temp_buf);
+      auto buffer_ptr_type =
+          Type()
+              .set_customized_type(common::customized_type::kbuffer_t)
+              .set_cpp_handle();
+      Var variable = ir::_Var_::Make(temp_buf->name, buffer_ptr_type);
+      expr = ir::Let::Make(variable, expr);
       create_temp_buffer_exprs.push_back(expr);
     }
   }
@@ -163,21 +181,25 @@ std::vector<Expr> _LoweredFunc_::CudaPrepareAllocTempBufferExprs() const {
       temp_buf->name = temp_buf->name.substr(1);
     }
     if (!temp_buf->shape.empty() && temp_buf->type() != Void()) {
-      alloc_output_buffer_exprs.push_back(Alloc::Make(temp_buf, temp_buf->type(), temp_buf->shape, Expr(), Expr()));
+      alloc_output_buffer_exprs.push_back(Alloc::Make(
+          temp_buf, temp_buf->type(), temp_buf->shape, Expr(), Expr()));
     }
   }
   return alloc_output_buffer_exprs;
 }
 
 void _LoweredFunc_::PrepareDeallocOutputBufferExprs() {
-  CHECK(dealloc_output_buffer_exprs.empty()) << "duplicate prepare the allocate buffer for outputs";
+  CHECK(dealloc_output_buffer_exprs.empty())
+      << "duplicate prepare the allocate buffer for outputs";
 
   std::set<std::string> buffer_names;
   for (auto& arg : args) {
     if (arg.is_output()) {
-      CHECK(arg.type().valid()) << "argument [" << arg.name() << "]'s type should be set";
-      if (arg.is_buffer() && !buffer_names.count(arg.name())) {  // only buffer need allocation.
-        buffer_names.insert(arg.name());                         // Avoid duplicate
+      CHECK(arg.type().valid())
+          << "argument [" << arg.name() << "]'s type should be set";
+      if (arg.is_buffer() &&
+          !buffer_names.count(arg.name())) {  // only buffer need allocation.
+        buffer_names.insert(arg.name());      // Avoid duplicate
         dealloc_output_buffer_exprs.push_back(Free::Make(arg.buffer_arg()));
       }
     }
@@ -193,7 +215,9 @@ void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
   write_teller.Collect(&body);
 
   auto tensors = CollectAllTensorReference(with_expr_gen_tensor);
-  std::sort(tensors.begin(), tensors.end(), [](const Tensor& a, const Tensor& b) { return a->name < b->name; });
+  std::sort(tensors.begin(),
+            tensors.end(),
+            [](const Tensor& a, const Tensor& b) { return a->name < b->name; });
 
   VLOG(3) << "Function used " << tensors.size() << " buffers";
   for (auto& tensor : tensors) {
@@ -202,17 +226,20 @@ void _LoweredFunc_::PrepareBufferCastExprs(bool with_expr_gen_tensor) {
     if (!tensor->buffer.defined()) continue;
 
     Type value_type = tensor->type().ElementOf();
-    bool is_const   = !write_teller.IsWrite(tensor->name);
+    bool is_const = !write_teller.IsWrite(tensor->name);
     value_type.set_cpp_handle();
     value_type.set_cpp_const(is_const);
     Var variable = _Var_::Make(tensor->name, value_type);
 
-    Expr body = is_const ? ir::intrinsics::BufferGetDataConstHandle::Make(tensor->buffer)
-                         : ir::intrinsics::BufferGetDataHandle::Make(tensor->buffer);
+    Expr body =
+        is_const
+            ? ir::intrinsics::BufferGetDataConstHandle::Make(tensor->buffer)
+            : ir::intrinsics::BufferGetDataHandle::Make(tensor->buffer);
 
-    Type target_type = is_const ? tensor->buffer->dtype.PointerOf().ConstOf() : tensor->buffer->dtype.PointerOf();
-    body             = ir::Cast::Make(target_type, body);
-    auto let         = Let::Make(variable, body);
+    Type target_type = is_const ? tensor->buffer->dtype.PointerOf().ConstOf()
+                                : tensor->buffer->dtype.PointerOf();
+    body = ir::Cast::Make(target_type, body);
+    auto let = Let::Make(variable, body);
 
     buffer_data_cast_exprs.push_back(let);
   }
@@ -229,7 +256,9 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
   write_teller.Collect(&body);
 
   auto tensors = CollectAllTensorReference();
-  std::sort(tensors.begin(), tensors.end(), [](const Tensor& a, const Tensor& b) { return a->name < b->name; });
+  std::sort(tensors.begin(),
+            tensors.end(),
+            [](const Tensor& a, const Tensor& b) { return a->name < b->name; });
 
   for (auto& tensor : tensors) {
     auto* node = tensor.As<ir::_Tensor_>();
@@ -237,15 +266,16 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
     if (!tensor->buffer.defined()) {
       continue;
     }
-    if (tensor->name == tensor->buffer->name.substr(1) || args_buffer.count(tensor->buffer->name) == 0) {
+    if (tensor->name == tensor->buffer->name.substr(1) ||
+        args_buffer.count(tensor->buffer->name) == 0) {
       continue;
     }
     Type value_type = tensor->type().ElementOf();
-    bool is_const   = !write_teller.IsWrite(tensor->name);
+    bool is_const = !write_teller.IsWrite(tensor->name);
     value_type.set_cpp_handle();
     value_type.set_cpp_const(is_const);
     Var variable = _Var_::Make(tensor->name, value_type);
-    Var body     = Var(tensor->buffer->name.substr(1), value_type);
+    Var body = Var(tensor->buffer->name.substr(1), value_type);
 
     auto let = Let::Make(variable, body);
 
@@ -256,22 +286,31 @@ std::vector<Expr> _LoweredFunc_::CudaAliasVarExprs() const {
 
 void _LoweredFunc_::PrepareArgumentExprs() {
   // Seems a CINN func.
-  if (args.front().is_var() && args.front().var_arg()->type() == type_of<cinn_pod_value_t*>()) return;
+  if (args.front().is_var() &&
+      args.front().var_arg()->type() == type_of<cinn_pod_value_t*>())
+    return;
 
   // type of `void*`
-  auto void_ptr_array_type = Type().with_type(Type::type_t::Void).set_cpp_handle();
+  auto void_ptr_array_type =
+      Type().with_type(Type::type_t::Void).set_cpp_handle();
   // type of `cinn_buffer_t*`
-  auto buffer_ptr_type = Type().set_customized_type(common::customized_type::kbuffer_t).set_cpp_handle();
+  auto buffer_ptr_type =
+      Type()
+          .set_customized_type(common::customized_type::kbuffer_t)
+          .set_cpp_handle();
   // type of `const cinn_buffer_t*`
   auto const_buffer_ptr_type = buffer_ptr_type.with_cpp_const();
   CHECK(!buffer_ptr_type.is_cpp_const());
 
   Var args_passed_in("_args", type_of<void*>());
-  auto pod_value_ptr = common::CastIfNeeded(args_passed_in, type_of<cinn_pod_value_t*>());
+  auto pod_value_ptr =
+      common::CastIfNeeded(args_passed_in, type_of<cinn_pod_value_t*>());
 
   if (FLAGS_cinn_runtime_display_debug_info) {
     argument_prepare_exprs.push_back(runtime::IntrinsicCall(
-        Void(), runtime::intrinsic::print_debug_args_repr, {pod_value_ptr, common::make_const(Int(32), args.size())}));
+        Void(),
+        runtime::intrinsic::print_debug_args_repr,
+        {pod_value_ptr, common::make_const(Int(32), args.size())}));
   }
 
   /*
@@ -282,8 +321,8 @@ void _LoweredFunc_::PrepareArgumentExprs() {
    * int M = (int)arg[2];
    */
 
-  // We just has two kinds of argument types, first is `cinn_buffer_t*`, second is `const cinn_buffer_t*`, do not need a
-  // `any` type support currently.
+  // We just has two kinds of argument types, first is `cinn_buffer_t*`, second
+  // is `const cinn_buffer_t*`, do not need a `any` type support currently.
   for (int i = 0; i < args.size(); i++) {
     auto& arg = args[i];
     // cast arg to cinn_pod_value_t*
@@ -298,7 +337,7 @@ void _LoweredFunc_::PrepareArgumentExprs() {
 
     if (arg.is_buffer()) {
       auto buffer_type = is_const ? const_buffer_ptr_type : buffer_ptr_type;
-      _arg             = Var(arg.name(), buffer_type);
+      _arg = Var(arg.name(), buffer_type);
     } else if (arg.is_var()) {
       _arg = Var(arg.name(), arg.var_arg()->type());
     } else {
@@ -310,35 +349,50 @@ void _LoweredFunc_::PrepareArgumentExprs() {
     Expr pod_cast_expr;
 
     if (arg.is_buffer()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<cinn_buffer_t*>());
+      pod_cast_expr = ir::intrinsics::PodValueToX::Make(
+          load_expr, type_of<cinn_buffer_t*>());
     } else if (arg.type() == type_of<int8_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<int8_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int8_t>());
     } else if (arg.type() == type_of<int16_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<int16_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int16_t>());
     } else if (arg.type() == type_of<int32_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int32_t>());
     } else if (arg.type() == type_of<int64_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<int64_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<int64_t>());
     } else if (arg.type() == type_of<uint8_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint8_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint8_t>());
     } else if (arg.type() == type_of<uint16_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint16_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint16_t>());
     } else if (arg.type() == type_of<uint32_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint32_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint32_t>());
     } else if (arg.type() == type_of<uint64_t>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint64_t>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<uint64_t>());
     } else if (arg.type() == type_of<bfloat16>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<bfloat16>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<bfloat16>());
     } else if (arg.type() == type_of<float16>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<float16>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<float16>());
     } else if (arg.type() == type_of<float>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<float>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<float>());
     } else if (arg.type() == type_of<double>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<double>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<double>());
     } else if (arg.type() == type_of<bool>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<bool>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<bool>());
     } else if (arg.type() == type_of<void*>()) {
-      pod_cast_expr = ir::intrinsics::PodValueToX::Make(load_expr, type_of<void*>());
+      pod_cast_expr =
+          ir::intrinsics::PodValueToX::Make(load_expr, type_of<void*>());
     } else {
       LOG(ERROR) << "Not supported type [" << arg.type() << "]";
       CINN_NOT_IMPLEMENTED
@@ -350,11 +404,15 @@ void _LoweredFunc_::PrepareArgumentExprs() {
   }
 }
 
-std::vector<Tensor> _LoweredFunc_::CollectAllTensorReference(bool with_expr_gen_tensor) const {
+std::vector<Tensor> _LoweredFunc_::CollectAllTensorReference(
+    bool with_expr_gen_tensor) const {
   std::set<Expr> tensor_exprs =
       with_expr_gen_tensor
-          ? ir::CollectIRNodes(body, [](const Expr* expr) { return expr->As<ir::_Tensor_>(); })
-          : ir::CollectIRNodesWithoutTensor(body, [](const Expr* expr) { return expr->As<ir::_Tensor_>(); });
+          ? ir::CollectIRNodes(
+                body, [](const Expr* expr) { return expr->As<ir::_Tensor_>(); })
+          : ir::CollectIRNodesWithoutTensor(body, [](const Expr* expr) {
+              return expr->As<ir::_Tensor_>();
+            });
 
   std::vector<Tensor> tensors;
   // remove the duplicate tensor by their name.
@@ -429,8 +487,10 @@ std::string Argument::human_readable() const {
 }
 
 std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x) {
-  os << "<grid:" << x.grid_dim(0) << ", " << x.grid_dim(1) << ", " << x.grid_dim(2) << ">";
-  os << "<block:" << x.block_dim(0) << ", " << x.block_dim(1) << ", " << x.block_dim(2) << ">";
+  os << "<grid:" << x.grid_dim(0) << ", " << x.grid_dim(1) << ", "
+     << x.grid_dim(2) << ">";
+  os << "<block:" << x.block_dim(0) << ", " << x.block_dim(1) << ", "
+     << x.block_dim(2) << ">";
   return os;
 }
 
@@ -457,7 +517,7 @@ int CudaAxisInfo::block_dim(int offset) const {
 void CudaAxisInfo::ExtendWith(const CudaAxisInfo& other) {
   set_valid(true);
   for (int i = 0; i < 3; i++) {
-    grid_dims_[i]  = std::max(grid_dims_[i], other.grid_dims_[i]);
+    grid_dims_[i] = std::max(grid_dims_[i], other.grid_dims_[i]);
     block_dims_[i] = std::max(block_dims_[i], other.block_dims_[i]);
   }
 }

@@ -56,7 +56,7 @@ class IrContextImpl {
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
-    VLOG(4) << "Register an abstract_type of: [TypeId_hash="
+    VLOG(6) << "Register an abstract_type of: [TypeId_hash="
             << std::hash<ir::TypeId>()(type_id)
             << ", AbstractType_ptr=" << abstract_type << "].";
     registed_abstract_types_.emplace(type_id, abstract_type);
@@ -66,7 +66,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter != registed_abstract_types_.end()) {
-      VLOG(4) << "Found a cached abstract_type of: [TypeId_hash="
+      VLOG(6) << "Found a cached abstract_type of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
@@ -79,7 +79,7 @@ class IrContextImpl {
   void RegisterAbstractAttribute(ir::TypeId type_id,
                                  AbstractAttribute *abstract_attribute) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_attributes_lock_);
-    VLOG(4) << "Register an abstract_attribute of: [TypeId_hash="
+    VLOG(6) << "Register an abstract_attribute of: [TypeId_hash="
             << std::hash<ir::TypeId>()(type_id)
             << ", AbstractAttribute_ptr=" << abstract_attribute << "].";
     registed_abstract_attributes_.emplace(type_id, abstract_attribute);
@@ -105,7 +105,7 @@ class IrContextImpl {
 
   void RegisterOpInfo(const std::string &name, OpInfo info) {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
-    VLOG(4) << "Register an operation of: [Name=" << name
+    VLOG(6) << "Register an operation of: [Name=" << name
             << ", OpInfo ptr=" << info.AsOpaquePointer() << "].";
     registed_op_infos_.emplace(name, info);
   }
@@ -114,7 +114,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
-      VLOG(4) << "Found a cached OpInfo of: [name=" << name
+      VLOG(8) << "Found a cached OpInfo of: [name=" << name
               << ", OpInfo: ptr=" << iter->second.AsOpaquePointer() << "].";
       return iter->second;
     }
@@ -125,7 +125,7 @@ class IrContextImpl {
 
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
-    VLOG(4) << "Register a dialect of: [name=" << name
+    VLOG(6) << "Register a dialect of: [name=" << name
             << ", dialect_ptr=" << dialect << "].";
     registed_dialect_.emplace(name, dialect);
   }
@@ -138,7 +138,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(4) << "Found a cached dialect of: [name=" << name
+      VLOG(6) << "Found a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
@@ -225,7 +225,6 @@ void IrContext::RegisterAbstractAttribute(
   if (GetRegisteredAbstractAttribute(type_id) == nullptr) {
     impl().RegisterAbstractAttribute(
         type_id, new AbstractAttribute(std::move(abstract_attribute)));
-    VLOG(4) << "<--- Attribute registered into IrContext. --->";
   } else {
     LOG(WARNING) << " Attribute already registered.";
   }
@@ -278,7 +277,6 @@ void IrContext::RegisterAbstractType(ir::TypeId type_id,
   if (GetRegisteredAbstractType(type_id) == nullptr) {
     impl().RegisterAbstractType(type_id,
                                 new AbstractType(std::move(abstract_type)));
-    VLOG(4) << "<--- Type registered into IrContext. --->";
   } else {
     LOG(WARNING) << " type already registered.";
   }
@@ -304,7 +302,6 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                      attributes_name,
                                      verify);
     impl().RegisterOpInfo(name, info);
-    VLOG(4) << name << " op registered into IrContext. --->";
   }
 }
 

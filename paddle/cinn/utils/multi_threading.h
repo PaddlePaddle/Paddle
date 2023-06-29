@@ -19,13 +19,14 @@
 namespace cinn {
 namespace utils {
 
-// function prototype that takes a index of job as argument and complete the specified job
+// function prototype that takes a index of job as argument and complete the
+// specified job
 using WorkerFuncType = std::function<void(int index)>;
 
 // This class defines which job will be executed in the next turn,
-// and returns the next job id through `Next` function, which will be used in multi-threads context
-// It should be used with a function instance of WorkerFuncType
-// which takes the index as argument.
+// and returns the next job id through `Next` function, which will be used in
+// multi-threads context It should be used with a function instance of
+// WorkerFuncType which takes the index as argument.
 class JobDispatcher {
  public:
   // Attention!! this interface must be implemented to be thread-safe
@@ -52,11 +53,14 @@ class SequenceDispatcher : public JobDispatcher {
 
 /**
  * \brief A general function to run a batch of jobs in parallel
- * \param fn A instance of WorkerFuncType, which defines how to complete a specified job
- * \param dispatcher A instance of JobDispatcher, which pops index of the next job
- * \param num_threads The number of threads used to run jobs, -1 means utilizing the maximum limit of hardware
+ * \param fn A instance of WorkerFuncType, which defines how to complete a
+ * specified job \param dispatcher A instance of JobDispatcher, which pops index
+ * of the next job \param num_threads The number of threads used to run jobs, -1
+ * means utilizing the maximum limit of hardware
  */
-void parallel_run(const WorkerFuncType& fn, JobDispatcher&& dispatcher, int num_threads = -1);
+void parallel_run(const WorkerFuncType& fn,
+                  JobDispatcher&& dispatcher,
+                  int num_threads = -1);
 
 }  // namespace utils
 }  // namespace cinn

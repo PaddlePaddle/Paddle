@@ -20,10 +20,11 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc,
+                       const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
 
   auto axis = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axis");
 
@@ -38,10 +39,11 @@ void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void Transpose2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Transpose2OpMapper(const paddle::cpp::OpDesc& op_desc,
+                        const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
 
   auto axis = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axis");
 
@@ -76,7 +78,9 @@ void Transpose2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContex
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_transpose) {
-  CINN_REGISTER_OP_MAPPER(transpose, cinn::frontend::paddle_mappers::TransposeOpMapper)
-  CINN_REGISTER_OP_MAPPER(transpose2, cinn::frontend::paddle_mappers::Transpose2OpMapper)
+  CINN_REGISTER_OP_MAPPER(transpose,
+                          cinn::frontend::paddle_mappers::TransposeOpMapper)
+  CINN_REGISTER_OP_MAPPER(transpose2,
+                          cinn::frontend::paddle_mappers::Transpose2OpMapper)
   return true;
 }

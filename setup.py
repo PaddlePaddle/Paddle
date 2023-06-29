@@ -1032,13 +1032,15 @@ def get_package_data_and_package_dir():
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
 
         cinn_fp16_file = (
-            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/cinn/runtime/cuda/float16.h'
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float16.h'
         )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
         cinn_bf16_file = (
-            env_dict.get("CINN_INCLUDE_DIR") + '/paddle/cinn/runtime/cuda/bfloat16.h'
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/bfloat16.h'
         )
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)

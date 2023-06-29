@@ -34,11 +34,13 @@ class TestPowOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         factor = paddle.static.data(
             name='factor',
             shape=self.feed_data['factor'].shape,
-            dtype=self.feed_data['factor'].dtype)
+            dtype=self.feed_data['factor'].dtype,
+        )
         return {'X': [x], 'FactorTensor': [factor]}
 
     def set_op_attrs(self):
@@ -72,7 +74,8 @@ class TestPowOpInFactorAttr(TestPowOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):

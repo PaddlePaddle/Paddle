@@ -116,7 +116,9 @@ void NewIRInterpreter::RunImpl() {
   //   &&
   //       (sync_op_num_ == 0)) {
   VLOG(4) << "Tracing Instruction List";
+
   TraceInstructionList(vec_instruction_);
+
   //   } else {
   //     VLOG(4) << "Non-tracing";
   //     // For the program that only run once, it is no need to
@@ -938,15 +940,6 @@ void NewIRInterpreter::RunOperator(const Instruction& instr_node) {
 }
 
 void NewIRInterpreter::RunInstruction(const Instruction& instr_node) {
-  VLOG(5) << __func__ << " OP id:" << instr_node.Id()
-          << " name:" << instr_node.OpBase()->Type() << " type:"
-          << (instr_node.KernelType() == OpFuncType::kCpuSync
-                  ? "kCpuSync"
-                  : (instr_node.KernelType() == OpFuncType::kGpuSync
-                         ? "kGpuSync"
-                         : "kGpuAsync"))
-          << " runs on " << platform::GetCurrentThreadName();
-
   OperatorBase* op = nullptr;
   if (instr_node.OpBaseValid()) {
     op = instr_node.OpBase();
@@ -1377,8 +1370,9 @@ void NewIRInterpreter::TraceInstructionList(
     }
   }
 
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto instr_id = trace_execute_order_[idx];
+  // TODO(phlrain) use orignal order for now, use better dependecy
+  for (size_t instr_id = 0; instr_id < vec_instruction_.size(); ++instr_id) {
+    /// auto instr_id = trace_execute_order_[idx];
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);

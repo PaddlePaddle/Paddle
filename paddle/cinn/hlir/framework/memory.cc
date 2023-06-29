@@ -36,7 +36,9 @@ class X86MemoryMng : public MemoryInterface {
     if (!data) return;
     ::free(data);
   }
-  void* aligned_alloc(size_t alignment, size_t nbytes) override { return ::aligned_alloc(alignment, nbytes); }
+  void* aligned_alloc(size_t alignment, size_t nbytes) override {
+    return ::aligned_alloc(alignment, nbytes);
+  }
 };
 
 #ifdef CINN_WITH_CUDA

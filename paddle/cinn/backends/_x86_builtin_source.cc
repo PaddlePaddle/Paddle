@@ -62,7 +62,8 @@ struct StackVec {
     memcpy(&res.data_[0], (const value_type*)base + offset, num_bytes());
   }
 
-  static self_type Load(const void* base, const StackVec<int32_t, Num>& offset) {
+  static self_type Load(const void* base,
+                        const StackVec<int32_t, Num>& offset) {
     self_type res;
     for (size_t i = 0; i < Num; i++) {
       res.data_[i] = ((const value_type*)base)[offset[i]];
@@ -150,12 +151,16 @@ struct ExternalVec {
 // AVX256 load
 //@{
 inline __m256 cinn_avx256_load(const float* dst) { return _mm256_load_ps(dst); }
-inline __m256d cinn_avx256_load(const double* dst) { return _mm256_load_pd(dst); }
+inline __m256d cinn_avx256_load(const double* dst) {
+  return _mm256_load_pd(dst);
+}
 //@}
 // AVX512 load
 //@{
 inline __m512 cinn_avx512_load(const float* dst) { return _mm512_load_ps(dst); }
-inline __m512d cinn_avx512_load(const double* dst) { return _mm512_load_pd(dst); }
+inline __m512d cinn_avx512_load(const double* dst) {
+  return _mm512_load_pd(dst);
+}
 //@}
 
 // FP32x8 * FP32x8
@@ -320,10 +325,18 @@ inline void cinn_avx512_div(double* dst, double* a, double* b) {
 
 inline __m512 cinn_avx512_add(const __m512& a, const __m512& b);
 
-inline __m256 cinn_avx256_add_float(const __m256& a, const __m256& b) { return _mm256_add_ps(a, b); }
-inline __m256d cinn_avx256_add_double(const __m256d& a, const __m256d& b) { return _mm256_add_pd(a, b); }
-inline __m512 cinn_avx512_add_float(const __m512& a, const __m512& b) { return _mm512_add_ps(a, b); }
-inline __m512d cinn_avx512_add_double(const __m512d& a, const __m512d& b) { return _mm512_add_pd(a, b); }
+inline __m256 cinn_avx256_add_float(const __m256& a, const __m256& b) {
+  return _mm256_add_ps(a, b);
+}
+inline __m256d cinn_avx256_add_double(const __m256d& a, const __m256d& b) {
+  return _mm256_add_pd(a, b);
+}
+inline __m512 cinn_avx512_add_float(const __m512& a, const __m512& b) {
+  return _mm512_add_ps(a, b);
+}
+inline __m512d cinn_avx512_add_double(const __m512d& a, const __m512d& b) {
+  return _mm512_add_pd(a, b);
+}
 
 //! set1
 // @{
@@ -335,38 +348,82 @@ inline __m512d cinn_avx512_set1(double value) { return _mm512_set1_pd(value); }
 
 //! store
 // @{
-inline void cinn_avx512_store(float* dst, const __m512& x) { _mm512_store_ps(dst, x); }
-inline void cinn_avx512_store(double* dst, const __m512d& x) { _mm512_store_pd(dst, x); }
-inline void cinn_avx256_store(float* dst, const __m256& x) { _mm256_store_ps(dst, x); }
-inline void cinn_avx256_store(double* dst, const __m256d& x) { _mm256_store_pd(dst, x); }
+inline void cinn_avx512_store(float* dst, const __m512& x) {
+  _mm512_store_ps(dst, x);
+}
+inline void cinn_avx512_store(double* dst, const __m512d& x) {
+  _mm512_store_pd(dst, x);
+}
+inline void cinn_avx256_store(float* dst, const __m256& x) {
+  _mm256_store_ps(dst, x);
+}
+inline void cinn_avx256_store(double* dst, const __m256d& x) {
+  _mm256_store_pd(dst, x);
+}
 // @}
 
 //! add
 // @{
-inline __m256 cinn_avx256_add(const __m256& a, const __m256& b) { return _mm256_add_ps(a, b); }
-inline __m256d cinn_avx256_add(const __m256d& a, const __m256d& b) { return _mm256_add_pd(a, b); }
-inline __m512 cinn_avx512_add(const __m512& a, const __m512& b) { return _mm512_add_ps(a, b); }
-inline __m512d cinn_avx512_add(const __m512d& a, const __m512d& b) { return _mm512_add_pd(a, b); }
+inline __m256 cinn_avx256_add(const __m256& a, const __m256& b) {
+  return _mm256_add_ps(a, b);
+}
+inline __m256d cinn_avx256_add(const __m256d& a, const __m256d& b) {
+  return _mm256_add_pd(a, b);
+}
+inline __m512 cinn_avx512_add(const __m512& a, const __m512& b) {
+  return _mm512_add_ps(a, b);
+}
+inline __m512d cinn_avx512_add(const __m512d& a, const __m512d& b) {
+  return _mm512_add_pd(a, b);
+}
 // @}
 
 //! mul
 // @{
-inline __m256 cinn_avx256_mul(const __m256& a, const __m256& b) { return _mm256_mul_ps(a, b); }
-inline __m256d cinn_avx256_mul(const __m256d& a, const __m256d& b) { return _mm256_mul_pd(a, b); }
-inline __m512 cinn_avx512_mul(const __m512& a, const __m512& b) { return _mm512_mul_ps(a, b); }
-inline __m512d cinn_avx512_mul(const __m512d& a, const __m512d& b) { return _mm512_mul_pd(a, b); }
+inline __m256 cinn_avx256_mul(const __m256& a, const __m256& b) {
+  return _mm256_mul_ps(a, b);
+}
+inline __m256d cinn_avx256_mul(const __m256d& a, const __m256d& b) {
+  return _mm256_mul_pd(a, b);
+}
+inline __m512 cinn_avx512_mul(const __m512& a, const __m512& b) {
+  return _mm512_mul_ps(a, b);
+}
+inline __m512d cinn_avx512_mul(const __m512d& a, const __m512d& b) {
+  return _mm512_mul_pd(a, b);
+}
 // @}
 
 //! fma
 // @{
-inline __m128 cinn_avx128_fma(const __m128& a, const __m128& b, const __m128& c) { return _mm_fmadd_ps(a, b, c); }
-inline __m128d cinn_avx128_fma(const __m128d& a, const __m128d& b, const __m128d& c) { return _mm_fmadd_pd(a, b, c); }
-inline __m256 cinn_avx256_fma(const __m256& a, const __m256& b, const __m256& c) { return _mm256_fmadd_ps(a, b, c); }
-inline __m256d cinn_avx256_fma(const __m256d& a, const __m256d& b, const __m256d& c) {
+inline __m128 cinn_avx128_fma(const __m128& a,
+                              const __m128& b,
+                              const __m128& c) {
+  return _mm_fmadd_ps(a, b, c);
+}
+inline __m128d cinn_avx128_fma(const __m128d& a,
+                               const __m128d& b,
+                               const __m128d& c) {
+  return _mm_fmadd_pd(a, b, c);
+}
+inline __m256 cinn_avx256_fma(const __m256& a,
+                              const __m256& b,
+                              const __m256& c) {
+  return _mm256_fmadd_ps(a, b, c);
+}
+inline __m256d cinn_avx256_fma(const __m256d& a,
+                               const __m256d& b,
+                               const __m256d& c) {
   return _mm256_fmadd_pd(a, b, c);
 }
-inline __m512 cinn_avx512_fma(const __m512& a, const __m512& b, const __m512& c) { return _mm512_fmadd_ps(a, b, c); }
-inline __m512d cinn_avx512_fma(const __m512d& a, const __m512d& b, const __m512d& c) {
+inline __m512 cinn_avx512_fma(const __m512& a,
+                              const __m512& b,
+                              const __m512& c) {
+  return _mm512_fmadd_ps(a, b, c);
+}
+inline __m512d cinn_avx512_fma(const __m512d& a,
+                               const __m512d& b,
+                               const __m512d& c) {
   return _mm512_fmadd_pd(a, b, c);
 }
 // @}

@@ -72,9 +72,13 @@ def create_matmul_basic(target, m, n, k):
     b = lang.Placeholder("float32", "B", [k, n])
 
     k1 = ir.Var(k.as_int32(), "k1")
-    c = lang.compute([m, n], lambda v: lang.reduce_sum(
-        a(v[0], k1.to_expr_mutable()) * b(k1.to_expr_mutable(), v[1]), [k1]),
-                     "c")
+    c = lang.compute(
+        [m, n],
+        lambda v: lang.reduce_sum(
+            a(v[0], k1.to_expr_mutable()) * b(k1.to_expr_mutable(), v[1]), [k1]
+        ),
+        "c",
+    )
 
     stages = create_stages([c])
     c_stage = stages[c]
@@ -94,9 +98,13 @@ def create_matmul_tile(target, m, n, k):
     b = lang.Placeholder("float32", "B", [k, n])
 
     k1 = ir.Var(k.as_int32(), "k1")
-    c = lang.compute([m, n], lambda v: lang.reduce_sum(
-        a(v[0], k1.to_expr_mutable()) * b(k1.to_expr_mutable(), v[1]), [k1]),
-                     "c")
+    c = lang.compute(
+        [m, n],
+        lambda v: lang.reduce_sum(
+            a(v[0], k1.to_expr_mutable()) * b(k1.to_expr_mutable(), v[1]), [k1]
+        ),
+        "c",
+    )
 
     stages = create_stages([c])
     stages[c].tile(0, 1, 4, 4)
@@ -116,11 +124,14 @@ def create_data(m, n, k, bn):
     a = runtime.cinn_buffer_t(a_init, runtime.cinn_x86_device)
     b = runtime.cinn_buffer_t(b_init, runtime.cinn_x86_device)
     c = runtime.cinn_buffer_t(
-        np.zeros([m, n]).astype("float32"), runtime.cinn_x86_device)
-    c_target = runtime.cinn_buffer_t(a.numpy() @ b.numpy(),
-                                     runtime.cinn_x86_device)
+        np.zeros([m, n]).astype("float32"), runtime.cinn_x86_device
+    )
+    c_target = runtime.cinn_buffer_t(
+        a.numpy() @ b.numpy(), runtime.cinn_x86_device
+    )
     packed_b = runtime.cinn_buffer_t(
-        np.zeros([n // bn, k, bn]).astype("float32"), runtime.cinn_x86_device)
+        np.zeros([n // bn, k, bn]).astype("float32"), runtime.cinn_x86_device
+    )
 
     a_arg = runtime.cinn_pod_value_t(a)
     b_arg = runtime.cinn_pod_value_t(b)

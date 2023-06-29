@@ -28,14 +28,16 @@ namespace hlir {
 namespace pe {
 
 namespace utils {
-std::vector<std::vector<int>> GetMatmulNewShapes(const std::vector<std::vector<int>>& inputs_shape,
-                                                 bool trans_x,
-                                                 bool trans_y);
+std::vector<std::vector<int>> GetMatmulNewShapes(
+    const std::vector<std::vector<int>>& inputs_shape,
+    bool trans_x,
+    bool trans_y);
 
-std::vector<std::vector<int>> GetMulNewShapes(const std::vector<std::vector<int>>& inputs_shape,
-                                              int x_num_col_dims,
-                                              int y_num_col_dims,
-                                              bool is_infer = false);
+std::vector<std::vector<int>> GetMulNewShapes(
+    const std::vector<std::vector<int>>& inputs_shape,
+    int x_num_col_dims,
+    int y_num_col_dims,
+    bool is_infer = false);
 }  // namespace utils
 
 /**
@@ -51,12 +53,13 @@ std::vector<std::vector<int>> GetMulNewShapes(const std::vector<std::vector<int>
  *
  * @return the output tensors
  */
-std::vector<ir::Tensor> Matmul(const ir::Tensor& A,
-                               const ir::Tensor& B,
-                               bool trans_a            = false,
-                               bool trans_b            = false,
-                               float alpha             = 1,
-                               const std::string& name = UniqName("T_Transform_Matmul_out"));
+std::vector<ir::Tensor> Matmul(
+    const ir::Tensor& A,
+    const ir::Tensor& B,
+    bool trans_a = false,
+    bool trans_b = false,
+    float alpha = 1,
+    const std::string& name = UniqName("T_Transform_Matmul_out"));
 
 // realized by sharing buffer
 ir::Tensor Reshape(const ir::Tensor& A,
@@ -66,28 +69,30 @@ ir::Tensor Reshape(const ir::Tensor& A,
 
 ir::Tensor Concat(const ir::Tensor& A,
                   const ir::Tensor& B,
-                  int axis                = 0,
+                  int axis = 0,
                   const std::string& name = UniqName("T_Transform_Concat_out"));
 
 ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
-                  int axis                = 0,
+                  int axis = 0,
                   const std::string& name = UniqName("T_Transform_Concat_out"));
 
-std::vector<ir::Tensor> MatmulV2(const ir::Tensor& A,
-                                 const ir::Tensor& B,
-                                 bool trans_a                 = false,
-                                 bool trans_b                 = false,
-                                 float alpha                  = 1,
-                                 const std::string& name      = UniqName("T_Transform_MatmulV2_out"),
-                                 const common::Target& target = common::DefaultHostTarget());
+std::vector<ir::Tensor> MatmulV2(
+    const ir::Tensor& A,
+    const ir::Tensor& B,
+    bool trans_a = false,
+    bool trans_b = false,
+    float alpha = 1,
+    const std::string& name = UniqName("T_Transform_MatmulV2_out"),
+    const common::Target& target = common::DefaultHostTarget());
 
-std::vector<ir::Tensor> MatmulMKL(const ir::Tensor& A,
-                                  const ir::Tensor& B,
-                                  bool trans_a                 = false,
-                                  bool trans_b                 = false,
-                                  float alpha                  = 1,
-                                  const std::string& name      = UniqName("T_Transform_MatmulMKL_out"),
-                                  const common::Target& target = common::DefaultHostTarget());
+std::vector<ir::Tensor> MatmulMKL(
+    const ir::Tensor& A,
+    const ir::Tensor& B,
+    bool trans_a = false,
+    bool trans_b = false,
+    float alpha = 1,
+    const std::string& name = UniqName("T_Transform_MatmulMKL_out"),
+    const common::Target& target = common::DefaultHostTarget());
 
 int GetMulFactor(int shape, const Type& type, const common::Target& target);
 
@@ -100,12 +105,14 @@ int GetMulFactor(int shape, const Type& type, const common::Target& target);
  * @param target if target is x86, we will split the reduce axis
  *
  * @return the output tensors
-Notes: this mul only support two-dims-tensor after flattening [M, K] * [N, K], K is the reduce axis
+Notes: this mul only support two-dims-tensor after flattening [M, K] * [N, K], K
+is the reduce axis
  */
-std::vector<ir::Tensor> MulBase(const ir::Tensor& A,
-                                const ir::Tensor& B,
-                                const std::string& name      = UniqName("T_Transform_MulBase_out"),
-                                const common::Target& target = common::DefaultHostTarget());
+std::vector<ir::Tensor> MulBase(
+    const ir::Tensor& A,
+    const ir::Tensor& B,
+    const std::string& name = UniqName("T_Transform_MulBase_out"),
+    const common::Target& target = common::DefaultHostTarget());
 
 std::vector<ir::Tensor> Mul(const ir::Tensor& A,
                             const ir::Tensor& B,
@@ -114,20 +121,23 @@ std::vector<ir::Tensor> Mul(const ir::Tensor& A,
                             const ir::Var& axis_k,
                             const std::string& name);
 
-std::vector<ir::Tensor> MulMKL(const ir::Tensor& A,
-                               const ir::Tensor& B,
-                               const std::string& name      = UniqName("T_Transform_MulMKL_out"),
-                               const common::Target& target = common::DefaultHostTarget());
+std::vector<ir::Tensor> MulMKL(
+    const ir::Tensor& A,
+    const ir::Tensor& B,
+    const std::string& name = UniqName("T_Transform_MulMKL_out"),
+    const common::Target& target = common::DefaultHostTarget());
 
-ir::Tensor LayoutTransform(const ir::Tensor& input,
-                           const std::string& src_layout,
-                           const std::string& dst_layout,
-                           const std::string& name = UniqName("T_LayoutTransform_out"));
+ir::Tensor LayoutTransform(
+    const ir::Tensor& input,
+    const std::string& src_layout,
+    const std::string& dst_layout,
+    const std::string& name = UniqName("T_LayoutTransform_out"));
 
-std::vector<ir::Expr> InferShapeLayoutTransform(const std::vector<Expr>& input_shapes,
-                                                const ir::Layout& old_layout,
-                                                const ir::Layout& new_layout,
-                                                absl::flat_hash_map<int, std::vector<int>>* split_index_map);
+std::vector<ir::Expr> InferShapeLayoutTransform(
+    const std::vector<Expr>& input_shapes,
+    const ir::Layout& old_layout,
+    const ir::Layout& new_layout,
+    absl::flat_hash_map<int, std::vector<int>>* split_index_map);
 
 /**
  * @brief Perform meta op Reverse
@@ -145,9 +155,10 @@ ir::Tensor Reverse(const ir::Tensor& input,
  * @param axis tranpsoe axis
  * @param output_name the name of the output tensor
  */
-ir::Tensor Transpose(const ir::Tensor& input,
-                     const std::vector<int>& axis,
-                     const std::string& output_name = UniqName("T_Transpose_out"));
+ir::Tensor Transpose(
+    const ir::Tensor& input,
+    const std::vector<int>& axis,
+    const std::string& output_name = UniqName("T_Transpose_out"));
 
 /**
  * @brief Perform meta op Split
@@ -157,10 +168,11 @@ ir::Tensor Transpose(const ir::Tensor& input,
  * @param axis select axis
  * @param output_name the name of the output tensor
  */
-std::vector<ir::Tensor> Split(const ir::Tensor& A,
-                              int axis,
-                              const std::vector<std::vector<int>>& output_shapes,
-                              const std::vector<std::string>& names);
+std::vector<ir::Tensor> Split(
+    const ir::Tensor& A,
+    int axis,
+    const std::vector<std::vector<int>>& output_shapes,
+    const std::vector<std::string>& names);
 
 ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<int>& starts,
@@ -179,13 +191,14 @@ ir::Tensor Slice(const ir::Tensor& A,
  * @param strides select reigon strides
  * @param output_name the name of the output tensor
  */
-ir::Tensor SliceAssign(const ir::Tensor& input,
-                       const ir::Tensor& assign,
-                       const std::vector<int>& axes,
-                       const std::vector<int>& starts,
-                       const std::vector<int>& ends,
-                       const std::vector<int>& strides,
-                       const std::string& output_name = UniqName("T_Transform_SliceAssign_out"));
+ir::Tensor SliceAssign(
+    const ir::Tensor& input,
+    const ir::Tensor& assign,
+    const std::vector<int>& axes,
+    const std::vector<int>& starts,
+    const std::vector<int>& ends,
+    const std::vector<int>& strides,
+    const std::string& output_name = UniqName("T_Transform_SliceAssign_out"));
 /**
  * @brief Perform meta op Split
  * @param A The input tensor
@@ -196,7 +209,7 @@ ir::Tensor SliceAssign(const ir::Tensor& input,
 ir::Tensor Gather(const ir::Tensor& x,
                   const ir::Tensor& index,
                   const std::vector<Expr>& output_shape,
-                  int axis                = 0,
+                  int axis = 0,
                   const std::string& name = UniqName("T_Transform_Gather_out"));
 
 /**
@@ -206,12 +219,13 @@ ir::Tensor Gather(const ir::Tensor& x,
  * @param indexs The indexs tensor
  * @param output_name the name of the output tensor
  */
-ir::Tensor ScatterAssign(const ir::Tensor& input,
-                         const ir::Tensor& updates,
-                         const ir::Tensor& index,
-                         const common::Target& target,
-                         const int axis                 = 0,
-                         const std::string& output_name = UniqName("T_Transform_ScatterAssign_out"));
+ir::Tensor ScatterAssign(
+    const ir::Tensor& input,
+    const ir::Tensor& updates,
+    const ir::Tensor& index,
+    const common::Target& target,
+    const int axis = 0,
+    const std::string& output_name = UniqName("T_Transform_ScatterAssign_out"));
 
 /**
  * @brief Perform meta op ScatterAdd
