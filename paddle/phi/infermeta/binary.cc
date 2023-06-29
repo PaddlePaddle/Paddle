@@ -2513,6 +2513,18 @@ void PriorBoxInferMeta(const MetaTensor& input,
   var->set_dims(phi::make_ddim(dim_vec));
 }
 
+void RepeatInterleaveForStaticInferMeta(const MetaTensor& x,
+                                        const MetaTensor& repeats,
+                                        int repeat,
+                                        int dim,
+                                        MetaTensor* out) {
+  if (repeats) {
+    return RepeatInterleaveInferMeta(x, repeat, dim, out);
+  } else {
+    return RepeatInterleaveWithTensorIndexInferMeta(x, repeats, dim, out);
+  }
+}
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,

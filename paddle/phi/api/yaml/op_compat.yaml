@@ -2082,12 +2082,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : repeat_interleave (repeat_interleave_with_tensor_index)
-  backward : repeat_interleave_grad (repeat_interleave_with_tensor_index_grad)
+- op : repeat_interleave
+  backward : repeat_interleave_grad
   inputs :
     {x : X}
   outputs :
     {out : Out}
+  manual_signature : [repeat_interleave, repeat_interleave_grad]
 
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)

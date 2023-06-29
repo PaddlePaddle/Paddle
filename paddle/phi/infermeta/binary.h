@@ -375,6 +375,12 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void RepeatInterleaveForStaticInferMeta(const MetaTensor& x,
+                                        const MetaTensor& repeats,
+                                        int repeat,
+                                        int dim,
+                                        MetaTensor* out);
+
 void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               const MetaTensor& repeats,
                                               int dim,

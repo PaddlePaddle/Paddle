@@ -446,12 +446,14 @@
   backward : relu6_grad
 
 - op : repeat_interleave
-  args : (Tensor x, int repeats = 0, int axis)
+  args : (Tensor x, Tensor repeats, int repeats = 0, int axis = 0)
   output : Tensor(out)
+  optional : repeats
   infer_meta :
-    func : RepeatInterleaveInferMeta
+    func : RepeatInterleaveForStaticInferMeta
   kernel :
     func : repeat_interleave
+    data_type : x
   backward: repeat_interleave_grad
 
 - op : rnn
