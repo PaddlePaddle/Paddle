@@ -116,13 +116,13 @@ class TestPEElementwise(unittest.TestCase):
         is_round=False,
         is_bool=False,
     ):
-        m, n = [
+        m, n = (
             ir.Expr(_)
             for _ in (
                 self.m,
                 self.n,
             )
-        ]
+        )
 
         x = lang.Placeholder(dtype, "x", [m, n])
         y = cinn_fn(x.to_tensor())
