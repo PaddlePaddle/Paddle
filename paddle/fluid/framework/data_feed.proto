@@ -49,6 +49,7 @@ message GraphConfig {
   optional bool return_weight = 19 [ default = false ];
   optional string pair_label = 20;
   optional bool is_thread_sharding = 21 [ default = false ];
+  optional int32 accumulate_num = 22 [ default = 1 ];
 }
 
 message DataFeedDesc {

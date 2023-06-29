@@ -1145,6 +1145,9 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.pair_label = config.get(
             "pair_label", ""
         )
+        self.proto_desc.graph_config.accumulate_num = config.get(
+            "accumulate_num", 1
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):
