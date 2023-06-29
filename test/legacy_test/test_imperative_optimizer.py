@@ -23,9 +23,7 @@ from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
-    AdagradOptimizer,
     Adam,
-    AdamaxOptimizer,
     DecayedAdagradOptimizer,
     DpsgdOptimizer,
     ExponentialMovingAverage,
@@ -590,13 +588,13 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Adagrad(
+            learning_rate=0.2, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdagradOptimizer(learning_rate=0.2)
+        optimizer = paddle.optimizer.Adagrad(learning_rate=0.2)
         return optimizer
 
     def test_adagrad(self):
@@ -605,13 +603,13 @@ class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdamaxOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list
+        optimizer = paddle.optimizer.Adamax(
+            learning_rate=0.2, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdamaxOptimizer(learning_rate=0.2)
+        optimizer = paddle.optimizer.Adamax(learning_rate=0.2)
         return optimizer
 
     def test_adamax(self):

@@ -376,8 +376,8 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.fluid.optimizer.Adagrad(
-            learning_rate=0.001, parameter_list=model.parameters()
+        optimizer = paddle.optimizer.Adagrad(
+            learning_rate=0.001, parameters=model.parameters()
         )
         optimizer._multi_precision = mp
         if use_amp:
@@ -408,7 +408,7 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.Adagrad(learning_rate=0.001)
+        optimizer = paddle.optimizer.Adagrad(learning_rate=0.001)
         optimizer._multi_precision = mp
         if use_amp:
             optimizer = paddle.static.amp.decorate(
