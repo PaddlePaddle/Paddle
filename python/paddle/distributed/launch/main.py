@@ -361,6 +361,7 @@ def launch():
         recorder = History_recorder()
 
         job_id = 0
+<<<<<<< HEAD
         if tuner_cfg.get("global_batch_size") == "auto":
             # search and set global batch size
             # adjust micron batch with fixed dp mp pp
@@ -381,11 +382,17 @@ def launch():
             c.run()
             # Process generated result
 
+=======
+        raw_ctx = copy.deepcopy(ctx)
+>>>>>>> ebd4d85b44 (deepcopy ctx)
         while cur_cfg:
             ctx = copy.deepcopy(raw_ctx)
+<<<<<<< HEAD
             if is_first_task:
                 ctx.max_time_per_task = warmup_time
             is_first_task = False
+=======
+>>>>>>> dda7aa8154 (deepcopy ctx)
             # auto tuner supports dp, mp, pp, micro batch size, sharding, recompute by default and every task has own log dir
             log_dir = "DP{}_MP{}_PP{}_Sharding_degree_{}_stage_{}_MBS_{}_Recompute_{}_granularity_{}".format(
                 cur_cfg["dp_degree"],
@@ -451,7 +458,6 @@ def launch():
                     "Get best config failed. Currently there are no appropriate configs."
                 )
             c.finalize(exit=False)
-            ctx.status._current_status = None
 
             # generate a new config
             new_cfg = auto_tuner.search_once()
@@ -465,6 +471,7 @@ def launch():
         # get best config to run
         signal.alarm(0)
         best_cfg = None
+        ctx = copy.deepcopy(raw_ctx)
         if nnodes > 1:
             import socket
 
@@ -519,10 +526,7 @@ def launch():
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
         ctx.args.log_dir = "best_cfg"
-<<<<<<< HEAD
         # run best cfg
-=======
->>>>>>> a8d316ae7c (remove alarm and set logdir)
         c = controllers.init(ctx)
         c.run()
         c.finalize(exit=True)
