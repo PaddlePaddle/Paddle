@@ -25,15 +25,18 @@ class OpYamlInfoParser {
 
   explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple);
 
-  bool IsTensorArrtibute(size_t index) const;
+  bool IsTensorAttribute(size_t index) const;
   size_t InputTensorNumber() const;
 
   const std::string& AttrTypeName(const std::string& name) const;
+  const std::string& TensorAttrTypeName(const std::string& name) const;
 
   const std::vector<std::string>& InferMetaTensorParams() const;
   const std::vector<std::string>& InferMetaAttrParams() const;
   const std::vector<std::string>& KernelFnTensorParams() const;
   const std::vector<std::string>& KernelFnAttrParams() const;
+  const OpRunTimeInfo& OpRuntimeInfo() const;
+  const std::map<std::string, int>& Name2Id() const;
 
  private:
   void parse();
@@ -41,7 +44,7 @@ class OpYamlInfoParser {
     return std::get<0>(op_info_tuple_);
   }
 
-  const OpInfoTuple& op_info_tuple_;
+  OpInfoTuple op_info_tuple_;
 
   std::map<std::string, int> map_name2id_;
 

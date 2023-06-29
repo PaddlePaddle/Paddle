@@ -39,7 +39,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/ir/dialect/utils.h"
 #include "paddle/fluid/ir/dialect/op_yaml_info_util.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
-#include "paddle/fluid/ir/interface/infershape.h"
+#include "paddle/fluid/ir/interface/infermeta.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
 
@@ -78,9 +78,9 @@ op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
 
-OP_GET_INPUT_TEMPLATE = """  ir::OpOperand {input_name}() {{ return operation()->op_operand({input_index}); }}
+OP_GET_INPUT_TEMPLATE = """  ir::Value {input_name}() {{ return operand({input_index}); }}
 """
-OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return operation()->result({output_index}); }}
+OP_GET_OUTPUT_TEMPLATE = """  ir::OpResult {output_name}() {{ return result({output_index}); }}
 """
 
 # =====================================
@@ -143,7 +143,7 @@ void {op_name}::Build({build_args}) {{
 }}
 """
 OP_INFER_SHAPE_TEMPLATE = """
-void {op_name}::InferShape( phi::InferMetaContext *infer_meta ) {{
+void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
   auto fn = PD_INFER_META(phi::{infer_meta_func});
   fn(infer_meta);
 }}
@@ -298,9 +298,9 @@ class OpInfoParser:
         self.infer_meta_map = self.parse_infer_meta_map()
         self.kernel_map = self.parse_kernel_map()
         if 'infer_meta' in self.op_yaml_item:
-            self.infer_shape_func = self.op_yaml_item['infer_meta']["func"]
+            self.infer_meta_func = self.op_yaml_item['infer_meta']["func"]
         else:
-            self.infer_shape_func = None
+            self.infer_meta_func = None
 
         # parse inplace && view
         self.inplace_map = self.parse_op_inplace_info()
@@ -1218,10 +1218,10 @@ def OpGenerator(
         op_traits = []
 
         exclusive_interface_str = ""
-        if op_info.infer_shape_func:
-            op_interfaces += ["InferShapeInterface"]
+        if op_info.infer_meta_func:
+            op_interfaces += ["InferMetaInterface"]
             exclusive_interface_str += (
-                "  static void InferShape( phi::InferMetaContext *infer_meta );"
+                "  static void InferMeta( phi::InferMetaContext *infer_meta );"
             )
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
@@ -1472,11 +1472,11 @@ def OpGenerator(
                 op_output_optional_list,
             )
 
-            op_infer_shape_str = ""
-            if op_info.infer_shape_func:
-                op_infer_shape_str = OP_INFER_SHAPE_TEMPLATE.format(
+            op_infer_meta_str = ""
+            if op_info.infer_meta_func:
+                op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
                     op_name=op_class_name,
-                    infer_meta_func=op_info.infer_shape_func,
+                    infer_meta_func=op_info.infer_meta_func,
                 )
 
             ops_name_list.append(op_class_name)
@@ -1487,7 +1487,7 @@ def OpGenerator(
             if len(op_mutable_attribute_name_list) > 0:
                 ops_defined_list.append(build_func_with_muta_attr_is_input)
             ops_defined_list.append(op_verify_str)
-            ops_defined_list.append(op_infer_shape_str)
+            ops_defined_list.append(op_infer_meta_str)
 
     # (4) Generate head file str
     op_namespaces_prev = ""

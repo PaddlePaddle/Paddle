@@ -533,6 +533,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fused_multi_transformer_xpu_pass",
       "relu6_fuse_pass",
       "sigmoid_elementmul_fuse_pass",
+      "layer_norm_fuse_pass",
       "matmul_weight_trans_pass",
       "map_matmulv2_to_matmul_xpu_pass",
       "reshape2_matmul_xpu_fuse_pass",
