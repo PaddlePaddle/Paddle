@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fused_rope_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -149,15 +147,11 @@ void FusedRopeGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_rope_grad,
+PD_REGISTER_KERNEL(fused_rotary_position_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FusedRopeGradKernel,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {
-  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
-}
+                   phi::dtype::bfloat16){};
