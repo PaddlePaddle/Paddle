@@ -29,7 +29,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_operators.h"
 #include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/ir/ir_schedule_errorh"
+#include "paddle/cinn/ir/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_copy.h"
@@ -983,7 +983,8 @@ void CheckComputeAtValidation(const Expr& block,
 void InsertBlock(const Expr& for_loop, const Expr& insertion, int index) {
   CHECK(for_loop.As<ir::For>());
   CHECK(for_loop.As<ir::For>()->body.As<Block>());
-  ir::Block* dst_block = for_loop.As<ir::For>()->body.As<Block>();
+  ir::Block* dst_block =
+      const_cast<ir::Block*>(for_loop.As<ir::For>()->body.As<Block>());
   CHECK(index == -1 || index >= 0 && index < dst_block->stmts.size())
       << "index = " << index
       << ", it should be -1 or between [0, block stmts size)";
@@ -1136,8 +1137,7 @@ std::vector<IterRange> CalculateRequiredRegions(
             (*find_for_loops.begin()).As<ir::For>()->extent);
       } else {
         int cons = static_cast<int>(
-                       block.As<ir::ScheduleBlockRealize>()->iter_values[i])
-                       .is_constant();
+            block.As<ir::ScheduleBlockRealize>()->iter_values[i].is_constant());
         required_buffer_range.emplace_back(Expr(cons), Expr(1));
       }
     }

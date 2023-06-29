@@ -1087,7 +1087,7 @@ Expr ScheduleImpl::Reorder(const std::vector<Expr>& loops) {
   Expr bottom = boundary.second;
   std::vector<Expr> chain = GetLoopsInRange(top, bottom);
   std::vector<Expr> if_nodes = GetIfThenElseInRange(top, bottom);
-  Expr new_loop = ConstructNewLoopChain(chain, loops, loop_set, if_nodes);
+  Expr new_loop = ConstructNewLoopChain(chain, loops, loop_set, &if_nodes);
   this->Replace(top, new_loop);
 
   VLOG(4) << "After Reorder, ir is:\n" << new_loop;
@@ -1950,8 +1950,9 @@ void ScheduleImpl::Unannotate(const Expr& block, const std::string& ann_key) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(block.As<ir::ScheduleBlockRealize>()
             ->schedule_block.As<ir::ScheduleBlock>());
-  auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
-                             ->schedule_block.As<ir::ScheduleBlock>();
+  auto* schedule_block = const_cast<ir::ScheduleBlock*>(
+      block.As<ir::ScheduleBlockRealize>()
+          ->schedule_block.As<ir::ScheduleBlock>());
   if (schedule_block->attrs.count(ann_key)) {
     schedule_block->attrs.erase(ann_key);
   } else {
