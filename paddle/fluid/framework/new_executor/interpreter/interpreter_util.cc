@@ -969,7 +969,7 @@ void BuildOpFuncList(
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
     dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    ::ir::BuildPhiKernelContext<
+    ::ir::BuildPhiContext<
         phi::InferMetaContext,
         phi::MetaTensor,
         phi::MetaTensor,
@@ -995,17 +995,17 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    ::ir::BuildPhiKernelContext<phi::KernelContext,
-                                const phi::TensorBase*,
-                                phi::TensorBase*,
-                                paddle::small_vector<const phi::TensorBase*>,
-                                true>((*it),
-                                      value_2_name_map,
-                                      scope,
-                                      op_yaml_info_parser,
-                                      &(op_func_node.kernel_context_),
-                                      &(op_func_node.input_index),
-                                      &(op_func_node.output_index));
+    ::ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>((*it),
+                                value_2_name_map,
+                                scope,
+                                op_yaml_info_parser,
+                                &(op_func_node.kernel_context_),
+                                &(op_func_node.input_index),
+                                &(op_func_node.output_index));
 
     VLOG(6) << "finish process kernel context";
     op_func_node.kernel_context_.SetDeviceContext(

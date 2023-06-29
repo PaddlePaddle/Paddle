@@ -49,7 +49,7 @@ template <typename Context,
           typename OutType,
           typename ListType,
           bool is_kernel>
-void BuildPhiKernelContext(
+void BuildPhiContext(
     ir::Operation* op,
     const std::unordered_map<ir::Value, std::string>& name_map,
     paddle::framework::Scope* scope,
