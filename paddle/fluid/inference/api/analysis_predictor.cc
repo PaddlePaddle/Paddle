@@ -2210,71 +2210,73 @@ void AnalysisPredictor::HookCollectShapeRangeInfo() {
 #endif
     }
 
-    std::vector<std::string> var_names = {input_name};
-    for (const auto &name : var_names) {
-      auto *var = sub_scope_->GetVar(name);
-      if (!var->IsType<phi::DenseTensor>()) {
-        continue;
-      }
-      auto tensor = var->Get<phi::DenseTensor>();
-      if (!tensor.initialized()) continue;
-      framework::DDim dim = tensor.dims();
-      std::vector<int32_t> shape(dim.size());
-      for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
-      if (shape.size() >= 1) {
-        shape_info_[name].emplace_back(shape);
-      } else if (tensor.numel() > 0) {
-        // This must be a zero dimension tensor.
-        PADDLE_ENFORCE_EQ(tensor.numel(), 1UL);
-        std::vector<int32_t> zero_shape(1, 1);
-        shape_info_[name].emplace_back(zero_shape);
-      }
+    auto *new_var = sub_scope_->GetVar(input_name);
+    if (!new_var) return;
+    if (!new_var->IsType<phi::DenseTensor>()) {
+      return;
+    }
+    auto tensor = new_var->Get<phi::DenseTensor>();
+    if (!tensor.initialized()) return;
+    framework::DDim dim = tensor.dims();
+    std::vector<int32_t> shape(dim.size());
+    for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
+    if (shape.size() >= 1) {
+      shape_info_[input_name].emplace_back(shape);
+    } else if (tensor.numel() > 0) {
+      // This must be a zero dimension tensor.
+      PADDLE_ENFORCE_EQ(tensor.numel(),
+                        1UL,
+                        platform::errors::PreconditionNotMet(
+                            "This tensor must have one element, but got %ld.",
+                            tensor.numel()));
+      std::vector<int32_t> zero_shape(1, 1);
+      shape_info_[input_name].emplace_back(zero_shape);
+    }
 
-      // We need collect value range for shape tensor for Paddle-TRT's use.
-      // To be noticed, this method to identify all shape tensors is based on
-      // assumption that all shape tensors in the model have numbers <= 7.
-      // This is a simple method to identify all shape tensors with some
-      // mistakes, but it doesn't matter.
-      auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
-      if ((tensor.dtype() == phi::DataType::INT32 ||
-           tensor.dtype() == phi::DataType::INT64) &&
-          is_shape_tensor) {
-        std::vector<int> int32_host(tensor.numel());
+    // We need collect value range for shape tensor for Paddle-TRT's use.
+    // To be noticed, this method to identify all shape tensors is based on
+    // assumption that all shape tensors in the model have numbers <= 7.
+    // This is a simple method to identify all shape tensors with some
+    // mistakes, but it doesn't matter.
+    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+    if ((tensor.dtype() == phi::DataType::INT32 ||
+         tensor.dtype() == phi::DataType::INT64) &&
+        is_shape_tensor) {
+      std::vector<int> int32_host(tensor.numel());
 
-        if (platform::is_cpu_place(tensor.place())) {
-          auto &int32_tensor = tensor;
-          if (tensor.dtype() == phi::DataType::INT64) {
-            auto *cpu_ctx = pool.Get(platform::CPUPlace());
-            int32_tensor = phi::funcs::TransDataType(
-                reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
-                tensor,
-                DataType::INT32);
-          }
-          paddle::memory::Copy(platform::CPUPlace(),
-                               int32_host.data(),
-                               platform::CPUPlace(),
-                               int32_tensor.data<int>(),
-                               int32_tensor.numel() * sizeof(int));
-        } else if (platform::is_gpu_place(tensor.place())) {
-#if defined(PADDLE_WITH_CUDA)
-          auto *dev_ctx = pool.Get(tensor.place());
-          auto &int32_tensor = tensor;
-          if (tensor.dtype() == phi::DataType::INT64) {
-            int32_tensor = phi::funcs::TransDataType(
-                reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
-                tensor,
-                DataType::INT32);
-          }
-          paddle::memory::Copy(platform::CPUPlace(),
-                               int32_host.data(),
-                               int32_tensor.place(),
-                               int32_tensor.data<int>(),
-                               int32_tensor.numel() * sizeof(int),
-                               nullptr);
-#endif
+      if (platform::is_cpu_place(tensor.place())) {
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          auto *cpu_ctx = pool.Get(platform::CPUPlace());
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
+              tensor,
+              DataType::INT32);
         }
-        shape_tensor_value_[name].emplace_back(int32_host);
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CPUPlace(),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int));
+      } else if (platform::is_gpu_place(tensor.place())) {
+#if defined(PADDLE_WITH_CUDA)
+        auto *dev_ctx = pool.Get(tensor.place());
+        auto &int32_tensor = tensor;
+        if (tensor.dtype() == phi::DataType::INT64) {
+          int32_tensor = phi::funcs::TransDataType(
+              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
+              tensor,
+              DataType::INT32);
+        }
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             int32_tensor.place(),
+                             int32_tensor.data<int>(),
+                             int32_tensor.numel() * sizeof(int),
+                             nullptr);
+#endif
       }
+      shape_tensor_value_[input_name].emplace_back(int32_host);
     }
   };
   RegisterInputHook(hook);
@@ -2688,8 +2690,8 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
 }
 
 void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
-  static std::once_flag register_hook_flag1;
-  std::call_once(register_hook_flag1, [this] {
+  static std::once_flag register_input_hook_flag;
+  std::call_once(register_input_hook_flag, [this] {
     executor_->RegisterInputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &input : op->Inputs()) {
@@ -2712,8 +2714,8 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
 
 void AnalysisPredictor::RegisterOutputHook(
     const OutputTensorHookFunc &hookfunc) {
-  static std::once_flag register_hook_flag;
-  std::call_once(register_hook_flag, [this] {
+  static std::once_flag register_output_hook_flag;
+  std::call_once(register_output_hook_flag, [this] {
     executor_->RegisterOutputHook(
         [this](framework::OperatorBase *op, framework::Scope *scope) {
           for (auto &output : op->Outputs()) {
