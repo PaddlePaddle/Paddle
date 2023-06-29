@@ -180,6 +180,7 @@ class ControllerBase:
         self.ctx.logger.info(f"Terminating with signal {sigint}")
 
         self.sigint = sigint
+        self.ctx.status.done()
         self.stop(sigint=sigint)
         self.ctx.logger.info(f"Exit with signal {sigint}")
 

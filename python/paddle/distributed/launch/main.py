@@ -295,6 +295,7 @@ def launch():
     elif ctx.is_auto_tuner_mode():
         import copy
         import json
+        import signal
         import sys
         import time
 
@@ -343,7 +344,6 @@ def launch():
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
         cur_cfg = auto_tuner.search_once()
-        auto_tuner.add_cfg(cur_cfg)
 
         # get max time per task run
         max_time_per_task = tuner_cfg.get("max_time_per_task", 1800)
@@ -416,6 +416,9 @@ def launch():
                 )
             )
             c = controllers.init(ctx)
+            # set per task timeout
+            signal.signal(signal.SIGALRM, c.not_exit_signal_handler)
+            signal.alarm(max_time_per_task)
             c.run()
 
             # process generated result
@@ -455,7 +458,6 @@ def launch():
             # generate a new config
             new_cfg = auto_tuner.search_once()
             cur_cfg = copy.deepcopy(new_cfg)
-            auto_tuner.add_cfg(cur_cfg)
 
             # per task launch interval
             time.sleep(3)
@@ -463,7 +465,6 @@ def launch():
 
         # get best config to run
         best_cfg = None
-        ctx = copy.deepcopy(raw_ctx)
         if nnodes > 1:
             import socket
 
@@ -512,8 +513,8 @@ def launch():
         end_time = time.time()
         ctx.logger.info(f"AutoTuner ends in {end_time-start_time}s.")
         # launch best cfg
+        ctx.status._current_status = None
         new_args = gen_new_args(raw_args, best_cfg, tuner_cfg)
-        ctx.run_best = True
         ctx.args.training_script_args = new_args
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
