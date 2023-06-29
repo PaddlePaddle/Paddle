@@ -126,8 +126,3 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
-        exclude: |
-            (?x)^(
-                paddle/cinn/.+|
-                cmake/cinn/.+
-            )$
