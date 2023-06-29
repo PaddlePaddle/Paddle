@@ -74,15 +74,22 @@ class TestLoadResnetModel(unittest.TestCase):
         # out.shape[0]
         for i in range(0, min(out.shape[0], 200)):
             if np.abs(out[i] - target_result[i]) > 1e-3:
-                print("Error! ", i, "-th data has diff with target data:\n",
-                      out[i], " vs: ", target_result[i], ". Diff is: ",
-                      out[i] - target_result[i])
+                print(
+                    "Error! ",
+                    i,
+                    "-th data has diff with target data:\n",
+                    out[i],
+                    " vs: ",
+                    target_result[i],
+                    ". Diff is: ",
+                    out[i] - target_result[i],
+                )
         self.assertTrue(np.allclose(out, target_result, atol=1e-3))
 
     def test_model(self):
         self.apply_test()
-        #self.target.arch = Target.Arch.NVGPU
-        #self.apply_test()
+        # self.target.arch = Target.Arch.NVGPU
+        # self.apply_test()
 
 
 if __name__ == "__main__":

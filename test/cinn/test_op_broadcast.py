@@ -37,8 +37,9 @@ class OpTest_add_0(SingleOpTester):
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", 0)
-        self.to_test_op([[100, 32], [100, 32]], [[100, 32]], "elementwise_add",
-                        attrs)
+        self.to_test_op(
+            [[100, 32], [100, 32]], [[100, 32]], "elementwise_add", attrs
+        )
 
 
 class OpTest_add_1(SingleOpTester):
@@ -60,8 +61,9 @@ class OpTest_mul_0(SingleOpTester):
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", 0)
-        self.to_test_op([[100, 32], [100, 32]], [[100, 32]], "elementwise_mul",
-                        attrs)
+        self.to_test_op(
+            [[100, 32], [100, 32]], [[100, 32]], "elementwise_mul", attrs
+        )
 
 
 class OpTest_mul_1(SingleOpTester):

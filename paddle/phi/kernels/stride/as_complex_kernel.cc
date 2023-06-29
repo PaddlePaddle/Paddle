@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#if !defined(PADDLE_WITH_XPU)
 #include "paddle/phi/kernels/as_complex_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/complex.h"
@@ -42,3 +43,4 @@ PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
     as_complex, STRIDED, phi::AsComplexStridedKernel) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
+#endif  //! defined(PADDLE_WITH_XPU)

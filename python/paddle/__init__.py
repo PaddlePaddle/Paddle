@@ -230,6 +230,7 @@ from .tensor.math import log2  # noqa: F401
 from .tensor.math import log10  # noqa: F401
 from .tensor.math import multiplex  # noqa: F401
 from .tensor.math import pow  # noqa: F401
+from .tensor.math import pow_  # noqa: F401
 from .tensor.math import reciprocal  # noqa: F401
 from .tensor.math import all  # noqa: F401
 from .tensor.math import any  # noqa: F401
@@ -565,6 +566,7 @@ __all__ = [  # noqa
     'abs',
     'tril',
     'pow',
+    'pow_',
     'zeros_like',
     'maximum',
     'topk',
