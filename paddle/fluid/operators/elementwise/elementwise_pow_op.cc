@@ -93,12 +93,3 @@ REGISTER_OPERATOR(elementwise_pow,
                   ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>,
                   ops::ElementwisePowCompositeGradOpMaker);
 REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_VERSION(elementwise_pow)
-    .AddCheckpoint(
-        R"ROC(Register elementwise_pow for adding the attribute of Scale_y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Scale_y",
-            "In order to support the function of scaling the input Y when "
-            "using the operator of elementwise_pow.",
-            1.0f));
