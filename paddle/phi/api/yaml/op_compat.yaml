@@ -523,6 +523,8 @@
   drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+  get_expected_kernel_type :
+    concat : GetConcatExpectedKernelType
 
 - op : conditional_block
   backward : conditional_block_grad
