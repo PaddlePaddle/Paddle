@@ -160,6 +160,7 @@ class Adan(Optimizer):
         apply_decay_param_fun=None,
         grad_clip=None,
         multi_precision=False,
+        is_vanilla = False,
         name=None,
     ):
         assert learning_rate is not None
@@ -257,6 +258,7 @@ class Adan(Optimizer):
         self._no_prox = no_prox
         self._epsilon = epsilon
         self._multi_precision = multi_precision
+        self._is_vanilla = is_vanilla
         self._master_weights = {}
 
         self._default_dict = {
@@ -341,8 +343,10 @@ class Adan(Optimizer):
         if self._is_dtype_fp16_or_bf16(acc_dtype):
             acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._pre_grad_str, p, dtype=acc_dtype)
+        
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
-        self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        if not self._is_vanilla:
+            self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment3_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
@@ -444,12 +448,16 @@ class Adan(Optimizer):
         moment1 = self._get_accumulator_master(
             self._moment1_acc_str, param_and_grad[0]
         )
-        moment2 = self._get_accumulator_master(
-            self._moment2_acc_str, param_and_grad[0]
-        )
+        if not self._is_vanilla:
+            moment2 = self._get_accumulator_master(
+                self._moment2_acc_str, param_and_grad[0]
+            )
+        else:
+            moment2 = None
         moment3 = self._get_accumulator_master(
             self._moment3_acc_str, param_and_grad[0]
         )
+
         beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
@@ -486,6 +494,7 @@ class Adan(Optimizer):
                 if not isinstance(self._beta3, Variable)
                 else self._beta3.item(0)
             )
+            
             _, _, _, _, _, _, _, _, _ = _C_ops.adan_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -506,8 +515,84 @@ class Adan(Optimizer):
                 self._no_prox,
                 find_master,
                 False,
+                self._is_vanilla,
             )
             return None
+        else:
+            _beta1 = (
+                self._beta1
+                if not isinstance(self._beta1, Variable)
+                else self._beta1.item(0)
+            )
+            _beta2 = (
+                self._beta2
+                if not isinstance(self._beta2, Variable)
+                else self._beta2.item(0)
+            )
+            _beta3 = (
+                self._beta3
+                if not isinstance(self._beta3, Variable)
+                else self._beta3.item(0)
+            )
+            inputs = {
+                "param": [param_and_grad[0]],
+                "grad": [param_and_grad[1]],
+                "learning_rate": [lr],
+                "moment1": [moment1],
+                "moment2": [moment2],
+                "moment3": [moment3],
+                "pregrad": [pre_grad],
+                "beta1_pow": [beta1_pow_acc],
+                "beta2_pow": [beta2_pow_acc],
+                "beta3_pow": [beta3_pow_acc],
+            }
+
+            outputs = {
+                "param_out": [param_and_grad[0]],
+                "moment1_out": [moment1],
+                "moment2_out": [moment2],
+                "moment3_out": [moment3],
+                "beta1_pow_out": [beta1_pow_acc],
+                "beta2_pow_out": [beta2_pow_acc],
+                "beta3_pow_out": [beta3_pow_acc],
+                "pregrad_out": [pre_grad],
+            }
+            attrs = {
+                'epsilon': self._epsilon,
+                'beta1': _beta1,
+                'beta2': _beta2,
+                'beta3': _beta3,
+                "weight_decay": _weight_decay,
+                "no_prox": self._no_prox,
+                "multi_precision": find_master
+            }
+
+            if isinstance(self._beta1, Variable):
+                inputs['Beta1Tensor'] = self._beta1
+            else:
+                attrs['beta1'] = self._beta1
+            if isinstance(self._beta2, Variable):
+                inputs['Beta2Tensor'] = self._beta2
+            else:
+                attrs['beta2'] = self._beta2
+            if isinstance(self._epsilon, Variable):
+                inputs['EpsilonTensor'] = self._epsilon
+            else:
+                attrs['epsilon'] = self._epsilon
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            adamw_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
+
+            return adamw_op
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])

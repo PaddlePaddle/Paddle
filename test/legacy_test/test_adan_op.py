@@ -21,30 +21,8 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
-from paddle.framework import core# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import random
-import unittest
-from functools import partial
-
-import numpy as np
-from eager_op_test import OpTest
-
-import paddle
-from paddle import fluid
 from paddle.framework import core
+
 
 
 def adan_step(inputs, attributes):
@@ -52,14 +30,17 @@ def adan_step(inputs, attributes):
     grad = inputs['grad']
     pre_grad = inputs['pregrad']
     moment1 = inputs['moment1']
-    moment2 = inputs['moment2']
+    if 'moment2' in inputs:
+        moment2 = inputs['moment2']
     moment3 = inputs['moment3']
     lr = inputs['learning_rate']
     beta1_pow = inputs['beta1_pow']
     beta2_pow = inputs['beta2_pow']
     beta3_pow = inputs['beta3_pow']
     epsilon = attributes['epsilon']
-
+    vanilla = attributes['vanilla']
+    if vanilla: print("vvvvvvvvv") 
+    else: print("nnnnnnnnnnnn")
     if 'weight_decay' in  attributes:
         weight_decay = attributes["weight_decay"]
         
@@ -83,19 +64,28 @@ def adan_step(inputs, attributes):
         
     grad_diff = grad - pre_grad
     update = grad + beta2 * grad_diff
-    moment1_out = beta1 * moment1 + (1 - beta1) * grad
-    moment2_out = beta2 * moment2 + (1 - beta2) * grad_diff
-    moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
+    if not vanilla:
+        moment1_out = beta1 * moment1 + (1 - beta1) * grad
+        moment2_out = beta2 * moment2 + (1 - beta2) * grad_diff
+        moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
+    else:
+        moment1_out = beta1 * moment1 + (1 - beta1) * grad + beta2 * (1 - beta2) * grad_diff
+        moment2_out = moment1_out
+        moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
     
     denom = (np.sqrt(moment3_out) / np.sqrt(1.0 - beta3_pow)) + epsilon
-    update = (moment1_out / (1.0 - beta1_pow) + beta2 * moment2_out / (1.0 - beta2_pow)) / denom
+    if vanilla:
+        update = moment1_out / (1.0 - beta1_pow) / denom
+    else:
+        update = (moment1_out / (1.0 - beta1_pow) + beta2 * moment2_out / (1.0 - beta2_pow)) / denom
 
     if no_prox:
         param_out = param * (1 - lr * weight_decay) - update * lr
     else:
         param_out = (param - update * lr) / (1 + lr * weight_decay)
     
-    return param_out, moment1_out, moment2_out, moment3_out, grad
+
+    return param_out, moment1_out, moment2_out,  moment3_out, grad
 
 
 def adan_wrapper(
@@ -115,7 +105,9 @@ def adan_wrapper(
     beta3=0.99,
     epsilon=1e-4,
     weight_decay=0.01,
-    no_prox=False
+    no_prox=False,
+    vanilla=False,
+    
 ):
     _, _, _, _, _, _, _, _ , _= paddle._C_ops.adan_(
                 param,
@@ -137,6 +129,7 @@ def adan_wrapper(
                 no_prox,
                 master_weight is not None,
                 False,
+                vanilla
             )
 
 
@@ -693,6 +686,7 @@ class TestAdanBetaPow2CPU(unittest.TestCase):
             no_prox,
             False,
             False,
+            False,
         )
 
         if use_main_grad:
@@ -715,6 +709,7 @@ class TestAdanBetaPow2CPU(unittest.TestCase):
                 _weight_decay,
                 no_prox,
                 find_master,
+                False,
                 False,
             )
             np.testing.assert_allclose(
@@ -745,6 +740,7 @@ class TestAdanBetaPow2CPU(unittest.TestCase):
                 no_prox,
                 find_master,
                 False,
+                False
             )
             np.testing.assert_allclose(
                 param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2,verbose = True
@@ -769,7 +765,76 @@ class TestAdanBetaPow2CPU(unittest.TestCase):
                     self._test_adan_op_dygraph_place_amp_with_maingrad(
                         place, shape, use_main_grad
                     )
-                    
+                  
+                  
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestAdanVanilla(OpTest):
+    def setUp(self):
+        '''Test Adan Op with supplied attributes'''
+        self.op_type = "adan"
+        self.python_api = adan_wrapper
+        self.python_out_sig = ['Out']
+        param = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        grad = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        pre_grad = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        moment1 = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        moment2 = np.random.uniform(-1, 1, (2, 2)).astype("float32")
+        moment3 = np.random.random((2, 2)).astype("float32")
+
+        learning_rate = 0.004
+        beta1 = 0.98
+        beta2 = 0.92
+        beta3 = 0.99
+        epsilon = 1e-4
+        beta1_pow = beta1**10
+        beta2_pow = beta2**10
+        beta3_pow = beta3**10
+
+        self.inputs = {
+            'param': param,
+            'grad': grad,
+            'pregrad': pre_grad,
+            'moment1': moment1,
+            'moment2': moment2,
+            'moment3': moment3,
+            'learning_rate': np.array([learning_rate]).astype("float32"),
+            'beta1_pow': np.array([beta1_pow]).astype("float32"),
+            'beta2_pow': np.array([beta2_pow]).astype("float32"),
+            'beta3_pow': np.array([beta3_pow]).astype("float32"),
+        }
+
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': beta1,
+            'beta2': beta2,
+            'beta3': beta3,
+            "weight_decay": 0.02,
+            "no_prox": False,
+            "multi_precision": False,
+            "vanilla": True
+        }
+
+        param_out, moment1_out, moment2_out, moment3_out, pre_grad_out = adan_step(
+            self.inputs, self.attrs
+        )
+
+        self.outputs = {
+            'pregrad_out': pre_grad_out,
+            'moment1_out': moment1_out,
+            'moment3_out': moment3_out,
+            'param_out': param_out,
+            'beta1_pow_out': np.array([beta1_pow]).astype("float32") * beta1,
+            'beta2_pow_out': np.array([beta2_pow]).astype("float32") * beta2,
+            'beta3_pow_out': np.array([beta3_pow]).astype("float32") * beta3,
+        }
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -53,45 +53,83 @@ __global__ void AdanKernelREG(MT beta1,
                               T* param_out,
                               const MT* master_param,
                               MT* master_param_out,
-                              int ndim) {
+                              int ndim,
+                              bool vanilla
+                              ) {
   MT lr = *lr_;
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
   MT beta3_pow = beta3_pow_;
   MT one = static_cast<MT>(1.0);
+  if (!vanilla)
+  {
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; id < ndim; id += gridDim.x * blockDim.x) {
+      MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+      MT g = static_cast<MT>(grad[id]);
+      MT pre_g = static_cast<MT>(pre_grad[id]);
+      MT g_diff = g - pre_g;
+      MT update = g + beta2 * g_diff;
 
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  for (; id < ndim; id += gridDim.x * blockDim.x) {
-    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
-    MT g = static_cast<MT>(grad[id]);
-    MT pre_g = static_cast<MT>(pre_grad[id]);
-    MT g_diff = g - pre_g;
-    MT update = g + beta2 * g_diff;
+      MT mom1 = static_cast<MT>(moment1[id]);
+      MT mom2 = static_cast<MT>(moment2[id]);
+      MT mom3 = static_cast<MT>(moment3[id]);
 
-    MT mom1 = static_cast<MT>(moment1[id]);
-    MT mom2 = static_cast<MT>(moment2[id]);
-    MT mom3 = static_cast<MT>(moment3[id]);
-    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
-    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
-    mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+      mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
+      mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
 
-    MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
-    update =
-        (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
+      MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
+      update =
+          (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
 
-    if (no_prox) {
-      p = p * (one - lr * weight_decay) - update * lr;
-    } else {
-      p = p - (update * lr);
-      p = p / (one + lr * weight_decay);
+      if (no_prox) {
+        p = p * (one - lr * weight_decay) - update * lr;
+      } else {
+        p = p - (update * lr);
+        p = p / (one + lr * weight_decay);
+      }
+      moment1_out[id] = mom1;
+      moment2_out[id] = mom2;
+      moment3_out[id] = mom3;
+      pre_grad_out[id] = grad[id];
+      param_out[id] = static_cast<T>(p);
+      if (master_param_out) {
+        master_param_out[id] = p;
+      }
     }
-    moment1_out[id] = mom1;
-    moment2_out[id] = mom2;
-    moment3_out[id] = mom3;
-    pre_grad_out[id] = grad[id];
-    param_out[id] = static_cast<T>(p);
-    if (master_param_out) {
-      master_param_out[id] = p;
+  }else
+  {
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; id < ndim; id += gridDim.x * blockDim.x) {
+      MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+      MT g = static_cast<MT>(grad[id]);
+      MT pre_g = static_cast<MT>(pre_grad[id]);
+      MT g_diff = g - pre_g;
+      MT update = g + beta2 * g_diff;
+
+      MT mom1 = static_cast<MT>(moment1[id]);
+      MT mom3 = static_cast<MT>(moment3[id]);
+
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g + beta2 * (1 - beta2) * g_diff;
+      mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
+
+      MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
+      update = mom1 / (one - beta1_pow) / (denom);
+
+      if (no_prox) {
+        p = p * (one - lr * weight_decay) - update * lr;
+      } else {
+        p = p - (update * lr);
+        p = p / (one + lr * weight_decay);
+      }
+      moment1_out[id] = mom1;
+      moment3_out[id] = mom3;
+      pre_grad_out[id] = grad[id];
+      param_out[id] = static_cast<T>(p);
+      if (master_param_out) {
+        master_param_out[id] = p;
+      }
     }
   }
 }
@@ -121,48 +159,85 @@ __global__ void AdanKernelMEM(MT beta1,
                               T* param_out,
                               const MT* master_param,
                               MT* master_param_out,
-                              int ndim) {
+                              int ndim,
+                              bool vanilla) {
   MT lr = *lr_;
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
   MT beta3_pow = *beta3_pow_;
   MT one = static_cast<MT>(1.0);
+  if (!vanilla)
+  {
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; id < ndim; id += gridDim.x * blockDim.x) {
+      MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+      MT g = static_cast<MT>(grad[id]);
+      MT pre_g = static_cast<MT>(pre_grad[id]);
+      MT g_diff = g - pre_g;
+      MT update = g + beta2 * g_diff;
 
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  for (; id < ndim; id += gridDim.x * blockDim.x) {
-    MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
-    MT g = static_cast<MT>(grad[id]);
-    MT pre_g = static_cast<MT>(pre_grad[id]);
-    MT g_diff = g - pre_g;
-    MT update = g + beta2 * g_diff;
+      MT mom1 = static_cast<MT>(moment1[id]);
+      MT mom2 = static_cast<MT>(moment2[id]);
+      MT mom3 = static_cast<MT>(moment3[id]);
 
-    MT mom1 = static_cast<MT>(moment1[id]);
-    MT mom2 = static_cast<MT>(moment2[id]);
-    MT mom3 = static_cast<MT>(moment3[id]);
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
+      mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
+      mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
 
-    mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
-    mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g_diff;
-    mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
+      MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
+      update =
+          (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
 
-    MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
-    update =
-        (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
-
-    if (no_prox) {
-      p = p * (one - lr * weight_decay) - update * lr;
-    } else {
-      p = p - (update * lr);
-      p = p / (one + lr * weight_decay);
+      if (no_prox) {
+        p = p * (one - lr * weight_decay) - update * lr;
+      } else {
+        p = p - (update * lr);
+        p = p / (one + lr * weight_decay);
+      }
+      moment1_out[id] = mom1;
+      moment2_out[id] = mom2;
+      moment3_out[id] = mom3;
+      pre_grad_out[id] = grad[id];
+      param_out[id] = static_cast<T>(p);
+      if (master_param_out) {
+        master_param_out[id] = p;
+      }
     }
-    moment1_out[id] = mom1;
-    moment2_out[id] = mom2;
-    moment3_out[id] = mom3;
-    pre_grad_out[id] = grad[id];
-    param_out[id] = static_cast<T>(p);
-    if (master_param_out) {
-      master_param_out[id] = p;
+  }else
+  {
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (; id < ndim; id += gridDim.x * blockDim.x) {
+      MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
+      MT g = static_cast<MT>(grad[id]);
+      MT pre_g = static_cast<MT>(pre_grad[id]);
+      MT g_diff = g - pre_g;
+      MT update = g + beta2 * g_diff;
+
+      MT mom1 = static_cast<MT>(moment1[id]);
+      MT mom3 = static_cast<MT>(moment3[id]);
+
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g + beta2 * (1 - beta2) * g_diff;
+      mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
+
+      MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
+      update = mom1 / (one - beta1_pow) / (denom);
+
+      if (no_prox) {
+        p = p * (one - lr * weight_decay) - update * lr;
+      } else {
+        p = p - (update * lr);
+        p = p / (one + lr * weight_decay);
+      }
+      moment1_out[id] = mom1;
+      moment3_out[id] = mom3;
+      pre_grad_out[id] = grad[id];
+      param_out[id] = static_cast<T>(p);
+      if (master_param_out) {
+        master_param_out[id] = p;
+      }
     }
   }
+  
 }
 
 
@@ -188,7 +263,7 @@ void AdanDenseKernel(const Context& dev_ctx,
                      const DenseTensor& learning_rate,
                      const DenseTensor& pre_grad,
                      const DenseTensor& moment1,
-                     const DenseTensor& moment2,
+                     const paddle::optional<DenseTensor>& moment2,
                      const DenseTensor& moment3,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
@@ -202,6 +277,7 @@ void AdanDenseKernel(const Context& dev_ctx,
                      bool no_prox,
                      bool multi_precision,
                      bool use_global_beta_pow,
+                     bool vanilla,
                      DenseTensor* param_out,
                      DenseTensor* pre_grad_out,
                      DenseTensor* moment1_out,
@@ -217,6 +293,7 @@ void AdanDenseKernel(const Context& dev_ctx,
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
   VLOG(4) << "multi_precision:" << multi_precision;
   VLOG(4) << "no_prox:" << no_prox;
+  VLOG(4) << "is_vanilla:" << vanilla;
 
   MPDType beta1_ = beta1.to<MPDType>();
   MPDType beta2_ = beta2.to<MPDType>();
@@ -253,6 +330,12 @@ void AdanDenseKernel(const Context& dev_ctx,
   MPDType* master_out_data =
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
+
+  const MPDType* moment2_in_data =
+      vanilla ?  nullptr : moment2->data<MPDType>();
+  MPDType* moment2_out_data =
+      vanilla ?  nullptr : dev_ctx.template Alloc<MPDType>(moment2_out);
+
   // update param and moment
   int threads = 512;
   int blocks = (param.numel() + threads - 1) / threads;
@@ -274,8 +357,8 @@ void AdanDenseKernel(const Context& dev_ctx,
           no_prox,
           moment1.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment1_out),
-          moment2.data<MPDType>(),
-          dev_ctx.template Alloc<MPDType>(moment2_out),
+          moment2_in_data,
+          moment2_out_data,
           moment3.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment3_out),
           learning_rate.data<MPDType>(),
@@ -286,7 +369,8 @@ void AdanDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<T>(param_out),
           master_in_data,
           master_out_data,
-          param.numel());
+          param.numel(),
+          vanilla);
       }else
       {
         VLOG(3) << "CPU: grad type Not FLOAT32";
@@ -302,8 +386,8 @@ void AdanDenseKernel(const Context& dev_ctx,
             no_prox,
             moment1.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment2_out),
+            moment2_in_data,
+            moment2_out_data,
             moment3.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment3_out),
             learning_rate.data<MPDType>(),
@@ -314,7 +398,8 @@ void AdanDenseKernel(const Context& dev_ctx,
             dev_ctx.template Alloc<T>(param_out),
             master_in_data,
             master_out_data,
-            param.numel()
+            param.numel(),
+            vanilla
         );
       }
       if (!use_global_beta_pow) {
@@ -345,8 +430,8 @@ void AdanDenseKernel(const Context& dev_ctx,
             no_prox,
             moment1.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment2_out),
+            moment2_in_data,
+            moment2_out_data,
             moment3.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment3_out),
             learning_rate.data<MPDType>(),
@@ -357,7 +442,8 @@ void AdanDenseKernel(const Context& dev_ctx,
             dev_ctx.template Alloc<T>(param_out),
             master_in_data,
             master_out_data,
-            param.numel()
+            param.numel(),
+            vanilla
 
           );
       }else
@@ -376,8 +462,8 @@ void AdanDenseKernel(const Context& dev_ctx,
             no_prox,
             moment1.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment2_out),
+            moment2_in_data,
+            moment2_out_data,
             moment3.data<MPDType>(),
             dev_ctx.template Alloc<MPDType>(moment3_out),
             learning_rate.data<MPDType>(),
@@ -388,7 +474,8 @@ void AdanDenseKernel(const Context& dev_ctx,
             dev_ctx.template Alloc<T>(param_out),
             master_in_data,
             master_out_data,
-            param.numel()
+            param.numel(),
+            vanilla
 
           );
       }

@@ -323,6 +323,7 @@ void AdanInferMeta(const MetaTensor& param,
                    bool no_prox,
                    bool multi_precision,
                    bool use_global_beta_pow,
+                   bool vanilla,
                    MetaTensor* param_out,
                    MetaTensor* pre_grad_out,
                    MetaTensor* moment1_out,
@@ -377,6 +378,9 @@ void AdanInferMeta(const MetaTensor& param,
           "received Param dims: [%s], Moment1 dims: [%s].",
           param_dims,
           moment1.dims()));
+    // vanilla mode 
+  if (!vanilla)
+  {
   PADDLE_ENFORCE_EQ(
       param_dims,
       moment2.dims(),
@@ -385,15 +389,15 @@ void AdanInferMeta(const MetaTensor& param,
           "received Param dims: [%s], Moment2 dims: [%s].",
           param_dims,
           moment2.dims()));
+  }
   PADDLE_ENFORCE_EQ(
+  param_dims,
+  moment3.dims(),
+  errors::InvalidArgument(
+      "Param and Moment3 input of AdamOp should have same dimension. But "
+      "received Param dims: [%s], Moment3 dims: [%s].",
       param_dims,
-      moment3.dims(),
-      errors::InvalidArgument(
-          "Param and Moment3 input of AdamOp should have same dimension. But "
-          "received Param dims: [%s], Moment3 dims: [%s].",
-          param_dims,
-          moment3.dims()));
-
+      moment3.dims()));
   param_out->set_dims(param_dims);
   param_out->set_dtype(param.dtype());
 
@@ -402,8 +406,12 @@ void AdanInferMeta(const MetaTensor& param,
 
   moment1_out->set_dims(param_dims);
   moment1_out->set_dtype(moment1.dtype());
-  moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(moment2.dtype());
+  // vanilla mode 
+  if (!vanilla)
+  {
+    moment2_out->set_dims(param_dims);
+    moment2_out->set_dtype(moment2.dtype());
+  }
   moment3_out->set_dims(param_dims);
   moment3_out->set_dtype(moment3.dtype());
 
