@@ -37,6 +37,8 @@ PD_REGISTER_KERNEL(fetch,
                    uint8_t,
                    int8_t,
                    int16_t,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    bool) {}

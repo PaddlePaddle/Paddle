@@ -114,9 +114,11 @@ class AttributeVisitor {
 
   virtual ir::Attribute operator()(const std::vector<int64_t>& i64s) {
     VLOG(10) << "translating vector<int64>";
+    std::cerr << "size " << i64s.size() << std::endl;
     std::vector<ir::Attribute> attrs;
     attrs.reserve(i64s.size());
     for (const auto& v : i64s) {
+      std::cerr << v << std::endl;
       attrs.push_back(ir::Int64Attribute::get(ctx, v));
     }
     return ir::ArrayAttribute::get(ctx, attrs);

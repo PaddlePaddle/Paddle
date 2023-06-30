@@ -314,6 +314,21 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     ir::Program* program) {
   VLOG(10) << "[op:" << op_desc.Type() << "][input] entrance";
 
+  auto& op_normalizer = OpNameNormalizer::instance();
+  const auto* mutable_attributes =
+      op_normalizer.GetMutableAttributes(op_desc.Type());
+
+  std::set<std::string> yaml_input_set;
+  for (const auto& info : input_infos) {
+    if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
+      continue;
+    }
+
+    std::string legacy_input_name =
+        op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
+
+    yaml_input_set.insert(legacy_input_name);
+  }
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
@@ -321,7 +336,9 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     auto& args = n.second;
 
     for (const auto& arg_name : args) {
-      IR_ENFORCE(param_map->count(arg_name) != 0,
+      bool check =
+          param_map->count(arg_name) != 0 || !yaml_input_set.count(arg_name);
+      IR_ENFORCE(check,
                  "arg %s.%s as input should be exists before prasing %s",
                  name,
                  arg_name,
@@ -337,9 +354,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   VLOG(10) << "[op:" << op_desc.Type() << "][input] start";
 
   std::vector<ir::OpResult> op_inputs;
-  auto& op_normalizer = OpNameNormalizer::instance();
-  const auto* mutable_attributes =
-      op_normalizer.GetMutableAttributes(op_desc.Type());
 
   for (const auto& info : input_infos) {
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
@@ -622,6 +636,10 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
   std::tie(input_infos, attr_infos, output_infos, std::ignore) =
       op_info_concept->get_op_info_();
 
+  for (size_t i = 0; i < input_infos.size(); ++i) {
+    std::cerr << "input " << input_infos[i].name << "\t"
+              << input_infos[i].type_name << std::endl;
+  }
   auto op_inputs = this->GenerateOperationInput(
       ctx, param_map, op_desc, op_info.name(), input_infos, program);
 

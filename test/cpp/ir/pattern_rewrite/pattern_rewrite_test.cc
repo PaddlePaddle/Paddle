@@ -260,7 +260,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   auto transpose2_op = builder.Build<paddle::dialect::TransposeOp>(
       transpose1_op.out(), std::vector<int>{0, 3, 1, 2});
 
-  builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out");
+  builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out", 0);
 }
 
 // TODO(wilber): Add a normal test.

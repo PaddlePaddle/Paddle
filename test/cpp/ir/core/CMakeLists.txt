@@ -66,6 +66,7 @@ cc_test_old(
   ir)
 
 cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest ir)
+
 cc_test_old(
   ir_op_yaml_info_parser_test
   SRCS

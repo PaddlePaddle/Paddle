@@ -108,7 +108,22 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
     if (param_map_.count(var->Name()) != 0) continue;
     if (no_cast_var_names.count(var->Name()) != 0) continue;
 
+    std::cerr << "parameter " << var->Name() << std::endl;
     parameter_name_mappings_[var->Name()] = var;
+  }
+
+  // get all the feed op
+  std::set<std::string> feed_names;
+  for (auto op_desc : block.AllOps()) {
+    if (op_desc->Type() == "feed") {
+      for (const auto& n : op_desc->Outputs()) {
+        const auto& out_var_names = n.second;
+        for (const auto& var_name : out_var_names) {
+          std::cerr << "feed output var name " << var_name << std::endl;
+          feed_names.insert(var_name);
+        }
+      }
+    }
   }
 
   std::unordered_set<std::string> inner_defining_variables;
@@ -122,7 +137,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 
         bool is_parameter = (parameter_name_mappings_.find(var_name) !=
                              parameter_name_mappings_.end());
-        is_parameter &= (parameter_visited_.count(var_name) == 0);
+        // is_parameter &= (parameter_visited_.count(var_name) == 0);
         if (is_parameter) {
           var_desc = parameter_name_mappings_[var_name];
         }
@@ -132,8 +147,10 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
           var_desc = block.FindVarRecursive(var_name);
         }
 
-        bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        // bool need_get_parameter_op = is_parameter || is_unseen_variable;
+        bool need_get_parameter_op = is_parameter;
         if (need_get_parameter_op) {
+          std::cerr << "need parameter " << var_name << std::endl;
           ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->result(0));

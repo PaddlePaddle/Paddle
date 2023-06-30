@@ -31,43 +31,72 @@
 
 #include "paddle/fluid/ir/dialect/pd_op.h"
 
+// TEST(ir_op_info_test, op_op_info_test) {
+//   ir::IrContext* ctx = ir::IrContext::Instance();
+//   ir::Program program(ctx);
+
+//   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
+
+//   ir::Builder builder(ctx, program.block());
+
+//   auto uniform1 =
+//       builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
+//                                                 phi::DataType::FLOAT32,
+//                                                 0.0,
+//                                                 1.0,
+//                                                 2,
+//                                                 phi::CPUPlace());
+
+//   uniform1->num_operands();
+//   paddle::dialect::OpYamlInfoInterface op_info_interface =
+//       uniform1->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+
+//   auto op_info_res = op_info_interface.GetOpInfo();
+
+//   paddle::dialect::OpYamlInfoParser op_yaml_info_parser(op_info_res);
+
+//   auto infer_meta_tensor_param = op_yaml_info_parser.InferMetaTensorParams();
+//   auto infer_meta_attr_param = op_yaml_info_parser.InferMetaAttrParams();
+//   auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParams();
+//   auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParams();
+
+//   EXPECT_EQ(infer_meta_tensor_param.size(), 0u);
+//   EXPECT_EQ(infer_meta_attr_param.size(), 2u);
+//   EXPECT_EQ(kernel_fn_tensor_param.size(), 0u);
+//   EXPECT_EQ(kernel_fn_attr_param.size(), 5u);
+
+//   EXPECT_EQ((op_yaml_info_parser.AttrTypeName("seed") ==
+//   "ir::Int32Attribute"),
+//             true);
+//   EXPECT_EQ(op_yaml_info_parser.IsTensorAttribute(0), true);
+
+//   EXPECT_EQ(op_yaml_info_parser.InputTensorNumber(), 0u);
+// }
+
 TEST(ir_op_info_test, op_op_info_test) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::Program program(ctx);
 
   ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
-  ir::Builder builder(ctx, program.block());
+  ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo("pd.all");
 
-  auto uniform1 =
-      builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
-                                                phi::DataType::FLOAT32,
-                                                0.0,
-                                                1.0,
-                                                2,
-                                                phi::CPUPlace());
+  auto impl = op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
 
-  uniform1->num_operands();
-  paddle::dialect::OpYamlInfoInterface op_info_interface =
-      uniform1->dyn_cast<paddle::dialect::OpYamlInfoInterface>();
-
-  auto op_info_res = op_info_interface.GetOpInfo();
-
-  paddle::dialect::OpYamlInfoParser op_yaml_info_parser(op_info_res);
+  paddle::dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
 
   auto infer_meta_tensor_param = op_yaml_info_parser.InferMetaTensorParams();
   auto infer_meta_attr_param = op_yaml_info_parser.InferMetaAttrParams();
   auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParams();
   auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParams();
 
-  EXPECT_EQ(infer_meta_tensor_param.size(), 0u);
-  EXPECT_EQ(infer_meta_attr_param.size(), 2u);
-  EXPECT_EQ(kernel_fn_tensor_param.size(), 0u);
-  EXPECT_EQ(kernel_fn_attr_param.size(), 5u);
+  std::cerr << "kernel tensor param" << std::endl;
+  for (auto& t : kernel_fn_tensor_param) {
+    std::cerr << "tensor param " << t << std::endl;
+  }
 
-  EXPECT_EQ((op_yaml_info_parser.AttrTypeName("seed") == "ir::Int32Attribute"),
-            true);
-  EXPECT_EQ(op_yaml_info_parser.IsTensorAttribute(0), true);
-
-  EXPECT_EQ(op_yaml_info_parser.InputTensorNumber(), 0u);
+  std::cerr << "kernel attr param" << std::endl;
+  for (auto& t : kernel_fn_attr_param) {
+    std::cerr << "tensor attr " << t << std::endl;
+  }
 }

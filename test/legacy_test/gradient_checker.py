@@ -272,6 +272,9 @@ def grad_check(
     # init variable in strtup program
     scope = fluid.executor.global_scope()
     exe = fluid.Executor(place)
+
+    print(fluid.default_startup_program())
+    print(program)
     exe.run(fluid.default_startup_program())
 
     x_init = _as_list(x_init)
