@@ -96,7 +96,7 @@
   kernel :
     func : adan
     data_type : param
-  optional : master_param, master_param_out, moment2, moment2_out
+  optional : master_param, moment2, master_param_out, moment2_out
   inplace : (param -> param_out), (pregrad -> pregrad_out), (moment1 -> moment1_out), (moment2 -> moment2_out),(moment3 -> moment3_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (beta3_pow -> beta3_pow_out), (master_param -> master_param_out)
 
 - op : addmm
