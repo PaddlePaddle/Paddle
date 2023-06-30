@@ -40,22 +40,26 @@ namespace framework {
 class Operator;
 
 using shape_t = utils::ShapeType;
-using dim_t   = utils::DimType;
+using dim_t = utils::DimType;
 
 /*! \brief operator pattern used in graph fusion */
 enum OpPatternKind {
-  // The relation between input tensor index and output tensor index is one-to-one correspondence.
+  // The relation between input tensor index and output tensor index is
+  // one-to-one correspondence.
   // for example :code:`out[i, j] = input[i, j] + 1`.
   // Note that the axis need to be in order.
   kElementWise = 0,
-  // The relation between input tensor index and output tensor index is one-to-many correspondence.
+  // The relation between input tensor index and output tensor index is
+  // one-to-many correspondence.
   // for example :code:`out[i, j, k] = input[i, j]`.
   // Note that the axis need to be in order.
   kBroadcast = 1,
-  // Injective operator, we can always injectively map a output axis to a input axis.
+  // Injective operator, we can always injectively map a output axis to a input
+  // axis.
   // for example :code:`out[i, j] = input[j, i]`.
   kInjective = 2,
-  // The relation between input tensor index and output tensor index is many-to-one correspondence.
+  // The relation between input tensor index and output tensor index is
+  // many-to-one correspondence.
   // for example :code:`out[i, j] = sum(input[i, j, k]) along k`.
   kReduction = 3,
   // Complex operation, can still fuse one-to-one operations into its output.
@@ -84,7 +88,8 @@ class OpValueType {
  public:
   inline const ValueType& operator[](const Operator* op) const;
 
-  inline const ValueType& Get(const Operator* op, const ValueType& def_value) const;
+  inline const ValueType& Get(const Operator* op,
+                              const ValueType& def_value) const;
 
   inline bool Find(const Operator* op) const;
 
@@ -137,14 +142,16 @@ class Operator {
   }
 
   template <typename ValueType>
-  inline Operator& set_attr(const std::string& attr_name, const ValueType& value) {
+  inline Operator& set_attr(const std::string& attr_name,
+                            const ValueType& value) {
     UpdateAttrMap(attr_name, [this, attr_name, value](absl::any* pmap) {
       if (!pmap->has_value()) {
         OpValueType<ValueType> pm;
         pm.attr_name = attr_name;
-        *pmap        = std::move(pm);
+        *pmap = std::move(pm);
       }
-      std::vector<ValueType>& vec = absl::any_cast<OpValueType<ValueType>&>(*pmap).data;
+      std::vector<ValueType>& vec =
+          absl::any_cast<OpValueType<ValueType>&>(*pmap).data;
       // resize the value type.
       if (vec.size() <= index) {
         vec.resize(index + 1, ValueType());
@@ -162,7 +169,7 @@ class Operator {
         if (!pmap->has_value()) {
           OpValueType<ValueType> pm;
           pm.attr_name = attr_name;
-          *pmap        = std::move(pm);
+          *pmap = std::move(pm);
         }
       });
       ref = GetAttrMap(attr_name);
@@ -180,7 +187,7 @@ class Operator {
   Operator() { index = OpRegistry::Global()->op_counter++; }
   static const absl::any* GetAttrMap(const std::string& key) {
     auto& dict = OpRegistry::Global()->attrs;
-    auto it    = dict.find(key);
+    auto it = dict.find(key);
     if (it != dict.end()) {
       return it->second.get();
     } else {
@@ -188,7 +195,8 @@ class Operator {
     }
   }
   //! update the attribute OpValueType
-  static void UpdateAttrMap(const std::string& key, std::function<void(absl::any*)> updater) {
+  static void UpdateAttrMap(const std::string& key,
+                            std::function<void(absl::any*)> updater) {
     OpRegistry* reg = OpRegistry::Global();
     std::lock_guard<std::recursive_mutex>(reg->mutex);
     std::unique_ptr<absl::any>& value = reg->attrs[key];
@@ -201,12 +209,15 @@ template <typename ValueType>
 const ValueType& OpValueType<ValueType>::operator[](const Operator* op) const {
   CHECK(op) << "The input op is nullptr and it is invalid! Please check again.";
   const uint32_t idx = op->index;
-  CHECK_LT(idx, data.size()) << "Attribute " << attr_name << " has not been registered for Operator " << op->name;
+  CHECK_LT(idx, data.size())
+      << "Attribute " << attr_name << " has not been registered for Operator "
+      << op->name;
   return data[idx];
 }
 
 template <typename ValueType>
-const ValueType& OpValueType<ValueType>::Get(const Operator* op, const ValueType& def_value) const {
+const ValueType& OpValueType<ValueType>::Get(const Operator* op,
+                                             const ValueType& def_value) const {
   if (!op) return def_value;
   const uint32_t idx = op->index;
   if (idx < data.size()) {
@@ -224,7 +235,8 @@ bool OpValueType<ValueType>::Find(const Operator* op) const {
 }
 
 // internal macros to make
-#define CINN_REGISTER_VAR_DEF(OpName) static ::cinn::hlir::framework::Operator& __make_##HlirOp##_##OpName
+#define CINN_REGISTER_VAR_DEF(OpName) \
+  static ::cinn::hlir::framework::Operator& __make_##HlirOp##_##OpName
 
 /**
  * @def CINNR_REGISTER_OP
@@ -239,9 +251,10 @@ bool OpValueType<ValueType>::Find(const Operator* op) const {
  *  .set_attr<OpKernel>("gpu_kernel", AddKernel);
  * \endcode
  */
-#define CINN_REGISTER_OP(OpName)                                \
-  CINN_STR_CONCAT(CINN_REGISTER_VAR_DEF(OpName), __COUNTER__) = \
-      ::cinn::hlir::framework::OpRegistry::Global()->__REGISTER_OR_GET__(#OpName)
+#define CINN_REGISTER_OP(OpName)                                          \
+  CINN_STR_CONCAT(CINN_REGISTER_VAR_DEF(OpName), __COUNTER__) =           \
+      ::cinn::hlir::framework::OpRegistry::Global()->__REGISTER_OR_GET__( \
+          #OpName)
 
 }  // namespace framework
 }  // namespace hlir

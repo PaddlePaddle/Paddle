@@ -24,10 +24,11 @@
 namespace cinn {
 namespace auto_schedule {
 
-// This rule can be applied in a ScheduleBlock has reduce axis or has loops with non-serial type.
-// As a result, it will set a attribute with key named ir::attr::auto_unroll_max_step and value
-// indicating max permitted unrolled step in the applied ScheduleBlock. Finally, UnrollLoop pass
-// will do unroll based on actual situation.
+// This rule can be applied in a ScheduleBlock has reduce axis or has loops with
+// non-serial type. As a result, it will set a attribute with key named
+// ir::attr::auto_unroll_max_step and value indicating max permitted unrolled
+// step in the applied ScheduleBlock. Finally, UnrollLoop pass will do unroll
+// based on actual situation.
 class AutoUnroll : public AutoGenRule {
  public:
   AutoUnroll(const common::Target& target) : AutoGenRule(target) {}
@@ -39,9 +40,11 @@ class AutoUnroll : public AutoGenRule {
 
   std::string GetRuleName() const override { return "AutoUnroll"; }
 
-  RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const override;
+  RuleApplyType AnalyseApplyType(SearchState state,
+                                 const std::string& block_name) const override;
 
-  std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) override;
+  std::vector<SearchState> ApplyOnBlock(SearchState state,
+                                        const std::string& block_name) override;
 
  private:
   bool MeetCondition(const ir::ScheduleBlock* schedule_block) const;

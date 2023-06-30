@@ -52,7 +52,10 @@ void BindTarget(py::module *m) {
       .def_readwrite("bits", &Target::bits)
       .def_readwrite("features", &Target::features)
       .def(py::init<>())
-      .def(py::init<Target::OS, Target::Arch, Target::Bit, const std::vector<Target::Feature> &>())
+      .def(py::init<Target::OS,
+                    Target::Arch,
+                    Target::Bit,
+                    const std::vector<Target::Feature> &>())
       .def("defined", &Target::defined)
       .def("runtime_arch", &Target::runtime_arch);
 
@@ -61,10 +64,14 @@ void BindTarget(py::module *m) {
       .def("DefaultTarget", &common::DefaultTarget);
 
   m->def("get_target", &cinn::runtime::CurrentTarget::GetCurrentTarget);
-  m->def("set_target", &cinn::runtime::CurrentTarget::SetCurrentTarget, py::arg("target"));
+  m->def("set_target",
+         &cinn::runtime::CurrentTarget::SetCurrentTarget,
+         py::arg("target"));
 
   py::enum_<Target::OS> os(target, "OS");
-  os.value("Unk", Target::OS::Unk).value("Linux", Target::OS::Linux).value("Windows", Target::OS::Windows);
+  os.value("Unk", Target::OS::Unk)
+      .value("Linux", Target::OS::Linux)
+      .value("Windows", Target::OS::Windows);
 
   py::enum_<Target::Arch> arch(target, "Arch");
   arch.value("Unk", Target::Arch::Unk)
@@ -73,10 +80,13 @@ void BindTarget(py::module *m) {
       .value("NVGPU", Target::Arch::NVGPU);
 
   py::enum_<Target::Bit> bit(target, "Bit");
-  bit.value("Unk", Target::Bit::Unk).value("k32", Target::Bit::k32).value("k64", Target::Bit::k64);
+  bit.value("Unk", Target::Bit::Unk)
+      .value("k32", Target::Bit::k32)
+      .value("k64", Target::Bit::k64);
 
   py::enum_<Target::Feature> feature(target, "Feature");
-  feature.value("JIT", Target::Feature::JIT).value("Debug", Target::Feature::Debug);
+  feature.value("JIT", Target::Feature::JIT)
+      .value("Debug", Target::Feature::Debug);
 
   m->def("is_compiled_with_cuda", cinn::runtime::IsCompiledWithCUDA);
   m->def("is_compiled_with_cudnn", cinn::runtime::IsCompiledWithCUDNN);
@@ -85,7 +95,8 @@ void BindTarget(py::module *m) {
 
 void BindType(py::module *m) {
   py::class_<Type> type(*m, "Type");
-  type.def(py::init<>()).def(py::init<Type::type_t, int, int, Type::specific_type_t>());
+  type.def(py::init<>())
+      .def(py::init<Type::type_t, int, int, Type::specific_type_t>());
 #define DEFINE_TYPE_METHOD(__name) (type = type.def(#__name, &Type::__name))
   DEFINE_TYPE_METHOD(is_primitive);
   DEFINE_TYPE_METHOD(is_unk);
@@ -116,7 +127,9 @@ void BindType(py::module *m) {
       .def("element_of", &Type::ElementOf)
       .def("pointer_of", &Type::PointerOf)
       .def("__str__", [](const Type &self) { return GetStreamCnt(self); })
-      .def("__repr__", [](const Type &self) { return StringFormat("<Type: %s>", GetStreamCnt(self).c_str()); });
+      .def("__repr__", [](const Type &self) {
+        return StringFormat("<Type: %s>", GetStreamCnt(self).c_str());
+      });
 
   py::enum_<Type::type_t> type_t(type, "type_t");
   type_t.value("unk", Type::type_t::Unk)
@@ -144,7 +157,11 @@ void BindType(py::module *m) {
   m->def("Void", &common::Void)
       .def("Int", &common::Int, py::arg("bits"), py::arg("lanes") = 1)
       .def("UInt", &common::UInt, py::arg("bits"), py::arg("lanes") = 1)
-      .def("Float", &common::Float, py::arg("bits"), py::arg("lanes") = 1, py::arg("st") = Type::specific_type_t::None)
+      .def("Float",
+           &common::Float,
+           py::arg("bits"),
+           py::arg("lanes") = 1,
+           py::arg("st") = Type::specific_type_t::None)
       .def("Float16", &common::Float16, py::arg("lanes") = 1)
       .def("BFloat16", &common::BFloat16, py::arg("lanes") = 1)
       .def("Bool", &common::Bool, py::arg("lanes") = 1)
@@ -152,31 +169,43 @@ void BindType(py::module *m) {
 
   m->def(
        "make_const",
-       [](const Type &type, int32_t val) -> Expr { return common::make_const(type, val); },
+       [](const Type &type, int32_t val) -> Expr {
+         return common::make_const(type, val);
+       },
        py::arg("type"),
        py::arg("val"))
       .def(
           "make_const",
-          [](const Type &type, int64_t val) -> Expr { return common::make_const(type, val); },
+          [](const Type &type, int64_t val) -> Expr {
+            return common::make_const(type, val);
+          },
           py::arg("type"),
           py::arg("val"))
       .def(
           "make_const",
-          [](const Type &type, float val) -> Expr { return common::make_const(type, val); },
+          [](const Type &type, float val) -> Expr {
+            return common::make_const(type, val);
+          },
           py::arg("type"),
           py::arg("val"))
       .def(
           "make_const",
-          [](const Type &type, double val) -> Expr { return common::make_const(type, val); },
+          [](const Type &type, double val) -> Expr {
+            return common::make_const(type, val);
+          },
           py::arg("type"),
           py::arg("val"))
       .def(
           "make_const",
-          [](const Type &type, bool val) -> Expr { return common::make_const(type, val); },
+          [](const Type &type, bool val) -> Expr {
+            return common::make_const(type, val);
+          },
           py::arg("type"),
           py::arg("val"));
 
-  m->def("type_of", [](absl::string_view dtype) { return common::Str2Type(dtype.data()); });
+  m->def("type_of", [](absl::string_view dtype) {
+    return common::Str2Type(dtype.data());
+  });
 }
 
 void BindObject(py::module *m) {
@@ -194,7 +223,8 @@ void BindShared(py::module *m) {
       .def("val", &common::RefCount::val);
 }
 
-// TODO(wanghaipeng03) using true_type or false_type as tag disptcher losses semantic context
+// TODO(wanghaipeng03) using true_type or false_type as tag disptcher losses
+// semantic context
 template <typename T1, typename T2, typename F>
 inline auto __binary_op_fn_dispatch(T1 x, T2 y, F fn, std::true_type) {
   return fn(ir::Expr(x), ir::Expr(y)).as_var_ref();
@@ -205,11 +235,13 @@ inline auto __binary_op_fn_dispatch(T1 x, T2 y, F fn, std::false_type) {
 }
 
 template <typename T1, typename T2, typename F>
-inline void __binary_op_visitor_dispatch(CINNValue &v, T1 lhs, T2 rhs, F fn, std::true_type) {
+inline void __binary_op_visitor_dispatch(
+    CINNValue &v, T1 lhs, T2 rhs, F fn, std::true_type) {
   v = CINNValue();
 }
 template <typename T1, typename T2, typename F>
-inline void __binary_op_visitor_dispatch(CINNValue &v, T1 lhs, T2 rhs, F fn, std::false_type) {
+inline void __binary_op_visitor_dispatch(
+    CINNValue &v, T1 lhs, T2 rhs, F fn, std::false_type) {
   v.Set(fn(lhs, rhs));
 }
 
@@ -221,18 +253,26 @@ void BindCinnValue(py::module *m) {
 
   py::class_<_CINNValuePack_> cinn_value_pack(*m, "_CINNValuePack_");
   cinn_value_pack.def_static("make", &_CINNValuePack_::Make)
-      .def("__getitem__", [](_CINNValuePack_ &self, int offset) { return self[offset]; })
-      .def("__setitem__", [](_CINNValuePack_ &self, int offset, CINNValue &v) { self[offset] = v; })
+      .def("__getitem__",
+           [](_CINNValuePack_ &self, int offset) { return self[offset]; })
+      .def("__setitem__",
+           [](_CINNValuePack_ &self, int offset, CINNValue &v) {
+             self[offset] = v;
+           })
       .def("add_value", &_CINNValuePack_::AddValue)
       .def("clear", &_CINNValuePack_::Clear)
       .def("size", &_CINNValuePack_::size)
       .def("__len__", &_CINNValuePack_::size)
       .def("type_info", &_CINNValuePack_::type_info);
 
-  py::class_<CINNValuePack, common::Shared<_CINNValuePack_>> cinn_value_pack_shared(*m, "CINNValuePack");
+  py::class_<CINNValuePack, common::Shared<_CINNValuePack_>>
+      cinn_value_pack_shared(*m, "CINNValuePack");
   cinn_value_pack_shared.def(py::init<_CINNValuePack_ *>())
-      .def("__getitem__", [](CINNValuePack &self, int offset) { return self[offset]; })
-      .def("__setitem__", [](CINNValuePack &self, int offset, CINNValue &v) { self[offset] = v; });
+      .def("__getitem__",
+           [](CINNValuePack &self, int offset) { return self[offset]; })
+      .def("__setitem__", [](CINNValuePack &self, int offset, CINNValue &v) {
+        self[offset] = v;
+      });
 
   py::class_<CINNValue, cinn_pod_value_t> cinn_value(*m, "CINNValue");
   cinn_value.def(py::init<>())
@@ -251,16 +291,22 @@ void BindCinnValue(py::module *m) {
       .def(py::init<const ir::Expr &>())
       .def(py::init<const CINNValuePack &>())
       .def("defined", &CINNValue::defined)
-      .def("to_double", [](CINNValue &self) { return static_cast<double>(self); })
+      .def("to_double",
+           [](CINNValue &self) { return static_cast<double>(self); })
       .def("to_float", [](CINNValue &self) { return static_cast<float>(self); })
       .def("to_int8", [](CINNValue &self) { return static_cast<int8_t>(self); })
-      .def("to_int32", [](CINNValue &self) { return static_cast<int32_t>(self); })
-      .def("to_int64", [](CINNValue &self) { return static_cast<int64_t>(self); })
-      .def("to_void_p", [](CINNValue &self) { return static_cast<void *>(self); })
-      .def("to_cinn_buffer_p", [](CINNValue &self) { return static_cast<cinn_buffer_t *>(self); })
+      .def("to_int32",
+           [](CINNValue &self) { return static_cast<int32_t>(self); })
+      .def("to_int64",
+           [](CINNValue &self) { return static_cast<int64_t>(self); })
+      .def("to_void_p",
+           [](CINNValue &self) { return static_cast<void *>(self); })
+      .def("to_cinn_buffer_p",
+           [](CINNValue &self) { return static_cast<cinn_buffer_t *>(self); })
       .def("to_str", [](CINNValue &self) { return static_cast<char *>(self); })
       .def("to_var", [](CINNValue &self) { return self.operator ir::Var(); })
-      .def("to_expr", [](CINNValue &self) { return ir::Expr(self.operator ir::Expr()); })
+      .def("to_expr",
+           [](CINNValue &self) { return ir::Expr(self.operator ir::Expr()); })
       .def("set", &CINNValue::Set<int32_t>)
       .def("set", &CINNValue::Set<int64_t>)
       .def("set", &CINNValue::Set<float>)
@@ -277,24 +323,30 @@ void BindCinnValue(py::module *m) {
     using lhs_t = decltype(lhs);
     using rhs_t = decltype(rhs);
     using tag_t =
-        std::conditional_t<std::is_same<lhs_t, std::nullptr_t>::value || std::is_same<rhs_t, std::nullptr_t>::value ||
+        std::conditional_t<std::is_same<lhs_t, std::nullptr_t>::value ||
+                               std::is_same<rhs_t, std::nullptr_t>::value ||
                                !std::is_same<lhs_t, rhs_t>::value,
                            std::true_type,
                            std::false_type>;
     __binary_op_visitor_dispatch(v, lhs, rhs, fn, tag_t{});
   };
 
-#define DEFINE_BINARY_OP(__op, __fn)                                                                     \
-  auto __op##_fn = [&](auto x, auto y) {                                                                 \
-    constexpr auto is_var_x = std::is_same<std::decay_t<decltype(x)>, ir::Var>::value;                   \
-    constexpr auto is_var_y = std::is_same<std::decay_t<decltype(y)>, ir::Var>::value;                   \
-    using tag_t             = std::conditional_t<is_var_x && is_var_y, std::true_type, std::false_type>; \
-    return __binary_op_fn_dispatch(x, y, __fn, tag_t{});                                                 \
-  };                                                                                                     \
-  cinn_value.def(#__op, [&](CINNValue &self, CINNValue &other) {                                         \
-    auto visitor = [&](auto x, auto y) { return binary_op_visitor(self, x, y, __op##_fn); };             \
-    absl::visit(visitor, ConvertToVar(self), ConvertToVar(other));                                       \
-    return self;                                                                                         \
+#define DEFINE_BINARY_OP(__op, __fn)                                          \
+  auto __op##_fn = [&](auto x, auto y) {                                      \
+    constexpr auto is_var_x =                                                 \
+        std::is_same<std::decay_t<decltype(x)>, ir::Var>::value;              \
+    constexpr auto is_var_y =                                                 \
+        std::is_same<std::decay_t<decltype(y)>, ir::Var>::value;              \
+    using tag_t = std::                                                       \
+        conditional_t<is_var_x && is_var_y, std::true_type, std::false_type>; \
+    return __binary_op_fn_dispatch(x, y, __fn, tag_t{});                      \
+  };                                                                          \
+  cinn_value.def(#__op, [&](CINNValue &self, CINNValue &other) {              \
+    auto visitor = [&](auto x, auto y) {                                      \
+      return binary_op_visitor(self, x, y, __op##_fn);                        \
+    };                                                                        \
+    absl::visit(visitor, ConvertToVar(self), ConvertToVar(other));            \
+    return self;                                                              \
   })
 
   DEFINE_BINARY_OP(__add__, [](auto x, auto y) { return x + y; });

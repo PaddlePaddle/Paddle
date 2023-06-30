@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
@@ -37,7 +38,6 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-#include "gflags/gflags.h"
 DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
@@ -53,7 +53,7 @@ ir::Tensor LookupTable(const ir::Tensor& table,
                        const std::string& output_name) {
   CHECK_EQ(table->shape.size(), 2);
   CHECK_GT(ids->shape.size(), 1);
-  auto output_shape   = ids->shape;
+  auto output_shape = ids->shape;
   output_shape.back() = table->shape.back();
 
   return lang::Compute(
@@ -64,29 +64,37 @@ ir::Tensor LookupTable(const ir::Tensor& table,
           offsets.emplace_back(indices[i]);
         }
         offsets.emplace_back(Expr(0));
-        // Because the current conversion rules have not been completed, static conversion is done here.
+        // Because the current conversion rules have not been completed, static
+        // conversion is done here.
         auto ids_offset = ir::Cast::Make(common::I32(), ids(offsets));
-        auto pred =
-            ir::And::Make(Expr(padding_idx != -1), ir::EQ::Make(ids_offset, Expr(static_cast<int32_t>(padding_idx))));
-        return ir::Select::Make(pred, ir::Cast::Make(table->type(), Expr(0)), table(ids_offset, indices.back()));
+        auto pred = ir::And::Make(
+            Expr(padding_idx != -1),
+            ir::EQ::Make(ids_offset, Expr(static_cast<int32_t>(padding_idx))));
+        return ir::Select::Make(pred,
+                                ir::Cast::Make(table->type(), Expr(0)),
+                                table(ids_offset, indices.back()));
       },
       common::UniqName(output_name));
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(const framework::NodeAttr& attrs,
-                                                              const std::vector<ir::Tensor>& inputs,
-                                                              const std::vector<Type>& out_type,
-                                                              const std::vector<std::vector<int>>& output_shapes,
-                                                              const Target& target) {
+std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
+    const framework::NodeAttr& attrs,
+    const std::vector<ir::Tensor>& inputs,
+    const std::vector<Type>& out_type,
+    const std::vector<std::vector<int>>& output_shapes,
+    const Target& target) {
   std::string op_name("lookup_table");
   const auto& attr_store = attrs.attr_store;
   CHECK(attr_store.count("padding_idx")) << "find no attr of axis";
   auto padding_idx = absl::get<int64_t>(attr_store.at("padding_idx"));
 
-  framework::CINNCompute lookup_table_compute([=](lang::Args args, lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input arguments of " << op_name << " compute is empty! Please check.\n";
+  framework::CINNCompute lookup_table_compute([=](lang::Args args,
+                                                  lang::RetValue* ret) {
+    CHECK(!args.empty()) << "The input arguments of " << op_name
+                         << " compute is empty! Please check.\n";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U) << "2 input tensors for " << op_name << " compute\n";
+    CHECK_GE(pack_args.size(), 2U)
+        << "2 input tensors for " << op_name << " compute\n";
     Expr A = pack_args[0];
     Expr B = pack_args[1];
     CHECK(A.as_tensor());
@@ -94,8 +102,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(const framework::N
     CHECK(!output_shapes.empty());
     auto tensor_A = A.as_tensor_ref();
     auto tensor_B = B.as_tensor_ref();
-    auto stages   = CreateStages({tensor_A, tensor_B});
-    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ") << ", B shape: " << utils::Join(tensor_B->shape, ", ")
+    auto stages = CreateStages({tensor_A, tensor_B});
+    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+            << ", B shape: " << utils::Join(tensor_B->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     std::string tensor_name = UniqName("LookupTable_out");
     if (FLAGS_cinn_ir_schedule) {
@@ -106,27 +115,35 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(const framework::N
     std::vector<CINNValue> res;
     stages->InsertLazily(out);
     res.push_back(CINNValue(out));
-    CHECK(!out_type.empty()) << "Output type of " << op_name << " is empty! Please check.\n";
+    CHECK(!out_type.empty())
+        << "Output type of " << op_name << " is empty! Please check.\n";
     res.push_back(CINNValue(stages));
     *ret = CINNValuePack{res};
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(lookup_table_compute, GetInjectiveScheduleFunc(output_shapes, target), "strategy.lookup_table", 1);
+  strategy->AddImpl(lookup_table_compute,
+                    GetInjectiveScheduleFunc(output_shapes, target),
+                    "strategy.lookup_table",
+                    1);
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForLookupTable(const std::vector<framework::shape_t>& inputs_shape,
-                                                         const framework::AttrMapType& attrs) {
-  CHECK(!inputs_shape.empty() && !inputs_shape[0].empty()) << "The input's shape size is 0! Please check again.";
+std::vector<framework::shape_t> InferShapeForLookupTable(
+    const std::vector<framework::shape_t>& inputs_shape,
+    const framework::AttrMapType& attrs) {
+  CHECK(!inputs_shape.empty() && !inputs_shape[0].empty())
+      << "The input's shape size is 0! Please check again.";
 
-  auto res   = inputs_shape[1];
+  auto res = inputs_shape[1];
   res.back() = inputs_shape[0].back();
   return {res};
 }
 
-std::vector<Type> InferDtypeForLookupTable(const std::vector<Type>& inputs_type, const framework::AttrMapType& attrs) {
-  CHECK(!inputs_type.empty()) << "The input's type size is 0! Please check again.";
+std::vector<Type> InferDtypeForLookupTable(
+    const std::vector<Type>& inputs_type, const framework::AttrMapType& attrs) {
+  CHECK(!inputs_type.empty())
+      << "The input's type size is 0! Please check again.";
   std::vector<Type> res{inputs_type[0]};
   return res;
 }
@@ -140,9 +157,13 @@ CINN_REGISTER_HELPER(lookup_table_ops) {
       .describe("Lookup table Operator.")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForLookupTable)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForLookupTable))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForLookupTable))
-      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kInjective);
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForLookupTable)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForLookupTable))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForLookupTable))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective);
   return true;
 }

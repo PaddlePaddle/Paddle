@@ -22,7 +22,17 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-enum class EltwiseType { kUnk = 0, kAdd, kDiv, kMul, kSub, kPow, kMod, kMax, kMin };
+enum class EltwiseType {
+  kUnk = 0,
+  kAdd,
+  kDiv,
+  kMul,
+  kSub,
+  kPow,
+  kMod,
+  kMax,
+  kMin
+};
 
 template <EltwiseType Type>
 std::string GetEltwiseTypeString();
@@ -46,10 +56,12 @@ EXPAND_ELTWISETYPE_STRING(kMin, " min ")
 template <EltwiseType Type>
 struct OpBuilder {};
 
-#define ELTWISE_SPEC(enum_t, function)                                                               \
-  template <>                                                                                        \
-  struct OpBuilder<enum_t> {                                                                         \
-    constexpr static Variable (NetBuilder::*func)(const Variable&, const Variable&, int){&function}; \
+#define ELTWISE_SPEC(enum_t, function)                             \
+  template <>                                                      \
+  struct OpBuilder<enum_t> {                                       \
+    constexpr static Variable (NetBuilder::*func)(const Variable&, \
+                                                  const Variable&, \
+                                                  int){&function}; \
   }
 ELTWISE_SPEC(EltwiseType::kAdd, NetBuilder::Add);
 ELTWISE_SPEC(EltwiseType::kDiv, NetBuilder::Divide);
@@ -61,7 +73,8 @@ ELTWISE_SPEC(EltwiseType::kMax, NetBuilder::Max);
 ELTWISE_SPEC(EltwiseType::kMin, NetBuilder::Min);
 #undef ELTWISE_SPEC
 
-void AddOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void AddOpMapper(const paddle::cpp::OpDesc& op_desc,
+                 const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Input("Y").size(), 1UL);
@@ -71,8 +84,8 @@ void AddOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx)
 
   VLOG(4) << out_name << " = " << x_name << " + " << y_name;
 
-  auto x   = ctx.GetVar(x_name);
-  auto y   = ctx.GetVar(y_name);
+  auto x = ctx.GetVar(x_name);
+  auto y = ctx.GetVar(y_name);
   auto out = ctx.Builder()->Add(x, y);
 
   ctx.AddVar(out_name, out);
@@ -80,7 +93,8 @@ void AddOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx)
 }
 
 template <EltwiseType Type>
-void ElementwiseOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void ElementwiseOpMapper(const paddle::cpp::OpDesc& op_desc,
+                         const OpMapperContext& ctx) {
   VLOG(5) << "Elementwise operator mapping type: " << static_cast<int>(Type);
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
@@ -91,17 +105,19 @@ void ElementwiseOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperConte
 
   auto axis = utils::GetAttrOrDefault<int>(op_desc, "axis", -1);
 
-  VLOG(4) << out_name << " = " << x_name << GetEltwiseTypeString<Type>() << y_name << " at " << axis;
+  VLOG(4) << out_name << " = " << x_name << GetEltwiseTypeString<Type>()
+          << y_name << " at " << axis;
 
-  auto x   = ctx.GetVar(x_name);
-  auto y   = ctx.GetVar(y_name);
+  auto x = ctx.GetVar(x_name);
+  auto y = ctx.GetVar(y_name);
   auto out = (ctx.Builder()->*OpBuilder<Type>::func)(x, y, axis);
 
   ctx.AddVar(out_name, out, true);
   ctx.AddVarModelToProgram(out_name, out->id, true);
 }
 
-void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc,
+                                const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Input("Y").size(), 1UL);
@@ -121,11 +137,12 @@ void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapp
 
   auto axis = utils::GetAttrOrDefault<int>(op_desc, "axis", -1);
 
-  VLOG(4) << "{X@GRAD=" << dx_name << ", Y@GRAD=" << dy_name << "}=elementwise_add_grad(X=" << x_name
-          << ", Y=" << y_name << ", OUT@GRAD=" << dout_name << ", axis=" << axis << ")";
+  VLOG(4) << "{X@GRAD=" << dx_name << ", Y@GRAD=" << dy_name
+          << "}=elementwise_add_grad(X=" << x_name << ", Y=" << y_name
+          << ", OUT@GRAD=" << dout_name << ", axis=" << axis << ")";
 
-  auto x    = ctx.GetVar(x_name);
-  auto y    = ctx.GetVar(y_name);
+  auto x = ctx.GetVar(x_name);
+  auto y = ctx.GetVar(y_name);
   auto dout = ctx.GetVar(dout_name);
   auto outs = ctx.Builder()->ElementwiseAddGrad(dout, x, y, axis);
   CHECK_EQ(outs.size(), 2) << "elementwise_add_grad should return 2 variables";
@@ -142,7 +159,8 @@ void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapp
   }
 }
 
-void SumOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void SumOpMapper(const paddle::cpp::OpDesc& op_desc,
+                 const OpMapperContext& ctx) {
   CHECK_GE(op_desc.Input("X").size(), 1UL);
   auto x_names = op_desc.Input("X");
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
@@ -161,48 +179,60 @@ void SumOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx)
   ctx.AddVarModelToProgram(out_name, out->id, true);
 }
 
-void CastOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
+                  const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("out_dtype")) << "The cast op should has [out_dtype] attribute!";
-  auto dtype = utils::GetPaddleDtype(op_desc, "out_dtype", paddle::cpp::VarDescAPI::Type::FP32);
-  CHECK(!dtype.empty()) << "The op \"cast\"'s attribute \"out_dtype\" should not be unknown type! Please check.";
+  CHECK(op_desc.HasAttr("out_dtype"))
+      << "The cast op should has [out_dtype] attribute!";
+  auto dtype = utils::GetPaddleDtype(
+      op_desc, "out_dtype", paddle::cpp::VarDescAPI::Type::FP32);
+  CHECK(!dtype.empty()) << "The op \"cast\"'s attribute \"out_dtype\" should "
+                           "not be unknown type! Please check.";
 
-  VLOG(4) << out_name << " = cast(X:" << x_name << ", out_dtype=" << dtype << ")";
+  VLOG(4) << out_name << " = cast(X:" << x_name << ", out_dtype=" << dtype
+          << ")";
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->Cast(x, dtype);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void PowOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void PowOpMapper(const paddle::cpp::OpDesc& op_desc,
+                 const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
   absl::optional<Variable> y;
-  if (op_desc.HasInput("FactorTensor") && !op_desc.Input("FactorTensor").empty()) {
+  if (op_desc.HasInput("FactorTensor") &&
+      !op_desc.Input("FactorTensor").empty()) {
     CHECK_EQ(op_desc.Input("FactorTensor").size(), 1UL);
     auto y_name = op_desc.Input("FactorTensor").front();
-    y           = ctx.GetVar(y_name);
+    y = ctx.GetVar(y_name);
 
   } else if (op_desc.HasAttr("factor")) {
     auto factor = utils::GetAttrOrDefault<float>(op_desc, "factor");
-    y = ctx.Builder()->FillConstant(x->shape, factor, cinn::UniqName(x_name + "_factor"), common::Type2Str(x->type));
+    y = ctx.Builder()->FillConstant(x->shape,
+                                    factor,
+                                    cinn::UniqName(x_name + "_factor"),
+                                    common::Type2Str(x->type));
   } else {
-    LOG(FATAL) << "Cannot found [FactorTensor] input or [factor] attribute in paddle.pow! Please check.";
+    LOG(FATAL) << "Cannot found [FactorTensor] input or [factor] attribute in "
+                  "paddle.pow! Please check.";
   }
 
   VLOG(4) << out_name << " = pow(" << x_name << ", " << y.value()->id << ")";
-  CHECK_EQ(x->type, y.value()->type) << "The data type of pow's inputs should be equal, but here x:" << x->type
-                                     << " != y:" << y.value()->type;
+  CHECK_EQ(x->type, y.value()->type)
+      << "The data type of pow's inputs should be equal, but here x:" << x->type
+      << " != y:" << y.value()->type;
 
   auto out = ctx.Builder()->Pow(x, y.value());
 
@@ -210,7 +240,8 @@ void PowOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx)
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc,
+                         const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Input("Y").size(), 1UL);
@@ -238,20 +269,30 @@ void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperConte
 CINN_REGISTER_HELPER(paddle_elementwise) {
   using namespace cinn::frontend::paddle_mappers;
   CINN_REGISTER_OP_MAPPER(add, AddOpMapper)
-  CINN_REGISTER_OP_MAPPER(elementwise_add, ElementwiseOpMapper<EltwiseType::kAdd>)
+  CINN_REGISTER_OP_MAPPER(elementwise_add,
+                          ElementwiseOpMapper<EltwiseType::kAdd>)
   CINN_REGISTER_OP_MAPPER(elementwise_add_grad, ElementwiseAddGradOpMapper)
-  CINN_REGISTER_OP_MAPPER(elementwise_mul, ElementwiseOpMapper<EltwiseType::kMul>)
-  CINN_REGISTER_OP_MAPPER(elementwise_div, ElementwiseOpMapper<EltwiseType::kDiv>)
-  CINN_REGISTER_OP_MAPPER(elementwise_sub, ElementwiseOpMapper<EltwiseType::kSub>)
-  CINN_REGISTER_OP_MAPPER(elementwise_pow, ElementwiseOpMapper<EltwiseType::kPow>)
-  CINN_REGISTER_OP_MAPPER(elementwise_mod, ElementwiseOpMapper<EltwiseType::kMod>)
-  CINN_REGISTER_OP_MAPPER(elementwise_max, ElementwiseOpMapper<EltwiseType::kMax>)
-  CINN_REGISTER_OP_MAPPER(elementwise_min, ElementwiseOpMapper<EltwiseType::kMin>)
+  CINN_REGISTER_OP_MAPPER(elementwise_mul,
+                          ElementwiseOpMapper<EltwiseType::kMul>)
+  CINN_REGISTER_OP_MAPPER(elementwise_div,
+                          ElementwiseOpMapper<EltwiseType::kDiv>)
+  CINN_REGISTER_OP_MAPPER(elementwise_sub,
+                          ElementwiseOpMapper<EltwiseType::kSub>)
+  CINN_REGISTER_OP_MAPPER(elementwise_pow,
+                          ElementwiseOpMapper<EltwiseType::kPow>)
+  CINN_REGISTER_OP_MAPPER(elementwise_mod,
+                          ElementwiseOpMapper<EltwiseType::kMod>)
+  CINN_REGISTER_OP_MAPPER(elementwise_max,
+                          ElementwiseOpMapper<EltwiseType::kMax>)
+  CINN_REGISTER_OP_MAPPER(elementwise_min,
+                          ElementwiseOpMapper<EltwiseType::kMin>)
   CINN_REGISTER_OP_MAPPER(sum, SumOpMapper)
   CINN_REGISTER_OP_MAPPER(cast, CastOpMapper)
   CINN_REGISTER_OP_MAPPER(pow, PowOpMapper)
-  CINN_REGISTER_OP_MAPPER(grad_add,
-                          ElementwiseOpMapper<EltwiseType::kAdd>)  // special elementwise_add for gradient accumulation
+  CINN_REGISTER_OP_MAPPER(
+      grad_add,
+      ElementwiseOpMapper<EltwiseType::kAdd>)  // special elementwise_add for
+                                               // gradient accumulation
   CINN_REGISTER_OP_MAPPER(elementwise_floordiv, FloorDivideOpMapper)
   return true;
 }

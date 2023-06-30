@@ -16,14 +16,20 @@
 
 namespace cinn::frontend::paddle::pb {
 
-google::protobuf::internal::RepeatedPtrIterator<framework_proto::OpDesc_Attr> FindAttr(framework_proto::OpDesc *desc,
-                                                                                       const std::string &name) {
+google::protobuf::internal::RepeatedPtrIterator<framework_proto::OpDesc_Attr>
+FindAttr(framework_proto::OpDesc *desc, const std::string &name) {
   auto &xs = *desc->mutable_attrs();
-  auto it = std::find_if(xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) { return x.name() == name; });
+  auto it = std::find_if(
+      xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) {
+        return x.name() == name;
+      });
   if (it == xs.end()) {
     auto *attr = xs.Add();
     attr->set_name(name);
-    it = std::find_if(xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) { return x.name() == name; });
+    it = std::find_if(
+        xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) {
+          return x.name() == name;
+        });
   }
   return it;
 }
@@ -41,7 +47,8 @@ SET_IMPL_ONE(bool, BOOLEAN, b);
 SET_IMPL_ONE(int64_t, LONG, l);
 
 template <>
-void OpDesc::SetAttr<std::vector<int>>(const std::string &name, const std::vector<int> &v) {
+void OpDesc::SetAttr<std::vector<int>>(const std::string &name,
+                                       const std::vector<int> &v) {
   auto it = FindAttr(desc_, name);
   it->set_type(framework_proto::INTS);
   it->clear_ints();
@@ -51,14 +58,16 @@ void OpDesc::SetAttr<std::vector<int>>(const std::string &name, const std::vecto
 }
 
 template <>
-void OpDesc::SetAttr<std::string>(const std::string &name, const std::string &v) {
+void OpDesc::SetAttr<std::string>(const std::string &name,
+                                  const std::string &v) {
   auto it = FindAttr(desc_, name);
   it->set_type(framework_proto::STRING);
   it->set_s(v.c_str());
 }
 
 template <>
-void OpDesc::SetAttr<std::vector<float>>(const std::string &name, const std::vector<float> &v) {
+void OpDesc::SetAttr<std::vector<float>>(const std::string &name,
+                                         const std::vector<float> &v) {
   auto it = FindAttr(desc_, name);
   it->set_type(framework_proto::FLOATS);
   it->clear_floats();
@@ -68,7 +77,8 @@ void OpDesc::SetAttr<std::vector<float>>(const std::string &name, const std::vec
 }
 
 template <>
-void OpDesc::SetAttr<std::vector<std::string>>(const std::string &name, const std::vector<std::string> &v) {
+void OpDesc::SetAttr<std::vector<std::string>>(
+    const std::string &name, const std::vector<std::string> &v) {
   auto it = FindAttr(desc_, name);
   it->set_type(framework_proto::STRINGS);
   it->clear_strings();
@@ -78,7 +88,8 @@ void OpDesc::SetAttr<std::vector<std::string>>(const std::string &name, const st
 }
 
 template <>
-void OpDesc::SetAttr<std::vector<int64_t>>(const std::string &name, const std::vector<int64_t> &v) {
+void OpDesc::SetAttr<std::vector<int64_t>>(const std::string &name,
+                                           const std::vector<int64_t> &v) {
   auto it = FindAttr(desc_, name);
   it->set_type(framework_proto::LONGS);
   it->clear_longs();
@@ -86,10 +97,14 @@ void OpDesc::SetAttr<std::vector<int64_t>>(const std::string &name, const std::v
     it->add_longs(i);
   }
 }
-google::protobuf::internal::RepeatedPtrIterator<const framework_proto::OpDesc_Attr> GetFindAttr(
-    const framework_proto::OpDesc &desc, const std::string &name) {
+google::protobuf::internal::RepeatedPtrIterator<
+    const framework_proto::OpDesc_Attr>
+GetFindAttr(const framework_proto::OpDesc &desc, const std::string &name) {
   auto &xs = desc.attrs();
-  auto it = std::find_if(xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) { return x.name() == name; });
+  auto it = std::find_if(
+      xs.begin(), xs.end(), [&](const framework_proto::OpDesc_Attr &x) {
+        return x.name() == name;
+      });
   return it;
 }
 

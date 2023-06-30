@@ -34,11 +34,14 @@ class MutateRule {
    * @param rand_seed The random seed for mutation.
    * @return The mutated trace.
    */
-  virtual ir::ScheduleDesc Apply(const ir::ScheduleDesc& trace, utils::LinearRandomEngine::StateType* rand_seed) = 0;
+  virtual ir::ScheduleDesc Apply(
+      const ir::ScheduleDesc& trace,
+      utils::LinearRandomEngine::StateType* rand_seed) = 0;
 
   /**
    * @brief Create a MutateRule with name.
-   * @param name The name of mutate rule, consisting of lowercase letters and underscores
+   * @param name The name of mutate rule, consisting of lowercase letters and
+   * underscores
    * @return The created MutateRule.
    */
   static std::unique_ptr<MutateRule> Make(const std::string& name);

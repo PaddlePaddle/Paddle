@@ -21,9 +21,11 @@
 namespace cinn {
 namespace ir {
 
-Operation PlaceholderOp::Make(const std::string &name, const std::vector<Expr> &shape, Type dtype) {
-  auto n   = make_shared<PlaceholderOp>();
-  n->name  = name;
+Operation PlaceholderOp::Make(const std::string &name,
+                              const std::vector<Expr> &shape,
+                              Type dtype) {
+  auto n = make_shared<PlaceholderOp>();
+  n->name = name;
   n->shape = shape;
   n->set_type(dtype);
   return Operation(n);
@@ -40,36 +42,40 @@ Operation ComputeOp::Make(const std::string &name,
                           const std::vector<Var> &reduce_axis,
                           const std::map<std::string, IrNodeRef> &attrs,
                           const std::string &tag) {
-  auto n         = make_shared<ComputeOp>();
-  n->name        = name;
+  auto n = make_shared<ComputeOp>();
+  n->name = name;
   n->producer_fn = handle;
-  n->shape       = domain;
+  n->shape = domain;
   n->reduce_axis = reduce_axis;
-  n->tag         = tag;
-  n->attrs       = attrs;
-  auto axis      = common::GenDefaultAxis(domain.size());
+  n->tag = tag;
+  n->attrs = attrs;
+  auto axis = common::GenDefaultAxis(domain.size());
   std::vector<Expr> _axis;
   for (auto &x : axis) _axis.push_back(x);
-  n->body        = {handle(_axis)};
+  n->body = {handle(_axis)};
   n->reduce_axis = reduce_axis;
   return Operation(n);
 }
 
 Operation CallOp::Make(const std::string &call_target, Expr call_op) {
-  auto n       = make_shared<CallOp>();
+  auto n = make_shared<CallOp>();
   n->call_expr = call_op;
   return Operation(n);
 }
 
-Operation PrecedingViewOp::Make(const Tensor &tensor, int preceding_axis) { return Operation(); }
+Operation PrecedingViewOp::Make(const Tensor &tensor, int preceding_axis) {
+  return Operation();
+}
 
-const char *PrecedingViewOp::func_type() const { return PrecedingViewOp::__func_type__; }
+const char *PrecedingViewOp::func_type() const {
+  return PrecedingViewOp::__func_type__;
+}
 
 const char *CallOp::func_type() const { return __func_type__; }
 
-const char *ComputeOp::__func_type__     = "compute_op";
+const char *ComputeOp::__func_type__ = "compute_op";
 const char *PlaceholderOp::__func_type__ = "placeholder_op";
-const char *CallOp::__func_type__        = "call_op";
+const char *CallOp::__func_type__ = "call_op";
 
 const std::string &CallOp::target() const {
   auto *call = call_expr.As<ir::Call>();

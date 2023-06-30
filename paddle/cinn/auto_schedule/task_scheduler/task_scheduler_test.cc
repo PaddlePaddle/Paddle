@@ -30,7 +30,8 @@ TEST(TaskScheduler, Make) {
 
   auto round_robin = TaskScheduler::Make(tasks, config);
   ASSERT_STREQ(round_robin->Name(), "round_robin");
-  auto efficiency_priority = TaskScheduler::Make(tasks, config, "efficiency_priority");
+  auto efficiency_priority =
+      TaskScheduler::Make(tasks, config, "efficiency_priority");
   ASSERT_STREQ(efficiency_priority->Name(), "efficiency_priority");
 }
 
@@ -48,7 +49,8 @@ TEST(EfficiencyPriorityScheduler, NextTaskId) {
   std::vector<TuneTask> tasks(3);
   TaskScheduler::Config config;
   config.minimum_gain_threshold = -1.0;
-  auto efficiency_priority      = TaskScheduler::Make(tasks, config, "efficiency_priority");
+  auto efficiency_priority =
+      TaskScheduler::Make(tasks, config, "efficiency_priority");
   ASSERT_EQ(-1, efficiency_priority->NextTaskId());
 }
 

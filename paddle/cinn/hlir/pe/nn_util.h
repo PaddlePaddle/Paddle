@@ -30,11 +30,14 @@ namespace cinn {
 namespace hlir {
 namespace pe {
 
-ir::Tensor const_matrix(const std::vector<std::vector<float>>& input, const std::string& name);
+ir::Tensor const_matrix(const std::vector<std::vector<float>>& input,
+                        const std::string& name);
 
-std::vector<std::vector<std::vector<float>>> get_winograd_val(const int& tile_size, const int& kernel_size);
+std::vector<std::vector<std::vector<float>>> get_winograd_val(
+    const int& tile_size, const int& kernel_size);
 
-std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size, const int& kernel_size);
+std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size,
+                                                    const int& kernel_size);
 
 std::vector<int> GetFirstStepReduceShape(const std::vector<int>& shape,
                                          const std::vector<int>& axes,

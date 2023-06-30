@@ -25,7 +25,7 @@ namespace ir {
 namespace {
 
 struct IrNodesCollector : public IRVisitor {
-  using teller_t  = std::function<bool(const Expr*)>;
+  using teller_t = std::function<bool(const Expr*)>;
   using handler_t = std::function<void(const Expr*)>;
 
   teller_t teller;
@@ -78,9 +78,11 @@ struct IrNodesCollector : public IRVisitor {
 };
 
 struct IrNodesWithoutTensorCollector : public IrNodesCollector {
-  using teller_t  = std::function<bool(const Expr*)>;
+  using teller_t = std::function<bool(const Expr*)>;
   using handler_t = std::function<void(const Expr*)>;
-  IrNodesWithoutTensorCollector(teller_t teller, handler_t handler, bool uniq_target)
+  IrNodesWithoutTensorCollector(teller_t teller,
+                                handler_t handler,
+                                bool uniq_target)
       : IrNodesCollector(std::move(teller), std::move(handler), uniq_target) {}
 
   void Visit(const _Tensor_* expr) override {
@@ -93,49 +95,68 @@ struct IrNodesWithoutTensorCollector : public IrNodesCollector {
 
 }  // namespace
 
-std::set<Expr> CollectIRNodes(Expr expr, std::function<bool(const Expr*)>&& teller, bool uniq_target) {
+std::set<Expr> CollectIRNodes(Expr expr,
+                              std::function<bool(const Expr*)>&& teller,
+                              bool uniq_target) {
   std::set<Expr> exprs;
-  IrNodesCollector::handler_t handler = [&](const Expr* x) { exprs.insert(*x); };
-  IrNodesCollector collector(std::move(teller), std::move(handler), uniq_target);
+  IrNodesCollector::handler_t handler = [&](const Expr* x) {
+    exprs.insert(*x);
+  };
+  IrNodesCollector collector(
+      std::move(teller), std::move(handler), uniq_target);
   collector.Visit(&expr);
   return exprs;
 }
 
-std::vector<Expr> CollectIRNodesInOrder(Expr expr, std::function<bool(const Expr*)>&& teller) {
+std::vector<Expr> CollectIRNodesInOrder(
+    Expr expr, std::function<bool(const Expr*)>&& teller) {
   std::vector<Expr> exprs;
-  IrNodesWithoutTensorCollector::handler_t handler = [&](const Expr* x) { exprs.push_back(*x); };
-  IrNodesWithoutTensorCollector collector(std::move(teller), std::move(handler), false);
+  IrNodesWithoutTensorCollector::handler_t handler = [&](const Expr* x) {
+    exprs.push_back(*x);
+  };
+  IrNodesWithoutTensorCollector collector(
+      std::move(teller), std::move(handler), false);
   collector.Visit(&expr);
   return exprs;
 }
 
-std::set<Expr> CollectIRNodesWithoutTensor(Expr expr, std::function<bool(const Expr*)>&& teller, bool uniq_target) {
+std::set<Expr> CollectIRNodesWithoutTensor(
+    Expr expr, std::function<bool(const Expr*)>&& teller, bool uniq_target) {
   std::set<Expr> exprs;
-  IrNodesWithoutTensorCollector::handler_t handler = [&](const Expr* x) { exprs.insert(*x); };
-  IrNodesWithoutTensorCollector collector(std::move(teller), std::move(handler), uniq_target);
+  IrNodesWithoutTensorCollector::handler_t handler = [&](const Expr* x) {
+    exprs.insert(*x);
+  };
+  IrNodesWithoutTensorCollector collector(
+      std::move(teller), std::move(handler), uniq_target);
   collector.Visit(&expr);
   return exprs;
 }
 
-std::map<std::string, Expr> CollectTensorMap(Expr x, std::function<bool(const Expr*)>&& extra_teller) {
+std::map<std::string, Expr> CollectTensorMap(
+    Expr x, std::function<bool(const Expr*)>&& extra_teller) {
   std::map<std::string, Expr> tensor_map;
 
-  auto tensors = CollectIRNodes(x, [&](const Expr* x) { return x->as_tensor() && extra_teller(x); });
+  auto tensors = CollectIRNodes(
+      x, [&](const Expr* x) { return x->as_tensor() && extra_teller(x); });
   for (auto& e : tensors) {
-    auto* t             = e.as_tensor();
+    auto* t = e.as_tensor();
     tensor_map[t->name] = e;
   }
   return tensor_map;
 }
 
-std::set<Expr> CollectLoadTensors(Expr x, std::function<bool(const Expr*)>&& teller) {
+std::set<Expr> CollectLoadTensors(Expr x,
+                                  std::function<bool(const Expr*)>&& teller) {
   if (!x.defined()) return std::set<Expr>();
   struct Mutator : public ir::IRMutator<const Expr*> {
     std::function<bool(const Expr*)> teller;
     std::set<Expr> exprs;
-    Mutator(std::function<bool(const Expr*)>&& teller) : teller(std::move(teller)) {}
+    Mutator(std::function<bool(const Expr*)>&& teller)
+        : teller(std::move(teller)) {}
 
-    void operator()(const Expr* expr) { ir::IRMutator<const Expr*>::Visit(expr, expr); }
+    void operator()(const Expr* expr) {
+      ir::IRMutator<const Expr*>::Visit(expr, expr);
+    }
 
     void Visit(const Load* op, const Expr* expr) override {
       if (teller(&op->tensor)) {
@@ -149,13 +170,17 @@ std::set<Expr> CollectLoadTensors(Expr x, std::function<bool(const Expr*)>&& tel
   return mutator.exprs;
 }
 
-std::set<Expr> CollectStoreTensors(Expr x, std::function<bool(const Expr*)>&& teller) {
+std::set<Expr> CollectStoreTensors(Expr x,
+                                   std::function<bool(const Expr*)>&& teller) {
   struct Mutator : public ir::IRMutator<const Expr*> {
     std::function<bool(const Expr*)> teller;
     std::set<Expr> exprs;
-    Mutator(std::function<bool(const Expr*)>&& teller) : teller(std::move(teller)) {}
+    Mutator(std::function<bool(const Expr*)>&& teller)
+        : teller(std::move(teller)) {}
 
-    void operator()(const Expr* expr) { ir::IRMutator<const Expr*>::Visit(expr, expr); }
+    void operator()(const Expr* expr) {
+      ir::IRMutator<const Expr*>::Visit(expr, expr);
+    }
 
     void Visit(const Store* op, const Expr* expr) override {
       if (teller(&op->tensor)) {
@@ -169,7 +194,8 @@ std::set<Expr> CollectStoreTensors(Expr x, std::function<bool(const Expr*)>&& te
   return mutator.exprs;
 }
 
-std::set<Expr> CollectReferencedTensors(Expr x, const std::function<bool(const Expr*)>& teller) {
+std::set<Expr> CollectReferencedTensors(
+    Expr x, const std::function<bool(const Expr*)>& teller) {
   auto handle0 = teller;
   auto handle1 = teller;
 

@@ -34,7 +34,8 @@
 
 namespace cinn::frontend {
 
-using CPUKernelFunc = std::function<void(const std::vector<size_t>& lengths, const std::vector<void*>& ptrs)>;
+using CPUKernelFunc = std::function<void(const std::vector<size_t>& lengths,
+                                         const std::vector<void*>& ptrs)>;
 
 template <typename T, typename Alloc = std::allocator<T>>
 std::ostream& operator<<(std::ostream& os, const std::vector<T, Alloc>& vec) {
@@ -53,25 +54,31 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T, Alloc>& vec) {
 }
 
 template <typename T>
-void InitRandomVector(
-    std::vector<T>* vec, size_t numel, T low = static_cast<T>(0), T high = static_cast<T>(1), float precision = 1e-5) {
+void InitRandomVector(std::vector<T>* vec,
+                      size_t numel,
+                      T low = static_cast<T>(0),
+                      T high = static_cast<T>(1),
+                      float precision = 1e-5) {
   std::random_device seed;
   std::default_random_engine engine(seed());
   std::uniform_real_distribution<double> dist(low, high);
 
   vec->resize(numel);
   for (size_t i = 0; i < numel; ++i) {
-    T value    = static_cast<T>(dist(engine));
-    int coeff  = static_cast<int>(value / precision);
+    T value = static_cast<T>(dist(engine));
+    int coeff = static_cast<int>(value / precision);
     vec->at(i) = precision * static_cast<T>(coeff);
   }
 }
 
 template <>
-void InitRandomVector<int>(std::vector<int>* vec, size_t numel, int low, int high, float precision);
+void InitRandomVector<int>(
+    std::vector<int>* vec, size_t numel, int low, int high, float precision);
 
 template <typename T>
-void CopyFromVector(const std::vector<T>& vec, hlir::framework::Tensor tensor, Target target) {
+void CopyFromVector(const std::vector<T>& vec,
+                    hlir::framework::Tensor tensor,
+                    Target target) {
   auto* data = tensor->mutable_data<T>(target);
 
   size_t numel = tensor->shape().numel();
@@ -81,7 +88,8 @@ void CopyFromVector(const std::vector<T>& vec, hlir::framework::Tensor tensor, T
 #ifdef CINN_WITH_CUDA
     cudaMemcpy(data, vec.data(), numel * sizeof(T), cudaMemcpyHostToDevice);
 #else
-    LOG(FATAL) << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
+    LOG(FATAL)
+        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
 #endif
   } else {
     std::copy(vec.begin(), vec.end(), data);
@@ -89,7 +97,9 @@ void CopyFromVector(const std::vector<T>& vec, hlir::framework::Tensor tensor, T
 }
 
 template <>
-void CopyFromVector<bool>(const std::vector<bool>& vec, hlir::framework::Tensor tensor, Target target);
+void CopyFromVector<bool>(const std::vector<bool>& vec,
+                          hlir::framework::Tensor tensor,
+                          Target target);
 
 template <typename T>
 void CopyToVector(const hlir::framework::Tensor tensor, std::vector<T>* vec) {
@@ -108,17 +118,23 @@ void CopyToVector(const hlir::framework::Tensor tensor, std::vector<T>* vec) {
 }
 
 template <>
-void CopyToVector<bool>(const hlir::framework::Tensor tensor, std::vector<bool>* vec);
+void CopyToVector<bool>(const hlir::framework::Tensor tensor,
+                        std::vector<bool>* vec);
 
 template <typename T>
-void CheckOutput(const std::vector<T>& actual, const std::vector<T>& expect, float atol = 1e-8, float rtol = 1e-5) {
+void CheckOutput(const std::vector<T>& actual,
+                 const std::vector<T>& expect,
+                 float atol = 1e-8,
+                 float rtol = 1e-5) {
   CHECK_EQ(actual.size(), expect.size());
 
-  auto allclose = [](T a, T e, float atol, float rtol) { return abs(a - e) <= (atol + rtol * abs(e)); };
+  auto allclose = [](T a, T e, float atol, float rtol) {
+    return abs(a - e) <= (atol + rtol * abs(e));
+  };
 
   float max_diff = 0.0f;
-  int offset     = 0;
-  int num_diffs  = 0;
+  int offset = 0;
+  int num_diffs = 0;
 
   size_t numel = actual.size();
   for (size_t i = 0; i < numel; ++i) {
@@ -127,16 +143,21 @@ void CheckOutput(const std::vector<T>& actual, const std::vector<T>& expect, flo
       float relative_diff = abs(absolute_diff / expect[i]);
       if (relative_diff > max_diff) {
         max_diff = relative_diff;
-        offset   = i;
+        offset = i;
       }
       num_diffs += 1;
-      VLOG(4) << "- i=" << i << ", " << std::setprecision(8) << actual[i] << " (actual) vs " << std::setprecision(8)
-              << expect[i] << " (expect), relative_diff=" << relative_diff << ", absolute_diff=" << absolute_diff;
+      VLOG(4) << "- i=" << i << ", " << std::setprecision(8) << actual[i]
+              << " (actual) vs " << std::setprecision(8) << expect[i]
+              << " (expect), relative_diff=" << relative_diff
+              << ", absolute_diff=" << absolute_diff;
     }
   }
-  LOG(INFO) << "- Total " << num_diffs << " different results, offset=" << offset << ", " << actual[offset]
-            << " (actual) vs " << expect[offset] << " (expect), maximum_relative_diff=" << max_diff
-            << " (absolute_diff=" << abs((actual[offset] - expect[offset])) << ")";
+  LOG(INFO) << "- Total " << num_diffs
+            << " different results, offset=" << offset << ", " << actual[offset]
+            << " (actual) vs " << expect[offset]
+            << " (expect), maximum_relative_diff=" << max_diff
+            << " (absolute_diff=" << abs((actual[offset] - expect[offset]))
+            << ")";
   CHECK_EQ(num_diffs, 0);
 }
 
@@ -168,7 +189,7 @@ void ComputeReferenceCpu(const std::vector<std::vector<T>>& input_vecs,
 
 void RunDecomposer(Program* prog,
                    const Target& target,
-                   const std::vector<std::string>& passes    = {"Decomposer"},
+                   const std::vector<std::string>& passes = {"Decomposer"},
                    const std::vector<std::string>& fetch_ids = {});
 
 template <typename T>
@@ -176,12 +197,12 @@ void RunAndCheckShape(NetBuilder& builder,
                       const std::vector<std::string>& input_names,
                       const std::vector<std::string>& output_names,
                       const std::vector<std::vector<int>>& output_shapes,
-                      std::vector<std::vector<T>>* input_vecs  = nullptr,
+                      std::vector<std::vector<T>>* input_vecs = nullptr,
                       std::vector<std::vector<T>>* output_vecs = nullptr,
-                      T low                                    = 0,
-                      T high                                   = 1,
-                      const std::vector<std::string>& passes   = {"Decomposer"}) {
-  auto prog     = builder.Build();
+                      T low = 0,
+                      T high = 1,
+                      const std::vector<std::string>& passes = {"Decomposer"}) {
+  auto prog = builder.Build();
   Target target = common::DefaultTarget();
   RunDecomposer(&prog, target, passes, output_names);
   auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
@@ -191,7 +212,8 @@ void RunAndCheckShape(NetBuilder& builder,
 
   auto runtime_program = gc.Build();
   std::vector<std::vector<T>> input_vecs_internal;
-  std::vector<std::vector<T>>* input_vecs_ptr = input_vecs ? input_vecs : &input_vecs_internal;
+  std::vector<std::vector<T>>* input_vecs_ptr =
+      input_vecs ? input_vecs : &input_vecs_internal;
   for (size_t i = 0; i < input_names.size(); ++i) {
     scope->Var<hlir::framework::Tensor>(input_names[i]);
     auto tensor = scope->GetTensor(input_names[i]);
@@ -221,20 +243,30 @@ void RunAndCheck(NetBuilder& builder,
                  const std::vector<std::string>& output_names,
                  const std::vector<std::vector<int>>& output_shapes,
                  CPUKernelFunc cpu_kernel_func,
-                 T low                                  = 0,
-                 T high                                 = 1,
-                 float atol                             = 1e-8,
-                 float rtol                             = 1e-5,
+                 T low = 0,
+                 T high = 1,
+                 float atol = 1e-8,
+                 float rtol = 1e-5,
                  const std::vector<std::string>& passes = {"Decomposer"}) {
   std::vector<std::vector<T>> input_vecs;
   std::vector<std::vector<T>> output_vecs;
-  RunAndCheckShape<T>(builder, input_names, output_names, output_shapes, &input_vecs, &output_vecs, low, high, passes);
+  RunAndCheckShape<T>(builder,
+                      input_names,
+                      output_names,
+                      output_shapes,
+                      &input_vecs,
+                      &output_vecs,
+                      low,
+                      high,
+                      passes);
 
   std::vector<std::vector<T>> output_refs;
-  ComputeReferenceCpu<T>(input_vecs, output_vecs, &output_refs, cpu_kernel_func);
+  ComputeReferenceCpu<T>(
+      input_vecs, output_vecs, &output_refs, cpu_kernel_func);
 
   for (size_t i = 0; i < output_vecs.size(); ++i) {
-    LOG(INFO) << "Check the " << i << "-th output, name=" << output_names[i] << ", shape=" << output_shapes[i];
+    LOG(INFO) << "Check the " << i << "-th output, name=" << output_names[i]
+              << ", shape=" << output_shapes[i];
     CheckOutput<T>(output_vecs[i], output_refs[i], atol, rtol);
   }
 }

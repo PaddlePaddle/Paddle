@@ -19,7 +19,8 @@
 
 namespace cinn::frontend::paddle::cpp {
 
-inline std::string AttrTypeToString(paddle::cpp::OpDescAPI::AttrType attr_type) {
+inline std::string AttrTypeToString(
+    paddle::cpp::OpDescAPI::AttrType attr_type) {
   using AttrType = paddle::cpp::OpDescAPI::AttrType;
   switch (attr_type) {
 #define EXPAND_SWITCH_CASE(ATTR_TYPE) \
@@ -47,7 +48,7 @@ inline std::string AttrTypeToString(paddle::cpp::OpDescAPI::AttrType attr_type) 
   template <>                                                    \
   void OpDesc::SetAttr<T>(const std::string& name, const T& v) { \
     attr_types_[name] = AttrType::repr__;                        \
-    attrs_[name]      = v;                                       \
+    attrs_[name] = v;                                            \
   }
 
 SET_ATTR_IMPL(int32_t, INT);
@@ -65,24 +66,26 @@ SET_ATTR_IMPL(std::vector<int64_t>, LONGS);
 
 #undef SET_ATTR_IMPL
 
-std::pair<OpDesc::attrs_t::const_iterator, OpDesc::attr_types_t::const_iterator> FindAttr(const OpDesc& desc,
-                                                                                          const std::string& name) {
+std::pair<OpDesc::attrs_t::const_iterator, OpDesc::attr_types_t::const_iterator>
+FindAttr(const OpDesc& desc, const std::string& name) {
   auto it = desc.attrs().find(name);
-  CHECK(it != desc.attrs().end()) << "No attributes called " << name << " found";
+  CHECK(it != desc.attrs().end())
+      << "No attributes called " << name << " found";
   auto attr_it = desc.attr_types().find(name);
   CHECK(attr_it != desc.attr_types().end());
   return std::make_pair(it, attr_it);
 }
 
-#define GET_IMPL_ONE(T, repr__)                                                                  \
-  template <>                                                                                    \
-  T OpDesc::GetAttr<T>(const std::string& name) const {                                          \
-    auto pair = FindAttr(*this, name);                                                           \
-    CHECK(pair.second->second == AttrType::repr__)                                               \
-        << "The op \"" << Type() << "\"'s attrbute \"" << pair.second->first                     \
-        << "\"'s type doesn't match the target type! Try get \"" << #repr__ << "\", but real \"" \
-        << AttrTypeToString(pair.second->second) << "\". Please check.";                         \
-    return absl::any_cast<T>(pair.first->second);                                                \
+#define GET_IMPL_ONE(T, repr__)                                              \
+  template <>                                                                \
+  T OpDesc::GetAttr<T>(const std::string& name) const {                      \
+    auto pair = FindAttr(*this, name);                                       \
+    CHECK(pair.second->second == AttrType::repr__)                           \
+        << "The op \"" << Type() << "\"'s attrbute \"" << pair.second->first \
+        << "\"'s type doesn't match the target type! Try get \"" << #repr__  \
+        << "\", but real \"" << AttrTypeToString(pair.second->second)        \
+        << "\". Please check.";                                              \
+    return absl::any_cast<T>(pair.first->second);                            \
   }
 
 GET_IMPL_ONE(int32_t, INT);

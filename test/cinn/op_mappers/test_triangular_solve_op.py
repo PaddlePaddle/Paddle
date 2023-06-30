@@ -15,7 +15,9 @@
 # limitations under the License.
 
 import unittest
+
 from op_mapper_test import OpMapperTest
+
 import paddle
 
 

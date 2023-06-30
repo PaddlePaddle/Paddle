@@ -32,9 +32,13 @@ class OpBenchmarkTester {
   OpBenchmarkTester(const std::string &op_name,
                     const std::vector<std::vector<int>> &input_shapes,
                     const common::Target &target = common::DefaultHostTarget(),
-                    int repeat                   = 10,
-                    float diff                   = 1e-5)
-      : op_name_(op_name), input_shapes_(input_shapes), target_(target), repeat_(repeat), diff_(diff) {}
+                    int repeat = 10,
+                    float diff = 1e-5)
+      : op_name_(op_name),
+        input_shapes_(input_shapes),
+        target_(target),
+        repeat_(repeat),
+        diff_(diff) {}
 
   virtual ~OpBenchmarkTester() = default;
 
@@ -51,12 +55,13 @@ class OpBenchmarkTester {
                                   bool use_default_stragegy = true);
 
   // should define specific stragey if not use default schedule
-  virtual std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                         poly::StageMap *stages) {
+  virtual std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) {
     CINN_NOT_IMPLEMENTED
   }
 
-  virtual std::unique_ptr<backends::ExecutionEngine> CreateExecutionEngine(const cinn::ir::Module &module);
+  virtual std::unique_ptr<backends::ExecutionEngine> CreateExecutionEngine(
+      const cinn::ir::Module &module);
 
   std::vector<cinn_pod_value_t> &GetAllArgs() { return all_args_; }
   int GetOutDims() { return out_dims_; }

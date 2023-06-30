@@ -33,10 +33,11 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using CCompute = std::function<std::shared_ptr<ir::Tensor>(const std::vector<ir::Tensor>)>;
+using CCompute =
+    std::function<std::shared_ptr<ir::Tensor>(const std::vector<ir::Tensor>)>;
 
 TEST(Operator, GetAttrs) {
-  auto add      = Operator::Get("elementwise_add");
+  auto add = Operator::Get("elementwise_add");
   Operator temp = *add;
   auto strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
 
@@ -48,7 +49,8 @@ TEST(Operator, GetAttrs) {
   std::vector<ir::Tensor> inputs{A, B};
   std::vector<Type> type{Float(32)};
   common::Target target = common::DefaultHostTarget();
-  auto impl             = OpStrategy::SelectImpl(strategy[add](attrs, inputs, type, {{100, 32}}, target));
+  auto impl = OpStrategy::SelectImpl(
+      strategy[add](attrs, inputs, type, {{100, 32}}, target));
 
   ASSERT_EQ(impl->name, "strategy.elementwise_add.x86");
   ASSERT_EQ(add->description, "elementwise_add function");
@@ -58,17 +60,22 @@ TEST(Operator, GetAttrs) {
   if (FLAGS_cinn_ir_schedule) {
     std::string out_name = "C";
     common::CINNValuePack cinn_input =
-        common::CINNValuePack{{common::CINNValue(A), common::CINNValue(B), common::CINNValue(out_name)}};
+        common::CINNValuePack{{common::CINNValue(A),
+                               common::CINNValue(B),
+                               common::CINNValue(out_name)}};
     std::vector<std::string> input_output_names{"A", "B", out_name};
 
-    auto funcs = framework::GetFuncFromImpl(impl, cinn_input, inputs, input_output_names, func_name, target);
+    auto funcs = framework::GetFuncFromImpl(
+        impl, cinn_input, inputs, input_output_names, func_name, target);
 
     for (auto func : funcs) {
-      LOG(INFO) << "Test Operator_ElementWise_Add_Test0's Strategy, func is :\n" << func;
+      LOG(INFO) << "Test Operator_ElementWise_Add_Test0's Strategy, func is :\n"
+                << func;
     }
   } else {
-    common::CINNValuePack cinn_input = common::CINNValuePack{{common::CINNValue(A), common::CINNValue(B)}};
-    common::CINNValuePack rets       = impl->fcompute(cinn_input);
+    common::CINNValuePack cinn_input =
+        common::CINNValuePack{{common::CINNValue(A), common::CINNValue(B)}};
+    common::CINNValuePack rets = impl->fcompute(cinn_input);
     ASSERT_EQ(rets.size(), 2UL);
     rets = impl->fschedule(rets);
     ASSERT_EQ(rets.size(), 2UL);

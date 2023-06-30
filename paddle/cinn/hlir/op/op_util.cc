@@ -26,12 +26,14 @@ DECLARE_bool(cinn_ir_schedule);
 namespace cinn {
 namespace hlir {
 
-CINNSchedule GetElementwiseScheduleFunc(const std::vector<std::vector<int>>& output_shapes,
-                                        const Target& target,
-                                        bool vectorizable) {
+CINNSchedule GetElementwiseScheduleFunc(
+    const std::vector<std::vector<int>>& output_shapes,
+    const Target& target,
+    bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
     if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is empty! Please check.\n";
+      CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
+                              "empty! Please check.\n";
       common::CINNValuePack arg_pack = args[0];
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
@@ -45,31 +47,39 @@ CINNSchedule GetElementwiseScheduleFunc(const std::vector<std::vector<int>>& out
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
       pe::IRElementwiseSchedule(ir_sch, output_shapes.front(), target);
-      std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      std::vector<common::CINNValue> res{
+          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = common::CINNValuePack{res};
     } else {
-      CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is empty! Please check.\n";
+      CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
+                              "empty! Please check.\n";
       common::CINNValuePack arg_pack = args[0];
-      Expr out                       = arg_pack[0];
-      poly::StageMap stages          = arg_pack[1];
+      Expr out = arg_pack[0];
+      poly::StageMap stages = arg_pack[1];
       CHECK(out.as_tensor());
       CHECK_EQ(arg_pack.size(), 2UL);
       if (target.arch == Target::Arch::NVGPU) {
-        pe::CudaScheduleInjective(stages[out.as_tensor_ref()], output_shapes.front(), target);
+        pe::CudaScheduleInjective(
+            stages[out.as_tensor_ref()], output_shapes.front(), target);
       } else if (target.arch == Target::Arch::X86) {
-        pe::ScheduleInjectiveCPU(stages[out.as_tensor_ref()], output_shapes.front(), target, vectorizable);
+        pe::ScheduleInjectiveCPU(stages[out.as_tensor_ref()],
+                                 output_shapes.front(),
+                                 target,
+                                 vectorizable);
       }
       *ret = arg_pack;
     }
   });
 }
 
-CINNSchedule GetInjectiveScheduleFunc(const std::vector<std::vector<int>>& output_shapes,
-                                      const Target& target,
-                                      bool vectorizable) {
+CINNSchedule GetInjectiveScheduleFunc(
+    const std::vector<std::vector<int>>& output_shapes,
+    const Target& target,
+    bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
     if (FLAGS_cinn_ir_schedule) {
-      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is empty! Please check.\n";
+      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
+                              "empty! Please check.\n";
       common::CINNValuePack arg_pack = args[0];
       std::vector<Expr> vec_ast;
       for (int i = 0; i < arg_pack.size(); i++) {
@@ -86,21 +96,28 @@ CINNSchedule GetInjectiveScheduleFunc(const std::vector<std::vector<int>>& outpu
       /*if (target.arch == Target::Arch::NVGPU) {
         pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
       } else if (target.arch == Target::Arch::X86) {
-        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, vectorizable);
+        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target,
+      vectorizable);
       }*/
-      std::vector<common::CINNValue> res{common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+      std::vector<common::CINNValue> res{
+          common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
       *ret = common::CINNValuePack{res};
     } else {
-      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is empty! Please check.\n";
+      CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
+                              "empty! Please check.\n";
       common::CINNValuePack arg_pack = args[0];
-      Expr out                       = arg_pack[0];
-      poly::StageMap stages          = arg_pack[1];
+      Expr out = arg_pack[0];
+      poly::StageMap stages = arg_pack[1];
       CHECK(out.as_tensor());
       CHECK_EQ(arg_pack.size(), 2UL);
       if (target.arch == Target::Arch::NVGPU) {
-        pe::CudaScheduleInjective(stages[out.as_tensor_ref()], output_shapes.front(), target);
+        pe::CudaScheduleInjective(
+            stages[out.as_tensor_ref()], output_shapes.front(), target);
       } else if (target.arch == Target::Arch::X86) {
-        pe::ScheduleInjectiveCPU(stages[out.as_tensor_ref()], output_shapes.front(), target, vectorizable);
+        pe::ScheduleInjectiveCPU(stages[out.as_tensor_ref()],
+                                 output_shapes.front(),
+                                 target,
+                                 vectorizable);
       }
       *ret = arg_pack;
     }
@@ -123,7 +140,8 @@ std::string GetExternFuncName(const common::Target& target,
     } else if (target.arch == common::Target::Arch::X86) {
       func_proto_name.append("host_");
     } else {
-      LOG(FATAL) << func_name << " only supports X86 and NVGPU! Please Check.\n";
+      LOG(FATAL) << func_name
+                 << " only supports X86 and NVGPU! Please Check.\n";
     }
   }
   func_proto_name.append(func_name);
@@ -160,7 +178,8 @@ std::string GetExternFuncName(const common::Target& target,
   } else if (type.is_uint(64)) {
     func_proto_name.append("uint64");
   } else {
-    LOG(FATAL) << "Can not find type: " << type << " for extern function. Please Check.\n";
+    LOG(FATAL) << "Can not find type: " << type
+               << " for extern function. Please Check.\n";
   }
   return func_proto_name;
 }

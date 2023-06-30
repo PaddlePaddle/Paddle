@@ -62,7 +62,8 @@ void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
 
 CodeGenC::CodeGenC(Target target) : ir::IrPrinter(ss_) {}
 
-std::string CodeGenC::Compile(const ir::Module &module, OutputKind output_kind) {
+std::string CodeGenC::Compile(const ir::Module &module,
+                              OutputKind output_kind) {
   if (output_kind == OutputKind::CHeader) {
     GenerateHeaderFile(module);
   } else if (output_kind == OutputKind::CImpl) {
@@ -120,9 +121,12 @@ std::string CodeGenC::GetTypeName(Type type) {
   if (type.is_customized_type()) {
     CHECK(!type.customized_type().empty()) << "customized_type can't be empty.";
     auto customized_name = type.customized_type();
-    // get name of a cuda built-in vector type, it is started with a 'CudaVectorType::' prefix
-    if (utils::Startswith(customized_name, common::customized_type::kcuda_builtin_vector_t)) {
-      customized_name.erase(0, strlen(common::customized_type::kcuda_builtin_vector_t));
+    // get name of a cuda built-in vector type, it is started with a
+    // 'CudaVectorType::' prefix
+    if (utils::Startswith(customized_name,
+                          common::customized_type::kcuda_builtin_vector_t)) {
+      customized_name.erase(
+          0, strlen(common::customized_type::kcuda_builtin_vector_t));
     }
     return customized_name;
   }
@@ -188,8 +192,8 @@ void CodeGenC::Visit(const ir::Not *op) {
 }
 void CodeGenC::Visit(const ir::Cast *op) { PrintCastExpr(op->type(), op->v()); }
 void CodeGenC::Visit(const ir::For *op) {
-  Expr extent  = op->extent;
-  Expr min     = op->min;
+  Expr extent = op->extent;
+  Expr min = op->min;
   int num_task = 1;
   if (op->is_parallel()) {
     os() << "int num_task = max_concurrency();\n";
@@ -204,10 +208,10 @@ void CodeGenC::Visit(const ir::For *op) {
     Print((op->extent + num_task_var - 1) / num_task_var);
     os() << ";\n";
     CHECK_EQ(min.as_int32(), 0);
-    auto task_id    = Var("task_id");
+    auto task_id = Var("task_id");
     auto n_per_task = Var("n_per_task");
-    min             = task_id * n_per_task;
-    extent          = (task_id + 1) * n_per_task;
+    min = task_id * n_per_task;
+    extent = (task_id + 1) * n_per_task;
     DoIndent();
   }
   os() << "for (";
@@ -344,7 +348,8 @@ void CodeGenC::Visit(const ir::Call *op) {
     PrintCallArgs(op);
     os() << ")";
   } else if (op->is_extern_call()) {
-    const auto &fn_name = ExternFunctionEmitterRegistry::Global().Lookup(ExternFuncID{backend_C, op->name.c_str()});
+    const auto &fn_name = ExternFunctionEmitterRegistry::Global().Lookup(
+        ExternFuncID{backend_C, op->name.c_str()});
     if (!fn_name.empty()) {
       ExternFunctionLLVMEmitter emitter(fn_name);
       emitter.BindCodeGen(this);
@@ -527,11 +532,13 @@ void CodeGenC::Visit(const ir::Let *op) {
 }
 
 void CodeGenC::Visit(const ir::Reduce *op) {
-  LOG(FATAL) << "Reduce IR is just for internal representation, should not be used for CodeGen.";
+  LOG(FATAL) << "Reduce IR is just for internal representation, should not be "
+                "used for CodeGen.";
 }
 
 void CodeGenC::Visit(const ir::Ramp *op) {
-  os() << "StackVec<" << op->lanes << "," << GetTypeRepr(op->type().ElementOf()) << ">::Ramp(";
+  os() << "StackVec<" << op->lanes << "," << GetTypeRepr(op->type().ElementOf())
+       << ">::Ramp(";
   Print(op->base);
   os() << ", ";
   Print(op->stride);
@@ -541,7 +548,8 @@ void CodeGenC::Visit(const ir::Ramp *op) {
 }
 
 void CodeGenC::Visit(const ir::Broadcast *op) {
-  os() << "StackVec<" << op->lanes << "," << GetTypeRepr(op->type().ElementOf()) << ">::Broadcast(";
+  os() << "StackVec<" << op->lanes << "," << GetTypeRepr(op->type().ElementOf())
+       << ">::Broadcast(";
   Print(op->value);
   os() << ", ";
   os() << op->lanes << ")";
@@ -564,7 +572,9 @@ void CodeGenC::PrintCastExpr(const std::string &type, Expr e) {
   os() << ")";
 }
 
-void CodeGenC::PrintShape(const std::vector<Expr> &shape, char leftb, char rightb) {
+void CodeGenC::PrintShape(const std::vector<Expr> &shape,
+                          char leftb,
+                          char rightb) {
   os() << leftb << " ";
 
   for (int i = 0; i < shape.size() - 1; i++) {
@@ -582,22 +592,31 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   DoIndent();
 
-  CHECK_EQ(op->alloc_output_buffer_exprs.size(), op->dealloc_output_buffer_exprs.size())
+  CHECK_EQ(op->alloc_output_buffer_exprs.size(),
+           op->dealloc_output_buffer_exprs.size())
       << "the count of allocation and deallocaton expressions is not match";
 
   std::vector<Expr> new_body;
 
-  std::vector<Expr> create_temp_buffers   = op->PrepareCreateTempBufferExprs();
-  std::vector<Expr> alloca_temp_buffers   = op->PrepareAllocTempBufferExprs();
+  std::vector<Expr> create_temp_buffers = op->PrepareCreateTempBufferExprs();
+  std::vector<Expr> alloca_temp_buffers = op->PrepareAllocTempBufferExprs();
   std::vector<Expr> dealloca_temp_buffers = op->PrepareDeallocTempBufferExprs();
-#define APPEND_TO_NEW_BODY(field__) new_body.insert(std::end(new_body), std::begin(op->field__), std::end(op->field__));
+#define APPEND_TO_NEW_BODY(field__) \
+  new_body.insert(                  \
+      std::end(new_body), std::begin(op->field__), std::end(op->field__));
   APPEND_TO_NEW_BODY(argument_prepare_exprs)
-  new_body.insert(std::end(new_body), std::begin(create_temp_buffers), std::end(create_temp_buffers));
+  new_body.insert(std::end(new_body),
+                  std::begin(create_temp_buffers),
+                  std::end(create_temp_buffers));
   APPEND_TO_NEW_BODY(alloc_output_buffer_exprs)
-  new_body.insert(std::end(new_body), std::begin(alloca_temp_buffers), std::end(alloca_temp_buffers));
+  new_body.insert(std::end(new_body),
+                  std::begin(alloca_temp_buffers),
+                  std::end(alloca_temp_buffers));
   APPEND_TO_NEW_BODY(buffer_data_cast_exprs)
   new_body.push_back(op->body);
-  new_body.insert(std::end(new_body), std::begin(dealloca_temp_buffers), std::end(dealloca_temp_buffers));
+  new_body.insert(std::end(new_body),
+                  std::begin(dealloca_temp_buffers),
+                  std::end(dealloca_temp_buffers));
   APPEND_TO_NEW_BODY(dealloc_output_buffer_exprs)
 
   Expr func_body = ir::Block::Make(new_body);
@@ -618,7 +637,8 @@ void CodeGenC::PrintFileGuardOpen(const std::string &name) {
   os() << "\n";
 }
 void CodeGenC::PrintFileGuardClose(const std::string &module_name) {
-  os() << utils::StringFormat("#endif  // _%s_CINN_H_\n", Uppercase(module_name).c_str());
+  os() << utils::StringFormat("#endif  // _%s_CINN_H_\n",
+                              Uppercase(module_name).c_str());
 }
 
 void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {
@@ -626,10 +646,13 @@ void CodeGenC::PrintBufferCreation(const std::vector<ir::Buffer> &buffers) {
     // Ignore the buffer in other devices.
     if (!buffer->is_on_host()) continue;
     DoIndent();
-    auto buffer_ptr_type = Type().set_customized_type(common::customized_type::kbuffer_t).set_cpp_handle();
-    Var variable         = ir::_Var_::Make(buffer->name, buffer_ptr_type);
-    auto expr            = ir::intrinsics::BufferCreate::Make(buffer);
-    expr                 = ir::Let::Make(variable, expr);
+    auto buffer_ptr_type =
+        Type()
+            .set_customized_type(common::customized_type::kbuffer_t)
+            .set_cpp_handle();
+    Var variable = ir::_Var_::Make(buffer->name, buffer_ptr_type);
+    auto expr = ir::intrinsics::BufferCreate::Make(buffer);
+    expr = ir::Let::Make(variable, expr);
     Print(expr);
     os() << ";\n";
   }
@@ -711,7 +734,9 @@ void CodeGenC::PrintStackVecType(Type type, int lanes) {
 void CodeGenC::Visit(const ir::PrimitiveNode *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::_BufferRange_ *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::ScheduleBlock *op) { CINN_NOT_IMPLEMENTED }
-void CodeGenC::Visit(const ir::ScheduleBlockRealize *op) { CINN_NOT_IMPLEMENTED }
+void CodeGenC::Visit(const ir::ScheduleBlockRealize *op) {
+  CINN_NOT_IMPLEMENTED
+}
 
 void CodeGenC::Visit(const ir::IntrinsicOp *op) {
   switch (op->getKind()) {
@@ -841,11 +866,13 @@ std::string ReadWholeFile(const std::string &path) {
 }
 
 void CodeGenC::PrintBuiltinCodes() {
-  CHECK(!FLAGS_cinn_x86_builtin_code_root.empty()) << "The flag cinn_x86_builtin_code_root should be set first";
+  CHECK(!FLAGS_cinn_x86_builtin_code_root.empty())
+      << "The flag cinn_x86_builtin_code_root should be set first";
 
   const std::string x86_code_file = "_x86_builtin_source.cc";
 
-  auto source = ReadWholeFile(FLAGS_cinn_x86_builtin_code_root + "/" + x86_code_file);
+  auto source =
+      ReadWholeFile(FLAGS_cinn_x86_builtin_code_root + "/" + x86_code_file);
 
   os() << source << "\n";
 }

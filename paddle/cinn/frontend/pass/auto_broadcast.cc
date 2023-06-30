@@ -18,12 +18,12 @@
 #include <unordered_set>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/type_defs.h"
-#include "glog/logging.h"
 
 namespace cinn {
 namespace frontend {
@@ -47,7 +47,8 @@ class AutoBroadcastPass : public ProgramPass {
         axis = output_shape.size() - input_shape.size();
       }
       CHECK_LE(axis + input_shape.size(), output_shape.size())
-          << "Cannot Broadcast from shape=[" << cinn::utils::Join(input_shape, ", ") << "] to shape=["
+          << "Cannot Broadcast from shape=["
+          << cinn::utils::Join(input_shape, ", ") << "] to shape=["
           << cinn::utils::Join(output_shape, ", ") << "] with axis=" << axis;
       for (int idx = 0; idx < input_shape.size(); ++idx) {
         broadcast_axes.push_back(axis++);
@@ -57,13 +58,14 @@ class AutoBroadcastPass : public ProgramPass {
   }
 
   void InsertBroadcastTo(NetBuilder* builder, Instruction* broadcast_op) {
-    const auto& instr   = *broadcast_op;
+    const auto& instr = *broadcast_op;
     const auto& op_name = instr->op_type;
 
-    const auto& op_pattern_dict_ =
-        &cinn::hlir::framework::Operator::GetAttrs<cinn::hlir::framework::OpPatternKind>("OpPattern");
+    const auto& op_pattern_dict_ = &cinn::hlir::framework::Operator::GetAttrs<
+        cinn::hlir::framework::OpPatternKind>("OpPattern");
     const auto* op = cinn::hlir::framework::Operator::Get(op_name);
-    if (!op_pattern_dict_->Find(op) || (*op_pattern_dict_)[op] != cinn::hlir::framework::kBroadcast) {
+    if (!op_pattern_dict_->Find(op) ||
+        (*op_pattern_dict_)[op] != cinn::hlir::framework::kBroadcast) {
       // no set OpPattern or not broadcast kind operator, skip
       builder->AppendInstruction(instr);
       return;
@@ -75,7 +77,8 @@ class AutoBroadcastPass : public ProgramPass {
     }
 
     const auto& outputs = instr.GetOutputs();
-    CHECK_EQ(outputs.size(), 1) << "The broadcast operator should has and only has one output";
+    CHECK_EQ(outputs.size(), 1)
+        << "The broadcast operator should has and only has one output";
     const auto& output = outputs.front();
 
     int axis = -1;
@@ -93,7 +96,10 @@ class AutoBroadcastPass : public ProgramPass {
         // else insert broadcast_to
         need_insert = true;
 
-        auto new_var = builder->BroadcastTo(input, output->shape, GetBroadcastAxes(input->shape, output->shape, axis));
+        auto new_var = builder->BroadcastTo(
+            input,
+            output->shape,
+            GetBroadcastAxes(input->shape, output->shape, axis));
         new_inputs.emplace_back(new_var);
       }
     }
@@ -133,7 +139,8 @@ class AutoBroadcastPass : public ProgramPass {
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(AutoBroadcast) {
-  CINN_REGISTER_PROGRAM_PASS(AutoBroadcast, cinn::frontend::pass::AutoBroadcastPass);
+  CINN_REGISTER_PROGRAM_PASS(AutoBroadcast,
+                             cinn::frontend::pass::AutoBroadcastPass);
 
   return true;
 }

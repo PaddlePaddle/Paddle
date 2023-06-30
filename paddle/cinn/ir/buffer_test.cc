@@ -36,7 +36,8 @@ TEST(Buffer, basic) {
   std::vector<Expr> shape({Expr(100), Expr(20)});
   Var i("i"), j("j");
   std::vector<Expr> strides({Expr(0), Expr(0)});
-  auto buffer = _Buffer_::Make(ptr, ptr->type(), shape, strides, Expr(0), "buf", "", 0, 0);
+  auto buffer = _Buffer_::Make(
+      ptr, ptr->type(), shape, strides, Expr(0), "buf", "", 0, 0);
 
   // Check shared
   ASSERT_EQ(ref_count(buffer.get()).val(), 1);
@@ -70,7 +71,7 @@ TEST(Buffer, bind_to_multiple_tensors) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
 
   ir::Module::Builder builder("module1", target);
   builder.AddFunction(funcs);
@@ -78,7 +79,8 @@ TEST(Buffer, bind_to_multiple_tensors) {
 
   backends::CodeGenC codegen(target);
   codegen.SetInlineBuiltinCodes(false);
-  auto out = codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  auto out =
+      codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
   std::cout << "codegen C:" << std::endl << out << std::endl;
 }
 

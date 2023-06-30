@@ -47,11 +47,14 @@ class XgbCostModel : public CostModel {
   XgbCostModel();
   ~XgbCostModel() = default;
 
-  void Train(const std::vector<std::vector<float>>& samples, const std::vector<float>& labels) override;
+  void Train(const std::vector<std::vector<float>>& samples,
+             const std::vector<float>& labels) override;
 
-  std::vector<float> Predict(const std::vector<std::vector<float>>& samples) const override;
+  std::vector<float> Predict(
+      const std::vector<std::vector<float>>& samples) const override;
 
-  void Update(const std::vector<std::vector<float>>& samples, const std::vector<float>& labels) override;
+  void Update(const std::vector<std::vector<float>>& samples,
+              const std::vector<float>& labels) override;
 
   void Save(const std::string& path) override;
 

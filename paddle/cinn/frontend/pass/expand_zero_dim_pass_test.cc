@@ -33,13 +33,17 @@
 namespace cinn {
 namespace frontend {
 
-int GetSize(std::vector<int>& shape) { return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()); }
+int GetSize(std::vector<int>& shape) {
+  return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+}
 
-std::unordered_map<std::string, std::vector<float>> GetInputRandom(const std::vector<Variable>&& inputs) {
+std::unordered_map<std::string, std::vector<float>> GetInputRandom(
+    const std::vector<Variable>&& inputs) {
   std::unordered_map<std::string, std::vector<float>> input_data;
   for (auto input : inputs) {
     input_data[input->id] = std::vector<float>(GetSize(input->shape));
-    InitRandomVector<float>(&input_data[input->id], input_data[input->id].size(), 0.0f, 1.0f, 1e-3);
+    InitRandomVector<float>(
+        &input_data[input->id], input_data[input->id].size(), 0.0f, 1.0f, 1e-3);
   }
 
   return input_data;
@@ -50,7 +54,8 @@ std::unordered_map<std::string, hlir::framework::Tensor> RunWithProgram(
     const Target& target,
     const std::unordered_map<std::string, std::vector<float>>& input_data,
     const std::unordered_set<std::string>& fetch_ids) {
-  auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
   auto scope = hlir::framework::BuildScope(target, graph);
 
   hlir::framework::ApplyPasses(graph.get(), {"InferShape"});
@@ -75,11 +80,11 @@ std::unordered_map<std::string, hlir::framework::Tensor> RunWithProgram(
 
 TEST(ExpandZeroDimPass, expand_zero_dim_1) {
   NetBuilder builder("expand_zero_dim_1");
-  auto x       = builder.CreateInput(Float(32), {}, "x");
-  auto y       = builder.CreateInput(Float(32), {}, "y");
-  auto out     = builder.Add(x, y);
+  auto x = builder.CreateInput(Float(32), {}, "x");
+  auto y = builder.CreateInput(Float(32), {}, "y");
+  auto out = builder.Add(x, y);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before ExpandZeroDimPass:\n" << program;
@@ -105,8 +110,8 @@ TEST(ExpandZeroDimPass, expand_zero_dim_1) {
     }
   */
   auto input_data = GetInputRandom({x, y});
-  auto fetch_ids  = {out->id};
-  auto outputs    = RunWithProgram(program, target, input_data, fetch_ids);
+  auto fetch_ids = {out->id};
+  auto outputs = RunWithProgram(program, target, input_data, fetch_ids);
   for (auto iter : outputs) {
     // output var_1: shape=[1]
     ASSERT_EQ(iter.second->shape().data().size(), 1);
@@ -115,11 +120,11 @@ TEST(ExpandZeroDimPass, expand_zero_dim_1) {
 
 TEST(ExpandZeroDimPass, expand_zero_dim_2) {
   NetBuilder builder("expand_zero_dim_1");
-  auto x       = builder.CreateInput(Float(32), {3, 5}, "x");
-  auto y       = builder.CreateInput(Float(32), {}, "y");
-  auto out     = builder.Add(x, y);
+  auto x = builder.CreateInput(Float(32), {3, 5}, "x");
+  auto y = builder.CreateInput(Float(32), {}, "y");
+  auto out = builder.Add(x, y);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before ExpandZeroDimPass:\n" << program;
@@ -145,8 +150,8 @@ TEST(ExpandZeroDimPass, expand_zero_dim_2) {
     }
   */
   auto input_data = GetInputRandom({x, y});
-  auto fetch_ids  = {out->id};
-  auto outputs    = RunWithProgram(program, target, input_data, fetch_ids);
+  auto fetch_ids = {out->id};
+  auto outputs = RunWithProgram(program, target, input_data, fetch_ids);
   for (auto iter : outputs) {
     // output var_1: shape=[3, 5]
     ASSERT_EQ(iter.second->shape().data().size(), 2);
