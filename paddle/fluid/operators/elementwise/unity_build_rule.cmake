@@ -10,7 +10,6 @@ register_unity_group(
   elementwise_div_op.cc
   elementwise_min_op.cc
   elementwise_mul_op.cc
-  elementwise_pow_op.cc
   elementwise_sub_op.cc)
 register_unity_group(
   cu
