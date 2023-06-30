@@ -179,23 +179,8 @@ void DefineUnaryOpNode(py::module *m, absl::string_view node_name) {
            py::return_value_policy::reference);
 }
 
-class ObjectWrapper : public Object {
- public:
-  using Object::Object;
-
-  const char *type_info() const override {
-    PYBIND11_OVERLOAD_PURE(const char *, Object, type_info);
-  }
-};
-
 class IrNodeWrapper : ir::IrNode {
   using ir::IrNode::IrNode;
 };
 
-class _Operation_Wrapper : ir::_Operation_ {
- public:
-  const char *func_type() const override {
-    PYBIND11_OVERLOAD_PURE(const char *, ir::_Operation_, func_type);
-  }
-};
 }  // namespace cinn::pybind

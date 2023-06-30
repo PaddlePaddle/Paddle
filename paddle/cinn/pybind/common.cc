@@ -39,7 +39,6 @@ using utils::StringFormat;
 namespace {
 void BindTarget(py::module *);
 void BindType(py::module *);
-void BindObject(py::module *);
 void BindShared(py::module *);
 void BindCinnValue(py::module *);
 
@@ -208,11 +207,6 @@ void BindType(py::module *m) {
   });
 }
 
-void BindObject(py::module *m) {
-  py::class_<Object, ObjectWrapper> object(*m, "Object");
-  object.def("type_info", &Object::type_info);
-}
-
 void BindShared(py::module *m) {
   py::class_<common::RefCount> ref_count(*m, "RefCount");
   ref_count.def(py::init<>())
@@ -367,7 +361,6 @@ void BindCinnValue(py::module *m) {
 void BindCommon(py::module *m) {
   BindTarget(m);
   BindType(m);
-  BindObject(m);
   BindShared(m);
   BindCinnValue(m);
 }
