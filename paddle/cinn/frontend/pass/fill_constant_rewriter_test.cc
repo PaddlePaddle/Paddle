@@ -69,6 +69,10 @@ TEST(FillConstantRewriter, remove_reshape_with_fill_constant) {
                                              "RemoveIdentity"};
   int num_removed_ops =
       tester.RunAndCheck(&builder, program_passes, input_names, output_names);
+  ASSERT_EQ(num_removed_ops, 2);
+}
+
+TEST(FillConstantRewriter, remove_scale_single) {
   //              <x>
   //           /       \
   //     identity    scale
