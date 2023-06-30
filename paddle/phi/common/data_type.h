@@ -29,6 +29,9 @@ namespace phi {
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
+#if defined(PADDLE_WITH_XPU)
+using cpp_float16 = float16;
+#endif
 using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
