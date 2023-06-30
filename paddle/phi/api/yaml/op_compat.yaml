@@ -663,7 +663,7 @@
   scalar:
     axis:
       data_type : int
-      tensor_name: AxisTensor
+      support_tensor : true
 
 - op : data_norm
   backward : data_norm_grad
@@ -1888,6 +1888,15 @@
   outputs :
     out : Out
 
+- op : norm
+  backward : norm_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, norm : Norm}
+  extra :
+    outputs : [norm]
+
 - op : not_equal
   inputs :
     {x : X, y : Y}
@@ -2045,6 +2054,13 @@
     prod_grad : GetReduceGradExpectedKernelType
   manual_signature : [prod]
 
+- op : psroi_pool
+  backward : psroi_pool_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    out : Out
+
 - op : put_along_axis
   backward : put_along_axis_grad
   inputs :
@@ -2168,6 +2184,20 @@
   outputs:
     { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
   drop_empty_grad : [pre_state_grad, weight_list_grad]
+
+- op : roi_align
+  backward : roi_align_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    out : Out
+
+- op : roi_pool
+  backward : roi_pool_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    {out : Out, arg_max : Argmax}
 
 - op : roll
   backward : roll_grad
@@ -2573,7 +2603,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :
