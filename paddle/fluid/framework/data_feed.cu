@@ -2652,7 +2652,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
     std::vector<std::shared_ptr<phi::Allocation>> *edge_type_graph_ptr,
     const paddle::platform::Place &place,
     cudaStream_t stream) {
-  VLOG(1) << conf.gpuid << " Get Unique Nodes";
+  VLOG(2) << conf.gpuid << " Get Unique Nodes";
 
   auto inverse = memory::AllocShared(place, len * sizeof(uint32_t),
                                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
@@ -2669,7 +2669,7 @@ std::shared_ptr<phi::Allocation> GenerateSampleGraph(
                              stream);
   int len_samples = conf.samples.size();
 
-  VLOG(1) << conf.gpuid << " Sample Neighbors and Reindex";
+  VLOG(2) << conf.gpuid << " Sample Neighbors and Reindex";
   std::vector<int> edges_split_num;
   std::vector<std::shared_ptr<phi::Allocation>> final_nodes_vec;
   std::vector<std::shared_ptr<phi::Allocation>> graph_edges;
@@ -3849,16 +3849,29 @@ void GraphDataGenerator::DoSageForInfer() {
   for (int tensor_pair_idx = 0; tensor_pair_idx < conf_.tensor_pair_num;
           ++tensor_pair_idx) {
     int total_instance = 0, uniq_instance = 0;
+    int global_pass_end = 0;
     total_instance =
         (infer_node_start_[tensor_pair_idx] + conf_.batch_size <= infer_node_end_[tensor_pair_idx])
             ? conf_.batch_size
             : infer_node_end_[tensor_pair_idx] - infer_node_start_[tensor_pair_idx];
     total_instance *= 2;
-    while (total_instance != 0) {
+    while (!global_pass_end) {
+      int local_pass_end = total_instance == 0;
+      global_pass_end = get_multi_node_global_flag(local_pass_end, ncclProd,
+                                                   place_, sample_stream_);
+      if (global_pass_end) {
+        break;
+      }
       uint64_t *d_type_keys = reinterpret_cast<uint64_t *>(
           d_device_keys_[tensor_pair_idx][infer_cursor_[tensor_pair_idx]]->ptr());
-      d_type_keys += infer_node_start_[tensor_pair_idx];
-      infer_node_start_[tensor_pair_idx] += total_instance / 2;
+      if (local_pass_end) {
+        total_instance = 2;
+        d_type_keys = reinterpret_cast<uint64_t*>(
+          d_device_keys_[tensor_pair_idx][infer_cursor_[tensor_pair_idx]]->ptr()); // copy from begining
+      } else {
+        d_type_keys += infer_node_start_[tensor_pair_idx];
+        infer_node_start_[tensor_pair_idx] += total_instance / 2;
+      }
       auto node_buf = memory::AllocShared(
           place_,
           total_instance * sizeof(uint64_t),
@@ -3901,14 +3914,16 @@ void GraphDataGenerator::DoSageForInfer() {
                   table_,
                   &host_vec_,
                   sample_stream_);
+
+      sage_batch_num_ += 1;
       
       total_instance =
           (infer_node_start_[tensor_pair_idx] + conf_.batch_size <= infer_node_end_[tensor_pair_idx])
               ? conf_.batch_size
               : infer_node_end_[tensor_pair_idx] - infer_node_start_[tensor_pair_idx];
       total_instance *= 2;
-      sage_batch_num_ += 1;
-    } // end while (total_instance != 0)
+
+    } // end while (!global_pass_end)
   } // end for (int tensor_pair_idx = 0; tensor_pair_idx < conf_.tensor_pair_num;
 
   sage_batch_num_ /= conf_.tensor_pair_num;
@@ -4658,7 +4673,7 @@ int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
 
   int new_batch_size =
       (total_row_[0] + thread_max_batch_num - 1) / thread_max_batch_num;
-  VLOG(2) << conf_.gpuid << " dynamic adjust sage batch num "
+  VLOG(1) << "dynamic adjust sage batch num "
           << " max_batch_num: " << thread_max_batch_num
           << " new_batch_size:  " << new_batch_size;
   return new_batch_size;
