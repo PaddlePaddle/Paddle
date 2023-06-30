@@ -35,7 +35,8 @@ __all__ = []
 # Consistent with kDefaultDim from C++ Backend
 K_DEFAULT_DIM = 9
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def transpose(x, perm, name=None):
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -136,7 +137,8 @@ def transpose(x, perm, name=None):
         )
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
     Applies matrix multiplication to two tensors. `matmul` follows

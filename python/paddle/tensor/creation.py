@@ -786,7 +786,8 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def full_like(x, fill_value, dtype=None, name=None):
     """
 
@@ -864,7 +865,8 @@ def full_like(x, fill_value, dtype=None, name=None):
         out.stop_gradient = True
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dygraph_mode():
         place = _current_expected_place()
@@ -1238,7 +1240,8 @@ def full(shape, fill_value, dtype=None, name=None):
 
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
     Returns a 1-D Tensor with spaced values within a given interval.
@@ -1818,7 +1821,8 @@ def diag(x, offset=0, padding_value=0, name=None):
         out.stop_gradient = True
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def empty(shape, dtype=None, name=None):
     """
     Returns a Tensor with uninitialized data which size is same as ``shape``.
@@ -1915,7 +1919,8 @@ def empty(shape, dtype=None, name=None):
         out.stop_gradient = True
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def empty_like(x, dtype=None, name=None):
     """
     Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
@@ -2006,7 +2011,8 @@ def empty_like(x, dtype=None, name=None):
         out.stop_gradient = True
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def assign(x, output=None):
     """
 

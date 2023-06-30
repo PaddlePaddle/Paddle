@@ -59,6 +59,14 @@ void GaussianKernel(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
+  std::vector<int64_t> shape_vec = shape.GetData();
+  std::cout<<"{function_name : gaussian, inputs: { { shape, type: <class 'IntArray'>, shape: ";
+  std::cout<<"[";
+  for(const auto& i: shape_vec){
+    std:: cout<<i<<", ";
+  }
+  std::cout<<"]"<<" } } ";
+  std::cout<<", params: [ "<<"mean: "<<mean<<" ,std: "<<std<<" ,seed:"<<seed<<" ]}"<<std::endl;
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {

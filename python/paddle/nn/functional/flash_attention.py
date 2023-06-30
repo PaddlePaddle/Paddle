@@ -16,7 +16,8 @@ import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def flash_attention(
     query,
     key,

@@ -39,6 +39,8 @@ class CIdentityOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
+    std::cout<<"{function_name : _c_identity, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x->dims()<<" } } ";
+    std::cout<<", params: [ ]}"<<std::endl;
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
     int rid = ctx.Attr<int>("ring_id");

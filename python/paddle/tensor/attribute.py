@@ -55,7 +55,8 @@ def rank(input):
 
     return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def shape(input):
     """
     Get the shape of the input.

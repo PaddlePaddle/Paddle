@@ -451,7 +451,8 @@ def ceil(x, name=None):
         helper.append_op(type='ceil', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -818,7 +819,8 @@ def sigmoid(x, name=None):
         helper.append_op(type='sigmoid', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def sin(x, name=None):
     """
     Sine Activation Operator.
@@ -892,7 +894,8 @@ def sinh(x, name=None):
         helper.append_op(type='sinh', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def sqrt(x, name=None):
     """
     Sqrt Activation Operator.
@@ -931,7 +934,8 @@ def sqrt(x, name=None):
         helper.append_op(type='sqrt', inputs={"X": x}, outputs={"Out": out})
         return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def square(x, name=None):
     """
     Square each elements of the inputs.

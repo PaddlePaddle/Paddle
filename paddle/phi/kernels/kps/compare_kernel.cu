@@ -65,6 +65,8 @@ inline void CompareAllKernelImpl(const Context& ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  DenseTensor* out) {
+  std::cout<<"{function_name : equal, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<y.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   bool* out_data = ctx.template Alloc<bool>(out);
 
   if (x.dims() != y.dims()) {
