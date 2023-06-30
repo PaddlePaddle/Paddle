@@ -845,7 +845,7 @@
     uplo : UPLO
 
 - op : einsum
-  backward : einum_grad
+  backward : einsum_grad
   inputs :
     x : Operands
   outputs:
