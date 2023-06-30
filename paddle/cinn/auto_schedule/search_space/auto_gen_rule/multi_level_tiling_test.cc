@@ -148,7 +148,7 @@ TEST(MultiLevelTile, SimpleLoops) {
   test_func(&new_states[0]->ir_schedule);
 }
 
-// TODO(6clc): fix in future
+// TODO(SunNy820828449): fix in future
 /*
 TEST(MulitLevelTile, MatrixMultiply) {
   srand(0);

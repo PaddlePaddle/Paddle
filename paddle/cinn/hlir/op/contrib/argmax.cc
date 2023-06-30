@@ -157,7 +157,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     auto blocks = ir_sch.GetAllBlocks();
-    // TODO(JingweiZhang): It needs to be rewritten according to the
+    // TODO(zhhsplendid): It needs to be rewritten according to the
     // reduction_max operator to improve performance. Do not use local
     // variables, because the size will exceed the limit.
     ir_sch.SetBuffer(blocks[0], "local");

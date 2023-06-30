@@ -307,9 +307,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
       ir::IRSchedule ir_sch(mod_expr);
       ir_sch.MergeExprs();
       auto blocks = ir_sch.GetAllBlocks();
-      // TODO(6clc): remove external calls, do not use local variables, because
-      // the size will exceed the limit.
-      // TODO(JingweiZhang): There is a bug, setting buffer to "local" here will
+      // TODO(Shixiaowei02): remove external calls, do not use local variables,
+      // because the size will exceed the limit.
+      // TODO(lanxianghit): There is a bug, setting buffer to "local" here will
       // cause the var declared twice at CodeGen. ir_sch.SetBuffer(blocks[0],
       // "local");
       int64_t prod_size = std::accumulate(output_shapes[0].begin(),
