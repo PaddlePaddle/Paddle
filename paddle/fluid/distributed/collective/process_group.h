@@ -405,68 +405,57 @@ class ProcessGroup {
   // legacy APIs
   // TODO(liyurui): This API will be moved later
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
-      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
-      const AllreduceOptions& = AllreduceOptions()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support allreduce", GetBackendName()));
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      const AllreduceOptions& options = AllreduceOptions()) {
+    return AllReduce(outputs.data(), inputs.front(), options, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllReduce(
-      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
-      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
-      const AllreduceOptions&,
-      bool) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support allreduce with sync_op flag",
-        GetBackendName()));
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      const AllreduceOptions& options,
+      bool sync_op) {
+    return AllReduce(outputs.data(), inputs.front(), options, sync_op);
   }
 
   // TODO(sunyilun): methods below will be removed later
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
-      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
-      const BroadcastOptions& = BroadcastOptions()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support broadcast", GetBackendName()));
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      const BroadcastOptions& options = BroadcastOptions()) {
+    return Broadcast(outputs.data(), inputs.front(), options, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Broadcast(
-      std::vector<phi::DenseTensor>& /* input tensors */,   // NOLINT
-      std::vector<phi::DenseTensor>& /* output tensors */,  // NOLINT
-      const BroadcastOptions&,
-      bool) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support broadcast with sync_op flag",
-        GetBackendName()));
+      std::vector<phi::DenseTensor>& inputs,   // NOLINT
+      std::vector<phi::DenseTensor>& outputs,  // NOLINT
+      const BroadcastOptions& options,
+      bool sync_op) {
+    return Broadcast(outputs.data(), inputs.front(), options, sync_op);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Send(
-      std::vector<phi::DenseTensor>&, int) {  // NOLINT
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support send", GetBackendName()));
+      std::vector<phi::DenseTensor>& tensors, int dst_rank) {  // NOLINT
+    return Send(tensors.front(), dst_rank, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv(
-      std::vector<phi::DenseTensor>&, int) {  // NOLINT
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support recv", GetBackendName()));
+      std::vector<phi::DenseTensor>& tensors, int src_rank) {  // NOLINT
+    return Recv(&tensors.front(), src_rank, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>&,    // NOLINT
-      std::vector<phi::DenseTensor>&) {  // NOLINT
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support all_gather", GetBackendName()));
+      std::vector<phi::DenseTensor>& in_tensors,     // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors) {  // NOLINT
+    return AllGather(out_tensors.data(), in_tensors.front(), false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      bool) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support all_gather with sync_op flag",
-        GetBackendName()));
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      bool sync_op) {
+    return AllGather(out_tensors.data(), in_tensors.front(), sync_op);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
@@ -477,19 +466,17 @@ class ProcessGroup {
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>& ins,   // NOLINT
+      std::vector<phi::DenseTensor>& outs,  // NOLINT
       const ReduceOptions& opts) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support reduce", GetBackendName()));
+    return Reduce(outs.data(), ins.front(), opts, false);
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Scatter(
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      std::vector<phi::DenseTensor>&,  // NOLINT
-      const ScatterOptions&) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "ProcessGroup%s does not support scatter", GetBackendName()));
+      std::vector<phi::DenseTensor>& ins,   // NOLINT
+      std::vector<phi::DenseTensor>& outs,  // NOLINT
+      const ScatterOptions& opts) {
+    return Scatter(outs.data(), ins.front(), opts, false);
   }
 
  protected:
