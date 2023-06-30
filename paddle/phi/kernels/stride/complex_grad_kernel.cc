@@ -32,7 +32,7 @@ void RealGradStridedKernel(const Context& dev_ctx,
                      }));
   DenseTensor tmp;
   tmp.set_meta(dout.meta());
-  RealStridedKernel<Context>(dev_ctx, *dx, &tmp);
+  RealStridedKernel<T, Context>(dev_ctx, *dx, &tmp);
   PD_VISIT_ALL_TYPES(dout.dtype(), "RealGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
@@ -56,7 +56,7 @@ void ImagGradStridedKernel(const Context& dev_ctx,
 
   DenseTensor tmp;
   tmp.set_meta(dout.meta());
-  ImagStridedKernel<Context>(dev_ctx, *dx, &tmp);
+  ImagStridedKernel<T, Context>(dev_ctx, *dx, &tmp);
   PD_VISIT_ALL_TYPES(dout.dtype(), "ImagGradStridedKernel", ([&] {
                        phi::StridedCopyKernel<data_t, Context>(
                            dev_ctx,
