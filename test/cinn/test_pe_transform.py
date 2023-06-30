@@ -15,15 +15,12 @@
 # limitations under the License.
 
 import unittest
+
 import cinn
 import numpy as np
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn import Target
-from cinn import pe
-from cinn.poly import create_stages
+from cinn import Target, ir, lang, pe, runtime
 from cinn.common import *
+from cinn.poly import create_stages
 
 
 class TestPETransform(unittest.TestCase):

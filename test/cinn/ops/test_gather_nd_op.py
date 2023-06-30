@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 import logging
 import os
+import unittest
 from itertools import product
+
+import cinn
+import numpy as np
+from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="gather_nd")

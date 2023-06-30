@@ -14,10 +14,11 @@
 
 import argparse
 import time
+
 import numpy as np
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+
 import paddle.inference as paddle_infer
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 def main():

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.framework import *
 import unittest
+
 import numpy as np
+from cinn.framework import *
 
 
 class TensorTest(unittest.TestCase):
