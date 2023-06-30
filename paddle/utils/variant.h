@@ -803,7 +803,6 @@ inline constexpr T *addressof(T &arg) noexcept {
 
 template <typename T>
 inline constexpr T *addressof(const T &&) = delete;
-
 }  // namespace cpp17
 
 template <typename T>
@@ -1924,7 +1923,7 @@ class constructor : public destructor<Traits> {
                 lhs_alt, lib::forward<decltype(rhs_alt)>(rhs_alt).value);
           }
 #else
-          ctor {}
+          ctor{}
 #endif
           ,
           lhs,
@@ -2077,7 +2076,7 @@ class assignment : public copy_constructor<Traits> {
                              lib::forward<decltype(that_alt)>(that_alt).value);
           }
 #else
-          assigner<That> { this }
+          assigner<That>{this}
 #endif
           ,
           *this,
@@ -2186,7 +2185,7 @@ class impl : public copy_assignment<traits<Ts...>> {
             swap(this_alt.value, that_alt.value);
           }
 #else
-          swapper {}
+          swapper{}
 #endif
           ,
           *this,
@@ -2223,7 +2222,7 @@ class impl : public copy_assignment<traits<Ts...>> {
 #ifdef MPARK_GENERIC_LAMBDAS
         [](auto &alt) -> const std::type_info & { return typeid(alt.value); }
 #else
-        typer {}
+        typer{}
 #endif
         ,
         *this);
@@ -2813,7 +2812,7 @@ struct hash<paddle::detail::enabled_type<
                     return hash<value_type>{}(alt.value);
                   }
 #else
-                  hasher {}
+                  hasher{}
 #endif
                   ,
                   v);
