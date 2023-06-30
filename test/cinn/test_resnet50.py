@@ -114,7 +114,7 @@ class TestLoadResnet50Model(unittest.TestCase):
                     ". Diff is: ",
                     out[i] - target_result[i],
                 )
-        self.assertTrue(np.allclose(out, target_result, atol=1e-3))
+        np.testing.assert_allclose(out, target_result, atol=1e-3)
 
     def test_model(self):
         self.apply_test()

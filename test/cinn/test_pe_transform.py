@@ -90,14 +90,12 @@ class TestPETransform(unittest.TestCase):
         )
         fn(args)
 
-        self.assertTrue(
-            np.allclose(
-                out_buf.numpy(),
-                self.create_target_data(
-                    np_fn, x_data, y_data, trans_a, trans_b, alpha
-                ),
-                atol=1e-4,
-            )
+        np.testing.assert_allclose(
+            out_buf.numpy(),
+            self.create_target_data(
+                np_fn, x_data, y_data, trans_a, trans_b, alpha
+            ),
+            atol=1e-4,
         )
 
     def create_target_data(

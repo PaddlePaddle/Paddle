@@ -128,12 +128,10 @@ class TestPEReduction(unittest.TestCase):
         x_data, x_buf, out_buf, *args = self.create_data(axes, keep_dims)
         fn(args)
 
-        self.assertTrue(
-            np.allclose(
-                out_buf.numpy(),
-                self.create_target_data(x_data, np_fn, axes, keep_dims),
-                atol=1e-4,
-            )
+        np.testing.assert_allclose(
+            out_buf.numpy(),
+            self.create_target_data(x_data, np_fn, axes, keep_dims),
+            atol=1e-4,
         )
 
     def create_target_data(self, x_data, np_target_fn, axes, keep_dims):

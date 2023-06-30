@@ -27,7 +27,7 @@ class TensorTest(unittest.TestCase):
         data = np.random.random([10, 5])
         tensor.from_numpy(data, target)
 
-        self.assertTrue(np.allclose(tensor.numpy(), data))
+        np.testing.assert_allclose(tensor.numpy(), data)
 
 
 if __name__ == "__main__":
