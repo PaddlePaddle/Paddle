@@ -309,8 +309,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         ptq.quantize()
         ptq.save_quantized_model(
             self.int8_model,
-            model_filename="inference.pdmodel",
-            params_filename="inference.pdiparams",
+            model_filename=model_filename,
+            params_filename=params_filename,
         )
 
     def run_test(
@@ -322,6 +322,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         round_type,
         data_urls,
         data_md5s,
+        data_name,
         quantizable_op_type,
         is_full_quantize,
         is_use_cache_file,
@@ -335,14 +336,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
         batch_size = self.batch_size
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
-
+        model_path = os.path.join(model_cache_folder, data_name)
         print(
             "Start FP32 inference for {} on {} images ...".format(
                 model, infer_iterations * batch_size
             )
         )
         (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
-            os.path.join(model_cache_folder, "MobileNetV1_infer"),
+            model_path,
             model_filename,
             params_filename,
             batch_size,
@@ -350,7 +351,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         self.generate_quantized_model(
-            os.path.join(model_cache_folder, "MobileNetV1_infer"),
+            model_path,
             model_filename,
             params_filename,
             quantizable_op_type,
@@ -423,6 +424,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -457,6 +459,7 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -492,6 +495,7 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -527,6 +531,7 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -563,6 +568,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -604,6 +610,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -646,6 +653,7 @@ class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
@@ -688,6 +696,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1ARMCPU(
             round_type,
             data_urls,
             data_md5s,
+            "MobileNetV1_infer",
             quantizable_op_type,
             is_full_quantize,
             is_use_cache_file,
