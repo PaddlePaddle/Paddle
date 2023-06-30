@@ -1,5 +1,5 @@
 # Design of CINN/DSL
-This module is a simple DSL defined in CINN project. 
+This module is a simple DSL defined in CINN project.
 The DSL module aims to represent the overall computation in a hardware indenpendent way.
 
 ## Concepts
@@ -78,14 +78,14 @@ A matrix multiplication
 Var i, j, k;
 Placeholder<float> A({M, K}), B({K, N});
 
-Tensor C = Compute({M, N}/*output shape*/, 
+Tensor C = Compute({M, N}/*output shape*/,
         [](Var i, Var j) {
             return ReduceSum(A(i,k) * B(k, j), k);
         }, "C");
 Tensor D = Compute({M, N}, [](Var i, Var j) {
   return Map(C(i,j) + 1);
 });
-        
+
 Schedule s = CreateSchedule(C);
 auto func = Build(s, [A, B, C], target=target, name="matmul");
 

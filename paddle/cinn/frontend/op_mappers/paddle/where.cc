@@ -19,7 +19,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void WhereOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void WhereOpMapper(const paddle::cpp::OpDesc& op_desc,
+                   const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("Condition").size(), 1UL);
   auto c_name = op_desc.Input("Condition").front();
   CHECK_EQ(op_desc.Input("X").size(), 1UL);

@@ -36,8 +36,13 @@ namespace py = pybind11;
 using namespace cinn::hlir::framework;  // NOLINT
 void BindFramework(pybind11::module *m) {
   py::class_<Operator>(*m, "Operator")
-      .def("get_op_attrs", [](const std::string &key) { return Operator::GetAttrs<StrategyFunction>(key); })
-      .def("get_op_shape_attrs", [](const std::string &key) { return Operator::GetAttrs<InferShapeFunction>(key); });
+      .def("get_op_attrs",
+           [](const std::string &key) {
+             return Operator::GetAttrs<StrategyFunction>(key);
+           })
+      .def("get_op_shape_attrs", [](const std::string &key) {
+        return Operator::GetAttrs<InferShapeFunction>(key);
+      });
 
   py::class_<OpValueType<StrategyFunction>>(*m, "OpValueType")
       .def("apply_strategy",
@@ -49,7 +54,8 @@ void BindFramework(pybind11::module *m) {
               const std::vector<std::vector<int>> &output_shapes,
               const common::Target &target) {
              const Operator *op_ptr = Operator::Get(key);
-             auto impl = OpStrategy::SelectImpl(self[op_ptr](attrs, inputs, out_types, output_shapes, target));
+             auto impl = OpStrategy::SelectImpl(
+                 self[op_ptr](attrs, inputs, out_types, output_shapes, target));
              std::vector<common::CINNValue> temp_inputs;
              std::vector<ir::Tensor> res;
              for (auto &tensor : inputs) {
@@ -66,14 +72,22 @@ void BindFramework(pybind11::module *m) {
                  input_output_names.push_back(input->name);
                }
                input_output_names.push_back(output_name);
-               std::vector<ir::LoweredFunc> funcs = hlir::framework::GetFuncFromImpl(
-                   impl, common::CINNValuePack{temp_inputs}, res, input_output_names, key, target);
+               std::vector<ir::LoweredFunc> funcs =
+                   hlir::framework::GetFuncFromImpl(
+                       impl,
+                       common::CINNValuePack{temp_inputs},
+                       res,
+                       input_output_names,
+                       key,
+                       target);
                CHECK_EQ(funcs.size(), 1U);
                func = funcs[0];
              } else {
-               common::CINNValuePack C = impl->fcompute(common::CINNValuePack{temp_inputs});
-               poly::StageMap stages   = C.back();
-               // make sure all the tensors in the stages before schedule launch.
+               common::CINNValuePack C =
+                   impl->fcompute(common::CINNValuePack{temp_inputs});
+               poly::StageMap stages = C.back();
+               // make sure all the tensors in the stages before schedule
+               // launch.
                for (int i = 0; i < C->size() - 1; i++) {
                  ir::Expr temp = C[i];
                  stages->InsertLazily(temp.as_tensor_ref());
@@ -95,7 +109,7 @@ void BindFramework(pybind11::module *m) {
               const std::vector<std::vector<int>> &input_shapes,
               const AttrMapType &attrs) {
              const Operator *op_ptr = Operator::Get(key);
-             auto shapes            = self[op_ptr](input_shapes, attrs);
+             auto shapes = self[op_ptr](input_shapes, attrs);
              return shapes;
            });
 
@@ -103,10 +117,13 @@ void BindFramework(pybind11::module *m) {
       .def(py::init<>())
       .def_readwrite("attr_store", &NodeAttr::attr_store)
       .def("set_attr",
-           [](NodeAttr &self, const std::string &key, NodeAttr::attr_t value) { self.attr_store[key] = value; })
+           [](NodeAttr &self, const std::string &key, NodeAttr::attr_t value) {
+             self.attr_store[key] = value;
+           })
       .def("get_attr",
            [](NodeAttr &self, const std::string &key) {
-             CHECK_EQ(self.attr_store.count(key), 1) << "Didn't find value with key [" << key << "].";
+             CHECK_EQ(self.attr_store.count(key), 1)
+                 << "Didn't find value with key [" << key << "].";
              return self.attr_store[key];
            })
       .def("__str__", [](NodeAttr &self) { return utils::GetStreamCnt(self); });
@@ -117,17 +134,21 @@ void BindFramework(pybind11::module *m) {
            [](Scope &self, const std::string &name, const Target &target) {
              auto t = self.GetTensor(name);
              py::dtype dt(common::Type2Str(t->type()));
-             py::array::ShapeContainer shape(t->shape().data().begin(), t->shape().data().end());
+             py::array::ShapeContainer shape(t->shape().data().begin(),
+                                             t->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
              auto *mutable_data = array.mutable_data();
              if (target.arch == Target::Arch::X86) {
-               std::memcpy(mutable_data, t->data<void>(), t->shape().numel() * t->type().bytes());
+               std::memcpy(mutable_data,
+                           t->data<void>(),
+                           t->shape().numel() * t->type().bytes());
              } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
-               CUDA_CALL(cudaMemcpy(mutable_data,
-                                    reinterpret_cast<void *>(t->mutable_data(target, t->type())),
-                                    t->shape().numel() * t->type().bytes(),
-                                    cudaMemcpyDeviceToHost));
+               CUDA_CALL(cudaMemcpy(
+                   mutable_data,
+                   reinterpret_cast<void *>(t->mutable_data(target, t->type())),
+                   t->shape().numel() * t->type().bytes(),
+                   cudaMemcpyDeviceToHost));
 #else
                LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
@@ -141,56 +162,74 @@ void BindFramework(pybind11::module *m) {
   py::class_<common::Shared<hlir::framework::_Tensor_>>(*m, "SharedTensor");
   py::class_<Tensor, common::Shared<hlir::framework::_Tensor_>>(*m, "Tensor")
       .def(py::init<>())
-      .def("shape", [](hlir::framework::Tensor &self) { return self->shape().data(); })
-      .def("set_type", [](hlir::framework::Tensor &self, Type type) { self->set_type(type); })
-      .def("numpy",
-           [](hlir::framework::Tensor &self, const common::Target &target) {
-             std::string type_str = common::Type2Str(self->type());
-             if (type_str == "bfloat16") {
-               type_str = "uint16";
-             }
-             py::dtype dt(type_str);
-             py::array::ShapeContainer shape(self->shape().data().begin(), self->shape().data().end());
-             py::array array(std::move(dt), std::move(shape));
-             void *array_data = array.mutable_data();
-             if (target.arch == Target::Arch::X86) {
-               std::memcpy(array_data, self->data<void>(), self->shape().numel() * self->type().bytes());
-             } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-               CUDA_CALL(cudaMemcpy(array_data,
-                                    self->data<void>(),
-                                    self->shape().numel() * self->type().bytes(),
-                                    cudaMemcpyDeviceToHost));
-#else
-               LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
-#endif
-             } else {
-               CINN_NOT_IMPLEMENTED
-             }
-             return array;
+      .def("shape",
+           [](hlir::framework::Tensor &self) { return self->shape().data(); })
+      .def("set_type",
+           [](hlir::framework::Tensor &self, Type type) {
+             self->set_type(type);
            })
-      .def("from_numpy", [](hlir::framework::Tensor &self, py::array array, const common::Target &target) {
-        CHECK(array.dtype().is(py::dtype(common::Type2Str(self->type()))))
-            << "currently only support float32 data type as input";
-        hlir::framework::shape_t shape;
-        std::copy_n(array.shape(), array.ndim(), std::back_inserter(shape));
-        CHECK_EQ(std::accumulate(shape.begin(), shape.end(), 1, [](int32_t a, int32_t b) { return a * b; }),
-                 self->shape().numel());
-        auto *data = self->mutable_data(target, self->type());
-        if (target.arch == Target::Arch::X86) {
-          std::memcpy(data, array.data(), self->shape().numel() * self->type().bytes());
-        } else if (target.arch == Target::Arch::NVGPU) {
+      .def(
+          "numpy",
+          [](hlir::framework::Tensor &self, const common::Target &target) {
+            std::string type_str = common::Type2Str(self->type());
+            if (type_str == "bfloat16") {
+              type_str = "uint16";
+            }
+            py::dtype dt(type_str);
+            py::array::ShapeContainer shape(self->shape().data().begin(),
+                                            self->shape().data().end());
+            py::array array(std::move(dt), std::move(shape));
+            void *array_data = array.mutable_data();
+            if (target.arch == Target::Arch::X86) {
+              std::memcpy(array_data,
+                          self->data<void>(),
+                          self->shape().numel() * self->type().bytes());
+            } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
-          CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                               reinterpret_cast<const void *>(array.data()),
-                               self->shape().numel() * self->type().bytes(),
-                               cudaMemcpyHostToDevice));
+              CUDA_CALL(cudaMemcpy(array_data,
+                                   self->data<void>(),
+                                   self->shape().numel() * self->type().bytes(),
+                                   cudaMemcpyDeviceToHost));
 #else
                LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
-        } else {
-          CINN_NOT_IMPLEMENTED
-        }
-      });
+            } else {
+              CINN_NOT_IMPLEMENTED
+            }
+            return array;
+          })
+      .def(
+          "from_numpy",
+          [](hlir::framework::Tensor &self,
+             py::array array,
+             const common::Target &target) {
+            CHECK(array.dtype().is(py::dtype(common::Type2Str(self->type()))))
+                << "currently only support float32 data type as input";
+            hlir::framework::shape_t shape;
+            std::copy_n(array.shape(), array.ndim(), std::back_inserter(shape));
+            CHECK_EQ(
+                std::accumulate(shape.begin(),
+                                shape.end(),
+                                1,
+                                [](int32_t a, int32_t b) { return a * b; }),
+                self->shape().numel());
+            auto *data = self->mutable_data(target, self->type());
+            if (target.arch == Target::Arch::X86) {
+              std::memcpy(data,
+                          array.data(),
+                          self->shape().numel() * self->type().bytes());
+            } else if (target.arch == Target::Arch::NVGPU) {
+#ifdef CINN_WITH_CUDA
+              CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
+                                   reinterpret_cast<const void *>(array.data()),
+                                   self->shape().numel() * self->type().bytes(),
+                                   cudaMemcpyHostToDevice));
+#else
+               LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+#endif
+            } else {
+              CINN_NOT_IMPLEMENTED
+            }
+          });
 }
 }  // namespace cinn::pybind

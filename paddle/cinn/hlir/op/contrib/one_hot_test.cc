@@ -39,19 +39,32 @@ TEST(GenerateCode_Cpu, OneHot) {
 
   Expr m(4);
   Expr n(4);
-  const int depth         = 3;
-  const int axis          = 1;
+  const int depth = 3;
+  const int axis = 1;
   const std::string dtype = "float32";
 
   lang::Placeholder<int32_t> in("in", {m, n});
   lang::Placeholder<int32_t> on_value("on_value", {Expr(1)});
   lang::Placeholder<int32_t> off_value("off_value", {Expr(1)});
 
-  ir::Tensor res = OneHot(in, on_value, off_value, depth, axis, common::Str2Type(dtype), "test_one_hot");
+  ir::Tensor res = OneHot(in,
+                          on_value,
+                          off_value,
+                          depth,
+                          axis,
+                          common::Str2Type(dtype),
+                          "test_one_hot");
 
   poly::StageMap stages = poly::CreateStages({res});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestGenerateCodeCpu_OneHot", stages, {res}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestGenerateCodeCpu_OneHot",
+                     stages,
+                     {res},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   VLOG(6) << "Expr before CPU codegen:";
   VLOG(6) << funcs[0]->body;
@@ -63,7 +76,8 @@ TEST(GenerateCode_Cpu, OneHot) {
 
   backends::CodeGenCX86 codegen(target, backends::CodeGenCX86::Feature::AVX512);
   codegen.SetInlineBuiltinCodes(false);
-  std::string code = codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  std::string code =
+      codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
   VLOG(6) << "Cpu Codegen result:";
   VLOG(6) << code << std::endl;
 

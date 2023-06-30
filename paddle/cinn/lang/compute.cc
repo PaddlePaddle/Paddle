@@ -136,7 +136,8 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   std::vector<Var> reduce_axis;
   if (fn_body.defined() && fn_body.As<ir::Reduce>()) {
     auto &fn_reduce_axis = fn_body.As<ir::Reduce>()->reduce_axis;
-    reduce_axis.insert(std::begin(reduce_axis), fn_reduce_axis.begin(), fn_reduce_axis.end());
+    reduce_axis.insert(
+        std::begin(reduce_axis), fn_reduce_axis.begin(), fn_reduce_axis.end());
   }
 
   // When the fn_body is a CallExtern, a tensor will return directly.
@@ -161,7 +162,8 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
     shape_simplified.push_back(copied);
   }
 
-  auto real_shape = shape_simplified.empty() ? domain_without_reduce_axis : shape_simplified;
+  auto real_shape =
+      shape_simplified.empty() ? domain_without_reduce_axis : shape_simplified;
 
   // The body returns void, that means no buffer is needed.
   if (fn_body.type() == Void()) real_shape.clear();
@@ -170,25 +172,39 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   // check reduce_axis not include the reserved axis name
   for (auto &ra : reduce_axis) {
-    CHECK(!common::IsAxisNameReserved(ra->name)) << "reduce axis [" << ra->name << "]'s name is reserved";
+    CHECK(!common::IsAxisNameReserved(ra->name))
+        << "reduce axis [" << ra->name << "]'s name is reserved";
   }
 
-  VLOG(3) << "tensor " << name << "'s domain is : " << domain_without_reduce_axis;
+  VLOG(3) << "tensor " << name
+          << "'s domain is : " << domain_without_reduce_axis;
 
-  auto op     = ir::ComputeOp::Make(unique_name, fn, real_shape, domain_without_reduce_axis, reduce_axis);
-  auto tensor = ir::Tensor(unique_name, fn_body.type(), real_shape, domain_without_reduce_axis, op, reduce_axis);
+  auto op = ir::ComputeOp::Make(
+      unique_name, fn, real_shape, domain_without_reduce_axis, reduce_axis);
+  auto tensor = ir::Tensor(unique_name,
+                           fn_body.type(),
+                           real_shape,
+                           domain_without_reduce_axis,
+                           op,
+                           reduce_axis);
   return tensor;
 }
 
-std::vector<ir::Tensor> CallLowered(const std::string &func_name,
-                                    const std::vector<Expr> &args,
-                                    const std::vector<ReturnType> &return_types) {
-  auto call = ir::Call::Make(Void(), func_name, args, {}, ir::CallType::CINN, ir::FunctionRef(), 0);
+std::vector<ir::Tensor> CallLowered(
+    const std::string &func_name,
+    const std::vector<Expr> &args,
+    const std::vector<ReturnType> &return_types) {
+  auto call = ir::Call::Make(
+      Void(), func_name, args, {}, ir::CallType::CINN, ir::FunctionRef(), 0);
   std::vector<ir::Tensor> new_tensors;
   for (int i = 0; i < return_types.size(); i++) {
     auto &return_type = return_types[i];
-    auto call_op      = ir::CallOp::Make(func_name, call);
-    auto new_tensor   = ir::Tensor(return_type.name, return_type.type, return_type.dims, {Expr(1)}, call_op);
+    auto call_op = ir::CallOp::Make(func_name, call);
+    auto new_tensor = ir::Tensor(return_type.name,
+                                 return_type.type,
+                                 return_type.dims,
+                                 {Expr(1)},
+                                 call_op);
     // Append write tensors in the tail.
     call.As<ir::Call>()->write_args.push_back(new_tensor);
     new_tensor->set_type(return_type.type);
@@ -202,22 +218,33 @@ std::vector<ir::Tensor> CallLowered(const std::string &func_name,
 Expr CallExtern(const std::string &func_name,
                 const std::vector<Expr> &args,
                 const std::map<std::string, attr_t> &attrs) {
-  auto *proto = backends::ExternFunctionProtoRegistry::Global().Lookup(func_name);
-  CHECK(proto) << "No extern function prototype " << func_name << " found\n"
-               << "existing records are:\n"
-               << backends::ExternFunctionProtoRegistry::Global().debug_string();
+  auto *proto =
+      backends::ExternFunctionProtoRegistry::Global().Lookup(func_name);
+  CHECK(proto)
+      << "No extern function prototype " << func_name << " found\n"
+      << "existing records are:\n"
+      << backends::ExternFunctionProtoRegistry::Global().debug_string();
 
-  auto call = ir::Call::Make(proto->ret_type, func_name, args, {}, ir::CallType::Extern, ir::FunctionRef(), 0, attrs);
+  auto call = ir::Call::Make(proto->ret_type,
+                             func_name,
+                             args,
+                             {},
+                             ir::CallType::Extern,
+                             ir::FunctionRef(),
+                             0,
+                             attrs);
   std::vector<Expr> mutable_args;
   // Call a function with multiple outputs.
   if (proto->ret_type.is_void()) {
     for (int i = 0; i < proto->mutable_arg_types.size(); i++) {
-      auto shape                         = proto->shape_inference(args, i);
-      auto op                            = ir::CallOp::Make(func_name, call);
-      op->as<ir::CallOp>()->value_slot   = i;
+      auto shape = proto->shape_inference(args, i);
+      auto op = ir::CallOp::Make(func_name, call);
+      op->as<ir::CallOp>()->value_slot = i;
       op->as<ir::CallOp>()->is_tuple_get = true;
-      auto name                          = cinn::UniqName("tuple_" + func_name + "_out" + std::to_string(i) + "_");
-      auto ret                           = ir::Tensor(name, proto->mutable_arg_types[i], shape, shape, op, {});
+      auto name = cinn::UniqName("tuple_" + func_name + "_out" +
+                                 std::to_string(i) + "_");
+      auto ret =
+          ir::Tensor(name, proto->mutable_arg_types[i], shape, shape, op, {});
       mutable_args.push_back(ret);
     }
     call.As<ir::Call>()->write_args = mutable_args;

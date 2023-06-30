@@ -29,7 +29,9 @@ namespace cinn {
 namespace runtime {
 namespace cpu {
 
-cinn_buffer_t *CreateBuffer(const std::vector<int> shape, bool random = true, int set_value = 0) {
+cinn_buffer_t *CreateBuffer(const std::vector<int> shape,
+                            bool random = true,
+                            int set_value = 0) {
   if (random) {
     return common::BufferBuilder(Float(32), shape).set_random().Build();
   } else if (set_value != 0) {
@@ -53,8 +55,10 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
   int dilation_h(1);
   int dilation_w(1);
 
-  Placeholder<float> input("input", {Expr(n), Expr(c_in), Expr(i_h), Expr(i_w)});
-  Placeholder<float> weights("weights", {Expr(c_out), Expr(c_in), Expr(k_h), Expr(k_w)});
+  Placeholder<float> input("input",
+                           {Expr(n), Expr(c_in), Expr(i_h), Expr(i_w)});
+  Placeholder<float> weights("weights",
+                             {Expr(c_out), Expr(c_in), Expr(k_h), Expr(k_w)});
 
   auto call = Compute(
       {Expr(1)},
@@ -95,19 +99,24 @@ TEST(cinn_cpu_mkldnn_conv2d_nchw_fp32, test) {
 
   LOG(INFO) << "func:\n" << func;
 
-  auto jit    = backends::SimpleJIT::Create();
+  auto jit = backends::SimpleJIT::Create();
   auto module = builder.Build();
 
   jit->Link(module, /*optimize=*/true);
-  auto fn     = jit->Lookup("fn");
+  auto fn = jit->Lookup("fn");
   auto fn_ptr = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   // test with real data
-  int o_h     = (i_h - ((k_h - 1) * dilation_h + 1) + pad_h * 2) / stride_h + 1;
-  int o_w     = (i_w - ((k_w - 1) * dilation_w + 1) + pad_w * 2) / stride_w + 1;
-  auto *A_buf = common::BufferBuilder(Float(32), {n, c_in, i_h, i_w}).set_random().Build();
-  auto *B_buf = common::BufferBuilder(Float(32), {c_out, c_in, k_h, k_w}).set_random().Build();
-  auto *C_buf = common::BufferBuilder(Float(32), {n, c_out, o_h, o_w}).set_zero().Build();
+  int o_h = (i_h - ((k_h - 1) * dilation_h + 1) + pad_h * 2) / stride_h + 1;
+  int o_w = (i_w - ((k_w - 1) * dilation_w + 1) + pad_w * 2) / stride_w + 1;
+  auto *A_buf = common::BufferBuilder(Float(32), {n, c_in, i_h, i_w})
+                    .set_random()
+                    .Build();
+  auto *B_buf = common::BufferBuilder(Float(32), {c_out, c_in, k_h, k_w})
+                    .set_random()
+                    .Build();
+  auto *C_buf =
+      common::BufferBuilder(Float(32), {n, c_out, o_h, o_w}).set_zero().Build();
 
   auto args = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 

@@ -35,20 +35,22 @@ TEST(DeadCodeEliminate, remove_single) {
   //          |         |
   // <reduce_sum_1> <reduce_sum_2>
   NetBuilder builder("net_builder");
-  auto x            = builder.CreateInput(Float(32), {32, 16}, "x");
-  auto identity_1   = builder.Identity(x);
-  auto identity_2   = builder.Identity(x);
+  auto x = builder.CreateInput(Float(32), {32, 16}, "x");
+  auto identity_1 = builder.Identity(x);
+  auto identity_2 = builder.Identity(x);
   auto reduce_sum_1 = builder.ReduceSum(x, {0, 1});
   auto reduce_sum_2 = builder.ReduceSum(x, {0, 1});
-  auto program      = builder.Build();
+  auto program = builder.Build();
 
   PassTest tester;
-  std::vector<std::string> input_names  = {x.id().data()};
+  std::vector<std::string> input_names = {x.id().data()};
   std::vector<std::string> output_names = {identity_1->id, reduce_sum_2->id};
 
   common::Target target = common::DefaultNVGPUTarget();
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"DeadCodeEliminate"}};
-  CompareResult(&program, target, input_names, output_names, 2, passes, 123, true);
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"DeadCodeEliminate"}};
+  CompareResult(
+      &program, target, input_names, output_names, 2, passes, 123, true);
 }
 
 TEST(DeadCodeEliminate, remove_multiple) {
@@ -63,19 +65,21 @@ TEST(DeadCodeEliminate, remove_multiple) {
   //            |
   //         <mul_1>
   NetBuilder builder("net_builder");
-  auto x            = builder.CreateInput(Float(32), {32, 16}, "x");
-  auto identity_1   = builder.Transpose(x, {1, 0});
+  auto x = builder.CreateInput(Float(32), {32, 16}, "x");
+  auto identity_1 = builder.Transpose(x, {1, 0});
   auto reduce_sum_1 = builder.ReduceSum(x, {0, 1});
-  auto mul_1        = builder.Matmul(x, identity_1);
-  auto program      = builder.Build();
+  auto mul_1 = builder.Matmul(x, identity_1);
+  auto program = builder.Build();
 
   PassTest tester;
-  std::vector<std::string> input_names  = {x.id().data()};
+  std::vector<std::string> input_names = {x.id().data()};
   std::vector<std::string> output_names = {reduce_sum_1->id};
 
   common::Target target = common::DefaultNVGPUTarget();
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{"Decomposer"}, {"DeadCodeEliminate"}};
-  CompareResult(&program, target, input_names, output_names, 2, passes, 123, true);
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {"Decomposer"}, {"DeadCodeEliminate"}};
+  CompareResult(
+      &program, target, input_names, output_names, 2, passes, 123, true);
 }
 
 }  // namespace cinn::frontend

@@ -40,14 +40,14 @@ using namespace ir;  // NOLINT
 #endif
 
 std::string ExprToGinacConverter::Repr(const ir::Expr& expr) {
-  auto* load_n      = expr.As<Load>();
-  auto* var_n       = expr.As<_Var_>();
+  auto* load_n = expr.As<Load>();
+  auto* var_n = expr.As<_Var_>();
   auto* broadcast_n = expr.As<Broadcast>();
-  auto* mod_n       = expr.As<Mod>();
-  auto* min_n       = expr.As<Min>();
-  auto* max_n       = expr.As<Max>();
-  auto* div_n       = expr.As<Div>();
-  auto* frac_n      = expr.As<FracOp>();
+  auto* mod_n = expr.As<Mod>();
+  auto* min_n = expr.As<Min>();
+  auto* max_n = expr.As<Max>();
+  auto* div_n = expr.As<Div>();
+  auto* frac_n = expr.As<FracOp>();
   if (load_n || broadcast_n || mod_n || min_n || max_n || div_n || frac_n) {
     std::string repr = GetStreamCnt(expr);
     Replace(&repr, "[", "lsq_");
@@ -61,7 +61,7 @@ std::string ExprToGinacConverter::Repr(const ir::Expr& expr) {
     Replace(&repr, "/", "_div_");
     // remove the spaces
     auto fields = utils::Split(repr, " ");
-    repr        = utils::Join(fields, "_");
+    repr = utils::Join(fields, "_");
     return repr;
   } else if (var_n) {
     return utils::GetStreamCnt(expr);
@@ -69,29 +69,33 @@ std::string ExprToGinacConverter::Repr(const ir::Expr& expr) {
   return "";
 }
 
-void ExprToGinacConverter::RecordExpr(const ir::Expr& expr) { repr_to_expr_[Repr(expr)] = expr; }
+void ExprToGinacConverter::RecordExpr(const ir::Expr& expr) {
+  repr_to_expr_[Repr(expr)] = expr;
+}
 
 GiNaC::ex ExprToGinacConverter::BuildHelper(ir::Expr expr) {
-  auto* load_n      = expr.As<Load>();
-  auto* var_n       = expr.As<_Var_>();
-  auto* int_n       = expr.As<IntImm>();
-  auto* float_n     = expr.As<FloatImm>();
-  auto* add_n       = expr.As<Add>();
-  auto* sub_n       = expr.As<Sub>();
-  auto* mul_n       = expr.As<Mul>();
-  auto* div_n       = expr.As<Div>();
-  auto* minus_n     = expr.As<Minus>();
+  auto* load_n = expr.As<Load>();
+  auto* var_n = expr.As<_Var_>();
+  auto* int_n = expr.As<IntImm>();
+  auto* float_n = expr.As<FloatImm>();
+  auto* add_n = expr.As<Add>();
+  auto* sub_n = expr.As<Sub>();
+  auto* mul_n = expr.As<Mul>();
+  auto* div_n = expr.As<Div>();
+  auto* minus_n = expr.As<Minus>();
   auto* broadcast_n = expr.As<Broadcast>();
-  auto* mod_n       = expr.As<Mod>();
-  auto* frac_n      = expr.As<FracOp>();
-  auto* min_n       = expr.As<Min>();
-  auto* max_n       = expr.As<Max>();
+  auto* mod_n = expr.As<Mod>();
+  auto* frac_n = expr.As<FracOp>();
+  auto* min_n = expr.As<Min>();
+  auto* max_n = expr.As<Max>();
 
   bool is_integer_math = expr.type().is_int();
 
-  bool is_invalid_arith = load_n || var_n || broadcast_n || mod_n || min_n || max_n;
+  bool is_invalid_arith =
+      load_n || var_n || broadcast_n || mod_n || min_n || max_n;
   if (is_integer_math)
-    is_invalid_arith = is_invalid_arith || div_n || frac_n;  // GiNac can't deal with integer division.
+    is_invalid_arith = is_invalid_arith || div_n ||
+                       frac_n;  // GiNac can't deal with integer division.
 
   if (is_invalid_arith) {
     RecordExpr(expr);
@@ -143,8 +147,9 @@ GiNaC::ex ExprToGinacConverter::operator()(Expr expr) {
            n->As<IfThenElse>();
   });
 
-  CHECK(complex_nodes.empty())
-      << "Ginac converter can only deal with simple math expression, but get some complex nodes" << expr;
+  CHECK(complex_nodes.empty()) << "Ginac converter can only deal with simple "
+                                  "math expression, but get some complex nodes"
+                               << expr;
 
   return BuildHelper(expr);
 }
@@ -175,7 +180,8 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
   ir::Expr cur;
 
  public:
-  explicit GiNaCToExprVisitor(std::map<std::string, ir::Expr>& repr_to_expr) : repr_to_expr(repr_to_expr) {}
+  explicit GiNaCToExprVisitor(std::map<std::string, ir::Expr>& repr_to_expr)
+      : repr_to_expr(repr_to_expr) {}
 
   Expr operator()(GiNaC::ex ex) {
     ex.accept(*this);
@@ -184,7 +190,8 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
 
   void visit(const GiNaC::symbol& node) override {
     auto it = repr_to_expr.find(node.get_name());
-    CHECK(it != repr_to_expr.end()) << "node [" << node.get_name() << "] not found";
+    CHECK(it != repr_to_expr.end())
+        << "node [" << node.get_name() << "] not found";
     cur = it->second;
   }
 
@@ -254,7 +261,9 @@ bool IsPureMath(Expr expr) {
       IrNodeTy ::Minus,
   });
 
-  auto complex_nodes = ir::CollectIRNodes(expr, [&](const Expr* n) { return !valid_node_tys.count(n->node_type()); });
+  auto complex_nodes = ir::CollectIRNodes(expr, [&](const Expr* n) {
+    return !valid_node_tys.count(n->node_type());
+  });
 #ifdef CINN_DEBUG
   for (auto& node : complex_nodes) {
     VLOG(3) << "Found " << node->node_type() << " " << Expr(node);
@@ -268,7 +277,8 @@ bool MathContainsSymbol(Expr expr, Var symbol) {
   ExprToGinacConverter expr_converter;
   auto expr_ex = expr_converter(expr);
   if (!expr_converter.HasSymbol(symbol->name)) return false;
-  return !ginac::diff(expr_ex, expr_converter.GetSymbol(symbol->name)).is_zero();
+  return !ginac::diff(expr_ex, expr_converter.GetSymbol(symbol->name))
+              .is_zero();
 }
 
 // lhs >= rhs.
@@ -291,7 +301,7 @@ std::tuple<Expr, bool /*positive*/> Solve(Expr lhs, Expr rhs, Var var) {
   Expr value = converter.GinacToExpr(item.op(1));
 
   // tell the symbol
-  auto diff     = lhs_ex - rhs_ex;
+  auto diff = lhs_ex - rhs_ex;
   auto diff_res = ginac::diff(diff, symbol);
   CHECK(!diff_res.is_zero());
 

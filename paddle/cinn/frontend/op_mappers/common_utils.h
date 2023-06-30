@@ -30,38 +30,46 @@ namespace frontend {
 namespace utils {
 
 template <typename T>
-inline T GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc, const std::string& name, const T& default_value = T{}) {
+inline T GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
+                          const std::string& name,
+                          const T& default_value = T{}) {
   if (op_desc.HasAttr(name)) {
     return op_desc.GetAttr<T>(name);
   }
   return default_value;
 }
 
-#define EXPAND_SINGLE_NUM_TO_VECTOR(DATA_TYPE, ATTR_TYPE)                                                             \
-  template <>                                                                                                         \
-  inline std::vector<DATA_TYPE> GetAttrOrDefault(                                                                     \
-      const paddle::cpp::OpDesc& op_desc, const std::string& name, const std::vector<DATA_TYPE>& default_value) {     \
-    if (op_desc.HasAttr(name)) {                                                                                      \
-      auto attr_type = op_desc.GetAttrType(name);                                                                     \
-      using AttrType = paddle::cpp::OpDescAPI::AttrType;                                                              \
-      switch (attr_type) {                                                                                            \
-        case AttrType::ATTR_TYPE##S:                                                                                  \
-          return op_desc.GetAttr<std::vector<DATA_TYPE>>(name);                                                       \
-        case AttrType::ATTR_TYPE:                                                                                     \
-          return std::vector<DATA_TYPE>{op_desc.GetAttr<DATA_TYPE>(name)};                                            \
-        default:                                                                                                      \
-          if (attr_type == AttrType::BOOLEANS) {                                                                      \
-            LOG(WARNING) << "Op \"" << op_desc.Type() << "\"'s attribute \"" << name << "\" should be " << #ATTR_TYPE \
-                         << "S, but here is BOOLEANS, considering the type of python empty list in cpp are BOOLEANS," \
-                         << " here we will return a empty vector.";                                                   \
-            return {};                                                                                                \
-          } else {                                                                                                    \
-            LOG(FATAL) << "Op \"" << op_desc.Type() << "\"'s attribute \"" << name << "\" should be " << #ATTR_TYPE   \
-                       << "S. But here " << static_cast<int>(attr_type) << " Please Check!";                          \
-          }                                                                                                           \
-      }                                                                                                               \
-    }                                                                                                                 \
-    return default_value;                                                                                             \
+#define EXPAND_SINGLE_NUM_TO_VECTOR(DATA_TYPE, ATTR_TYPE)                    \
+  template <>                                                                \
+  inline std::vector<DATA_TYPE> GetAttrOrDefault(                            \
+      const paddle::cpp::OpDesc& op_desc,                                    \
+      const std::string& name,                                               \
+      const std::vector<DATA_TYPE>& default_value) {                         \
+    if (op_desc.HasAttr(name)) {                                             \
+      auto attr_type = op_desc.GetAttrType(name);                            \
+      using AttrType = paddle::cpp::OpDescAPI::AttrType;                     \
+      switch (attr_type) {                                                   \
+        case AttrType::ATTR_TYPE##S:                                         \
+          return op_desc.GetAttr<std::vector<DATA_TYPE>>(name);              \
+        case AttrType::ATTR_TYPE:                                            \
+          return std::vector<DATA_TYPE>{op_desc.GetAttr<DATA_TYPE>(name)};   \
+        default:                                                             \
+          if (attr_type == AttrType::BOOLEANS) {                             \
+            LOG(WARNING) << "Op \"" << op_desc.Type() << "\"'s attribute \"" \
+                         << name << "\" should be " << #ATTR_TYPE            \
+                         << "S, but here is BOOLEANS, considering the type " \
+                            "of python empty list in cpp are BOOLEANS,"      \
+                         << " here we will return a empty vector.";          \
+            return {};                                                       \
+          } else {                                                           \
+            LOG(FATAL) << "Op \"" << op_desc.Type() << "\"'s attribute \""   \
+                       << name << "\" should be " << #ATTR_TYPE              \
+                       << "S. But here " << static_cast<int>(attr_type)      \
+                       << " Please Check!";                                  \
+          }                                                                  \
+      }                                                                      \
+    }                                                                        \
+    return default_value;                                                    \
   }
 
 EXPAND_SINGLE_NUM_TO_VECTOR(int, INT)
@@ -72,7 +80,9 @@ EXPAND_SINGLE_NUM_TO_VECTOR(bool, BOOLEAN)
 #undef EXPAND_SINGLE_NUM_TO_VECTOR
 
 template <>
-inline bool GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc, const std::string& name, const bool& default_value) {
+inline bool GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
+                             const std::string& name,
+                             const bool& default_value) {
   if (op_desc.HasAttr(name)) {
     auto attr_type = op_desc.GetAttrType(name);
     using AttrType = paddle::cpp::OpDescAPI::AttrType;
@@ -84,7 +94,8 @@ inline bool GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc, const std::stri
       case AttrType::LONG:
         return static_cast<bool>(op_desc.GetAttr<int64_t>(name));
       default:
-        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name << " should be BOOLEAN. Please Check!";
+        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name
+                   << " should be BOOLEAN. Please Check!";
     }
   }
   return default_value;
@@ -103,16 +114,18 @@ inline int64_t GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
       case AttrType::INT:
         return static_cast<int64_t>(op_desc.GetAttr<int>(name));
       default:
-        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name << " should be LONG. Please Check!";
+        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name
+                   << " should be LONG. Please Check!";
     }
   }
   return default_value;
 }
 
 template <>
-inline std::vector<int64_t> GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
-                                             const std::string& name,
-                                             const std::vector<int64_t>& default_value) {
+inline std::vector<int64_t> GetAttrOrDefault(
+    const paddle::cpp::OpDesc& op_desc,
+    const std::string& name,
+    const std::vector<int64_t>& default_value) {
   if (op_desc.HasAttr(name)) {
     auto attr_type = op_desc.GetAttrType(name);
     using AttrType = paddle::cpp::OpDescAPI::AttrType;
@@ -122,19 +135,23 @@ inline std::vector<int64_t> GetAttrOrDefault(const paddle::cpp::OpDesc& op_desc,
       case AttrType::LONG:
         return std::vector<int64_t>{GetAttrOrDefault<int64_t>(op_desc, name)};
       case AttrType::INTS: {
-        const auto& ints_val = GetAttrOrDefault<std::vector<int>>(op_desc, name);
+        const auto& ints_val =
+            GetAttrOrDefault<std::vector<int>>(op_desc, name);
         return std::vector<int64_t>{ints_val.begin(), ints_val.end()};
       }
       case AttrType::INT:
         return std::vector<int64_t>{GetAttrOrDefault<int>(op_desc, name)};
       case AttrType::BOOLEANS: {
-        LOG(WARNING) << "Op \"" << op_desc.Type() << "\"'s attribute \"" << name << "\" should be LONGS, "
-                     << "but here is BOOLEANS, considering the type of python empty list in cpp are BOOLEANS, "
+        LOG(WARNING) << "Op \"" << op_desc.Type() << "\"'s attribute \"" << name
+                     << "\" should be LONGS, "
+                     << "but here is BOOLEANS, considering the type of python "
+                        "empty list in cpp are BOOLEANS, "
                      << "here we will return a empty vector.";
         return {};
       }
       default:
-        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name << " should be LONGS. Please Check!";
+        LOG(FATAL) << "Op " << op_desc.Type() << "'s attribute " << name
+                   << " should be LONGS. Please Check!";
     }
   }
   return default_value;
@@ -153,11 +170,12 @@ inline cinn::utils::DimType ToDimType(const T& val) {
 inline std::string GetPaddleDtype(const paddle::cpp::OpDesc& op_desc,
                                   const std::string& dtype_attr_name,
                                   paddle::cpp::VarDescAPI::Type default_dtype) {
-  auto dtype_id = GetAttrOrDefault<int>(op_desc, dtype_attr_name, static_cast<int>(default_dtype));
+  auto dtype_id = GetAttrOrDefault<int>(
+      op_desc, dtype_attr_name, static_cast<int>(default_dtype));
   if (dtype_id < 0) {
     return "";
   }
-  auto dtype_pd   = static_cast<paddle::cpp::VarDescAPI::Type>(dtype_id);
+  auto dtype_pd = static_cast<paddle::cpp::VarDescAPI::Type>(dtype_id);
   auto dtype_cinn = CppVarType2CommonType(dtype_pd);
   if (dtype_cinn.is_unk()) {
     return "";

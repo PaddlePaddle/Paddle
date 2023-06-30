@@ -32,7 +32,8 @@ namespace poly {
 
 // Create a call.
 Expr CreateCall(const std::string& name, const std::vector<Expr>& args) {
-  auto expr = ir::Call::Make(Float(32), name, args, {}, ir::CallType::CINN, ir::FunctionRef(), 0);
+  auto expr = ir::Call::Make(
+      Float(32), name, args, {}, ir::CallType::CINN, ir::FunctionRef(), 0);
   return expr;
 }
 
@@ -40,13 +41,14 @@ TEST(Stage, split) {
   isl::ctx ctx(isl_ctx_alloc());
   isl::set domain(ctx, "{ S[i,j]: 0<=i,j<=100 }");
 
-  auto ele           = Stage::New(domain);
+  auto ele = Stage::New(domain);
   auto _outer_inner_ = ele->Split(Iterator("i"), 4);  // NOLINT
-  auto& outer        = std::get<0>(_outer_inner_);
-  auto& inner        = std::get<1>(_outer_inner_);
+  auto& outer = std::get<0>(_outer_inner_);
+  auto& inner = std::get<1>(_outer_inner_);
   LOG(INFO) << ele->transform();
   EXPECT_EQ(utils::GetStreamCnt(ele->transform()),
-            "{ S[i, j] -> S[i_outer, i_inner, j' = j] : (-i + i_inner) mod 4 = 0 and -3 + i <= 4i_outer <= i and 0 <= "
+            "{ S[i, j] -> S[i_outer, i_inner, j' = j] : (-i + i_inner) mod 4 = "
+            "0 and -3 + i <= 4i_outer <= i and 0 <= "
             "i_inner <= 3 }");
 
   EXPECT_EQ(outer.id, "i_outer");
@@ -58,20 +60,22 @@ TEST(Stage, tile) {
   isl::set domain(ctx, "{ S[i,j,k]: 0<=i,j,k<=100 }");
   auto ele = Stage::New(domain);
 
-  auto _outer0_inner0_outer1_inner1_ = ele->Tile(Iterator("i"), Iterator("j"), 4, 6);  // NOLINT
-  auto& outer0                       = std::get<0>(_outer0_inner0_outer1_inner1_);
-  auto& inner0                       = std::get<1>(_outer0_inner0_outer1_inner1_);
-  auto& outer1                       = std::get<2>(_outer0_inner0_outer1_inner1_);
-  auto& inner1                       = std::get<3>(_outer0_inner0_outer1_inner1_);
+  auto _outer0_inner0_outer1_inner1_ =
+      ele->Tile(Iterator("i"), Iterator("j"), 4, 6);  // NOLINT
+  auto& outer0 = std::get<0>(_outer0_inner0_outer1_inner1_);
+  auto& inner0 = std::get<1>(_outer0_inner0_outer1_inner1_);
+  auto& outer1 = std::get<2>(_outer0_inner0_outer1_inner1_);
+  auto& inner1 = std::get<3>(_outer0_inner0_outer1_inner1_);
   LOG(INFO) << ele->transform();
   EXPECT_EQ(outer0.id, "i_outer");
   EXPECT_EQ(outer1.id, "j_outer");
   EXPECT_EQ(inner0.id, "i_inner");
   EXPECT_EQ(outer1.id, "j_outer");
-  EXPECT_EQ(
-      utils::GetStreamCnt(ele->transform()),
-      "{ S[i, j, k] -> S[i_outer, i_inner, j_outer, j_inner, k' = k] : (-i + i_inner) mod 4 = 0 and (-j + j_inner) mod "
-      "6 = 0 and -3 + i <= 4i_outer <= i and 0 <= i_inner <= 3 and -5 + j <= 6j_outer <= j and 0 <= j_inner <= 5 }");
+  EXPECT_EQ(utils::GetStreamCnt(ele->transform()),
+            "{ S[i, j, k] -> S[i_outer, i_inner, j_outer, j_inner, k' = k] : "
+            "(-i + i_inner) mod 4 = 0 and (-j + j_inner) mod "
+            "6 = 0 and -3 + i <= 4i_outer <= i and 0 <= i_inner <= 3 and -5 + "
+            "j <= 6j_outer <= j and 0 <= j_inner <= 5 }");
 }
 
 TEST(Stage, reorder) {
@@ -86,10 +90,10 @@ TEST(Stage, reorder) {
 TEST(Stage, split_reorder) {
   isl::ctx ctx(isl_ctx_alloc());
   isl::set domain(ctx, "{ S[i,j,k]: 0<=i,j,k<=100 }");
-  auto ele           = Stage::New(domain);
+  auto ele = Stage::New(domain);
   auto _outer_inner_ = ele->Split(Iterator("i"), 4);  // NOLINT
-  auto& outer        = std::get<0>(_outer_inner_);
-  auto& inner        = std::get<1>(_outer_inner_);
+  auto& outer = std::get<0>(_outer_inner_);
+  auto& inner = std::get<1>(_outer_inner_);
 
   Iterator i("i"), j("j"), k("k");
   ele->Reorder(std::vector<Iterator>{{outer, k, inner, j}});
@@ -113,10 +117,10 @@ TEST(ComputeAtRelation, basic) {
 TEST(Stage, Fuse) {
   isl::ctx ctx(isl_ctx_alloc());
   isl::set domain(ctx, "{ S[i,j,k]: 0<=i,j,k<=100 }");
-  auto ele           = Stage::New(domain);
+  auto ele = Stage::New(domain);
   auto _outer_inner_ = ele->Split(Iterator("i"), 4);  // NOLINT
-  auto& outer        = std::get<0>(_outer_inner_);
-  auto& inner        = std::get<1>(_outer_inner_);
+  auto& outer = std::get<0>(_outer_inner_);
+  auto& inner = std::get<1>(_outer_inner_);
   LOG(INFO) << "split: " << ele->transform();
   ele->Fuse(outer, inner);
   LOG(INFO) << "fused: " << ele->transform();
@@ -140,7 +144,9 @@ TEST(ComputeAt, Before) {
   auto A_cache = Compute(
       {M, N}, [&](Expr i, Expr j) { return A(i, j); }, "cache");
   auto C = Compute(
-      {Expr(10), Expr(10)}, [&](Expr i, Expr j) { return A_cache(i, j) + B(i, j); }, "C");
+      {Expr(10), Expr(10)},
+      [&](Expr i, Expr j) { return A_cache(i, j) + B(i, j); },
+      "C");
 
   auto stages = CreateStages({A_cache, C});
 
@@ -174,7 +180,9 @@ TEST(ComputeAt, simple) {
     auto A1 = Compute(
         {n, n}, [&](Expr i, Expr j) { return A(i, j); }, "A1");
     auto B = Compute(
-        {n / 2, n / 2}, [&](Expr i, Expr j) { return A1(i, j) + A1(i + 1, j) + A1(i + 2, j); }, "B");
+        {n / 2, n / 2},
+        [&](Expr i, Expr j) { return A1(i, j) + A1(i + 1, j) + A1(i + 2, j); },
+        "B");
 
     auto stages = CreateStages({B});
     stages[B]->Split(0, 16);
@@ -212,7 +220,9 @@ function fn (_A, _A1, _B)
 
     CodeGenC codegen(common::DefaultHostTarget());
     codegen.SetInlineBuiltinCodes(false);
-    LOG(INFO) << "source:\n" << codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+    LOG(INFO) << "source:\n"
+              << codegen.Compile(builder.Build(),
+                                 backends::CodeGenC::OutputKind::CImpl);
   }
 }
 
@@ -223,7 +233,10 @@ TEST(ComputeAt, Before1) {
 
   auto create_module = [&] {
     // cached compute way
-    auto cache_prepare = Compute({M, N} /*domain*/, [&](Var i, Var j) { return A(i, j); }, "cache", {N} /*shape*/);
+    auto cache_prepare = Compute({M, N} /*domain*/,
+                                 [&](Var i, Var j) { return A(i, j); },
+                                 "cache",
+                                 {N} /*shape*/);
 
     auto transformed_compute = Compute(
         {M, N}, [&](Var i, Var j) { return Expr(1.f); }, "transformed");
@@ -233,8 +246,9 @@ TEST(ComputeAt, Before1) {
 
   {  // C_init Before C
     auto _cache_prepare_transformed_compute_ = create_module();
-    auto& cache_prepare                      = std::get<0>(_cache_prepare_transformed_compute_);
-    auto& transformed_compute                = std::get<1>(_cache_prepare_transformed_compute_);
+    auto& cache_prepare = std::get<0>(_cache_prepare_transformed_compute_);
+    auto& transformed_compute =
+        std::get<1>(_cache_prepare_transformed_compute_);
 
     auto stages = CreateStages({cache_prepare, transformed_compute});
     stages[cache_prepare]->ComputeAt2(stages[transformed_compute], 1);
@@ -261,8 +275,9 @@ function fn (_A, _cache, _transformed)
   }
   {  // C_init After C
     auto _cache_prepare_transformed_compute_ = create_module();
-    auto& cache_prepare                      = std::get<0>(_cache_prepare_transformed_compute_);
-    auto& transformed_compute                = std::get<1>(_cache_prepare_transformed_compute_);
+    auto& cache_prepare = std::get<0>(_cache_prepare_transformed_compute_);
+    auto& transformed_compute =
+        std::get<1>(_cache_prepare_transformed_compute_);
 
     auto stages = CreateStages({cache_prepare, transformed_compute});
     stages[transformed_compute]->ComputeAt2(stages[cache_prepare], 1);
@@ -288,7 +303,8 @@ function fn (_A, _cache, _transformed)
   }
 }
 
-void TestElementwiseAddJitPrecession(std::function<void(ir::Tensor*, StageMap)>&& scheduler) {
+void TestElementwiseAddJitPrecession(
+    std::function<void(ir::Tensor*, StageMap)>&& scheduler) {
   Expr M(30);
   Expr N(40);
   Placeholder<float> A("A", {M, N});
@@ -313,10 +329,17 @@ void TestElementwiseAddJitPrecession(std::function<void(ir::Tensor*, StageMap)>&
   auto* fn_handler = reinterpret_cast<lower_func_ptr_t>(_fn_handler);
 
   // create buffer and args
-  auto A_buf    = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto B_buf    = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto C_buf    = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_zero().Build();
-  auto arg_pack = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
+  auto A_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_random()
+                   .Build();
+  auto B_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_random()
+                   .Build();
+  auto C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_zero()
+                   .Build();
+  auto arg_pack =
+      common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 
   fn_handler(arg_pack.data(), arg_pack.size());
 
@@ -334,21 +357,23 @@ void TestElementwiseAddJitPrecession(std::function<void(ir::Tensor*, StageMap)>&
 
 // use an elementwise_add to test fuse precision
 TEST(Fuse, jit_precision_test) {
-  TestElementwiseAddJitPrecession([](ir::Tensor* C, StageMap stages) { stages[(*C)]->Fuse(0, 1); });
+  TestElementwiseAddJitPrecession(
+      [](ir::Tensor* C, StageMap stages) { stages[(*C)]->Fuse(0, 1); });
 }
 
 // split test fuse precision
 TEST(Fuse, jit_precision_test2) {
   TestElementwiseAddJitPrecession([](ir::Tensor* C, StageMap stages) {
     auto _i_outer_i_inner_ = stages[(*C)]->Split(0, 4);
-    auto& i_outer          = std::get<0>(_i_outer_i_inner_);
-    auto& i_inner          = std::get<1>(_i_outer_i_inner_);
+    auto& i_outer = std::get<0>(_i_outer_i_inner_);
+    auto& i_inner = std::get<1>(_i_outer_i_inner_);
     stages[(*C)]->Fuse(i_outer, i_inner);
   });
 }
 
 TEST(Tile, jit_precision_test) {
-  TestElementwiseAddJitPrecession([](ir::Tensor* C, StageMap stages) { stages[(*C)]->Tile(0, 1, 4, 4); });
+  TestElementwiseAddJitPrecession(
+      [](ir::Tensor* C, StageMap stages) { stages[(*C)]->Tile(0, 1, 4, 4); });
 }
 
 TEST(Reorder, jit_precision_test) {
@@ -359,11 +384,13 @@ TEST(Reorder, jit_precision_test) {
 }
 
 TEST(Unroll, jit_precision_test) {
-  TestElementwiseAddJitPrecession([](ir::Tensor* C, StageMap stages) { stages[(*C)]->Unroll(1); });
+  TestElementwiseAddJitPrecession(
+      [](ir::Tensor* C, StageMap stages) { stages[(*C)]->Unroll(1); });
 }
 
 TEST(Unroll, jit_precision_test1) {
-  TestElementwiseAddJitPrecession([](ir::Tensor* C, StageMap stages) { stages[*C]->Unroll(0); });
+  TestElementwiseAddJitPrecession(
+      [](ir::Tensor* C, StageMap stages) { stages[*C]->Unroll(0); });
 }
 
 TEST(ComputeInline, basic) {
@@ -490,15 +517,20 @@ TEST(ShareBufferWith, basic) {
   CodeGenC codegen(common::DefaultHostTarget());
   codegen.SetInlineBuiltinCodes(false);
 
-  LOG(INFO) << "\n" << codegen.Compile(builder.Build(), backends::CodeGenC::OutputKind::CImpl);
+  LOG(INFO) << "\n"
+            << codegen.Compile(builder.Build(),
+                               backends::CodeGenC::OutputKind::CImpl);
 }
 
 TEST(isl, test) {
   isl::ctx ctx(isl_ctx_alloc());
-  isl::set domain(
-      ctx, "[p0, p1] -> { p[i, j] : p0 = 0 and 0 <= p1 <= 2 and 4p1 <= i <= 1 + 4p1 and 0 <= j <= 9 + 4p1 - i }");
+  isl::set domain(ctx,
+                  "[p0, p1] -> { p[i, j] : p0 = 0 and 0 <= p1 <= 2 and 4p1 <= "
+                  "i <= 1 + 4p1 and 0 <= j <= 9 + 4p1 - i }");
 
-  isl::map schedule(ctx, "[p0, p1] -> { p[i, j] -> p[t0, t1, t2 = j] : 2t1 = i and (t0) mod 2 = 0 and 0 <= t0 <= 1 }");
+  isl::map schedule(ctx,
+                    "[p0, p1] -> { p[i, j] -> p[t0, t1, t2 = j] : 2t1 = i and "
+                    "(t0) mod 2 = 0 and 0 <= t0 <= 1 }");
 
   auto schedule_intersected = schedule.intersect_domain(domain);
   LOG(INFO) << "schedule_intersected: " << schedule_intersected.coalesce();
@@ -507,46 +539,55 @@ TEST(isl, test) {
   LOG(INFO) << "space: " << context.space();
 
   auto* build = isl_ast_build_from_context(context.release());
-  auto* node  = isl_ast_build_node_from_schedule_map(build, isl_union_map_from_map(schedule_intersected.release()));
+  auto* node = isl_ast_build_node_from_schedule_map(
+      build, isl_union_map_from_map(schedule_intersected.release()));
   LOG(INFO) << "code:\n" << isl_ast_node_to_C_str(node);
 }
 
 TEST(isl, test1) {
   isl::ctx ctx(isl_ctx_alloc());
 
-  isl::set domain(
-      ctx, "[p0, p1] -> { p[i, j] : p0 = 0 and 0 <= p1 <= 2 and 4p1 <= i <= 1 + 4p1 and 0 <= j <= 9 + 4p1 - i }");
-  isl::map schedule(
-      ctx,
-      "[p0, p1] -> { p[i, j] -> p[o0, o1, t0, t1, t2 = j] : 2t1 = i and (o0) mod 4 = 0 and (t0) mod 2 = 0 "
-      "and 0 <= o0 <= 3 and 0 <= o1 <= 2 and 0 <= t0 <= 1 }");
+  isl::set domain(ctx,
+                  "[p0, p1] -> { p[i, j] : p0 = 0 and 0 <= p1 <= 2 and 4p1 <= "
+                  "i <= 1 + 4p1 and 0 <= j <= 9 + 4p1 - i }");
+  isl::map schedule(ctx,
+                    "[p0, p1] -> { p[i, j] -> p[o0, o1, t0, t1, t2 = j] : 2t1 "
+                    "= i and (o0) mod 4 = 0 and (t0) mod 2 = 0 "
+                    "and 0 <= o0 <= 3 and 0 <= o1 <= 2 and 0 <= t0 <= 1 }");
 
   isl::map schedule_t(ctx,
-                      "[p0,p1] -> { p[i0,i1,i2,i3,i4] -> [t0,t1,t2,t3,t30,t4] : t0 =i0 and t1 = i1 and t2 = i2 and t3 "
+                      "[p0,p1] -> { p[i0,i1,i2,i3,i4] -> [t0,t1,t2,t3,t30,t4] "
+                      ": t0 =i0 and t1 = i1 and t2 = i2 and t3 "
                       "= i3 and t4 = i4 and t30=0 }");
 
   isl::set cdomain(ctx, "[p0,p1] -> { c[a,b,c]: 0<=a,b,c<10 }");
-  isl::map cschedule(ctx, "[p0,p1] -> { c[a,b,c] -> c[t0,t1,t2,t3]: t0=a%4 and t1=a/4 and t2=b and t3=c }");
+  isl::map cschedule(ctx,
+                     "[p0,p1] -> { c[a,b,c] -> c[t0,t1,t2,t3]: t0=a%4 and "
+                     "t1=a/4 and t2=b and t3=c }");
 
   isl::map schedule_t1(ctx,
-                       "[p0,p1] -> { c[i0,i1,i2,i3] -> [t0,t1,t2,t3,t30,t4] : t0 =i0 and t1 = i1 and t2 = i2 and t3=i3 "
+                       "[p0,p1] -> { c[i0,i1,i2,i3] -> [t0,t1,t2,t3,t30,t4] : "
+                       "t0 =i0 and t1 = i1 and t2 = i2 and t3=i3 "
                        "and t4=0 and t30=1 }");
 
-  schedule  = schedule.apply_range(schedule_t);
+  schedule = schedule.apply_range(schedule_t);
   cschedule = cschedule.apply_range(schedule_t1);
 
   auto whole_domain = isl::manage(isl_union_set_from_set(domain.copy()));
-  whole_domain      = isl::manage(isl_union_set_add_set(whole_domain.release(), cdomain.copy()));
+  whole_domain = isl::manage(
+      isl_union_set_add_set(whole_domain.release(), cdomain.copy()));
 
   auto whole_schedule = isl::manage(isl_union_map_from_map(schedule.copy()));
-  whole_schedule      = isl::manage(isl_union_map_add_map(whole_schedule.release(), cschedule.copy()));
+  whole_schedule = isl::manage(
+      isl_union_map_add_map(whole_schedule.release(), cschedule.copy()));
 
   auto intersect_schedule = whole_schedule.intersect_domain(whole_domain);
 
   isl::set context(ctx, "[p0,p1]->{:p0<100 and p1<100}");
 
   auto* build = isl_ast_build_from_context(context.release());
-  auto* node  = isl_ast_build_node_from_schedule_map(build, intersect_schedule.release());
+  auto* node =
+      isl_ast_build_node_from_schedule_map(build, intersect_schedule.release());
   LOG(INFO) << "code:\n\n" << isl_ast_node_to_C_str(node);
 }
 

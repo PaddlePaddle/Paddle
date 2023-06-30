@@ -32,12 +32,13 @@ Expr operator<<(Expr a, Expr b) {
   CHECK(b.type().is_int() || b.type().is_uint());
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
-  Type t_a   = a.type();
-  Type t_b   = b.type();
+  Type t_a = a.type();
+  Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_b) {
       CHECK(int_b->value >= 0 && int_b->value < t_a.bits())
-          << "Shift amount must be non-negative and less than " << t_a.bits() << " for type " << t_a << std::endl;
+          << "Shift amount must be non-negative and less than " << t_a.bits()
+          << " for type " << t_a << std::endl;
       if (int_b->value == 0) return a;
     }
     if (int_a && int_b) {
@@ -52,12 +53,13 @@ Expr operator>>(Expr a, Expr b) {
   CHECK(b.type().is_int() || b.type().is_uint());
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
-  Type t_a   = a.type();
-  Type t_b   = b.type();
+  Type t_a = a.type();
+  Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_b) {
       CHECK(int_b->value >= 0 && int_b->value < t_a.bits())
-          << "Shift amount must be non-negative and less than " << t_a.bits() << " for type " << t_a << std::endl;
+          << "Shift amount must be non-negative and less than " << t_a.bits()
+          << " for type " << t_a << std::endl;
       if (int_b->value == 0) return a;
     }
     if (int_a && int_b) {
@@ -72,8 +74,8 @@ Expr operator|(Expr a, Expr b) {
   CHECK(b.type().is_int() || b.type().is_uint());
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
-  Type t_a   = a.type();
-  Type t_b   = b.type();
+  Type t_a = a.type();
+  Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_a && int_b) {
       return Expr(int_a->value | int_b->value);
@@ -95,8 +97,8 @@ Expr operator&(Expr a, Expr b) {
   CHECK(b.type().is_int() || b.type().is_uint());
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
-  Type t_a   = a.type();
-  Type t_b   = b.type();
+  Type t_a = a.type();
+  Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_a && int_b) {
       return Expr(int_a->value & int_b->value);
@@ -109,7 +111,8 @@ Expr operator&(Expr a, Expr b) {
     auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_and");
     return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
+    LOG(FATAL) << "Unsupport arch: " << target.arch_str()
+               << " for bitwise_and.";
   }
 }
 
@@ -118,8 +121,8 @@ Expr operator^(Expr a, Expr b) {
   CHECK(b.type().is_int() || b.type().is_uint());
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
-  Type t_a   = a.type();
-  Type t_b   = b.type();
+  Type t_a = a.type();
+  Type t_b = b.type();
   if (t_a.is_index_type() && t_b.is_index_type()) {
     if (int_a && int_b) {
       return Expr(int_a->value ^ int_b->value);
@@ -132,7 +135,8 @@ Expr operator^(Expr a, Expr b) {
     auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_xor");
     return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
+    LOG(FATAL) << "Unsupport arch: " << target.arch_str()
+               << " for bitwise_xor.";
   }
 }
 
@@ -145,7 +149,8 @@ Expr operator~(Expr a) {
     auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
     return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
   } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str() << " for bitwise_not.";
+    LOG(FATAL) << "Unsupport arch: " << target.arch_str()
+               << " for bitwise_not.";
   }
 }
 

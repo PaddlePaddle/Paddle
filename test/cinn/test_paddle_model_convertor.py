@@ -14,18 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, sys
-import numpy as np
+import argparse
+import logging
+import os
+import sys
 import unittest
-import logging, argparse
+
+import numpy as np
+from cinn.common import DefaultNVGPUTarget, is_compiled_with_cuda
+from cinn.frontend import PaddleModelConvertor
+from cinn.runtime import seed as cinn_seed
+from op_mappers.op_mapper_test import OpMapperTest
+from ops.op_test import OpTestTool
 
 import paddle
-
-from cinn.frontend import PaddleModelConvertor
-from cinn.common import is_compiled_with_cuda, DefaultNVGPUTarget
-from cinn.runtime import seed as cinn_seed
-from ops.op_test import OpTestTool
-from op_mappers.op_mapper_test import OpMapperTest
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="paddle_model_convertor")

@@ -39,7 +39,8 @@ TEST(AutoUnroll, Init) {
   Target target = common::DefaultHostTarget();
 #endif
   auto stages = CreateStages({C});
-  auto funcs  = cinn::lang::LowerVec("test_init", stages, {A, B, C}, {}, {}, nullptr, target, true);
+  auto funcs = cinn::lang::LowerVec(
+      "test_init", stages, {A, B, C}, {}, {}, nullptr, target, true);
 
   auto ast_expr = funcs[0]->body;
   ir::IRSchedule init_schedule(ir::ModuleExpr({ast_expr}));
@@ -58,7 +59,9 @@ TEST(AutoUnroll, UnrollableApply) {
   Placeholder<float> B("B", {K, N});
   Var k(K.as_int32(), "k0");
   Tensor C = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();
@@ -66,11 +69,14 @@ TEST(AutoUnroll, UnrollableApply) {
   Target target = common::DefaultHostTarget();
 #endif
   auto stages = CreateStages({C});
-  auto funcs  = cinn::lang::LowerVec("test_unrollable", stages, {A, B, C}, {}, {}, nullptr, target, true);
+  auto funcs = cinn::lang::LowerVec(
+      "test_unrollable", stages, {A, B, C}, {}, {}, nullptr, target, true);
 
-  auto ast_expr             = funcs[0]->body;
-  auto* init_block_realize  = ast_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>();
-  auto* init_schedule_block = init_block_realize->schedule_block.As<ir::ScheduleBlock>();
+  auto ast_expr = funcs[0]->body;
+  auto* init_block_realize =
+      ast_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>();
+  auto* init_schedule_block =
+      init_block_realize->schedule_block.As<ir::ScheduleBlock>();
   ASSERT_NE(init_schedule_block, nullptr);
   ASSERT_TRUE(init_schedule_block->attrs.empty());
   VLOG(6) << "Before auto-unroll:\n" << ast_expr;
@@ -78,25 +84,34 @@ TEST(AutoUnroll, UnrollableApply) {
   AutoUnroll test_rule(target);
   ir::IRSchedule ir_schedule(ir::ModuleExpr({ast_expr}));
   SearchState state(ir_schedule, 0, {});
-  ASSERT_EQ(test_rule.Init(&ir_schedule), RuleApplyType::kApplyAndPruneOtherRules);
+  ASSERT_EQ(test_rule.Init(&ir_schedule),
+            RuleApplyType::kApplyAndPruneOtherRules);
   EXPECT_EQ(test_rule.NumberApplicable(), 1);
   test_rule.ApplyRandomly();
 
   // ApplyOnBlock
-  EXPECT_EQ(test_rule.AnalyseApplyType(state, "C"), RuleApplyType::kApplyAndPruneOtherRules);
-  std::vector<cinn::auto_schedule::SearchState> states = test_rule.ApplyOnBlock(state, "C");
+  EXPECT_EQ(test_rule.AnalyseApplyType(state, "C"),
+            RuleApplyType::kApplyAndPruneOtherRules);
+  std::vector<cinn::auto_schedule::SearchState> states =
+      test_rule.ApplyOnBlock(state, "C");
 
   auto test_func = [](IRSchedule* ir_sch) {
-    Expr applied_expr            = ir_sch->GetModule().GetExprs().front();
-    auto* applied_block_realize  = applied_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>();
-    auto* applied_schedule_block = applied_block_realize->schedule_block.As<ir::ScheduleBlock>();
+    Expr applied_expr = ir_sch->GetModule().GetExprs().front();
+    auto* applied_block_realize = applied_expr.As<ir::Block>()
+                                      ->stmts.front()
+                                      .As<ir::ScheduleBlockRealize>();
+    auto* applied_schedule_block =
+        applied_block_realize->schedule_block.As<ir::ScheduleBlock>();
     ASSERT_FALSE(applied_schedule_block->attrs.empty());
-    EXPECT_EQ(applied_schedule_block->attrs.count(ir::attr::auto_unroll_max_step), 1);
-    const auto& attr_value = applied_schedule_block->attrs.at(ir::attr::auto_unroll_max_step);
-    const int* max_step    = absl::get_if<int>(&attr_value);
+    EXPECT_EQ(
+        applied_schedule_block->attrs.count(ir::attr::auto_unroll_max_step), 1);
+    const auto& attr_value =
+        applied_schedule_block->attrs.at(ir::attr::auto_unroll_max_step);
+    const int* max_step = absl::get_if<int>(&attr_value);
     EXPECT_NE(max_step, nullptr);
     EXPECT_LE(*max_step, 128);
-    VLOG(6) << "After auto-unroll:max_step=" << *max_step << ", Ast:\n" << ir_sch->GetModule().GetExprs().front();
+    VLOG(6) << "After auto-unroll:max_step=" << *max_step << ", Ast:\n"
+            << ir_sch->GetModule().GetExprs().front();
   };
 
   test_func(&ir_schedule);

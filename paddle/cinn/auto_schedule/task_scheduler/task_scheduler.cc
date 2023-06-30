@@ -23,9 +23,10 @@
 namespace cinn {
 namespace auto_schedule {
 
-std::unique_ptr<TaskScheduler> TaskScheduler::Make(const std::vector<TuneTask>& tasks,
-                                                   const Config& config,
-                                                   const std::string& strategy) {
+std::unique_ptr<TaskScheduler> TaskScheduler::Make(
+    const std::vector<TuneTask>& tasks,
+    const Config& config,
+    const std::string& strategy) {
   CHECK_GT(tasks.size(), 0) << "Empty task list";
   if (strategy == "round_robin") {
     return std::make_unique<RoundRobin>(tasks, config);
@@ -37,7 +38,8 @@ std::unique_ptr<TaskScheduler> TaskScheduler::Make(const std::vector<TuneTask>& 
   return nullptr;
 }
 
-TaskScheduler::TaskScheduler(const std::vector<TuneTask>& tasks, const Config& config)
+TaskScheduler::TaskScheduler(const std::vector<TuneTask>& tasks,
+                             const Config& config)
     : tasks_(&tasks), config_(config), cur_task_id_(0) {}
 
 void TaskScheduler::Reset() { cur_task_id_ = 0; }

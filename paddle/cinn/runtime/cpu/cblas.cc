@@ -21,7 +21,9 @@
 
 namespace {
 
-inline CBLAS_TRANSPOSE ToCblasTranspose(bool trans) { return trans ? CblasTrans : CblasNoTrans; }
+inline CBLAS_TRANSPOSE ToCblasTranspose(bool trans) {
+  return trans ? CblasTrans : CblasNoTrans;
+}
 
 }  // namespace
 
@@ -101,20 +103,22 @@ void cinn_cpu_mkl_gemm_batch_fp32(float alpha,
 }
 
 /**
- * This function is temporarily unavailable, see the error message in the following PR for details.
- * The specific reason may be that the custom call does not support host op.
- * See: https://github.com/PaddlePaddle/CINN/pull/1133
+ * This function is temporarily unavailable, see the error message in the
+ * following PR for details. The specific reason may be that the custom call
+ * does not support host op. See: https://github.com/PaddlePaddle/CINN/pull/1133
  */
-void cinn_call_cholesky_host(void* v_args, int num_args, int batch_size, int m, bool upper) {
+void cinn_call_cholesky_host(
+    void* v_args, int num_args, int batch_size, int m, bool upper) {
 #ifdef CINN_WITH_MKL_CBLAS
   cinn_pod_value_t* args = static_cast<cinn_pod_value_t*>(v_args);
 
-  cinn_buffer_t* x   = args[0].operator cinn_buffer_t*();
+  cinn_buffer_t* x = args[0].operator cinn_buffer_t*();
   cinn_buffer_t* out = args[1].operator cinn_buffer_t*();
   memcpy(out->memory, x->memory, x->memory_size);
 
   uint8_t bits = x->type.bits;
-  CHECK(bits == 32 || bits == 64) << "Unsupported bits = " << bits << " float data type for cholesky";
+  CHECK(bits == 32 || bits == 64)
+      << "Unsupported bits = " << bits << " float data type for cholesky";
   char uplo = upper ? 'U' : 'L';
   for (int i = 0; i < batch_size; i++) {
     if (bits == 32) {
@@ -135,43 +139,45 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
   using backends::FunctionProto;
   auto host_target = common::DefaultHostTarget();
 
-  FunctionProto::shape_inference_t inference_shape_gemm = [](const std::vector<Expr>& args, int offset) {
-    CHECK_EQ(offset, 0UL) << "Only one output";
-    CHECK_EQ(args.size(), 12UL) << "Wrong number of arguments passed in";
-    auto M = common::AutoSimplify(args[1]);
-    auto N = common::AutoSimplify(args[2]);
-    std::vector<Expr> shape;
-    shape.push_back(M);
-    shape.push_back(N);
-    return shape;
-  };
+  FunctionProto::shape_inference_t inference_shape_gemm =
+      [](const std::vector<Expr>& args, int offset) {
+        CHECK_EQ(offset, 0UL) << "Only one output";
+        CHECK_EQ(args.size(), 12UL) << "Wrong number of arguments passed in";
+        auto M = common::AutoSimplify(args[1]);
+        auto N = common::AutoSimplify(args[2]);
+        std::vector<Expr> shape;
+        shape.push_back(M);
+        shape.push_back(N);
+        return shape;
+      };
 
-  FunctionProto::shape_inference_t inference_shape_gemm_batch = [](const std::vector<Expr>& args, int offset) {
-    CHECK_EQ(offset, 0UL) << "Only one output";
-    CHECK_EQ(args.size(), 16UL) << "Wrong number of arguments passed in";
-    auto& A       = args[14];
-    auto A_tensor = A.as_tensor();
-    CHECK(A_tensor);
+  FunctionProto::shape_inference_t inference_shape_gemm_batch =
+      [](const std::vector<Expr>& args, int offset) {
+        CHECK_EQ(offset, 0UL) << "Only one output";
+        CHECK_EQ(args.size(), 16UL) << "Wrong number of arguments passed in";
+        auto& A = args[14];
+        auto A_tensor = A.as_tensor();
+        CHECK(A_tensor);
 
-    auto batch_size        = common::AutoSimplify(args[1]);
-    int32_t batch_size_val = batch_size.as_int32();
+        auto batch_size = common::AutoSimplify(args[1]);
+        int32_t batch_size_val = batch_size.as_int32();
 
-    auto M = common::AutoSimplify(args[2]);
-    auto N = common::AutoSimplify(args[3]);
+        auto M = common::AutoSimplify(args[2]);
+        auto N = common::AutoSimplify(args[3]);
 
-    std::vector<Expr> shape;
-    int total = 1;
-    for (auto& v : A_tensor->shape) {
-      auto val = common::AutoSimplify(v);
-      CHECK(val.is_constant());
-      shape.push_back(val);
-      total *= val.as_int32();
-      if (total >= batch_size_val) break;
-    }
-    shape.push_back(M);
-    shape.push_back(N);
-    return shape;
-  };
+        std::vector<Expr> shape;
+        int total = 1;
+        for (auto& v : A_tensor->shape) {
+          auto val = common::AutoSimplify(v);
+          CHECK(val.is_constant());
+          shape.push_back(val);
+          total *= val.as_int32();
+          if (total >= batch_size_val) break;
+        }
+        shape.push_back(M);
+        shape.push_back(N);
+        return shape;
+      };
 
   REGISTER_EXTERN_FUNC_HELPER(cinn_cpu_mkl_gemm_fp32, host_target)
       .SetRetType<void>()

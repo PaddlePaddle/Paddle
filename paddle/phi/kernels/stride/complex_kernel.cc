@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#if !defined(PADDLE_WITH_XPU)
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/type_traits.h"
@@ -58,15 +57,41 @@ void ImagStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(real,
-                                                       STRIDED,
-                                                       phi::RealStridedKernel) {
+
+PD_REGISTER_KERNEL(real,
+                   CPU,
+                   STRIDED,
+                   phi::RealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(imag,
-                                                       STRIDED,
-                                                       phi::ImagStridedKernel) {
+PD_REGISTER_KERNEL(imag,
+                   CPU,
+                   STRIDED,
+                   phi::ImagStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
-#endif  //! defined(PADDLE_WITH_XPU)
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(real,
+                   GPU,
+                   STRIDED,
+                   phi::RealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+
+PD_REGISTER_KERNEL(imag,
+                   GPU,
+                   STRIDED,
+                   phi::ImagStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+#endif

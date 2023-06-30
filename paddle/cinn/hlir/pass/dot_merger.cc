@@ -28,10 +28,11 @@ using framework::NodeData;
 using framework::Operator;
 
 template <typename T>
-using OpValueType  = cinn::hlir::framework::OpValueType<T>;
-using infershape_t = std::function<std::vector<framework::shape_t>(const std::vector<framework::shape_t>&,
-                                                                   const framework::AttrMapType&)>;
-using inferdtype_t = std::function<std::vector<Type>(const std::vector<Type>&, const framework::AttrMapType&)>;
+using OpValueType = cinn::hlir::framework::OpValueType<T>;
+using infershape_t = std::function<std::vector<framework::shape_t>(
+    const std::vector<framework::shape_t>&, const framework::AttrMapType&)>;
+using inferdtype_t = std::function<std::vector<Type>(
+    const std::vector<Type>&, const framework::AttrMapType&)>;
 using dtype_dict_t = absl::flat_hash_map<std::string, common::Type>;
 using shape_dict_t = absl::flat_hash_map<std::string, framework::shape_t>;
 
@@ -57,8 +58,12 @@ T get_attr(Node* instr, const std::string& attr, T def) {
   return absl::get<T>(instr->attrs.attr_store.at(attr));
 }
 
-NodeData* input_operand(Node* instr, int idx) { return instr->inlinks_in_order()[idx]->source()->safe_as<NodeData>(); }
-NodeData* output_operand(Node* instr, int idx) { return instr->outlinks_in_order()[idx]->sink()->safe_as<NodeData>(); }
+NodeData* input_operand(Node* instr, int idx) {
+  return instr->inlinks_in_order()[idx]->source()->safe_as<NodeData>();
+}
+NodeData* output_operand(Node* instr, int idx) {
+  return instr->outlinks_in_order()[idx]->sink()->safe_as<NodeData>();
+}
 
 void remove_node(framework::Graph* graph, GraphNode* node) {
   auto inlinks = node->inlinks();
@@ -85,7 +90,7 @@ bool all_equal(const T& arg, const Args&... args) {
 void PrintAllMatmulOps(framework::Graph* graph, const std::string& dot_type) {
   auto& dtype_dict{graph->GetMutableAttrs<dtype_dict_t>("inferdtype")};
   auto& shape_dict{graph->GetMutableAttrs<shape_dict_t>("infershape")};
-  auto nodes       = std::get<0>(graph->topological_order());
+  auto nodes = std::get<0>(graph->topological_order());
   auto print_shape = [](const std::vector<int32_t>& shape) -> std::string {
     std::stringstream ss;
     for (auto i : shape) {
@@ -96,14 +101,16 @@ void PrintAllMatmulOps(framework::Graph* graph, const std::string& dot_type) {
   for (auto* n : nodes) {
     auto* op_node = n->safe_as<Node>();
     if (op_node && op_node->op()->name == dot_type) {
-      auto a_id    = input_operand(op_node, 0)->id();
-      auto b_id    = input_operand(op_node, 1)->id();
+      auto a_id = input_operand(op_node, 0)->id();
+      auto b_id = input_operand(op_node, 1)->id();
       auto a_shape = shape_dict.at(a_id);
       auto b_shape = shape_dict.at(b_id);
       LOG(INFO) << "Find op: " << dot_type;
       LOG(INFO) << "Attrs: "
-                << "trans_a = " << get_attr<bool>(op_node, "trans_a", false) << ", "
-                << "trans_b = " << get_attr<bool>(op_node, "trans_b", false) << ", "
+                << "trans_a = " << get_attr<bool>(op_node, "trans_a", false)
+                << ", "
+                << "trans_b = " << get_attr<bool>(op_node, "trans_b", false)
+                << ", "
                 << "a: " << a_id << ", " << print_shape(a_shape) << " "
                 << "b: " << b_id << ", " << print_shape(b_shape);
     }
@@ -134,7 +141,8 @@ class DotBuilder {
 
   NodeData* Concat(int axis, std::vector<NodeData*> inputs) {
     const std::string type{"concat"};
-    auto instr = common::Shared<Node>(new Node(framework::Operator::Get(type), type, node_name(type)));
+    auto instr = common::Shared<Node>(
+        new Node(framework::Operator::Get(type), type, node_name(type)));
     instr->attrs.attr_store["axis"] = axis;
     for (auto* in : inputs) {
       in->LinkTo(instr.get());
@@ -143,29 +151,39 @@ class DotBuilder {
     return output;
   }
 
-  NodeData* Matmul(bool trans_a, bool trans_b, bool trans_out, float alpha, NodeData* lhs, NodeData* rhs) {
+  NodeData* Matmul(bool trans_a,
+                   bool trans_b,
+                   bool trans_out,
+                   float alpha,
+                   NodeData* lhs,
+                   NodeData* rhs) {
     const std::string type{dot_type_};
-    auto instr = common::Shared<Node>(new Node(framework::Operator::Get(type), type, node_name(type)));
-    matmul_    = instr.get();
-    instr->attrs.attr_store["trans_a"]   = trans_a;
-    instr->attrs.attr_store["trans_b"]   = trans_b;
+    auto instr = common::Shared<Node>(
+        new Node(framework::Operator::Get(type), type, node_name(type)));
+    matmul_ = instr.get();
+    instr->attrs.attr_store["trans_a"] = trans_a;
+    instr->attrs.attr_store["trans_b"] = trans_b;
     instr->attrs.attr_store["trans_out"] = trans_out;
-    instr->attrs.attr_store["alpha"]     = alpha;
+    instr->attrs.attr_store["alpha"] = alpha;
     lhs->LinkTo(instr.get());
     rhs->LinkTo(instr.get());
     auto* output = Var(instr);
     return output;
   }
 
-  NodeData* Slice(
-      std::vector<int> axes, std::vector<int> starts, std::vector<int> ends, NodeData* input, NodeData* output) {
+  NodeData* Slice(std::vector<int> axes,
+                  std::vector<int> starts,
+                  std::vector<int> ends,
+                  NodeData* input,
+                  NodeData* output) {
     const std::string type{"slice"};
-    auto instr = common::Shared<Node>(new Node(framework::Operator::Get(type), type, node_name(type)));
-    instr->attrs.attr_store["axes"]          = std::move(axes);
-    instr->attrs.attr_store["starts"]        = std::move(starts);
-    instr->attrs.attr_store["ends"]          = std::move(ends);
-    instr->attrs.attr_store["infer_flags"]   = std::vector<int>{};
-    instr->attrs.attr_store["strides"]       = std::vector<int>{};
+    auto instr = common::Shared<Node>(
+        new Node(framework::Operator::Get(type), type, node_name(type)));
+    instr->attrs.attr_store["axes"] = std::move(axes);
+    instr->attrs.attr_store["starts"] = std::move(starts);
+    instr->attrs.attr_store["ends"] = std::move(ends);
+    instr->attrs.attr_store["infer_flags"] = std::vector<int>{};
+    instr->attrs.attr_store["strides"] = std::vector<int>{};
     instr->attrs.attr_store["decrease_axis"] = std::vector<int>{};
     input->LinkTo(instr.get());
     instr->LinkTo(output);
@@ -176,7 +194,8 @@ class DotBuilder {
   }
 
   std::string node_name(std::string prefix) const {
-    return std::move(prefix.append("__dot_merger_").append(std::to_string(idx_++)));
+    return std::move(
+        prefix.append("__dot_merger_").append(std::to_string(idx_++)));
   }
 
   Node* matmul_op() const { return matmul_; }
@@ -215,9 +234,11 @@ class DotMergerPass {
         merge_nodes.push_back(a);
         for (size_t j = i + 1; j < dots.size(); ++j) {
           auto* b = dots[j];
-          if (!b || nodes_to_remove.count(a) || nodes_to_remove.count(b) || accessible(a, b) || accessible(b, a)) {
+          if (!b || nodes_to_remove.count(a) || nodes_to_remove.count(b) ||
+              accessible(a, b) || accessible(b, a)) {
             VLOG(5) << "Because nodes `" << a->id() << "` and `" << b->id()
-                    << " have data dependencies or have been deleted, they cannot be merged.";
+                    << " have data dependencies or have been deleted, they "
+                       "cannot be merged.";
             continue;
           }
           if (!is_merge(&builder, a, b)) {
@@ -247,7 +268,8 @@ class DotMergerPass {
   }
 
  private:
-  static std::map<NodeData*, std::vector<Node*>> GetClusters(framework::Graph* graph, const std::string& op_type) {
+  static std::map<NodeData*, std::vector<Node*>> GetClusters(
+      framework::Graph* graph, const std::string& op_type) {
     std::map<NodeData*, std::vector<Node*>> clusters;
     auto nodes = std::get<0>(graph->topological_order());
     for (auto* n : nodes) {
@@ -276,43 +298,52 @@ class DotMergerPass {
 
   static bool is_merge(DotBuilder* builder, Node* a, Node* b) {
     CHECK(a && b) << "The pointer of node is illegal.";
-    const std::array<bool, 2> trans_a{get_attr<bool>(a, "trans_a", false), get_attr<bool>(b, "trans_a", false)};
-    const std::array<bool, 2> trans_b{get_attr<bool>(a, "trans_b", false), get_attr<bool>(b, "trans_b", false)};
-    const std::array<bool, 2> trans_out{get_attr<bool>(a, "trans_out", false), get_attr<bool>(b, "trans_out", false)};
-    const std::array<float, 2> alpha{get_attr<float>(a, "alpha", 1.f), get_attr<float>(b, "alpha", 1.f)};
+    const std::array<bool, 2> trans_a{get_attr<bool>(a, "trans_a", false),
+                                      get_attr<bool>(b, "trans_a", false)};
+    const std::array<bool, 2> trans_b{get_attr<bool>(a, "trans_b", false),
+                                      get_attr<bool>(b, "trans_b", false)};
+    const std::array<bool, 2> trans_out{get_attr<bool>(a, "trans_out", false),
+                                        get_attr<bool>(b, "trans_out", false)};
+    const std::array<float, 2> alpha{get_attr<float>(a, "alpha", 1.f),
+                                     get_attr<float>(b, "alpha", 1.f)};
     if (!all_equal(trans_a, trans_b, trans_out, alpha)) {
       return false;
     }
     NodeData *shared_input{}, *input_a{}, *input_b{};
     if (input_operand(a, 1) == input_operand(b, 1)) {
       shared_input = input_operand(a, 1);
-      input_a      = input_operand(a, 0);
-      input_b      = input_operand(b, 0);
+      input_a = input_operand(a, 0);
+      input_b = input_operand(b, 0);
     } else if (input_operand(a, 0) == input_operand(b, 0)) {
       shared_input = input_operand(a, 0);
-      input_a      = input_operand(a, 1);
-      input_b      = input_operand(b, 1);
+      input_a = input_operand(a, 1);
+      input_b = input_operand(b, 1);
     } else {
       return false;
     }
-    auto* output_a   = output_operand(a, 0);
-    auto* output_b   = output_operand(b, 0);
+    auto* output_a = output_operand(a, 0);
+    auto* output_b = output_operand(b, 0);
     auto& graph_outs = builder->graph()->outputs;
     for (auto* n : {shared_input, input_a, input_b}) {
-      if (std::find(graph_outs.begin(), graph_outs.end(), n) != graph_outs.end()) {
+      if (std::find(graph_outs.begin(), graph_outs.end(), n) !=
+          graph_outs.end()) {
         return false;
       }
     }
     return true;
   }
 
-  static Node* NewMergeDots(DotBuilder* builder, std::vector<Node*> merge_nodes) {
-    const std::array<bool, 2> trans_a{get_attr<bool>(merge_nodes[0], "trans_a", false),
-                                      get_attr<bool>(merge_nodes[1], "trans_a", false)};
-    const std::array<bool, 2> trans_b{get_attr<bool>(merge_nodes[0], "trans_b", false),
-                                      get_attr<bool>(merge_nodes[1], "trans_b", false)};
-    const std::array<float, 2> alpha{get_attr<float>(merge_nodes[0], "alpha", 1.f),
-                                     get_attr<float>(merge_nodes[1], "alpha", 1.f)};
+  static Node* NewMergeDots(DotBuilder* builder,
+                            std::vector<Node*> merge_nodes) {
+    const std::array<bool, 2> trans_a{
+        get_attr<bool>(merge_nodes[0], "trans_a", false),
+        get_attr<bool>(merge_nodes[1], "trans_a", false)};
+    const std::array<bool, 2> trans_b{
+        get_attr<bool>(merge_nodes[0], "trans_b", false),
+        get_attr<bool>(merge_nodes[1], "trans_b", false)};
+    const std::array<float, 2> alpha{
+        get_attr<float>(merge_nodes[0], "alpha", 1.f),
+        get_attr<float>(merge_nodes[1], "alpha", 1.f)};
 
     bool lhs{true};
     int axis{1};
@@ -320,7 +351,7 @@ class DotMergerPass {
 
     if (input_operand(merge_nodes[0], 1) == input_operand(merge_nodes[1], 1)) {
       shared_input = input_operand(merge_nodes[0], 1);
-      lhs          = false;
+      lhs = false;
       if (!trans_a[0]) {
         axis = 0;
       } else if (trans_b[0]) {
@@ -333,24 +364,34 @@ class DotMergerPass {
     auto shape_shared = builder->shape_dict().at(shared_input->id());
     concat_nodes.push_back(input_operand(merge_nodes[0], axis));
     for (size_t i = 1; i < merge_nodes.size(); ++i) {
-      auto shape_a = builder->shape_dict().at(input_operand(merge_nodes[i - 1], axis)->id());
-      auto shape_b = builder->shape_dict().at(input_operand(merge_nodes[i], axis)->id());
+      auto shape_a = builder->shape_dict().at(
+          input_operand(merge_nodes[i - 1], axis)->id());
+      auto shape_b =
+          builder->shape_dict().at(input_operand(merge_nodes[i], axis)->id());
       CHECK_EQ(shape_a[1 - axis], shape_b[1 - axis])
-          << "The shape of matmul is error. " << shape_a.size() << ", " << shape_b.size();
+          << "The shape of matmul is error. " << shape_a.size() << ", "
+          << shape_b.size();
       concat_nodes.push_back(input_operand(merge_nodes[i], axis));
     }
     auto* concat_out = builder->Concat(axis, concat_nodes);
     NodeData* matmul_out{};
     if (!lhs) {
-      matmul_out = builder->Matmul(trans_a[0], trans_b[0], false, alpha[0], concat_out, shared_input);
+      matmul_out = builder->Matmul(
+          trans_a[0], trans_b[0], false, alpha[0], concat_out, shared_input);
     } else {
-      matmul_out = builder->Matmul(trans_a[0], trans_b[0], false, alpha[0], shared_input, concat_out);
+      matmul_out = builder->Matmul(
+          trans_a[0], trans_b[0], false, alpha[0], shared_input, concat_out);
     }
     auto start_shape = 0;
     for (size_t i = 0; i < concat_nodes.size(); ++i) {
-      auto shape   = builder->shape_dict().at(input_operand(merge_nodes[i], axis)->id());
+      auto shape =
+          builder->shape_dict().at(input_operand(merge_nodes[i], axis)->id());
       auto* output = output_operand(merge_nodes[i], 0);
-      builder->Slice({axis}, {start_shape}, {start_shape + shape[axis]}, matmul_out, output);
+      builder->Slice({axis},
+                     {start_shape},
+                     {start_shape + shape[axis]},
+                     matmul_out,
+                     output);
       start_shape += shape[axis];
     }
     return builder->matmul_op();
@@ -358,10 +399,14 @@ class DotMergerPass {
 
   static Node* MergeDots(DotBuilder* builder, Node* a, Node* b) {
     CHECK(a && b) << "The pointer of node is illegal.";
-    const std::array<bool, 2> trans_a{get_attr<bool>(a, "trans_a", false), get_attr<bool>(b, "trans_a", false)};
-    const std::array<bool, 2> trans_b{get_attr<bool>(a, "trans_b", false), get_attr<bool>(b, "trans_b", false)};
-    const std::array<bool, 2> trans_out{get_attr<bool>(a, "trans_out", false), get_attr<bool>(b, "trans_out", false)};
-    const std::array<float, 2> alpha{get_attr<float>(a, "alpha", 1.f), get_attr<float>(b, "alpha", 1.f)};
+    const std::array<bool, 2> trans_a{get_attr<bool>(a, "trans_a", false),
+                                      get_attr<bool>(b, "trans_a", false)};
+    const std::array<bool, 2> trans_b{get_attr<bool>(a, "trans_b", false),
+                                      get_attr<bool>(b, "trans_b", false)};
+    const std::array<bool, 2> trans_out{get_attr<bool>(a, "trans_out", false),
+                                        get_attr<bool>(b, "trans_out", false)};
+    const std::array<float, 2> alpha{get_attr<float>(a, "alpha", 1.f),
+                                     get_attr<float>(b, "alpha", 1.f)};
     if (!all_equal(trans_a, trans_b, trans_out, alpha)) {
       return nullptr;
     }
@@ -370,9 +415,9 @@ class DotMergerPass {
     NodeData *shared_input{}, *input_a{}, *input_b{};
     if (input_operand(a, 1) == input_operand(b, 1)) {
       shared_input = input_operand(a, 1);
-      input_a      = input_operand(a, 0);
-      input_b      = input_operand(b, 0);
-      lhs          = false;
+      input_a = input_operand(a, 0);
+      input_b = input_operand(b, 0);
+      lhs = false;
       if (!trans_a[0]) {
         axis = 0;
       } else if (trans_b[0]) {
@@ -380,34 +425,43 @@ class DotMergerPass {
       }
     } else if (input_operand(a, 0) == input_operand(b, 0)) {
       shared_input = input_operand(a, 0);
-      input_a      = input_operand(a, 1);
-      input_b      = input_operand(b, 1);
+      input_a = input_operand(a, 1);
+      input_b = input_operand(b, 1);
     } else {
       return nullptr;
     }
-    auto* output_a   = output_operand(a, 0);
-    auto* output_b   = output_operand(b, 0);
+    auto* output_a = output_operand(a, 0);
+    auto* output_b = output_operand(b, 0);
     auto& graph_outs = builder->graph()->outputs;
     for (auto* n : {shared_input, input_a, input_b}) {
-      if (std::find(graph_outs.begin(), graph_outs.end(), n) != graph_outs.end()) {
+      if (std::find(graph_outs.begin(), graph_outs.end(), n) !=
+          graph_outs.end()) {
         return nullptr;
       }
     }
-    CHECK(shared_input && input_a && input_b) << "The input node type must be variable.";
+    CHECK(shared_input && input_a && input_b)
+        << "The input node type must be variable.";
     auto shape_shared = builder->shape_dict().at(shared_input->id());
-    auto shape_a      = builder->shape_dict().at(input_a->id());
-    auto shape_b      = builder->shape_dict().at(input_b->id());
+    auto shape_a = builder->shape_dict().at(input_a->id());
+    auto shape_b = builder->shape_dict().at(input_b->id());
     CHECK_EQ(shape_a[1 - axis], shape_b[1 - axis])
-        << "The shape of matmul is error. " << shape_a.size() << ", " << shape_b.size();
+        << "The shape of matmul is error. " << shape_a.size() << ", "
+        << shape_b.size();
     auto* concat_out = builder->Concat(axis, {input_a, input_b});
     NodeData* matmul_out{};
     if (!lhs) {
-      matmul_out = builder->Matmul(trans_a[0], trans_b[0], false, alpha[0], concat_out, shared_input);
+      matmul_out = builder->Matmul(
+          trans_a[0], trans_b[0], false, alpha[0], concat_out, shared_input);
     } else {
-      matmul_out = builder->Matmul(trans_a[0], trans_b[0], false, alpha[0], shared_input, concat_out);
+      matmul_out = builder->Matmul(
+          trans_a[0], trans_b[0], false, alpha[0], shared_input, concat_out);
     }
     builder->Slice({axis}, {0}, {shape_a[axis]}, matmul_out, output_a);
-    builder->Slice({axis}, {shape_a[axis]}, {shape_a[axis] + shape_b[axis]}, matmul_out, output_b);
+    builder->Slice({axis},
+                   {shape_a[axis]},
+                   {shape_a[axis] + shape_b[axis]},
+                   matmul_out,
+                   output_b);
     return builder->matmul_op();
   }
 };
@@ -418,7 +472,8 @@ void DotMergerPassFunc(framework::Graph* graph) {
   // The cublas gemm is not yet supported.
   for (auto& dot_type : {"matmul", "cublas_matmul"}) {
     int n = DotMergerPass::Apply(graph, dot_type);
-    VLOG(3) << "The fusion of `" << dot_type << "` was performed " << n << " times.";
+    VLOG(3) << "The fusion of `" << dot_type << "` was performed " << n
+            << " times.";
   }
 }
 

@@ -33,53 +33,59 @@ namespace cinn::frontend {
 
 TEST(AutoCast, Exp) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(common::Float16(), {4, 5, 3}, "X");
-  auto out     = builder.Exp(x);
+  auto x = builder.CreateInput(common::Float16(), {4, 5, 3}, "X");
+  auto out = builder.Exp(x);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{}, {"AutoCast", "Decomposer"}};
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {}, {"AutoCast", "Decomposer"}};
   CompareProgramPassResult(&program, target, {out->id}, -2, passes);
 }
 
 TEST(AutoCast, Exp_bf16) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(common::BFloat16(), {4, 5, 3}, "X");
-  auto out     = builder.Exp(x);
+  auto x = builder.CreateInput(common::BFloat16(), {4, 5, 3}, "X");
+  auto out = builder.Exp(x);
   auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{}, {"AutoCast", "Decomposer"}};
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {}, {"AutoCast", "Decomposer"}};
   CompareProgramPassResult(&program, target, {out->id}, -2, passes);
 }
 
 TEST(AutoCast, BatchNorm) {
   NetBuilder builder("net_builder");
-  auto x        = builder.CreateInput(common::Float16(), {128, 64, 112, 112}, "X");
-  auto scale    = builder.FillConstant({64}, 1.0f, "scale", "float32");
-  auto bias     = builder.FillConstant({64}, 0.0f, "bias", "float32");
-  auto mean     = builder.FillConstant({64}, 0.0f, "mean", "float32");
+  auto x = builder.CreateInput(common::Float16(), {128, 64, 112, 112}, "X");
+  auto scale = builder.FillConstant({64}, 1.0f, "scale", "float32");
+  auto bias = builder.FillConstant({64}, 0.0f, "bias", "float32");
+  auto mean = builder.FillConstant({64}, 0.0f, "mean", "float32");
   auto variance = builder.FillConstant({64}, 1.0f, "variance", "float32");
-  auto out      = builder.BatchNorm(x, scale, bias, mean, variance, 1e-5f, 0.9f, "NCHW", false);
-  auto program  = builder.Build();
+  auto out = builder.BatchNorm(
+      x, scale, bias, mean, variance, 1e-5f, 0.9f, "NCHW", false);
+  auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{}, {"AutoCast", "Decomposer"}};
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {}, {"AutoCast", "Decomposer"}};
   CompareProgramPassResult(&program, target, {out[0]->id}, -2, passes);
 }
 
 TEST(AutoCast, BatchNorm_bf16) {
   NetBuilder builder("net_builder");
-  auto x        = builder.CreateInput(common::BFloat16(), {128, 64, 112, 112}, "X");
-  auto scale    = builder.FillConstant({64}, 1.0f, "scale", "float32");
-  auto bias     = builder.FillConstant({64}, 0.0f, "bias", "float32");
-  auto mean     = builder.FillConstant({64}, 0.0f, "mean", "float32");
+  auto x = builder.CreateInput(common::BFloat16(), {128, 64, 112, 112}, "X");
+  auto scale = builder.FillConstant({64}, 1.0f, "scale", "float32");
+  auto bias = builder.FillConstant({64}, 0.0f, "bias", "float32");
+  auto mean = builder.FillConstant({64}, 0.0f, "mean", "float32");
   auto variance = builder.FillConstant({64}, 1.0f, "variance", "float32");
-  auto out      = builder.BatchNorm(x, scale, bias, mean, variance, 1e-5f, 0.9f, "NCHW", false);
-  auto program  = builder.Build();
+  auto out = builder.BatchNorm(
+      x, scale, bias, mean, variance, 1e-5f, 0.9f, "NCHW", false);
+  auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
-  std::pair<std::vector<std::string>, std::vector<std::string>> passes{{}, {"AutoCast", "Decomposer"}};
+  std::pair<std::vector<std::string>, std::vector<std::string>> passes{
+      {}, {"AutoCast", "Decomposer"}};
   CompareProgramPassResult(&program, target, {out[0]->id}, -2, passes);
 }
 

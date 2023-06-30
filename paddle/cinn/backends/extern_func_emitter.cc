@@ -37,19 +37,22 @@ ExternFunctionEmitterRegistry& ExternFunctionEmitterRegistry::Global() {
   return x;
 }
 
-void ExternFunctionEmitterRegistry::Register(const ExternFuncID& name, const std::string& x) {
+void ExternFunctionEmitterRegistry::Register(const ExternFuncID& name,
+                                             const std::string& x) {
 #ifdef CINN_WITH_DEBUG
   if (FLAGS_verbose_function_register) {
-    RAW_LOG_INFO("Register extern function emitter [%s]", utils::GetStreamCnt(name).c_str());
+    RAW_LOG_INFO("Register extern function emitter [%s]",
+                 utils::GetStreamCnt(name).c_str());
   }
 #endif  // CINN_WITH_DEBUG
   CHECK(!x.empty()) << "Extern Function name is empty.";
   data_[name] = x;
 }
 
-const std::string& ExternFunctionEmitterRegistry::Lookup(const ExternFuncID& name) const {
+const std::string& ExternFunctionEmitterRegistry::Lookup(
+    const ExternFuncID& name) const {
   static const std::string not_found = "";
-  auto it                            = data_.find(name);
+  auto it = data_.find(name);
   if (it != data_.end()) {
     return it->second;
   }
@@ -74,8 +77,10 @@ const FunctionProto& ExternFunctionEmitter::func_proto() const {
 
 namespace std {
 
-size_t hash<cinn::backends::ExternFuncID>::operator()(const cinn::backends::ExternFuncID& x) const {
-  return absl::Hash<absl::string_view>{}(x.name) ^ absl::Hash<absl::string_view>{}(x.backend_id);
+size_t hash<cinn::backends::ExternFuncID>::operator()(
+    const cinn::backends::ExternFuncID& x) const {
+  return absl::Hash<absl::string_view>{}(x.name) ^
+         absl::Hash<absl::string_view>{}(x.backend_id);
 }
 
 }  // namespace std

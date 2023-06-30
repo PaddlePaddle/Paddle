@@ -28,18 +28,22 @@ using framework::shape_t;
 using common::GraphEdge;
 using common::GraphNode;
 
-using AlterFunction = std::function<void(const FusionHelperBase*, Graph*, Node*)>;
+using AlterFunction =
+    std::function<void(const FusionHelperBase*, Graph*, Node*)>;
 
 // Constant Fold Pass
 //
 class ConstantFoldingPassHelper : public FusionHelperBase {
  public:
-  ConstantFoldingPassHelper(Graph* graph) : FusionHelperBase(graph), graph_(graph) { RegisterAlterFunction(); }
+  ConstantFoldingPassHelper(Graph* graph)
+      : FusionHelperBase(graph), graph_(graph) {
+    RegisterAlterFunction();
+  }
 
   void operator()() {
     bool update = false;
     do {
-      update             = false;
+      update = false;
       auto nodes_inorder = std::get<0>(graph_->topological_order());
       for (auto node : nodes_inorder) {
         if (!node->safe_as<Node>()) {
@@ -60,9 +64,11 @@ class ConstantFoldingPassHelper : public FusionHelperBase {
           // if producer's output in graph_->outputs, then will not fold
           for (auto& edge : producer->outlinks()) {
             auto graph_node = edge->sink();
-            auto data       = graph_node->safe_as<NodeData>();
+            auto data = graph_node->safe_as<NodeData>();
             CHECK(data);
-            if (std::find(graph_->outputs.begin(), graph_->outputs.end(), data) != graph_->outputs.end()) {
+            if (std::find(graph_->outputs.begin(),
+                          graph_->outputs.end(),
+                          data) != graph_->outputs.end()) {
               can_fold = false;
               break;
             }
@@ -83,15 +89,16 @@ class ConstantFoldingPassHelper : public FusionHelperBase {
 
  private:
   void RegisterAlterFunction() {
-    alter_function_ = {{"broadcast_to_const_scalar", fold_broadcast_to_constant},
-                       {"broadcast_to_fill_constant", fold_broadcast_to_constant},
-                       {"reshape_fill_constant", fold_reshape_fill_constant},
-                       {"squeeze_fill_constant", fold_squeeze_fill_constant},
-                       {"expand_dims_fill_constant", fold_expand_dims_fill_constant}};
+    alter_function_ = {
+        {"broadcast_to_const_scalar", fold_broadcast_to_constant},
+        {"broadcast_to_fill_constant", fold_broadcast_to_constant},
+        {"reshape_fill_constant", fold_reshape_fill_constant},
+        {"squeeze_fill_constant", fold_squeeze_fill_constant},
+        {"expand_dims_fill_constant", fold_expand_dims_fill_constant}};
   }
 
   std::string GetTypeName(Node* node) {
-    auto producers  = GetProducerNode(node->safe_as<Node>());
+    auto producers = GetProducerNode(node->safe_as<Node>());
     std::string key = node->op()->name;
     for (auto producer : producers) {
       key += std::string("_") + producer->op()->name;

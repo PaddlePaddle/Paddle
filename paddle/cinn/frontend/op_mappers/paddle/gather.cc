@@ -21,7 +21,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void GatherOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void GatherOpMapper(const paddle::cpp::OpDesc& op_desc,
+                    const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Input("Index").size(), 1UL);
@@ -29,12 +30,13 @@ void GatherOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto x     = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto index = ctx.GetVar(index_name);
 
   auto axis = utils::GetAttrOrDefault<int>(op_desc, "axis", 0);
 
-  VLOG(4) << "Gather X:" << x_name << "[" << cinn::utils::Join(x->shape, ",") << "] with index:" << index_name << "["
+  VLOG(4) << "Gather X:" << x_name << "[" << cinn::utils::Join(x->shape, ",")
+          << "] with index:" << index_name << "["
           << cinn::utils::Join(index->shape, ",") << "] at axis=" << axis;
 
   if (index->shape.size() > 1) {
@@ -42,13 +44,15 @@ void GatherOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
     bool is_rank_1 = false;
     for (auto dim : index->shape) {
       if (dim != 1) {
-        CHECK(!is_rank_1) << "The \"index\" of \"Gather\" only support rank 1 tensor, but here index.shape=["
+        CHECK(!is_rank_1) << "The \"index\" of \"Gather\" only support rank 1 "
+                             "tensor, but here index.shape=["
                           << cinn::utils::Join(index->shape, ",") << "]";
         is_rank_1 = true;
       }
     }
-    auto num = std::accumulate(index->shape.begin(), index->shape.end(), 1, std::multiplies<int>());
-    index    = ctx.Builder()->Reshape(index, {num});
+    auto num = std::accumulate(
+        index->shape.begin(), index->shape.end(), 1, std::multiplies<int>());
+    index = ctx.Builder()->Reshape(index, {num});
   }
 
   // now paddle science only need reduce sum
@@ -63,6 +67,7 @@ void GatherOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& c
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_gather) {
-  CINN_REGISTER_OP_MAPPER(gather, cinn::frontend::paddle_mappers::GatherOpMapper)
+  CINN_REGISTER_OP_MAPPER(gather,
+                          cinn::frontend::paddle_mappers::GatherOpMapper)
   return true;
 }

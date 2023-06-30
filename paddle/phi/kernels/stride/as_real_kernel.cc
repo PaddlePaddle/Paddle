@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#if !defined(PADDLE_WITH_XPU)
 #include "paddle/phi/kernels/as_real_kernel.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -37,8 +36,22 @@ void AsRealStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    as_real, STRIDED, phi::AsRealStridedKernel) {
+PD_REGISTER_KERNEL(as_real,
+                   CPU,
+                   STRIDED,
+                   phi::AsRealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
-#endif  //! defined(PADDLE_WITH_XPU)
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(as_real,
+                   GPU,
+                   STRIDED,
+                   phi::AsRealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif

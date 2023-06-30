@@ -29,15 +29,18 @@ enum class RuleApplyType : int {
   // This rule cannot be applied to ModuleExpr.
   kCannotApply = 0,
   // This rule can be applied to ModuleExpr,
-  // and the original ModuleExpr will be retained for branching with other rules.
+  // and the original ModuleExpr will be retained for branching with other
+  // rules.
   kApply = 1,
   // This rule can be applied, but the original ModuleExpr will be deleted,
-  // so the branches with other rules applied on the original ModuleExpr will be pruned.
+  // so the branches with other rules applied on the original ModuleExpr will be
+  // pruned.
   kApplyAndPruneOtherRules = 2,
 };
 
 /**
- * Base class for rules of auto-generating schedule (like Ansor's sketch generation)
+ * Base class for rules of auto-generating schedule (like Ansor's sketch
+ * generation)
  *
  */
 class AutoGenRule {
@@ -46,7 +49,8 @@ class AutoGenRule {
   ~AutoGenRule() = default;
 
   // Initialize the AutoGenRule, it must be called before further actions.
-  // Returns false if the rule cannot be applied on the mod_expr, true otherwise.
+  // Returns false if the rule cannot be applied on the mod_expr, true
+  // otherwise.
   virtual RuleApplyType Init(ir::IRSchedule* ir_schedule) = 0;
 
   // CINN IRSchedule can contain many ScheduleBlock(s) and Loop(s), so
@@ -65,11 +69,15 @@ class AutoGenRule {
   // Returns the name of the rule, used for debug.
   virtual std::string GetRuleName() const = 0;
 
-  // Analyze the ApplyType of the rule used for a block determined by a specific SearchState and block name
-  virtual RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const = 0;
+  // Analyze the ApplyType of the rule used for a block determined by a specific
+  // SearchState and block name
+  virtual RuleApplyType AnalyseApplyType(
+      SearchState state, const std::string& block_name) const = 0;
 
-  // Apply the rule to a block determined by a specific SearchState and block name
-  virtual std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) = 0;
+  // Apply the rule to a block determined by a specific SearchState and block
+  // name
+  virtual std::vector<SearchState> ApplyOnBlock(
+      SearchState state, const std::string& block_name) = 0;
 
  protected:
   // number of ScheduleBlock that can apply this auto gen rule

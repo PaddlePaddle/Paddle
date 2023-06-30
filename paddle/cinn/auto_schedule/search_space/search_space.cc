@@ -39,18 +39,23 @@ DECLARE_bool(auto_schedule_use_cost_model);
 namespace cinn {
 namespace auto_schedule {
 
-SearchSpace::SearchSpace(const TuneTask& tune_task, utils::LinearRandomEngine::StateType rand_seed)
-    : tune_task_(tune_task), rand_seed_(utils::LinearRandomEngine::NormalizeState(rand_seed)) {
+SearchSpace::SearchSpace(const TuneTask& tune_task,
+                         utils::LinearRandomEngine::StateType rand_seed)
+    : tune_task_(tune_task),
+      rand_seed_(utils::LinearRandomEngine::NormalizeState(rand_seed)) {
   const auto& target = tune_task_.target;
   // initialize a set of rules and they are commonly used by all states
   // TODO(zhhsplendid): pass correct output names to AutoInline
-  // sketch_rules_.emplace_back(new AutoInline(target, tune_task_.output_names));
-  sketch_rules_.emplace_back(new MultiLevelTiling(target, MultiLevelTiling::kConfigs.at(target.arch)));
+  // sketch_rules_.emplace_back(new AutoInline(target,
+  // tune_task_.output_names));
+  sketch_rules_.emplace_back(
+      new MultiLevelTiling(target, MultiLevelTiling::kConfigs.at(target.arch)));
   sketch_rules_.emplace_back(new AutoUnroll(target));
   sketch_rules_.emplace_back(new SkipRule(target));
 }
 
-SearchState SearchSpace::GetScheduleMutate(const SearchState& state, const ExprCostModel& cost_model) {
+SearchState SearchSpace::GetScheduleMutate(const SearchState& state,
+                                           const ExprCostModel& cost_model) {
   bool has_manual_schedule = false;
   if (has_manual_schedule) {
     SearchState ret = ManualScheduleMutate(state);
@@ -58,9 +63,11 @@ SearchState SearchSpace::GetScheduleMutate(const SearchState& state, const ExprC
   }
   SearchState ret = RandomScheduleMutate(state);
   if (FLAGS_auto_schedule_use_cost_model) {
-    ret->predicted_cost = cost_model.Predict(ret->ir_schedule.GetModule(), tune_task_.target);
+    ret->predicted_cost =
+        cost_model.Predict(ret->ir_schedule.GetModule(), tune_task_.target);
   }
-  VLOG(4) << JoinStatesDebugString("SearchSpace::GetScheduleMutate", {state}, /*verbose=*/VLOG_IS_ON(5));
+  VLOG(4) << JoinStatesDebugString(
+      "SearchSpace::GetScheduleMutate", {state}, /*verbose=*/VLOG_IS_ON(5));
   return ret;
 }
 
@@ -77,9 +84,10 @@ SearchState SearchSpace::RandomScheduleMutate(const SearchState& state) {
   SearchState ret(state);
   std::vector<RuleApplyType> apply_types(ret->applicable_rules.size());
   for (int idx = 0; idx != ret->applicable_rules.size(); ++idx) {
-    AutoGenRule* rule        = ret->applicable_rules.at(idx);
+    AutoGenRule* rule = ret->applicable_rules.at(idx);
     RuleApplyType apply_type = rule->Init(&ret->ir_schedule);
-    VLOG(6) << "Evaluate rule:" << rule->GetRuleName() << "=" << static_cast<int>(apply_type);
+    VLOG(6) << "Evaluate rule:" << rule->GetRuleName() << "="
+            << static_cast<int>(apply_type);
     apply_types[idx] = apply_type;
     if (apply_type != RuleApplyType::kCannotApply) {
       weight_to_rule_index[cur_weight] = idx;
@@ -94,7 +102,8 @@ SearchState SearchSpace::RandomScheduleMutate(const SearchState& state) {
   }
 
   // 3. Sample a schedule on the distribution
-  int sample_weighted_index = utils::SampleUniformInt(0, cur_weight, &rand_seed_);
+  int sample_weighted_index =
+      utils::SampleUniformInt(0, cur_weight, &rand_seed_);
 
   auto iter = weight_to_rule_index.upper_bound(sample_weighted_index);
   --iter;
@@ -102,13 +111,15 @@ SearchState SearchSpace::RandomScheduleMutate(const SearchState& state) {
   int sample_rule_index = iter->second;
   CHECK_LT(sample_rule_index, ret->applicable_rules.size());
   AutoGenRule* sample_rule = ret->applicable_rules.at(sample_rule_index);
-  VLOG(7) << "Apply rule: " << sample_rule->GetRuleName() << " with index=" << sample_weighted_index - iter->first;
+  VLOG(7) << "Apply rule: " << sample_rule->GetRuleName()
+          << " with index=" << sample_weighted_index - iter->first;
   // 4. Apply the schedule change
   sample_rule->Apply(sample_weighted_index - iter->first);
 
   // 5. Remove the rule after applying it
   if (apply_types.at(sample_rule_index) != RuleApplyType::kCannotApply) {
-    ret->applicable_rules.erase(ret->applicable_rules.begin() + sample_rule_index);
+    ret->applicable_rules.erase(ret->applicable_rules.begin() +
+                                sample_rule_index);
   }
 
   return ret;
@@ -116,17 +127,20 @@ SearchState SearchSpace::RandomScheduleMutate(const SearchState& state) {
 
 std::vector<SearchState> SearchSpace::InitSketchWithRandomStrategy(int num) {
   VLOG(5) << "SearchSpace::GetRandomInitialSketch with num=" << num;
-  ir::IRSchedule init_schedule(ir::ModuleExpr(tune_task_.GetLoweredFuncBodyExprs()),
-                               utils::ForkRandomState(&rand_seed_));
+  ir::IRSchedule init_schedule(
+      ir::ModuleExpr(tune_task_.GetLoweredFuncBodyExprs()),
+      utils::ForkRandomState(&rand_seed_));
   std::vector<AutoGenRule*> init_rules;
-  std::transform(sketch_rules_.begin(), sketch_rules_.end(), std::back_inserter(init_rules), [](const auto& rule) {
-    return rule.get();
-  });
+  std::transform(sketch_rules_.begin(),
+                 sketch_rules_.end(),
+                 std::back_inserter(init_rules),
+                 [](const auto& rule) { return rule.get(); });
   std::vector<SearchState> result;
   while (result.size() < num) {
     SearchState state(init_schedule, SearchState::NOT_INIT_COST, init_rules);
     for (int i = 0; i < init_sketch_random_depth_; ++i) {
-      VLOG(6) << "Generating random sketch with RandomScheduleMutate at depth: " << i;
+      VLOG(6) << "Generating random sketch with RandomScheduleMutate at depth: "
+              << i;
       state = RandomScheduleMutate(state);
       if (state->applicable_rules.empty()) {
         break;
@@ -134,7 +148,9 @@ std::vector<SearchState> SearchSpace::InitSketchWithRandomStrategy(int num) {
     }
 
     VLOG(5) << JoinStatesDebugString(
-        "SearchSpace::GetRandomInitialSketch-New_Sketch", {state}, /*verbose=*/VLOG_IS_ON(6));
+        "SearchSpace::GetRandomInitialSketch-New_Sketch",
+        {state},
+        /*verbose=*/VLOG_IS_ON(6));
     result.emplace_back(std::move(state));
   }
   return result;
@@ -142,24 +158,28 @@ std::vector<SearchState> SearchSpace::InitSketchWithRandomStrategy(int num) {
 
 std::vector<SearchState> SearchSpace::InitSketchWithRandomPrunedStrategy() {
   VLOG(5) << "SearchSpace::InitSketchWithRandomPrunedStrategy";
-  ir::IRSchedule init_schedule(ir::ModuleExpr(tune_task_.GetLoweredFuncBodyExprs()),
-                               utils::ForkRandomState(&rand_seed_));
-  auto all_blocks    = init_schedule.GetAllBlocks();
-  auto block_sampler = BlockSampler::Make(all_blocks, true, "probabilistic", utils::ForkRandomState(&rand_seed_));
+  ir::IRSchedule init_schedule(
+      ir::ModuleExpr(tune_task_.GetLoweredFuncBodyExprs()),
+      utils::ForkRandomState(&rand_seed_));
+  auto all_blocks = init_schedule.GetAllBlocks();
+  auto block_sampler = BlockSampler::Make(
+      all_blocks, true, "probabilistic", utils::ForkRandomState(&rand_seed_));
 
   std::vector<AutoGenRule*> init_rules;
-  std::transform(sketch_rules_.begin(), sketch_rules_.end() - 1, std::back_inserter(init_rules), [](const auto& rule) {
-    return rule.get();
-  });
+  std::transform(sketch_rules_.begin(),
+                 sketch_rules_.end() - 1,
+                 std::back_inserter(init_rules),
+                 [](const auto& rule) { return rule.get(); });
   CHECK(init_rules.size() > 0) << "number of init rules cannot be 0";
 
   SearchState init_state(init_schedule, SearchState::NOT_INIT_COST, {});
   std::vector<SearchState> states_buf1{init_state}, states_buf2;
-  std::vector<SearchState>* p_states_cur  = &states_buf1;
+  std::vector<SearchState>* p_states_cur = &states_buf1;
   std::vector<SearchState>* p_states_next = &states_buf2;
-  int total_steps                         = 0, steps;
+  int total_steps = 0, steps;
   std::string block_name;
-  while ("" != (block_name = block_sampler->NextBlock()) && total_steps < init_sketch_random_depth_) {
+  while ("" != (block_name = block_sampler->NextBlock()) &&
+         total_steps < init_sketch_random_depth_) {
     steps = utils::SampleUniformInt(1, init_rules.size() + 1, &rand_seed_);
     if (total_steps + steps > init_sketch_random_depth_) {
       steps = init_sketch_random_depth_ - total_steps;
@@ -167,51 +187,66 @@ std::vector<SearchState> SearchSpace::InitSketchWithRandomPrunedStrategy() {
     total_steps += steps;
     p_states_next->clear();
     for (const auto& state : *p_states_cur) {
-      auto rule_sampler = RuleSampler::Make(init_rules, true, "probabilistic", utils::ForkRandomState(&rand_seed_));
-      auto new_states   = ApplySketchRule(state, block_name, rule_sampler.get(), steps, false, 1);
-      p_states_next->insert(p_states_next->end(), new_states.begin(), new_states.end());
+      auto rule_sampler =
+          RuleSampler::Make(init_rules,
+                            true,
+                            "probabilistic",
+                            utils::ForkRandomState(&rand_seed_));
+      auto new_states = ApplySketchRule(
+          state, block_name, rule_sampler.get(), steps, false, 1);
+      p_states_next->insert(
+          p_states_next->end(), new_states.begin(), new_states.end());
     }
     std::swap(p_states_cur, p_states_next);
   }
   VLOG(5) << JoinStatesDebugString(
-      "SearchSpace::InitSketchWithRandomPrunedStrategy", *p_states_cur, /*verbose=*/VLOG_IS_ON(6));
+      "SearchSpace::InitSketchWithRandomPrunedStrategy",
+      *p_states_cur,
+      /*verbose=*/VLOG_IS_ON(6));
   return *p_states_cur;
 }
 
 std::vector<SearchState> SearchSpace::InitSketchWithRulePrunedStrategy() {
   VLOG(5) << "SearchSpace::InitSketchWithRulePrunedStrategy";
-  ir::IRSchedule init_schedule(ir::ModuleExpr(tune_task_.GetLoweredFuncBodyExprs()),
-                               utils::ForkRandomState(&rand_seed_));
+  ir::IRSchedule init_schedule(
+      ir::ModuleExpr(tune_task_.GetLoweredFuncBodyExprs()),
+      utils::ForkRandomState(&rand_seed_));
   auto all_blocks = init_schedule.GetAllBlocks();
   std::reverse(all_blocks.begin(), all_blocks.end());
   auto block_sampler = BlockSampler::Make(all_blocks, true, "traversal");
 
   std::vector<AutoGenRule*> init_rules;
-  std::transform(sketch_rules_.begin(), sketch_rules_.end() - 1, std::back_inserter(init_rules), [](const auto& rule) {
-    return rule.get();
-  });
+  std::transform(sketch_rules_.begin(),
+                 sketch_rules_.end() - 1,
+                 std::back_inserter(init_rules),
+                 [](const auto& rule) { return rule.get(); });
   CHECK(init_rules.size() > 0) << "number of init rules cannot be 0";
 
   SearchState init_state(init_schedule, SearchState::NOT_INIT_COST, {});
   std::vector<SearchState> states_buf1{init_state}, states_buf2;
-  std::vector<SearchState>* p_states_cur  = &states_buf1;
+  std::vector<SearchState>* p_states_cur = &states_buf1;
   std::vector<SearchState>* p_states_next = &states_buf2;
   std::string block_name;
   while ("" != (block_name = block_sampler->NextBlock())) {
     p_states_next->clear();
     for (const auto& state : *p_states_cur) {
       auto rule_sampler = RuleSampler::Make(init_rules, true, "traversal");
-      auto new_states   = ApplySketchRule(state, block_name, rule_sampler.get(), 0, true);
-      p_states_next->insert(p_states_next->end(), new_states.begin(), new_states.end());
+      auto new_states =
+          ApplySketchRule(state, block_name, rule_sampler.get(), 0, true);
+      p_states_next->insert(
+          p_states_next->end(), new_states.begin(), new_states.end());
     }
     std::swap(p_states_cur, p_states_next);
   }
   VLOG(5) << JoinStatesDebugString(
-      "SearchSpace::InitSketchWithRulePrunedStrategy", *p_states_cur, /*verbose=*/VLOG_IS_ON(6));
+      "SearchSpace::InitSketchWithRulePrunedStrategy",
+      *p_states_cur,
+      /*verbose=*/VLOG_IS_ON(6));
   return *p_states_cur;
 }
 
-std::vector<SearchState> SearchSpace::GenerateSketches(int num, const std::string& strategy) {
+std::vector<SearchState> SearchSpace::GenerateSketches(
+    int num, const std::string& strategy) {
   VLOG(4) << "SearchSpace::GenerateSketches with num = " << num;
 
   if (strategy == "random") {
@@ -239,28 +274,33 @@ std::vector<SearchState> SearchSpace::GenerateSketches(int num, const std::strin
       }
     }
   }
-  VLOG(4) << JoinStatesDebugString("SearchSpace::GenerateSketches", result, /*verbose=*/VLOG_IS_ON(5));
+  VLOG(4) << JoinStatesDebugString(
+      "SearchSpace::GenerateSketches", result, /*verbose=*/VLOG_IS_ON(5));
   return result;
 }
 
-std::vector<SearchState> SearchSpace::ApplySketchRule(const SearchState& state,
-                                                      const std::string& block_name,
-                                                      RuleSampler* rule_sampler,
-                                                      int steps,
-                                                      bool prune_by_rule,
-                                                      double prune_probability) {
+std::vector<SearchState> SearchSpace::ApplySketchRule(
+    const SearchState& state,
+    const std::string& block_name,
+    RuleSampler* rule_sampler,
+    int steps,
+    bool prune_by_rule,
+    double prune_probability) {
   std::list<SearchState> layer{state};
   int step = 0;
   AutoGenRule* rule;
-  // After determining a SearchState and a block, each rule has two possibilities: apply and not apply.
-  // In all transfer spaces, select a rule at each step, and collect all possible new states arrived by apply and not
-  // apply. This forms a tree, and we can use rule pruning or random pruning to reduce the number of sketches.
+  // After determining a SearchState and a block, each rule has two
+  // possibilities: apply and not apply. In all transfer spaces, select a rule
+  // at each step, and collect all possible new states arrived by apply and not
+  // apply. This forms a tree, and we can use rule pruning or random pruning to
+  // reduce the number of sketches.
   VLOG(6) << "Collect the states of all transfers within steps: " << steps;
   while ((step++ < steps || steps == 0) && (rule = rule_sampler->NextRule())) {
     VLOG(7) << "step = " << step << ", rule: " << rule->GetRuleName();
     std::list<SearchState> new_states;
     int id = 0;
-    for (std::list<SearchState>::iterator iter = layer.begin(); iter != layer.end();) {
+    for (std::list<SearchState>::iterator iter = layer.begin();
+         iter != layer.end();) {
       // Some rules will reduce the number of blocks, such as AutoInline,
       // so we need to check whether the SearchState still has the block.
       if (!(*iter)->ir_schedule.HasBlock(block_name)) {
@@ -268,21 +308,26 @@ std::vector<SearchState> SearchSpace::ApplySketchRule(const SearchState& state,
         continue;
       }
       auto type = rule->AnalyseApplyType(*iter, block_name);
-      VLOG(7) << "At SearchState " << ++id
-              << ", apply type = " << static_cast<typename std::underlying_type<RuleApplyType>::type>(type);
+      VLOG(7)
+          << "At SearchState " << ++id << ", apply type = "
+          << static_cast<typename std::underlying_type<RuleApplyType>::type>(
+                 type);
       // if cannot apply the rule, skip it
       if (type == RuleApplyType::kCannotApply) {
         ++iter;
         continue;
       }
-      // if can apply the rule, apply it and determine whether to prune the branch that do not apply
-      std::vector<SearchState> tmp_states = rule->ApplyOnBlock(*iter, block_name);
+      // if can apply the rule, apply it and determine whether to prune the
+      // branch that do not apply
+      std::vector<SearchState> tmp_states =
+          rule->ApplyOnBlock(*iter, block_name);
       new_states.insert(new_states.end(), tmp_states.begin(), tmp_states.end());
       bool need_prune = false;
       if (prune_by_rule) {
         need_prune = (type == RuleApplyType::kApplyAndPruneOtherRules);
       } else {
-        need_prune = (utils::SampleUniformDouble(0, 1, &rand_seed_) < prune_probability);
+        need_prune =
+            (utils::SampleUniformDouble(0, 1, &rand_seed_) < prune_probability);
       }
       if (need_prune) {
         iter = layer.erase(iter);
@@ -290,10 +335,12 @@ std::vector<SearchState> SearchSpace::ApplySketchRule(const SearchState& state,
         ++iter;
       }
     }
-    VLOG(7) << "apply on block: " << block_name << ", generate " << new_states.size() << " new states at step " << step;
+    VLOG(7) << "apply on block: " << block_name << ", generate "
+            << new_states.size() << " new states at step " << step;
     layer.splice(layer.end(), std::move(new_states));
   }
-  VLOG(6) << "apply on block: " << block_name << ", generate " << layer.size() - 1 << " more states at all";
+  VLOG(6) << "apply on block: " << block_name << ", generate "
+          << layer.size() - 1 << " more states at all";
   return std::vector<SearchState>(layer.begin(), layer.end());
 }
 
