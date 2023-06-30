@@ -487,6 +487,7 @@ def launch():
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
         ctx.args.log_dir = "best_cfg"
+        # run best cfg
         c = controllers.init(ctx)
         c.run()
         c.finalize(exit=True)
