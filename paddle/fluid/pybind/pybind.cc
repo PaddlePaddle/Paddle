@@ -161,6 +161,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #endif
@@ -1007,6 +1008,8 @@ PYBIND11_MODULE(libpaddle, m) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     platform::XCCLCommContext::Release();
     platform::CustomTracer::GetMap().clear();
+    platform::CustomDeviceEventResourcePool::GetMap().clear();
+    platform::CustomDeviceStreamResourcePool::GetMap().clear();
     phi::DeviceManager::Clear();
 #endif
   });
