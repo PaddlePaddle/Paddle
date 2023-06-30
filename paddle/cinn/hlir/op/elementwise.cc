@@ -467,11 +467,11 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
 
     absl::optional<ir::Tensor> out;
 #define EXPAND_VALUE_TO_TENSOR(TYPE)                                          \
-  else if (absl::get_if<TYPE>(&value)) {                                      \
+  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/                           \
     out = pe::AssignValue(                                                    \
         std::vector<TYPE>{absl::get<TYPE>(value)}, out_type[0], tensor_name); \
   }                                                                           \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) {                         \
+  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/              \
     out = pe::AssignValue(                                                    \
         absl::get<std::vector<TYPE>>(value), out_type[0], tensor_name);       \
   }
@@ -479,7 +479,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
     if (false) {
     }
     EXPAND_ATTR_TYPE(EXPAND_VALUE_TO_TENSOR)
-    else {
+    else {  // NOLINT
       LOG(FATAL) << "Assign value not support the type " << out_type[0];
     }
 #undef EXPAND_VALUE_TO_TENSOR
@@ -510,17 +510,17 @@ std::vector<shape_t> InferShapeForAssignValue(
 
   shape_t shape;
 #define EXPAND_ATTR_TO_GET_SHAPE(TYPE)                              \
-  else if (absl::get_if<TYPE>(&value)) {                            \
+  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/                 \
     shape.emplace_back(1);                                          \
   }                                                                 \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) {               \
+  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/    \
     shape.emplace_back(absl::get<std::vector<TYPE>>(value).size()); \
   }
 
   if (false) {
   }
   EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_SHAPE)
-  else {
+  else {  // NOLINT
     LOG(FATAL) << "assign_value not support the type!";
   }
 #undef EXPAND_ATTR_TO_GET_SHAPE
@@ -550,18 +550,18 @@ std::vector<Type> InferDtypeForAssignValue(
         << "assign_value should set attribute [values]! Please check.";
     const auto &value = attrs.at("values");
 
-#define EXPAND_ATTR_TO_GET_DTYPE(TYPE)                \
-  else if (absl::get_if<TYPE>(&value)) {              \
-    out_type = common::type_of<TYPE>();               \
-  }                                                   \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) { \
-    out_type = common::type_of<TYPE>();               \
+#define EXPAND_ATTR_TO_GET_DTYPE(TYPE)                           \
+  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/              \
+    out_type = common::type_of<TYPE>();                          \
+  }                                                              \
+  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/ \
+    out_type = common::type_of<TYPE>();                          \
   }
 
     if (false) {
     }
     EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_DTYPE)
-    else {
+    else {  // NOLINT
       LOG(FATAL) << "assign_value not support the type!";
     }
 #undef EXPAND_ATTR_TO_GET_DTYPE

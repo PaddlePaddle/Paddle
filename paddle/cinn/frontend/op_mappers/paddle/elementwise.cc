@@ -61,7 +61,9 @@ struct OpBuilder {};
   struct OpBuilder<enum_t> {                                       \
     constexpr static Variable (NetBuilder::*func)(const Variable&, \
                                                   const Variable&, \
-                                                  int){&function}; \
+                                                  int) {           \
+      &function                                                    \
+    }                                                              \
   }
 ELTWISE_SPEC(EltwiseType::kAdd, NetBuilder::Add);
 ELTWISE_SPEC(EltwiseType::kDiv, NetBuilder::Divide);
