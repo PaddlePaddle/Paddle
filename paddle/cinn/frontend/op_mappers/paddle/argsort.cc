@@ -22,7 +22,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc, const cinn::frontend::OpMapperContext& ctx) {
+void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc,
+                     const cinn::frontend::OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
 
@@ -32,10 +33,12 @@ void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc, const cinn::frontend::O
   CHECK_EQ(op_desc.Output("Indices").size(), 1UL);
   auto indices_name = op_desc.Output("Indices").front();
 
-  auto is_ascend = !(utils::GetAttrOrDefault<bool>(op_desc, "descending", false));
-  auto axis      = utils::ToDimType(utils::GetAttrOrDefault<int64_t>(op_desc, "axis", 0));
+  auto is_ascend =
+      !(utils::GetAttrOrDefault<bool>(op_desc, "descending", false));
+  auto axis =
+      utils::ToDimType(utils::GetAttrOrDefault<int64_t>(op_desc, "axis", 0));
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->ArgSort(x, axis, is_ascend);
   auto idx = ctx.Builder()->Cast(out[0], "int64");
 
@@ -43,8 +46,9 @@ void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc, const cinn::frontend::O
   ctx.AddVarModelToProgram(indices_name, idx->id);
 
   // TODO: return the sorted tensor here. Now out[1] is a temporary tensor.
-  // this is because output 'Out' is never uesd in Paddle API, but CINN need to return 2 output vars
-  // to meet the op defination, this should be resolved after sort op restructured.
+  // this is because output 'Out' is never uesd in Paddle API, but CINN need to
+  // return 2 output vars to meet the op defination, this should be resolved
+  // after sort op restructured.
   ctx.AddVar(out_name, out[1]);
   ctx.AddVarModelToProgram(out_name, out[1]->id);
 }
@@ -54,6 +58,7 @@ void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc, const cinn::frontend::O
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_argsort) {
-  CINN_REGISTER_OP_MAPPER(argsort, cinn::frontend::paddle_mappers::ArgsortOpMapper)
+  CINN_REGISTER_OP_MAPPER(argsort,
+                          cinn::frontend::paddle_mappers::ArgsortOpMapper)
   return true;
 }

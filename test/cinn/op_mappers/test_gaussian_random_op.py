@@ -41,7 +41,7 @@ class TestGaussianRandomOp(OpMapperTest):
             "std": self.std,
             "seed": self.seed,
             "shape": self.shape,
-            "dtype": self.nptype2paddledtype(self.dtype)
+            "dtype": self.nptype2paddledtype(self.dtype),
         }
 
     def set_op_outputs(self):

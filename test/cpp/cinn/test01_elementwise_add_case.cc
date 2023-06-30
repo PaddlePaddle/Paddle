@@ -25,9 +25,18 @@
 namespace cinn {
 
 TEST(test01, basic) {
-  auto* A = cinn::common::BufferBuilder(Float(32), {100, 32}).set_align(32).set_random().Build();
-  auto* B = cinn::common::BufferBuilder(Float(32), {100, 32}).set_align(32).set_random().Build();
-  auto* C = cinn::common::BufferBuilder(Float(32), {100, 32}).set_align(32).set_zero().Build();
+  auto* A = cinn::common::BufferBuilder(Float(32), {100, 32})
+                .set_align(32)
+                .set_random()
+                .Build();
+  auto* B = cinn::common::BufferBuilder(Float(32), {100, 32})
+                .set_align(32)
+                .set_random()
+                .Build();
+  auto* C = cinn::common::BufferBuilder(Float(32), {100, 32})
+                .set_align(32)
+                .set_zero()
+                .Build();
 
   float* Ad = reinterpret_cast<float*>(A->memory);
   float* Bd = reinterpret_cast<float*>(B->memory);
@@ -54,9 +63,18 @@ TEST(test01, basic) {
 TEST(test01, compute_at) {
   const int M = 100;
   const int N = 32;
-  auto* A     = cinn::common::BufferBuilder(Float(32), {M, N}).set_align(32).set_random().Build();
-  auto* B     = cinn::common::BufferBuilder(Float(32), {M, N}).set_align(32).set_random().Build();
-  auto* C     = cinn::common::BufferBuilder(Float(32), {M, N}).set_align(32).set_zero().Build();
+  auto* A = cinn::common::BufferBuilder(Float(32), {M, N})
+                .set_align(32)
+                .set_random()
+                .Build();
+  auto* B = cinn::common::BufferBuilder(Float(32), {M, N})
+                .set_align(32)
+                .set_random()
+                .Build();
+  auto* C = cinn::common::BufferBuilder(Float(32), {M, N})
+                .set_align(32)
+                .set_zero()
+                .Build();
 
   float* Ad = reinterpret_cast<float*>(A->memory);
   float* Bd = reinterpret_cast<float*>(B->memory);
@@ -75,8 +93,8 @@ TEST(test01, compute_at) {
     for (int i = 0; i < M; i++) {
       for (int j = 0; j < N; j++) {
         float first = i > 0 ? Ad[(i - 1) * N + j] : 0.f;
-        float last  = i < M - 1 ? Ad[(i + 1) * N + j] : 0.f;
-        float left  = first + last + Ad[i * N + j] + Bd[i * N + j];
+        float last = i < M - 1 ? Ad[(i + 1) * N + j] : 0.f;
+        float left = first + last + Ad[i * N + j] + Bd[i * N + j];
         ASSERT_NEAR(left, Cd[i * N + j], 1e-5);
       }
     }
@@ -108,9 +126,18 @@ TEST(test01, compute_at) {
 TEST(test01, compute_at_level1) {
   const int M = 100;
   const int N = 32;
-  auto* A     = cinn::common::BufferBuilder(Float(32), {M, N}).set_align(32).set_random().Build();
-  auto* B     = cinn::common::BufferBuilder(Float(32), {M, N}).set_align(32).set_random().Build();
-  auto* C     = cinn::common::BufferBuilder(Float(32), {M, N}).set_align(32).set_zero().Build();
+  auto* A = cinn::common::BufferBuilder(Float(32), {M, N})
+                .set_align(32)
+                .set_random()
+                .Build();
+  auto* B = cinn::common::BufferBuilder(Float(32), {M, N})
+                .set_align(32)
+                .set_random()
+                .Build();
+  auto* C = cinn::common::BufferBuilder(Float(32), {M, N})
+                .set_align(32)
+                .set_zero()
+                .Build();
 
   float* Ad = reinterpret_cast<float*>(A->memory);
   float* Bd = reinterpret_cast<float*>(B->memory);
@@ -129,8 +156,8 @@ TEST(test01, compute_at_level1) {
     for (int i = 0; i < M; i++) {
       for (int j = 0; j < N; j++) {
         float first = i > 0 ? Ad[(i - 1) * N + j] : 0.f;
-        float last  = i < M - 1 ? Ad[(i + 1) * N + j] : 0.f;
-        float left  = first + last + Ad[i * N + j] + Bd[i * N + j];
+        float last = i < M - 1 ? Ad[(i + 1) * N + j] : 0.f;
+        float left = first + last + Ad[i * N + j] + Bd[i * N + j];
         ASSERT_NEAR(left, Cd[i * N + j], 1e-5);
       }
     }

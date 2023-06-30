@@ -19,39 +19,51 @@
 namespace cinn {
 namespace frontend {
 
-void OpMapperContext::AddVar(const std::string& origin_name, const Variable& var, bool can_inplace) const {
+void OpMapperContext::AddVar(const std::string& origin_name,
+                             const Variable& var,
+                             bool can_inplace) const {
   CHECK(can_inplace || !var_map_->count(origin_name))
-      << "Duplicate variable \"" << origin_name << "\" found, whose id is " << var_map_->at(origin_name)->id;
+      << "Duplicate variable \"" << origin_name << "\" found, whose id is "
+      << var_map_->at(origin_name)->id;
   if (var_map_->count(origin_name)) {
-    VLOG(1) << "The Paddle inplace output var \"" << origin_name + paddle::InplaceOutSuffix
-            << "\" is mapped to CINN var \"" << var->id << "\" with shape=[" << cinn::utils::Join(var->shape, ", ")
-            << "], dtype=" << var->type << ". The input var \"" << origin_name << "\" still mapped to \""
+    VLOG(1) << "The Paddle inplace output var \""
+            << origin_name + paddle::InplaceOutSuffix
+            << "\" is mapped to CINN var \"" << var->id << "\" with shape=["
+            << cinn::utils::Join(var->shape, ", ") << "], dtype=" << var->type
+            << ". The input var \"" << origin_name << "\" still mapped to \""
             << var_map_->at(origin_name)->id << "\"";
   } else {
-    VLOG(1) << "The Paddle var \"" << origin_name << "\" is mapped to CINN var \"" << var->id << "\" with shape=["
+    VLOG(1) << "The Paddle var \"" << origin_name
+            << "\" is mapped to CINN var \"" << var->id << "\" with shape=["
             << cinn::utils::Join(var->shape, ", ") << "], dtype=" << var->type;
   }
   (*var_map_)[origin_name] = var;
 }
 
-void OpMapperContext::AddVarModelToProgram(const std::string& name, const std::string& id, bool can_inplace) const {
-  CHECK(!id.empty()) << "Paddle name [" << name << "]'s program id is empty ! Please check.";
+void OpMapperContext::AddVarModelToProgram(const std::string& name,
+                                           const std::string& id,
+                                           bool can_inplace) const {
+  CHECK(!id.empty()) << "Paddle name [" << name
+                     << "]'s program id is empty ! Please check.";
   if (!var_model_to_program_map_->count(name)) {
     (*var_model_to_program_map_)[name] = id;
     VLOG(4) << "Paddle name [" << name << "] map to program id " << id;
   } else {
-    CHECK(can_inplace) << "Duplicate variable [" << name << "] found, whose id is "
+    CHECK(can_inplace) << "Duplicate variable [" << name
+                       << "] found, whose id is "
                        << var_model_to_program_map_->at(name);
 
-    const auto& inplace_out_name                   = name + paddle::InplaceOutSuffix;
+    const auto& inplace_out_name = name + paddle::InplaceOutSuffix;
     (*var_model_to_program_map_)[inplace_out_name] = id;
 
-    VLOG(4) << "Paddle name [" << name << "] 's trick output [" << inplace_out_name << "] map to program id [" << id
-            << "]";
+    VLOG(4) << "Paddle name [" << name << "] 's trick output ["
+            << inplace_out_name << "] map to program id [" << id << "]";
   }
 }
 
-void OpMapperContext::AddFetchVarName(const std::string& name) const { fetch_var_names_->insert(name); }
+void OpMapperContext::AddFetchVarName(const std::string& name) const {
+  fetch_var_names_->insert(name);
+}
 
 Variable OpMapperContext::GetVar(const std::string& origin_name) const {
   auto it = var_map_->find(origin_name);
@@ -66,7 +78,7 @@ Variable OpMapperContext::GetVar(const std::string& origin_name) const {
     Variable local_var;
     local_var.set_id(name);
     local_var->shape = tensor->shape().data();
-    local_var->type  = tensor->type();
+    local_var->type = tensor->type();
     AddVar(origin_name, local_var);
     return local_var;
   }
@@ -75,13 +87,17 @@ Variable OpMapperContext::GetVar(const std::string& origin_name) const {
   return Variable();
 }
 
-void OpMapperContext::AddFeedInfo(const std::string& name, const FeedInfo& info) {
-  CHECK(!feed_info_map_.count(name)) << "Duplicate variable info [" << name << "] found";
+void OpMapperContext::AddFeedInfo(const std::string& name,
+                                  const FeedInfo& info) {
+  CHECK(!feed_info_map_.count(name))
+      << "Duplicate variable info [" << name << "] found";
   feed_info_map_[name] = info;
 }
 
-const OpMapperContext::FeedInfo& OpMapperContext::GetFeedInfo(const std::string& name) const {
-  CHECK(feed_info_map_.count(name)) << "No variable info called [" << name << "] exists";
+const OpMapperContext::FeedInfo& OpMapperContext::GetFeedInfo(
+    const std::string& name) const {
+  CHECK(feed_info_map_.count(name))
+      << "No variable info called [" << name << "] exists";
   return feed_info_map_.at(name);
 }
 

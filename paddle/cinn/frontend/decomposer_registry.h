@@ -29,7 +29,8 @@ class Decomposer;
 
 class DecomposerContext {
  public:
-  explicit DecomposerContext(NetBuilder* builder, absl::flat_hash_map<std::string, Variable>* var_map)
+  explicit DecomposerContext(
+      NetBuilder* builder, absl::flat_hash_map<std::string, Variable>* var_map)
       : builder_(builder), var_map_(var_map) {}
 
   NetBuilder* builder() const { return builder_; };
@@ -37,13 +38,18 @@ class DecomposerContext {
   // Map the new var to the original var.
   void MapOutToOrigin(const Variable& new_var, const Variable& ori_var) const {
     if (new_var->shape != ori_var->shape) {
-      LOG(FATAL) << "The output shape should be equal to the original. But received : " << new_var->id << ".shape=["
-                 << utils::Join(new_var->shape, ", ") << "] and the original var " << ori_var->id << ".shape=["
-                 << utils::Join(ori_var->shape, ", ") << "].";
+      LOG(FATAL)
+          << "The output shape should be equal to the original. But received : "
+          << new_var->id << ".shape=[" << utils::Join(new_var->shape, ", ")
+          << "] and the original var " << ori_var->id << ".shape=["
+          << utils::Join(ori_var->shape, ", ") << "].";
     }
     if (new_var->type != ori_var->type) {
-      LOG(FATAL) << "The output type shoule be equal to the original. But received : " << new_var->id
-                 << ".type=" << new_var->type << " and the original var " << ori_var->id << ".type=" << ori_var->type;
+      LOG(FATAL)
+          << "The output type shoule be equal to the original. But received : "
+          << new_var->id << ".type=" << new_var->type
+          << " and the original var " << ori_var->id
+          << ".type=" << ori_var->type;
     }
     (*var_map_)[new_var->id] = ori_var;
   }
@@ -60,13 +66,16 @@ class InstrDecomposerRegistry : public Registry<Decomposer> {
     return &x;
   }
 
-  inline const Decomposer* Get(const std::string& op_name, const common::Target& target) {
+  inline const Decomposer* Get(const std::string& op_name,
+                               const common::Target& target) {
     const Decomposer* decomposer = Find(op_name, target);
-    CHECK(decomposer) << "Decomposer for [" << op_name << ", " << target << "] is not registered";
+    CHECK(decomposer) << "Decomposer for [" << op_name << ", " << target
+                      << "] is not registered";
     return decomposer;
   }
 
-  inline const Decomposer* Find(const std::string& name, const common::Target& target) {
+  inline const Decomposer* Find(const std::string& name,
+                                const common::Target& target) {
     return Registry<Decomposer>::Find(name + "_" + target.arch_str());
   }
 
@@ -77,14 +86,17 @@ class InstrDecomposerRegistry : public Registry<Decomposer> {
 
 class Decomposer {
  public:
-  using DecomposerKernel = std::function<void(const Instruction& instr, const DecomposerContext&)>;
+  using DecomposerKernel =
+      std::function<void(const Instruction& instr, const DecomposerContext&)>;
 
   Decomposer& SetBody(const DecomposerKernel& kernel) {
     kernel_ = kernel;
     return *this;
   }
 
-  void Run(const Instruction& instr, const DecomposerContext& context) const { kernel_(instr, context); }
+  void Run(const Instruction& instr, const DecomposerContext& context) const {
+    kernel_(instr, context);
+  }
 
   std::string name;
 
@@ -97,13 +109,14 @@ class Decomposer {
       ->__REGISTER__(std::string(#name) + "_" + target.arch_str()) \
       .SetBody(kernel)
 
-#define CINN_DECOMPOSER_REGISTER_ALL(name, kernel)                                                 \
-  static std::vector<::cinn::common::Target> all_targets = {::cinn::common::DefaultHostTarget(),   \
-                                                            ::cinn::common::DefaultNVGPUTarget()}; \
-  for (auto& target : all_targets) {                                                               \
-    ::cinn::frontend::InstrDecomposerRegistry::Global()                                            \
-        ->__REGISTER__(std::string(#name) + "_" + target.arch_str())                               \
-        .SetBody(kernel);                                                                          \
+#define CINN_DECOMPOSER_REGISTER_ALL(name, kernel)                   \
+  static std::vector<::cinn::common::Target> all_targets = {         \
+      ::cinn::common::DefaultHostTarget(),                           \
+      ::cinn::common::DefaultNVGPUTarget()};                         \
+  for (auto& target : all_targets) {                                 \
+    ::cinn::frontend::InstrDecomposerRegistry::Global()              \
+        ->__REGISTER__(std::string(#name) + "_" + target.arch_str()) \
+        .SetBody(kernel);                                            \
   }
 
 /**
@@ -121,8 +134,11 @@ class Decomposer {
  * \endcode
  */
 #define GET_MACRO(_0, _1, _2, FUNC, ...) FUNC
-#define CINN_DECOMPOSER_REGISTER(...) \
-  GET_MACRO(__VA_ARGS__, CINN_DECOMPOSER_REGISTER_CORE, CINN_DECOMPOSER_REGISTER_ALL)(__VA_ARGS__)
+#define CINN_DECOMPOSER_REGISTER(...)      \
+  GET_MACRO(__VA_ARGS__,                   \
+            CINN_DECOMPOSER_REGISTER_CORE, \
+            CINN_DECOMPOSER_REGISTER_ALL)  \
+  (__VA_ARGS__)
 
 }  // namespace frontend
 }  // namespace cinn

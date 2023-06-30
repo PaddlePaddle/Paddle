@@ -19,7 +19,9 @@
 namespace cinn {
 namespace frontend {
 
-int GetSize(std::vector<int>& shape) { return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()); }
+int GetSize(std::vector<int>& shape) {
+  return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+}
 
 void RunModelTest(Program& program,
                   const std::vector<Variable>&& inputs,
@@ -28,13 +30,17 @@ void RunModelTest(Program& program,
   std::vector<std::vector<float>> inputs_data;
   for (auto input : inputs) {
     inputs_data.emplace_back(GetSize(input->shape));
-    InitRandomVector<float>(&inputs_data.back(), inputs_data.back().size(), 0.0f, 1.0f, 1e-3);
+    InitRandomVector<float>(
+        &inputs_data.back(), inputs_data.back().size(), 0.0f, 1.0f, 1e-3);
   }
 
   auto target = common::DefaultTarget();
-  std::unordered_map<std::string, std::pair<std::vector<float>, std::vector<float>>> outputs;
+  std::unordered_map<std::string,
+                     std::pair<std::vector<float>, std::vector<float>>>
+      outputs;
   {
-    auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
+    auto graph =
+        std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
     hlir::framework::ApplyPass(graph.get(), "TransToCustomCallPass");
     hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
     hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
@@ -46,7 +52,7 @@ void RunModelTest(Program& program,
     for (int idx = 0; idx < inputs.size(); ++idx) {
       scope->Var<hlir::framework::Tensor>(inputs[idx]->id);
       auto tensor = scope->GetTensor(inputs[idx]->id);
-      auto* data  = tensor->mutable_data<float>(target);
+      auto* data = tensor->mutable_data<float>(target);
       CopyFromVector(inputs_data[idx], tensor, target);
     }
     run_program->Execute();
@@ -54,11 +60,13 @@ void RunModelTest(Program& program,
       auto tensor = scope->GetTensor(id);
       std::vector<float> data(tensor->shape().numel());
       CopyToVector(tensor, &data);
-      outputs[id] = std::pair<std::vector<float>, std::vector<float>>(data, std::vector<float>());
+      outputs[id] = std::pair<std::vector<float>, std::vector<float>>(
+          data, std::vector<float>());
     }
   }
   {
-    auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
+    auto graph =
+        std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
     hlir::framework::ApplyPass(graph.get(), "DenseMergePass");
     hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
     hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
@@ -70,7 +78,7 @@ void RunModelTest(Program& program,
     for (int idx = 0; idx < inputs.size(); ++idx) {
       scope->Var<hlir::framework::Tensor>(inputs[idx]->id);
       auto tensor = scope->GetTensor(inputs[idx]->id);
-      auto* data  = tensor->mutable_data<float>(target);
+      auto* data = tensor->mutable_data<float>(target);
       CopyFromVector(inputs_data[idx], tensor, target);
     }
     run_program->Execute();
@@ -97,7 +105,7 @@ TEST(DenseMergePass, Test_Matmul_0) {
   auto E = net_builder.Matmul(A, C);
 
   auto fetch_ids = {D->id, E->id};
-  auto program   = net_builder.Build();
+  auto program = net_builder.Build();
   RunModelTest(program, {A, B, C}, fetch_ids);
 }
 
@@ -110,7 +118,7 @@ TEST(DenseMergePass, Test_Matmul_1) {
   auto E = net_builder.Matmul(B, C);
 
   auto fetch_ids = {D->id, E->id};
-  auto program   = net_builder.Build();
+  auto program = net_builder.Build();
   RunModelTest(program, {A, B, C}, fetch_ids);
 }
 
@@ -127,7 +135,7 @@ TEST(DenseMergePass, Test_Matmul_2) {
   auto I = net_builder.Matmul(D, E);
 
   auto fetch_ids = {F->id, G->id, H->id, I->id};
-  auto program   = net_builder.Build();
+  auto program = net_builder.Build();
   RunModelTest(program, {A, B, C, D, E}, fetch_ids);
 }
 
@@ -144,7 +152,7 @@ TEST(DenseMergePass, Test_Matmul_3) {
   auto I = net_builder.Matmul(C, E);
 
   auto fetch_ids = {F->id, G->id, H->id, I->id};
-  auto program   = net_builder.Build();
+  auto program = net_builder.Build();
   RunModelTest(program, {A, B, C, D, E}, fetch_ids);
 }
 
@@ -160,7 +168,7 @@ TEST(DenseMergePass, Test_Matmul_4) {
   auto I = net_builder.Matmul(B, D);
 
   auto fetch_ids = {F->id, G->id, H->id, I->id};
-  auto program   = net_builder.Build();
+  auto program = net_builder.Build();
   RunModelTest(program, {A, B, C, D}, fetch_ids);
 }
 

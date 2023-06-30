@@ -50,13 +50,13 @@ TEST(TransposeFoldingInput, TransposeWithMultiMamtul) {
     return;
   }
   NetBuilder builder("net_builder");
-  auto x           = builder.CreateInput(Float(32), {2, 2}, "X");
-  auto y           = builder.CreateInput(Float(32), {2, 2}, "Y");
+  auto x = builder.CreateInput(Float(32), {2, 2}, "X");
+  auto y = builder.CreateInput(Float(32), {2, 2}, "Y");
   auto transpose_y = builder.Transpose(y, {1, 0});
-  auto dot1        = builder.Matmul(x, transpose_y);
-  auto dot2        = builder.Matmul(transpose_y, x);
-  auto out         = builder.Add(dot1, dot2);
-  auto program     = builder.Build();
+  auto dot1 = builder.Matmul(x, transpose_y);
+  auto dot2 = builder.Matmul(transpose_y, x);
+  auto out = builder.Add(dot1, dot2);
+  auto program = builder.Build();
 
   common::Target target = common::DefaultNVGPUTarget();
   std::vector<std::string> input_ids;
@@ -64,7 +64,11 @@ TEST(TransposeFoldingInput, TransposeWithMultiMamtul) {
                     std::back_inserter(input_ids),
                     [](absl::string_view id) { return std::string(id); });
   std::pair<std::vector<std::string>, std::vector<std::string>> passes{
-      {"Decomposer"}, {"TransposeFoldingInput", "GemmRewriter", "TransposeFoldingOutput", "GemmRewriter"}};
+      {"Decomposer"},
+      {"TransposeFoldingInput",
+       "GemmRewriter",
+       "TransposeFoldingOutput",
+       "GemmRewriter"}};
   CompareResult(&program, target, input_ids, {out->id}, 1, passes, 123, true);
 }
 

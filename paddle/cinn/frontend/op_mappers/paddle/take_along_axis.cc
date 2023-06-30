@@ -20,13 +20,14 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void TakeAlongAxis2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void TakeAlongAxis2OpMapper(const paddle::cpp::OpDesc& op_desc,
+                            const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("Input").size(), 1UL);
   auto x_name = op_desc.Input("Input").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   CHECK_EQ(op_desc.Input("Index").size(), 1UL);
   auto index_name = op_desc.Input("Index").front();
-  auto index      = ctx.GetVar(index_name);
+  auto index = ctx.GetVar(index_name);
 
   auto axis = utils::GetAttrOrDefault<int>(op_desc, "Axis");
 
@@ -47,6 +48,7 @@ void TakeAlongAxis2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperCo
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_take_along_axis) {
-  CINN_REGISTER_OP_MAPPER(take_along_axis, cinn::frontend::paddle_mappers::TakeAlongAxis2OpMapper)
+  CINN_REGISTER_OP_MAPPER(
+      take_along_axis, cinn::frontend::paddle_mappers::TakeAlongAxis2OpMapper)
   return true;
 }

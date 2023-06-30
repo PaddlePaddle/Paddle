@@ -21,9 +21,12 @@ namespace backends {
 
 class ModularEvaluator : public ir::IRVisitorBase<ModularEntry> {
  public:
-  explicit ModularEvaluator(const std::map<Var, ModularEntry>& mod_map) : mod_map_(mod_map) {}
+  explicit ModularEvaluator(const std::map<Var, ModularEntry>& mod_map)
+      : mod_map_(mod_map) {}
 
-  ModularEntry Eval(const Expr& e) { return ir::IRVisitorBase<ModularEntry>::Visit(&e); }
+  ModularEntry Eval(const Expr& e) {
+    return ir::IRVisitorBase<ModularEntry>::Visit(&e);
+  }
 
   ModularEntry Visit(const ir::IntImm* op) {
     if (op->value < std::numeric_limits<int>::max()) {
@@ -51,7 +54,7 @@ class ModularEvaluator : public ir::IRVisitorBase<ModularEntry> {
     auto b = Eval(op->b());
     ModularEntry ret;
     ret.coeff = gcd(a.coeff, b.coeff);
-    ret.base  = BaseSimplify(a.base + b.base, ret.coeff);
+    ret.base = BaseSimplify(a.base + b.base, ret.coeff);
     return ret;
   }
 
@@ -61,7 +64,7 @@ class ModularEvaluator : public ir::IRVisitorBase<ModularEntry> {
 
     ModularEntry ret;
     ret.coeff = gcd(a.coeff, b.coeff);
-    ret.base  = BaseSimplify(a.base - b.base, ret.coeff);
+    ret.base = BaseSimplify(a.base - b.base, ret.coeff);
     return ret;
   }
 
@@ -75,7 +78,7 @@ class ModularEvaluator : public ir::IRVisitorBase<ModularEntry> {
 
     ModularEntry ret;
     ret.coeff = gcd(pq, gcd(pm, qn));
-    ret.base  = BaseSimplify(a.base * b.base, ret.coeff);
+    ret.base = BaseSimplify(a.base * b.base, ret.coeff);
     return ret;
   }
 
@@ -86,7 +89,7 @@ class ModularEvaluator : public ir::IRVisitorBase<ModularEntry> {
     if (b.coeff % b.base == 0) {
       ModularEntry ret;
       ret.coeff = a.coeff / b.base;
-      ret.base  = 0;
+      ret.base = 0;
       return ret;
     }
 
@@ -120,7 +123,7 @@ class ModularEvaluator : public ir::IRVisitorBase<ModularEntry> {
 ModularEntry ModularEntry::Add(const ModularEntry& a, const ModularEntry& b) {
   ModularEntry ret;
   ret.coeff = ModularEvaluator::gcd(a.coeff, b.coeff);
-  ret.base  = ModularEvaluator::BaseSimplify(a.base + b.base, ret.coeff);
+  ret.base = ModularEvaluator::BaseSimplify(a.base + b.base, ret.coeff);
   return ret;
 }
 

@@ -26,7 +26,8 @@ namespace common {
 
 struct Type::Storage {
   Storage() = default;
-  Storage(type_t t, int b, int w, specific_type_t st) : type_(t), bits_(b), lanes_(w), specific_type_(st) {}
+  Storage(type_t t, int b, int w, specific_type_t st)
+      : type_(t), bits_(b), lanes_(w), specific_type_(st) {}
 
   type_t type_{type_t::Unk};
   // distinguish FP16/BF16, or E5M2/E4M3 (when FP8 is supported)
@@ -122,7 +123,7 @@ Type::Type(const Type &other) {
 
 Type Type::ElementOf() const {
   CheckTypeValid();
-  auto type             = *this;
+  auto type = *this;
   type.storage_->lanes_ = 1;
   return type;
 }
@@ -130,8 +131,10 @@ Type Type::ElementOf() const {
 void Type::CheckTypeValid() const {
   CHECK_NE(GetStorage().type_, type_t::Unk);
   if (GetStorage().type_ == type_t::Float && GetStorage().bits_ == 16) {
-    CHECK(GetStorage().specific_type_ == specific_type_t::FP16 || GetStorage().specific_type_ == specific_type_t::BF16)
-        << "When creating a 16 bits Float, the specific_type_t must be FP16 or BF16.";
+    CHECK(GetStorage().specific_type_ == specific_type_t::FP16 ||
+          GetStorage().specific_type_ == specific_type_t::BF16)
+        << "When creating a 16 bits Float, the specific_type_t must be FP16 or "
+           "BF16.";
   }
 }
 
@@ -154,9 +157,11 @@ Type Type::ConstOf() const {
 }
 
 bool Type::is_supported() const {
-  return this->is_float(32) || this->is_float16() || this->is_bfloat16() || this->is_float(64) || this->is_bool() ||
-         this->is_int(8) || this->is_int(16) || this->is_int(32) || this->is_int(64) || this->is_uint(8) ||
-         this->is_uint(16) || this->is_uint(32) || this->is_uint(64);
+  return this->is_float(32) || this->is_float16() || this->is_bfloat16() ||
+         this->is_float(64) || this->is_bool() || this->is_int(8) ||
+         this->is_int(16) || this->is_int(32) || this->is_int(64) ||
+         this->is_uint(8) || this->is_uint(16) || this->is_uint(32) ||
+         this->is_uint(64);
 }
 
 Type Type::IgnoreConst() const {
@@ -168,20 +173,20 @@ Type Type::IgnoreConst() const {
 
 Type Type::with_bits(int x) const {
   CHECK(is_primitive());
-  Type type               = *this;
+  Type type = *this;
   type.GetStorage().bits_ = x;
   return type;
 }
 
 Type Type::with_type(Type::type_t x) const {
-  Type type               = *this;
+  Type type = *this;
   type.GetStorage().type_ = x;
   return type;
 }
 
 Type Type::with_lanes(int x) const {
   CHECK(valid());
-  Type type                = *this;
+  Type type = *this;
   type.GetStorage().lanes_ = x;
   return type;
 }
@@ -203,7 +208,7 @@ Type &Type::set_cpp_const(bool is_const) {
   return *this;
 }
 Type &Type::set_customized_type(const std::string &t) {
-  GetStorage().type_            = type_t ::Customized;
+  GetStorage().type_ = type_t ::Customized;
   GetStorage().customized_type_ = t;
 
   return *this;
@@ -225,25 +230,32 @@ bool Type::valid() const {
   return true;
 }
 
-Type::Type(Type::type_t t, int b, int w, specific_type_t st) : storage_(new Storage(t, b, w, st)) {
+Type::Type(Type::type_t t, int b, int w, specific_type_t st)
+    : storage_(new Storage(t, b, w, st)) {
   if (t == Type::type_t::Float && b == 16) {
     CHECK(st == specific_type_t::FP16 || st == specific_type_t::BF16)
-        << "When creating a 16 bits Float, the specific_type_t must be FP16 or BF16.";
+        << "When creating a 16 bits Float, the specific_type_t must be FP16 or "
+           "BF16.";
   }
 }
-bool Type::is_primitive() const { return !is_unk() && type() != type_t::Customized; }
-bool Type::is_customized() const { return !is_unk() && type() == type_t::Customized; }
+bool Type::is_primitive() const {
+  return !is_unk() && type() != type_t::Customized;
+}
+bool Type::is_customized() const {
+  return !is_unk() && type() == type_t::Customized;
+}
 bool Type::is_unk() const { return type() == type_t::Unk; }
 bool Type::is_bool() const { return type() == type_t::UInt && bits() == 1; }
 bool Type::is_void() const { return type() == type_t::Void; }
 bool Type::is_vector() const { return lanes() > 1; }
 bool Type::is_scalar() const { return lanes() == 1; }
-// Note: when calling is_float(16), 'st' can't be specific_type_t::None to distinguish FP16/BF16, or use
-// is_float16()/is_bfloat16() for short
+// Note: when calling is_float(16), 'st' can't be specific_type_t::None to
+// distinguish FP16/BF16, or use is_float16()/is_bfloat16() for short
 bool Type::is_float(int bits, specific_type_t st) const {
   if (type() == type_t::Float && bits == 16) {
-    CHECK(st != specific_type_t::None) << "when calling is_float(16), 'st' can't be specific_type_t::None to "
-                                          "distinguish FP16/BF16, or use is_float16()/is_bfloat16() for short";
+    CHECK(st != specific_type_t::None)
+        << "when calling is_float(16), 'st' can't be specific_type_t::None to "
+           "distinguish FP16/BF16, or use is_float16()/is_bfloat16() for short";
     return st == this->specific_type();
   } else {
     return type() == type_t::Float && (bits < 0 || bits == this->bits());
@@ -251,31 +263,48 @@ bool Type::is_float(int bits, specific_type_t st) const {
 }
 bool Type::is_float16() const { return is_float(16, specific_type_t::FP16); }
 bool Type::is_bfloat16() const { return is_float(16, specific_type_t::BF16); }
-bool Type::is_uint(int bits) const { return type() == type_t::UInt && (bits < 0 || bits == this->bits()); }
-bool Type::is_int(int bits) const { return type() == type_t::Int && (bits < 0 || bits == this->bits()); }
-bool Type::is_integer(int bits) const {
-  return (type() == type_t::Int || type() == type_t::UInt) && (bits < 0 || bits == this->bits());
+bool Type::is_uint(int bits) const {
+  return type() == type_t::UInt && (bits < 0 || bits == this->bits());
 }
-bool Type::is_index_type() { return is_int() && lanes() == 1 && (bits() == 32 || bits() == 64); }
+bool Type::is_int(int bits) const {
+  return type() == type_t::Int && (bits < 0 || bits == this->bits());
+}
+bool Type::is_integer(int bits) const {
+  return (type() == type_t::Int || type() == type_t::UInt) &&
+         (bits < 0 || bits == this->bits());
+}
+bool Type::is_index_type() {
+  return is_int() && lanes() == 1 && (bits() == 32 || bits() == 64);
+}
 bool Type::is_cpp_handle() const {
-  return static_cast<uint8_t>(GetStorage().cpp_type_) & static_cast<uint8_t>(cpp_type_t::Handle);
+  return static_cast<uint8_t>(GetStorage().cpp_type_) &
+         static_cast<uint8_t>(cpp_type_t::Handle);
 }
 bool Type::is_cpp_handle2() const {
-  return static_cast<uint8_t>(GetStorage().cpp_type_) & static_cast<uint8_t>(cpp_type_t::HandleHandle);
+  return static_cast<uint8_t>(GetStorage().cpp_type_) &
+         static_cast<uint8_t>(cpp_type_t::HandleHandle);
 }
 bool Type::is_cpp_const() const {
-  return static_cast<uint8_t>(cpp_type_t::Const) & static_cast<uint8_t>(GetStorage().cpp_type_);
+  return static_cast<uint8_t>(cpp_type_t::Const) &
+         static_cast<uint8_t>(GetStorage().cpp_type_);
 }
-const std::string &Type::customized_type() const { return GetStorage().customized_type_; }
-bool Type::is_customized_type() const { return !GetStorage().customized_type_.empty(); }
+const std::string &Type::customized_type() const {
+  return GetStorage().customized_type_;
+}
+bool Type::is_customized_type() const {
+  return !GetStorage().customized_type_.empty();
+}
 Type::type_t Type::type() const { return GetStorage().type_; }
-Type::specific_type_t Type::specific_type() const { return GetStorage().specific_type_; }
+Type::specific_type_t Type::specific_type() const {
+  return GetStorage().specific_type_;
+}
 int Type::bits() const { return GetStorage().bits_; }
 int Type::lanes() const { return GetStorage().lanes_; }
 Type::cpp_type_t Type::cpp_type() const { return GetStorage().cpp_type_; }
 bool Type::operator==(const Type &other) const {
-  return type() == other.type() && specific_type() == other.specific_type() && bits() == other.bits() &&
-         lanes() == other.lanes() && GetStorage().cpp_type_ == other.GetStorage().cpp_type_ &&
+  return type() == other.type() && specific_type() == other.specific_type() &&
+         bits() == other.bits() && lanes() == other.lanes() &&
+         GetStorage().cpp_type_ == other.GetStorage().cpp_type_ &&
          customized_type() == other.customized_type();
 }
 bool Type::is_string() const { return type() == type_t::String; }
@@ -286,7 +315,7 @@ Type &Type::operator=(const Type &other) {
                                other.GetStorage().bits_,
                                other.GetStorage().lanes_,
                                other.GetStorage().specific_type_));
-    storage_->cpp_type_        = other.GetStorage().cpp_type_;
+    storage_->cpp_type_ = other.GetStorage().cpp_type_;
     storage_->customized_type_ = other.GetStorage().customized_type_;
   }
   return *this;
@@ -380,7 +409,8 @@ struct TypeHash {
 int Type::bytes() const {
   // if the type is a pointer
   auto cpp_type = this->cpp_type();
-  if (cpp_type == Type::cpp_type_t::Handle || cpp_type == Type::cpp_type_t::HandleHandle) {
+  if (cpp_type == Type::cpp_type_t::Handle ||
+      cpp_type == Type::cpp_type_t::HandleHandle) {
     return sizeof(void *);
   }
 
@@ -520,7 +550,8 @@ Type Str2Type(const std::string &type) {
       {"cinn_pod_value_p", type_of<cinn_pod_value_t *>()},
   };
 
-  CHECK(str2type_map.find(type) != str2type_map.end()) << "Not support type [" << type << "] ! Please Check.\n";
+  CHECK(str2type_map.find(type) != str2type_map.end())
+      << "Not support type [" << type << "] ! Please Check.\n";
   return str2type_map.at(type);
 }
 

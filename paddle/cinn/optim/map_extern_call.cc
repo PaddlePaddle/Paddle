@@ -23,9 +23,11 @@ namespace cinn {
 namespace optim {
 
 static const std::set<std::string> kExternFp32CallsGPU{
-    {"exp",   "erf",  "sigmoid",  "sqrt",  "log",       "log2",  "log10", "floor", "ceil",  "round", "trunc",
-     "cos",   "cosh", "tan",      "sin",   "sinh",      "acos",  "acosh", "asin",  "asinh", "atan",  "atanh",
-     "isnan", "tanh", "isfinite", "isinf", "remainder", "rsqrt", "cbrt",  "abs",   "pow",   "mod"}};
+    {"exp",   "erf",   "sigmoid", "sqrt",     "log",   "log2",      "log10",
+     "floor", "ceil",  "round",   "trunc",    "cos",   "cosh",      "tan",
+     "sin",   "sinh",  "acos",    "acosh",    "asin",  "asinh",     "atan",
+     "atanh", "isnan", "tanh",    "isfinite", "isinf", "remainder", "rsqrt",
+     "cbrt",  "abs",   "pow",     "mod"}};
 
 static const std::set<std::string> kExternInt32CallsGPU{{"left_shift",
                                                          "right_shift",
@@ -65,10 +67,11 @@ void MapExternCall(Expr *e, Target target) {
       if (kExternFp32CallsCPU.count(node->name)) {
         CHECK_GE(node->read_args.size(), 1UL);
         CHECK(node->read_args.front().type().is_float())
-            << "CPU extern call instrinsices only support float now! Please check.";
+            << "CPU extern call instrinsices only support float now! Please "
+               "check.";
         if (node->read_args.front().type().is_float(32)) {
           auto out_type = node->type();
-          *expr         = lang::CallExtern(node->name + "f", node->read_args);
+          *expr = lang::CallExtern(node->name + "f", node->read_args);
         }
       }
     }
@@ -80,16 +83,17 @@ void MapExternCall(Expr *e, Target target) {
         return;
       }
       const auto &dtype = node->read_args.front().type();
-      const auto &name  = node->name;
+      const auto &name = node->name;
 
-      bool node_in_extern_fp32  = kExternFp32CallsGPU.count(name);
+      bool node_in_extern_fp32 = kExternFp32CallsGPU.count(name);
       bool node_in_extern_int32 = kExternInt32CallsGPU.count(name);
       if (!node_in_extern_fp32 && !node_in_extern_int32) {
         return;
       }
 
-      std::string extern_func = hlir::GetExternFuncName(common::DefaultNVGPUTarget(), dtype, name);
-      *expr                   = lang::CallExtern(extern_func, node->read_args, node->attrs);
+      std::string extern_func =
+          hlir::GetExternFuncName(common::DefaultNVGPUTarget(), dtype, name);
+      *expr = lang::CallExtern(extern_func, node->read_args, node->attrs);
     }
 
     // Replace pow(x, 0.5) to sqrt(x) and pow(x, -0.5) to rsqrt(x), which
@@ -98,7 +102,8 @@ void MapExternCall(Expr *e, Target target) {
     // Reference:
     // https://en.wikipedia.org/wiki/Fast_inverse_square_root
     void OptimizeConstantPow(ir::Call *node) {
-      if (node->name == "pow" && node->read_args.size() >= 2 && node->read_args[1].is_constant()) {
+      if (node->name == "pow" && node->read_args.size() >= 2 &&
+          node->read_args[1].is_constant()) {
         float pow_constant = node->read_args[1].get_constant();
         if (pow_constant == 0.5) {
           node->name = "sqrt";

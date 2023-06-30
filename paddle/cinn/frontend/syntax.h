@@ -57,11 +57,14 @@ struct _Variable_ : public common::Object {
 struct Variable : public common::Shared<_Variable_> {
   /**
    * Constructor.
-   * @param id_hint The identifier of the variable, if null, a random ID will be assigned.
+   * @param id_hint The identifier of the variable, if null, a random ID will be
+   * assigned.
    */
-  explicit Variable(const std::string& id_hint = "") : common::Shared<_Variable_>(common::make_shared<_Variable_>()) {
+  explicit Variable(const std::string& id_hint = "")
+      : common::Shared<_Variable_>(common::make_shared<_Variable_>()) {
     if (!id_hint.empty()) CheckVarNameValid(id_hint);
-    get()->id = id_hint.empty() ? common::Context::Global().NewName("var") : id_hint;
+    get()->id =
+        id_hint.empty() ? common::Context::Global().NewName("var") : id_hint;
   }
 
   void set_id(const std::string& id) { operator->()->id = id; }
@@ -85,17 +88,18 @@ class Placeholder {
   Placeholder(const common::Type& type,
               const std::vector<int>& shape,
               absl::string_view id_hint = "",
-              bool is_const             = false) {
+              bool is_const = false) {
     if (!id_hint.empty()) CheckVarNameValid(std::string(id_hint));
-    id_            = id_hint.empty() ? common::Context::Global().NewName("placeholder") : (std::string)id_hint;
-    var_           = Variable(id_);
-    var_->shape    = shape;
-    var_->type     = type;
+    id_ = id_hint.empty() ? common::Context::Global().NewName("placeholder")
+                          : (std::string)id_hint;
+    var_ = Variable(id_);
+    var_->shape = shape;
+    var_->type = type;
     var_->is_const = is_const;
   }
 
   explicit Placeholder(const Variable& var) {
-    id_  = var->id;
+    id_ = var->id;
     var_ = var;
   }
 
@@ -138,10 +142,13 @@ struct _Instruction_ : public common::Object {
 };
 
 /**
- * Instruction is the basic computational unit of a Program, similar to the operator concept in a DNN platform.
+ * Instruction is the basic computational unit of a Program, similar to the
+ * operator concept in a DNN platform.
  */
 struct Instruction : public common::Shared<_Instruction_> {
-  explicit Instruction(absl::string_view op_type, const std::vector<Variable>& inputs = {}, Program* parent = nullptr);
+  explicit Instruction(absl::string_view op_type,
+                       const std::vector<Variable>& inputs = {},
+                       Program* parent = nullptr);
 
   /**
    * Set the inputs of the instruction.
@@ -174,9 +181,11 @@ struct Instruction : public common::Shared<_Instruction_> {
   template <typename T>
   T GetAttrs(const std::string& key) const {
     auto it = get()->attrs.find(key);
-    CHECK(it != get()->attrs.end()) << "No attribute called [" << key << "] in op " << get()->op_type;
+    CHECK(it != get()->attrs.end())
+        << "No attribute called [" << key << "] in op " << get()->op_type;
     CHECK(absl::holds_alternative<T>(it->second))
-        << "Try get attribute " << key << " from a error type " << typeid(T()).name() << " in op " << get()->op_type;
+        << "Try get attribute " << key << " from a error type "
+        << typeid(T()).name() << " in op " << get()->op_type;
     return absl::get<T>(it->second);
   }
 
@@ -259,12 +268,19 @@ struct Program {
   /**
    * Multiply two matrix.
    */
-  Variable mul(const Variable& a, const Variable& b, int x_num_col_dims = 1, int y_num_col_dims = 1);
+  Variable mul(const Variable& a,
+               const Variable& b,
+               int x_num_col_dims = 1,
+               int y_num_col_dims = 1);
 
   /**
    * Multiply two matrix.
    */
-  Variable matmul(const Variable& a, const Variable& b, bool trans_a = false, bool trans_b = false, float alpha = 1);
+  Variable matmul(const Variable& a,
+                  const Variable& b,
+                  bool trans_a = false,
+                  bool trans_b = false,
+                  float alpha = 1);
 
   /**
    * Reshape a tensor.
@@ -284,7 +300,8 @@ struct Program {
 
   Variable transpose(const Variable& input_vars, const std::vector<int>& axis);
 
-#define SYNTAX_PRIM_UNARY_DECL(name__) Variable primitive_##name__(const Variable& a);
+#define SYNTAX_PRIM_UNARY_DECL(name__) \
+  Variable primitive_##name__(const Variable& a);
 
   SYNTAX_PRIM_UNARY_DECL(exp);
   SYNTAX_PRIM_UNARY_DECL(erf);
@@ -321,7 +338,8 @@ struct Program {
   SYNTAX_PRIM_UNARY_DECL(abs);
   SYNTAX_PRIM_UNARY_DECL(rsqrt);
 
-#define SYNTAX_PRIM_BINARY_DECL(name__) Variable primitive_##name__(const Variable& a, const Variable& b);
+#define SYNTAX_PRIM_BINARY_DECL(name__) \
+  Variable primitive_##name__(const Variable& a, const Variable& b);
   SYNTAX_PRIM_BINARY_DECL(subtract)
   SYNTAX_PRIM_BINARY_DECL(divide)
   SYNTAX_PRIM_BINARY_DECL(floor_divide)
@@ -347,7 +365,8 @@ struct Program {
   SYNTAX_PRIM_BINARY_DECL(right_shift)
 
 #define SYNTAX_PRIM_REDUCE_DECL(name__) \
-  Variable reduce_##name__(const Variable& a, const std::vector<int>& dim, bool keep_dim = false);
+  Variable reduce_##name__(             \
+      const Variable& a, const std::vector<int>& dim, bool keep_dim = false);
 
   SYNTAX_PRIM_REDUCE_DECL(sum)
   SYNTAX_PRIM_REDUCE_DECL(prod)
@@ -357,7 +376,8 @@ struct Program {
   /** broadcast one operand to the target shape
    * broadcast axes: the target axis which a's ith axis is mapped to
    * Notes: a's dim should be one or same with the output dim mapped to.
-   * e.g. if a[64] broadcasts to out[1, 64, 112, 112], then out_shape is {1, 64, 112, 112} and broadcast_axes are {1}
+   * e.g. if a[64] broadcasts to out[1, 64, 112, 112], then out_shape is {1, 64,
+   * 112, 112} and broadcast_axes are {1}
    */
   Variable primitive_broadcast_to(const Variable& a,
                                   const std::vector<int>& out_shape,
@@ -405,15 +425,22 @@ struct Program {
    * @param attr_store The params like padding, stride, dilation, etc.
    * @return The result.
    */
-  Variable conv2d(const Variable& a, const Variable& b, const absl::flat_hash_map<std::string, attr_t>& attr_store);
-  Variable layout_transform(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store);
-  Variable conv2d_NCHWc(const Variable& a,
-                        const Variable& b,
-                        const absl::flat_hash_map<std::string, attr_t>& attr_store);
-  Variable depthwise_conv2d(const Variable& a,
-                            const Variable& b,
-                            const absl::flat_hash_map<std::string, attr_t>& attr_store);
-  Variable pool2d(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable conv2d(const Variable& a,
+                  const Variable& b,
+                  const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable layout_transform(
+      const Variable& a,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable conv2d_NCHWc(
+      const Variable& a,
+      const Variable& b,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable depthwise_conv2d(
+      const Variable& a,
+      const Variable& b,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable pool2d(const Variable& a,
+                  const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
   /**
    * The batchnorm layer can be used as a normalizer function
@@ -424,39 +451,47 @@ struct Program {
    * @param attr_store The params like eplison.
    * @return The result.
    */
-  Variable batchnorm(const Variable& a,
-                     const Variable& scale,
-                     const Variable& bias,
-                     const Variable& mean,
-                     const Variable& variance,
-                     const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable batchnorm(
+      const Variable& a,
+      const Variable& scale,
+      const Variable& bias,
+      const Variable& mean,
+      const Variable& variance,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
   /**
    *  batchnorm composed of primitive ops
    */
-  Variable fused_meta_batchnorm_inference(const Variable& a,
-                                          const Variable& scale,
-                                          const Variable& bias,
-                                          const Variable& mean,
-                                          const Variable& variance,
-                                          const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable fused_meta_batchnorm_inference(
+      const Variable& a,
+      const Variable& scale,
+      const Variable& bias,
+      const Variable& mean,
+      const Variable& variance,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
-  Variable fused_batchnorm_inference(const Variable& a,
-                                     const Variable& scale,
-                                     const Variable& bias,
-                                     const Variable& mean,
-                                     const Variable& variance,
-                                     const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable fused_batchnorm_inference(
+      const Variable& a,
+      const Variable& scale,
+      const Variable& bias,
+      const Variable& mean,
+      const Variable& variance,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
-  Variable scale(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable scale(const Variable& a,
+                 const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
-  Variable softmax(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable softmax(const Variable& a,
+                   const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
   Variable sigmoid(const Variable& a);
 
-  Variable slice(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable slice(const Variable& a,
+                 const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
-  Variable dropout_infer(const Variable& a, const absl::flat_hash_map<std::string, attr_t>& attr_store);
+  Variable dropout_infer(
+      const Variable& a,
+      const absl::flat_hash_map<std::string, attr_t>& attr_store);
 
   /**
    * Get \p i-th instruction.
@@ -486,18 +521,19 @@ struct Program {
  * Load a Paddle model and return a frontend program.
  * @param model_dir The directory of the model.
  * @param is_combined Whether the parameters in the Paddle model is combined.
- * @returns program, a map from name to variable and a map from variable name in Paddle model to the corresponding in
- * program
+ * @returns program, a map from name to variable and a map from variable name in
+ * Paddle model to the corresponding in program
  */
 std::tuple<std::unique_ptr<Program>,
            absl::flat_hash_map<std::string, Variable>,
            absl::flat_hash_map<std::string, std::string>,
            absl::flat_hash_set<std::string>>
-LoadPaddleProgram(const std::string& model_dir,
-                  hlir::framework::Scope* scope,
-                  std::unordered_map<std::string, std::vector<int>>& input_shape_map,
-                  bool is_combined,
-                  const common::Target& target = common::DefaultHostTarget());
+LoadPaddleProgram(
+    const std::string& model_dir,
+    hlir::framework::Scope* scope,
+    std::unordered_map<std::string, std::vector<int>>& input_shape_map,
+    bool is_combined,
+    const common::Target& target = common::DefaultHostTarget());
 
 std::ostream& operator<<(std::ostream& os, const Variable& x);
 std::ostream& operator<<(std::ostream& os, const Instruction& instr);

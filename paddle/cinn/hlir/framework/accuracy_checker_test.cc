@@ -43,14 +43,17 @@ void GenerateRandomData(float* data, size_t numel, bool generate_nan) {
 
 void SetRandomTensor(Tensor tensor, Target target, bool generate_nan) {
   size_t numel = tensor->shape().numel();
-  float* dst   = tensor->mutable_data<float>(target);
+  float* dst = tensor->mutable_data<float>(target);
 
   std::vector<float> random_nan_vec(numel);
   GenerateRandomData(random_nan_vec.data(), numel, generate_nan);
 
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(dst, random_nan_vec.data(), numel * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(dst,
+               random_nan_vec.data(),
+               numel * sizeof(float),
+               cudaMemcpyHostToDevice);
   }
 #endif
   if (target == common::DefaultHostTarget()) {
@@ -78,10 +81,12 @@ std::unique_ptr<backends::SimpleJIT> GetLoweredFunc(Target target) {
   lang::Placeholder<float> x("x", {m, n});
 
   auto y = Compute(
-      {m, n}, [=](Expr i, Expr j) { return lang::CallExtern("sqrt", {x(i, j)}); }, "y");
+      {m, n},
+      [=](Expr i, Expr j) { return lang::CallExtern("sqrt", {x(i, j)}); },
+      "y");
 
   auto stages = CreateStages({y});
-  auto fn     = Lower("fn_sqrt", stages, {x, y});
+  auto fn = Lower("fn_sqrt", stages, {x, y});
 
   ir::Module::Builder builder("some_module", target);
   builder.AddFunction(fn);
@@ -105,7 +110,7 @@ TEST(AccuracyChecker, instruction) {
   Scope scope;
   InstantiateScope(&scope, target);
 
-  auto jit    = GetLoweredFunc(target);
+  auto jit = GetLoweredFunc(target);
   auto fn_ptr = jit->Lookup("fn_sqrt");
   CHECK(fn_ptr);
 
@@ -122,17 +127,21 @@ TEST(AccuracyChecker, instruction) {
 void InitName2PodArgs(Target target,
                       std::vector<cinn_buffer_t>* args_buffer,
                       std::map<std::string, cinn_pod_value_t>* name2podargs) {
-  auto* default_memory_mng = MemoryManager::Global().RetrieveSafely(target.arch);
+  auto* default_memory_mng =
+      MemoryManager::Global().RetrieveSafely(target.arch);
 
-  int count         = 0;
+  int count = 0;
   const auto& shape = Shape({16, 16});
-  size_t numel      = shape.numel();
+  size_t numel = shape.numel();
   for (const auto& name : std::vector<std::string>({"x", "y"})) {
     auto* buffer = &args_buffer->at(count++);
     buffer->type = cinn_float32_t();
-    buffer->resize(reinterpret_cast<const cinn_dimension_t*>(shape.data().data()), shape.size());
-    buffer->memory = reinterpret_cast<uint8_t*>(default_memory_mng->malloc(numel * sizeof(float)));
-    float* data    = reinterpret_cast<float*>(buffer->memory);
+    buffer->resize(
+        reinterpret_cast<const cinn_dimension_t*>(shape.data().data()),
+        shape.size());
+    buffer->memory = reinterpret_cast<uint8_t*>(
+        default_memory_mng->malloc(numel * sizeof(float)));
+    float* data = reinterpret_cast<float*>(buffer->memory);
     GenerateRandomData(data, numel, false);
     name2podargs->emplace(name, buffer);
   }
@@ -144,7 +153,7 @@ TEST(AccuracyChecker, instruction_podargs) {
   std::map<std::string, cinn_pod_value_t> name2podargs;
   InitName2PodArgs(target, &args_buffer, &name2podargs);
 
-  auto jit    = GetLoweredFunc(target);
+  auto jit = GetLoweredFunc(target);
   auto fn_ptr = jit->Lookup("fn_sqrt");
   CHECK(fn_ptr);
 

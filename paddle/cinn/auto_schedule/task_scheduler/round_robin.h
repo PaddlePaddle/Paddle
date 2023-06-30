@@ -25,7 +25,8 @@ namespace auto_schedule {
 // is picking a task to tune once a time iteratively.
 class RoundRobin : public TaskScheduler {
  public:
-  RoundRobin(const std::vector<TuneTask>& tasks, const Config& config) : TaskScheduler(tasks, config) {}
+  RoundRobin(const std::vector<TuneTask>& tasks, const Config& config)
+      : TaskScheduler(tasks, config) {}
 
   const char* Name() const override { return "round_robin"; };
 

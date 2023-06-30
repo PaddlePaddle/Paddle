@@ -510,6 +510,7 @@ ir::Expr OpLowerer::DoGroupSchedule(
                 << ", ir is:\n"
                 << ir_sch.GetModule().GetExprs().at(0);
         // if node is horizontal with reduce or node is reduce, loop assign
+        //
         // master.
         auto loops = ir_sch.GetLoops(GetNodeData(node)->id());
         if (op_pattern_dict[node->op()] == framework::kElementWise) {

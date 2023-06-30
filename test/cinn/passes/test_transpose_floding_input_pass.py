@@ -39,9 +39,11 @@ class TestTransposeFoldingInputPass(PassTest):
 
     def build_program(self, builder, target):
         x = builder.create_input(
-            str(self.feed_data['x'].dtype), self.feed_data['x'].shape, "x")
+            str(self.feed_data['x'].dtype), self.feed_data['x'].shape, "x"
+        )
         y = builder.create_input(
-            str(self.feed_data['y'].dtype), self.feed_data['y'].shape, "y")
+            str(self.feed_data['y'].dtype), self.feed_data['y'].shape, "y"
+        )
         x_t = self.trans_x_func(builder, x)
         y_t = self.trans_y_func(builder, y)
         out = builder.matmul(x_t, y_t)
@@ -50,7 +52,8 @@ class TestTransposeFoldingInputPass(PassTest):
     def test_check_results(self):
         self.check_pass_outputs(
             pass_diff=self.folded_num,
-            test_passes=["TransposeFoldingInput", "GemmRewriter"])
+            test_passes=["TransposeFoldingInput", "GemmRewriter"],
+        )
 
 
 class TestTransposeFoldingInputPassTransY(TestTransposeFoldingInputPass):
@@ -120,7 +123,8 @@ class TestTransposeFoldingInputPassWithIdentity(TestTransposeFoldingInputPass):
 
 
 class TestTransposeFoldingInputPassWithBroadcastX(
-        TestTransposeFoldingInputPass):
+    TestTransposeFoldingInputPass
+):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([5, 3], "float32"),
@@ -141,7 +145,8 @@ class TestTransposeFoldingInputPassWithBroadcastX(
 
 
 class TestTransposeFoldingInputPassWithBroadcastXY(
-        TestTransposeFoldingInputPass):
+    TestTransposeFoldingInputPass
+):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([5, 3], "float32"),
@@ -164,7 +169,8 @@ class TestTransposeFoldingInputPassWithBroadcastXY(
 
 
 class TestTransposeFoldingInputPassWithBroadcastAfterTrans(
-        TestTransposeFoldingInputPass):
+    TestTransposeFoldingInputPass
+):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([5, 3], "float32"),

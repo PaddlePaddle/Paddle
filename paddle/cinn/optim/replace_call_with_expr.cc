@@ -23,7 +23,8 @@ namespace cinn {
 namespace optim {
 
 struct ReplaceCallWithExprModifier : public ir::IRMutator<> {
-  ReplaceCallWithExprModifier(const std::string &statement, const Expr &candidate)
+  ReplaceCallWithExprModifier(const std::string &statement,
+                              const Expr &candidate)
       : statement_(statement), candidate_(candidate) {}
 
   void operator()(Expr *e) { IRMutator<>::Visit(e, e); }
@@ -49,7 +50,9 @@ struct ReplaceCallWithExprModifier : public ir::IRMutator<> {
   const Expr &candidate_;
 };
 
-void ReplaceCallWithExpr(Expr *e, const std::string &statement, const Expr &candidate) {
+void ReplaceCallWithExpr(Expr *e,
+                         const std::string &statement,
+                         const Expr &candidate) {
   ReplaceCallWithExprModifier modifier(statement, candidate);
   modifier(e);
 }
@@ -62,16 +65,17 @@ void ReplaceIslCallWithExpr(Expr *e,
   Expr copied = IRCopy(candidate);
   // update the axis in the copied expression.
 
-  // we treat the Store node as the normal statement, the others like Call node has no axis.
+  // we treat the Store node as the normal statement, the others like Call node
+  // has no axis.
   std::map<std::string, Expr> local_axis;
   std::vector<std::string> origin_axes;
   std::map<std::string, Expr> new_axis_map = axis_map;
   for (auto &item : axis_map) {
     origin_axes.push_back(item.first);
   }
-  // Add '_after' to the transformed var's name to avoid duplicating transforming.
-  // For example, given indices [i,j], if we want to switch 'i' and 'j'(i->j, j->i)
-  // When we don't add '_after', the processing will be :
+  // Add '_after' to the transformed var's name to avoid duplicating
+  // transforming. For example, given indices [i,j], if we want to switch 'i'
+  // and 'j'(i->j, j->i) When we don't add '_after', the processing will be :
   // 1. [i,j] to [j,j]
   // 2. [j,j] to [i,i]
   // Then we get result [i,i], which is different form the correct result [j,i]
@@ -92,23 +96,28 @@ void ReplaceIslCallWithExpr(Expr *e,
       if (indice.is_var() || indice.is_constant()) {
         if (!new_axis_map.count(std::to_string(i))) continue;
         if (!indice.is_constant()) {
-          local_axis[indice.as_var()->name] = new_axis_map.at(std::to_string(i));
+          local_axis[indice.as_var()->name] =
+              new_axis_map.at(std::to_string(i));
         }
       }
     }
-    // the store indices just contains the ones of transform's domain, not the range.
-    // e.g. { s[i,j] -> s[i0,i1,j]: i0=i/4 and i1=i%4 }, the store's indices just contains i,j while in the final code,
-    // the axis are from the range, that is, there are some new axis not exists in store->indice, i0 and i1.
+    // the store indices just contains the ones of transform's domain, not the
+    // range. e.g. { s[i,j] -> s[i0,i1,j]: i0=i/4 and i1=i%4 }, the store's
+    // indices just contains i,j while in the final code, the axis are from the
+    // range, that is, there are some new axis not exists in store->indice, i0
+    // and i1.
   }
 
   for (auto &laxis : local_axis) {
-    VLOG(3) << "local_axis Replacing axis: " << laxis.first << " to " << laxis.second;
+    VLOG(3) << "local_axis Replacing axis: " << laxis.first << " to "
+            << laxis.second;
     ReplaceVarWithExpr(&copied, Var(laxis.first), laxis.second);
   }
   // replace the remaining axis(in the transform's range)
   for (auto &item : new_axis_map) {
     if (!local_axis.count(item.first)) {
-      VLOG(3) << "new_axis_map Replacing axis: " << item.first << " to " << item.second;
+      VLOG(3) << "new_axis_map Replacing axis: " << item.first << " to "
+              << item.second;
       ReplaceVarWithExpr(&copied, Var(item.first), item.second);
     }
   }
@@ -117,7 +126,8 @@ void ReplaceIslCallWithExpr(Expr *e,
     ReplaceVarWithExpr(&copied, Var(axis + "_after"), Expr(Var(axis)));
   }
 
-  VLOG(3) << "After replacing, the statement [" << statement << "] is : " << copied;
+  VLOG(3) << "After replacing, the statement [" << statement
+          << "] is : " << copied;
   ReplaceCallWithExpr(e, statement, copied);
 }
 

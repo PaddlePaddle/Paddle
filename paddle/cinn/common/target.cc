@@ -53,33 +53,40 @@ int Target::runtime_arch() const {
 }
 
 int Target::max_num_threads() const {
-  CHECK(arch == Arch::NVGPU) << "The target is not NVGPU! Cannot get max number of threads.";
+  CHECK(arch == Arch::NVGPU)
+      << "The target is not NVGPU! Cannot get max number of threads.";
   return 1024;
 }
 
 int Target::get_multi_processor_count() const {
-  CHECK(arch == Arch::NVGPU) << "The target is not NVGPU! Cannot get multi processor count";
+  CHECK(arch == Arch::NVGPU)
+      << "The target is not NVGPU! Cannot get multi processor count";
   int num_sm = 0;
 #ifdef CINN_WITH_CUDA
-  cudaDeviceGetAttribute(&num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
+  cudaDeviceGetAttribute(
+      &num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
 #endif
   return num_sm;
 }
 
 int Target::get_max_threads_per_sm() const {
-  CHECK(arch == Arch::NVGPU) << "The target is not NVGPU! Cannot get max threads per stream processor";
+  CHECK(arch == Arch::NVGPU)
+      << "The target is not NVGPU! Cannot get max threads per stream processor";
   int max_thread = 0;
 #ifdef CINN_WITH_CUDA
-  cudaDeviceGetAttribute(&max_thread, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
+  cudaDeviceGetAttribute(
+      &max_thread, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
 #endif
   return max_thread;
 }
 
 int Target::get_max_blocks_per_sm() const {
-  CHECK(arch == Arch::NVGPU) << "The target is not NVGPU! Cannot get max blocks per stream processor";
+  CHECK(arch == Arch::NVGPU)
+      << "The target is not NVGPU! Cannot get max blocks per stream processor";
   int max_blocks = 1;
 #ifdef CINN_WITH_CUDA
-  cudaDeviceGetAttribute(&max_blocks, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, 0);
+  cudaDeviceGetAttribute(
+      &max_blocks, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, 0);
 #endif
   return max_blocks;
 }
@@ -173,16 +180,19 @@ std::ostream &operator<<(std::ostream &os, Target::Arch arch) {
 }
 
 const Target &UnkTarget() {
-  static Target target(Target::OS::Unk, Target::Arch::Unk, Target::Bit::Unk, {}, {});
+  static Target target(
+      Target::OS::Unk, Target::Arch::Unk, Target::Bit::Unk, {}, {});
   return target;
 }
 const Target &DefaultHostTarget() {
-  static Target target(Target::OS::Linux, Target::Arch::X86, Target::Bit::k64, {}, {});
+  static Target target(
+      Target::OS::Linux, Target::Arch::X86, Target::Bit::k64, {}, {});
   return target;
 }
 
 const Target &DefaultNVGPUTarget() {
-  static Target target(Target::OS::Linux, Target::Arch::NVGPU, Target::Bit::k64, {}, {});
+  static Target target(
+      Target::OS::Linux, Target::Arch::NVGPU, Target::Bit::k64, {}, {});
   return target;
 }
 
@@ -191,8 +201,10 @@ int GetMaxThreads() {
   int max_threads = 1;
 #ifdef CINN_WITH_CUDA
   int num_sm = 1;
-  cudaDeviceGetAttribute(&num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
-  cudaDeviceGetAttribute(&max_threads, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
+  cudaDeviceGetAttribute(
+      &num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
+  cudaDeviceGetAttribute(
+      &max_threads, cudaDeviceAttr::cudaDevAttrMaxThreadsPerMultiProcessor, 0);
   // multiplication num_sm
   max_threads *= (num_sm * 4);
 #endif
@@ -204,8 +216,10 @@ int GetMaxBlocks() {
   int max_blocks = 1;
 #ifdef CINN_WITH_CUDA
   int num_sm = 1;
-  cudaDeviceGetAttribute(&num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
-  cudaDeviceGetAttribute(&max_blocks, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, 0);
+  cudaDeviceGetAttribute(
+      &num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
+  cudaDeviceGetAttribute(
+      &max_blocks, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, 0);
 
   // multiplication num_sm
   max_blocks *= num_sm;

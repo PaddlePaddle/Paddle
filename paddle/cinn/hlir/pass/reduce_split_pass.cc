@@ -31,8 +31,12 @@ using framework::Operator;
 using framework::shape_t;
 
 bool IsReduceOp(const framework::Node* node) {
-  static std::unordered_set<std::string> reduce_op_type = {
-      "reduce_sum", "reduce_mean", "reduce_max", "reduce_min", "reduce_all", "reduce_any"};
+  static std::unordered_set<std::string> reduce_op_type = {"reduce_sum",
+                                                           "reduce_mean",
+                                                           "reduce_max",
+                                                           "reduce_min",
+                                                           "reduce_all",
+                                                           "reduce_any"};
   if (reduce_op_type.count(node->op()->name)) {
     return true;
   } else {
@@ -69,12 +73,16 @@ class ReduceSplitPass {
  public:
   // Find the reduce op with nwhc format and large shape, split it into two ops
   static int Apply(framework::Graph* graph) {
-    int MAX_NUM_THREADS               = common::DefaultNVGPUTarget().max_num_threads();
+    int MAX_NUM_THREADS = common::DefaultNVGPUTarget().max_num_threads();
     constexpr int MAX_ITER_PER_THREAD = 32;  // empirical value
 
-    int cnt          = 0;
-    auto& shape_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
-    auto& dtype_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>("inferdtype");
+    int cnt = 0;
+    auto& shape_dict =
+        graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+            "infershape");
+    auto& dtype_dict =
+        graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+            "inferdtype");
 
     // loop the nodes in graph and find reduce_xx op
     auto nodes_inorder = std::get<0>(graph->topological_order());
@@ -84,15 +92,15 @@ class ReduceSplitPass {
       }
       auto n = node->safe_as<Node>();
       if (IsReduceOp(n)) {
-        auto* op  = n->op();
+        auto* op = n->op();
         auto name = op->name;
 
-        auto dims     = absl::get<std::vector<int>>(n->attrs.attr_store.at("dim"));
+        auto dims = absl::get<std::vector<int>>(n->attrs.attr_store.at("dim"));
         bool keep_dim = absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
-        auto in       = (*n->inlinks().begin())->source()->safe_as<NodeData>();
-        auto out      = (*n->outlinks().begin())->sink()->safe_as<NodeData>();
+        auto in = (*n->inlinks().begin())->source()->safe_as<NodeData>();
+        auto out = (*n->outlinks().begin())->sink()->safe_as<NodeData>();
 
-        auto in_shape  = shape_dict.at(in->id());
+        auto in_shape = shape_dict.at(in->id());
         auto out_shape = shape_dict.at(out->id());
         // all preceding reduced
         CHECK(in_shape.size() > 1);
@@ -104,92 +112,127 @@ class ReduceSplitPass {
           }
         }
         bool reduce_all =
-            all_preceding_dim_reduced && std::find(dims.begin(), dims.end(), in_shape.size() - 1) != dims.end();
+            all_preceding_dim_reduced &&
+            std::find(dims.begin(), dims.end(), in_shape.size() - 1) !=
+                dims.end();
         if (!all_preceding_dim_reduced || reduce_all) {
           continue;
         }
-        int numel        = std::accumulate(in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
-        int reduce_numel = std::accumulate(in_shape.begin(), in_shape.end() - 1, 1, std::multiplies<int>());
+        int numel = std::accumulate(
+            in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
+        int reduce_numel = std::accumulate(
+            in_shape.begin(), in_shape.end() - 1, 1, std::multiplies<int>());
         CHECK(reduce_numel > 0);
         // if the numel is not large enough, it is no need to split
         // if loop times is too large with reduce optimize
-        int size   = std::accumulate(in_shape.begin(), (in_shape.end() - 1), 1, std::multiplies<int>());
-        int tail   = 0;
+        int size = std::accumulate(
+            in_shape.begin(), (in_shape.end() - 1), 1, std::multiplies<int>());
+        int tail = 0;
         bool bound = true;
-        auto shape = pe::GetFirstStepReduceShape({size, in_shape.back()}, {0}, bound, tail);
+        auto shape = pe::GetFirstStepReduceShape(
+            {size, in_shape.back()}, {0}, bound, tail);
         CHECK(bound);
         CHECK_EQ(shape.size(), 3);
 
-        auto res          = DivideToClosetNum(reduce_numel);
+        auto res = DivideToClosetNum(reduce_numel);
         int reduce_numel0 = std::get<0>(res), reduce_numel1 = std::get<1>(res);
 
         VLOG(3) << "InShape -> "
                 << std::accumulate(
-                       in_shape.begin(), in_shape.end(), std::string(""), [](const std::string& left, const int right) {
+                       in_shape.begin(),
+                       in_shape.end(),
+                       std::string(""),
+                       [](const std::string& left, const int right) {
                          return left + std::to_string(right) + " ";
                        });
-        VLOG(3) << "  reduce  split : " << reduce_numel0 << " " << reduce_numel1 << " " << in_shape.back();
+        VLOG(3) << "  reduce  split : " << reduce_numel0 << " " << reduce_numel1
+                << " " << in_shape.back();
         VLOG(3) << "  reshape split : "
-                << std::accumulate(shape.begin(), shape.end(), std::string(""), [](std::string left, int right) {
-                     return left + std::to_string(right) + " ";
-                   });
+                << std::accumulate(shape.begin(),
+                                   shape.end(),
+                                   std::string(""),
+                                   [](std::string left, int right) {
+                                     return left + std::to_string(right) + " ";
+                                   });
 
         // Two do reduce split:
         //   1. reshape_loop > split_loop
         //   2. reshape thread > max_threads.
-        if (shape[0] <= reduce_numel0 && shape[1] * shape[2] <= common::GetMaxThreads()) {
+        if (shape[0] <= reduce_numel0 &&
+            shape[1] * shape[2] <= common::GetMaxThreads()) {
           VLOG(3) << "  Don't Do Reduce Split!";
           continue;
         }
         VLOG(3) << "  Do Reduce Split!";
 
         /*
-        if ((!all_preceding_dim_reduced) || numel <= MAX_NUM_THREADS * MAX_ITER_PER_THREAD || reduce_all) {
-          continue;
+        if ((!all_preceding_dim_reduced) || numel <= MAX_NUM_THREADS *
+        MAX_ITER_PER_THREAD || reduce_all) { continue;
         }
         */
         // create reshape node0
-        Node* reshape0 = new Node(Operator::Get("reshape"), "reshape", common::UniqName("reshape_split"));
-        reshape0->attrs.attr_store["shape"] =
-            std::vector<int>{reduce_numel0, reduce_numel1, in_shape[in_shape.size() - 1]};
+        Node* reshape0 = new Node(Operator::Get("reshape"),
+                                  "reshape",
+                                  common::UniqName("reshape_split"));
+        reshape0->attrs.attr_store["shape"] = std::vector<int>{
+            reduce_numel0, reduce_numel1, in_shape[in_shape.size() - 1]};
         graph->RegisterNode(reshape0->id(), reshape0);
         in->LinkTo(reshape0);
         in->UnLinkSingleTo(node);
         node->UnLinkSingleTo(out);
-        auto reshape0_data = new NodeData(Shared<Node>(reshape0), 0, 0, common::UniqName("var"), false);
+        auto reshape0_data = new NodeData(
+            Shared<Node>(reshape0), 0, 0, common::UniqName("var"), false);
         graph->RegisterNode(reshape0_data->id(), reshape0_data);
         reshape0->LinkTo(reshape0_data);
-        shape_dict[reshape0_data->id()] = absl::get<std::vector<int>>(reshape0->attrs.attr_store.at("shape"));
-        dtype_dict[reshape0_data->id()] = common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
+        shape_dict[reshape0_data->id()] =
+            absl::get<std::vector<int>>(reshape0->attrs.attr_store.at("shape"));
+        dtype_dict[reshape0_data->id()] =
+            common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
 
         // create reduce node0
-        Node* reduce0                         = new Node(Operator::Get(name), name, common::UniqName(name + "_split"));
-        reduce0->attrs.attr_store["dim"]      = std::vector<int>{0};
-        reduce0->attrs.attr_store["keep_dim"] = absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
+        Node* reduce0 = new Node(
+            Operator::Get(name), name, common::UniqName(name + "_split"));
+        reduce0->attrs.attr_store["dim"] = std::vector<int>{0};
+        reduce0->attrs.attr_store["keep_dim"] =
+            absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
         graph->RegisterNode(reduce0->id(), reduce0);
         reshape0_data->LinkTo(reduce0);
-        auto reduce0_data = new NodeData(Shared<Node>(reduce0), 0, 0, common::UniqName("var"), false);
+        auto reduce0_data = new NodeData(
+            Shared<Node>(reduce0), 0, 0, common::UniqName("var"), false);
         graph->RegisterNode(reduce0_data->id(), reduce0_data);
         reduce0->LinkTo(reduce0_data);
-        shape_dict[reduce0_data->id()] = keep_dim ? std::vector<int>{1, reduce_numel1, in_shape[in_shape.size() - 1]}
-                                                  : std::vector<int>{reduce_numel1, in_shape[in_shape.size() - 1]};
-        dtype_dict[reduce0_data->id()] = common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
+        shape_dict[reduce0_data->id()] =
+            keep_dim ? std::vector<int>{1,
+                                        reduce_numel1,
+                                        in_shape[in_shape.size() - 1]}
+                     : std::vector<int>{reduce_numel1,
+                                        in_shape[in_shape.size() - 1]};
+        dtype_dict[reduce0_data->id()] =
+            common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
 
         // create reduce node1
-        Node* reduce1                         = new Node(Operator::Get(name), name, common::UniqName(name + "_split"));
-        reduce1->attrs.attr_store["dim"]      = keep_dim ? std::vector<int>{0, 1} : std::vector<int>{0};
-        reduce1->attrs.attr_store["keep_dim"] = absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
+        Node* reduce1 = new Node(
+            Operator::Get(name), name, common::UniqName(name + "_split"));
+        reduce1->attrs.attr_store["dim"] =
+            keep_dim ? std::vector<int>{0, 1} : std::vector<int>{0};
+        reduce1->attrs.attr_store["keep_dim"] =
+            absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
         graph->RegisterNode(reduce1->id(), reduce1);
         reduce0_data->LinkTo(reduce1);
-        auto reduce1_data = new NodeData(Shared<Node>(reduce1), 0, 0, common::UniqName("var"), false);
+        auto reduce1_data = new NodeData(
+            Shared<Node>(reduce1), 0, 0, common::UniqName("var"), false);
         graph->RegisterNode(reduce1_data->id(), reduce1_data);
         reduce1->LinkTo(reduce1_data);
-        shape_dict[reduce1_data->id()] = keep_dim ? std::vector<int>{1, 1, in_shape[in_shape.size() - 1]}
-                                                  : std::vector<int>{in_shape[in_shape.size() - 1]};
-        dtype_dict[reduce1_data->id()] = common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
+        shape_dict[reduce1_data->id()] =
+            keep_dim ? std::vector<int>{1, 1, in_shape[in_shape.size() - 1]}
+                     : std::vector<int>{in_shape[in_shape.size() - 1]};
+        dtype_dict[reduce1_data->id()] =
+            common::Str2Type(common::Type2Str(dtype_dict[in->id()]));
 
         // create reshape node1
-        Node* reshape1 = new Node(Operator::Get("reshape"), "reshape", common::UniqName("reshape_split"));
+        Node* reshape1 = new Node(Operator::Get("reshape"),
+                                  "reshape",
+                                  common::UniqName("reshape_split"));
         reshape1->attrs.attr_store["shape"] = out_shape;
         graph->RegisterNode(reshape1->id(), reshape1);
         reduce1_data->LinkTo(reshape1);

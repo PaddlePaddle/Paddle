@@ -34,7 +34,9 @@ namespace cinn {
 namespace common {
 using namespace ir;  // NOLINT
 
-Expr AutoSimplify(Expr u, const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+Expr AutoSimplify(
+    Expr u,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   VLOG(7) << "Begin AutoSimplify: " << u;
   u = detail::ConvertCinnToCAS(u);
   absl::flat_hash_map<std::string, CasInterval> s_var_intervals;
@@ -44,7 +46,8 @@ Expr AutoSimplify(Expr u, const absl::flat_hash_map<std::string, CasInterval>& v
       Expr e_r = detail::ConvertCinnToCAS(item.second.e_r);
       s_var_intervals.emplace(item.first, CasInterval(e_l, e_r));
     } else {
-      s_var_intervals.emplace(item.first, CasInterval(item.second.l, item.second.r));
+      s_var_intervals.emplace(item.first,
+                              CasInterval(item.second.l, item.second.r));
     }
   }
   u = CasSimplify(u, s_var_intervals);
@@ -70,7 +73,8 @@ int gcd(int a, int b) {
   return gcd(a, b - a);
 }
 
-//////// All the following symbolic computation methods are implemented referencing to the book <Computer Algegra and
+//////// All the following symbolic computation methods are implemented
+/// referencing to the book <Computer Algegra and
 /// Symbolic Computation - Joel S. Cohen>
 
 template <typename T>
@@ -141,7 +145,9 @@ bool IsDivisible(const Sum* a, int b);
 bool IsDivisible(int a, const Product* b) {
   if (a < 0) return false;
   for (auto& item : b->operands()) {
-    if (item.As<IntImm>() && item.As<IntImm>()->value > 0 && IsDivisible(a, item.As<IntImm>()->value)) return true;
+    if (item.As<IntImm>() && item.As<IntImm>()->value > 0 &&
+        IsDivisible(a, item.As<IntImm>()->value))
+      return true;
   }
   return false;
 }
@@ -193,13 +199,13 @@ Expr Divide(const Sum* a, int b) {
 }
 Expr Divide(const Product* a, int b) {
   std::vector<Expr> args;
-  int i             = 0;
-  int times         = -1;
+  int i = 0;
+  int times = -1;
   bool is_divisible = false;
   for (i = 0; i < a->operands().size(); i++) {
     auto* a_i = a->operand(i).As<IntImm>();
     if (a_i && a_i->value % b == 0) {
-      times        = a_i->value / b;
+      times = a_i->value / b;
       is_divisible = true;
       break;
     }
@@ -259,7 +265,8 @@ Expr CasSimplifyMutator::SimplifyRationalNumber(Expr u) {
       if (dv > 0) {
         return FracOp::Make(make_const(Iquot(nv, g)), make_const(Iquot(dv, g)));
       } else {
-        return FracOp::Make(make_const(Iquot(-nv, g)), make_const(Iquot(-dv, g)));
+        return FracOp::Make(make_const(Iquot(-nv, g)),
+                            make_const(Iquot(-dv, g)));
       }
     }
   }
@@ -268,7 +275,7 @@ Expr CasSimplifyMutator::SimplifyRationalNumber(Expr u) {
 
 Expr SumOrProductGetSingleElementsRec(Expr u) {
   auto* product = u.As<Product>();
-  auto* sum     = u.As<Sum>();
+  auto* sum = u.As<Sum>();
   if (product && product->operands().size() == 1) {
     return SumOrProductGetSingleElementsRec(u->operands.front());
   }
@@ -291,11 +298,12 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
     return a.As<_Var_>()->name < b.As<_Var_>()->name;
   }
 
-  // O-3, if a and b are either both products or both sums, compare by each element similar to lexicographical order.
+  // O-3, if a and b are either both products or both sums, compare by each
+  // element similar to lexicographical order.
   if ((a.As<Product>() && b.As<Product>()) || (a.As<Add>() && b.As<Add>())) {
     auto& aoprs = a->operands;
     auto& boprs = b->operands;
-    int m       = std::min(aoprs.size(), boprs.size());
+    int m = std::min(aoprs.size(), boprs.size());
 
     for (int i = 0; i < m; i++) {
       // ugly compare representation in string.
@@ -357,12 +365,18 @@ bool ExprPosCmp::operator()(const Expr& a, const Expr& b) {
   return false;
 }
 
-std::vector<Expr> CasSimplifyMutator::MergeProduct(const std::vector<Expr>& p, const std::vector<Expr>& q) {
-  return MergeExprs(
-      p, q, std::bind(&CasSimplifyMutator::SimplifyBinaryProduct, this, std::placeholders::_1, std::placeholders::_2));
+std::vector<Expr> CasSimplifyMutator::MergeProduct(const std::vector<Expr>& p,
+                                                   const std::vector<Expr>& q) {
+  return MergeExprs(p,
+                    q,
+                    std::bind(&CasSimplifyMutator::SimplifyBinaryProduct,
+                              this,
+                              std::placeholders::_1,
+                              std::placeholders::_2));
 }
 
-std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left, Expr right) {
+std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left,
+                                                            Expr right) {
   // SPRDREC-1
   if (!left.As<Product>() && !right.As<Product>()) {
     auto a = left;
@@ -388,23 +402,23 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left, Expr righ
       Expr cmp_oper;
       int const_value;
       if (ai) {
-        const_oper  = a;
-        cmp_oper    = b;
+        const_oper = a;
+        cmp_oper = b;
         const_value = ai->value;
       }
       if (af) {
-        const_oper  = a;
-        cmp_oper    = b;
+        const_oper = a;
+        cmp_oper = b;
         const_value = af->value;
       }
       if (bi) {
-        const_oper  = b;
-        cmp_oper    = a;
+        const_oper = b;
+        cmp_oper = a;
         const_value = bi->value;
       }
       if (bf) {
-        const_oper  = b;
-        cmp_oper    = a;
+        const_oper = b;
+        cmp_oper = a;
         const_value = bf->value;
       }
       if (const_value == 0) {
@@ -415,44 +429,60 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left, Expr righ
         auto cmp_max = cmp_oper.As<Max>();
         if (const_value > 0) {
           if (cmp_min) {
-            return {CasSimplify(Min::Make(CasSimplify(Product::Make({cmp_min->a(), const_oper}), var_intervals),
-                                          CasSimplify(Product::Make({cmp_min->b(), const_oper}), var_intervals)),
-                                var_intervals)};
+            return {CasSimplify(
+                Min::Make(CasSimplify(Product::Make({cmp_min->a(), const_oper}),
+                                      var_intervals),
+                          CasSimplify(Product::Make({cmp_min->b(), const_oper}),
+                                      var_intervals)),
+                var_intervals)};
           }
           if (cmp_max) {
-            return {CasSimplify(Max::Make(CasSimplify(Product::Make({cmp_max->a(), const_oper}), var_intervals),
-                                          CasSimplify(Product::Make({cmp_max->b(), const_oper}), var_intervals)),
-                                var_intervals)};
+            return {CasSimplify(
+                Max::Make(CasSimplify(Product::Make({cmp_max->a(), const_oper}),
+                                      var_intervals),
+                          CasSimplify(Product::Make({cmp_max->b(), const_oper}),
+                                      var_intervals)),
+                var_intervals)};
           }
         } else {
           if (cmp_min) {
-            return {CasSimplify(Max::Make(CasSimplify(Product::Make({cmp_min->b(), const_oper}), var_intervals),
-                                          CasSimplify(Product::Make({cmp_min->a(), const_oper}), var_intervals)),
-                                var_intervals)};
+            return {CasSimplify(
+                Max::Make(CasSimplify(Product::Make({cmp_min->b(), const_oper}),
+                                      var_intervals),
+                          CasSimplify(Product::Make({cmp_min->a(), const_oper}),
+                                      var_intervals)),
+                var_intervals)};
           }
           if (cmp_max) {
-            return {CasSimplify(Min::Make(CasSimplify(Product::Make({cmp_max->b(), const_oper}), var_intervals),
-                                          CasSimplify(Product::Make({cmp_max->a(), const_oper}), var_intervals)),
-                                var_intervals)};
+            return {CasSimplify(
+                Min::Make(CasSimplify(Product::Make({cmp_max->b(), const_oper}),
+                                      var_intervals),
+                          CasSimplify(Product::Make({cmp_max->a(), const_oper}),
+                                      var_intervals)),
+                var_intervals)};
           }
         }
       }
     }
 
     {  // FracOp related constants.
-      // NOTE the integer division is weried in C language, 1/2 = 0, that is huge different from a real CAS.
+      // NOTE the integer division is weried in C language, 1/2 = 0, that is
+      // huge different from a real CAS.
       auto* af = a.As<FracOp>();
       auto* bf = b.As<FracOp>();
       // 1/2 * 2/3
       if (af && bf && a->type().is_float()) {
-        return {CasSimplify(FracOp::Make(Product::Make({af->a(), bf->a()}), Product::Make({af->b(), bf->b()})),
+        return {CasSimplify(FracOp::Make(Product::Make({af->a(), bf->a()}),
+                                         Product::Make({af->b(), bf->b()})),
                             var_intervals)};
       }
       if (af && !bf && a->type().is_float()) {
-        return {CasSimplify(FracOp::Make(Product::Make({af->a(), b}), af->b()), var_intervals)};
+        return {CasSimplify(FracOp::Make(Product::Make({af->a(), b}), af->b()),
+                            var_intervals)};
       }
       if (!af && bf && a->type().is_float()) {
-        return {CasSimplify(FracOp::Make(Product::Make({bf->a(), a}), bf->b()), var_intervals)};
+        return {CasSimplify(FracOp::Make(Product::Make({bf->a(), a}), bf->b()),
+                            var_intervals)};
       }
     }
 
@@ -521,10 +551,12 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinaryProduct(Expr left, Expr righ
   return {left, right};
 }
 
-std::vector<Expr> CasSimplifyMutator::SimplifyProductRec(const std::vector<Expr>& operands) {
-  if (operands.size() < 2) return {CasSimplify(operands.front(), var_intervals)};
-  auto mid_it  = operands.begin() + operands.size() / 2;
-  auto&& left  = SimplifyProductRec(std::vector<Expr>(operands.begin(), mid_it));
+std::vector<Expr> CasSimplifyMutator::SimplifyProductRec(
+    const std::vector<Expr>& operands) {
+  if (operands.size() < 2)
+    return {CasSimplify(operands.front(), var_intervals)};
+  auto mid_it = operands.begin() + operands.size() / 2;
+  auto&& left = SimplifyProductRec(std::vector<Expr>(operands.begin(), mid_it));
   auto&& right = SimplifyProductRec(std::vector<Expr>(mid_it, operands.end()));
   return MergeProduct(left, right);
 }
@@ -589,15 +621,16 @@ Expr CasSimplifyMutator::SimplifySum(Expr u) {
   return Sum::Make(args);
 }
 
-std::vector<Expr> CasSimplifyMutator::MergeExprs(const std::vector<Expr>& p,
-                                                 const std::vector<Expr>& q,
-                                                 const std::function<std::vector<Expr>(Expr, Expr)>& binary_merge) {
+std::vector<Expr> CasSimplifyMutator::MergeExprs(
+    const std::vector<Expr>& p,
+    const std::vector<Expr>& q,
+    const std::function<std::vector<Expr>(Expr, Expr)>& binary_merge) {
   std::vector<Expr> res;
   int li = 0, lj = 0;
   while (li < p.size() && lj < q.size()) {
     auto&& p1 = p[li];
     auto&& q1 = q[lj];
-    auto&& h  = binary_merge(p1, q1);
+    auto&& h = binary_merge(p1, q1);
     if (h.size() == 2 && h[0] == p1 && h[1] == q1) {
       ++li;
       res.emplace_back(std::move(h.front()));
@@ -617,7 +650,8 @@ std::vector<Expr> CasSimplifyMutator::MergeExprs(const std::vector<Expr>& p,
 }
 
 // This implementation is similar to MergeProduct
-std::vector<Expr> CasSimplifyMutator::MergeSum(const std::vector<Expr>& p, const std::vector<Expr>& q) {
+std::vector<Expr> CasSimplifyMutator::MergeSum(const std::vector<Expr>& p,
+                                               const std::vector<Expr>& q) {
 #ifdef CINN_DEBUG
   {
     std::stringstream ss;
@@ -666,24 +700,28 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinarySum(Expr left, Expr right) {
     auto* b_min = b.As<Min>();
     auto* b_max = b.As<Max>();
     if (a_min) {
-      return {CasSimplify(Min::Make(CasSimplify(Sum::Make({a_min->a(), b}), var_intervals),
-                                    CasSimplify(Sum::Make({a_min->b(), b}), var_intervals)),
-                          var_intervals)};
+      return {CasSimplify(
+          Min::Make(CasSimplify(Sum::Make({a_min->a(), b}), var_intervals),
+                    CasSimplify(Sum::Make({a_min->b(), b}), var_intervals)),
+          var_intervals)};
     }
     if (a_max) {
-      return {CasSimplify(Max::Make(CasSimplify(Sum::Make({a_max->a(), b}), var_intervals),
-                                    CasSimplify(Sum::Make({a_max->b(), b}), var_intervals)),
-                          var_intervals)};
+      return {CasSimplify(
+          Max::Make(CasSimplify(Sum::Make({a_max->a(), b}), var_intervals),
+                    CasSimplify(Sum::Make({a_max->b(), b}), var_intervals)),
+          var_intervals)};
     }
     if (b_min) {
-      return {CasSimplify(Min::Make(CasSimplify(Sum::Make({b_min->a(), a}), var_intervals),
-                                    CasSimplify(Sum::Make({b_min->b(), a}), var_intervals)),
-                          var_intervals)};
+      return {CasSimplify(
+          Min::Make(CasSimplify(Sum::Make({b_min->a(), a}), var_intervals),
+                    CasSimplify(Sum::Make({b_min->b(), a}), var_intervals)),
+          var_intervals)};
     }
     if (b_max) {
-      return {CasSimplify(Max::Make(CasSimplify(Sum::Make({b_max->a(), a}), var_intervals),
-                                    CasSimplify(Sum::Make({b_max->b(), a}), var_intervals)),
-                          var_intervals)};
+      return {CasSimplify(
+          Max::Make(CasSimplify(Sum::Make({b_max->a(), a}), var_intervals),
+                    CasSimplify(Sum::Make({b_max->b(), a}), var_intervals)),
+          var_intervals)};
     }
 
     // case 2
@@ -699,20 +737,25 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinarySum(Expr left, Expr right) {
       auto* am = a.As<Mod>();
       auto* bm = b.As<Mod>();
       if (am && bm) {
-        if (am->b() == bm->b() && ProductGetNonConstantPart(am->a()) == ProductGetNonConstantPart(bm->a())) {
-          return {CasSimplify(Mod::Make(Sum::Make({am->a(), bm->a()}), am->b()), var_intervals)};
+        if (am->b() == bm->b() && ProductGetNonConstantPart(am->a()) ==
+                                      ProductGetNonConstantPart(bm->a())) {
+          return {CasSimplify(Mod::Make(Sum::Make({am->a(), bm->a()}), am->b()),
+                              var_intervals)};
         }
       }
     }
 
     // case 3
-    // Here is different from SimplifySumRec, to deal with cases like 3x + (-2x) = 2x
+    // Here is different from SimplifySumRec, to deal with cases like 3x + (-2x)
+    // = 2x
     auto a_non_constant = ProductGetNonConstantPart(a);
     auto b_non_constant = ProductGetNonConstantPart(b);
-    if (a_non_constant.defined() && b_non_constant.defined() && a_non_constant == b_non_constant) {
+    if (a_non_constant.defined() && b_non_constant.defined() &&
+        a_non_constant == b_non_constant) {
       VLOG(7) << "a " << a;
       VLOG(7) << "b " << b;
-      Expr s = SimplifySum(Sum::Make({ProductGetConstantPart(a), ProductGetConstantPart(b)}));
+      Expr s = SimplifySum(
+          Sum::Make({ProductGetConstantPart(a), ProductGetConstantPart(b)}));
       Expr p = Product::Make({s, ProductGetNonConstantPart(a)});
       return {CasSimplify(p, var_intervals)};
     }
@@ -755,7 +798,8 @@ std::vector<Expr> CasSimplifyMutator::SimplifyBinarySum(Expr left, Expr right) {
 }
 
 // The implementation is similar to SimplifyProductRec
-std::vector<Expr> CasSimplifyMutator::SimplifySumRec(const std::vector<Expr>& operands) {
+std::vector<Expr> CasSimplifyMutator::SimplifySumRec(
+    const std::vector<Expr>& operands) {
 #ifdef CINN_DEBUG
   {
     std::stringstream ss;
@@ -766,9 +810,10 @@ std::vector<Expr> CasSimplifyMutator::SimplifySumRec(const std::vector<Expr>& op
   }
 #endif
   CHECK(!operands.empty());
-  if (operands.size() < 2) return {CasSimplify(operands.front(), var_intervals)};
-  auto mid_it  = operands.begin() + operands.size() / 2;
-  auto&& left  = SimplifySumRec(std::vector<Expr>(operands.begin(), mid_it));
+  if (operands.size() < 2)
+    return {CasSimplify(operands.front(), var_intervals)};
+  auto mid_it = operands.begin() + operands.size() / 2;
+  auto&& left = SimplifySumRec(std::vector<Expr>(operands.begin(), mid_it));
   auto&& right = SimplifySumRec(std::vector<Expr>(mid_it, operands.end()));
   return MergeSum(left, right);
 }
@@ -782,7 +827,10 @@ void CasSimplifyMutator::AddBaseAndSimplify(Expr* base, Expr bound) {
   *base = CasSimplify(*base, var_intervals);
 }
 
-void CasSimplifyMutator::UnfoldBound(Expr* lower_bound, Expr* upper_bound, Expr var, bool unfold_const_bound) {
+void CasSimplifyMutator::UnfoldBound(Expr* lower_bound,
+                                     Expr* upper_bound,
+                                     Expr var,
+                                     bool unfold_const_bound) {
   CHECK(lower_bound);
   CHECK(upper_bound);
   auto v_var = var.As<_Var_>();
@@ -810,12 +858,15 @@ void CasSimplifyMutator::UnfoldBound(Expr* lower_bound, Expr* upper_bound, Expr 
   }
 }
 
-bool CasSimplifyMutator::GetVarBound(Expr* lower_bound, Expr* upper_bound, Expr var, bool unfold_const_bound) {
+bool CasSimplifyMutator::GetVarBound(Expr* lower_bound,
+                                     Expr* upper_bound,
+                                     Expr var,
+                                     bool unfold_const_bound) {
   CHECK(lower_bound);
   CHECK(upper_bound);
-  auto v_var     = var.As<_Var_>();
+  auto v_var = var.As<_Var_>();
   auto v_product = var.As<Product>();
-  auto v_frac    = var.As<FracOp>();
+  auto v_frac = var.As<FracOp>();
   if (v_var && (var_intervals.count(v_var->name) || !unfold_const_bound)) {
     UnfoldBound(lower_bound, upper_bound, var, unfold_const_bound);
     return true;
@@ -823,9 +874,9 @@ bool CasSimplifyMutator::GetVarBound(Expr* lower_bound, Expr* upper_bound, Expr 
     // only deal with 2*x
     Expr p_lower_bound;
     Expr p_upper_bound;
-    Expr const_oper     = ProductGetConstantPart(var);
+    Expr const_oper = ProductGetConstantPart(var);
     Expr non_const_oper = ProductGetNonConstantPart(var);
-    auto v_var          = non_const_oper.As<_Var_>();
+    auto v_var = non_const_oper.As<_Var_>();
     if (v_var && var_intervals.count(v_var->name)) {
       Expr v_lower, v_upper;
       UnfoldBound(&v_lower, &v_upper, non_const_oper, unfold_const_bound);
@@ -847,8 +898,8 @@ bool CasSimplifyMutator::GetVarBound(Expr* lower_bound, Expr* upper_bound, Expr 
     Expr p_lower_bound;
     Expr p_upper_bound;
     Expr non_const_oper = v_frac->a();
-    Expr const_oper     = v_frac->b();
-    auto v_var          = non_const_oper.As<_Var_>();
+    Expr const_oper = v_frac->b();
+    auto v_var = non_const_oper.As<_Var_>();
     if (v_var && var_intervals.count(v_var->name)) {
       Expr v_lower, v_upper;
       UnfoldBound(&v_lower, &v_upper, non_const_oper, unfold_const_bound);
@@ -869,7 +920,10 @@ bool CasSimplifyMutator::GetVarBound(Expr* lower_bound, Expr* upper_bound, Expr 
   return false;
 }
 
-bool CasSimplifyMutator::GetOperandBound(Expr* lower_bound, Expr* upper_bound, Expr v, bool unfold_const_bound) {
+bool CasSimplifyMutator::GetOperandBound(Expr* lower_bound,
+                                         Expr* upper_bound,
+                                         Expr v,
+                                         bool unfold_const_bound) {
   // only support simple operand of int, var and var's product with int
   CHECK(lower_bound);
   CHECK(upper_bound);
@@ -884,7 +938,10 @@ bool CasSimplifyMutator::GetOperandBound(Expr* lower_bound, Expr* upper_bound, E
   return false;
 }
 
-bool CasSimplifyMutator::GetSumBound(Expr* lower_bound, Expr* upper_bound, Expr sum, bool unfold_const_bound) {
+bool CasSimplifyMutator::GetSumBound(Expr* lower_bound,
+                                     Expr* upper_bound,
+                                     Expr sum,
+                                     bool unfold_const_bound) {
   // only support sum of int, var and var's product with int
   CHECK(lower_bound);
   CHECK(upper_bound);
@@ -894,7 +951,8 @@ bool CasSimplifyMutator::GetSumBound(Expr* lower_bound, Expr* upper_bound, Expr 
   Expr sum_lower_bound, sum_upper_bound;
   if (bound_sum) {
     for (Expr& v : bound_sum->operands()) {
-      if (!GetOperandBound(&sum_lower_bound, &sum_upper_bound, v, unfold_const_bound)) {
+      if (!GetOperandBound(
+              &sum_lower_bound, &sum_upper_bound, v, unfold_const_bound)) {
         get_bound = false;
         break;
       }
@@ -908,8 +966,12 @@ bool CasSimplifyMutator::GetSumBound(Expr* lower_bound, Expr* upper_bound, Expr 
   return false;
 }
 
-bool CasSimplifyMutator::GetExprBound(Expr* lower_bound, Expr* upper_bound, Expr expr, bool unfold_const_bound) {
-  // only support min's operands as sum, int or var or var's product with int or min/max
+bool CasSimplifyMutator::GetExprBound(Expr* lower_bound,
+                                      Expr* upper_bound,
+                                      Expr expr,
+                                      bool unfold_const_bound) {
+  // only support min's operands as sum, int or var or var's product with int or
+  // min/max
   auto bound_sum = expr.As<Sum>();
   auto bound_min = expr.As<Min>();
   auto bound_max = expr.As<Max>();
@@ -920,37 +982,57 @@ bool CasSimplifyMutator::GetExprBound(Expr* lower_bound, Expr* upper_bound, Expr
     get_bound = GetMinBound(lower_bound, upper_bound, expr, unfold_const_bound);
   } else if (bound_max) {
     get_bound = GetMaxBound(lower_bound, upper_bound, expr, unfold_const_bound);
-  } else if (!GetOperandBound(lower_bound, upper_bound, expr, unfold_const_bound)) {
+  } else if (!GetOperandBound(
+                 lower_bound, upper_bound, expr, unfold_const_bound)) {
     return false;
   }
   return get_bound;
 }
 
-bool CasSimplifyMutator::GetMinBound(Expr* lower_bound, Expr* upper_bound, Expr min, bool unfold_const_bound) {
-  // only support min's operands as sum, int or var or var's product with int or min/max
+bool CasSimplifyMutator::GetMinBound(Expr* lower_bound,
+                                     Expr* upper_bound,
+                                     Expr min,
+                                     bool unfold_const_bound) {
+  // only support min's operands as sum, int or var or var's product with int or
+  // min/max
   auto bound_min = min.As<Min>();
   CHECK(bound_min);
   bool get_bound = true;
   Expr a_lower_bound, a_upper_bound, b_lower_bound, b_upper_bound;
-  get_bound = get_bound && GetExprBound(&a_lower_bound, &a_upper_bound, bound_min->a(), unfold_const_bound) &&
-              GetExprBound(&b_lower_bound, &b_upper_bound, bound_min->b(), unfold_const_bound);
+  get_bound =
+      get_bound &&
+      GetExprBound(
+          &a_lower_bound, &a_upper_bound, bound_min->a(), unfold_const_bound) &&
+      GetExprBound(
+          &b_lower_bound, &b_upper_bound, bound_min->b(), unfold_const_bound);
   if (get_bound) {
-    *lower_bound = CasSimplify(Min::Make(a_lower_bound, b_lower_bound), var_intervals);
-    *upper_bound = CasSimplify(Min::Make(a_upper_bound, b_upper_bound), var_intervals);
+    *lower_bound =
+        CasSimplify(Min::Make(a_lower_bound, b_lower_bound), var_intervals);
+    *upper_bound =
+        CasSimplify(Min::Make(a_upper_bound, b_upper_bound), var_intervals);
   }
   return get_bound;
 }
 
-bool CasSimplifyMutator::GetMaxBound(Expr* lower_bound, Expr* upper_bound, Expr max, bool unfold_const_bound) {
+bool CasSimplifyMutator::GetMaxBound(Expr* lower_bound,
+                                     Expr* upper_bound,
+                                     Expr max,
+                                     bool unfold_const_bound) {
   auto bound_max = max.As<Max>();
   CHECK(bound_max);
   bool get_bound = true;
   Expr a_lower_bound, a_upper_bound, b_lower_bound, b_upper_bound;
-  get_bound = get_bound && GetExprBound(&a_lower_bound, &a_upper_bound, bound_max->a(), unfold_const_bound) &&
-              GetExprBound(&b_lower_bound, &b_upper_bound, bound_max->b(), unfold_const_bound);
+  get_bound =
+      get_bound &&
+      GetExprBound(
+          &a_lower_bound, &a_upper_bound, bound_max->a(), unfold_const_bound) &&
+      GetExprBound(
+          &b_lower_bound, &b_upper_bound, bound_max->b(), unfold_const_bound);
   if (get_bound) {
-    *lower_bound = CasSimplify(Max::Make(a_lower_bound, b_lower_bound), var_intervals);
-    *upper_bound = CasSimplify(Max::Make(a_upper_bound, b_upper_bound), var_intervals);
+    *lower_bound =
+        CasSimplify(Max::Make(a_lower_bound, b_lower_bound), var_intervals);
+    *upper_bound =
+        CasSimplify(Max::Make(a_upper_bound, b_upper_bound), var_intervals);
   }
   return get_bound;
 }
@@ -959,27 +1041,32 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
   // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
   // case2: (x-32)%33 = x%33 - 32%33 (0<=x<=32)
   auto a_sum = a.As<Sum>();
-  auto b_i   = b.As<IntImm>();
+  auto b_i = b.As<IntImm>();
   if (!a_sum || !b_i) {
     return false;
   }
   // if 0 < b < 3, (3a+b) % 6 = (3a % 6) + (b % 6)
   if (a_sum->operands().size() == 2) {
     a_sum->operands()[0] = CasSimplify(a_sum->operands()[0], var_intervals);
-    auto sum_a_prod      = a_sum->operands()[0].As<Product>();
-    auto sum_b_var       = a_sum->operands()[1].As<_Var_>();
+    auto sum_a_prod = a_sum->operands()[0].As<Product>();
+    auto sum_b_var = a_sum->operands()[1].As<_Var_>();
     if (sum_a_prod && sum_b_var && var_intervals.count(sum_b_var->name)) {
       auto sum_a_prod_b_int = sum_a_prod->operand(1).As<IntImm>();
-      if (sum_a_prod_b_int) std::swap(sum_a_prod->operand(0), sum_a_prod->operand(1));
+      if (sum_a_prod_b_int)
+        std::swap(sum_a_prod->operand(0), sum_a_prod->operand(1));
       auto sum_a_prod_a_int = sum_a_prod->operand(0).As<IntImm>();
-      auto& interval        = var_intervals.at(sum_b_var->name);
-      int b_abs             = std::abs(b_i->value);
-      int sum_prod_a_abs    = std::abs(sum_a_prod_a_int->value);
+      auto& interval = var_intervals.at(sum_b_var->name);
+      int b_abs = std::abs(b_i->value);
+      int sum_prod_a_abs = std::abs(sum_a_prod_a_int->value);
       if (sum_a_prod_a_int && (b_abs % sum_prod_a_abs == 0)) {
-        if (std::abs(interval.l) < sum_prod_a_abs && std::abs(interval.r) < sum_prod_a_abs) {
-          *result = CasSimplify(Sum::Make({CasSimplify(Mod::Make(a_sum->operands()[0], b), var_intervals),
-                                           CasSimplify(Mod::Make(a_sum->operands()[1], b), var_intervals)}),
-                                var_intervals);
+        if (std::abs(interval.l) < sum_prod_a_abs &&
+            std::abs(interval.r) < sum_prod_a_abs) {
+          *result = CasSimplify(
+              Sum::Make({CasSimplify(Mod::Make(a_sum->operands()[0], b),
+                                     var_intervals),
+                         CasSimplify(Mod::Make(a_sum->operands()[1], b),
+                                     var_intervals)}),
+              var_intervals);
           return true;
         }
       }
@@ -994,7 +1081,7 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
   Expr upper_bound;
   Expr rest_oper;
   bool can_simplify = true;
-  bool has_int      = false;
+  bool has_int = false;
   // fold only the expr bound(may contains the var) and try to simplify the var
   Expr unfolded_lower_bound, unfolded_upper_bound;
   for (Expr& v : a_sum->operands()) {
@@ -1009,9 +1096,12 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
       break;
     }
   }
-  can_simplify = can_simplify && has_int && std::abs(const_value) % b_i->value == b_i->value - 1 &&
-                 lower_bound.defined() && upper_bound.defined() && rest_oper.defined();
-  // further infer the vars' bound by the intervals infos, try to get the constant
+  can_simplify = can_simplify && has_int &&
+                 std::abs(const_value) % b_i->value == b_i->value - 1 &&
+                 lower_bound.defined() && upper_bound.defined() &&
+                 rest_oper.defined();
+  // further infer the vars' bound by the intervals infos, try to get the
+  // constant
   if (can_simplify) {
     std::vector<Expr> bounds = {lower_bound, upper_bound};
     for (int i = 0; i < bounds.size(); ++i) {
@@ -1031,9 +1121,11 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
   // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
   // case2: (x-32)%33 = x%33 - 32%33 (0<=x<=32)
   can_simplify = can_simplify && lower_bound.is_constant();
-  bool case1   = can_simplify && const_value >= 0 && lower_bound.get_constant() >= -const_value &&
+  bool case1 = can_simplify && const_value >= 0 &&
+               lower_bound.get_constant() >= -const_value &&
                upper_bound.is_constant() && upper_bound.get_constant() <= 0;
-  bool case2 = can_simplify && const_value <= 0 && lower_bound.get_constant() >= 0 && upper_bound.is_constant() &&
+  bool case2 = can_simplify && const_value <= 0 &&
+               lower_bound.get_constant() >= 0 && upper_bound.is_constant() &&
                upper_bound.get_constant() <= -const_value;
   can_simplify = can_simplify && (case1 || case2);
   if (can_simplify) {
@@ -1043,7 +1135,10 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
     } else {
       const_expr = make_const(b->type(), const_value % b_i->value);
     }
-    *result = CasSimplify(Sum::Make({const_expr, CasSimplify(Mod::Make(rest_oper, b), var_intervals)}), var_intervals);
+    *result = CasSimplify(
+        Sum::Make(
+            {const_expr, CasSimplify(Mod::Make(rest_oper, b), var_intervals)}),
+        var_intervals);
     return true;
   }
   return false;
@@ -1051,14 +1146,17 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
 }
 
 // Return if the var's interval is nonnegative.
-inline bool IsVarNonnegative(const absl::flat_hash_map<std::string, CasInterval>& var_intervals,
-                             const std::string& var_name) {
+inline bool IsVarNonnegative(
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals,
+    const std::string& var_name) {
   return var_intervals.count(var_name) && var_intervals.at(var_name).l >= 0;
 }
 
-// Return if the var is binded with thread or block in cuda(which implies it is non-negative).
+// Return if the var is binded with thread or block in cuda(which implies it is
+// non-negative).
 inline bool IsVarBinded(const std::string& var_name) {
-  return utils::Startswith(var_name, "threadIdx") || utils::Startswith(var_name, "blockIdx");
+  return utils::Startswith(var_name, "threadIdx") ||
+         utils::Startswith(var_name, "blockIdx");
 }
 
 /**
@@ -1068,14 +1166,17 @@ inline bool IsVarBinded(const std::string& var_name) {
  * @param var_intervals intervals of each var.
  * @return if exprs are still all nonnegative vars.
  */
-inline bool IsVarAllNonnegative(bool all_nonnegative_var,
-                                _Var_* arg_var,
-                                const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
-  // All exprs all nonnegative vars if previous exprs are nonnegative vars(all_nonnegative_var == true) and this expr is
-  // a var (arg_var != nullptr) and (this var's interval is nonnegative or this var is binded to thread or block in
-  // cuda).
+inline bool IsVarAllNonnegative(
+    bool all_nonnegative_var,
+    _Var_* arg_var,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+  // All exprs all nonnegative vars if previous exprs are nonnegative
+  // vars(all_nonnegative_var == true) and this expr is a var (arg_var !=
+  // nullptr) and (this var's interval is nonnegative or this var is binded to
+  // thread or block in cuda).
   return all_nonnegative_var && arg_var &&
-         (IsVarNonnegative(var_intervals, arg_var->name) || IsVarBinded(arg_var->name));
+         (IsVarNonnegative(var_intervals, arg_var->name) ||
+          IsVarBinded(arg_var->name));
 }
 
 Expr CasSimplifyMutator::SimplifyMod(Expr u) {
@@ -1086,12 +1187,12 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
   auto a = CasSimplify(node->a(), var_intervals);
   auto b = CasSimplify(node->b(), var_intervals);
 
-  auto* a_i       = a.As<IntImm>();
+  auto* a_i = a.As<IntImm>();
   auto* a_product = a.As<Product>();
-  auto* a_sum     = a.As<Sum>();
-  auto* a_var     = a.As<_Var_>();
-  auto* a_mod     = a.As<Mod>();
-  auto* a_add     = a.As<Add>();
+  auto* a_sum = a.As<Sum>();
+  auto* a_var = a.As<_Var_>();
+  auto* a_mod = a.As<Mod>();
+  auto* a_add = a.As<Add>();
 
   auto* b_i = b.As<IntImm>();
 
@@ -1115,10 +1216,12 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
         if (a_op_int % b_i->value == 0) return make_const(a_product->type(), 0);
         // case: (x * y * 2) % 6 = ((x * y) % 3) * 2
         if (b_i->value % a_op_int == 0) {
-          int new_b                    = b_i->value / a_op_int;
+          int new_b = b_i->value / a_op_int;
           std::vector<Expr> a_operands = a_product->operands();
           a_operands.erase(a_operands.begin() + i);
-          return Product::Make({SimplifyMod(Mod::Make(Product::Make(a_operands), Expr(new_b))), Expr(a_op_int)});
+          return Product::Make(
+              {SimplifyMod(Mod::Make(Product::Make(a_operands), Expr(new_b))),
+               Expr(a_op_int)});
         }
       }
     }
@@ -1140,11 +1243,12 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
 
   if (b_i && a_var && var_intervals.count(a_var->name)) {
     auto& interval = var_intervals.at(a_var->name);
-    int b_abs      = std::abs(b_i->value);
+    int b_abs = std::abs(b_i->value);
     // x\in[1, 3] % 4 = x
     if (std::abs(interval.l) < b_abs && std::abs(interval.r) < b_abs) return a;
     // [3,3] % 3 = 0
-    if (interval.l == interval.r && interval.l % b_abs == 0) return make_const(b_i->type(), 0);
+    if (interval.l == interval.r && interval.l % b_abs == 0)
+      return make_const(b_i->type(), 0);
   }
 
   if (a_product && b_i) {
@@ -1173,13 +1277,16 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
       bool all_nonnegative_var = true;
       bool all_nonnegative_int = true;
       for (int i = 0; i < sum_args.size(); i++) {
-        auto* arg_var       = sum_args[i].As<_Var_>();
-        all_nonnegative_var = IsVarAllNonnegative(all_nonnegative_var, arg_var, var_intervals);
-        auto* arg_int       = sum_args[i].As<IntImm>();
-        all_nonnegative_int = all_nonnegative_int && arg_int && arg_int->value >= 0;
+        auto* arg_var = sum_args[i].As<_Var_>();
+        all_nonnegative_var =
+            IsVarAllNonnegative(all_nonnegative_var, arg_var, var_intervals);
+        auto* arg_int = sum_args[i].As<IntImm>();
+        all_nonnegative_int =
+            all_nonnegative_int && arg_int && arg_int->value >= 0;
       }
       VLOG(4) << all_nonnegative_var << " " << all_nonnegative_int;
-      if (all_nonnegative_var) return SimplifyMod(Mod::Make(Sum::Make(sum_args), b));
+      if (all_nonnegative_var)
+        return SimplifyMod(Mod::Make(Sum::Make(sum_args), b));
       if (all_nonnegative_int) {
         int sum_value = 0;
         for (auto& i : sum_args) sum_value += i.As<IntImm>()->value;
@@ -1207,8 +1314,8 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
   auto* u_max = u.As<Max>();
   auto* u_min = u.As<Min>();
   if (u_max) {
-    Expr a          = CasSimplify(u_max->a(), var_intervals);
-    Expr b          = CasSimplify(u_max->b(), var_intervals);
+    Expr a = CasSimplify(u_max->a(), var_intervals);
+    Expr b = CasSimplify(u_max->b(), var_intervals);
     bool is_a_const = a.is_constant();
     bool is_b_const = b.is_constant();
     if (is_a_const && is_b_const) {
@@ -1217,40 +1324,44 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
     Expr lower_bound, upper_bound;
     Expr const_operand, non_const_operand;
     if (is_a_const) {
-      const_operand     = a;
+      const_operand = a;
       non_const_operand = b;
     }
     if (is_b_const) {
-      const_operand     = b;
+      const_operand = b;
       non_const_operand = a;
     }
     if (const_operand.defined() && non_const_operand.defined()) {
       auto const_size = const_operand.get_constant();
       // unfold var with bounds
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, true)) {
-        // if non_const_operand's lower_bound is larger than const_operand, then non_const_operand must be larger than
-        // const_operand
-        if (lower_bound.is_constant() && const_size <= lower_bound.get_constant()) {
+        // if non_const_operand's lower_bound is larger than const_operand, then
+        // non_const_operand must be larger than const_operand
+        if (lower_bound.is_constant() &&
+            const_size <= lower_bound.get_constant()) {
           return non_const_operand;
         }
-        // if non_const_operand's upper_bound is smaller than a, then const_operand must be larger than
-        // non_const_operand
-        if (upper_bound.is_constant() && const_size >= upper_bound.get_constant()) {
+        // if non_const_operand's upper_bound is smaller than a, then
+        // const_operand must be larger than non_const_operand
+        if (upper_bound.is_constant() &&
+            const_size >= upper_bound.get_constant()) {
           return const_operand;
         }
       }
       // not unfold var for var may be eliminated in the caculation
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, false)) {
-        // if non_const_operand's lower_bound is larger than const_operand, then non_const_operand must be larger than
-        // const_operand
+        // if non_const_operand's lower_bound is larger than const_operand, then
+        // non_const_operand must be larger than const_operand
         lower_bound = CasSimplify(lower_bound, var_intervals);
         upper_bound = CasSimplify(upper_bound, var_intervals);
-        if (lower_bound.is_constant() && const_size <= lower_bound.get_constant()) {
+        if (lower_bound.is_constant() &&
+            const_size <= lower_bound.get_constant()) {
           return non_const_operand;
         }
-        // if non_const_operand's upper_bound is smaller than a, then const_operand must be larger than
-        // non_const_operand
-        if (upper_bound.is_constant() && const_size >= upper_bound.get_constant()) {
+        // if non_const_operand's upper_bound is smaller than a, then
+        // const_operand must be larger than non_const_operand
+        if (upper_bound.is_constant() &&
+            const_size >= upper_bound.get_constant()) {
           return const_operand;
         }
       }
@@ -1259,8 +1370,8 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
   }
 
   if (u_min) {
-    Expr a          = CasSimplify(u_min->a(), var_intervals);
-    Expr b          = CasSimplify(u_min->b(), var_intervals);
+    Expr a = CasSimplify(u_min->a(), var_intervals);
+    Expr b = CasSimplify(u_min->b(), var_intervals);
     bool is_a_const = a.is_constant();
     bool is_b_const = b.is_constant();
     if (is_a_const && is_b_const) {
@@ -1269,36 +1380,40 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
     Expr lower_bound, upper_bound;
     Expr const_operand, non_const_operand;
     if (is_a_const) {
-      const_operand     = a;
+      const_operand = a;
       non_const_operand = b;
     }
     if (is_b_const) {
-      const_operand     = b;
+      const_operand = b;
       non_const_operand = a;
     }
     if (const_operand.defined() && non_const_operand.defined()) {
       auto const_size = const_operand.get_constant();
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, true)) {
-        // if non_const_operand's lower_bound is larger than const_operand, then non_const_operand must be larger than
-        // const_operand
-        if (lower_bound.is_constant() && const_size <= lower_bound.get_constant()) {
+        // if non_const_operand's lower_bound is larger than const_operand, then
+        // non_const_operand must be larger than const_operand
+        if (lower_bound.is_constant() &&
+            const_size <= lower_bound.get_constant()) {
           return const_operand;
         }
-        // if non_const_operand's upper_bound is smaller than a, then const_operand must be larger than
-        // non_const_operand
-        if (upper_bound.is_constant() && const_size >= upper_bound.get_constant()) {
+        // if non_const_operand's upper_bound is smaller than a, then
+        // const_operand must be larger than non_const_operand
+        if (upper_bound.is_constant() &&
+            const_size >= upper_bound.get_constant()) {
           return non_const_operand;
         }
       }
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, false)) {
-        // if non_const_operand's lower_bound is larger than const_operand, then non_const_operand must be larger than
-        // const_operand
-        if (lower_bound.is_constant() && const_size <= lower_bound.get_constant()) {
+        // if non_const_operand's lower_bound is larger than const_operand, then
+        // non_const_operand must be larger than const_operand
+        if (lower_bound.is_constant() &&
+            const_size <= lower_bound.get_constant()) {
           return const_operand;
         }
-        // if non_const_operand's upper_bound is smaller than a, then const_operand must be larger than
-        // non_const_operand
-        if (upper_bound.is_constant() && const_size >= upper_bound.get_constant()) {
+        // if non_const_operand's upper_bound is smaller than a, then
+        // const_operand must be larger than non_const_operand
+        if (upper_bound.is_constant() &&
+            const_size >= upper_bound.get_constant()) {
           return non_const_operand;
         }
       }
@@ -1333,9 +1448,10 @@ Expr CasSimplifyMutator::SimplifyCmp(Expr u) {
 }
 
 /**
- * deal with index's div-mod add simplification, tempory solution, not cover all situations.
- * case 1: (m / n) * n + m % n = m (m, n's type is int)
- * case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is int)
+ * deal with index's div-mod add simplification, tempory solution, not cover all
+ * situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2: (m /
+ * n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is
+ * int)
  */
 Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   auto sum = tmp.As<Sum>();
@@ -1343,44 +1459,46 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     return tmp;
   }
   if (sum->operands().size() == 1U) return sum->operand(0);
-  Expr left      = sum->operand(0);
-  Expr right     = sum->operand(1);
-  auto left_mod  = left.As<Mod>();
+  Expr left = sum->operand(0);
+  Expr right = sum->operand(1);
+  auto left_mod = left.As<Mod>();
   auto right_mod = right.As<Mod>();
-  auto left_mul  = left.As<Product>();
+  auto left_mul = left.As<Product>();
   auto right_mul = right.As<Product>();
-  auto left_div  = left.As<FracOp>();
+  auto left_div = left.As<FracOp>();
   auto right_div = right.As<FracOp>();
   // normalize to left mul and right mod
   if (right_mul && left_mod) {
-    left_mul  = right_mul;
+    left_mul = right_mul;
     right_mod = left_mod;
   }
   // normalize to left div and right mod
   if (right_div && left_mod) {
-    left_div  = right_div;
+    left_div = right_div;
     right_mod = left_mod;
   }
   if (!right_mod || (!left_mul && !left_div)) {
     return tmp;
   }
   CHECK_GE(right_mod->operands().size(), 2U);
-  Expr mod_left  = right_mod->operand(0);
+  Expr mod_left = right_mod->operand(0);
   Expr mod_right = right_mod->operand(1);
   if (!mod_left->type().is_integer() || !mod_right->type().is_integer()) {
     return tmp;
   }
   if (left_mul) {
     // case 1: (m / n) * n + m % n = m (m, n's type is int)
-    // case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is int)
+    // case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1,
+    // n2, n3's type is int)
     CHECK_GE(left_mul->operands().size(), 2U);
-    Expr mul_left  = left_mul->operand(0);
+    Expr mul_left = left_mul->operand(0);
     Expr mul_right = left_mul->operand(1);
 
     // handle the case1 : n * (m / n)  + m % n = (m / n) * n + m % n = m
-    // handle the case2 : n3 * (m / n1) + (n2 * m) % n3 = (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2
+    // handle the case2 : n3 * (m / n1) + (n2 * m) % n3 = (m / n1) * n3 + (n2 *
+    // m) % n3 = n2 * m if n3 = n1 * n2
     if (MathEqual(mod_right, mul_left)) {
-      mul_left  = left_mul->operand(1);
+      mul_left = left_mul->operand(1);
       mul_right = left_mul->operand(0);
     } else if (!MathEqual(mod_right, mul_right)) {
       return tmp;
@@ -1390,7 +1508,7 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
       return tmp;
     }
     CHECK_GE(div->operands().size(), 2U);
-    Expr div_left  = div->operand(0);
+    Expr div_left = div->operand(0);
     Expr div_right = div->operand(1);
     if (!div_left->type().is_integer() || !div_right->type().is_integer()) {
       return tmp;
@@ -1416,7 +1534,7 @@ Expr CasSimplifyMutator::operator()(Expr u) {
   if (u.is_constant() || u.As<_Var_>()) return u;
 
   if (u.As<FracOp>()) {
-    u        = SimplifyFracOp(u);
+    u = SimplifyFracOp(u);
     auto tmp = FurtherSimplifyFracWithInterval(u, var_intervals);
     if (!tmp.same_as(u)) return operator()(tmp);
     return u;
@@ -1428,10 +1546,11 @@ Expr CasSimplifyMutator::operator()(Expr u) {
 
   if (u.As<Sum>()) {
     auto tmp = detail::SumOrProductGetSingleElementsRec(SimplifySum(u));
-    // deal with index's div-mod add simplification, tempory solution, not cover all situations.
-    // case 1: (m / n) * n + m % n = m (m, n's type is int)
-    // case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is int)
-    // case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 = n1 * n2 (m, n1, n2, n3's type is int)
+    // deal with index's div-mod add simplification, tempory solution, not cover
+    // all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case
+    // 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2,
+    // n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 = n1 * n2
+    // (m, n1, n2, n3's type is int)
     return SimplifySpecificSum(tmp);
   }
 
@@ -1456,8 +1575,8 @@ Expr CasSimplifyMutator::operator()(Expr u) {
 }
 
 bool CASasSymbol(Expr expr) {
-  auto* load_n      = expr.As<Load>();
-  auto* var_n       = expr.As<_Var_>();
+  auto* load_n = expr.As<Load>();
+  auto* var_n = expr.As<_Var_>();
   auto* broadcast_n = expr.As<Broadcast>();
 
   return load_n || var_n || broadcast_n;
@@ -1536,7 +1655,7 @@ Expr ConvertCinnToCAS(Expr expr) {
         return;
       }
 
-      b     = Product::Make({make_const(b->type(), -1), b});
+      b = Product::Make({make_const(b->type(), -1), b});
       *expr = Sum::Make({a, b});
     }
 
@@ -1585,10 +1704,10 @@ Expr ConvertCinnToCAS(Expr expr) {
 }
 
 /**
- * @brief Given an expr, visit it. If there is an ir::Min and its operands are 1 constant value and 1 inconstant value,
- * return the constant min value.
- * For example, if a < min(5, b), then we get a < 5 and a < b. Using a < 5 to simplify the condition ensures
- * correctness, though not sufficient.
+ * @brief Given an expr, visit it. If there is an ir::Min and its operands are 1
+ * constant value and 1 inconstant value, return the constant min value. For
+ * example, if a < min(5, b), then we get a < 5 and a < b. Using a < 5 to
+ * simplify the condition ensures correctness, though not sufficient.
  */
 Expr ReplaceMinToConstant(Expr expr) {
   Expr copied = optim::IRCopy(expr);
@@ -1620,8 +1739,8 @@ Expr ReplaceMinToConstant(Expr expr) {
 }
 
 /**
- * @brief Given an expr, visit it. If there is an ir::Max and its operands are 1 constant value and 1 inconstant value,
- * return the constant max value.
+ * @brief Given an expr, visit it. If there is an ir::Max and its operands are 1
+ * constant value and 1 inconstant value, return the constant max value.
  */
 Expr ReplaceMaxToConstant(Expr expr) {
   Expr copied = optim::IRCopy(expr);
@@ -1746,7 +1865,8 @@ Expr ConvertCasToCinn(Expr expr) {
 
 bool IsExprCasCompatible(Expr expr) {
   auto teller = [](const Expr* expr) {
-    return expr->As<Add>() || expr->As<Sub>() || expr->As<Mul>() || expr->As<Div>();
+    return expr->As<Add>() || expr->As<Sub>() || expr->As<Mul>() ||
+           expr->As<Div>();
   };
   return ir::CollectIRNodes(expr, teller).empty();
 }
@@ -1756,10 +1876,12 @@ Expr DividePartially(Sum* a, int b) {
   std::vector<Expr> external_sum_args, sum_args;
 
   for (auto& item : a->operands()) {
-    if (item.As<Product>() && (IsDivisible(item.As<Product>(), b) || IsDivisible(b, item.As<Product>()))) {
+    if (item.As<Product>() && (IsDivisible(item.As<Product>(), b) ||
+                               IsDivisible(b, item.As<Product>()))) {
       external_sum_args.push_back(Divide(item.As<Product>(), b));
     } else if (item.As<IntImm>() && IsDivisible(item.As<IntImm>()->value, b)) {
-      external_sum_args.push_back(make_const(item.type(), item.As<IntImm>()->value / b));
+      external_sum_args.push_back(
+          make_const(item.type(), item.As<IntImm>()->value / b));
     } else {
       sum_args.push_back(item);
     }
@@ -1767,8 +1889,9 @@ Expr DividePartially(Sum* a, int b) {
 
   if (!external_sum_args.empty()) {
     if (sum_args.empty()) return Sum::Make(external_sum_args);
-    Expr internal_sum = sum_args.size() == 1 ? sum_args[0] : Sum::Make(sum_args);
-    Expr new_frac     = FracOp::Make(internal_sum, make_const(a->type(), b));
+    Expr internal_sum =
+        sum_args.size() == 1 ? sum_args[0] : Sum::Make(sum_args);
+    Expr new_frac = FracOp::Make(internal_sum, make_const(a->type(), b));
     return Sum::Make(Concat(external_sum_args, {new_frac}));
   }
   return Expr(a);
@@ -1787,9 +1910,11 @@ bool IsMonotonical(Expr u, Var v) {
   return false;
 }
 
-// Should be called after SimplifyFracOp. If y is integer and $y\in \[0, 3\]$, then y/4=0
+// Should be called after SimplifyFracOp. If y is integer and $y\in \[0, 3\]$,
+// then y/4=0
 Expr CasSimplifyMutator::FurtherSimplifyFracWithInterval(
-    Expr expr, const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+    Expr expr,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   auto* node = expr.As<FracOp>();
   if (!node) return expr;
   auto a = CasSimplify(node->a(), var_intervals);
@@ -1804,7 +1929,8 @@ Expr CasSimplifyMutator::FurtherSimplifyFracWithInterval(
   if (bi) {
     if (av) {
       auto it = var_intervals.find(av->name);
-      if (it != var_intervals.end() && std::abs(it->second.r) < std::abs(bi->value) &&
+      if (it != var_intervals.end() &&
+          std::abs(it->second.r) < std::abs(bi->value) &&
           std::abs(it->second.l) < std::abs(bi->value))
         return make_const(a.type(), 0);
     }
@@ -1812,13 +1938,14 @@ Expr CasSimplifyMutator::FurtherSimplifyFracWithInterval(
   // case: 1/y, y\in(2, 100)
   if (ai) {
     if (bv) {
-      auto it     = var_intervals.find(bv->name);
+      auto it = var_intervals.find(bv->name);
       auto ai_abs = std::abs(ai->value);
       if (it != var_intervals.end()) {
         VLOG(7) << "found " << bv->name << " " << it->second << " "
                 << " ai " << ai_abs;
       }
-      if (it != var_intervals.end() && std::abs(it->second.r) > ai_abs && std::abs(it->second.l) > ai_abs) {
+      if (it != var_intervals.end() && std::abs(it->second.r) > ai_abs &&
+          std::abs(it->second.l) > ai_abs) {
         return make_const(a.type(), 0);
       }
     }
@@ -1855,8 +1982,8 @@ Expr SimplifyConstantFrac(FracOp* node) {
 Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
   VLOG(7) << "CAS simplify Frac " << expr;
   auto* node = expr.As<FracOp>();
-  auto a     = CasSimplify(node->a(), var_intervals);
-  auto b     = CasSimplify(node->b(), var_intervals);
+  auto a = CasSimplify(node->a(), var_intervals);
+  auto b = CasSimplify(node->b(), var_intervals);
 
   // update frac op node
   expr = ir::FracOp::Make(a, b);
@@ -1885,12 +2012,13 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
   // case 2
   // sum/x or product/x is divisible
   if (bi) {
-    auto* a_sum     = a.As<Sum>();
+    auto* a_sum = a.As<Sum>();
     auto* a_product = a.As<Product>();
     // divisible
     if (a_sum && IsDivisible(a_sum, bi->value)) return Divide(a_sum, bi->value);
     if (a_product) {
-      if (IsDivisible(a_product, bi->value) || IsDivisible(bi->value, a_product)) {
+      if (IsDivisible(a_product, bi->value) ||
+          IsDivisible(bi->value, a_product)) {
         return Divide(a_product, bi->value);
       } else {
         return FracOp::Make(a, b);
@@ -1900,20 +2028,25 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
     // if 0 < b < 3, (3a+b) / 6 = (3a / 6) + (b / 6)
     if (a_sum && a_sum->operands().size() == 2) {
       a_sum->operands()[0] = CasSimplify(a_sum->operands()[0], var_intervals);
-      auto sum_a_prod      = a_sum->operands()[0].As<Product>();
-      auto sum_b_var       = a_sum->operands()[1].As<_Var_>();
+      auto sum_a_prod = a_sum->operands()[0].As<Product>();
+      auto sum_b_var = a_sum->operands()[1].As<_Var_>();
       if (sum_a_prod && sum_b_var && var_intervals.count(sum_b_var->name)) {
         auto sum_a_prod_b_int = sum_a_prod->operand(1).As<IntImm>();
-        if (sum_a_prod_b_int) std::swap(sum_a_prod->operand(0), sum_a_prod->operand(1));
+        if (sum_a_prod_b_int)
+          std::swap(sum_a_prod->operand(0), sum_a_prod->operand(1));
         auto sum_a_prod_a_int = sum_a_prod->operand(0).As<IntImm>();
-        auto& interval        = var_intervals.at(sum_b_var->name);
-        int b_abs             = std::abs(bi->value);
-        int sum_prod_a_abs    = std::abs(sum_a_prod_a_int->value);
+        auto& interval = var_intervals.at(sum_b_var->name);
+        int b_abs = std::abs(bi->value);
+        int sum_prod_a_abs = std::abs(sum_a_prod_a_int->value);
         if (sum_a_prod_a_int && (b_abs % sum_prod_a_abs == 0)) {
-          if (std::abs(interval.l) < sum_prod_a_abs && std::abs(interval.r) < sum_prod_a_abs) {
-            return CasSimplify(Sum::Make({CasSimplify(FracOp::Make(a_sum->operands()[0], b), var_intervals),
-                                          CasSimplify(FracOp::Make(a_sum->operands()[1], b), var_intervals)}),
-                               var_intervals);
+          if (std::abs(interval.l) < sum_prod_a_abs &&
+              std::abs(interval.r) < sum_prod_a_abs) {
+            return CasSimplify(
+                Sum::Make({CasSimplify(FracOp::Make(a_sum->operands()[0], b),
+                                       var_intervals),
+                           CasSimplify(FracOp::Make(a_sum->operands()[1], b),
+                                       var_intervals)}),
+                var_intervals);
           }
         }
       }
@@ -1933,22 +2066,25 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
     auto cmp_min = a.As<Min>();
     auto cmp_max = a.As<Max>();
     if (cmp_min) {
-      return {CasSimplify(Min::Make(CasSimplify(FracOp::Make(cmp_min->a(), b), var_intervals),
-                                    CasSimplify(FracOp::Make(cmp_min->b(), b), var_intervals)),
-                          var_intervals)};
+      return {CasSimplify(
+          Min::Make(CasSimplify(FracOp::Make(cmp_min->a(), b), var_intervals),
+                    CasSimplify(FracOp::Make(cmp_min->b(), b), var_intervals)),
+          var_intervals)};
     }
     if (cmp_max) {
-      return {CasSimplify(Max::Make(CasSimplify(FracOp::Make(cmp_max->a(), b), var_intervals),
-                                    CasSimplify(FracOp::Make(cmp_max->b(), b), var_intervals)),
-                          var_intervals)};
+      return {CasSimplify(
+          Max::Make(CasSimplify(FracOp::Make(cmp_max->a(), b), var_intervals),
+                    CasSimplify(FracOp::Make(cmp_max->b(), b), var_intervals)),
+          var_intervals)};
     }
   }
 
   if (av && bi) {
     if (var_intervals.count(av->name)) {
       auto& interval = var_intervals.at(av->name);
-      int b_abs      = std::abs(bi->value);
-      if (std::abs(interval.l) < b_abs && std::abs(interval.r) < b_abs) return make_const(bi->type(), 0);
+      int b_abs = std::abs(bi->value);
+      if (std::abs(interval.l) < b_abs && std::abs(interval.r) < b_abs)
+        return make_const(bi->type(), 0);
       return FracOp::Make(a, b);
     }
   }
@@ -1959,9 +2095,13 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
     std::vector<Expr> internal_sum_args;
     for (auto& e : as->operands()) {
       if (IsDivisible(e, bi->value)) {
-        if (e.As<Sum>()) external_sum_args.push_back(Divide(e.As<Sum>(), bi->value));
-        if (e.As<IntImm>()) external_sum_args.push_back(make_const(bi->type(), e.As<IntImm>()->value / bi->value));
-        if (e.As<Product>()) external_sum_args.push_back(Divide(e.As<Product>(), bi->value));
+        if (e.As<Sum>())
+          external_sum_args.push_back(Divide(e.As<Sum>(), bi->value));
+        if (e.As<IntImm>())
+          external_sum_args.push_back(
+              make_const(bi->type(), e.As<IntImm>()->value / bi->value));
+        if (e.As<Product>())
+          external_sum_args.push_back(Divide(e.As<Product>(), bi->value));
       } else {
         internal_sum_args.push_back(e);
       }
@@ -1980,7 +2120,8 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
     }
 
     if (external_sum.defined() && internal_sum.defined()) {
-      return CasSimplify(Sum::Make({external_sum, internal_sum}), var_intervals);
+      return CasSimplify(Sum::Make({external_sum, internal_sum}),
+                         var_intervals);
     }
     if (external_sum.defined()) return CasSimplify(external_sum, var_intervals);
     return internal_sum;
@@ -1988,7 +2129,8 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
 
   // solve the case: 2abc / b
   // Both avs and bvs should be sorted first.
-  auto reduce_product_div_product = [](const std::vector<Expr>& avs, const std::vector<Expr>& bvs) {
+  auto reduce_product_div_product = [](const std::vector<Expr>& avs,
+                                       const std::vector<Expr>& bvs) {
     std::vector<Expr> avs1, bvs1;
     int i = 0;
     int j = 0;
@@ -2005,14 +2147,14 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
         auto* bf = b.As<FloatImm>();
         if (ai) {
           CHECK(bi);
-          int g   = gcd(ai->value, bi->value);
+          int g = gcd(ai->value, bi->value);
           int a_d = ai->value / g;
           int b_d = bi->value / g;
 
           avs1.push_back(make_const(a.type(), a_d));
           if (b_d != 1) bvs1.push_back(make_const(b.type(), b_d));
         } else if (af || bf) {
-          double value      = af->value / bf->value;
+          double value = af->value / bf->value;
           const auto& ftype = af ? af->type() : bf->type();
           avs1.push_back(make_const(ftype, value));
         } else {
@@ -2075,7 +2217,7 @@ Expr CasSimplifyMutator::SimplifyCond(Expr u) {
       // -------------------------- NOT -----------------------------
     case ir::IrNodeTy::Not: {
       auto* node = u.As<ir::Not>();
-      Expr v     = operator()(node->v());
+      Expr v = operator()(node->v());
       switch (v.node_type()) {
           // Not 1 = (1 == 0)
         case ir::IrNodeTy::IntImm:
@@ -2139,7 +2281,9 @@ Expr CasSimplifyMutator::SimplifyCond(Expr u) {
 
 }  // namespace detail
 
-Expr CasSimplify(Expr u, const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
+Expr CasSimplify(
+    Expr u,
+    const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   return detail::CasSimplifyMutator(var_intervals)(u);
 }
 
@@ -2168,8 +2312,8 @@ Expr SolveInequality(Expr inequality, Var val) {
   // if (common::IsPureMath(a) && common::IsPureMath(b)) {
   if (true) {
     auto _res_positive_ = common::Solve(a, b, val);  // NOLINT
-    auto& res           = std::get<0>(_res_positive_);
-    auto& positive      = std::get<1>(_res_positive_);
+    auto& res = std::get<0>(_res_positive_);
+    auto& positive = std::get<1>(_res_positive_);
     // Simplify it with CAS to avoid random result from GiNac.
     res = AutoSimplify(res);
     res = common::cast(res, val->type());
