@@ -64,13 +64,27 @@ TEST(program_test, program) {
 
   // Def: A = paddle::dialect::UniformOp(std::vector<int64_t> shape,
   // phi::DataType dtype, float min, float max, int seed, phi::Place place)
+  ir::AttributeMap uniform1_attributes;
+  uniform1_attributes.insert({"shape",
+                              paddle::dialect::IntArrayAttribute::get(
+                                  ir::IrContext::Instance(),
+                                  phi::IntArray(std::vector<int64_t>{2, 2}))});
+  uniform1_attributes.insert(
+      {"dtype",
+       paddle::dialect::DataTypeAttribute::get(ir::IrContext::Instance(),
+                                               phi::DataType::FLOAT32)});
+  uniform1_attributes.insert(
+      {"min", ir::FloatAttribute::get(ir::IrContext::Instance(), 0.0)});
+  uniform1_attributes.insert(
+      {"max", ir::FloatAttribute::get(ir::IrContext::Instance(), 1.0)});
+  uniform1_attributes.insert(
+      {"seed", ir::Int32Attribute::get(ir::IrContext::Instance(), 2)});
+  uniform1_attributes.insert({"place",
+                              paddle::dialect::PlaceAttribute::get(
+                                  ir::IrContext::Instance(), phi::CPUPlace())});
   paddle::dialect::UniformOp uniform1 =
-      builder.Build<paddle::dialect::UniformOp>(std::vector<int64_t>{2, 2},
-                                                phi::DataType::FLOAT32,
-                                                0.0,
-                                                1.0,
-                                                2,
-                                                phi::CPUPlace());
+      builder.Build<paddle::dialect::UniformOp>(uniform1_attributes);
+
   EXPECT_EQ(uniform1->result(0).type().isa<paddle::dialect::DenseTensorType>(),
             true);
   EXPECT_EQ(block->size(), 4u);

@@ -29,7 +29,7 @@
 namespace cinn {
 namespace backends {
 
-const std::string CodeGenCUDA_Dev::source_header_ =
+const std::string CodeGenCUDA_Dev::source_header_ =  // NOLINT
     R"(#include <cstdint>
 
 #define CINN_WITH_CUDA
