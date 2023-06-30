@@ -717,17 +717,6 @@
     func : prod
   backward : prod_grad
 
-- op : psroi_pool
-  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
-  output : Tensor
-  infer_meta :
-    func : PsroiPoolInferMeta
-  kernel :
-    func : psroi_pool
-    data_type : x
-  optional : boxes_num
-  backward : psroi_pool_grad
-
 - op : randint
   args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
   output : Tensor(out)
@@ -816,29 +805,6 @@
   optional : sequence_length
   intermediate : reserve
   view : (dropout_state_in -> dropout_state_out)
-
-- op : roi_align
-  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
-  output : Tensor
-  infer_meta :
-    func : RoiAlignInferMeta
-  kernel :
-    func : roi_align
-    data_type : x
-  optional : boxes_num
-  backward : roi_align_grad
-
-- op : roi_pool
-  args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale)
-  output : Tensor(out), Tensor(arg_max)
-  infer_meta :
-    func : RoiPoolInferMeta
-  kernel :
-    func : roi_pool
-    data_type : x
-  optional : boxes_num
-  intermediate : arg_max
-  backward : roi_pool_grad
 
 - op : rrelu
   args : (Tensor x, float lower, float upper, bool is_test)

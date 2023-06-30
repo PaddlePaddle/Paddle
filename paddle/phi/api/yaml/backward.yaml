@@ -1645,6 +1645,18 @@
     func : prelu_grad
     data_type : x
 
+- backward_op : psroi_pool_grad
+  forward : psroi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, int output_channels=1, float spatial_scale=1.0) -> Tensor(out)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, int output_channels, float spatial_scale)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : psroi_pool_grad
+    data_type : x
+  optional : boxes_num
+
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor value, int axis, str reduce = "assign") -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor out_grad, int axis, str reduce)
@@ -1725,6 +1737,31 @@
   args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   invoke : reverse(out_grad, axis)
+
+- backward_op : roi_align_grad
+  forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0, int sampling_ratio=-1, bool aligned=false) -> Tensor(out)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : roi_align_grad
+    data_type : boxes
+  no_need_buffer : x
+  optional : boxes_num
+
+- backward_op : roi_pool_grad
+  forward : roi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, float spatial_scale=1.0) -> Tensor(out), Tensor(arg_max)
+  args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor arg_max, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : roi_pool_grad
+    data_type : x
+  optional : boxes_num
 
 - backward_op : roll_grad
   forward : roll(Tensor x, IntArray shifts, int64_t[] axis) -> Tensor(out)
