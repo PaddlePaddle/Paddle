@@ -60,12 +60,3 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv,
                              ops::ElementwiseOp,
                              ops::ElementwiseFloorDivOpMaker);
-
-REGISTER_OP_VERSION(elementwise_floordiv)
-    .AddCheckpoint(
-        R"ROC(Register elementwise_floordiv for adding the attribute of Scale_y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Scale_y",
-            "In order to support the function of scaling the input Y when "
-            "using the operator of elementwise_floordiv.",
-            1.0f));
