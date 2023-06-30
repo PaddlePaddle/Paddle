@@ -32,7 +32,7 @@ using namespace framework;
 
 class FusionHelperBase {
  public:
-  FusionHelperBase(const framework::Graph* graph)
+  explicit FusionHelperBase(const framework::Graph* graph)
       : shape_dict_(graph->GetAttrs<absl::flat_hash_map<std::string, shape_t>>(
             "infershape")),
         target_(graph->target_) {

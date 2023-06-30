@@ -69,7 +69,7 @@ class Summary {
  public:
   struct Raito {
     double value;
-    Raito(double val) : value(val){};
+    explicit Raito(double val) : value(val){};
     std::string ToStr() const { return std::to_string(value); }
   };
 
@@ -78,7 +78,7 @@ class Summary {
     Raito sub_raito{0.0};    // percentage of EventType
     Raito total_raito{0.0};  // precentage of total process
 
-    Item(const HostEvent& e) : info(e) {}
+    explicit Item(const HostEvent& e) : info(e) {}
     bool operator<(const Item& other) const {
       return total_raito.value > other.total_raito.value;
     }
