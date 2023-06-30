@@ -167,7 +167,7 @@ struct IntegerTypeStorage : public ir::TypeStorage {
     return ParamKey(width_, signedness_) == key;
   }
 
-  static IntegerTypeStorage *Construct(ParamKey key) {
+  static IntegerTypeStorage *Construct(const ParamKey &key) {
     return new IntegerTypeStorage(key.first, key.second);
   }
 
