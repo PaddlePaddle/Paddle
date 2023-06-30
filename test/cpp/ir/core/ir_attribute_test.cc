@@ -68,6 +68,6 @@ TEST(attribute_test, built_in_attribute) {
   ir::Int32Type i32_type = ir::Int32Type::get(ctx);
   ir::Attribute type_attr = ir::TypeAttribute::get(ctx, i32_type);
   EXPECT_TRUE(type_attr.isa<ir::TypeAttribute>());
-  EXPECT_EQ(type_attr.dyn_cast<ir::TypeAttribute>().GetValue().type_id(),
+  EXPECT_EQ(type_attr.dyn_cast<ir::TypeAttribute>().data().type_id(),
             i32_type.type_id());
 }
