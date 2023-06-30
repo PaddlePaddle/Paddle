@@ -18,6 +18,7 @@
 #include "paddle/ir/core/operation.h"
 #include "paddle/ir/core/program.h"
 #include "paddle/ir/core/region.h"
+#include "paddle/ir/core/verify.h"
 #include "paddle/ir/pass/pass_adaptor.h"
 #include "paddle/ir/pass/pass_instrumentation.h"
 #include "paddle/ir/pass/pass_manager.h"
@@ -109,10 +110,9 @@ bool detail::PassAdaptor::RunPass(Pass* pass,
 
   bool pass_failed = pass->pass_state().pass_failed;
 
-  // TODO(liuyuanle): Support verification of operation
   if (!pass_failed && verify) {
-    // bool verify_recursively = !dynamic_cast<PassAdaptor*>(pass);
-    // pass_failed = ir::Verify(op, verify_recursively);
+    bool verify_recursively = !dynamic_cast<PassAdaptor*>(pass);
+    ir::Verify(op, verify_recursively);
   }
 
   return !pass_failed;

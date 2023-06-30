@@ -102,13 +102,20 @@ TEST(CUDAModule, float16) {
   auto* y_p{y_device.data()};
 
   void* args[] = {&x_p, &size, &y_p};
-  cuda_module.LaunchKernel(0, "cast_fp32_to_fp16_cuda_kernel", blocks_per_grid, threads_per_block, args);
+  cuda_module.LaunchKernel(0,
+                           "cast_fp32_to_fp16_cuda_kernel",
+                           blocks_per_grid,
+                           threads_per_block,
+                           args);
   CUDA_CALL(cudaDeviceSynchronize());
 
   std::vector<float16> y_host = y_device.to_host();
-  bool res = std::equal(x_host.begin(), x_host.end(), y_host.begin(), [](float x, float16 y) -> bool {
-    return std::abs(x - static_cast<float>(y)) < 1e-2f;
-  });
+  bool res = std::equal(x_host.begin(),
+                        x_host.end(),
+                        y_host.begin(),
+                        [](float x, float16 y) -> bool {
+                          return std::abs(x - static_cast<float>(y)) < 1e-2f;
+                        });
   CHECK(res) << "The difference between two arrays exceeds the bound.";
 }
 
@@ -164,13 +171,20 @@ TEST(CUDAModule, bfloat16) {
   auto* y_p{y_device.data()};
 
   void* args[] = {&x_p, &size, &y_p};
-  cuda_module.LaunchKernel(0, "cast_fp32_to_bf16_cuda_kernel", blocks_per_grid, threads_per_block, args);
+  cuda_module.LaunchKernel(0,
+                           "cast_fp32_to_bf16_cuda_kernel",
+                           blocks_per_grid,
+                           threads_per_block,
+                           args);
   CUDA_CALL(cudaDeviceSynchronize());
 
   std::vector<bfloat16> y_host = y_device.to_host();
-  bool res = std::equal(x_host.begin(), x_host.end(), y_host.begin(), [](float x, bfloat16 y) -> bool {
-    return std::abs(x - static_cast<float>(y)) < 1e-2f;
-  });
+  bool res = std::equal(x_host.begin(),
+                        x_host.end(),
+                        y_host.begin(),
+                        [](float x, bfloat16 y) -> bool {
+                          return std::abs(x - static_cast<float>(y)) < 1e-2f;
+                        });
   CHECK(res) << "The difference between two arrays exceeds the bound.";
 }
 

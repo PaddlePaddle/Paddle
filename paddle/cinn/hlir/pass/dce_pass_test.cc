@@ -29,10 +29,11 @@ TEST(DCE, Test_0) {
   auto D = net_builder.Multiply(A, B);
 
   auto fetch_ids = {D->id};
-  auto program   = net_builder.Build();
-  auto target    = common::DefaultTarget();
+  auto program = net_builder.Build();
+  auto target = common::DefaultTarget();
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
   hlir::framework::ApplyPass(graph.get(), "DCE");
 
   CHECK_EQ(graph->nodes().size(), 4);
@@ -52,10 +53,11 @@ TEST(DCE, Test_1) {
   auto H = net_builder.Add(E, G);
 
   auto fetch_ids = {F->id};
-  auto program   = net_builder.Build();
-  auto target    = common::DefaultTarget();
+  auto program = net_builder.Build();
+  auto target = common::DefaultTarget();
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
   hlir::framework::ApplyPass(graph.get(), "DCE");
   CHECK_EQ(graph->nodes().size(), 8);
 }

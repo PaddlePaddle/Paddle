@@ -21,16 +21,21 @@
 namespace cinn {
 namespace ir {
 
-// Determine whether two ir AST trees are euqal by comparing their struct and fields of each node through dfs visitor
+// Determine whether two ir AST trees are euqal by comparing their struct and
+// fields of each node through dfs visitor
 class IrEqualVisitor : public IRVisitorBase<bool, const Expr*> {
  public:
-  explicit IrEqualVisitor(bool allow_name_suffix_diff = false) : allow_name_suffix_diff_(allow_name_suffix_diff) {}
+  explicit IrEqualVisitor(bool allow_name_suffix_diff = false)
+      : allow_name_suffix_diff_(allow_name_suffix_diff) {}
   // Return true if they are euqal, otherwise false;
   bool Compare(const Expr& lhs, const Expr& rhs);
 
  private:
-  bool Compare(const std::string& lhs, const std::string& rhs, bool allow_name_suffix_diff = false);
-  bool Compare(const std::map<std::string, attr_t>& lhs, const std::map<std::string, attr_t>& rhs);
+  bool Compare(const std::string& lhs,
+               const std::string& rhs,
+               bool allow_name_suffix_diff = false);
+  bool Compare(const std::map<std::string, attr_t>& lhs,
+               const std::map<std::string, attr_t>& rhs);
   template <typename T>
   bool Compare(const std::vector<T>& lhs, const std::vector<T>& rhs);
 

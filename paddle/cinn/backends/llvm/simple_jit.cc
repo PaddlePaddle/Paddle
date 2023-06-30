@@ -49,7 +49,8 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
     LOG(INFO) << "fn:\n" << DumpToString(fn);
   }
    */
-  CHECK(!llvm::verifyModule(*module, &llvm::errs())) << "Transformation resulted in an invalid module\n\nmodule:\n";
+  CHECK(!llvm::verifyModule(*module, &llvm::errs()))
+      << "Transformation resulted in an invalid module\n\nmodule:\n";
 
   bool debug = false;
   if (optimize) {
@@ -63,16 +64,20 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
     pass_builder.registerCGSCCAnalyses(cgscc_analysis_manager);
     pass_builder.registerFunctionAnalyses(function_analysis_manager);
     pass_builder.registerLoopAnalyses(loop_analysis_manager);
-    pass_builder.crossRegisterProxies(
-        loop_analysis_manager, function_analysis_manager, cgscc_analysis_manager, module_analysis_manager);
+    pass_builder.crossRegisterProxies(loop_analysis_manager,
+                                      function_analysis_manager,
+                                      cgscc_analysis_manager,
+                                      module_analysis_manager);
 
     llvm::ModulePassManager module_pass_manager =
-        pass_builder.buildPerModuleDefaultPipeline(llvm::PassBuilder::OptimizationLevel::O3);
+        pass_builder.buildPerModuleDefaultPipeline(
+            llvm::PassBuilder::OptimizationLevel::O3);
     module_pass_manager.run(*module, module_analysis_manager);
   }
 
   VLOG(3) << "jit target: " << jit_->getDataLayout().getStringRepresentation();
-  VLOG(3) << "module target: " << module->getDataLayout().getStringRepresentation();
+  VLOG(3) << "module target: "
+          << module->getDataLayout().getStringRepresentation();
 
   llvm::orc::ThreadSafeModule tsm(std::move(module), context_);
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
@@ -97,15 +102,19 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
   CHECK(jit_) << "JIT create failed";
 
   auto proc_symbols_generator = llvm::cantFail(
-      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(jit_->getDataLayout().getGlobalPrefix()));
+      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+          jit_->getDataLayout().getGlobalPrefix()));
   jit_->getMainJITDylib().addGenerator(std::move(proc_symbols_generator));
 
-  llvm::orc::MangleAndInterner mangle(jit_->getExecutionSession(), jit_->getDataLayout());
+  llvm::orc::MangleAndInterner mangle(jit_->getExecutionSession(),
+                                      jit_->getDataLayout());
 
   for (auto &item : GlobalSymbolRegistry::Global().All()) {
     VLOG(2) << "Insert [" << item.first << "] to SimpleJIT";
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
-        {{mangle(item.first), {llvm::pointerToJITTargetAddress(item.second), llvm::JITSymbolFlags::None}}})));
+        {{mangle(item.first),
+          {llvm::pointerToJITTargetAddress(item.second),
+           llvm::JITSymbolFlags::None}}})));
   }
 }
 
@@ -126,7 +135,8 @@ void SimpleJIT::Link(ir::Module module, bool optimize) {
 }
 
 template void SimpleJIT::Link<CodeGenLLVM>(ir::Module module, bool optimize);
-template void SimpleJIT::Link<CodeGenCUDA_Host>(ir::Module module, bool optimize);
+template void SimpleJIT::Link<CodeGenCUDA_Host>(ir::Module module,
+                                                bool optimize);
 
 }  // namespace backends
 

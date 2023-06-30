@@ -35,7 +35,9 @@ struct ExternCallMultiOutputShallowStoreMutator : public ir::IRMutator<> {
 
 }  // namespace
 
-void ExternCallMultiOutputShallowStore(Expr* e) { ExternCallMultiOutputShallowStoreMutator()(e); }
+void ExternCallMultiOutputShallowStore(Expr* e) {
+  ExternCallMultiOutputShallowStoreMutator()(e);
+}
 
 }  // namespace optim
 }  // namespace cinn

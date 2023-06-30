@@ -15,12 +15,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
+
 import cinn
-from cinn.frontend import *
+import numpy as np
 from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
 def cinn_dtype_convert(dtype_str):

@@ -69,7 +69,9 @@ TEST(lower, more_complex) {
   Placeholder<float> B("B", {Expr(N), Expr(K)});
 
   auto C = Compute(
-      {M, N, K}, [=](Var i, Var j, Var k) -> Expr { return A(i, j) * B(j, k); }, "C");
+      {M, N, K},
+      [=](Var i, Var j, Var k) -> Expr { return A(i, j) * B(j, k); },
+      "C");
 
   auto stages = CreateStages({C});
 
@@ -78,7 +80,8 @@ TEST(lower, more_complex) {
   std::cout << "func:\n" << Expr(lower_funcs->self()) << std::endl;
 }
 
-//! To support training, the dynamic shape support is vital. We test the corresponding lower ability here.
+//! To support training, the dynamic shape support is vital. We test the
+//! corresponding lower ability here.
 TEST(lower, dynamic_shape) {
   Var B("B");  // B is like shape here.
   Expr N(15);
@@ -89,9 +92,11 @@ TEST(lower, dynamic_shape) {
   Placeholder<float> W("W", {Expr(N), Expr(K)});
 
   auto C = Compute(
-      {B, N, K}, [=](Var i, Var j, Var k) -> Expr { return X(i, j) * W(j, k); }, "C");
+      {B, N, K},
+      [=](Var i, Var j, Var k) -> Expr { return X(i, j) * W(j, k); },
+      "C");
 
-  auto stages      = CreateStages({C});
+  auto stages = CreateStages({C});
   auto lower_funcs = Lower("cal_C", stages, {X, W, C});
 
   std::cout << "func:\n" << Expr(lower_funcs->self()) << std::endl;
@@ -108,9 +113,10 @@ TEST(lower, lowered_call) {
   auto Z = Compute(
       {B, N}, [&](Var i, Var j) { return X(i, j) + Y(i, j); }, "Z");
 
-  std::vector<ReturnType> return_types({{Float(32), std::vector<Expr>{{B, N}}, "C"}});
+  std::vector<ReturnType> return_types(
+      {{Float(32), std::vector<Expr>{{B, N}}, "C"}});
   auto tensors = CallLowered("lowered_fun0", {X, Y, Z}, return_types);
-  auto C       = tensors[0];
+  auto C = tensors[0];
 
   auto stages = CreateStages({X, Y, Z, C});
 

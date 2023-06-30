@@ -300,7 +300,9 @@ class IrBuilderMixin {
   }
 
  private:
-  llvm::IRBuilder<> *mixin_builder() { return static_cast<Derived *>(this)->b(); }
+  llvm::IRBuilder<> *mixin_builder() {
+    return static_cast<Derived *>(this)->b();
+  }
 };
 }  // namespace backends
 }  // namespace cinn

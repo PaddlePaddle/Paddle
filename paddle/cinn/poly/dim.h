@@ -58,7 +58,9 @@ struct Dim {
   //! Return the range composed of (lower_bound, upper_bound).
   range_t range() const { return std::make_pair(lower_bound, upper_bound); }
 
-  bool is_param() const { return !lower_bound.defined() && !lower_bound.defined(); }
+  bool is_param() const {
+    return !lower_bound.defined() && !lower_bound.defined();
+  }
 
   //! Return the ISL style range representation, such as '0 <= i <= 20'.
   std::string range_repr() const;

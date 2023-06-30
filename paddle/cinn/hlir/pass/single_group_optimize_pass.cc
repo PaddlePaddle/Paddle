@@ -88,9 +88,11 @@ std::vector<std::shared_ptr<Group>> SingleGroupOptimizePass::Apply() {
       optimized_groups.emplace_back(group);
       continue;
     }
-    CHECK(node_to_groups_.count(nodes.front())) << "Can't find node " << nodes.front()->id() << " in node_to_groups_!";
-    // NOTE(jeff41404): if a node used by more than one group, then will not be optimized to avoid unexpected changes to
-    // other group which has multiple nodes.
+    CHECK(node_to_groups_.count(nodes.front()))
+        << "Can't find node " << nodes.front()->id() << " in node_to_groups_!";
+    // NOTE(jeff41404): if a node used by more than one group, then will not be
+    // optimized to avoid unexpected changes to other group which has multiple
+    // nodes.
     if (node_to_groups_[nodes.front()] > 1) {
       optimized_groups.emplace_back(group);
       continue;
@@ -127,33 +129,39 @@ bool SingleGroupOptimizePass::TryReplaceNodeToCustomCall(Node* node) const {
   if (can_replace) {
     // replace single node group to custom call function
     const auto& op_name = node->op()->name;
-    VLOG(4) << "Replaced node " << framework::DebugString(node) << " by \"custom_call\"";
+    VLOG(4) << "Replaced node " << framework::DebugString(node)
+            << " by \"custom_call\"";
     node->attrs.attr_store["original_op"] = op_name;
-    node->attrs.op                        = framework::Operator::Get("custom_call");
+    node->attrs.op = framework::Operator::Get("custom_call");
   }
 
   if (can_replace_to_memset) {
-    node->attrs.attr_store["custom_call"] = std::string("cinn_call_cuda_memset");
+    node->attrs.attr_store["custom_call"] =
+        std::string("cinn_call_cuda_memset");
   }
   if (can_replace_to_memcpy) {
-    node->attrs.attr_store["custom_call"] = std::string("cinn_call_cuda_memcpy");
+    node->attrs.attr_store["custom_call"] =
+        std::string("cinn_call_cuda_memcpy");
   }
 
   return can_replace;
 }
 
 bool SingleGroupOptimizePass::CanReplaceToMemset(Node* node) const {
-  const auto& op_name    = node->op()->name;
+  const auto& op_name = node->op()->name;
   const auto& attr_store = node->attrs.attr_store;
 
   if (op_name == "fill_constant" || op_name == "const_scalar") {
-    CHECK(attr_store.count("dtype")) << "Missing attribute \"dtype\" in op \"fill_constant\"";
+    CHECK(attr_store.count("dtype"))
+        << "Missing attribute \"dtype\" in op \"fill_constant\"";
     CHECK(absl::holds_alternative<std::string>(attr_store.at("dtype")));
 
     // if the value is 0, the op can always replaced by memset
     const auto& value_attr = attr_store.at("value");
-    bool is_value_zero     = utils::IsValueZero<int>(value_attr) || utils::IsValueZero<float>(value_attr) ||
-                         utils::IsValueZero<bool>(value_attr) || utils::IsValueZero<int64_t>(value_attr) ||
+    bool is_value_zero = utils::IsValueZero<int>(value_attr) ||
+                         utils::IsValueZero<float>(value_attr) ||
+                         utils::IsValueZero<bool>(value_attr) ||
+                         utils::IsValueZero<int64_t>(value_attr) ||
                          utils::IsValueZero<double>(value_attr);
     return is_value_zero;
     // can support memset non-0 ?

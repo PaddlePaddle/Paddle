@@ -29,21 +29,26 @@
 namespace cinn {
 namespace auto_schedule {
 
-SearchState::SearchState(ir::IRSchedule ir_sch, float cost, const std::vector<AutoGenRule*>& rules)
+SearchState::SearchState(ir::IRSchedule ir_sch,
+                         float cost,
+                         const std::vector<AutoGenRule*>& rules)
     : common::Shared<_SearchState_>(common::make_shared<_SearchState_>()) {
-  auto* state             = get();
-  state->ir_schedule      = std::move(ir_sch);
+  auto* state = get();
+  state->ir_schedule = std::move(ir_sch);
   state->applicable_rules = rules;
-  state->predicted_cost   = cost;
+  state->predicted_cost = cost;
 }
 
-SearchState SearchState::Copy() const { return SearchState((*this)->ir_schedule, (*this)->predicted_cost, {}); }
+SearchState SearchState::Copy() const {
+  return SearchState((*this)->ir_schedule, (*this)->predicted_cost, {});
+}
 
 std::string _SearchState_::DebugString() const {
   const auto& exprs = ir_schedule.GetModule().GetExprs();
   std::stringstream module_stream;
   for (auto i = 0; i < exprs.size(); ++i) {
-    module_stream << "Expr " << i << " {\n" << exprs.at(i) << "\n}  // end Expr";
+    module_stream << "Expr " << i << " {\n"
+                  << exprs.at(i) << "\n}  // end Expr";
   }
 
   const char* fmt_str = R"ROC(
@@ -55,8 +60,10 @@ ScheduleDesc {
 } // end ScheduleDesc
 predicted_cost: %f)ROC";
 
-  return utils::StringFormat(
-      fmt_str, module_stream.str().c_str(), ir_schedule.GetTraceDesc().DebugString().c_str(), predicted_cost);
+  return utils::StringFormat(fmt_str,
+                             module_stream.str().c_str(),
+                             ir_schedule.GetTraceDesc().DebugString().c_str(),
+                             predicted_cost);
 }
 
 bool operator<(const SearchState& left, const SearchState& right) {
@@ -94,7 +101,7 @@ class IrNodesStructuralHash : public DfsWithExprsFields {
     static decltype(ir::kIrNodeTyReprs) Node2Name = ir::kIrNodeTyReprs;
     if (!expr->defined()) return;
     auto type_code = static_cast<IrNodeTyUnderlyingType>(expr->node_type());
-    hash_key_      = utils::HashCombine(hash_key_, type_code);
+    hash_key_ = utils::HashCombine(hash_key_, type_code);
     DfsWithExprsFields::Visit(expr);
   }
 
@@ -111,7 +118,7 @@ class IrNodesStructuralHash : public DfsWithExprsFields {
 };
 
 size_t SearchStateHash::operator()(const SearchState& s) const {
-  size_t hash_key   = 0;
+  size_t hash_key = 0;
   const auto& exprs = s->ir_schedule.GetModule().GetExprs();
   for (auto&& expr : exprs) {
     hash_key = IrNodesStructuralHash(hash_key)(&expr);
@@ -119,7 +126,8 @@ size_t SearchStateHash::operator()(const SearchState& s) const {
   return hash_key;
 }
 
-bool SearchStateEqual::operator()(const SearchState& lhs, const SearchState& rhs) const {
+bool SearchStateEqual::operator()(const SearchState& lhs,
+                                  const SearchState& rhs) const {
   const auto& lhs_exprs = lhs->ir_schedule.GetModule().GetExprs();
   const auto& rhs_exprs = rhs->ir_schedule.GetModule().GetExprs();
   // compare exprs size firstly
@@ -127,20 +135,24 @@ bool SearchStateEqual::operator()(const SearchState& lhs, const SearchState& rhs
 
   // compare every expr one by one with ir::IrEqualVisitor
   for (int i = 0; i < lhs_exprs.size(); ++i) {
-    ir::IrEqualVisitor compartor(/*allow_name_suffix_diff=*/true);  // ignore suffix difference in name
+    ir::IrEqualVisitor compartor(
+        /*allow_name_suffix_diff=*/true);  // ignore suffix difference in name
     if (!compartor.Compare(lhs_exprs[i], rhs_exprs[i])) return false;
   }
   return true;
 }
 
-std::string JoinStatesDebugString(const std::string& title, const std::vector<SearchState>& states, bool verbose) {
+std::string JoinStatesDebugString(const std::string& title,
+                                  const std::vector<SearchState>& states,
+                                  bool verbose) {
   std::stringstream ss;
   ss << title << " states size:" << states.size() << "\n";
   SearchStateHash state_hasher;
   for (size_t i = 0; i < states.size(); ++i) {
     uint64_t hash_key = state_hasher(states[i]);
     if (verbose) {
-      ss << "\tState-" << i << " hash:" << hash_key << "\t content:------>" << states[i]->DebugString() << "\n<------";
+      ss << "\tState-" << i << " hash:" << hash_key << "\t content:------>"
+         << states[i]->DebugString() << "\n<------";
     } else {
       ss << "\tState-" << i << " hash:" << hash_key << "\n";
     }

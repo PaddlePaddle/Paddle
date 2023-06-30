@@ -31,13 +31,14 @@ TEST(CostModel, Basic) {
 
   srand(time(NULL));
 
-  int batch_size   = 16;
+  int batch_size = 16;
   int feature_size = 8;
   std::vector<float> labels(batch_size, 1.0);
-  std::vector<std::vector<float>> samples(batch_size, std::vector<float>(feature_size));
+  std::vector<std::vector<float>> samples(batch_size,
+                                          std::vector<float>(feature_size));
   for (int i = 0; i < batch_size; ++i) {
     for (int j = 0; j < feature_size; ++j) {
-      samples[i][j] = rand() % 10;
+      samples[i][j] = rand() % 10;  // NOLINT
     }
   }
 

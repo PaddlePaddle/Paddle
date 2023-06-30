@@ -31,7 +31,7 @@ namespace ir {
                                                                          \
     explicit concrete_storage(const ParamKey &key) { data_ = key; }      \
                                                                          \
-    static concrete_storage *Construct(ParamKey key) {                   \
+    static concrete_storage *Construct(const ParamKey &key) {            \
       return new concrete_storage(key);                                  \
     }                                                                    \
                                                                          \
@@ -61,7 +61,7 @@ struct StrAttributeStorage : public AttributeStorage {
 
   ~StrAttributeStorage() { free(data_); }
 
-  static StrAttributeStorage *Construct(ParamKey key) {
+  static StrAttributeStorage *Construct(const ParamKey &key) {
     return new StrAttributeStorage(key);
   }
 
@@ -101,7 +101,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
 
   ~ArrayAttributeStorage() { free(reinterpret_cast<void *>(data_)); }
 
-  static ArrayAttributeStorage *Construct(ParamKey key) {
+  static ArrayAttributeStorage *Construct(const ParamKey &key) {
     return new ArrayAttributeStorage(key);
   }
 

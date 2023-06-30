@@ -48,11 +48,14 @@ TEST(MultiLevelTile, SampleSplitTwo) {
   Target target = common::DefaultHostTarget();
 #endif
 
-  MultiLevelTiling multi_level_tiling(target, MultiLevelTiling::kConfigs.at(target.arch));
+  MultiLevelTiling multi_level_tiling(
+      target, MultiLevelTiling::kConfigs.at(target.arch));
 
   for (int i = 0; i < 100; ++i) {
-    size_t number_to_split    = rand() % 65535 + 2;  // random number in [2, 2^16]
-    std::vector<size_t> split = multi_level_tiling.SampleSplitTwo<size_t>(number_to_split);
+    size_t number_to_split =
+        rand() % 65535 + 2;  // NOLINT, random number in [2, 2^16]
+    std::vector<size_t> split =
+        multi_level_tiling.SampleSplitTwo<size_t>(number_to_split);
     EXPECT_EQ(split.size(), 2UL);
     EXPECT_EQ(split[0] * split[1], number_to_split);
   }
@@ -67,12 +70,15 @@ TEST(MultiLevelTile, SampleTileSplit) {
   Target target = common::DefaultHostTarget();
 #endif
 
-  MultiLevelTiling multi_level_tiling(target, MultiLevelTiling::kConfigs.at(target.arch));
+  MultiLevelTiling multi_level_tiling(
+      target, MultiLevelTiling::kConfigs.at(target.arch));
 
   for (int i = 0; i < 100; ++i) {
-    int number_to_split    = rand() % 65535 + 2;  // random number in [2, 2^16]
-    int split_size         = rand() % 5 + 1;      // random in [1, 5]
-    std::vector<int> split = multi_level_tiling.SampleTileSplit<int>(number_to_split, split_size);
+    int number_to_split =
+        rand() % 65535 + 2;           // NOLINT, random number in [2, 2^16]
+    int split_size = rand() % 5 + 1;  // NOLINT, random in [1, 5]
+    std::vector<int> split =
+        multi_level_tiling.SampleTileSplit<int>(number_to_split, split_size);
     EXPECT_EQ(split.size(), static_cast<size_t>(split_size));
     int product = 1;
     for (int num : split) {
@@ -102,21 +108,31 @@ TEST(MultiLevelTile, SimpleLoops) {
 
   poly::StageMap stages = CreateStages({C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestMultiLevelTile_SimpleLoops", stages, {C}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestMultiLevelTile_SimpleLoops",
+                     stages,
+                     {C},
+                     {},
+                     {},
+                     nullptr,
+                     target,
+                     true);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before MultiLevelTiling: ";
   VLOG(6) << ast_expr;
 
-  MultiLevelTiling multi_level_tiling(target, MultiLevelTiling::kConfigs.at(target.arch));
+  MultiLevelTiling multi_level_tiling(
+      target, MultiLevelTiling::kConfigs.at(target.arch));
   ir::IRSchedule ir_schedule(ir::ModuleExpr({ast_expr}));
   SearchState state(ir_schedule, 0, {});
-  EXPECT_EQ(multi_level_tiling.Init(&ir_schedule), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(multi_level_tiling.Init(&ir_schedule),
+            RuleApplyType::kApplyAndPruneOtherRules);
   EXPECT_EQ(multi_level_tiling.NumberApplicable(), 1);
   multi_level_tiling.ApplyRandomly();
 
   // ApplyOnBlock
-  EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, "C"), RuleApplyType::kApplyAndPruneOtherRules);
+  EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, "C"),
+            RuleApplyType::kApplyAndPruneOtherRules);
   auto new_states = multi_level_tiling.ApplyOnBlock(state, "C");
 
   auto test_func = [](ir::IRSchedule* ir_sch) {
@@ -152,26 +168,30 @@ TEST(MulitLevelTile, MatrixMultiply) {
 
   Var k(K.as_int32(), "reduce_axis_k");
   ir::Tensor C = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); },
+"C");
 
   poly::StageMap stages = CreateStages({C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestMultiLevelTile_MatrixMultiply", stages, {C}, {}, {}, nullptr, target, true);
+      lang::LowerVec("TestMultiLevelTile_MatrixMultiply", stages, {C}, {}, {},
+nullptr, target, true);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr before MultiLevelTiling: ";
   VLOG(6) << ast_expr;
 
-  MultiLevelTiling multi_level_tiling(target, MultiLevelTiling::kConfigs.at(target.arch));
-  ir::IRSchedule ir_schedule(ir::ModuleExpr({ast_expr}));
-  SearchState state(ir_schedule, 0, {});
-  EXPECT_EQ(multi_level_tiling.Init(&ir_schedule), RuleApplyType::kApplyAndPruneOtherRules);
+  MultiLevelTiling multi_level_tiling(target,
+MultiLevelTiling::kConfigs.at(target.arch)); ir::IRSchedule
+ir_schedule(ir::ModuleExpr({ast_expr})); SearchState state(ir_schedule, 0, {});
+  EXPECT_EQ(multi_level_tiling.Init(&ir_schedule),
+RuleApplyType::kApplyAndPruneOtherRules);
   EXPECT_EQ(multi_level_tiling.NumberApplicable(), 1);
   multi_level_tiling.ApplyRandomly();
 
   // ApplyOnBlock
-  EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, "C"), RuleApplyType::kApplyAndPruneOtherRules);
-  auto new_states = multi_level_tiling.ApplyOnBlock(state, "C");
+  EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, "C"),
+RuleApplyType::kApplyAndPruneOtherRules); auto new_states =
+multi_level_tiling.ApplyOnBlock(state, "C");
 
   auto test_func = [](ir::IRSchedule* ir_sch) {
     std::vector<ir::Expr> exprs = ir_sch->GetModule().GetExprs();
@@ -194,25 +214,28 @@ class TestMultiLevelTiling : public TestAutoGenRuleBase {
 };
 
 TEST_F(TestMultiLevelTiling, Matmul) {
-  default_input_names            = {"X", "Y"};
-  default_output_names           = {"temp_matmul_out"};
-  std::vector<int32_t> X_shape   = {32, 32};
-  std::vector<int32_t> Y_shape   = {32, 32};
+  default_input_names = {"X", "Y"};
+  default_output_names = {"temp_matmul_out"};
+  std::vector<int32_t> X_shape = {32, 32};
+  std::vector<int32_t> Y_shape = {32, 32};
   std::vector<int32_t> out_shape = {32, 32};
 
   Initialize(common::DefaultNVGPUTarget());
-  frontend::Program matmul_op = tests::OpBuilder("matmul").Build({{"X", X_shape}, {"Y", Y_shape}});
-  ir::IRSchedule ir_schedule  = MakeIRSchedule(matmul_op, fixed_rand_seed);
+  frontend::Program matmul_op =
+      tests::OpBuilder("matmul").Build({{"X", X_shape}, {"Y", Y_shape}});
+  ir::IRSchedule ir_schedule = MakeIRSchedule(matmul_op, fixed_rand_seed);
   SearchState state(ir_schedule);
   VLOG(6) << "Original state:\n" << state->DebugString();
 
   // Apply MultiLevelTiling
-  MultiLevelTiling multi_level_tiling(target_, MultiLevelTiling::kConfigs.at(target_.arch));
+  MultiLevelTiling multi_level_tiling(
+      target_, MultiLevelTiling::kConfigs.at(target_.arch));
   EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, default_output_names[0]),
             RuleApplyType::kApplyAndPruneOtherRules);
-  auto new_states = multi_level_tiling.ApplyOnBlock(state, default_output_names[0]);
+  auto new_states =
+      multi_level_tiling.ApplyOnBlock(state, default_output_names[0]);
   VLOG(6) << "After MultiLevelTiling, state:\n" << new_states[0]->DebugString();
-  std::string ir          = GetIR(new_states[0]->ir_schedule);
+  std::string ir = GetIR(new_states[0]->ir_schedule);
   std::string expected_ir = R"ROC(Expr 0 {
 {
   ScheduleBlock(root)
@@ -325,14 +348,15 @@ TEST_F(TestMultiLevelTiling, Matmul) {
   ASSERT_EQ(ir, expected_ir);
 
   // build ir::Module and debug source code
-  auto ir_module   = BuildIRModule(new_states[0]->ir_schedule);
+  auto ir_module = BuildIRModule(new_states[0]->ir_schedule);
   auto source_code = GenSourceCode(ir_module);
   VLOG(6) << "scheduled source code:\n" << source_code;
 
   // execute and check precision
   CheckResult(
       GenExecutableKernel(ir_module),
-      GenExecutableKernel(BuildIRModule(MakeIRSchedule(matmul_op, fixed_rand_seed, /* apply_manual_schedule*/ true))),
+      GenExecutableKernel(BuildIRModule(MakeIRSchedule(
+          matmul_op, fixed_rand_seed, /* apply_manual_schedule*/ true))),
       default_input_names,
       default_output_names,
       {X_shape, Y_shape},
@@ -341,26 +365,29 @@ TEST_F(TestMultiLevelTiling, Matmul) {
 }
 
 TEST_F(TestMultiLevelTiling, ReduceSum) {
-  default_input_names             = {"X"};
-  default_output_names            = {"var_0_tmp"};
-  std::vector<int32_t> X_shape    = {1, 16, 32};
-  std::vector<int32_t> out_shape  = {1, 16, 1};
+  default_input_names = {"X"};
+  default_output_names = {"var_0_tmp"};
+  std::vector<int32_t> X_shape = {1, 16, 32};
+  std::vector<int32_t> out_shape = {1, 16, 1};
   std::vector<int32_t> reduce_dim = {2};
 
   Initialize(common::DefaultNVGPUTarget());
   frontend::Program reduce_sum_op =
-      tests::OpBuilder("reduce_sum").Build({{"X", X_shape}}, {{"dim", reduce_dim}, {"keep_dim", false}});
+      tests::OpBuilder("reduce_sum")
+          .Build({{"X", X_shape}}, {{"dim", reduce_dim}, {"keep_dim", false}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(reduce_sum_op);
   SearchState state(ir_schedule);
   VLOG(6) << "Original state:\n" << state->DebugString();
 
   // Apply MultiLevelTiling
-  MultiLevelTiling multi_level_tiling(target_, MultiLevelTiling::kConfigs.at(target_.arch));
-  // EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, default_output_names[0]), RuleApplyType::kCannotApply);
+  MultiLevelTiling multi_level_tiling(
+      target_, MultiLevelTiling::kConfigs.at(target_.arch));
+  // EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state,
+  // default_output_names[0]), RuleApplyType::kCannotApply);
 }
 
 TEST_F(TestMultiLevelTiling, Pool2d) {
-  default_input_names  = {"input"};
+  default_input_names = {"input"};
   default_output_names = {"var_0"};
   std::vector<int32_t> input_shape{2, 8, 16, 16};
   std::vector<int32_t> output_shape{2, 8, 8, 8};
@@ -368,23 +395,24 @@ TEST_F(TestMultiLevelTiling, Pool2d) {
   std::vector<int> ksize{3, 3};
   std::vector<int> strides{2, 2};
   std::vector<int> paddings{1, 1, 1, 1};
-  bool ceil_mode                   = false;
-  bool exclusive                   = true;
-  bool global_pooling              = false;
-  std::string data_format          = "NCHW";
-  bool adaptive                    = false;
-  std::string padding_algorithm    = "EXPLICIT";
-  frontend::Program pool2d_program = tests::OpBuilder("pool2d").Build({{"input", input_shape}},
-                                                                      {{"pool_type", pooling_type},
-                                                                       {"kernel_size", ksize},
-                                                                       {"stride_size", strides},
-                                                                       {"padding_size", paddings},
-                                                                       {"ceil_mode", ceil_mode},
-                                                                       {"exclusive", exclusive},
-                                                                       {"global_pooling", global_pooling},
-                                                                       {"data_format", data_format},
-                                                                       {"adaptive", adaptive},
-                                                                       {"padding_algorithm", padding_algorithm}});
+  bool ceil_mode = false;
+  bool exclusive = true;
+  bool global_pooling = false;
+  std::string data_format = "NCHW";
+  bool adaptive = false;
+  std::string padding_algorithm = "EXPLICIT";
+  frontend::Program pool2d_program = tests::OpBuilder("pool2d").Build(
+      {{"input", input_shape}},
+      {{"pool_type", pooling_type},
+       {"kernel_size", ksize},
+       {"stride_size", strides},
+       {"padding_size", paddings},
+       {"ceil_mode", ceil_mode},
+       {"exclusive", exclusive},
+       {"global_pooling", global_pooling},
+       {"data_format", data_format},
+       {"adaptive", adaptive},
+       {"padding_algorithm", padding_algorithm}});
 
   Initialize(common::DefaultNVGPUTarget());
   ir::IRSchedule ir_schedule = MakeIRSchedule(pool2d_program, fixed_rand_seed);
@@ -403,10 +431,11 @@ TEST_F(TestMultiLevelTiling, Pool2d) {
   MultiLevelTiling multi_level_tiling(target_, mlt_config);
   EXPECT_EQ(multi_level_tiling.AnalyseApplyType(state, default_output_names[0]),
             RuleApplyType::kApplyAndPruneOtherRules);
-  auto new_states = multi_level_tiling.ApplyOnBlock(state, default_output_names[0]);
+  auto new_states =
+      multi_level_tiling.ApplyOnBlock(state, default_output_names[0]);
   VLOG(6) << "After MultiLevelTiling, state:\n" << new_states[0]->DebugString();
 
-  std::string ir          = GetIR(new_states[0]->ir_schedule);
+  std::string ir = GetIR(new_states[0]->ir_schedule);
   std::string expected_ir = R"ROC(Expr 0 {
 {
   ScheduleBlock(root)
@@ -529,19 +558,20 @@ Expr 1 {
   ASSERT_EQ(ir, expected_ir);
 
   // build ir::Module and debug source code
-  auto ir_module   = BuildIRModule(new_states[0]->ir_schedule);
+  auto ir_module = BuildIRModule(new_states[0]->ir_schedule);
   auto source_code = GenSourceCode(ir_module);
   VLOG(6) << "scheduled source code:\n" << source_code;
 
   // execute and check precision
-  CheckResult(GenExecutableKernel(ir_module),
-              GenExecutableKernel(
-                  BuildIRModule(MakeIRSchedule(pool2d_program, fixed_rand_seed, /* apply_manual_schedule*/ true))),
-              default_input_names,
-              default_output_names,
-              {input_shape},
-              {output_shape},
-              target_);
+  CheckResult(
+      GenExecutableKernel(ir_module),
+      GenExecutableKernel(BuildIRModule(MakeIRSchedule(
+          pool2d_program, fixed_rand_seed, /* apply_manual_schedule*/ true))),
+      default_input_names,
+      default_output_names,
+      {input_shape},
+      {output_shape},
+      target_);
 }
 
 }  // namespace auto_schedule

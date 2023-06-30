@@ -46,9 +46,9 @@ class DotLang {
    */
   void AddNode(const std::string& id,
                const std::vector<DotAttr>& attrs,
-               std::string label      = "",
+               std::string label = "",
                std::string cluster_id = "",
-               bool allow_duplicate   = false);
+               bool allow_duplicate = false);
 
   /**
    * Add a subgraph to the DOT graph.
@@ -63,7 +63,9 @@ class DotLang {
    * @param target The id of the sink of the edge.
    * @param attrs The attributes of the edge.
    */
-  void AddEdge(const std::string& source, const std::string& target, const std::vector<DotAttr>& attrs);
+  void AddEdge(const std::string& source,
+               const std::string& target,
+               const std::vector<DotAttr>& attrs);
 
   std::string operator()() const { return Build(); }
 
@@ -81,7 +83,8 @@ struct DotAttr {
   std::string key;
   std::string value;
 
-  DotAttr(const std::string& key, const std::string& value) : key(key), value(value) {}
+  DotAttr(const std::string& key, const std::string& value)
+      : key(key), value(value) {}
 
   std::string repr() const;
 };
@@ -91,7 +94,9 @@ struct DotNode {
   std::vector<DotAttr> attrs;
 
   DotNode() = default;
-  DotNode(const std::string& name, const std::vector<DotAttr>& attrs, const std::string& cluster_id);
+  DotNode(const std::string& name,
+          const std::vector<DotAttr>& attrs,
+          const std::string& cluster_id);
 
   std::string id() const { return id_; }
   std::string cluster_id() const { return cluster_id_; }
@@ -125,7 +130,9 @@ struct DotEdge {
   std::string target;
   std::vector<DotAttr> attrs;
 
-  DotEdge(const std::string& source, const std::string& target, const std::vector<DotAttr>& attrs)
+  DotEdge(const std::string& source,
+          const std::string& target,
+          const std::vector<DotAttr>& attrs)
       : source(source), target(target), attrs(attrs) {}
 
   std::string repr() const;

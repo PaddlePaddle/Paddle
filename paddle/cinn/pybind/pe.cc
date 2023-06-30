@@ -33,7 +33,11 @@ using utils::GetStreamCnt;
 using utils::StringFormat;
 
 void BindPE(py::module* m) {
-#define BIND_UNARY(name__, fn__) m->def(#name__, &hlir::pe::fn__, py::arg("x"), py::arg("out") = "T_" #name__ "_out")
+#define BIND_UNARY(name__, fn__) \
+  m->def(#name__,                \
+         &hlir::pe::fn__,        \
+         py::arg("x"),           \
+         py::arg("out") = "T_" #name__ "_out")
   BIND_UNARY(exp, Exp);
   BIND_UNARY(erf, Erf);
   BIND_UNARY(sqrt, Sqrt);
@@ -70,7 +74,12 @@ void BindPE(py::module* m) {
   BIND_UNARY(rsqrt, Rsqrt);
 
 #define BIND_BINARY(name__, fn__) \
-  m->def(#name__, &hlir::pe::fn__, py::arg("x"), py::arg("y"), py::arg("out"), py::arg("axis") = Expr(-1))
+  m->def(#name__,                 \
+         &hlir::pe::fn__,         \
+         py::arg("x"),            \
+         py::arg("y"),            \
+         py::arg("out"),          \
+         py::arg("axis") = Expr(-1))
 
   BIND_BINARY(add, Add);
   BIND_BINARY(atan2, Atan2);
@@ -103,7 +112,7 @@ void BindPE(py::module* m) {
          py::arg("x"),                 \
          py::arg("axes"),              \
          py::arg("keep_dims") = false, \
-         py::arg("out")       = "T_" #name__ "_out")
+         py::arg("out") = "T_" #name__ "_out")
   BIND_REDUCE(reduce_sum, ReduceSum);
   BIND_REDUCE(reduce_prod, ReduceProd);
   BIND_REDUCE(reduce_max, ReduceMax);
@@ -117,8 +126,8 @@ void BindPE(py::module* m) {
          py::arg("tensor_b"),
          py::arg("trans_a") = false,
          py::arg("trans_b") = false,
-         py::arg("alpha")   = 1,
-         py::arg("out")     = "T_Matmul_out");
+         py::arg("alpha") = 1,
+         py::arg("out") = "T_Matmul_out");
 
   m->def("matmul_mkl",
          &hlir::pe::MatmulMKL,
@@ -126,9 +135,9 @@ void BindPE(py::module* m) {
          py::arg("tensor_b"),
          py::arg("trans_a") = false,
          py::arg("trans_b") = false,
-         py::arg("alpha")   = 1,
-         py::arg("out")     = "T_Matmul_mkl_out",
-         py::arg("target")  = common::DefaultHostTarget());
+         py::arg("alpha") = 1,
+         py::arg("out") = "T_Matmul_mkl_out",
+         py::arg("target") = common::DefaultHostTarget());
 }
 
 }  // namespace pybind

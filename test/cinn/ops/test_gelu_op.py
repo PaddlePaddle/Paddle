@@ -15,14 +15,16 @@
 # limitations under the License.
 
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
 import paddle.nn.functional as F
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
 @OpTestTool.skip_if(
