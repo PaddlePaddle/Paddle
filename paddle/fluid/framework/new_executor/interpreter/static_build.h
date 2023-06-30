@@ -19,6 +19,10 @@
 
 extern std::set<std::string> OperatorBasesMustRunInStaticBuild;
 
+namespace ir {
+class Block;
+}  // namespace ir
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -39,6 +43,11 @@ void FakeInitializeOutputsForFunctionKernel(
 void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,
     ExecutionContext* execution_context);
+
+// ======================================= //
+//        Used for NewIRInterpreter        //
+// ======================================= //
+bool BlockCanBeStaticBuilt(ir::Block* block);
 
 }  // namespace interpreter
 }  // namespace framework

@@ -18,6 +18,9 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
+#include "paddle/fluid/ir/dialect/kernel_op.h"
+#include "paddle/ir/core/block.h"
+
 // These Ops is OperatorBase, but we have been handle them in static build
 std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
 
@@ -516,6 +519,71 @@ void FakeInitializeOutputsForStructureKernel(
       }
     }
   }
+}
+
+bool BlockCanBeStaticBuilt(ir::Block* block) {
+  // in_black_list = (kernelCode >> 7) & 1
+  // is_operator_base = (kernelCode >> 6) & 1
+  // is_custom_op = (kernelCode >> 5) & 1
+  // use_mkldnn = (kernelCode >> 4) & 1
+  // has_fluid_kernel = (kernelCode >> 3) & 1
+  // has_structed_kernel = (kernelCode >> 2) & 1
+  // need_move_to_phi = (kernelCode >> 1) & 1
+  using KernelCode = int8_t;
+  std::set<std::pair<std::string, KernelCode>> invalid_ops;
+  for (auto it = block->begin(); it != block->end(); ++it) {
+    auto op_name = (*it)->dyn_cast<paddle::dialect::PhiKernelOp>().op_name();
+
+    bool in_black_list = StaticBuildBlackList.count(op_name);
+
+    // NOTE(zhangbo): All PhiKernelOps in the Kernel dialect program have a
+    // kernel.
+    bool is_operator_base = false;
+
+    bool is_custom_op =
+        egr::Controller::Instance().GetOpMetaInfoMap().count(op_name);
+
+    bool use_mkldnn = false;
+    ir::AttributeMap attributes = (*it)->attributes();
+    if (attributes.count("use_mkldnn") != 0) {
+      use_mkldnn =
+          attributes.at("use_mkldnn").dyn_cast<ir::BoolAttribute>().data();
+    }
+    bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_name);
+    bool has_structured_kernel =
+        phi::KernelFactory::Instance().HasStructuredKernel(op_name);
+    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
+
+    KernelCode kernel_code =
+        (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
+        (use_mkldnn << 4) + (has_fluid_kernel << 3) +
+        (has_structured_kernel << 2) + (need_move_to_phi << 1);
+    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_name)) {
+      if (in_black_list ||
+          (is_operator_base &&
+           !OperatorBasesHandledInStaticBuild.count(op_name)) ||
+          is_custom_op || use_mkldnn || need_move_to_phi) {
+        invalid_ops.insert(std::make_pair(op_name, kernel_code));
+      }
+    }
+  }
+
+  if (!invalid_ops.empty()) {
+    std::stringstream ss;
+    ss << "The following OPs are unable to static build:\n";
+    for (auto& item : invalid_ops) {
+      ss << item.first << " [in_black_list = " << (item.second >> 7 & 1)
+         << ", is_operator_base = " << (item.second >> 6 & 1)
+         << ", is_custom_op = " << (item.second >> 5 & 1)
+         << ", use_mkldnn = " << (item.second >> 4 & 1)
+         << ", has_fluid_kernel = " << (item.second >> 3 & 1)
+         << ", has_structed_kerenl = " << (item.second >> 2 & 1)
+         << ", need_move_to_phi = " << (item.second >> 1 & 1) << "]\n";
+    }
+    VLOG(1) << ss.str();
+  }
+
+  return invalid_ops.empty();
 }
 
 }  // namespace interpreter
