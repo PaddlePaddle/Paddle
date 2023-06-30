@@ -15,12 +15,13 @@
 # limitations under the License.
 
 
-import paddle
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
-from cinn.frontend import *
-from cinn.common import *
+
+import paddle
 
 
 @OpTestTool.skip_if(
