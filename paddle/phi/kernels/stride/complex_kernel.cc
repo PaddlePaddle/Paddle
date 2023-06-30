@@ -18,7 +18,7 @@
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void RealStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
@@ -37,7 +37,7 @@ void RealStridedKernel(const Context& dev_ctx,
   out->ResetHolder(x.Holder());
 }
 
-template <typename Context>
+template <typename T, typename Context>
 void ImagStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {

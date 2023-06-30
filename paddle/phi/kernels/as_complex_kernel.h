@@ -23,7 +23,7 @@ void AsComplexKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      DenseTensor* out);
 
-template <typename Context>
+template <typename T, typename Context>
 void AsComplexStridedKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             DenseTensor* out);

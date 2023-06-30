@@ -36,12 +36,12 @@ void ComplexGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy);
 
-template <typename Context>
+template <typename T, typename Context>
 void RealGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx);
 
-template <typename Context>
+template <typename T, typename Context>
 void ImagGradStridedKernel(const Context& dev_ctx,
                            const DenseTensor& dout,
                            DenseTensor* dx);
