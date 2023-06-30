@@ -1834,7 +1834,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
   bool use_warp_reduce = false;
   if (global_pooling && data_format == "NCHW" &&
       target.arch == Target::Arch::NVGPU) {
-    // TODO(6clc): 32 may not be the exact number, try also 16 or 8 or other
+    // TODO(hp03): 32 may not be the exact number, try also 16 or 8 or other
     // number
     //      we choose 32 to make sure all the threads in a warp has work to do,
     if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >= 32) {
