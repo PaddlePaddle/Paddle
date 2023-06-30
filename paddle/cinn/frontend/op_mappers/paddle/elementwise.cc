@@ -56,14 +56,12 @@ EXPAND_ELTWISETYPE_STRING(kMin, " min ")
 template <EltwiseType Type>
 struct OpBuilder {};
 
-#define ELTWISE_SPEC(enum_t, function)                             \
-  template <>                                                      \
-  struct OpBuilder<enum_t> {                                       \
-    constexpr static Variable (NetBuilder::*func)(const Variable&, \
-                                                  const Variable&, \
-                                                  int) {           \
-      &function                                                    \
-    }                                                              \
+#define ELTWISE_SPEC(enum_t, function)                                        \
+  template <>                                                                 \
+  struct OpBuilder<enum_t> {                                                  \
+    constexpr static Variable (NetBuilder::*func)(const Variable&,            \
+                                                  const Variable&,            \
+                                                  int){&function}; /*NOLINT*/ \
   }
 ELTWISE_SPEC(EltwiseType::kAdd, NetBuilder::Add);
 ELTWISE_SPEC(EltwiseType::kDiv, NetBuilder::Divide);

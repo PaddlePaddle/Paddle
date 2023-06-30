@@ -762,7 +762,8 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
       } else {                                                                 \
         return rs;                                                             \
       }                                                                        \
-    }
+    }                                                                          \
+  }
 
 BLOCK_SHUFFLE_REDUCE(Sum,
                      "block_shuffle_sum" + Type2StrForReduce(A->type()),
