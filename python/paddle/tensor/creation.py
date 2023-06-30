@@ -1234,7 +1234,16 @@ def full(shape, fill_value, dtype=None, name=None):
     """
 
     if dtype is None:
-        dtype = 'float32'
+        if isinstance(fill_value, int):
+            dtype = "int64"
+        elif isinstance(fill_value, float):
+            dtype = "float32"
+        elif isinstance(fill_value, complex):
+            raise NotImplementedError(
+                "'complex' data type is not supported yet in paddle.full()"
+            )
+        else:
+            dtype = "float32"
 
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
