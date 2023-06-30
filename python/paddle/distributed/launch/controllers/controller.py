@@ -40,6 +40,8 @@ class ControllerBase:
             # set per task timeout
             signal.signal(signal.SIGALRM, self.not_exit_signal_handler)
             signal.alarm(ctx.max_time_per_task)
+        else:
+            signal.alarm(0)
 
         self.ctx = ctx
         self.master = Master.factory(self.ctx)
