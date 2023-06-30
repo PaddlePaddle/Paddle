@@ -36,9 +36,11 @@ class AutoBind : public AutoGenRule {
 
   std::string GetRuleName() const override { return "AutoBind"; }
 
-  RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const override;
+  RuleApplyType AnalyseApplyType(SearchState state,
+                                 const std::string& block_name) const override;
 
-  std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) override;
+  std::vector<SearchState> ApplyOnBlock(SearchState state,
+                                        const std::string& block_name) override;
 
  private:
   std::vector<Expr> applicable_schedule_blocks_;

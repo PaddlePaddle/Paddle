@@ -37,7 +37,8 @@ namespace cinn {
 namespace backends {
 namespace nvrtc {
 
-std::string Compiler::operator()(const std::string& code, bool include_headers) {
+std::string Compiler::operator()(const std::string& code,
+                                 bool include_headers) {
   if (runtime::CanUseNvccCompiler()) {
     return CompileWithNvcc(code);
   }
@@ -74,22 +75,28 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
   }
 #endif
   LOG(FATAL) << "Cannot find cuda include path."
-             << "CUDA_PATH is not set or CUDA is not installed in the default installation path."
+             << "CUDA_PATH is not set or CUDA is not installed in the default "
+                "installation path."
              << "In other than linux, it is necessary to set CUDA_PATH.";
   return {cuda_include_path};
 }
 
-std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() { return {Context::Global().runtime_include_dir()}; }
+std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
+  return {Context::Global().runtime_include_dir()};
+}
 
-std::string Compiler::CompileCudaSource(const std::string& code, bool include_headers) {
+std::string Compiler::CompileCudaSource(const std::string& code,
+                                        bool include_headers) {
   const auto& header_gen = JitSafeHeaderGenerator::GetInstance();
   std::vector<std::string> compile_options;
   std::vector<const char*> param_cstrings{};
   nvrtcProgram prog;
   std::string cc = "30";
   int major, minor;
-  cudaError_t e1 = cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0);
-  cudaError_t e2 = cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0);
+  cudaError_t e1 =
+      cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0);
+  cudaError_t e2 =
+      cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0);
 
   if (e1 == cudaSuccess && e2 == cudaSuccess) {
     cc = std::to_string(major) + std::to_string(minor);
@@ -115,16 +122,22 @@ std::string Compiler::CompileCudaSource(const std::string& code, bool include_he
     for (auto& header : cinn_headers) {
       include_paths.push_back("--include-path=" + header);
     }
-    compile_options.insert(std::end(compile_options), include_paths.begin(), include_paths.end());
+    compile_options.insert(
+        std::end(compile_options), include_paths.begin(), include_paths.end());
   }
 
   for (const auto& option : compile_options) {
     param_cstrings.push_back(option.c_str());
   }
   VLOG(3) << "compile options: " << utils::Join(compile_options, " ");
-  NVRTC_CALL(nvrtcCreateProgram(
-      &prog, code.c_str(), nullptr, header_gen.size(), header_gen.headers().data(), header_gen.include_names().data()));
-  nvrtcResult compile_res = nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
+  NVRTC_CALL(nvrtcCreateProgram(&prog,
+                                code.c_str(),
+                                nullptr,
+                                header_gen.size(),
+                                header_gen.headers().data(),
+                                header_gen.include_names().data()));
+  nvrtcResult compile_res =
+      nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
 
   {  // get log
     size_t log_size;
@@ -173,10 +186,11 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
   return prefix_name_ + ".cubin";
 }
 
-// std::string Compiler::GetPtx() { return ReadFile(prefix_name_ + ".ptx", std::ios::in); }
+// std::string Compiler::GetPtx() { return ReadFile(prefix_name_ + ".ptx",
+// std::ios::in); }
 
 void Compiler::CompileToPtx() {
-  auto include_dir            = common::Context::Global().runtime_include_dir();
+  auto include_dir = common::Context::Global().runtime_include_dir();
   std::string include_dir_str = "";
   for (auto dir : include_dir) {
     if (include_dir_str.empty()) {
@@ -187,7 +201,8 @@ void Compiler::CompileToPtx() {
   }
 
   std::string options = std::string("export PATH=") + FLAGS_cinn_nvcc_cmd_path +
-                        std::string(":$PATH && nvcc -std=c++14 --ptx -O3 -I ") + include_dir_str;
+                        std::string(":$PATH && nvcc -std=c++14 --ptx -O3 -I ") +
+                        include_dir_str;
   options += " -arch=" + GetDeviceArch();
   options += " -o " + prefix_name_ + ".ptx";
   options += " " + prefix_name_ + ".cu";
@@ -197,8 +212,8 @@ void Compiler::CompileToPtx() {
 }
 
 void Compiler::CompileToCubin() {
-  std::string options =
-      std::string("export PATH=") + FLAGS_cinn_nvcc_cmd_path + std::string(":$PATH && nvcc --cubin -O3");
+  std::string options = std::string("export PATH=") + FLAGS_cinn_nvcc_cmd_path +
+                        std::string(":$PATH && nvcc --cubin -O3");
   options += " -arch=" + GetDeviceArch();
   options += " -o " + prefix_name_ + ".cubin";
   options += " " + prefix_name_ + ".ptx";
@@ -209,8 +224,10 @@ void Compiler::CompileToCubin() {
 
 std::string Compiler::GetDeviceArch() {
   int major = 0, minor = 0;
-  if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0) == cudaSuccess &&
-      cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0) == cudaSuccess) {
+  if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, 0) ==
+          cudaSuccess &&
+      cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, 0) ==
+          cudaSuccess) {
     return "sm_" + std::to_string(major) + std::to_string(minor);
   } else {
     LOG(WARNING) << "cannot detect compute capability from your device, "
@@ -219,7 +236,8 @@ std::string Compiler::GetDeviceArch() {
   }
 }
 
-std::string Compiler::ReadFile(const std::string& file_name, std::ios_base::openmode mode) {
+std::string Compiler::ReadFile(const std::string& file_name,
+                               std::ios_base::openmode mode) {
   // open cubin file
   std::ifstream ifs(file_name, mode);
   CHECK(ifs.is_open()) << "Fail to open file " << file_name;

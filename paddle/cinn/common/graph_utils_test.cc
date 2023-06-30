@@ -80,7 +80,8 @@ TEST(Graph, simple) {
 
   LOG(INFO) << "graph1 " << graph->Visualize();
 
-  std::vector<GraphNode*> node_order_target({graph->RetrieveNode("B"), graph->RetrieveNode("A")});
+  std::vector<GraphNode*> node_order_target(
+      {graph->RetrieveNode("B"), graph->RetrieveNode("A")});
 
   ASSERT_EQ(node_order.size(), node_order_target.size());
   for (int i = 0; i < node_order.size(); i++) {

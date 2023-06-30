@@ -20,7 +20,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void MulOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void MulOpMapper(const paddle::cpp::OpDesc& op_desc,
+                 const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Input("Y").size(), 1UL);
@@ -30,8 +31,10 @@ void MulOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx)
   auto y = ctx.GetVar(y_name);
 
   // Step1: flatten multi-dimension matrix input to two-dimension matrix
-  auto x_num_col_dims = utils::GetAttrOrDefault<int>(op_desc, "x_num_col_dims", 1);
-  auto y_num_col_dims = utils::GetAttrOrDefault<int>(op_desc, "y_num_col_dims", 1);
+  auto x_num_col_dims =
+      utils::GetAttrOrDefault<int>(op_desc, "x_num_col_dims", 1);
+  auto y_num_col_dims =
+      utils::GetAttrOrDefault<int>(op_desc, "y_num_col_dims", 1);
 
   auto out = ctx.Builder()->Mul(x, y, x_num_col_dims, y_num_col_dims);
 

@@ -60,7 +60,9 @@ class Context {
    * Generate a new unique name.
    * @param name_hint The prefix.
    */
-  std::string NewName(const std::string& name_hint) { return name_generator_.New(name_hint); }
+  std::string NewName(const std::string& name_hint) {
+    return name_generator_.New(name_hint);
+  }
 
   void ResetNameId() { name_generator_.ResetID(); }
 
@@ -89,7 +91,9 @@ class Context {
   static thread_local DebugManager debug_mgr_;
 };
 
-static std::string UniqName(const std::string& prefix) { return Context::Global().NewName(prefix); }
+static std::string UniqName(const std::string& prefix) {
+  return Context::Global().NewName(prefix);
+}
 
 }  // namespace common
 }  // namespace cinn

@@ -39,14 +39,16 @@ namespace optim {
 
 /**
  * 1. Determine the grid and block dimensions.
- * It takes the domains like `[0, 20]` or `[0, min(20, M/2)]`, the domain should have a integer right bound.
+ * It takes the domains like `[0, 20]` or `[0, min(20, M/2)]`, the domain should
+ * have a integer right bound.
  *
- * 2. Replace the grid/thread iterators with something like `threadIdx.x`, `threadIdx.y`.
+ * 2. Replace the grid/thread iterators with something like `threadIdx.x`,
+ * `threadIdx.y`.
  *
  * 3. Remove the forloops owning the gpu axis.
  *   1. if the extent is an IntImm, just remove this forloop.
- *   2. if the extent is a Min, replace the forloop with an IfThenElse, with forloop's condition, new check will add (if
- * the min of forloop is not zero).
+ *   2. if the extent is a Min, replace the forloop with an IfThenElse, with
+ * forloop's condition, new check will add (if the min of forloop is not zero).
  *
  * @param expr The expression to mutate.
  */
@@ -80,10 +82,12 @@ void RemoveGpuForloopsAxis(Expr *expr) {
       }
     }
 
-    bool NeedToReplaceForloopWithIfThenElse(const ir::For *n) const { return true; }
+    bool NeedToReplaceForloopWithIfThenElse(const ir::For *n) const {
+      return true;
+    }
 
     void ReplaceForloopWithIfThenElse(Expr *expr) {
-      auto *for_n      = expr->As<ir::For>();
+      auto *for_n = expr->As<ir::For>();
       auto *poly_for_n = expr->As<ir::PolyFor>();
       CHECK(for_n || poly_for_n);
 
@@ -109,7 +113,8 @@ void RemoveGpuForloopsAxis(Expr *expr) {
         condition_append(ir::LT::Make(for_n->loop_var, for_n->extent));
       } else {
         if (poly_for_n->init != common::make_const(0)) {
-          condition_append(ir::GE::Make(poly_for_n->iterator, poly_for_n->init));
+          condition_append(
+              ir::GE::Make(poly_for_n->iterator, poly_for_n->init));
         }
 
         condition_append(poly_for_n->condition);
@@ -125,7 +130,8 @@ void RemoveGpuForloopsAxis(Expr *expr) {
     }
 
     void Visit(const ir::PolyFor *op, Expr *expr) override {
-      const auto msg = "PolyFor is not allowed for GPU, only For nodes are allowed";
+      const auto msg =
+          "PolyFor is not allowed for GPU, only For nodes are allowed";
       CHECK(op->for_type() != ir::ForType::GPUBlock) << msg;
       CHECK(op->for_type() != ir::ForType::GPUThread) << msg;
       CHECK(op->for_type() != ir::ForType::GPULane) << msg;
@@ -137,8 +143,9 @@ void RemoveGpuForloopsAxis(Expr *expr) {
 }
 
 /**
- * The generated __syncthreads call will be wrapped with a `if (xxxx == 0) { }`, this is the problem of isl AST output,
- * drop it to make it run in all the threads.
+ * The generated __syncthreads call will be wrapped with a `if (xxxx == 0) { }`,
+ * this is the problem of isl AST output, drop it to make it run in all the
+ * threads.
  */
 void CudaSyncThreadsDropIfThenElse(Expr *expr) {
   struct Mutator : public ir::IRMutator<> {
@@ -202,11 +209,15 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
 
  private:
   void Visit(const ir::ScheduleBlockRealize *op, Expr *expr) override {
-    ir::ScheduleBlockRealize *schedule_block_realize = expr->As<ir::ScheduleBlockRealize>();
+    ir::ScheduleBlockRealize *schedule_block_realize =
+        expr->As<ir::ScheduleBlockRealize>();
     CHECK(schedule_block_realize->schedule_block.As<ir::ScheduleBlock>());
     std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
-    ir::Expr body                     = schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()->body;
-    std::vector<ir::Var> iter_vars    = schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()->iter_vars;
+    ir::Expr body =
+        schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()->body;
+    std::vector<ir::Var> iter_vars =
+        schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()
+            ->iter_vars;
 
     CHECK_EQ(iter_values.size(), iter_vars.size());
     for (int idx = 0; idx < iter_values.size(); ++idx) {
@@ -225,11 +236,14 @@ class CollectTensorLoopVisitor : public ir::IRMutator<> {
   void Visit(const ir::Store *op, Expr *expr) override {
     auto tensor = op->tensor.as_tensor_ref();
     // if buffer defined and buffer is not Heap.
-    if (tensor->buffer.defined() && tensor->buffer->memory_type != ir::MemoryType::Heap) {
+    if (tensor->buffer.defined() &&
+        tensor->buffer->memory_type != ir::MemoryType::Heap) {
       if (buffer_tensor_loop_map_.count(tensor->buffer->name)) {
-        buffer_tensor_loop_map_[tensor->buffer->name].push_back(std::make_pair(*expr, loops_));
+        buffer_tensor_loop_map_[tensor->buffer->name].push_back(
+            std::make_pair(*expr, loops_));
       } else {
-        buffer_tensor_loop_map_[tensor->buffer->name] = {std::make_pair(*expr, loops_)};
+        buffer_tensor_loop_map_[tensor->buffer->name] = {
+            std::make_pair(*expr, loops_)};
       }
     }
 
@@ -242,11 +256,14 @@ class CollectTensorLoopVisitor : public ir::IRMutator<> {
     }
     auto tensor = op->tensor.as_tensor_ref();
     // if buffer defined and buffer is not Heap.
-    if (tensor->buffer.defined() && tensor->buffer->memory_type != ir::MemoryType::Heap) {
+    if (tensor->buffer.defined() &&
+        tensor->buffer->memory_type != ir::MemoryType::Heap) {
       if (buffer_tensor_loop_map_.count(tensor->buffer->name)) {
-        buffer_tensor_loop_map_[tensor->buffer->name].push_back(std::make_pair(*expr, loops_));
+        buffer_tensor_loop_map_[tensor->buffer->name].push_back(
+            std::make_pair(*expr, loops_));
       } else {
-        buffer_tensor_loop_map_[tensor->buffer->name] = {std::make_pair(*expr, loops_)};
+        buffer_tensor_loop_map_[tensor->buffer->name] = {
+            std::make_pair(*expr, loops_)};
       }
     }
 
@@ -259,11 +276,14 @@ class CollectTensorLoopVisitor : public ir::IRMutator<> {
     loops_.pop_back();
   }
 
-  void Visit(const ir::PolyFor *op, Expr *expr) override { LOG(FATAL) << "Unkown PolyFor!"; }
+  void Visit(const ir::PolyFor *op, Expr *expr) override {
+    LOG(FATAL) << "Unkown PolyFor!";
+  }
 
  public:
   std::vector<ir::Expr> loops_;
-  std::unordered_map<std::string, std::vector<TENSOR_LOOP>> buffer_tensor_loop_map_;
+  std::unordered_map<std::string, std::vector<TENSOR_LOOP>>
+      buffer_tensor_loop_map_;
 };
 
 void UpdateBufferAxisPass(ir::Expr *expr) {
@@ -276,10 +296,12 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
     auto tensor_loop_v = tmp.second;
 
     auto &front = tensor_loop_v.front();
-    int count   = tensor_loop_v.size() > 1 ? front.second.size() : 0;
+    int count = tensor_loop_v.size() > 1 ? front.second.size() : 0;
     for (int idx = 1; idx < tensor_loop_v.size(); ++idx) {
       auto &other = tensor_loop_v[idx];
-      for (int idy = 0; idy < std::min(front.second.size(), other.second.size()); ++idy) {
+      for (int idy = 0;
+           idy < std::min(front.second.size(), other.second.size());
+           ++idy) {
         if (front.second[idy] != other.second[idy]) {
           count = std::min(count, idy);
           break;
@@ -289,7 +311,8 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
 
     auto get_thread_bind_var = [](const std::vector<ir::Expr> &loops) {
       // threadidx loop_var,extent.
-      using ThreadLoopVarExtentMap = std::unordered_map<std::string, std::pair<std::string, int>>;
+      using ThreadLoopVarExtentMap =
+          std::unordered_map<std::string, std::pair<std::string, int>>;
       ThreadLoopVarExtentMap thread_loop_var_exent_map;
       for (auto loop : loops) {
         auto loop_ir = loop.As<ir::For>();
@@ -307,10 +330,12 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
           if (thread_loop_var_exent_map.count(axis)) {
             auto &loop_var_extent = thread_loop_var_exent_map[axis];
             if (loop_var_extent.second >= loop_ir->extent.as_int32()) {
-              thread_loop_var_exent_map[axis] = std::make_pair(loop_ir->loop_var->name, loop_ir->extent.as_int32());
+              thread_loop_var_exent_map[axis] = std::make_pair(
+                  loop_ir->loop_var->name, loop_ir->extent.as_int32());
             }
           } else {
-            thread_loop_var_exent_map[axis] = std::make_pair(loop_ir->loop_var->name, loop_ir->extent.as_int32());
+            thread_loop_var_exent_map[axis] = std::make_pair(
+                loop_ir->loop_var->name, loop_ir->extent.as_int32());
           }
         }
       }
@@ -323,9 +348,10 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
       return loop_var_map;
     };
 
-    auto load   = front.first.As<ir::Load>();
-    auto store  = front.first.As<ir::Store>();
-    auto tensor = load ? load->tensor.as_tensor_ref() : store->tensor.as_tensor_ref();
+    auto load = front.first.As<ir::Load>();
+    auto store = front.first.As<ir::Store>();
+    auto tensor =
+        load ? load->tensor.as_tensor_ref() : store->tensor.as_tensor_ref();
     // find store and load keep loop for shared
     std::vector<std::unordered_set<std::string>> keep_loop_vars;
     if (tensor->buffer->memory_type == ir::MemoryType::GPUShared) {
@@ -338,14 +364,15 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
     auto &loops = front.second;
     for (int idx = 0; idx < count; ++idx) {
       auto loop_expr = loops[idx];
-      auto loop_ir   = loop_expr.As<ir::For>();
-      auto loop_var  = loop_ir->loop_var;
+      auto loop_ir = loop_expr.As<ir::For>();
+      auto loop_var = loop_ir->loop_var;
 
       for (int idy = 0; idy < tensor_loop_v.size(); ++idy) {
-        auto expr  = tensor_loop_v[idy].first;
-        auto load  = expr.As<ir::Load>();
+        auto expr = tensor_loop_v[idy].first;
+        auto load = expr.As<ir::Load>();
         auto store = expr.As<ir::Store>();
-        if (keep_loop_vars.size() == 0 || !keep_loop_vars[idy].count(loop_var->name)) {
+        if (keep_loop_vars.size() == 0 ||
+            !keep_loop_vars[idy].count(loop_var->name)) {
           auto &indices = load ? load->indices : store->indices;
           for (auto &indice : indices) {
             optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
@@ -377,15 +404,19 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
       var_name = "z";
     if (for_ir->is_gpu_block_binded()) {
       var_name = "blockIdx." + var_name;
-      optim::ReplaceVarWithExpr(expr, op->loop_var, ir::Expr(ir::Var(var_name)));
+      optim::ReplaceVarWithExpr(
+          expr, op->loop_var, ir::Expr(ir::Var(var_name)));
     } else if (for_ir->is_gpu_thread_binded()) {
       var_name = "threadIdx." + var_name;
-      optim::ReplaceVarWithExpr(expr, op->loop_var, ir::Expr(ir::Var(var_name)));
+      optim::ReplaceVarWithExpr(
+          expr, op->loop_var, ir::Expr(ir::Var(var_name)));
     }
 
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
-  void Visit(const ir::PolyFor *op, Expr *expr) override { LOG(FATAL) << "Unkown PolyFor!"; }
+  void Visit(const ir::PolyFor *op, Expr *expr) override {
+    LOG(FATAL) << "Unkown PolyFor!";
+  }
 };
 
 class SharedAxisVisitor : public ir::IRMutator<> {
@@ -399,7 +430,8 @@ class SharedAxisVisitor : public ir::IRMutator<> {
       return;
     }
 
-    if (store->tensor.as_tensor_ref()->buffer->memory_type == ir::MemoryType::GPUShared) {
+    if (store->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPUShared) {
       for (auto &indice : store->indices) {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
@@ -419,7 +451,8 @@ class SharedAxisVisitor : public ir::IRMutator<> {
       return;
     }
 
-    if (load->tensor.as_tensor_ref()->buffer->memory_type == ir::MemoryType::GPUShared) {
+    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPUShared) {
       for (auto &indice : load->indices) {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
@@ -430,7 +463,8 @@ class SharedAxisVisitor : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(op, expr);
   }
 
-  const std::vector<std::string> gpu_axis = {"blockIdx.x", "blockIdx.y", "blockIdx.z"};
+  const std::vector<std::string> gpu_axis = {
+      "blockIdx.x", "blockIdx.y", "blockIdx.z"};
 };
 
 class LocalAxisVisitor : public ir::IRMutator<> {
@@ -444,7 +478,8 @@ class LocalAxisVisitor : public ir::IRMutator<> {
       return;
     }
 
-    if (store->tensor.as_tensor_ref()->buffer->memory_type == ir::MemoryType::GPULocal) {
+    if (store->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
       for (auto &indice : store->indices) {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
@@ -464,7 +499,8 @@ class LocalAxisVisitor : public ir::IRMutator<> {
       return;
     }
 
-    if (load->tensor.as_tensor_ref()->buffer->memory_type == ir::MemoryType::GPULocal) {
+    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::GPULocal) {
       for (auto &indice : load->indices) {
         for (auto axis : gpu_axis) {
           optim::ReplaceVarWithExpr(&indice, ir::Var(axis), ir::Expr(0));
@@ -475,8 +511,12 @@ class LocalAxisVisitor : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(op, expr);
   }
 
-  const std::vector<std::string> gpu_axis = {
-      "blockIdx.x", "blockIdx.y", "blockIdx.z", "threadIdx.x", "threadIdx.y", "threadIdx.z"};
+  const std::vector<std::string> gpu_axis = {"blockIdx.x",
+                                             "blockIdx.y",
+                                             "blockIdx.z",
+                                             "threadIdx.x",
+                                             "threadIdx.y",
+                                             "threadIdx.z"};
 };
 
 class ResizeBufferSizeVisitor : public ir::IRMutator<> {
@@ -485,7 +525,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
 
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
-    auto store        = expr->As<ir::Store>();
+    auto store = expr->As<ir::Store>();
     auto store_tensor = store->tensor.as_tensor_ref();
 
     if (!store_tensor->buffer.defined()) {
@@ -497,8 +537,8 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
     }
 
     auto &indices = store->indices;
-    auto &shape   = store_tensor->shape;
-    auto &buffer  = store_tensor->buffer->shape;
+    auto &shape = store_tensor->shape;
+    auto &buffer = store_tensor->buffer->shape;
 
     shape.clear();
     buffer.clear();
@@ -515,15 +555,18 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
       return;
     }
 
-    if (load->tensor.as_tensor_ref()->buffer->memory_type == ir::MemoryType::Heap) {
+    if (load->tensor.as_tensor_ref()->buffer->memory_type ==
+        ir::MemoryType::Heap) {
       ir::IRMutator<>::Visit(op, expr);
       return;
     }
 
-    load->tensor.as_tensor_ref()->shape = load->tensor.as_tensor_ref()->buffer->shape;
+    load->tensor.as_tensor_ref()->shape =
+        load->tensor.as_tensor_ref()->buffer->shape;
 
-    // For the moment, align the load tensor indices with the tensor shape using the trick method.
-    // A better way would be to modify the FlattenLoop Schedule.
+    // For the moment, align the load tensor indices with the tensor shape using
+    // the trick method. A better way would be to modify the FlattenLoop
+    // Schedule.
     int cnt = load->indices.size() - load->tensor.as_tensor_ref()->shape.size();
     for (int i = 0; i < cnt; i++) {
       load->indices.erase(load->indices.begin());
@@ -533,7 +576,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
 
   void Visit(const ir::For *op, Expr *expr) override {
     CHECK(expr->As<ir::For>());
-    auto for_ir   = expr->As<ir::For>();
+    auto for_ir = expr->As<ir::For>();
     auto var_name = for_ir->loop_var->name;
     auto extent_i = for_ir->extent;
 
@@ -543,11 +586,13 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
 
   int BufferSize(ir::Expr indice) {
     auto copy = IRCopy(indice);
-    auto vars = ir::CollectIRNodesInOrder(copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
+    auto vars = ir::CollectIRNodesInOrder(
+        copy, [](const ir::Expr *expr) { return expr->As<ir::_Var_>(); });
 
     int max_range = 1;
     // using recursion funcitons index range.
-    std::function<void(int, ir::Expr)> compute_range = [&](const int deep, ir::Expr index) {
+    std::function<void(int, ir::Expr)> compute_range = [&](const int deep,
+                                                           ir::Expr index) {
       auto var = vars[deep].as_var_ref();
       CHECK(loop_2_extent_.count(var->name)) << var->name;
       auto extent = loop_2_extent_.find(var->name)->second;
@@ -558,7 +603,7 @@ class ResizeBufferSizeVisitor : public ir::IRMutator<> {
 
         if (deep == vars.size() - 1) {
           auto simplify = common::AutoSimplify(tmp);
-          auto range    = common::AutoSimplify(simplify);
+          auto range = common::AutoSimplify(simplify);
           CHECK(range.is_constant());
           max_range = std::max(max_range, range.as_int32() + 1);
         } else {
@@ -614,11 +659,12 @@ class ReplaceVarToZero : public ir::IRMutator<> {
 
   void Visit(const ir::For *op, Expr *expr) override {
     CHECK(expr->As<ir::For>());
-    auto for_ir   = expr->As<ir::For>();
+    auto for_ir = expr->As<ir::For>();
     auto var_name = for_ir->loop_var->name;
     auto extent_i = for_ir->extent;
 
-    if (extent_i.is_constant() && extent_i.as_int32() == 1) loop_var_.insert(var_name);
+    if (extent_i.is_constant() && extent_i.as_int32() == 1)
+      loop_var_.insert(var_name);
     ir::IRMutator<>::Visit(op, expr);
     loop_var_.erase(var_name);
   }

@@ -34,7 +34,9 @@ TEST(Expr, basic) {
   Var k(K.as_int32(), "k0");
 
   Tensor C = Compute(
-      {M, N}, [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
   auto stages = CreateStages({C});
 
@@ -49,7 +51,7 @@ TEST(Expr, basic) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
 
   {
     ir::Module::Builder builder("module1", target);

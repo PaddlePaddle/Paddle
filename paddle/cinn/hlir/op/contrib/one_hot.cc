@@ -55,13 +55,16 @@ ir::Tensor OneHot(const ir::Tensor& indices,
                   const Type& dtype,
                   const std::string& output_name) {
   int ndim = static_cast<int>(indices->shape.size());
-  CHECK(axis == -1 || (0 <= axis && axis <= ndim)) << "one_hot only accepts `axis` in [-1, data.ndim]"
-                                                   << ", but got axis = " << axis << ", and data.ndim = " << ndim;
+  CHECK(axis == -1 || (0 <= axis && axis <= ndim))
+      << "one_hot only accepts `axis` in [-1, data.ndim]"
+      << ", but got axis = " << axis << ", and data.ndim = " << ndim;
   CHECK(depth > 0) << "one_hot only accepts `depth > 0`"
                    << ", but got depth = " << depth;
 
-  CHECK(on_value->shape.size() == 1U && on_value->shape[0].as_int32() == 1U) << "The shape of on_value must be [1]";
-  CHECK(off_value->shape.size() == 1U && off_value->shape[0].as_int32() == 1U) << "The shape of off_value must be [1]";
+  CHECK(on_value->shape.size() == 1U && on_value->shape[0].as_int32() == 1U)
+      << "The shape of on_value must be [1]";
+  CHECK(off_value->shape.size() == 1U && off_value->shape[0].as_int32() == 1U)
+      << "The shape of off_value must be [1]";
 
   int true_axis = (axis == -1) ? ndim : axis;
   std::vector<Expr> new_shape;
@@ -75,7 +78,7 @@ ir::Tensor OneHot(const ir::Tensor& indices,
     }
   }
 
-  Expr on_value_cast  = ir::Cast::Make(dtype, on_value(Expr(0)));
+  Expr on_value_cast = ir::Cast::Make(dtype, on_value(Expr(0)));
   Expr off_value_cast = ir::Cast::Make(dtype, off_value(Expr(0)));
 
   ir::Tensor res = lang::Compute(
@@ -90,18 +93,21 @@ ir::Tensor OneHot(const ir::Tensor& indices,
           indices_indices.push_back(iter[i]);
         }
 
-        Expr idx  = iter[true_axis];
+        Expr idx = iter[true_axis];
         Expr elem = ir::Cast::Make(idx.type(), indices(indices_indices));
-        return ir::Select::Make(ir::EQ::Make(elem, idx), on_value_cast, off_value_cast);
+        return ir::Select::Make(
+            ir::EQ::Make(elem, idx), on_value_cast, off_value_cast);
       },
       common::UniqName(output_name));
 
   return res;
 }
 
-std::vector<framework::shape_t> InferShapeForOneHot(const std::vector<framework::shape_t>& inputs_shape,
-                                                    const framework::AttrMapType& attrs) {
-  CHECK_EQ(inputs_shape.size(), 3UL) << "The number of one_hot's input should be 3";
+std::vector<framework::shape_t> InferShapeForOneHot(
+    const std::vector<framework::shape_t>& inputs_shape,
+    const framework::AttrMapType& attrs) {
+  CHECK_EQ(inputs_shape.size(), 3UL)
+      << "The number of one_hot's input should be 3";
 
   int depth;
   int axis;
@@ -115,9 +121,9 @@ std::vector<framework::shape_t> InferShapeForOneHot(const std::vector<framework:
   }
 
   const std::vector<int>& in_shape = inputs_shape[0];
-  int ndim                         = static_cast<int>(in_shape.size());
-  int true_axis                    = (axis == -1) ? in_shape.size() : axis;
-  int indices_index                = 0;
+  int ndim = static_cast<int>(in_shape.size());
+  int true_axis = (axis == -1) ? in_shape.size() : axis;
+  int indices_index = 0;
   std::vector<int> new_shape;
 
   for (int i = 0; i < ndim + 1; ++i) {
@@ -132,8 +138,10 @@ std::vector<framework::shape_t> InferShapeForOneHot(const std::vector<framework:
   return res;
 }
 
-std::vector<Type> InferDtypeForOneHot(const std::vector<Type>& inputs_type, const framework::AttrMapType& attrs) {
-  CHECK(!inputs_type.empty()) << "The input's type size is 0! Please check again.";
+std::vector<Type> InferDtypeForOneHot(const std::vector<Type>& inputs_type,
+                                      const framework::AttrMapType& attrs) {
+  CHECK(!inputs_type.empty())
+      << "The input's type size is 0! Please check again.";
 
   std::string dtype = "float32";
   if (attrs.find("dtype") != attrs.end()) {
@@ -144,11 +152,12 @@ std::vector<Type> InferDtypeForOneHot(const std::vector<Type>& inputs_type, cons
   return res;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForOneHot(const framework::NodeAttr& attrs,
-                                                         const std::vector<ir::Tensor>& inputs,
-                                                         const std::vector<Type>& out_type,
-                                                         const std::vector<std::vector<int>>& output_shapes,
-                                                         const Target& target) {
+std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
+    const framework::NodeAttr& attrs,
+    const std::vector<ir::Tensor>& inputs,
+    const std::vector<Type>& out_type,
+    const std::vector<std::vector<int>>& output_shapes,
+    const Target& target) {
   int depth;
   int axis;
   std::string dtype = "float32";
@@ -166,20 +175,23 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(const framework::NodeAt
   CHECK(depth > 0) << "one_hot only accepts `depth > 0`"
                    << ", but got depth = " << depth;
 
-  framework::CINNCompute one_hot_compute([=](lang::Args args, lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input argument of one_hot compute is empty! Please check.\n";
+  framework::CINNCompute one_hot_compute([=](lang::Args args,
+                                             lang::RetValue* ret) {
+    CHECK(!args.empty())
+        << "The input argument of one_hot compute is empty! Please check.\n";
     common::CINNValuePack pack_args = args[0];
-    CHECK(!pack_args.empty()) << "at least one input tensor for transpose compute\n";
+    CHECK(!pack_args.empty())
+        << "at least one input tensor for transpose compute\n";
     CHECK_GE(pack_args.size(), 3U);
-    Expr indices_expr   = pack_args[0];
-    Expr on_value_expr  = pack_args[1];
+    Expr indices_expr = pack_args[0];
+    Expr on_value_expr = pack_args[1];
     Expr off_value_expr = pack_args[2];
     CHECK(indices_expr.as_tensor());
     CHECK(on_value_expr.as_tensor());
     CHECK(off_value_expr.as_tensor());
 
-    ir::Tensor indices   = indices_expr.as_tensor_ref();
-    ir::Tensor on_value  = on_value_expr.as_tensor_ref();
+    ir::Tensor indices = indices_expr.as_tensor_ref();
+    ir::Tensor on_value = on_value_expr.as_tensor_ref();
     ir::Tensor off_value = off_value_expr.as_tensor_ref();
 
     std::string tensor_name = common::UniqName("T_OneHot_out");
@@ -189,7 +201,13 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(const framework::NodeAt
       tensor_name = pack_args[3].operator std::string();
     }
 
-    ir::Tensor out = OneHot(indices, on_value, off_value, depth, axis, common::Str2Type(dtype), tensor_name);
+    ir::Tensor out = OneHot(indices,
+                            on_value,
+                            off_value,
+                            depth,
+                            axis,
+                            common::Str2Type(dtype),
+                            tensor_name);
 
     std::vector<common::CINNValue> res;
     auto stages = CreateStages({indices, on_value, off_value});
@@ -200,7 +218,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(const framework::NodeAt
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(one_hot_compute, GetInjectiveScheduleFunc(output_shapes, target), "strategy.one_hot.x86", 1);
+  strategy->AddImpl(one_hot_compute,
+                    GetInjectiveScheduleFunc(output_shapes, target),
+                    "strategy.one_hot.x86",
+                    1);
 
   return strategy;
 }
@@ -211,14 +232,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(const framework::NodeAt
 CINN_REGISTER_HELPER(one_hot_ops) {
   CINN_REGISTER_OP(one_hot)
       .describe(
-          "Returns a one-hot tensor where the locations repsented by indices take value `on_value`, "
+          "Returns a one-hot tensor where the locations repsented by indices "
+          "take value `on_value`, "
           "other locations take value `off_value`.")
       .set_num_inputs(3)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForOneHot)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForOneHot))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForOneHot))
-      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForOneHot)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForOneHot))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForOneHot))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);
 
   return true;

@@ -42,9 +42,9 @@ TEST(Compiler, x86) {
 
   {                                  // test x86
     auto _A_B_C_ = create_module();  // NOLINT
-    auto& A      = std::get<0>(_A_B_C_);
-    auto& B      = std::get<1>(_A_B_C_);
-    auto& C      = std::get<2>(_A_B_C_);
+    auto& A = std::get<0>(_A_B_C_);
+    auto& B = std::get<1>(_A_B_C_);
+    auto& C = std::get<2>(_A_B_C_);
 
     auto stages = CreateStages({C});
 
@@ -59,9 +59,15 @@ TEST(Compiler, x86) {
     auto* fnp = compiler->Lookup("fn");
     ASSERT_TRUE(fnp);
 
-    auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-    auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-    auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_zero().Build();
+    auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_random()
+                   .Build();
+    auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_random()
+                   .Build();
+    auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_zero()
+                   .Build();
 
     auto args = common::ArgsBuilder().Add(Ab).Add(Bb).Add(Cb).Build();
     reinterpret_cast<void (*)(void*, int)>(fnp)(args.data(), args.size());
@@ -91,10 +97,10 @@ TEST(Compiler, cuda) {
 
   {                                  // cuda
     auto _A_B_C_ = create_module();  // NOLINT
-    auto& A      = std::get<0>(_A_B_C_);
-    auto& B      = std::get<1>(_A_B_C_);
-    auto& C      = std::get<2>(_A_B_C_);
-    auto stages  = CreateStages({C});
+    auto& A = std::get<0>(_A_B_C_);
+    auto& B = std::get<1>(_A_B_C_);
+    auto& C = std::get<2>(_A_B_C_);
+    auto stages = CreateStages({C});
 
     stages[C]->Bind(0, "blockIdx.x");
     stages[C]->Bind(1, "threadIdx.x");
@@ -110,9 +116,15 @@ TEST(Compiler, cuda) {
     auto* fnp = compiler->Lookup("fn");
     ASSERT_TRUE(fnp);
 
-    auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-    auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-    auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_zero().Build();
+    auto* Ab = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_random()
+                   .Build();
+    auto* Bb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_random()
+                   .Build();
+    auto* Cb = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                   .set_zero()
+                   .Build();
 
     // allocate CUDA buffer
     void *Ag, *Bg, *Cg;
@@ -138,7 +150,8 @@ TEST(Compiler, cuda) {
     timer.Start();
     void* stream = nullptr;
     for (int i = 0; i < 1000; i++) {
-      reinterpret_cast<void (*)(void*, int, void*)>(fnp)(args.data(), args.size(), stream);
+      reinterpret_cast<void (*)(void*, int, void*)>(fnp)(
+          args.data(), args.size(), stream);
     }
 
     CUDA_CALL(cudaDeviceSynchronize());
@@ -146,7 +159,8 @@ TEST(Compiler, cuda) {
     LOG(INFO) << "latency: " << latency / 1000;
 
     std::vector<float> ch(M.as_int32() * N.as_int32(), 0.f);
-    CUDA_CALL(cudaMemcpy(ch.data(), Cg, ch.size() * sizeof(float), cudaMemcpyDeviceToHost));
+    CUDA_CALL(cudaMemcpy(
+        ch.data(), Cg, ch.size() * sizeof(float), cudaMemcpyDeviceToHost));
 
     auto* Ad = reinterpret_cast<float*>(Ab->memory);
     auto* Bd = reinterpret_cast<float*>(Bb->memory);
@@ -173,17 +187,22 @@ TEST(Compiler, sqrt) {
   auto A = Compute(
       {N, C, H, W},
       [=](Expr n, Expr c, Expr h, Expr w) {
-        return (input(n, c, h, w) - mean(c)) * scale(c) / lang::Sqrt(variance(c) + Expr(epsilon)) + bias(c);
+        return (input(n, c, h, w) - mean(c)) * scale(c) /
+                   lang::Sqrt(variance(c) + Expr(epsilon)) +
+               bias(c);
       },
       "A");
 
-  auto B = hlir::pe::Pool2d(input, {3, 3}, {1, 1}, {1, 1, 1, 1}, "max", false, false);
+  auto B = hlir::pe::Pool2d(
+      input, {3, 3}, {1, 1}, {1, 1, 1, 1}, "max", false, false);
 
-  auto BB = hlir::pe::BatchNorm_NCHW(input, scale, bias, mean, variance, epsilon, "batchnorm");
+  auto BB = hlir::pe::BatchNorm_NCHW(
+      input, scale, bias, mean, variance, epsilon, "batchnorm");
 
   auto stages = CreateStages({input, mean, scale, variance, A, bias, B[0], BB});
 
-  auto fn = Lower("fn", stages, {input, mean, scale, bias, variance, A, B[0], BB});
+  auto fn =
+      Lower("fn", stages, {input, mean, scale, bias, variance, A, B[0], BB});
 
   Module::Builder builder("some", common::DefaultHostTarget());
   builder.AddFunction(fn);

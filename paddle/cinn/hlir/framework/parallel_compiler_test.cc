@@ -29,13 +29,13 @@ using namespace frontend;
 
 TEST(ParallelCompilerTest, Add_TEST_0) {
   frontend::NetBuilder builder("Add_TEST_0");
-  auto A       = builder.CreateInput(Float(32), {128, 128}, "A");
-  auto B       = builder.CreateInput(Float(32), {128, 128}, "B");
-  auto C       = builder.Add(A, B);
-  auto target  = common::DefaultNVGPUTarget();
+  auto A = builder.CreateInput(Float(32), {128, 128}, "A");
+  auto B = builder.CreateInput(Float(32), {128, 128}, "B");
+  auto C = builder.Add(A, B);
+  auto target = common::DefaultNVGPUTarget();
   auto program = builder.Build();
-  auto graph   = std::make_shared<Graph>(program, target);
-  auto scope   = BuildScope(target, graph);
+  auto graph = std::make_shared<Graph>(program, target);
+  auto scope = BuildScope(target, graph);
 
   ParallelCompiler::CompileOptions option;
   ParallelCompiler pc(scope, graph, option, target);
@@ -50,10 +50,10 @@ TEST(ParallelCompilerTest, Conv2d_Test_0) {
   auto D = builder.Conv2d(A, B, {2, 2}, {1, 1});
   auto E = builder.Add(C, D);
 
-  auto target  = common::DefaultNVGPUTarget();
+  auto target = common::DefaultNVGPUTarget();
   auto program = builder.Build();
-  auto graph   = Optimize(&program, {}, target);
-  auto scope   = BuildScope(target, graph);
+  auto graph = Optimize(&program, {}, target);
+  auto scope = BuildScope(target, graph);
 
   ParallelCompiler::CompileOptions option;
   ParallelCompiler pc(scope, graph, option, target);
@@ -68,10 +68,10 @@ TEST(ParallelCompilerTest, Matmul_Test_0) {
   auto D = builder.Matmul(A, B);
   auto E = builder.Add(C, D);
 
-  auto target  = common::DefaultNVGPUTarget();
+  auto target = common::DefaultNVGPUTarget();
   auto program = builder.Build();
-  auto graph   = Optimize(&program, {}, target);
-  auto scope   = BuildScope(target, graph);
+  auto graph = Optimize(&program, {}, target);
+  auto scope = BuildScope(target, graph);
 
   ParallelCompiler::CompileOptions option;
   ParallelCompiler pc(scope, graph, option, target);

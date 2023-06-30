@@ -48,6 +48,10 @@ class MetaTensor {
              bool strided_kernel_used = false)
       : tensor_(const_cast<TensorBase*>(&tensor)),  // NOLINT
         strided_kernel_used_(strided_kernel_used) {}
+  MetaTensor(const TensorBase* tensor,
+             bool strided_kernel_used = false)     // NOLINT
+      : tensor_(const_cast<TensorBase*>(tensor)),  // NOLINT
+        strided_kernel_used_(strided_kernel_used) {}
   MetaTensor(TensorBase& tensor, bool strided_kernel_used = false)  // NOLINT
       : tensor_(&tensor),                                           // NOLINT
         strided_kernel_used_(strided_kernel_used) {}

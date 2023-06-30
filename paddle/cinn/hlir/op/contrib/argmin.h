@@ -25,7 +25,7 @@ std::vector<ir::Tensor> Argmin(const ir::Tensor& in_tensor,
                                const common::Target& target,
                                poly::StageMap stages,
                                const int& axis,
-                               const bool& keep_dims   = false,
+                               const bool& keep_dims = false,
                                const std::string& name = "T_Argmin_out");
 }  // namespace op
 }  // namespace hlir

@@ -32,16 +32,18 @@ namespace tests {
 
 auto CreateMatmulBasicModule(Target target, int m, int n, int k) {
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   auto A = Placeholder<float>("A", {M, K});
   auto B = Placeholder<float>("B", {K, N});
 
   auto k1 = Var(K.as_int32(), "k1");
-  auto C  = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); }, "C");
+  auto C = Compute(
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); },
+      "C");
 
   auto stages = CreateStages({C});
 
@@ -55,16 +57,18 @@ auto CreateMatmulBasicModule(Target target, int m, int n, int k) {
 
 auto CreateMatmulTileModule(Target target, int m, int n, int k) {
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   auto A = Placeholder<float>("A", {M, K});
   auto B = Placeholder<float>("B", {K, N});
 
   auto k1 = Var(K.as_int32(), "k1");
-  auto C  = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); }, "C");
+  auto C = Compute(
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); },
+      "C");
 
   auto stages = CreateStages({C});
 
@@ -80,16 +84,18 @@ auto CreateMatmulTileModule(Target target, int m, int n, int k) {
 
 auto CreateMatmulSplitModule(Target target, int m, int n, int k) {
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   auto A = Placeholder<float>("A", {M, K});
   auto B = Placeholder<float>("B", {K, N});
 
   auto k1 = Var(K.as_int32(), "k1");
-  auto C  = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); }, "C");
+  auto C = Compute(
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); },
+      "C");
 
   auto stages = CreateStages({C});
 
@@ -111,28 +117,31 @@ auto CreateMatmulSplitModule(Target target, int m, int n, int k) {
 
 auto CreateMatmulBlockModule(Target target, int m, int n, int k) {
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   auto A = Placeholder<float>("A", {M, K});
   auto B = Placeholder<float>("B", {K, N});
 
   auto k1 = Var(K.as_int32(), "k1");
-  auto C  = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); }, "C");
+  auto C = Compute(
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k1) * B(k1, j), {k1}); },
+      "C");
 
   auto stages = CreateStages({C});
 
-  constexpr int bn                       = 32;
-  auto _i_outer_i_inner_j_outer_j_inner_ = stages[C]->Tile(0, 1, bn, bn);  // NOLINT
-  auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-  auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-  auto _k_outer_k_inner_                 = stages[C]->Split(k1->name, 4);  // NOLINT
-  auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-  auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+  constexpr int bn = 32;
+  auto _i_outer_i_inner_j_outer_j_inner_ =
+      stages[C]->Tile(0, 1, bn, bn);  // NOLINT
+  auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+  auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+  auto _k_outer_k_inner_ = stages[C]->Split(k1->name, 4);  // NOLINT
+  auto &k_outer = std::get<0>(_k_outer_k_inner_);
+  auto &k_inner = std::get<1>(_k_outer_k_inner_);
   stages[C]->Reorder({i_outer, j_outer, k_outer, k_inner, i_inner, j_inner});
 
   Module::Builder builder("module_block", target);
@@ -145,9 +154,9 @@ auto CreateMatmulBlockModule(Target target, int m, int n, int k) {
 
 auto CreateMatmulVectorizeModule(Target target, int m, int n, int k) {
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   auto A = Placeholder<float>("A", {M, K});
   auto B = Placeholder<float>("B", {K, N});
@@ -157,19 +166,21 @@ auto CreateMatmulVectorizeModule(Target target, int m, int n, int k) {
   int bn = 32;
 
   auto C = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k0) * B(k0, j), {k0}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k0) * B(k0, j), {k0}); },
+      "C");
 
   auto stages = CreateStages({C});
 
   {
     auto _i_outer_i_inner_j_outer_j_inner_ = stages[C]->Tile(0, 1, bn, bn);
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-    auto _k_outer_k_inner_                 = stages[C]->Split("k0", 4);
-    auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-    auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _k_outer_k_inner_ = stages[C]->Split("k0", 4);
+    auto &k_outer = std::get<0>(_k_outer_k_inner_);
+    auto &k_inner = std::get<1>(_k_outer_k_inner_);
     stages[C]->Reorder({i_outer, j_outer, k_outer, k_inner, i_inner, j_inner});
     stages[C]->Vectorize(j_inner, 8);
   }
@@ -185,12 +196,12 @@ auto CreateMatmulVectorizeModule(Target target, int m, int n, int k) {
 ir::Module CreateMatmulLoopPermutation(Target target, int m, int n, int k_) {
   target.arch = Target::Arch::X86;
   target.bits = Target::Bit::k32;
-  target.os   = Target::OS::Linux;
+  target.os = Target::OS::Linux;
 
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k_));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   Placeholder<float> A("A", {M, K});
   Placeholder<float> B("B", {K, N});
@@ -200,20 +211,23 @@ ir::Module CreateMatmulLoopPermutation(Target target, int m, int n, int k_) {
   int bn = 32;
 
   auto C = Compute(
-      {M, N}, [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); }, "C");
+      {M, N},
+      [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); },
+      "C");
 
   auto stages = CreateStages({C});
 
   // Blocking by loop tiling.
   {
-    auto _i_outer_i_inner_j_outer_j_inner_ = stages[C]->Tile(0, 1, bn, bn);  // NOLINT
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-    auto _k_outer_k_inner_                 = stages[C]->Split("k0", 4);  // NOLINT
-    auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-    auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+    auto _i_outer_i_inner_j_outer_j_inner_ =
+        stages[C]->Tile(0, 1, bn, bn);  // NOLINT
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _k_outer_k_inner_ = stages[C]->Split("k0", 4);  // NOLINT
+    auto &k_outer = std::get<0>(_k_outer_k_inner_);
+    auto &k_inner = std::get<1>(_k_outer_k_inner_);
 
     stages[C]->Reorder({i_outer, j_outer, k_outer, i_inner, k_inner, j_inner});
 
@@ -230,9 +244,9 @@ ir::Module CreateMatmulLoopPermutation(Target target, int m, int n, int k_) {
 
 ir::Module CreateMatmulArrayPacking(Target target, int m, int n, int k_) {
   auto _M_N_K_ = std::make_tuple(Expr(m), Expr(n), Expr(k_));
-  auto &M      = std::get<0>(_M_N_K_);
-  auto &N      = std::get<1>(_M_N_K_);
-  auto &K      = std::get<2>(_M_N_K_);
+  auto &M = std::get<0>(_M_N_K_);
+  auto &N = std::get<1>(_M_N_K_);
+  auto &K = std::get<2>(_M_N_K_);
 
   Placeholder<float> A("A", {M, K});
   Placeholder<float> B("B", {K, N});
@@ -242,23 +256,30 @@ ir::Module CreateMatmulArrayPacking(Target target, int m, int n, int k_) {
   Expr bn(32);
 
   auto packedB = Compute(
-      {N / bn, K, bn}, [&](Expr x, Expr y, Expr z) { return B(y, x * bn + z); }, "packedB");
+      {N / bn, K, bn},
+      [&](Expr x, Expr y, Expr z) { return B(y, x * bn + z); },
+      "packedB");
   auto C = Compute(
-      {M, N}, [&](Expr i, Expr j) { return ReduceSum(A(i, k) * packedB(j / bn, k, j % bn), {k}); }, "C");
+      {M, N},
+      [&](Expr i, Expr j) {
+        return ReduceSum(A(i, k) * packedB(j / bn, k, j % bn), {k});
+      },
+      "C");
 
   auto stages = CreateStages({C});
 
   stages[packedB]->Vectorize(2, 8);
 
   {
-    auto _i_outer_i_inner_j_outer_j_inner_ = stages[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
-    auto &i_outer                          = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &i_inner                          = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_outer                          = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
-    auto &j_inner                          = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
-    auto _k_outer_k_inner_                 = stages[C]->Split("k0", 4);  // NOLINT
-    auto &k_outer                          = std::get<0>(_k_outer_k_inner_);
-    auto &k_inner                          = std::get<1>(_k_outer_k_inner_);
+    auto _i_outer_i_inner_j_outer_j_inner_ =
+        stages[C]->Tile(0, 1, bn.as_int32(), bn.as_int32());  // NOLINT
+    auto &i_outer = std::get<0>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &i_inner = std::get<1>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_outer = std::get<2>(_i_outer_i_inner_j_outer_j_inner_);
+    auto &j_inner = std::get<3>(_i_outer_i_inner_j_outer_j_inner_);
+    auto _k_outer_k_inner_ = stages[C]->Split("k0", 4);  // NOLINT
+    auto &k_outer = std::get<0>(_k_outer_k_inner_);
+    auto &k_inner = std::get<1>(_k_outer_k_inner_);
 
     stages[C]->Reorder({i_outer, j_outer, k_outer, i_inner, k_inner, j_inner});
     stages[C]->Vectorize(j_inner, 8);
@@ -273,7 +294,8 @@ ir::Module CreateMatmulArrayPacking(Target target, int m, int n, int k_) {
 }
 
 // TODO(Superjomn) To refactor this, strange to use if-else here.
-auto CreateCinnMatmulModule(const std::string &name, Target target, int m, int n, int k) {
+auto CreateCinnMatmulModule(
+    const std::string &name, Target target, int m, int n, int k) {
   if (name == "basic") {
     return CreateMatmulBasicModule(target, m, n, k);
   } else if (name == "tile") {
