@@ -95,6 +95,7 @@ void ContiguousKernel(const Context& dev_ctx,
   if (is_only_transposed(
           meta.dims, meta.strides, src_shape, src_stride, axis)) {
     meta.strides = meta.calc_strides(meta.dims, meta.layout);
+    meta.offset = 0;
     out->set_meta(meta);
     DenseTensor tmp_tensor = input;
     phi::DenseTensorMeta tmp_meta = meta;
