@@ -49,35 +49,35 @@ void ContiguousKernel(const Context& dev_ctx,
                                  phi::vectorize<int64_t>(input.strides()),
                                  0);
   } else if (std::is_same<T, ::phi::dtype::float16>::value) {
-    auto input_data = reinterpret_cast<const float16*>(input.data<T>());
+    auto input_data = reinterpret_cast<const float16_t*>(input.data<T>());
     auto output_data =
-        reinterpret_cast<float16*>(dev_ctx.template Alloc<T>(out));
-    r = xpu::as_strided<float16>(dev_ctx.x_context(),
-                                 input_data,
-                                 output_data,
-                                 phi::vectorize<int64_t>(input.dims()),
-                                 phi::vectorize<int64_t>(input.strides()),
-                                 0);
+        reinterpret_cast<float16_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<float16_t>(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   phi::vectorize<int64_t>(input.dims()),
+                                   phi::vectorize<int64_t>(input.strides()),
+                                   0);
   } else if (std::is_same<T, ::phi::dtype::bfloat16>::value) {
-    auto input_data = reinterpret_cast<const float16*>(input.data<T>());
+    auto input_data = reinterpret_cast<const float16_t*>(input.data<T>());
     auto output_data =
-        reinterpret_cast<float16*>(dev_ctx.template Alloc<T>(out));
-    r = xpu::as_strided<float16>(dev_ctx.x_context(),
-                                 input_data,
-                                 output_data,
-                                 phi::vectorize<int64_t>(input.dims()),
-                                 phi::vectorize<int64_t>(input.strides()),
-                                 0);
+        reinterpret_cast<float16_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<float16_t>(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   phi::vectorize<int64_t>(input.dims()),
+                                   phi::vectorize<int64_t>(input.strides()),
+                                   0);
   } else if (std::is_same<T, int16_t>::value) {
-    auto input_data = reinterpret_cast<const float16*>(input.data<T>());
+    auto input_data = reinterpret_cast<const float16_t*>(input.data<T>());
     auto output_data =
-        reinterpret_cast<float16*>(dev_ctx.template Alloc<T>(out));
-    r = xpu::as_strided<float16>(dev_ctx.x_context(),
-                                 input_data,
-                                 output_data,
-                                 phi::vectorize<int64_t>(input.dims()),
-                                 phi::vectorize<int64_t>(input.strides()),
-                                 0);
+        reinterpret_cast<float16_t*>(dev_ctx.template Alloc<T>(out));
+    r = xpu::as_strided<float16_t>(dev_ctx.x_context(),
+                                   input_data,
+                                   output_data,
+                                   phi::vectorize<int64_t>(input.dims()),
+                                   phi::vectorize<int64_t>(input.strides()),
+                                   0);
   } else if (std::is_same<T, uint8_t>::value) {
     auto input_data = reinterpret_cast<const int8_t*>(input.data<T>());
     auto output_data =
