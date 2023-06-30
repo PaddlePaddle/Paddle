@@ -283,7 +283,7 @@
 
 - op : embedding_grad_sparse
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
-  output : Tensor(weight_grad)
+  output : SelectedRows(weight_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [weight]

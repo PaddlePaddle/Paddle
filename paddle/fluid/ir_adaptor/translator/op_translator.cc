@@ -684,16 +684,18 @@ struct EmbeddingOpTranscriber : public OpTranscriber {
     std::cerr << "222222222222222222" << std::endl;
     std::string target_op_name =
         kTargetDialectPrefix + OpNameCompatibleMapping(op_desc.Type());
-
+    std::cerr << "LoopkUpOpInfo1" << std::endl;
     VLOG(6) << "[op name normalizing: " << op_desc.Type() << " to "
             << target_op_name;
+    std::cerr << "LoopkUpOpInfo2" << std::endl;
     auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    std::cerr << "LoopkUpOpInfo3" << std::endl;
     if (!op_info) {
       IR_THROW("Op %d should have corresponding OpInfo %d",
                op_desc.Type(),
                target_op_name);
     }
-
+    std::cerr << "LoopkUpOpInfo4" << std::endl;
     return op_info;
   }
 };
