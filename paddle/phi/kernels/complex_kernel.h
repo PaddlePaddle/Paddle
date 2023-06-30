@@ -36,12 +36,12 @@ void ComplexKernel(const Context& dev_ctx,
                    const DenseTensor& y,
                    DenseTensor* out);
 
-template <typename Context>
+template <typename T, typename Context>
 void RealStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out);
 
-template <typename Context>
+template <typename T, typename Context>
 void ImagStridedKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out);

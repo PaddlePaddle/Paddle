@@ -17,7 +17,7 @@
 
 namespace phi {
 
-template <typename Context>
+template <typename T, typename Context>
 void AsRealStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
