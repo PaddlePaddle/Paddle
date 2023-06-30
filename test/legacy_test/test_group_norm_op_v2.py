@@ -69,6 +69,10 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 data_pd = paddle.to_tensor(data)
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
+                if expect_res1.shape[0] == 1:
+                    expect_res1 = expect_res1[0]
+                if expect_res2.shape[0] == 1:
+                    expect_res2 = expect_res2[0]
                 np.testing.assert_allclose(result1, expect_res1[0], atol=1e-5)
                 np.testing.assert_allclose(result2, expect_res2[0], atol=1e-5)
 
