@@ -58,12 +58,3 @@ REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod,
                              ops::ElementwiseOp,
                              ops::ElementwiseModOpMaker,
                              ops::ElementwiseOpInplaceInferer);
-
-REGISTER_OP_VERSION(elementwise_mod)
-    .AddCheckpoint(
-        R"ROC(Register elementwise_mod for adding the attribute of Scale_y)ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Scale_y",
-            "In order to support the function of scaling the input Y when "
-            "using the operator of elementwise_mod.",
-            1.0f));

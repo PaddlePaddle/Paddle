@@ -165,6 +165,14 @@
           comment : In order to support the function of scaling the input Y when using the operator of elementwise_max.
           default : 1.0
 
+- op : elementwise_mod
+  version :
+    - checkpoint : Register elementwise_mod for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_mod.
+          default : "false"
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
