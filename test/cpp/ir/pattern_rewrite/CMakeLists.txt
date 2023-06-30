@@ -5,4 +5,5 @@ cc_test_old(
   DEPS
   ir
   pd_dialect
+  transform_general_functions
   gtest)
