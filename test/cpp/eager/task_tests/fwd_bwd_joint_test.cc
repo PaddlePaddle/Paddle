@@ -35,8 +35,6 @@ PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add, KPS, ALL_LAYOUT);
 #endif
 
-using eager_test::CreateTensorWithValue;
-
 namespace egr {
 
 paddle::Tensor hook_function(const paddle::Tensor& t) {
