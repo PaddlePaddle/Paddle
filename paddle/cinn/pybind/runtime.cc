@@ -53,7 +53,9 @@ cinn_type_t NumpyTypeToCinn(py::dtype dt) {
   return cinn_unk_t();
 }
 
-cinn_buffer_t *CreateBufferFromNumpy(py::array data, cinn_device_kind_t device, int align = 0) {
+cinn_buffer_t *CreateBufferFromNumpy(py::array data,
+                                     cinn_device_kind_t device,
+                                     int align = 0) {
   cinn_type_t type = NumpyTypeToCinn(data.dtype());
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
@@ -106,8 +108,10 @@ void BindSpecialTypes(py::module *m) {
   py::class_<VoidPointer> void_ptr(*m, "VoidPointer");
   void_ptr.def(py::init<>());
 
-#define VOID_PTR_SUPPORT_TYPE(__type) \
-  void_ptr.def("set", [](VoidPointer &self, __type *p) { self.ptr = static_cast<void *>(p); })
+#define VOID_PTR_SUPPORT_TYPE(__type)                    \
+  void_ptr.def("set", [](VoidPointer &self, __type *p) { \
+    self.ptr = static_cast<void *>(p);                   \
+  })
 
   VOID_PTR_SUPPORT_TYPE(char);
   VOID_PTR_SUPPORT_TYPE(int8_t);
@@ -135,7 +139,10 @@ void BindCinnRuntime(py::module *m) {
       .def_readwrite("bits", &cinn_type_t::bits)
       .def_readwrite("lanes", &cinn_type_t::lanes)
       .def(py::init<>())
-      .def(py::init<cinn_type_code_t, uint8_t, uint16_t>(), arg("code"), arg("bits"), arg("lanes") = 1)
+      .def(py::init<cinn_type_code_t, uint8_t, uint16_t>(),
+           arg("code"),
+           arg("bits"),
+           arg("lanes") = 1)
       .def(py::self == cinn_type_t())
       .def(py::self != cinn_type_t())
       .def("bytes", &cinn_type_t::bytes);
@@ -162,7 +169,8 @@ void BindCinnRuntime(py::module *m) {
       .value("cinn_buffer_on_device", cinn_buffer_on_device)
       .export_values();
 
-  py::class_<cinn_device_interface_t> cinn_device_interface(*m, "cinn_device_interface_t");
+  py::class_<cinn_device_interface_t> cinn_device_interface(
+      *m, "cinn_device_interface_t");
 
   m->def("cinn_device_release", &cinn_device_release);
   m->def("cinn_buffer_copy_to_host", &cinn_buffer_copy_to_host);
@@ -170,10 +178,13 @@ void BindCinnRuntime(py::module *m) {
   m->def("cinn_buffer_copy", &cinn_buffer_copy);
   m->def("cinn_device_sync", &cinn_device_sync);
   m->def("cinn_buffer_malloc", &cinn_buffer_malloc);
-  m->def("cinn_buffer_malloc", [](VoidPointer &p, cinn_buffer_t *buffer) { return cinn_buffer_malloc(p.ptr, buffer); });
+  m->def("cinn_buffer_malloc", [](VoidPointer &p, cinn_buffer_t *buffer) {
+    return cinn_buffer_malloc(p.ptr, buffer);
+  });
   m->def("cinn_buffer_free", &cinn_buffer_free);
   m->def("cinn_buffer_get_data_handle", &cinn_buffer_get_data_handle);
-  m->def("cinn_buffer_get_data_const_handle", &cinn_buffer_get_data_const_handle);
+  m->def("cinn_buffer_get_data_const_handle",
+         &cinn_buffer_get_data_const_handle);
 
   py::class_<cinn_buffer_t> cinn_buffer(*m, "cinn_buffer_t");
   cinn_buffer.def_readwrite("device", &cinn_buffer_t::device)
@@ -209,7 +220,10 @@ void BindCinnRuntime(py::module *m) {
       .def("set_flag", &cinn_buffer_t::set_flag)
       // Python methods
       .def("numpy", &BufferHostMemoryToNumpy)
-      .def(py::init(&CreateBufferFromNumpy), arg("data"), arg("device"), arg("align") = 0);
+      .def(py::init(&CreateBufferFromNumpy),
+           arg("data"),
+           arg("device"),
+           arg("align") = 0);
 
   m->def("cinn_x86_device_interface", &cinn_x86_device_interface)
       .def("cinn_buffer_load_float32", &cinn_buffer_load_float32)
@@ -255,7 +269,8 @@ void BindCinnRuntime(py::module *m) {
       .def("to_void_p", &cinn_pod_value_t::operator void *)
       .def("to_cinn_buffer_t_p", &cinn_pod_value_t::operator cinn_buffer_t *)
       .def("to_char_p", &cinn_pod_value_t::operator char *)
-      .def("type_code", py::overload_cast<>(&cinn_pod_value_t::type_code, py::const_))
+      .def("type_code",
+           py::overload_cast<>(&cinn_pod_value_t::type_code, py::const_))
       .def("data_addr", &cinn_pod_value_t::data_addr);
 
   m->def("cinn_pod_value_to_float", &cinn_pod_value_to_float)
@@ -266,7 +281,9 @@ void BindCinnRuntime(py::module *m) {
       .def("cinn_pod_value_to_void_p", &cinn_pod_value_to_void_p)
       .def("cinn_pod_value_to_buffer_p", &cinn_pod_value_to_buffer_p);
 
-  m->def("set_cinn_cudnn_deterministic", &cinn::runtime::SetCinnCudnnDeterministic, py::arg("state") = true);
+  m->def("set_cinn_cudnn_deterministic",
+         &cinn::runtime::SetCinnCudnnDeterministic,
+         py::arg("state") = true);
   m->def("seed", &cinn::runtime::RandomSeed::GetOrSet, py::arg("seed") = 0);
   m->def("clear_seed", &cinn::runtime::RandomSeed::Clear);
 }

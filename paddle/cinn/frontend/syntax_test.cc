@@ -61,7 +61,7 @@ TEST(syntax, basic) {
 }
 
 TEST(syntax, program_execute_multi_elementwise_add) {
-  auto program  = CreateAddProgram();
+  auto program = CreateAddProgram();
   Target target = common::DefaultTarget();
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -81,7 +81,7 @@ TEST(syntax, program_execute_multi_elementwise_add) {
 }
 
 TEST(syntax, program_execute_multi_elementwise_add2) {
-  auto program  = CreateAddProgram();
+  auto program = CreateAddProgram();
   Target target = common::DefaultTarget();
   std::unordered_set<std::string> fetch_ids;
   auto graph = Optimize(&program, fetch_ids, target);
@@ -107,11 +107,12 @@ TEST(syntax, program_execute_multi_elementwise_add2) {
 TEST(load_paddle_model, fc_execute) {
   auto scope = std::make_shared<Scope>();
 
-  std::unordered_map<std::string, std::vector<int>> input_shape_map = {{"A", {1, 30}}};
-  auto programTuple               = LoadPaddleProgram(FLAGS_model_dir, scope.get(), input_shape_map, false);
-  auto& program                   = std::get<0>(programTuple);
-  auto& var_map                   = std::get<1>(programTuple);
-  auto& var_map_paddle_to_program = std::get<2>(programTuple);
+  std::unordered_map<std::string, std::vector<int>> input_shape_map = {{"A", {1,
+30}}}; auto programTuple               = LoadPaddleProgram(FLAGS_model_dir,
+scope.get(), input_shape_map, false); auto& program                   =
+std::get<0>(programTuple); auto& var_map                   =
+std::get<1>(programTuple); auto& var_map_paddle_to_program =
+std::get<2>(programTuple);
 
   LOG(INFO) << "program:\n" << *program;
 
@@ -132,10 +133,11 @@ TEST(load_paddle_model, fc_execute) {
   LOG(INFO) << "scope.names: " << Join(scope->var_names(), ",");
 
   const std::string output_name = "fc_0.tmp_2";
-  auto tensor                   = scope->GetTensor(var_map_paddle_to_program.at(output_name));
-  LOG(INFO) << "tensor.shape: " << utils::Join(tensor->shape().data(), ",");
-  auto data = GetTensorData<float>(tensor, target);
-  for (int i = 0; i < 10; i++) LOG(INFO) << "data: " << data[i];
+  auto tensor                   =
+scope->GetTensor(var_map_paddle_to_program.at(output_name)); LOG(INFO) <<
+"tensor.shape: " << utils::Join(tensor->shape().data(), ","); auto data =
+GetTensorData<float>(tensor, target); for (int i = 0; i < 10; i++) LOG(INFO) <<
+"data: " << data[i];
 }
 */
 

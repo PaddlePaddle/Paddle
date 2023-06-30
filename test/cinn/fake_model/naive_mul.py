@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 import numpy
-import sys, os
 import numpy as np
+
 import paddle
-from paddle import fluid
-from paddle import static
+from paddle import fluid, static
 
 size = 30
 paddle.enable_static()

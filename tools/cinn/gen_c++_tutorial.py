@@ -23,9 +23,9 @@ This script helps to extract the tutorial content from a C++ source file.
 #  - @ROC, the code block inside a C++ multi-line string guard `ROC()ROC`,
 #          display as a markdown code block.
 
+import logging
 import sys
 from typing import List
-import logging
 
 
 class Markdown(object):

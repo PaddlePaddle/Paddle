@@ -21,8 +21,8 @@
 #include <nvToolsExt.h>
 #endif
 
-#include "paddle/cinn/utils/event.h"
 #include "glog/logging.h"
+#include "paddle/cinn/utils/event.h"
 
 namespace cinn {
 namespace utils {
@@ -49,12 +49,14 @@ class ProfilerHelper {
 
   static bool IsEnableCPU() {
     UpdateState();
-    return ProfilerHelper::g_state == ProfilerState::kAll || ProfilerHelper::g_state == ProfilerState::kCPU;
+    return ProfilerHelper::g_state == ProfilerState::kAll ||
+           ProfilerHelper::g_state == ProfilerState::kCPU;
   }
 
   static bool IsEnableCUDA() {
     UpdateState();
-    return ProfilerHelper::g_state == ProfilerState::kAll || ProfilerHelper::g_state == ProfilerState::kCUDA;
+    return ProfilerHelper::g_state == ProfilerState::kAll ||
+           ProfilerHelper::g_state == ProfilerState::kCUDA;
   }
 
   static void UpdateState();

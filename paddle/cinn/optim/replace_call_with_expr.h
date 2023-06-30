@@ -27,7 +27,9 @@ namespace optim {
  * @param statement The map from tuple_name to the expression candidate.
  * @param candidate Var of each axis in the expression candidate.
  */
-void ReplaceCallWithExpr(Expr *e, const std::string &statement, const Expr &candidate);
+void ReplaceCallWithExpr(Expr *e,
+                         const std::string &statement,
+                         const Expr &candidate);
 
 /**
  * Replace a Call node with a Expr (inline).

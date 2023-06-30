@@ -13,7 +13,8 @@
 // limitations under the License.
 
 /**
- * This file includes some arithmatic utilities, such as simplifying/solving a math equation/CINN expression.
+ * This file includes some arithmatic utilities, such as simplifying/solving a
+ * math equation/CINN expression.
  */
 #pragma once
 
@@ -38,12 +39,13 @@ namespace common {
 
 namespace ginac = GiNaC;
 
-//! Tell whether the expression \p expr contains only simple math calculations, like i*32+j is true, while Load(buf,
-//! i)+1 is not due to the Load Node is not math related.
+//! Tell whether the expression \p expr contains only simple math calculations,
+//! like i*32+j is true, while Load(buf, i)+1 is not due to the Load Node is not
+//! math related.
 bool IsPureMath(Expr expr);
 
-//! Tell whether the expression \p expr contains the expression \symbol, e.g. i*32+32 contains `i`, it also contains
-//! `i+1`.
+//! Tell whether the expression \p expr contains the expression \symbol, e.g.
+//! i*32+32 contains `i`, it also contains `i+1`.
 bool MathContainsSymbol(Expr expr, Var symbol);
 
 //! Solve the equation \p lhs == \p rhs on symbol \p symbol.
@@ -64,8 +66,12 @@ struct ExprToGinacConverter {
   //! Convert GiNaC ex back to CINN expression, should call operator() first.
   Expr GinacToExpr(const GiNaC::ex& ex);
 
-  bool HasSymbol(const std::string& name) const { return repr_to_ginac_.count(name); }
-  const ginac::symbol& GetSymbol(const std::string& name) const { return repr_to_ginac_.at(name); }
+  bool HasSymbol(const std::string& name) const {
+    return repr_to_ginac_.count(name);
+  }
+  const ginac::symbol& GetSymbol(const std::string& name) const {
+    return repr_to_ginac_.at(name);
+  }
 
  private:
   std::string Repr(const Expr& expr);

@@ -20,32 +20,35 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void FetchOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void FetchOpMapper(const paddle::cpp::OpDesc& op_desc,
+                   const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto output_name = op_desc.Input("X").front();
   ctx.AddFetchVarName(output_name);
   VLOG(4) << "detect model output: [" << output_name << "]";
 }
 
-void FeedOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void FeedOpMapper(const paddle::cpp::OpDesc& op_desc,
+                  const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto feed_name = op_desc.Output("Out").front();
   VLOG(4) << "Model get feed [" << feed_name << "]";
 
   // For input parameters
   if (ctx.Scope().FindVar(cinn::utils::TransValidVarName(feed_name))) {
-    auto param      = ctx.GetVar(feed_name);
+    auto param = ctx.GetVar(feed_name);
     const auto& var = ctx.Builder()->CreateInput(param);
     VLOG(4) << "Create param [" << feed_name << "]"
-            << " to " << var.id() << " with shape=[" << cinn::utils::Join(var.shape(), ",")
-            << "], dtype=" << var.type();
+            << " to " << var.id() << " with shape=["
+            << cinn::utils::Join(var.shape(), ",") << "], dtype=" << var.type();
     return;
   }
 
   // For input variables
   const auto& feed_info = ctx.GetFeedInfo(feed_name);
-  auto cinn_id          = cinn::utils::TransValidVarName(feed_name);
-  auto input            = ctx.Builder()->CreateInput(feed_info.type, feed_info.shape, cinn_id);
+  auto cinn_id = cinn::utils::TransValidVarName(feed_name);
+  auto input =
+      ctx.Builder()->CreateInput(feed_info.type, feed_info.shape, cinn_id);
   ctx.AddVar(feed_name, input);
   ctx.AddVarModelToProgram(feed_name, input.id().data());
 }

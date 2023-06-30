@@ -19,16 +19,19 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void ReverseOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void ReverseOpMapper(const paddle::cpp::OpDesc& op_desc,
+                     const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
-  auto axes = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axis", std::vector<int>{});
-  VLOG(4) << "out_name = reverse(" << x_name << ", axis=[" << cinn::utils::Join(axes, ", ") << "])";
+  auto axes = utils::GetAttrOrDefault<std::vector<int>>(
+      op_desc, "axis", std::vector<int>{});
+  VLOG(4) << "out_name = reverse(" << x_name << ", axis=["
+          << cinn::utils::Join(axes, ", ") << "])";
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->Reverse(x, axes);
 
   ctx.AddVar(out_name, out);
@@ -40,6 +43,7 @@ void ReverseOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& 
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_reverse) {
-  CINN_REGISTER_OP_MAPPER(reverse, cinn::frontend::paddle_mappers::ReverseOpMapper)
+  CINN_REGISTER_OP_MAPPER(reverse,
+                          cinn::frontend::paddle_mappers::ReverseOpMapper)
   return true;
 }

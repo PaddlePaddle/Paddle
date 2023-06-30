@@ -26,8 +26,8 @@ namespace ir {
 class _LoweredFunc_;
 
 /**
- * A struct representing an argument to a lowered function. Used for specifying the function signature of generated
- * code.
+ * A struct representing an argument to a lowered function. Used for specifying
+ * the function signature of generated code.
  */
 struct Argument {
   //! Input or output.
@@ -39,7 +39,8 @@ struct Argument {
   explicit Argument(const ir::Buffer& buffer, IO io = IO::kInput);
   explicit Argument(const ir::Var& var, IO io = IO::kInput);
 
-  //! Set the buffer argument, all the buffer information are stored in ir::Buffer.
+  //! Set the buffer argument, all the buffer information are stored in
+  //! ir::Buffer.
   void set_buffer(const ir::Buffer& x);
 
   //! Set the var argument.
@@ -128,8 +129,8 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
   //! The Arguments used in the body of the function.
   std::vector<Argument> args;
 
-  //! Temporary buffers(as output), these buffers will not appear in the function's argument list, but will be used in
-  //! the body.
+  //! Temporary buffers(as output), these buffers will not appear in the
+  //! function's argument list, but will be used in the body.
   std::vector<Buffer> temp_bufs;
 
   //! Body of this function.
@@ -140,11 +141,13 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
   CudaAxisInfo cuda_axis_info;
 
   /**
-   * The output buffer will be resized to the size required, we leave all the expression here.
-   * The allocation and deallocation expressions will insert into the head and tail of the function's body. It supports
-   * lazy allocation/deallocation if the corresponding intristic methods support.
+   * The output buffer will be resized to the size required, we leave all the
+   * expression here. The allocation and deallocation expressions will insert
+   * into the head and tail of the function's body. It supports lazy
+   * allocation/deallocation if the corresponding intristic methods support.
    *
-   * Currently, we assume that all the input and output buffers should locate in heap, no other memory type is allowed.
+   * Currently, we assume that all the input and output buffers should locate in
+   * heap, no other memory type is allowed.
    */
   // @{
   std::vector<Expr> alloc_output_buffer_exprs;
@@ -190,8 +193,10 @@ struct _LoweredFunc_ : ExprNode<_LoweredFunc_> {
 
   void PrepareArgumentExprs();
   //! Get all the Buffers the function body references.
-  //! NOTE it will return the buffers with duplicates removed(by comparing their name).
-  std::vector<Tensor> CollectAllTensorReference(bool with_expr_gen_tensor = true) const;
+  //! NOTE it will return the buffers with duplicates removed(by comparing their
+  //! name).
+  std::vector<Tensor> CollectAllTensorReference(
+      bool with_expr_gen_tensor = true) const;
 };
 
 }  // namespace ir

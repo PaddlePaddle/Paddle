@@ -28,8 +28,9 @@ extern "C" {
 
 /**
  * \brief Do GEMM on buffer A and B and write result to buffer C.
- * We pass the \param M, \param N, \param K although the shape can retrieve from cinn_buffer_t because the size of a
- * matrix not equals the shape of a buffer it is stored.
+ * We pass the \param M, \param N, \param K although the shape can retrieve from
+ * cinn_buffer_t because the size of a matrix not equals the shape of a buffer
+ * it is stored.
  * @param alpha The scaling factor of the product of A and B
  * @param M Number of the rows of A
  * @param N the number of the columns in both B and C
@@ -60,8 +61,9 @@ void cinn_cpu_mkl_gemm_fp32(float alpha,
 
 /**
  * \brief Do GEMM on buffer A and B and write result to buffer C.
- * We pass the \param M, \param N, \param K although the shape can retrieve from cinn_buffer_t because the size of a
- * matrix not equals the shape of a buffer it is stored.
+ * We pass the \param M, \param N, \param K although the shape can retrieve from
+ * cinn_buffer_t because the size of a matrix not equals the shape of a buffer
+ * it is stored.
  * @param alpha The scaling factor of the product of A and B
  * @param batch_size the batch size of A and B
  * @param M Number of the rows of A
@@ -72,9 +74,12 @@ void cinn_cpu_mkl_gemm_fp32(float alpha,
  * @param lda The size of the first dimension of A
  * @param ldb The size of the first dimension of B
  * @param ldc The size of the first dimension of C
- * @param a_stride The stride of A(number of elements, not bytes) between batches
- * @param b_stride The stride of B(number of elements, not bytes) between batches
- * @param c_stride The stride of C(number of elements, not bytes) between batches
+ * @param a_stride The stride of A(number of elements, not bytes) between
+ * batches
+ * @param b_stride The stride of B(number of elements, not bytes) between
+ * batches
+ * @param c_stride The stride of C(number of elements, not bytes) between
+ * batches
  * @param beta The scaling factor of C
  * @param A The matrix A
  * @param B The matrix B
@@ -98,5 +103,6 @@ void cinn_cpu_mkl_gemm_batch_fp32(float alpha,
                                   cinn_buffer_t* B,
                                   cinn_buffer_t* C);
 
-void cinn_call_cholesky_host(void* v_args, int num_args, int batch_size, int m, bool upper);
+void cinn_call_cholesky_host(
+    void* v_args, int num_args, int batch_size, int m, bool upper);
 }  // extern "C"

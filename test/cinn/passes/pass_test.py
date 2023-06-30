@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cinn.frontend import NetBuilder, Variable
-from cinn.frontend import get_default_program_pass, get_default_graph_pass
 import logging
 import os
 from test.cinn.ops.op_test import OpTest
+
+from cinn.frontend import (
+    NetBuilder,
+    Variable,
+    get_default_graph_pass,
+    get_default_program_pass,
+)
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="pass_test")

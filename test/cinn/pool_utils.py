@@ -15,8 +15,9 @@
 # limitations under the License.
 
 import math
-import numpy as np
 import sys
+
+import numpy as np
 
 
 def pool2d(np_data, attrs, dtype="float32"):

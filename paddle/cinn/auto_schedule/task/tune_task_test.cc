@@ -49,10 +49,10 @@ Program CreateAddProgram() {
   constexpr int N = 24;
 
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {M, N}, "A");
-  auto b       = builder.CreateInput(Float(32), {M, N}, "B");
-  auto c       = builder.Add(a, b);
-  auto d       = builder.Add(a, c);
+  auto a = builder.CreateInput(Float(32), {M, N}, "A");
+  auto b = builder.CreateInput(Float(32), {M, N}, "B");
+  auto c = builder.Add(a, b);
+  auto d = builder.Add(a, c);
   auto program = builder.Build();
 
   return program;
@@ -65,17 +65,20 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();
 #else
-  Target target                  = common::DefaultHostTarget();
+  Target target = common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
-  auto graph   = std::make_shared<hlir::framework::Graph>(prog, target);
+  auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
 
   TaskCreator task_creator;
   std::vector<TuneTask> tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
   ASSERT_EQ(tasks.size(), 2UL);
 
-  const auto& shape_dict = graph->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  const auto& dtype_dict = graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
+  const auto& shape_dict = graph->GetAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+  const auto& dtype_dict =
+      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+          "inferdtype");
   OpLowerer op_lowerer(dtype_dict, shape_dict, target);
 
   std::stringstream ss;
@@ -127,7 +130,7 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_NoPass) {
 }
 )ROC";
 #else
-  std::string target_str         = R"ROC(
+  std::string target_str = R"ROC(
 {
   ScheduleBlock(root)
   {
@@ -173,10 +176,10 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();
 #else
-  Target target                  = common::DefaultHostTarget();
+  Target target = common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
-  auto graph   = std::make_shared<hlir::framework::Graph>(prog, target);
+  auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
   ApplyPass(graph.get(), "OpFusionPass");
 
   TaskCreator task_creator;
@@ -184,8 +187,11 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
 
   ASSERT_EQ(tasks.size(), 1UL);
 
-  const auto& shape_dict = graph->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  const auto& dtype_dict = graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
+  const auto& shape_dict = graph->GetAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+  const auto& dtype_dict =
+      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+          "inferdtype");
 
   OpLowerer op_lowerer(dtype_dict, shape_dict, target);
 
@@ -236,7 +242,7 @@ TEST(TuneTask, GraphToUnoptLoweredFunc_ApplyPass) {
 )ROC";
 
 #else
-  std::string target_str         = R"ROC(
+  std::string target_str = R"ROC(
 {
   ScheduleBlock(root)
   {
@@ -277,16 +283,20 @@ TEST(TuneTask, SerializeToString) {
 #ifdef CINN_WITH_CUDA
   Target target = common::DefaultNVGPUTarget();
 #else
-  Target target                  = common::DefaultHostTarget();
+  Target target = common::DefaultHostTarget();
 #endif
   Program prog = CreateAddProgram();
-  auto graph   = std::make_shared<hlir::framework::Graph>(prog, target);
+  auto graph = std::make_shared<hlir::framework::Graph>(prog, target);
 
   TaskCreator task_creator;
-  std::vector<TuneTask> single_tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
+  std::vector<TuneTask> single_tasks =
+      task_creator.CreateTuneTaskOpLevel(graph.get());
 
-  const auto& shape_dict = graph->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  const auto& dtype_dict = graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
+  const auto& shape_dict = graph->GetAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+  const auto& dtype_dict =
+      graph->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+          "inferdtype");
   OpLowerer op_lowerer(dtype_dict, shape_dict, target);
   ASSERT_EQ(single_tasks.size(), 2UL);
   for (auto&& task : single_tasks) {
@@ -301,7 +311,7 @@ Group {
 }
 )ROC";
 #else
-  std::string single_add_str     = R"ROC(Target<linux,x86,64>
+  std::string single_add_str = R"ROC(Target<linux,x86,64>
 
 Group {
   (var_1->float32[32,24]) = elementwise_add(A->float32[32,24], B->float32[32,24])
@@ -311,7 +321,8 @@ Group {
   EXPECT_EQ(single_tasks[0].serialized_key, single_add_str);
 
   ApplyPass(graph.get(), "OpFusionPass");
-  std::vector<TuneTask> fused_tasks = task_creator.CreateTuneTaskOpLevel(graph.get());
+  std::vector<TuneTask> fused_tasks =
+      task_creator.CreateTuneTaskOpLevel(graph.get());
   ASSERT_EQ(fused_tasks.size(), 1UL);
   fused_tasks[0].Initialize(shape_dict, dtype_dict, &op_lowerer);
 

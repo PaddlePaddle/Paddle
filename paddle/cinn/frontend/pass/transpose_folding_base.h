@@ -28,14 +28,18 @@ namespace cinn::frontend::pass {
 class TransposeFoldingBase : public ProgramPass {
  public:
   using ProgramPass::ProgramPass;
-  using In2InstrType  = absl::flat_hash_map<std::string, std::unordered_set<Instruction*>>;
+  using In2InstrType =
+      absl::flat_hash_map<std::string, std::unordered_set<Instruction*>>;
   using Out2InstrType = absl::flat_hash_map<std::string, Instruction*>;
 
  protected:
   virtual void set_target_instrs() = 0;
   // the ops which can folding into matmul
-  void set_fold_instrs() { fold_instrs_ = {"transpose", "scale", "broadcast_to"}; }
-  // the ops which cannot folding but can ignore when it place between into folding op and matmul
+  void set_fold_instrs() {
+    fold_instrs_ = {"transpose", "scale", "broadcast_to"};
+  }
+  // the ops which cannot folding but can ignore when it place between into
+  // folding op and matmul
   void set_skip_instrs() { skip_instrs_ = {"cast", "identity"}; }
 
   void Clear() override {
@@ -64,12 +68,14 @@ class TransposeFoldingBase : public ProgramPass {
       }
     }
 
-    // `remove_instrs` is used to represent Instructions of which type is transpose to be deleted.
+    // `remove_instrs` is used to represent Instructions of which type is
+    // transpose to be deleted.
     absl::flat_hash_set<Instruction*> remove_instrs;
     for (size_t i = 0; i < program->size(); ++i) {
       auto& instr = (*program)[i];
       if (target_instrs_.count(instr->op_type)) {
-        DoMatmulFoldOptimize(&instr, out2instr, in2instr, fetch_ids, &remove_instrs);
+        DoMatmulFoldOptimize(
+            &instr, out2instr, in2instr, fetch_ids, &remove_instrs);
       }
     }
 
@@ -91,21 +97,26 @@ class TransposeFoldingBase : public ProgramPass {
                                                const Out2InstrType& out2instr,
                                                const In2InstrType& in2instr,
                                                bool from_input) const {
-    if (!fold_instrs_.count((*instr)->op_type) && !skip_instrs_.count((*instr)->op_type)) {
+    if (!fold_instrs_.count((*instr)->op_type) &&
+        !skip_instrs_.count((*instr)->op_type)) {
       return {};
     }
-    CHECK_EQ((*instr)->inputs.size(), 1UL) << "The op " << (*instr)->op_type << " should has 1 input.";
-    CHECK_EQ((*instr)->outputs.size(), 1UL) << "The op " << (*instr)->op_type << " should has 1 output.";
+    CHECK_EQ((*instr)->inputs.size(), 1UL)
+        << "The op " << (*instr)->op_type << " should has 1 input.";
+    CHECK_EQ((*instr)->outputs.size(), 1UL)
+        << "The op " << (*instr)->op_type << " should has 1 output.";
 
-    VLOG(5) << "Try get matmul's folding instructions begin from [" << (*instr)->inputs[0]->id << "]";
+    VLOG(5) << "Try get matmul's folding instructions begin from ["
+            << (*instr)->inputs[0]->id << "]";
 
     if (!from_input && in2instr.at((*instr)->inputs[0]->id).size() != 1UL) {
       // the matmul's output should only link to one op
-      VLOG(5) << "The var [" << (*instr)->inputs[0]->id << "] link to many op, cannot fold into matmul! Please check.";
+      VLOG(5) << "The var [" << (*instr)->inputs[0]->id
+              << "] link to many op, cannot fold into matmul! Please check.";
       return {};
     }
 
-    std::vector<Instruction*> res           = {instr};
+    std::vector<Instruction*> res = {instr};
     std::unordered_set<std::string> visited = {(*instr)->op_type};
 
     auto cur_instr = instr;
@@ -141,18 +152,21 @@ class TransposeFoldingBase : public ProgramPass {
     return res;
   }
 
-  bool CanFold(const Instruction* instr, const std::unordered_set<std::string>& visited_instr) const {
+  bool CanFold(const Instruction* instr,
+               const std::unordered_set<std::string>& visited_instr) const {
     if (!instr) {
       return false;
     }
 
     const auto& instr_type = (*instr)->op_type;
-    if ((!fold_instrs_.count(instr_type) && !skip_instrs_.count(instr_type)) || visited_instr.count(instr_type)) {
+    if ((!fold_instrs_.count(instr_type) && !skip_instrs_.count(instr_type)) ||
+        visited_instr.count(instr_type)) {
       return false;
     }
     if (instr_type == "transpose") {
       if (visited_instr.count("broadcast_to")) {
-        // if transpose after broadcast_to, cannot fold because shape has changed
+        // if transpose after broadcast_to, cannot fold because shape has
+        // changed
         return false;
       }
     }
@@ -191,17 +205,22 @@ class TransposeFoldingBase : public ProgramPass {
       return false;
     }
 
-    float bias = scale->attrs.count("bias") ? absl::get<float>(scale->attrs.at("bias")) : 0.0f;
+    float bias = scale->attrs.count("bias")
+                     ? absl::get<float>(scale->attrs.at("bias"))
+                     : 0.0f;
     return (bias == 0.0f);
   }
 
-  bool CanSkip(const Instruction& instr) const { return skip_instrs_.count(instr->op_type); }
+  bool CanSkip(const Instruction& instr) const {
+    return skip_instrs_.count(instr->op_type);
+  }
 
-  virtual void DoMatmulFoldOptimize(Instruction* instr,
-                                    const Out2InstrType& out2instr,
-                                    const In2InstrType& in2instr,
-                                    const std::unordered_set<std::string>& fetch_ids,
-                                    absl::flat_hash_set<Instruction*>* remove_instrs) const = 0;
+  virtual void DoMatmulFoldOptimize(
+      Instruction* instr,
+      const Out2InstrType& out2instr,
+      const In2InstrType& in2instr,
+      const std::unordered_set<std::string>& fetch_ids,
+      absl::flat_hash_set<Instruction*>* remove_instrs) const = 0;
 
   std::unordered_set<std::string> target_instrs_;
   std::unordered_set<std::string> fold_instrs_;

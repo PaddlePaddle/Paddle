@@ -914,7 +914,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : expand (expand_v2)
-  backward : expand_grad (expand_v2_grad)
+  backward : expand_grad (expand_v2_grad), expand_double_grad(expand_v2_double_grad)
   inputs :
     x : X
   attrs :
@@ -928,6 +928,7 @@
       tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [expand, expand_grad]
 
 - op : expand_as (expand_as_v2)
   backward : expand_as_grad (expand_as_v2_grad)

@@ -24,8 +24,9 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/ir.h"
 
-//! This file defines some intrinsic IR nodes, this is similar to the MLIR operations, we try to expose some underlying
-//! opaque operations to IR system to helpe more intuitive codegen.
+//! This file defines some intrinsic IR nodes, this is similar to the MLIR
+//! operations, we try to expose some underlying opaque operations to IR system
+//! to helpe more intuitive codegen.
 
 namespace cinn::ir {
 
@@ -49,7 +50,9 @@ enum class IntrinsicKind {
 
 class IntrinsicOp : public IrNode {
  public:
-  IntrinsicOp(IntrinsicKind kind, llvm::ArrayRef<Type> input_types, llvm::ArrayRef<Type> output_types)
+  IntrinsicOp(IntrinsicKind kind,
+              llvm::ArrayRef<Type> input_types,
+              llvm::ArrayRef<Type> output_types)
       : kind_(kind),
         input_types_(input_types.begin(), input_types.end()),
         output_types_(output_types.begin(), output_types.end()) {}
@@ -60,11 +63,17 @@ class IntrinsicOp : public IrNode {
   void AddInputType(const Type& type) { input_types_.push_back(type); }
   void AddOutputType(const Type& type) { output_types_.push_back(type); }
 
-  const llvm::SmallVectorImpl<Type>& input_types() const { return input_types_; }
-  const llvm::SmallVectorImpl<Type>& output_types() const { return input_types_; }
+  const llvm::SmallVectorImpl<Type>& input_types() const {
+    return input_types_;
+  }
+  const llvm::SmallVectorImpl<Type>& output_types() const {
+    return input_types_;
+  }
 
-  //! Verify the \p input_types and \p output_types matches the signature of this operation.
-  void Verify(llvm::ArrayRef<Type> input_types, llvm::ArrayRef<Type> output_types) const;
+  //! Verify the \p input_types and \p output_types matches the signature of
+  //! this operation.
+  void Verify(llvm::ArrayRef<Type> input_types,
+              llvm::ArrayRef<Type> output_types) const;
   void Verify(llvm::ArrayRef<Expr> inputs, llvm::ArrayRef<Expr> outputs) const;
   void Verify(llvm::ArrayRef<Expr> inputs) const;
 
@@ -92,11 +101,15 @@ namespace intrinsics {
 struct BufferGetDataHandle : public IntrinsicOp {
   // signature: (cinn_buffer_t*) -> (void*)
   BufferGetDataHandle()
-      : IntrinsicOp(IntrinsicKind::kBufferGetDataHandle, {type_of<cinn_buffer_t*>()}, {type_of<void*>()}) {}
+      : IntrinsicOp(IntrinsicKind::kBufferGetDataHandle,
+                    {type_of<cinn_buffer_t*>()},
+                    {type_of<void*>()}) {}
 
   static Expr Make(Expr buffer);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kBufferGetDataHandle; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kBufferGetDataHandle;
+  }
 
   Expr buffer;
 };
@@ -107,11 +120,15 @@ struct BufferGetDataHandle : public IntrinsicOp {
 struct BufferGetDataConstHandle : public IntrinsicOp {
   // signature: (cinn_buffer_t*) -> (const void*)
   BufferGetDataConstHandle()
-      : IntrinsicOp(IntrinsicKind::kBufferGetDataConstHandle, {type_of<const cinn_buffer_t*>()}, {type_of<void*>()}) {}
+      : IntrinsicOp(IntrinsicKind::kBufferGetDataConstHandle,
+                    {type_of<const cinn_buffer_t*>()},
+                    {type_of<void*>()}) {}
 
   static Expr Make(Expr buffer);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kBufferGetDataConstHandle; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kBufferGetDataConstHandle;
+  }
 
   Expr buffer;
 };
@@ -127,11 +144,15 @@ struct BufferGetDataConstHandle : public IntrinsicOp {
  */
 struct PodValueToX : public IntrinsicOp {
   // signature: (cinn_pod_value_t*) -> (X), X is some pod type.
-  PodValueToX() : IntrinsicOp(IntrinsicKind::kPodValueToX, {type_of<cinn_pod_value_t*>()}, {}) {}
+  PodValueToX()
+      : IntrinsicOp(
+            IntrinsicKind::kPodValueToX, {type_of<cinn_pod_value_t*>()}, {}) {}
 
   static Expr Make(Expr pod_value_ptr, const Type& type);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kPodValueToX; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kPodValueToX;
+  }
 
   Expr pod_value_ptr;
 };
@@ -141,11 +162,15 @@ struct PodValueToX : public IntrinsicOp {
  */
 struct BufferCreate : public IntrinsicOp {
   // signature: (cinn_buffer_t*) -> void
-  BufferCreate() : IntrinsicOp(IntrinsicKind::kBufferCreate, {type_of<cinn_buffer_t*>()}, {}) {}
+  BufferCreate()
+      : IntrinsicOp(
+            IntrinsicKind::kBufferCreate, {type_of<cinn_buffer_t*>()}, {}) {}
 
   static Expr Make(Expr buffer);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kBufferCreate; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kBufferCreate;
+  }
 
   Expr buffer;
 };
@@ -159,7 +184,9 @@ struct GetAddr : public IntrinsicOp {
 
   static Expr Make(Expr data);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kGetAddr; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kGetAddr;
+  }
 
   Expr data;
 };
@@ -172,7 +199,9 @@ struct ArgsConstruct : public IntrinsicOp {
 
   static Expr Make(Var var, llvm::ArrayRef<Expr> args);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kArgsConstruct; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kArgsConstruct;
+  }
 
   Var var;
   llvm::SmallVector<Expr, 4> args;
@@ -184,10 +213,15 @@ struct ArgsConstruct : public IntrinsicOp {
 struct BuiltinIntrin : public IntrinsicOp {
   BuiltinIntrin() : IntrinsicOp(IntrinsicKind::kBuiltinIntrin, {}, {}) {}
 
-  static Expr Make(
-      const std::string& name, llvm::ArrayRef<Expr> args, llvm::Intrinsic::ID id, int64_t arg_nums, const Type& type);
+  static Expr Make(const std::string& name,
+                   llvm::ArrayRef<Expr> args,
+                   llvm::Intrinsic::ID id,
+                   int64_t arg_nums,
+                   const Type& type);
 
-  static bool classof(const IntrinsicOp* s) { return s->getKind() == IntrinsicKind::kBuiltinIntrin; }
+  static bool classof(const IntrinsicOp* s) {
+    return s->getKind() == IntrinsicKind::kBuiltinIntrin;
+  }
 
   std::string name;
   llvm::SmallVector<Expr, 4> args;
