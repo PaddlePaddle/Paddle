@@ -15,11 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
+import paddle
 
 INT32_MAX = (1 << 31) - 1
 INT32_MIN = -(1 << 31)
