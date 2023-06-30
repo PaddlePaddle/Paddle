@@ -14,8 +14,6 @@
 # limitations under the License.
 
 
-from . import extend_optimizer
-
 from . import optimizer
 from .optimizer import *
 
