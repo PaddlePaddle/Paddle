@@ -190,7 +190,7 @@ void CheckResult(raw_func_type test_func,
     input_data_ptrs[i] =
         reinterpret_cast<float*>(malloc(input_data_numel * sizeof(float)));
     for (int j = 0; j < input_data_numel; ++j) {
-      input_data_ptrs[i][j] = (rand() * 1.f) / RAND_MAX;
+      input_data_ptrs[i][j] = (rand() * 1.f) / RAND_MAX;  // NOLINT
     }
   }
   std::vector<float*> test_output_data_ptrs(output_names.size());
