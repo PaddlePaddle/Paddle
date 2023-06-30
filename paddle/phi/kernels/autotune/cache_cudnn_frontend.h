@@ -176,5 +176,49 @@ class CudnnFrontendPlanCache {
   int64_t cache_misses_{0};
 };  // class CudnnFrontendPlanCache
 
+template <typename T>
+inline void BuildFeatureVectorSingle(cudnn_frontend::feature_vector_t *v,
+                                     const T &value) {
+  v->push_back(static_cast<int64_t>(value));
+}
+
+template <>
+inline void BuildFeatureVectorSingle(cudnn_frontend::feature_vector_t *v,
+                                     const float &value) {
+  int64_t val = 0;
+  memcpy(&val, &value, sizeof(float));
+  v->push_back(val);
+}
+
+template <>
+inline void BuildFeatureVectorSingle<std::vector<int64_t>>(
+    cudnn_frontend::feature_vector_t *v, const std::vector<int64_t> &value) {
+  v->insert(v->end(), value.begin(), value.end());
+}
+
+template <>
+inline void BuildFeatureVectorSingle<std::vector<int>>(
+    cudnn_frontend::feature_vector_t *v, const std::vector<int> &value) {
+  for (auto &val : value) {
+    v->push_back(static_cast<int64_t>(val));
+  }
+}
+
+template <>
+inline void BuildFeatureVectorSingle<std::string>(
+    cudnn_frontend::feature_vector_t *v, const std::string &value) {
+  v->push_back(std::hash<std::string>()(value));
+}
+
+inline void BuildFeatureVector(cudnn_frontend::feature_vector_t *v) { return; }
+
+template <typename T, typename... Args>
+inline void BuildFeatureVector(cudnn_frontend::feature_vector_t *v,
+                               const T &value,
+                               Args... args) {
+  BuildFeatureVectorSingle(v, value);
+  BuildFeatureVector(v, args...);
+}
+
 }  // namespace autotune
 }  // namespace phi

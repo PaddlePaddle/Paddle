@@ -836,4 +836,140 @@ void FastLayernormXPUInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+void FusedScaleBiasReluConvBnstatsInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& w,
+    const MetaTensor& scale,
+    const MetaTensor& bias,
+    const MetaTensor& bn_scale,
+    const MetaTensor& bn_bias,
+    const MetaTensor& input_running_mean,
+    const MetaTensor& input_running_var,
+    const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
+    const std::vector<int>& strides,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::string& data_format,
+    float momentum,
+    float epsilon,
+    bool fuse_prologue,
+    bool exhaustive_search,
+    int64_t accumulation_count,
+    MetaTensor* out,
+    MetaTensor* out_running_mean,
+    MetaTensor* out_running_var,
+    MetaTensor* saved_mean,
+    MetaTensor* saved_var,
+    MetaTensor* eq_scale,
+    MetaTensor* eq_bias) {
+  auto in_dims = x.dims();
+  auto filter_dims = w.dims();
+  // do some checks
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input of Op(FusedScaleBiasReluConvBnstats) should be a 4-D "
+          "Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
+          in_dims.size(),
+          in_dims));
+
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      filter_dims.size(),
+      phi::errors::InvalidArgument(
+          "The input's dimension and filter's dimension of "
+          "Op(FusedScaleBiasReluConvBnstats) should be equal. But received: "
+          "the input's"
+          " shape is [%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
+          in_dims,
+          in_dims.size(),
+          filter_dims,
+          filter_dims.size()));
+
+  // Check if data format is NHWC
+  PADDLE_ENFORCE_EQ(
+      data_format,
+      "NHWC",
+      phi::errors::InvalidArgument(
+          "Operator(FusedScaleBiasReluConvBnstats) only supports data format "
+          "of "
+          "channel last (NHWC) now. But recieved: data_format = '%s'.",
+          data_format));
+
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      phi::errors::InvalidArgument("Expect group to be 1, got %d.", groups));
+
+  const auto input_channels = in_dims[in_dims.size() - 1];
+  int dilation_size = dilations.size();
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
+
+  PADDLE_ENFORCE_EQ(
+      input_channels,
+      filter_dims[1] * groups,
+      phi::errors::InvalidArgument(
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(FusedScaleBiasReluConvBnstats). But received: the "
+          "input's"
+          " channels is %d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d. ",
+          input_channels,
+          in_dims,
+          filter_dims[1],
+          filter_dims,
+          groups));
+
+  // update paddings and dilations accoring to padding_algorithm
+  std::vector<int> paddings_vec = paddings;
+  std::vector<int> dilations_vec = dilations;
+  // get "HW" from "NHWC"
+  DDim in_data_dims = phi::slice_ddim(in_dims, 1, in_dims.size() - 1);
+  DDim filter_data_dims = phi::slice_ddim(filter_dims, 2, filter_dims.size());
+  std::vector<int> ksize = phi::vectorize<int>(filter_data_dims);
+  phi::UpdatePaddingAndDilation(&paddings_vec,
+                                &dilations_vec,
+                                padding_algorithm,
+                                in_data_dims,
+                                strides,
+                                ksize);
+
+  std::vector<int64_t> out_shape({in_dims[0]});
+  for (size_t i = 0; i < strides.size(); ++i) {
+    out_shape.push_back(ConvOutSize(in_dims[i + 1],
+                                    filter_dims[i + 2],
+                                    dilations[i],
+                                    paddings_vec[i * 2],
+                                    paddings_vec[i * 2 + 1],
+                                    strides[i]));
+  }
+  out_shape.push_back(filter_dims[0]);
+  // make shape for other outputs
+  auto c_dims = phi::make_ddim({filter_dims[0]});
+  // set output and output max dims
+  out->set_dims(DDim(out_shape.data(), out_shape.size()));
+  out_running_mean->set_dims(c_dims);
+  out_running_var->set_dims(c_dims);
+  saved_mean->set_dims(c_dims);
+  saved_var->set_dims(c_dims);
+  eq_scale->set_dims(c_dims);
+  eq_bias->set_dims(c_dims);
+}
+#endif
+
 }  // namespace phi

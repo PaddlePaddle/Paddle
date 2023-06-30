@@ -505,6 +505,10 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
+if(NOT WITH_CUDNN_FRONTEND)
+  list(REMOVE_ITEM TEST_OPS test_fused_scale_bias_relu_conv_bnstats_op)
+endif()
+
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
