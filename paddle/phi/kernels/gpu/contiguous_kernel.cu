@@ -45,9 +45,13 @@ __global__ void ContiguousFunc(
 
 bool is_only_transposed(const DDim& shape,
                         const DDim& stride,
+                        uint64_t offset,
                         DDim& src_shape,           // NOLINT
                         DDim& src_stride,          // NOLINT
                         std::vector<int>& axis) {  // NOLINT
+  if (offset != 0) {
+    return false;
+  }
   std::set<int> visited_idx;
   axis.resize(stride.size());
   for (int i = 0; i < stride.size(); i++) {
@@ -93,9 +97,8 @@ void ContiguousKernel(const Context& dev_ctx,
   DDim src_stride = meta.strides;
   DDim src_shape = meta.dims;
   if (is_only_transposed(
-          meta.dims, meta.strides, src_shape, src_stride, axis)) {
+          meta.dims, meta.strides, meta.offset, src_shape, src_stride, axis)) {
     meta.strides = meta.calc_strides(meta.dims, meta.layout);
-    meta.offset = 0;
     out->set_meta(meta);
     DenseTensor tmp_tensor = input;
     phi::DenseTensorMeta tmp_meta = meta;
