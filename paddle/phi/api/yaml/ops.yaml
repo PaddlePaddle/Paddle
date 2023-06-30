@@ -588,6 +588,16 @@
     func : cumprod
   backward : cumprod_grad
 
+- op : cumsum
+  args : (Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CumScalarAxisInferMeta
+  kernel :
+    func : cumsum
+    data_type : x
+  backward : cumsum_grad
+
 - op : depthwise_conv2d
   args : (Tensor input, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)

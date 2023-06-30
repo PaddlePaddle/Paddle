@@ -663,7 +663,7 @@
   scalar:
     axis:
       data_type : int
-      tensor_name: AxisTensor
+      support_tensor : true
 
 - op : data_norm
   backward : data_norm_grad
