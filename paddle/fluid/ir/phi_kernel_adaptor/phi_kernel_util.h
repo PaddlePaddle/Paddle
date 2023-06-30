@@ -188,10 +188,13 @@ void BuildPhiContext(
       ir::Value out_ptr = op->result(i);
       auto name = name_map.at(out_ptr);
       if (out_ptr.type()) {
-        ctx->EmplaceBackOutput(scope->Var(name)->Get<phi::DenseTensor>());
+        ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
+            &(scope->Var(name)->Get<phi::DenseTensor>()))));
       } else {
+        phi::DenseTensor* ptr = nullptr;
+        OutType out_ptr(ptr);
         std::cerr << "emplace null ptr " << i << std::endl;
-        ctx->EmplaceBackOutput(nullptr);
+        ctx->EmplaceBackOutput(out_ptr);
       }
 
       if (output_map != nullptr) {
