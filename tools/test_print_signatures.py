@@ -64,9 +64,6 @@ class Test_all_in_print_signatures(unittest.TestCase):
 
 class Test_is_primitive(unittest.TestCase):
     def test_single(self):
-        import numpy as np
-
-        np.testing.assert_allclose()
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
