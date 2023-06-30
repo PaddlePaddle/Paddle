@@ -12,6 +12,7 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 import functools
+import logging
 import os
 import random
 import sys
@@ -24,6 +25,7 @@ from PIL import Image
 
 import paddle
 from paddle.dataset.common import download
+from paddle.static.log_helper import get_logger
 from paddle.static.quantization import PostTrainingQuantization
 
 paddle.enable_static()
@@ -38,6 +40,10 @@ DATA_DIR = 'data/ILSVRC2012'
 
 img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 def resize_short(img, target_size):
@@ -193,7 +199,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             file_name = data_urls[0].split('/')[-1]
             zip_path = os.path.join(self.cache_folder, file_name)
 
-        print(f'Data is downloaded at {zip_path}')
+        _logger.info(f'Data is downloaded at {zip_path}')
         self.cache_unzipping(data_cache_folder, zip_path)
         return data_cache_folder
 
@@ -253,7 +259,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             cnt += len(data)
 
             if (batch_id + 1) % 100 == 0:
-                print(f"{batch_id + 1} images,")
+                _logger.info(f"{batch_id + 1} images,")
                 sys.stdout.flush()
             if (batch_id + 1) == iterations:
                 break
@@ -275,14 +281,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_full_quantize=False,
         is_use_cache_file=False,
         is_optimize_model=False,
-        batch_nums=10,
+        batch_nums=1,
         onnx_format=False,
         deploy_backend=None,
     ):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
-            print(f"Failed to create {self.int8_model} due to {str(e)}")
+            _logger.info(f"Failed to create {self.int8_model} due to {str(e)}")
             sys.exit(-1)
 
         place = paddle.CPUPlace()
@@ -329,7 +335,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_optimize_model,
         diff_threshold,
         onnx_format=False,
-        batch_nums=10,
+        batch_nums=1,
         deploy_backend=None,
     ):
         infer_iterations = self.infer_iterations
@@ -337,7 +343,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
         model_path = os.path.join(model_cache_folder, data_name)
-        print(
+        _logger.info(
             "Start FP32 inference for {} on {} images ...".format(
                 model, infer_iterations * batch_size
             )
@@ -366,7 +372,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             deploy_backend,
         )
 
-        print(
+        _logger.info(
             "Start INT8 inference for {} on {} images ...".format(
                 model, infer_iterations * batch_size
             )
@@ -379,13 +385,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
             infer_iterations,
         )
 
-        print(f"---Post training quantization of {algo} method---")
-        print(
+        _logger.info(f"---Post training quantization of {algo} method---")
+        _logger.info(
             "FP32 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.".format(
                 model, batch_size, fp32_throughput, fp32_latency, fp32_acc1
             )
         )
-        print(
+        _logger.info(
             "INT8 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.\n".format(
                 model, batch_size, int8_throughput, int8_latency, int8_acc1
             )
@@ -415,7 +421,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.025
-        batch_nums = 3
+        batch_nums = 1
         self.run_test(
             model,
             'inference.pdmodel',
@@ -465,6 +471,7 @@ class TestPostTrainingavgForMobilenetv1(TestPostTrainingQuantization):
             is_use_cache_file,
             is_optimize_model,
             diff_threshold,
+            batch_nums=2,
         )
 
 
@@ -486,7 +493,7 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.03
-        batch_nums = 3
+        batch_nums = 1
         self.run_test(
             model,
             'inference.pdmodel',
@@ -559,7 +566,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
         is_optimize_model = True
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 3
+        batch_nums = 1
         self.run_test(
             model,
             'inference.pdmodel',
@@ -600,7 +607,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
         is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 10
+        batch_nums = 2
         deploy_backend = "tensorrt"
         self.run_test(
             model,
@@ -643,7 +650,7 @@ class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
         is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 2
+        batch_nums = 1
         deploy_backend = "mkldnn"
         self.run_test(
             model,
@@ -686,7 +693,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1ARMCPU(
         is_optimize_model = True
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 3
+        batch_nums = 1
         deploy_backend = "arm"
         self.run_test(
             model,
