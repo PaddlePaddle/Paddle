@@ -47,7 +47,7 @@ void FakeInitializeOutputsForStructureKernel(
 // ======================================= //
 //        Used for NewIRInterpreter        //
 // ======================================= //
-bool BlockCanBeStaticBuilt(ir::Block* block);
+bool BlockCanBeStaticBuilt(::ir::Block* block);
 
 }  // namespace interpreter
 }  // namespace framework
