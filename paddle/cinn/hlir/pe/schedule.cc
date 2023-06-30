@@ -2817,11 +2817,12 @@ void CudaSplitSchedule(common::CINNValuePack *arg_pack,
     } else {
       stages[last_output]->Bind(0, "threadIdx.x");
     }
-
-    for (int i = 0; i < out_tensors.size() - 1; i++) {
-      stages[out_tensors[i]]->ComputeAt2(stages[last_output], compute_at_level);
-    }
   }
+
+  for (int i = 0; i < out_tensors.size() - 1; i++) {
+    stages[out_tensors[i]]->ComputeAt2(stages[last_output], compute_at_level);
+  }
+}
 
 }  // namespace pe
 }  // namespace hlir
