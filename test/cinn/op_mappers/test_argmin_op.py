@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-from op_mapper_test import OpMapperTest
-from cinn.frontend import *
+
 from cinn.common import *
+from cinn.frontend import *
+from op_mapper_test import OpMapperTest
+
+import paddle
 
 
 class TestArgminOp(OpMapperTest):
