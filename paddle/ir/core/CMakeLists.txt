@@ -3,4 +3,4 @@ set(NEWIR_BINARY_DIR "${PADDLE_BINARY_DIR}/paddle/ir")
 
 file(GLOB IR_SRCS "*.cc")
 
-cc_library(new_ir SRCS ${IR_SRCS})
+ir_library(ir_core SRCS ${IR_SRCS})

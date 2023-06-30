@@ -15,9 +15,9 @@
 #include "paddle/ir/pattern_rewrite/pattern_match.h"
 
 #include <algorithm>
-#include <cassert>
 #include <cstdint>
 
+#include "paddle/ir/core/enforce.h"
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
@@ -90,44 +90,55 @@ RewritePattern::~RewritePattern() = default;
 //===----------------------------------------------------------------------===//
 RewriterBase::~RewriterBase() = default;
 
-// TODO(wilber): value support replace method.
-// void RewriterBase::ReplaceOpWithIf(Operation* op,
-//                                    ValueRange new_values,
-//                                    bool* all_uses_replaced,
-//                                    std::function<bool(OpOperand&)> functor) {
-//   // assert(op->num_results() == new_values.size() && "incorrect number of
-//   values to replace operation"); NotifyRootReplaced(op, new_values); bool
-//   replace_all_uses = true; for (uint32_t i = 0; i < op->num_results(); ++i) {
-//     // op->result(0)
-//   }
-// }
-// void RewriterBase::ReplaceOpWithIf(Operation* op,
-//                        ValueRange new_values,
-//                        std::function<bool(OpOperand&)> functor) {
-//   ReplaceOpWithIf(op, new_values, nullptr, functor);
-// }
+void RewriterBase::ReplaceOpWithIf(
+    Operation* op,
+    const std::vector<Value>& new_values,
+    bool* all_uses_replaced,
+    const std::function<bool(OpOperand)>& functor) {
+  IR_ENFORCE(op->num_results() == new_values.size(),
+             "incorrect number of values to replace operation");
+  NotifyRootReplaced(op, new_values);
 
-// TODO(wilber): support erase.
-// void ReplaceOp(Operation* op, ValueRange new_values) {
-//   NotifyRootReplaced(op, new_values);
-//   assert(op->num_results() == new_values.size() && "incorrect # of
-//   replacement values"); op->ReplaceAllUsesWith(new_values);
-//   NotifyOperationRemoved(op);
-//   op->erase();
-// }
-void RewriterBase::EraseOp(Operation* op) {
-  //   assert(op->use_empty() && "expected 'op' to have no uses");
-  //   NotifyOperationRemoved(op);
-  //   op->erase();
+  // Replace each use of the results when the functor is true.
+  bool replace_all_uses = true;
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    auto src_res = op->result(i);
+    src_res.ReplaceUsesWithIf(new_values[i], functor);
+    replace_all_uses &= src_res.use_empty();
+  }
+  if (replace_all_uses) {
+    *all_uses_replaced = replace_all_uses;
+  }
 }
 
+void RewriterBase::ReplaceOpWithIf(
+    Operation* op,
+    const std::vector<Value>& new_values,
+    const std::function<bool(OpOperand)>& functor) {
+  ReplaceOpWithIf(op, new_values, nullptr, functor);
+}
+
+void RewriterBase::ReplaceOp(Operation* op,
+                             const std::vector<Value>& new_values) {
+  NotifyRootReplaced(op, new_values);
+  IR_ENFORCE(op->num_results() == new_values.size(),
+             "incorrect # of replacement values");
+  op->ReplaceAllUsesWith(new_values);
+  NotifyOperationRemoved(op);
+  op->GetParent()->erase(*op);
+}
+
+void RewriterBase::EraseOp(Operation* op) {
+  // TODO(wilber): Operation support use_empty.
+  // IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
+  NotifyOperationRemoved(op);
+  op->GetParent()->erase(*op);
+}
+
+/// Find uses of `from` and replace it with `to`
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // from.
-  // for (OpOperand& operand : llvm::make_early_inc_range(from.getUses()))
-  // {
-  //   Operation* op = operand.getOwner();
-  //   UpdateRootInPlace(op, [&]() { operand.set(to); });
-  // }
+  // TODO(wilber): Substitue a low level impl.
+  from.ReplaceAllUsesWith(to);
 }
 
 // TODO(wilber): iterator maybe should support modify inplace.
@@ -135,8 +146,8 @@ void RewriterBase::ReplaceUseIf(Value from,
                                 Value to,
                                 std::function<bool(OpOperand&)> functor) {
   // for (auto it = from.begin(); it != from.end(); ++it) {
-  //   // TODO: need a lvalue.
-  //   if (functor(it.get())) {
+  // //   // TODO: need a lvalue.
+  //   if (functor(*it)) {
   //     UpdateRootInplace(it.owner(), [&](){it.get().set(to)});
   //   }
   // }
@@ -144,8 +155,8 @@ void RewriterBase::ReplaceUseIf(Value from,
 
 void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
-  assert(op->num_results() == new_op->num_results() &&
-         "replacement op doesn't match results of original op");
+  IR_ENFORCE(op->num_results() == new_op->num_results(),
+             "replacement op doesn't match results of original op");
   // TODO(wilber): Op support results method.
   // if (op->num_results() == 1) return ReplaceOp(op,
   // new_op->result(0)); return ReplaceOp(op, new_op->GetResults());

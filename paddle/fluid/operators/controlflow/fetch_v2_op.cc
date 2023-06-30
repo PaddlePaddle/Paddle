@@ -140,6 +140,8 @@ class FetchV2Kernel {
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
             col));
+    VLOG(3) << "Fetch variable " << fetch_var_name << "'s " << col
+            << " column.";
 
     auto *fetch_list = out_var->GetMutable<framework::FetchList>();
 

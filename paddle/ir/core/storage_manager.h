@@ -40,7 +40,7 @@ struct ParametricStorageManager;
 /// provide method 'bool operator==(const ParamKey &) const', used to compare
 /// Storage instance and ParamKey instance.
 ///
-class StorageManager {
+class IR_API StorageManager {
  public:
   ///
   /// \brief This class is the base class of all storage classes,
