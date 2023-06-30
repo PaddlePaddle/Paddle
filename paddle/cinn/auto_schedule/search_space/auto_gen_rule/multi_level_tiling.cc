@@ -153,7 +153,7 @@ void MultiLevelTiling::ApplyTiling(ir::IRSchedule* ir_schedule,
       idx = &r_indices_;
     } else {
       idx = &s_indices_;
-    }  // TODO: support more iterator variable types
+    }  // TODO(6clc): support more iterator variable types
 
     int extent = ir_for->extent.as_int32();  // maybe int64?
 
