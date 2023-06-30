@@ -45,17 +45,6 @@ function gpu_on {
   cudnn_config=ON
 }
 
-function test_doc {
-    mkdir -p $build_dir
-    cd $build_dir
-    export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
-
-    prepare_ci
-    cmake_
-    build
-    make_doc
-}
-
 function cudnn_off {
   cudnn_config=OFF
 }
@@ -119,8 +108,6 @@ function prepare_ci {
 
   source $build_dir/ci-env/bin/activate
   python${py_version} -m pip install -U --no-cache-dir pip
-  python${py_version} -m pip install pre-commit
-  python${py_version} -m pip install clang-format==13.0.0
   python${py_version} -m pip install wheel
   python${py_version} -m pip install sphinx==3.3.1 sphinx_gallery==0.8.1 recommonmark==0.6.0 exhale scipy breathe==4.24.0 matplotlib sphinx_rtd_theme
   python${py_version} -m pip install paddlepaddle-gpu==0.0.0.post112 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
@@ -220,14 +207,11 @@ function CI {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     prepare_ci
-#    codestyle_check
-
     cmake_
     build
     run_demo
     prepare_model
     run_test
-    # make_doc
 }
 
 function CINNRT {
@@ -236,7 +220,6 @@ function CINNRT {
     export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
 
     prepare_ci
-    # codestyle_check
 
     proxy_off
     mkdir -p $build_dir
