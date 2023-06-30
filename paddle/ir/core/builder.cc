@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/ir/core/builder.h"
+#include "paddle/ir/core/builtin_attribute.h"
+#include "paddle/ir/core/builtin_type.h"
 #include "paddle/ir/core/region.h"
 #include "paddle/ir/core/value.h"
 
@@ -37,6 +39,45 @@ Operation *Builder::Insert(Operation *op) {
     LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
   }
   return op;
+}
+UInt8Type Builder::uint8_type() { return UInt8Type::get(context_); }
+Int8Type Builder::int8_type() { return Int8Type::get(context_); }
+VectorType Builder::vec_type(const std::vector<Type> &value) {
+  return VectorType::get(context_, value);
+}
+BFloat16Type Builder::bfloat16_type() { return BFloat16Type::get(context_); }
+Float32Type Builder::float32_type() { return Float32Type::get(context_); }
+
+Float64Type Builder::float64_type() { return Float64Type::get(context_); }
+Int16Type Builder::int16_type() { return Int16Type::get(context_); }
+BoolType Builder::bool_type() { return BoolType::get(context_); }
+Complex64Type Builder::complex64_type() { return Complex64Type::get(context_); }
+Complex128Type Builder::complex128_type() {
+  return Complex128Type::get(context_);
+}
+StrAttribute Builder::str_attr(const std::string &value) {
+  return StrAttribute::get(context_, value);
+}
+BoolAttribute Builder::bool_attr(bool value) {
+  return BoolAttribute::get(context_, value);
+}
+FloatAttribute Builder::float_attr(float value) {
+  return FloatAttribute::get(context_, value);
+}
+DoubleAttribute Builder::double_attr(double value) {
+  return DoubleAttribute::get(context_, value);
+}
+Int32Attribute Builder::int32_attr(int32_t value) {
+  return Int32Attribute::get(context_, value);
+}
+Int64Attribute Builder::int64_attr(int64_t value) {
+  return Int64Attribute::get(context_, value);
+}
+ArrayAttribute Builder::array_attr(const std::vector<Attribute> &value) {
+  return ArrayAttribute::get(context_, value);
+}
+PointerAttribute Builder::pointer_attr(void *value) {
+  return PointerAttribute::get(context_, value);
 }
 
 }  // namespace ir
