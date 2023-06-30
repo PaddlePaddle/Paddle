@@ -293,7 +293,7 @@ TEST_F(TestScheduleDesc, StepKind_GetBlock) {
   CheckTracingOutputs({block_b}, trace);
   CheckTracingOutputs({block_b}, ir_sch.GetTraceDesc());
 }
-// TODO: fix in future, as fix split var name, this case some problem.
+// TODO(6clc): fix in future, as fix split var name, this case some problem.
 /*
 TEST_F(TestScheduleDesc, StepKind_Split) {
   lowered_funcs                         = LowerCompute({32, 32, 32}, target);

@@ -1414,8 +1414,8 @@ std::vector<Tensor> Pool1d(const Tensor &tensor,
 std::vector<Tensor> GlobalPool2d(const Tensor &tensor,
                                  const std::string &pool_type,
                                  const std::string &output_name) {
-  // TODO 1. check warp shuffle is supported!
-  // TODO 2. using `cub` with NVRTC
+  // TODO(6clc): 1. check warp shuffle is supported!
+  // TODO(6clc): 2. using `cub` with NVRTC
   Expr extend = tensor->shape[2] * tensor->shape[3];
   if (pool_type == "max") {
     auto temp = Compute(

@@ -2190,7 +2190,7 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
   };
 
   {
-    // TODO : fix in future.
+    // TODO(6clc): fix in future.
     // std::vector<Expr> a_args, b_args;
     // if (ap)
     //   a_args = ap->operands();

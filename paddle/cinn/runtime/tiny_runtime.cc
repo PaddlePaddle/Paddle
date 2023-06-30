@@ -58,10 +58,10 @@ void *load_program(const char *paramfile) {
   fclose(f);
 
   if (std::string(buf, buf + 4) != "CINN") {
-    // TODO LOG fatal
+    // TODO(6clc): LOG fatal
     return nullptr;
   }
-  // TODO check param file version
+  // TODO(6clc): check param file version
   ctx->major_v = *(int *)(buf + 4);
   ctx->minor_v = *(int *)(buf + 8);
 
