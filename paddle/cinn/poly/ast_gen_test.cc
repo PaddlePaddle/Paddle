@@ -32,7 +32,7 @@
 namespace cinn {
 namespace poly {
 
-using cinn::ir;
+using namespace cinn::ir;  // NOLINT
 using cinn::lang;
 
 TEST(TransIdentityExtentToContextId, basic) {
@@ -72,7 +72,7 @@ TEST(AstGen_Build, not_delete_length1_loop) {
       }
       LOG(INFO) << "index_length1 hint = " << index_length1[0]
                 << index_length1[1] << index_length1[2] << index_length1[3];
-      Placeholder<float> A("A", len1_shape);
+      lang::Placeholder<float> A("A", len1_shape);
       Tensor B = lang::Compute(
           len1_shape,
           [&](const std::vector<Expr>& indice) {
