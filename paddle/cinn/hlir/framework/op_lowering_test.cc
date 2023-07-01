@@ -29,7 +29,8 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using frontend;
+using frontend::NetBuilder;
+using frontend::RunDecomposer;
 
 void CodeGen(ir::LoweredFunc& func) {
 #ifdef CINN_WITH_CUDA
