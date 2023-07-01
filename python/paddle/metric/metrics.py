@@ -82,31 +82,33 @@ class Metric(metaclass=abc.ABCMeta):
         prediction of each sample like follows, while the correct prediction
         matrix shape is [N, 5].
 
-          .. code-block:: text
+        .. code-block:: python
+            :name: code-compute-example
 
-              def compute(pred, label):
-                  # sort prediction and slice the top-5 scores
-                  pred = paddle.argsort(pred, descending=True)[:, :5]
-                  # calculate whether the predictions are correct
-                  correct = pred == label
-                  return paddle.cast(correct, dtype='float32')
+            def compute(pred, label):
+                # sort prediction and slice the top-5 scores
+                pred = paddle.argsort(pred, descending=True)[:, :5]
+                # calculate whether the predictions are correct
+                correct = pred == label
+                return paddle.cast(correct, dtype='float32')
 
         With the :code:`compute`, we split some calculations to OPs (which
         may run on GPU devices, will be faster), and only fetch 1 tensor with
         shape as [N, 5] instead of 2 tensors with shapes as [N, 10] and [N, 1].
         :code:`update` can be define as follows:
 
-          .. code-block:: text
+        .. code-block:: python
+            :name: code-update-example
 
-              def update(self, correct):
-                  accs = []
-                  for i, k in enumerate(self.topk):
-                      num_corrects = correct[:, :k].sum()
-                      num_samples = len(correct)
-                      accs.append(float(num_corrects) / num_samples)
-                      self.total[i] += num_corrects
-                      self.count[i] += num_samples
-                  return accs
+            def update(self, correct):
+                accs = []
+                for i, k in enumerate(self.topk):
+                    num_corrects = correct[:, :k].sum()
+                    num_samples = len(correct)
+                    accs.append(float(num_corrects) / num_samples)
+                    self.total[i] += num_corrects
+                    self.count[i] += num_samples
+                return accs
     """
 
     def __init__(self):
@@ -195,9 +197,9 @@ class Accuracy(Metric):
         name (str, optional): String name of the metric instance. Default
             is `acc`.
 
-    Example by standalone:
-
+    Examples:
         .. code-block:: python
+          :name: code-standalone-example
 
           import numpy as np
           import paddle
@@ -215,10 +217,8 @@ class Accuracy(Metric):
           res = m.accumulate()
           print(res) # 0.75
 
-
-    Example with Model API:
-
         .. code-block:: python
+          :name: code-model-api-example
 
           import paddle
           from paddle.static import InputSpec
@@ -349,9 +349,9 @@ class Precision(Metric):
         name (str, optional): String name of the metric instance.
             Default is `precision`.
 
-    Example by standalone:
-
+    Examples:
         .. code-block:: python
+          :name: code-standalone-example
 
           import numpy as np
           import paddle
@@ -364,10 +364,8 @@ class Precision(Metric):
           res = m.accumulate()
           print(res) # 1.0
 
-
-    Example with Model API:
-
         .. code-block:: python
+          :name: code-model-api-example
 
           import numpy as np
 
@@ -482,9 +480,9 @@ class Recall(Metric):
         name (str, optional): String name of the metric instance.
             Default is `recall`.
 
-    Example by standalone:
-
+    Examples:
         .. code-block:: python
+          :name: code-standalone-example
 
           import numpy as np
           import paddle
@@ -497,10 +495,8 @@ class Recall(Metric):
           res = m.accumulate()
           print(res) # 2.0 / 3.0
 
-
-    Example with Model API:
-
         .. code-block:: python
+          :name: code-model-api-example
 
           import numpy as np
 
@@ -624,8 +620,9 @@ class Auc(Metric):
 
     "NOTE: only implement the ROC curve type via Python now."
 
-    Example by standalone:
+    Examples:
         .. code-block:: python
+          :name: code-standalone-example
 
           import numpy as np
           import paddle
@@ -642,10 +639,8 @@ class Auc(Metric):
           m.update(preds=preds, labels=labels)
           res = m.accumulate()
 
-
-    Example with Model API:
-
         .. code-block:: python
+          :name: code-model-api-example
 
           import numpy as np
           import paddle
