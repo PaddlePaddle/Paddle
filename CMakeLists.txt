@@ -63,6 +63,17 @@ option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
 option(WITH_CUSPARSELT "Compile PaddlePaddle with CUSPARSELT" OFF)
 option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" OFF)
+option(CINN_ONLY "Compile CINN only in Paddle" OFF)
+option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
+
+find_package(Git REQUIRED)
+
+# config GIT_URL with github mirrors to speed up dependent repos clone
+option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
+if(NOT GIT_URL)
+  set(GIT_URL "https://github.com")
+endif()
+
 # Note(zhouwei): It use option above, so put here
 include(init)
 include(generic) # simplify cmake module
@@ -229,14 +240,6 @@ else()
   )
 endif()
 
-find_package(Git REQUIRED)
-
-# config GIT_URL with github mirrors to speed up dependent repos clone
-option(GIT_URL "Git URL to clone dependent repos" ${GIT_URL})
-if(NOT GIT_URL)
-  set(GIT_URL "https://github.com")
-endif()
-
 find_package(Threads REQUIRED)
 
 include(simd)
@@ -307,7 +310,7 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_IR "Compile PaddlePaddle with NEWIR" ON)
+option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -423,6 +426,14 @@ if(NOT WITH_XPU AND WITH_XPU_XFT)
   set(WITH_XPU
       ON
       CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_XFT" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPTI)
+  message(
+    WARNING "Disable XPTI when compiling without XPU. Force WITH_XPTI=OFF.")
+  set(WITH_XPTI
+      OFF
+      CACHE STRING "Disable XPTI when compiling without XPU" FORCE)
 endif()
 
 if(NOT WITH_XPU AND WITH_XPU_BKCL)
@@ -568,6 +579,35 @@ include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
 
 include(flags) # set paddle compile flags
+
+#------------- cinn cmake config start --------------
+
+if(WITH_CINN)
+  message(STATUS "Compile Paddle with CINN.")
+  # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
+  #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
+  set(WITH_MKL_CBLAS ${WITH_MKL})
+  if(WITH_GPU)
+    set(WITH_CUDA ${WITH_GPU})
+    add_definitions(-DCINN_WITH_CUDA)
+    set(WITH_CUDNN ${CINN_WITH_CUDNN})
+    if(WITH_CUDNN)
+      add_definitions(-DCINN_WITH_CUDNN)
+    endif()
+  endif()
+  include(cmake/cinn.cmake)
+  add_definitions(-DPADDLE_WITH_CINN)
+
+  if(CINN_ONLY)
+    if(WITH_PYTHON)
+      add_subdirectory(python)
+    endif()
+    add_subdirectory(test)
+    return()
+  endif()
+endif()
+
+#------------- cinn cmake config end --------------
 
 if(WITH_PROFILER)
   find_package(Gperftools REQUIRED)

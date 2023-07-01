@@ -165,5 +165,8 @@ class TestDistPPTraning(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    if check_nccl_version_for_bf16():
+    if (
+        check_nccl_version_for_bf16()
+        and paddle.device.cuda.get_device_properties().major >= 8
+    ):
         unittest.main()

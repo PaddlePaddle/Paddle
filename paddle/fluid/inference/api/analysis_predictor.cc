@@ -93,6 +93,10 @@
 #include "paddle/fluid/platform/device/ipu/paddle_ipu_handler.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
+
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -436,6 +440,7 @@ void AnalysisPredictor::InitPlace() {
 #endif  // LITE_SUBGRAPH_WITH_XPU
     } else {
 #ifdef PADDLE_WITH_XPU
+      phi::backends::xpu::SetXPUDeviceId(config_.xpu_device_id());
       place_ = paddle::platform::XPUPlace(config_.xpu_device_id());
 #else
       PADDLE_THROW(platform::errors::Unavailable(
@@ -509,7 +514,8 @@ void AnalysisPredictor::InitDeviceContexts() {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
           auto &instance = memory::allocation::AllocatorFacade::Instance();
-          auto *xpu_context = new InferXPUContext(place_);
+          auto *xpu_context =
+              new InferXPUContext(place_, config_.xpu_config().context_gm_size);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
@@ -1504,6 +1510,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuL3Size(config_.xpu_config_.l3_size);
   argument_->SetXpuL3Ptr(config_.xpu_config_.l3_ptr);
   argument_->SetXpuL3AutotuneSize(config_.xpu_config_.l3_autotune_size);
+  argument_->SetXpuContextGmSize(config_.xpu_config_.context_gm_size);
   argument_->SetXpuContext(config_.xpu_config_.context);
   argument_->SetXpuStream(config_.xpu_config_.stream);
   argument_->SetXpuConvAutotuneLevel(config_.xpu_config_.conv_autotune_level);
@@ -2616,6 +2623,14 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 #ifdef PADDLE_WITH_TENSORRT
   x->executor_->ResetTrtOps(++AnalysisPredictor::clone_num_);
 #endif
+#ifdef PADDLE_WITH_LITE
+#ifdef LITE_SUBGRAPH_WITH_XPU
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_,
+                                config_.xpu_config_.stream);
+#else
+  x->executor_->CloneLiteEnigne(++AnalysisPredictor::clone_num_, nullptr);
+#endif
+#endif
   return std::unique_ptr<PaddlePredictor>(x);
 }
 
@@ -2739,6 +2754,7 @@ USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
+USE_TRT_CONVERTER(einsum)
 #endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
@@ -2857,6 +2873,7 @@ USE_TRT_CONVERTER(fuse_eleadd_transpose)
 USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
+USE_TRT_CONVERTER(lookup_table_v2)
 USE_TRT_CONVERTER(expand_v2)
 USE_TRT_CONVERTER(expand_as_v2)
 USE_TRT_CONVERTER(take_along_axis)
