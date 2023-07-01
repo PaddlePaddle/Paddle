@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numpy as np
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestCbrtOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -32,8 +34,9 @@ class TestCbrtOp(OpTest):
 
     def prepare_inputs(self):
         self.inputs = {
-            "x":
-            self.random(self.case["shape"], self.case["dtype"], -100.0, 100.0),
+            "x": self.random(
+                self.case["shape"], self.case["dtype"], -100.0, 100.0
+            ),
         }
 
     def build_paddle_program(self, target):
@@ -45,18 +48,20 @@ class TestCbrtOp(OpTest):
         builder = NetBuilder("cbrt")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.cbrt(x)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
     def test_check_results(self):
         self.check_outputs_and_grads(
-            max_relative_error=1e-3, max_absolute_error=1e-3)
+            max_relative_error=1e-3, max_absolute_error=1e-3
+        )
 
 
 class TestCbrtOpShape(TestCaseHelper):
@@ -102,9 +107,7 @@ class TestCbrtOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = []
 
@@ -125,15 +128,9 @@ class TestCbrtOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float16"
-            },
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "float16"},
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = []
 

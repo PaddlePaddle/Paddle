@@ -107,6 +107,7 @@ Operation *Operation::Create(const std::vector<ir::OpResult> &inputs,
 // Call destructors for Region , OpResults, Operation, and OpOperands in
 // sequence, and finally free memory.
 void Operation::Destroy() {
+  VLOG(6) << "Destroy Operation [" << name() << "] ...";
   // 1. Deconstruct Regions.
   if (num_regions_ > 0) {
     for (size_t idx = 0; idx < num_regions_; idx++) {
@@ -117,7 +118,8 @@ void Operation::Destroy() {
   // 2. Deconstruct Result.
   for (size_t idx = 0; idx < num_results_; ++idx) {
     detail::OpResultImpl *impl = result(idx).impl();
-    IR_ENFORCE(impl->use_empty(), "operation destroyed but still has uses.");
+    IR_ENFORCE(impl->use_empty(),
+               name() + " operation destroyed but still has uses.");
     if (detail::OpOutlineResultImpl::classof(*impl)) {
       static_cast<detail::OpOutlineResultImpl *>(impl)->~OpOutlineResultImpl();
     } else {
@@ -143,8 +145,8 @@ void Operation::Destroy() {
           : sizeof(detail::OpInlineResultImpl) * num_results_;
   void *aligned_ptr = reinterpret_cast<char *>(this) - result_mem_size;
 
-  VLOG(4) << "Destroy an Operation: {ptr = " << aligned_ptr
-          << ", size = " << result_mem_size << "}";
+  VLOG(6) << "Destroy Operation [" << name() << "]: {ptr = " << aligned_ptr
+          << ", size = " << result_mem_size << "} done.";
   aligned_free(aligned_ptr);
 }
 

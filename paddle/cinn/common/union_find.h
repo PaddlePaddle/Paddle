@@ -13,7 +13,8 @@
 // limitations under the License.
 
 /**
- * \file This file implements a general UnionFind algorithm to help cluster something.
+ * \file This file implements a general UnionFind algorithm to help cluster
+ * something.
  */
 #pragma once
 #include <cstring>
@@ -33,7 +34,7 @@ struct UnionFindNode : public Object {
   std::string cluster_info;
 
   std::tuple<UnionFindNode*, int /*height*/> GetRoot() {
-    auto* p   = this;
+    auto* p = this;
     int level = 0;
     while (p->parent) {
       p = p->parent;
@@ -44,11 +45,11 @@ struct UnionFindNode : public Object {
 
   void Union(UnionFindNode* other) {
     auto _p0_l0_ = GetRoot();
-    auto& p0     = std::get<0>(_p0_l0_);
-    auto& l0     = std::get<1>(_p0_l0_);
+    auto& p0 = std::get<0>(_p0_l0_);
+    auto& l0 = std::get<1>(_p0_l0_);
     auto _p1_l1_ = other->GetRoot();
-    auto& p1     = std::get<0>(_p1_l1_);
-    auto& l1     = std::get<1>(_p1_l1_);
+    auto& p1 = std::get<0>(_p1_l1_);
+    auto& l1 = std::get<1>(_p1_l1_);
     if (p0 == p1) return;
 
     if (l0 < l1) {
@@ -81,8 +82,8 @@ struct UnionFind {
 
     for (auto& n : nodes) {
       auto _root_l_ = n->GetRoot();  // NOLINT
-      auto& root    = std::get<0>(_root_l_);
-      auto& l       = std::get<1>(_root_l_);
+      auto& root = std::get<0>(_root_l_);
+      auto& l = std::get<1>(_root_l_);
       clusters[root].push_back(n.get());
     }
 

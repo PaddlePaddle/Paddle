@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 import numpy
-import sys, os
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
 
-#For paddlepaddle version >=2.0rc, we need to set paddle.enable_static()
+# For paddlepaddle version >=2.0rc, we need to set paddle.enable_static()
 paddle.enable_static()
 
 a = static.data(name="A", shape=[512, 512], dtype='float32')
@@ -34,6 +37,7 @@ loss = exe = static.Executor(cpu)
 
 exe.run(static.default_startup_program())
 
-fluid.io.save_inference_model("./elementwise_add_model", [a.name, b.name],
-                              [a1], exe)
+fluid.io.save_inference_model(
+    "./elementwise_add_model", [a.name, b.name], [a1], exe
+)
 print('input and output names are: ', a.name, b.name, a1.name)

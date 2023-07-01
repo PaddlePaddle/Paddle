@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle
 import paddle.static as static
-import numpy as np
 
 
 def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
@@ -51,13 +52,15 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
                 cin_index = 3
             filter_size_new = [
                 filter_size[1] * input_shape[cin_index],
-                filter_size[0] // groups, filter_size[2], filter_size[3]
+                filter_size[0] // groups,
+                filter_size[2],
+                filter_size[3],
             ]
         else:
             filter_size_new = filter_size
         param = paddle.nn.initializer.NumpyArrayInitializer(
-            np.array(
-                inputs_data[1]).reshape(filter_size_new).astype("float32"))
+            np.array(inputs_data[1]).reshape(filter_size_new).astype("float32")
+        )
         # filter: (c_out, c_in // group, kernel_h, kernel_w)
         filter_hw = list(filter_size_new[2:4])
         if data_format == "NHWC":
@@ -78,7 +81,8 @@ def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):
             dilation=dilation,
             groups=groups,
             param_attr=param,
-            data_format=data_format)
+            data_format=data_format,
+        )
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
 

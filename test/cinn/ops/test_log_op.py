@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
 class TestLogOp(OpTest):
@@ -27,7 +28,8 @@ class TestLogOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
         self.base = self.case["base"]
 
     def paddle_op(self, x):
@@ -58,7 +60,8 @@ class TestLogOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("add")
         x = builder.create_input(
-            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x")
+            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x"
+        )
         out = self.cinn_op(builder, x)
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [x], [self.x_np], [out])

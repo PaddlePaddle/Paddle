@@ -33,9 +33,13 @@ namespace pe {
  *
  * @return The result Tensor.
  */
-#define HLIR_DCL_UNARY_PE(name__)                                                                            \
-  std::vector<ir::Tensor> name__(const ir::Tensor& A, const std::string& output_name = "T_" #name__ "_out"); \
-  std::vector<ir::Tensor> name__##MKL(const ir::Tensor& A, const std::string& output_name = "T_" #name__ "_mkl_out");
+#define HLIR_DCL_UNARY_PE(name__)                            \
+  std::vector<ir::Tensor> name__(                            \
+      const ir::Tensor& A,                                   \
+      const std::string& output_name = "T_" #name__ "_out"); \
+  std::vector<ir::Tensor> name__##MKL(                       \
+      const ir::Tensor& A,                                   \
+      const std::string& output_name = "T_" #name__ "_mkl_out");
 
 HLIR_DCL_UNARY_PE(Exp);
 HLIR_DCL_UNARY_PE(Erf);
@@ -81,20 +85,26 @@ HLIR_DCL_UNARY_PE(Popc);
 
 template <typename T>
 ir::Tensor AssignValue(const std::vector<T>& values,
-                       const common::Type& type       = common::type_of<T>(),
+                       const common::Type& type = common::type_of<T>(),
                        const std::string& output_name = "T_assign_value_out") {
-  CHECK(!values.empty()) << "The input of pe::AssignValue should not empty! Please check.";
+  CHECK(!values.empty())
+      << "The input of pe::AssignValue should not empty! Please check.";
 
   auto out = lang::Compute(
       {ir::Expr(static_cast<int>(values.size()))},
       [=](const std::vector<ir::Expr>& indice) {
-        auto init_value =
-            (type == common::type_of<T>()) ? ir::Expr(values[0]) : common::cast(ir::Expr(values[0]), type);
-        ir::Expr previous = ir::Select::Make(ir::EQ::Make(indice[0], ir::Expr(0)), init_value, lang::Zero(type));
+        auto init_value = (type == common::type_of<T>())
+                              ? ir::Expr(values[0])
+                              : common::cast(ir::Expr(values[0]), type);
+        ir::Expr previous = ir::Select::Make(
+            ir::EQ::Make(indice[0], ir::Expr(0)), init_value, lang::Zero(type));
 
         for (int i = 1; i < values.size(); ++i) {
-          auto val = (type == common::type_of<T>()) ? ir::Expr(values[i]) : common::cast(ir::Expr(values[i]), type);
-          previous = ir::Select::Make(ir::EQ::Make(indice[0], ir::Expr(i)), val, previous);
+          auto val = (type == common::type_of<T>())
+                         ? ir::Expr(values[i])
+                         : common::cast(ir::Expr(values[i]), type);
+          previous = ir::Select::Make(
+              ir::EQ::Make(indice[0], ir::Expr(i)), val, previous);
         }
         return previous;
       },
@@ -103,26 +113,32 @@ ir::Tensor AssignValue(const std::vector<T>& values,
   return out;
 }
 
-ir::Tensor Squeeze(const ir::Tensor& A,
-                   const std::vector<int>& axes   = {},
-                   const std::string& output_name = UniqName("T_Elementwise_Squeeze_out"));
+ir::Tensor Squeeze(
+    const ir::Tensor& A,
+    const std::vector<int>& axes = {},
+    const std::string& output_name = UniqName("T_Elementwise_Squeeze_out"));
 
-ir::Tensor ExpandDims(const ir::Tensor& A,
-                      const std::vector<int>& axes,
-                      const std::vector<int>& out_shape,
-                      const std::string& output_name = UniqName("T_Elementwise_ExpandDims_out"));
+ir::Tensor ExpandDims(
+    const ir::Tensor& A,
+    const std::vector<int>& axes,
+    const std::vector<int>& out_shape,
+    const std::string& output_name = UniqName("T_Elementwise_ExpandDims_out"));
 
-ir::Tensor Reshape(const ir::Tensor& A,
-                   const std::vector<int>& new_shape,
-                   const std::string& name = UniqName("T_Elementwise_Reshape_out"));
+ir::Tensor Reshape(
+    const ir::Tensor& A,
+    const std::vector<int>& new_shape,
+    const std::string& name = UniqName("T_Elementwise_Reshape_out"));
 
-ir::Tensor Cast(const ir::Tensor& A, const Type& dtype, const std::string& name = UniqName("T_Elementwise_Cast_out"));
+ir::Tensor Cast(const ir::Tensor& A,
+                const Type& dtype,
+                const std::string& name = UniqName("T_Elementwise_Cast_out"));
 
-ir::Tensor Arange(const float start,
-                  const float stop,
-                  const float step,
-                  const Type& dtype,
-                  const std::string& name = UniqName("T_Elementwise_Arange_out"));
+ir::Tensor Arange(
+    const float start,
+    const float stop,
+    const float step,
+    const Type& dtype,
+    const std::string& name = UniqName("T_Elementwise_Arange_out"));
 
 }  // namespace pe
 }  // namespace hlir

@@ -84,7 +84,8 @@ class ProgramPassRegistry : public Registry<ProgramPass> {
     return pass;
   }
 
-  inline ProgramPass* __REGISTER_OR_GET__(const std::string& name, ProgramPass* pass) {
+  inline ProgramPass* __REGISTER_OR_GET__(const std::string& name,
+                                          ProgramPass* pass) {
     if (!fmap_.count(name)) {
       return __REGISTER__(name, pass);
     } else {
@@ -108,9 +109,10 @@ class ProgramPassRegistry : public Registry<ProgramPass> {
  *  CINN_REGISTER_PROGRAM_PASS(decompose, DecomposerPass());
  * \endcode
  */
-#define CINN_REGISTER_PROGRAM_PASS(PassType, PassClass)         \
-  static ::cinn::frontend::ProgramPass* __make_##PassType##__ = \
-      ::cinn::frontend::ProgramPassRegistry::Global()->__REGISTER_OR_GET__(#PassType, new PassClass{#PassType})
+#define CINN_REGISTER_PROGRAM_PASS(PassType, PassClass)                     \
+  static ::cinn::frontend::ProgramPass* __make_##PassType##__ =             \
+      ::cinn::frontend::ProgramPassRegistry::Global()->__REGISTER_OR_GET__( \
+          #PassType, new PassClass{#PassType})
 
 }  // namespace frontend
 }  // namespace cinn

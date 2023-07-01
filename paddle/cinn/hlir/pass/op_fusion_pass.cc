@@ -28,10 +28,11 @@ using framework::shape_t;
 using common::GraphEdge;
 using common::GraphNode;
 
-using GroupPtr  = std::shared_ptr<Graph::Group>;
+using GroupPtr = std::shared_ptr<Graph::Group>;
 using GroupList = std::vector<GroupPtr>;
 
-using ConditionFunction = std::function<bool(const FusionHelperBase*, const Node*, const GroupPtr&)>;
+using ConditionFunction =
+    std::function<bool(const FusionHelperBase*, const Node*, const GroupPtr&)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -56,7 +57,7 @@ class OpFusionPassHelper : public FusionHelperBase {
         // input node
         for (auto& edge : node->inlinks()) {
           auto input_graph_node = edge->source();
-          auto input_node_data  = input_graph_node->safe_as<NodeData>();
+          auto input_node_data = input_graph_node->safe_as<NodeData>();
           CHECK(input_node_data);
           // input data has no source node
           if (input_node_data->source_node.get()) {
@@ -68,7 +69,7 @@ class OpFusionPassHelper : public FusionHelperBase {
         group->op_pattern_kind = GetOpKind(node);
         // use current node as master node for schedule
         group->master_nodes.insert(node);
-        group->group_id      = node->id();
+        group->group_id = node->id();
         fusion_groups_[node] = group;
       }
     }
@@ -132,7 +133,7 @@ class OpFusionPassHelper : public FusionHelperBase {
       auto consumer_fusion = fusion_groups_[consumer];  //
       // check all linkin node
       for (auto& edge : consumer->inlinks()) {
-        auto graph_node    = edge->source();
+        auto graph_node = edge->source();
         auto producer_data = graph_node->safe_as<NodeData>();
         CHECK(producer_data);
 
@@ -152,30 +153,36 @@ class OpFusionPassHelper : public FusionHelperBase {
         if (producer_kind == framework::kNonFusible) {
           continue;
         }
-        VLOG(3) << "Producer Op: " << producer->id() << ", Op Pattern: " << producer_kind
-                << " -> Consumer Op: " << consumer->id() << ", Op Pattern: " << consumer_kind;
+        VLOG(3) << "Producer Op: " << producer->id()
+                << ", Op Pattern: " << producer_kind
+                << " -> Consumer Op: " << consumer->id()
+                << ", Op Pattern: " << consumer_kind;
         bool can_fuse = true;
         // checkout producer node outputs are all in fusion op
         for (auto& link : producer_data->outlinks()) {
           auto consumer_node = link->sink()->safe_as<Node>();
           CHECK(consumer_node);
           // if fusion group can't find node, can't merge
-          if (consumer_fusion->nodes_set.find(consumer_node) == consumer_fusion->nodes_set.end()) {
+          if (consumer_fusion->nodes_set.find(consumer_node) ==
+              consumer_fusion->nodes_set.end()) {
             can_fuse = false;
             break;
           }
         }
 
         if (!can_fuse || !CanFuse(producer, consumer)) continue;
-        VLOG(3) << "Fuse Op " << producer->id() << " into Op " << consumer->id();
+        VLOG(3) << "Fuse Op " << producer->id() << " into Op "
+                << consumer->id();
 
         // fuse producer to fusion group
-        consumer_fusion->group_id = producer->id() + "_" + consumer_fusion->group_id;
+        consumer_fusion->group_id =
+            producer->id() + "_" + consumer_fusion->group_id;
         consumer_fusion->nodes.push_back(producer);
         consumer_fusion->nodes_set.insert(producer);
         consumer_fusion->input_nodes.erase(producer);
         consumer_fusion->op_pattern_kind =
-            static_cast<int>(consumer_fusion->op_pattern_kind) > static_cast<int>(producer_kind)
+            static_cast<int>(consumer_fusion->op_pattern_kind) >
+                    static_cast<int>(producer_kind)
                 ? consumer_fusion->op_pattern_kind
                 : producer_kind;
 
@@ -186,7 +193,8 @@ class OpFusionPassHelper : public FusionHelperBase {
         if (this->output_nodes_set_.count(producer)) {
           VLOG(3) << "Insert Global Output Node : " << producer->id();
           consumer_fusion->output_nodes.insert(producer);
-        } else if (producer_data->outlinks().size() > 1 && producer->inlinks().size() > 0 &&
+        } else if (producer_data->outlinks().size() > 1 &&
+                   producer->inlinks().size() > 0 &&
                    is_same_size(this, producer, consumer_fusion)) {
           // producer is not a const value node.
           consumer_fusion->internal_nodes.insert(producer);
@@ -214,23 +222,32 @@ class OpFusionPassHelper : public FusionHelperBase {
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {framework::kElementWise, framework::kBroadcast, framework::kReduction, framework::kInjective};
+      relation.op_kind = {framework::kElementWise,
+                          framework::kBroadcast,
+                          framework::kReduction,
+                          framework::kInjective};
       // producer -> fusion
       relation.fusion_op_kind = {
-          // horizontal or vertical relation(Elementwise + *Elementwise*). As has same output shape, can always fuse.
+          // horizontal or vertical relation(Elementwise + *Elementwise*). As
+          // has same output shape, can always fuse.
           {framework::kElementWise, always_fuse},
-          // must be horizontal, as Elementwise + Broadcast is left to fusion merge pass.
+          // must be horizontal, as Elementwise + Broadcast is left to fusion
+          // merge pass.
           {framework::kBroadcast,
-           [](const FusionHelperBase* helper, const Node* producer, const GroupPtr& consumer) -> bool {
+           [](const FusionHelperBase* helper,
+              const Node* producer,
+              const GroupPtr& consumer) -> bool {
              if (is_same_size(helper, producer, consumer)) {
                return true;
              }
              return !helper->output_nodes_set_.count(producer);
            }},
-          // horizontal or vertical relation, check with same output shape with horizontal relation or with last
+          // horizontal or vertical relation, check with same output shape with
+          // horizontal relation or with last
           // successive dimension less than 1024 for gpu.
           {framework::kReduction, horizontal_or_vertical_reduce_relation},
-          // can be horizontal or can compute inline, check with same output shape or can compute inline.
+          // can be horizontal or can compute inline, check with same output
+          // shape or can compute inline.
           {framework::kInjective, horizontal_or_can_inline},
           // must be horizontal, check with same output shape.
           {framework::kOutFusible, is_same_shape}};
@@ -240,16 +257,20 @@ class OpFusionPassHelper : public FusionHelperBase {
     {
       FusionRelation relation;
       // producer -> consumer
-      relation.op_kind = {framework::kElementWise, framework::kReduction, framework::kInjective};
+      relation.op_kind = {framework::kElementWise,
+                          framework::kReduction,
+                          framework::kInjective};
       // producer -> fusion
       relation.fusion_op_kind = {
-          // horizontal or vertical relation(Broadcast + *Elementwise*), check with same output shape.
+          // horizontal or vertical relation(Broadcast + *Elementwise*), check
+          // with same output shape.
           {framework::kElementWise, is_same_size},
           // must be horizontal, as Broadcast + Broadcast is not allowed.
           {framework::kBroadcast, is_same_size},
           // horizontal or vertical relation(Broadcast + Reduce).
           {framework::kReduction, horizontal_or_vertical_reduce_relation},
-          // can be horizontal or can compute inline, check with same output shape or just one consumer.
+          // can be horizontal or can compute inline, check with same output
+          // shape or just one consumer.
           {framework::kInjective, horizontal_or_can_inline},
           // must be horizontal, check with same output shape.
           {framework::kOutFusible, is_same_shape}};
@@ -262,9 +283,11 @@ class OpFusionPassHelper : public FusionHelperBase {
       relation.op_kind = {framework::kElementWise, framework::kBroadcast};
       // producer -> fusion
       relation.fusion_op_kind = {
-          // horizontal or vertical relation(Reduce + Elementwise*), check without last dimension in reduce.
+          // horizontal or vertical relation(Reduce + Elementwise*), check
+          // without last dimension in reduce.
           {framework::kElementWise, is_same_size},
-          // must be horizontal relation, check with same output shape and without last dimension in reduce.
+          // must be horizontal relation, check with same output shape and
+          // without last dimension in reduce.
           {framework::kBroadcast, reduce_fuse_broadcast},
           // must be horizontal relation and with same reduce attr.
           {framework::kReduction, reduce_fuse_reduce},
@@ -281,7 +304,8 @@ class OpFusionPassHelper : public FusionHelperBase {
       relation.op_kind = {framework::kElementWise, framework::kInjective};
       // producer -> fusion
       relation.fusion_op_kind = {
-          // can be horizontal or vertical(Injective + Elementwise), check with same output shape.
+          // can be horizontal or vertical(Injective + Elementwise), check with
+          // same output shape.
           {framework::kElementWise, is_same_size},
           // must be horizontal relation, check with same output shape.
           {framework::kBroadcast, horizontal_with_same_size},
@@ -322,9 +346,11 @@ class OpFusionPassHelper : public FusionHelperBase {
     if (relation.op_kind.count(GetOpKind(consumer))) {
       auto& consumer_group = fusion_groups_[consumer];
       // second step: check producer can be fused into consumer group
-      VLOG(3) << "Call ConditionFunction, Producer Op Pattern : " << GetOpKind(producer)
-              << " , Consumer Group Pattern : " << consumer_group->op_pattern_kind;
-      return relation.fusion_op_kind[consumer_group->op_pattern_kind](this, producer, fusion_groups_[consumer]);
+      VLOG(3) << "Call ConditionFunction, Producer Op Pattern : "
+              << GetOpKind(producer) << " , Consumer Group Pattern : "
+              << consumer_group->op_pattern_kind;
+      return relation.fusion_op_kind[consumer_group->op_pattern_kind](
+          this, producer, fusion_groups_[consumer]);
     }
 
     return false;
@@ -336,15 +362,17 @@ class OpFusionPassHelper : public FusionHelperBase {
     // producer -> consumer
     std::unordered_set<framework::OpPatternKind> op_kind = {};
     // producer -> fusion sonsumer
-    std::unordered_map<framework::OpPatternKind, ConditionFunction> fusion_op_kind = {};
+    std::unordered_map<framework::OpPatternKind, ConditionFunction>
+        fusion_op_kind = {};
   };
-  std::unordered_map<framework::OpPatternKind, FusionRelation> fusion_relation_map_;
+  std::unordered_map<framework::OpPatternKind, FusionRelation>
+      fusion_relation_map_;
 };
 
 void OpFusionPassInternal(Graph* graph) {
   VLOG(3) << "OpFusionPass...!";
   auto op_fusion_helper = OpFusionPassHelper(graph);
-  graph->fusion_groups  = op_fusion_helper();
+  graph->fusion_groups = op_fusion_helper();
 
   for (auto& group : graph->fusion_groups) {
     VLOG(3) << "Group Id : " << group->group_id;
@@ -371,7 +399,8 @@ void BuildNonFusedGroupsPassInternal(framework::Graph* graph) {
 CINN_REGISTER_HELPER(OpFusionPass) {
   CINN_REGISTER_PASS(OpFusionPass)
       .describe(
-          "Op Fusion Pass which performs Ops fusion, Producer Ops are fused into Consumer Ops with certain conditions.")
+          "Op Fusion Pass which performs Ops fusion, Producer Ops are fused "
+          "into Consumer Ops with certain conditions.")
       .set_change_structure(false)
       .set_body(cinn::hlir::pass::OpFusionPassInternal);
 

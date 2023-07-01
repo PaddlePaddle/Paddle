@@ -38,13 +38,17 @@
 namespace cinn {
 namespace auto_schedule {
 
-AutoTuner::AutoTuner(const common::Target& target, hlir::framework::Graph* graph) : target_(target), graph_(graph) {}
+AutoTuner::AutoTuner(const common::Target& target,
+                     hlir::framework::Graph* graph)
+    : target_(target), graph_(graph) {}
 
-void AutoTuner::Initialize(const Config& config, hlir::framework::GraphCompiler* graph_compiler) {
+void AutoTuner::Initialize(const Config& config,
+                           hlir::framework::GraphCompiler* graph_compiler) {
   // create builder, runner, and schedule measurer
-  builder_           = std::make_unique<SimpleBuilder>(graph_compiler);
-  runner_            = std::make_unique<SimpleRunner>(config.runner_repeat_times);
-  schedule_measurer_ = std::make_unique<ScheduleMeasurer>(builder_.get(), runner_.get());
+  builder_ = std::make_unique<SimpleBuilder>(graph_compiler);
+  runner_ = std::make_unique<SimpleRunner>(config.runner_repeat_times);
+  schedule_measurer_ =
+      std::make_unique<ScheduleMeasurer>(builder_.get(), runner_.get());
 
   // initialize database
   database_ = std::move(Database::Make(config.database_config));
@@ -53,29 +57,43 @@ void AutoTuner::Initialize(const Config& config, hlir::framework::GraphCompiler*
   TaskCreator task_creator;
   tasks_ = task_creator.CreateTuneTaskOpLevel(graph_);
 
-  const auto& dtype_dict = graph_->GetAttrs<absl::flat_hash_map<std::string, common::Type>>("inferdtype");
-  const auto& shape_dict = graph_->GetAttrs<absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
+  const auto& dtype_dict =
+      graph_->GetAttrs<absl::flat_hash_map<std::string, common::Type>>(
+          "inferdtype");
+  const auto& shape_dict = graph_->GetAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
 
-  op_lowerer_                        = std::make_unique<hlir::framework::OpLowerer>(dtype_dict, shape_dict, target_);
+  op_lowerer_ = std::make_unique<hlir::framework::OpLowerer>(
+      dtype_dict, shape_dict, target_);
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   for (auto i = 0; i < tasks_.size(); ++i) {
     auto&& task = tasks_[i];
     task.Initialize(shape_dict, dtype_dict, op_lowerer_.get());
     // Register the initial ModuleExpr corresponding to the task
-    task_registry->Regist(task.serialized_key, ir::ModuleExpr(task.GetLoweredFuncBodyExprs()));
-    VLOG(3) << "Add a task, id:" << i << ", serialized_key:\n" << task.serialized_key;
+    task_registry->Regist(task.serialized_key,
+                          ir::ModuleExpr(task.GetLoweredFuncBodyExprs()));
+    VLOG(3) << "Add a task, id:" << i << ", serialized_key:\n"
+            << task.serialized_key;
   }
 
   // create task optimizers
-  utils::LinearRandomEngine::StateType initial_seed = utils::LinearRandomEngine::GetDeviceRandomValue();
+  utils::LinearRandomEngine::StateType initial_seed =
+      utils::LinearRandomEngine::GetDeviceRandomValue();
   task_optimizers_.resize(tasks_.size());
-  std::transform(tasks_.begin(), tasks_.end(), task_optimizers_.begin(), [&](TuneTask& task) {
-    return std::make_unique<TaskOptimizer>(
-        &task, schedule_measurer_.get(), database_.get(), utils::ForkRandomState(&initial_seed));
-  });
+  std::transform(tasks_.begin(),
+                 tasks_.end(),
+                 task_optimizers_.begin(),
+                 [&](TuneTask& task) {
+                   return std::make_unique<TaskOptimizer>(
+                       &task,
+                       schedule_measurer_.get(),
+                       database_.get(),
+                       utils::ForkRandomState(&initial_seed));
+                 });
 
   // create task scheduler
-  task_scheduler_ = TaskScheduler::Make(tasks_, config.task_schedule_config, config.task_schedule_strategy);
+  task_scheduler_ = TaskScheduler::Make(
+      tasks_, config.task_schedule_config, config.task_schedule_strategy);
 }
 
 void PrintResult(std::shared_ptr<hlir::framework::Graph::Group> group) {
@@ -127,7 +145,8 @@ void PrintResult(const TuningResult& result) {
 
 TuningResult AutoTuner::Tune(const TuningOptions& options) {
   CHECK_GT(options.num_tuning_rounds, 0) << "Invalid config";
-  VLOG(3) << "Begin tuning with round num=" << options.num_tuning_rounds << ", tasks size=" << tasks_.size();
+  VLOG(3) << "Begin tuning with round num=" << options.num_tuning_rounds
+          << ", tasks size=" << tasks_.size();
 
   TuningResult result;
   result.subgraphs.resize(tasks_.size());
@@ -136,7 +155,7 @@ TuningResult AutoTuner::Tune(const TuningOptions& options) {
   // as default result of graph tuning, and that should be updated
   // once we support graph tuning.
   for (auto i = 0; i < tasks_.size(); ++i) {
-    auto&& task         = tasks_.at(i);
+    auto&& task = tasks_.at(i);
     result.subgraphs[i] = task.subgraph;
   }
 
@@ -146,7 +165,7 @@ TuningResult AutoTuner::Tune(const TuningOptions& options) {
     task_scheduler_->Reset();
     while ((run_id = task_scheduler_->NextTaskId()) != -1) {
       VLOG(3) << "Start tuning Task-" << run_id;
-      auto* opt           = task_optimizers_.at(run_id).get();
+      auto* opt = task_optimizers_.at(run_id).get();
       auto function_group = opt->Optimize(options);
       VLOG(3) << "Task-" << run_id << " finished, print optimized functions:\n";
       PrintResult(function_group);

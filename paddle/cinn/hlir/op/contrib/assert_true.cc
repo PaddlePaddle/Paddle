@@ -36,37 +36,45 @@ namespace op {
 using common::CINNValue;
 using common::CINNValuePack;
 
-std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(const framework::NodeAttr &attrs,
-                                                             const std::vector<ir::Tensor> &inputs,
-                                                             const std::vector<Type> &out_type,
-                                                             const std::vector<std::vector<int>> &output_shapes,
-                                                             const Target &target) {
-  framework::CINNCompute assert_true_compute([=](lang::Args args, lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of assert_true is empty! Please check.";
+std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<int>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute assert_true_compute([=](lang::Args args,
+                                                 lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input argument of assert_true is empty! Please check.";
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U) << "Two input tensors are required for the computation of assert_true.";
-    Expr a_expr             = pack_args[0];
-    Expr b_expr             = pack_args[1];
-    ir::Tensor a            = a_expr.as_tensor_ref();
-    ir::Tensor b            = b_expr.as_tensor_ref();
+    CHECK_GE(pack_args.size(), 2U)
+        << "Two input tensors are required for the computation of assert_true.";
+    Expr a_expr = pack_args[0];
+    Expr b_expr = pack_args[1];
+    ir::Tensor a = a_expr.as_tensor_ref();
+    ir::Tensor b = b_expr.as_tensor_ref();
     std::string tensor_name = "assert_true_out";
-    auto out                = pe::Identity(b, tensor_name).front();
-    auto stages             = CreateStages({out});
+    auto out = pe::Identity(b, tensor_name).front();
+    auto stages = CreateStages({out});
     std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      assert_true_compute, GetElementwiseScheduleFunc(output_shapes, target), "strategy.assert_true.x86", 1);
+  strategy->AddImpl(assert_true_compute,
+                    GetElementwiseScheduleFunc(output_shapes, target),
+                    "strategy.assert_true.x86",
+                    1);
   return strategy;
 }
 
-std::vector<framework::shape_t> InferShapeForAssertTrue(const std::vector<framework::shape_t> &inputs_shape,
-                                                        const framework::AttrMapType &attrs) {
+std::vector<framework::shape_t> InferShapeForAssertTrue(
+    const std::vector<framework::shape_t> &inputs_shape,
+    const framework::AttrMapType &attrs) {
   return inputs_shape;
 }
 
-std::vector<Type> InferDtypeForAssertTrue(const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
+std::vector<Type> InferDtypeForAssertTrue(const std::vector<Type> &inputs_type,
+                                          const framework::AttrMapType &attrs) {
   return inputs_type;
 }
 
@@ -79,10 +87,14 @@ CINN_REGISTER_HELPER(assert_true_ops) {
       .describe("AssertTrue")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>("CINNStrategy", cinn::hlir::op::StrategyForAssertTrue)
-      .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForAssertTrue))
-      .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForAssertTrue))
-      .set_attr<cinn::hlir::framework::OpPatternKind>("OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForAssertTrue)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForAssertTrue))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForAssertTrue))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
 
   return true;

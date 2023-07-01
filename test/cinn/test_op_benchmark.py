@@ -14,19 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import unittest
+
+import cinn
+import numpy as np
+from cinn import Target, ir, lang, runtime
+from cinn.common import *
+from cinn.framework import *
+from cinn.frontend import *
+
 import paddle
 import paddle.static as static
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
-import sys
 
 assert len(sys.argv) == 2
 enable_gpu = sys.argv.pop()
@@ -44,7 +43,8 @@ class TestBenchmark(unittest.TestCase):
 
         a = static.data(name='A', shape=[1, 128, 28, 28], dtype='float32')
         e = paddle.nn.initializer.NumpyArrayInitializer(
-            np.array(result[1]).reshape((256, 128, 1, 1)).astype("float32"))
+            np.array(result[1]).reshape((256, 128, 1, 1)).astype("float32")
+        )
         res = static.nn.conv2d(
             input=a,
             num_filters=256,
@@ -52,7 +52,8 @@ class TestBenchmark(unittest.TestCase):
             stride=2,
             padding=0,
             dilation=1,
-            param_attr=e)
+            param_attr=e,
+        )
 
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
@@ -63,28 +64,37 @@ class TestBenchmark(unittest.TestCase):
         print("result in conv2d paddle_verify: \n")
         for i in range(0, output.shape[0]):
             if np.abs(output[i] - result[len(result) - 1][i]) > 1e-4:
-                print("Error! ", i, "-th data has diff with target data:\n",
-                      output[i], " vs: ", result[len(result) - 1][i],
-                      ". Diff is: ", output[i] - result[len(result) - 1][i])
-        self.assertTrue(
-            np.allclose(result[len(result) - 1], output, atol=1e-4))
+                print(
+                    "Error! ",
+                    i,
+                    "-th data has diff with target data:\n",
+                    output[i],
+                    " vs: ",
+                    result[len(result) - 1][i],
+                    ". Diff is: ",
+                    output[i] - result[len(result) - 1][i],
+                )
+        self.assertTrue(np.allclose(result[len(result) - 1], output, atol=1e-4))
 
     def atest_conv2d_cinn(self):
         prog = Program()
         a = Variable("A").set_type(Float(32)).set_shape([1, 128, 28, 28])
         b = Variable("E").set_type(Float(32)).set_shape([256, 128, 1, 1])
-        c = prog.conv2d(a, b, {
-            "stride": [2, 2],
-            "dilation": [1, 1],
-            "padding": [0, 0]
-        })
+        c = prog.conv2d(
+            a, b, {"stride": [2, 2], "dilation": [1, 1], "padding": [0, 0]}
+        )
         tensor_data = [
             np.random.random([1, 128, 28, 28]).astype("float32"),
-            np.random.random([256, 128, 1, 1]).astype("float32")
+            np.random.random([256, 128, 1, 1]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b], tensor_data, c, 20000,
-            "TESTING [conv2d] time cost with shape [1, 128, 28, 28]...")
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            20000,
+            "TESTING [conv2d] time cost with shape [1, 128, 28, 28]...",
+        )
         result = result.numpy(self.target).reshape(-1)
         tensor_data.append(result)
         self.paddle_verify(tensor_data)
@@ -93,17 +103,19 @@ class TestBenchmark(unittest.TestCase):
         prog = Program()
         a = Variable("X").set_type(Float(32)).set_shape([1, 128, 28, 28])
         b = Variable("Y").set_type(Float(32)).set_shape([256, 128, 1, 1])
-        c = prog.conv2d(a, b, {
-            "stride": [2, 2],
-            "dilation": [1, 1],
-            "padding": [0, 0]
-        })
+        c = prog.conv2d(
+            a, b, {"stride": [2, 2], "dilation": [1, 1], "padding": [0, 0]}
+        )
         tensor_data = [
             np.random.random([1, 128, 28, 28]).astype("float32"),
-            np.random.random([256, 128, 1, 1]).astype("float32")
+            np.random.random([256, 128, 1, 1]).astype("float32"),
         ]
         result = prog.test_benchmark_with_code(
-            self.target, [a, b], tensor_data, c, 20000,
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            20000,
             "TESTING [conv2d of tvm schedule] time cost with shape [1, 128, 28, 28]...",
             """
 extern "C" {
@@ -165,28 +177,37 @@ void fn_conv2d_0_kernel(const float* __restrict__ X, const float* __restrict__ Y
 }
 
 }
-            """)
+            """,
+        )
         result = result.numpy(self.target).reshape(-1)
         tensor_data.append(result)
         self.paddle_verify(tensor_data)
 
     def atest_conv2d_tvm_code(self):
         prog = Program()
-        a = Variable("placeholder").set_type(Float(32)).set_shape(
-            [1, 128, 28, 28])
-        b = Variable("placeholder1").set_type(Float(32)).set_shape(
-            [256, 128, 1, 1])
-        c = prog.conv2d(a, b, {
-            "stride": [2, 2],
-            "dilation": [1, 1],
-            "padding": [0, 0]
-        })
+        a = (
+            Variable("placeholder")
+            .set_type(Float(32))
+            .set_shape([1, 128, 28, 28])
+        )
+        b = (
+            Variable("placeholder1")
+            .set_type(Float(32))
+            .set_shape([256, 128, 1, 1])
+        )
+        c = prog.conv2d(
+            a, b, {"stride": [2, 2], "dilation": [1, 1], "padding": [0, 0]}
+        )
         tensor_data = [
             np.random.random([1, 128, 28, 28]).astype("float32"),
-            np.random.random([256, 128, 1, 1]).astype("float32")
+            np.random.random([256, 128, 1, 1]).astype("float32"),
         ]
         result = prog.test_benchmark_with_code(
-            self.target, [a, b], tensor_data, c, 20000,
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            20000,
             "TESTING [conv2d of tvm schedule] time cost with shape [1, 128, 28, 28]...",
             """
 extern "C" {
@@ -234,7 +255,8 @@ __global__ void fn_conv2d_0_kernel(float* __restrict__ placeholder, float* __res
 }
 
 }
-            """)
+            """,
+        )
         result = result.numpy(self.target).reshape(-1)
         tensor_data.append(result)
         self.paddle_verify(tensor_data)
@@ -245,8 +267,13 @@ __global__ void fn_conv2d_0_kernel(float* __restrict__ placeholder, float* __res
         c = prog.softmax(a, {})
         tensor_data = [np.random.random([1024, 2048]).astype("float32")]
         result = prog.test_benchmark(
-            self.target, [a], tensor_data, c, 200,
-            "TESTING [softmax] time cost with shape [1024,2048]...")
+            self.target,
+            [a],
+            tensor_data,
+            c,
+            200,
+            "TESTING [softmax] time cost with shape [1024,2048]...",
+        )
 
     def atest_matmul(self):
         prog = Program()
@@ -255,11 +282,16 @@ __global__ void fn_conv2d_0_kernel(float* __restrict__ placeholder, float* __res
         c = prog.mul(a, b, 1, 1)
         tensor_data = [
             np.random.random([512, 512]).astype("float32"),
-            np.random.random([512, 512]).astype("float32")
+            np.random.random([512, 512]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b], tensor_data, c, 200,
-            "TESTING [matmul] time cost with shape [512,512]...")
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            200,
+            "TESTING [matmul] time cost with shape [512,512]...",
+        )
 
     def atest_matmul2(self):
         prog = Program()
@@ -271,11 +303,15 @@ __global__ void fn_conv2d_0_kernel(float* __restrict__ placeholder, float* __res
         tensor_data = [
             np.random.random([128, 512]).astype("float32"),
             np.random.random([256, 512]).astype("float32"),
-            np.random.random([128, 256]).astype("float32")
+            np.random.random([128, 256]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b, c], tensor_data, e, 200,
-            "TESTING [mul and add] time cost with shape [128,512]*[256,512]..."
+            self.target,
+            [a, b, c],
+            tensor_data,
+            e,
+            200,
+            "TESTING [mul and add] time cost with shape [128,512]*[256,512]...",
         )
 
     def atest_matmul(self):
@@ -287,11 +323,16 @@ __global__ void fn_conv2d_0_kernel(float* __restrict__ placeholder, float* __res
         # e = prog.add(d, c)
         tensor_data = [
             np.random.random([512, 512]).astype("float32"),
-            np.random.random([512, 512]).astype("float32")
+            np.random.random([512, 512]).astype("float32"),
         ]
         result = prog.test_benchmark_with_code(
-            self.target, [a, b], tensor_data, d, 200,
-            "TESTING [matmul] time cost with shape [512,512]...", '''
+            self.target,
+            [a, b],
+            tensor_data,
+            d,
+            200,
+            "TESTING [matmul] time cost with shape [512,512]...",
+            '''
             extern "C" {
 #include "cinn_cuda_runtime_source.cuh"
 #ifdef __CUDACC_RTC__
@@ -330,22 +371,30 @@ typedef char int8_t;
   }
   };
  }
- }''')
+ }''',
+        )
 
     def atest_pool2d(self):
         prog = Program()
         a = Variable("A").set_type(Float(32)).set_shape([2, 64, 112, 112])
         c = prog.pool2d(
-            a, {
+            a,
+            {
                 "kernel_size": (3, 3),
                 "stride_size": (2, 2),
                 "padding_size": (1, 1, 1, 1),
-                "pool_type": "max"
-            })
+                "pool_type": "max",
+            },
+        )
         tensor_data = [np.random.random([2, 64, 112, 112]).astype("float32")]
         result = prog.test_benchmark(
-            self.target, [a], tensor_data, c, 2000,
-            "TESTING [pool2d] time cost with shape [2, 64, 112, 112]...")
+            self.target,
+            [a],
+            tensor_data,
+            c,
+            2000,
+            "TESTING [pool2d] time cost with shape [2, 64, 112, 112]...",
+        )
 
     def atest_elementwise1(self):
         prog = Program()
@@ -354,17 +403,22 @@ typedef char int8_t;
         c = prog.add(a, b)
         tensor_data = [
             np.random.random([64, 64]).astype("float32"),
-            np.random.random([64, 64]).astype("float32")
+            np.random.random([64, 64]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b], tensor_data, c, 200,
-            "TESTING [elementwise_add] time cost with shape [64, 64]...")
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            200,
+            "TESTING [elementwise_add] time cost with shape [64, 64]...",
+        )
         result = result.numpy(self.target).reshape(-1)
         self.assertTrue(
             np.allclose(
-                (tensor_data[0] + tensor_data[1]).reshape(-1),
-                result,
-                atol=1e-4))
+                (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
+            )
+        )
 
     def atest_elementwise2(self):
         prog = Program()
@@ -373,18 +427,22 @@ typedef char int8_t;
         c = prog.add(a, b)
         tensor_data = [
             np.random.random([2, 512, 112, 112]).astype("float32"),
-            np.random.random([2, 512, 112, 112]).astype("float32")
+            np.random.random([2, 512, 112, 112]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b], tensor_data, c, 200,
-            "TESTING [elementwise_add] time cost with shape [2, 512, 112, 112]..."
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            200,
+            "TESTING [elementwise_add] time cost with shape [2, 512, 112, 112]...",
         )
         result = result.numpy(self.target).reshape(-1)
         self.assertTrue(
             np.allclose(
-                (tensor_data[0] + tensor_data[1]).reshape(-1),
-                result,
-                atol=1e-4))
+                (tensor_data[0] + tensor_data[1]).reshape(-1), result, atol=1e-4
+            )
+        )
 
     def atest_elementwise2(self):
         prog = Program()
@@ -393,10 +451,14 @@ typedef char int8_t;
         c = prog.add(a, b)
         tensor_data = [
             np.random.random([4, 1024]).astype("float32"),
-            np.random.random([4, 1024]).astype("float32")
+            np.random.random([4, 1024]).astype("float32"),
         ]
         result = prog.test_benchmark_with_code(
-            self.target, [a, b], tensor_data, c, 200,
+            self.target,
+            [a, b],
+            tensor_data,
+            c,
+            200,
             "TESTING [elementwise_add] time cost with input code...",
             '''extern "C" {
 
@@ -407,7 +469,8 @@ void fn_elementwise_add_0_kernel(const float* __restrict__ A, const float* __res
       EleAdd_Out_0[1024 * blockIdx.x + threadIdx.x] = (A[1024 * blockIdx.x + threadIdx.x] + B[1024 * blockIdx.x + threadIdx.x]);
 }
 
-}''')
+}''',
+        )
 
     def atest_batchnorm(self):
         prog = Program()
@@ -422,11 +485,16 @@ void fn_elementwise_add_0_kernel(const float* __restrict__ A, const float* __res
             np.random.random([512]).astype("float32"),
             np.random.random([512]).astype("float32"),
             np.random.random([512]).astype("float32"),
-            np.random.random([512]).astype("float32")
+            np.random.random([512]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b, c, d, e], tensor_data, f, 1000,
-            "TESTING [batchnorm] time cost with shape [2, 512, 32, 32]...")
+            self.target,
+            [a, b, c, d, e],
+            tensor_data,
+            f,
+            1000,
+            "TESTING [batchnorm] time cost with shape [2, 512, 32, 32]...",
+        )
 
     def atest_batchnorm2(self):
         prog = Program()
@@ -441,11 +509,16 @@ void fn_elementwise_add_0_kernel(const float* __restrict__ A, const float* __res
             np.random.random([64]).astype("float32"),
             np.random.random([64]).astype("float32"),
             np.random.random([64]).astype("float32"),
-            np.random.random([64]).astype("float32")
+            np.random.random([64]).astype("float32"),
         ]
         result = prog.test_benchmark(
-            self.target, [a, b, c, d, e], tensor_data, f, 200,
-            "TESTING [batchnorm] time cost with shape [2, 64, 8, 8]...")
+            self.target,
+            [a, b, c, d, e],
+            tensor_data,
+            f,
+            200,
+            "TESTING [batchnorm] time cost with shape [2, 64, 8, 8]...",
+        )
 
     def atest_relu3(self):
         prog = Program()
@@ -453,8 +526,13 @@ void fn_elementwise_add_0_kernel(const float* __restrict__ A, const float* __res
         c = prog.relu(a)
         tensor_data = [np.random.random([2, 512, 112, 112]).astype("float32")]
         result = prog.test_benchmark(
-            self.target, [a], tensor_data, c, 200,
-            "TESTING [relu] time cost with shape [2,512,112,112]...")
+            self.target,
+            [a],
+            tensor_data,
+            c,
+            200,
+            "TESTING [relu] time cost with shape [2,512,112,112]...",
+        )
 
     def atest_relu(self):
         prog = Program()
@@ -462,8 +540,13 @@ void fn_elementwise_add_0_kernel(const float* __restrict__ A, const float* __res
         c = prog.sigmoid(a)
         tensor_data = [np.random.random([64, 64]).astype("float32")]
         result = prog.test_benchmark(
-            self.target, [a], tensor_data, c, 200,
-            "TESTING [sigmoid] time cost with shape [64,64]...")
+            self.target,
+            [a],
+            tensor_data,
+            c,
+            200,
+            "TESTING [sigmoid] time cost with shape [64,64]...",
+        )
 
     def atest_relu2(self):
         prog = Program()
@@ -471,8 +554,13 @@ void fn_elementwise_add_0_kernel(const float* __restrict__ A, const float* __res
         c = prog.sigmoid(a)
         tensor_data = [np.random.random([2, 512, 112, 112]).astype("float32")]
         result = prog.test_benchmark(
-            self.target, [a], tensor_data, c, 200,
-            "TESTING [sigmoid] time cost with shape [2,512,112,112]...")
+            self.target,
+            [a],
+            tensor_data,
+            c,
+            200,
+            "TESTING [sigmoid] time cost with shape [2,512,112,112]...",
+        )
 
 
 if __name__ == "__main__":

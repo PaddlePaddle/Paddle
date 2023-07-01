@@ -139,6 +139,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
         bool is_parameter = (parameter_name_mappings_.find(var_name) !=
                              parameter_name_mappings_.end());
         is_parameter &= (parameter_visited_.count(var_name) == 0);
+
         is_parameter &= (!feed_names.count(var_name));
         if (is_parameter) {
           var_desc = parameter_name_mappings_[var_name];

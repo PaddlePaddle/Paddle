@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
-import functools
 
 
 class TestLayerNormOp(OpMapperTest):
@@ -37,15 +39,18 @@ class TestLayerNormOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         scale = paddle.static.data(
             name='scale',
             shape=self.feed_data['scale'].shape,
-            dtype=self.feed_data['scale'].dtype)
+            dtype=self.feed_data['scale'].dtype,
+        )
         bias = paddle.static.data(
             name='bias',
             shape=self.feed_data['bias'].shape,
-            dtype=self.feed_data['bias'].dtype)
+            dtype=self.feed_data['bias'].dtype,
+        )
         return {'X': [x], 'Scale': [scale], "Bias": [bias]}
 
     def set_op_attrs(self):
@@ -55,7 +60,7 @@ class TestLayerNormOp(OpMapperTest):
         return {
             'Y': [str(self.feed_data['x'].dtype)],
             'Mean': [str(self.feed_data['scale'].dtype)],
-            'Variance': [str(self.feed_data['scale'].dtype)]
+            'Variance': [str(self.feed_data['scale'].dtype)],
         }
 
     def test_check_results(self):

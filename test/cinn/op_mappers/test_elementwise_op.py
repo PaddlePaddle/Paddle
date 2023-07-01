@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -24,7 +26,7 @@ class TestElementwiseOp(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32, 64], "float32"),
-            'y': self.random([32, 64], "float32")
+            'y': self.random([32, 64], "float32"),
         }
 
     def set_op_type(self):
@@ -34,11 +36,13 @@ class TestElementwiseOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         y = paddle.static.data(
             name='y',
             shape=self.feed_data['y'].shape,
-            dtype=self.feed_data['y'].dtype)
+            dtype=self.feed_data['y'].dtype,
+        )
         return {'X': [x], 'Y': [y]}
 
     def set_op_attrs(self):
@@ -95,7 +99,7 @@ class TestFloorDivOpCase1(TestElementwiseOp):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32, 64], low=1, high=10, dtype='int32'),
-            'y': self.random([32, 64], low=1, high=10, dtype='int32')
+            'y': self.random([32, 64], low=1, high=10, dtype='int32'),
         }
 
     def set_op_type(self):
@@ -106,7 +110,7 @@ class TestFloorDivOpCase2(TestElementwiseOp):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32], low=1, high=10, dtype='int64'),
-            'y': self.random([32], low=1, high=10, dtype='int64')
+            'y': self.random([32], low=1, high=10, dtype='int64'),
         }
 
     def set_op_type(self):

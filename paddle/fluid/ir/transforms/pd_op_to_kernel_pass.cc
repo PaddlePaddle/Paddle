@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_dialect.h"
@@ -41,7 +41,6 @@ phi::KernelKey GetKernelKey(
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
     const dialect::OpYamlInfoParser* op_info_parser = nullptr) {
-  std::cerr << "12" << std::endl;
   if (op->name() == "pd.feed") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
@@ -176,6 +175,10 @@ phi::KernelKey GetKernelKey(
     if (kernel_data_type == phi::DataType::UNDEFINED) {
       kernel_data_type = kernel_key.dtype();
     }
+  }
+
+  if (kernel_backend == phi::Backend::UNDEFINED) {
+    kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);

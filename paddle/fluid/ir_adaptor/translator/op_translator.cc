@@ -329,6 +329,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
 
     yaml_input_set.insert(legacy_input_name);
   }
+
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
@@ -356,7 +357,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   std::vector<ir::OpResult> op_inputs;
 
   for (const auto& info : input_infos) {
-    std::cerr << "infor name " << info.name << std::endl;
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
       ir::OpResult ret = special_handler(
           ctx, param_map, op_desc, normalized_op_name, info, program);
@@ -428,7 +428,6 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       }
     }
 
-    std::cerr << "11 ~" << std::endl;
     // if src type is Tensor
     if (!is_vector) {
       std::cerr << "not vector " << legacy_input_vars.size() << std::endl;
@@ -457,7 +456,6 @@ std::tuple<OpOutputTypeList, OpOutputMapping>
 OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpOutputInfoList& output_infos) {
-  std::cerr << "generate output" << std::endl;
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
 
@@ -647,10 +645,6 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
   std::tie(input_infos, attr_infos, output_infos, std::ignore) =
       op_info_concept->get_op_info_();
 
-  for (size_t i = 0; i < input_infos.size(); ++i) {
-    std::cerr << "input " << input_infos[i].name << "\t"
-              << input_infos[i].type_name << std::endl;
-  }
   auto op_inputs = this->GenerateOperationInput(
       ctx, param_map, op_desc, op_info.name(), input_infos, program);
 
@@ -720,6 +714,42 @@ struct ReduceOpTranscriber : public OpTranscriber {
              << " name: " << legacy_attr_name << " " << legacy_attr.index();
     ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
     attribute_map[info.name] = new_attr;
+
+    return attribute_map;
+  }
+};
+
+struct EmbeddingOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(ir::IrContext* ctx,
+                                  ir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_idx") {
+      (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
+    } else if (info.name == "sparse") {
+      (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
+struct IncrementOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext* ctx,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::AttributeMap attribute_map = {};
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr("step")) {
+      legacy_attr = op_desc.GetAttr("step");
+      VLOG(10) << "attribute in " << op_desc.Type() << " step: "
+               << " " << legacy_attr.index();
+      ir::Attribute new_attr = attribute_translator(legacy_attr);
+      attribute_map["value"] = new_attr;
+    } else {
+      attribute_map["value"] = ir::FloatAttribute::get(ctx, 1.0f);
+    }
 
     return attribute_map;
   }

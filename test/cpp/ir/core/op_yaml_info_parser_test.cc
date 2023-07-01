@@ -85,15 +85,9 @@ TEST(ir_op_info_test, op_op_info_test) {
 
   paddle::dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
 
-  auto infer_meta_tensor_param = op_yaml_info_parser.InferMetaTensorParams();
-  auto infer_meta_attr_param = op_yaml_info_parser.InferMetaAttrParams();
-  auto kernel_fn_tensor_param = op_yaml_info_parser.KernelFnTensorParams();
-  auto kernel_fn_attr_param = op_yaml_info_parser.KernelFnAttrParams();
-
-  std::cerr << "kernel tensor param" << std::endl;
-  for (auto& t : kernel_fn_tensor_param) {
-    std::cerr << "tensor param " << t << std::endl;
-  }
+  EXPECT_EQ((op_yaml_info_parser.AttrTypeName("seed") == "ir::Int32Attribute"),
+            true);
+  EXPECT_EQ(op_yaml_info_parser.IsTensorAttribute(0), true);
 
   std::cerr << "kernel attr param" << std::endl;
   for (auto& t : kernel_fn_attr_param) {

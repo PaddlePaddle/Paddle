@@ -20,45 +20,49 @@ namespace cinn::frontend {
 
 TEST(Decomposer, relu) {
   NetBuilder builder("relu");
-  auto x   = builder.CreateInput(Float(32), {20, 10}, "x");
+  auto x = builder.CreateInput(Float(32), {20, 10}, "x");
   auto out = builder.Relu(x);
 
-  auto relu_cpu = [](const std::vector<size_t>& lengths, const std::vector<void*>& ptrs) {
-    size_t n   = lengths[0];
-    float* x   = static_cast<float*>(ptrs[0]);
+  auto relu_cpu = [](const std::vector<size_t>& lengths,
+                     const std::vector<void*>& ptrs) {
+    size_t n = lengths[0];
+    float* x = static_cast<float*>(ptrs[0]);
     float* out = static_cast<float*>(ptrs[1]);
     for (size_t i = 0; i < n; ++i) {
       float tmp_0 = x[i];
-      out[i]      = tmp_0 > 0 ? tmp_0 : 0;
+      out[i] = tmp_0 > 0 ? tmp_0 : 0;
     }
   };
 
-  std::vector<std::string> input_names        = {x.id().data()};
-  std::vector<std::string> output_names       = {out->id};
+  std::vector<std::string> input_names = {x.id().data()};
+  std::vector<std::string> output_names = {out->id};
   std::vector<std::vector<int>> output_shapes = {{20, 10}};
-  RunAndCheck<float>(builder, input_names, output_names, output_shapes, relu_cpu, -1, 1);
+  RunAndCheck<float>(
+      builder, input_names, output_names, output_shapes, relu_cpu, -1, 1);
 }
 
 TEST(Decomposer, relu_grad) {
   NetBuilder builder("relu_grad");
   auto dout = builder.CreateInput(Float(32), {20, 10}, "dout");
-  auto out  = builder.CreateInput(Float(32), {20, 10}, "out");
-  auto dx   = builder.ReluGrad(dout, out);
+  auto out = builder.CreateInput(Float(32), {20, 10}, "out");
+  auto dx = builder.ReluGrad(dout, out);
 
-  auto relu_grad_cpu = [](const std::vector<size_t>& lengths, const std::vector<void*>& ptrs) {
-    size_t n    = lengths[0];
+  auto relu_grad_cpu = [](const std::vector<size_t>& lengths,
+                          const std::vector<void*>& ptrs) {
+    size_t n = lengths[0];
     float* dout = static_cast<float*>(ptrs[0]);
-    float* out  = static_cast<float*>(ptrs[1]);
-    float* dx   = static_cast<float*>(ptrs[2]);
+    float* out = static_cast<float*>(ptrs[1]);
+    float* dx = static_cast<float*>(ptrs[2]);
     for (size_t i = 0; i < n; ++i) {
       dx[i] = out[i] > 0 ? dout[i] : 0;
     }
   };
 
-  std::vector<std::string> input_names        = {dout.id().data(), out.id().data()};
-  std::vector<std::string> output_names       = {dx->id};
+  std::vector<std::string> input_names = {dout.id().data(), out.id().data()};
+  std::vector<std::string> output_names = {dx->id};
   std::vector<std::vector<int>> output_shapes = {{20, 10}};
-  RunAndCheck<float>(builder, input_names, output_names, output_shapes, relu_grad_cpu, -1, 1);
+  RunAndCheck<float>(
+      builder, input_names, output_names, output_shapes, relu_grad_cpu, -1, 1);
 }
 
 TEST(Decomposer, softmax_decomposer) {
@@ -76,7 +80,8 @@ TEST(Decomposer, softmax_decomposer) {
   auto target = common::DefaultTarget();
   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, output_names, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, output_names, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
 
@@ -90,7 +95,7 @@ TEST(Decomposer, softmax_decomposer) {
   for (auto& input : inputs) {
     scope->Var<hlir::framework::Tensor>(input.first);
     auto tensor = scope->GetTensor(input.first);
-    auto* data  = tensor->mutable_data<float>(target);
+    auto* data = tensor->mutable_data<float>(target);
     CopyFromVector(input.second, tensor, target);
   }
   run_program->Execute();

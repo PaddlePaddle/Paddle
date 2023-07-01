@@ -40,7 +40,8 @@ TEST(UnrollLoops, unrolled_tag) {
   auto stages = CreateStages({C});
 
   Target target = common::DefaultHostTarget();
-  auto func     = cinn::lang::LowerVec("test_unrolled_tag", stages, {A, B, C}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_unrolled_tag", stages, {A, B, C}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
 
   ir::ModuleExpr mod_expr({ast_expr});
@@ -74,11 +75,14 @@ TEST(UnrollLoops, auto_unroll) {
 
   // B = A + 2.11
   Tensor B = Compute(
-      {M, N, O}, [&](Var i, Var j, Var k) { return A(i, j, k) + const_value; }, "B");
+      {M, N, O},
+      [&](Var i, Var j, Var k) { return A(i, j, k) + const_value; },
+      "B");
 
-  auto stages   = CreateStages({B});
+  auto stages = CreateStages({B});
   Target target = common::DefaultHostTarget();
-  auto func     = cinn::lang::LowerVec("test_auto_unroll", stages, {A, B}, {}, {}, nullptr, target, true);
+  auto func = cinn::lang::LowerVec(
+      "test_auto_unroll", stages, {A, B}, {}, {}, nullptr, target, true);
   auto ast_expr = func[0]->body;
   ir::ModuleExpr mod_expr({ast_expr});
   ir::IRSchedule ir_sch(mod_expr);
@@ -87,8 +91,11 @@ TEST(UnrollLoops, auto_unroll) {
   // check after the last UnrollLoop pass it will remain unchanged
   ASSERT_EQ(ir_sch.GetLoops("B").size(), 3);
 
-  ASSERT_TRUE(ast_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>() != nullptr);
-  auto* block_realize  = ast_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>();
+  ASSERT_TRUE(
+      ast_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>() !=
+      nullptr);
+  auto* block_realize =
+      ast_expr.As<ir::Block>()->stmts.front().As<ir::ScheduleBlockRealize>();
   auto* schedule_block = block_realize->schedule_block.As<ir::ScheduleBlock>();
   // set the 'auto_unroll_max_step' attribute as value 25 that is bigger than
   // the product of extent of the inner 2 loops

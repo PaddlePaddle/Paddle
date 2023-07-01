@@ -28,12 +28,12 @@ class MatmulTester : public OpBenchmarkTester {
   MatmulTester(const std::string &op_name,
                const std::vector<std::vector<int>> &input_shapes,
                const common::Target &target = common::DefaultHostTarget(),
-               int repeat                   = 10,
-               float diff                   = 1e-5)
+               int repeat = 10,
+               float diff = 1e-5)
       : OpBenchmarkTester(op_name, input_shapes, target, repeat, diff) {}
 
-  std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                 poly::StageMap *stages) override;
+  std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) override;
 };
 
 class MatmulTileTester : public MatmulTester {
@@ -41,12 +41,12 @@ class MatmulTileTester : public MatmulTester {
   MatmulTileTester(const std::string &op_name,
                    const std::vector<std::vector<int>> &input_shapes,
                    const common::Target &target = common::DefaultHostTarget(),
-                   int repeat                   = 10,
-                   float diff                   = 1e-5)
+                   int repeat = 10,
+                   float diff = 1e-5)
       : MatmulTester(op_name, input_shapes, target, repeat, diff) {}
 
-  std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                 poly::StageMap *stages) override;
+  std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) override;
 };
 
 class MatmulSplitTester : public MatmulTester {
@@ -54,11 +54,12 @@ class MatmulSplitTester : public MatmulTester {
   MatmulSplitTester(const std::string &op_name,
                     const std::vector<std::vector<int>> &input_shapes,
                     const common::Target &target = common::DefaultHostTarget(),
-                    int repeat                   = 10,
-                    float diff                   = 1e-5)
+                    int repeat = 10,
+                    float diff = 1e-5)
       : MatmulTester(op_name, input_shapes, target, repeat, diff) {}
 
-  virtual std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs, poly::StageMap *stages);
+  virtual std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages);
 };
 
 class MatmulBlockTester : public MatmulTester {
@@ -66,55 +67,62 @@ class MatmulBlockTester : public MatmulTester {
   MatmulBlockTester(const std::string &op_name,
                     const std::vector<std::vector<int>> &input_shapes,
                     const common::Target &target = common::DefaultHostTarget(),
-                    int repeat                   = 10,
-                    float diff                   = 1e-5)
-      : MatmulTester(op_name, input_shapes, target, repeat, diff), input_shapes_(input_shapes) {}
+                    int repeat = 10,
+                    float diff = 1e-5)
+      : MatmulTester(op_name, input_shapes, target, repeat, diff),
+        input_shapes_(input_shapes) {}
 
-  std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                 poly::StageMap *stages) override;
+  std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) override;
 
   std::vector<std::vector<int>> input_shapes_;
 };
 
 class MatmulVectorizeTester : public MatmulTester {
  public:
-  MatmulVectorizeTester(const std::string &op_name,
-                        const std::vector<std::vector<int>> &input_shapes,
-                        const common::Target &target = common::DefaultHostTarget(),
-                        int repeat                   = 10,
-                        float diff                   = 1e-5)
-      : MatmulTester(op_name, input_shapes, target, repeat, diff), input_shapes_(input_shapes) {}
+  MatmulVectorizeTester(
+      const std::string &op_name,
+      const std::vector<std::vector<int>> &input_shapes,
+      const common::Target &target = common::DefaultHostTarget(),
+      int repeat = 10,
+      float diff = 1e-5)
+      : MatmulTester(op_name, input_shapes, target, repeat, diff),
+        input_shapes_(input_shapes) {}
 
-  std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                 poly::StageMap *stages) override;
+  std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) override;
   std::vector<std::vector<int>> input_shapes_;
 };
 
 class MatmulLoopPermutationTester : public MatmulTester {
  public:
-  MatmulLoopPermutationTester(const std::string &op_name,
-                              const std::vector<std::vector<int>> &input_shapes,
-                              const common::Target &target = common::DefaultHostTarget(),
-                              int repeat                   = 10,
-                              float diff                   = 1e-5)
-      : MatmulTester(op_name, input_shapes, target, repeat, diff), input_shapes_(input_shapes) {}
+  MatmulLoopPermutationTester(
+      const std::string &op_name,
+      const std::vector<std::vector<int>> &input_shapes,
+      const common::Target &target = common::DefaultHostTarget(),
+      int repeat = 10,
+      float diff = 1e-5)
+      : MatmulTester(op_name, input_shapes, target, repeat, diff),
+        input_shapes_(input_shapes) {}
 
-  std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                 poly::StageMap *stages) override;
+  std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) override;
   std::vector<std::vector<int>> input_shapes_;
 };
 
 class MatmulArrayPackingTester : public MatmulTester {
  public:
-  MatmulArrayPackingTester(const std::string &op_name,
-                           const std::vector<std::vector<int>> &input_shapes,
-                           const common::Target &target = common::DefaultHostTarget(),
-                           int repeat                   = 10,
-                           float diff                   = 1e-5)
-      : MatmulTester(op_name, input_shapes, target, repeat, diff), input_shapes_(input_shapes) {}
+  MatmulArrayPackingTester(
+      const std::string &op_name,
+      const std::vector<std::vector<int>> &input_shapes,
+      const common::Target &target = common::DefaultHostTarget(),
+      int repeat = 10,
+      float diff = 1e-5)
+      : MatmulTester(op_name, input_shapes, target, repeat, diff),
+        input_shapes_(input_shapes) {}
 
-  std::vector<ir::Tensor> CreateSpecificStrategy(const std::vector<ir::Tensor> &inputs,
-                                                 poly::StageMap *stages) override;
+  std::vector<ir::Tensor> CreateSpecificStrategy(
+      const std::vector<ir::Tensor> &inputs, poly::StageMap *stages) override;
   std::vector<std::vector<int>> input_shapes_;
 };
 

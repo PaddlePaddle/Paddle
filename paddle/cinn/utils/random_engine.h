@@ -23,12 +23,13 @@ namespace cinn {
 namespace utils {
 
 /**
- * LinearRandomEngine is a random number engine using linear congruence algorithm.
- * The transition function of state is: x(i + 1) = (multiplier * x(i) + increment) mod modulus.
- * Its interface and members are roughly the same as std::linear_congruential_engine,
- * which can be used for std::xxx_distribution. The difference from std::linear_congruential_engine is that
- * the LinearRandomEngine does not own the random seed,
- * but holds the pointer of the random seed and transfers the state for other objects.
+ * LinearRandomEngine is a random number engine using linear congruence
+ * algorithm. The transition function of state is: x(i + 1) = (multiplier * x(i)
+ * + increment) mod modulus. Its interface and members are roughly the same as
+ * std::linear_congruential_engine, which can be used for std::xxx_distribution.
+ * The difference from std::linear_congruential_engine is that the
+ * LinearRandomEngine does not own the random seed, but holds the pointer of the
+ * random seed and transfers the state for other objects.
  */
 class LinearRandomEngine {
  public:
@@ -54,7 +55,9 @@ class LinearRandomEngine {
   result_type operator()() { return Next(); }
 
   // Get a device random state
-  static StateType GetDeviceRandomValue() { return (std::random_device()()) % modulus; }
+  static StateType GetDeviceRandomValue() {
+    return (std::random_device()()) % modulus;
+  }
 
   // Normalize the random seed to the range of [1, modulus - 1]
   static StateType NormalizeState(StateType state) {
@@ -85,20 +88,27 @@ class LinearRandomEngine {
   StateType* state_;
 };
 
-// Fork a new random state for another Random Generator, the original seed will be changed to next state.
-inline LinearRandomEngine::StateType ForkRandomState(LinearRandomEngine::StateType* rand_seed) {
+// Fork a new random state for another Random Generator, the original seed will
+// be changed to next state.
+inline LinearRandomEngine::StateType ForkRandomState(
+    LinearRandomEngine::StateType* rand_seed) {
   return LinearRandomEngine(rand_seed).ForkState();
 }
 
 // Sample Integers from uniform distribution [min, max)
-int SampleUniformInt(int min, int max, LinearRandomEngine::StateType* rand_seed);
+int SampleUniformInt(int min,
+                     int max,
+                     LinearRandomEngine::StateType* rand_seed);
 
 // Sample Real Numbers from uniform distribution [min, max)
-double SampleUniformDouble(double min, double max, LinearRandomEngine::StateType* rand_seed);
+double SampleUniformDouble(double min,
+                           double max,
+                           LinearRandomEngine::StateType* rand_seed);
 
 // Sample Integers from distribution of input weights
 template <typename T>
-int SampleDiscreteFromDistribution(const std::vector<T>& weights, LinearRandomEngine::StateType* rand_seed) {
+int SampleDiscreteFromDistribution(const std::vector<T>& weights,
+                                   LinearRandomEngine::StateType* rand_seed) {
   CHECK(weights.size() > 0);
   LinearRandomEngine engine(rand_seed);
   std::discrete_distribution<int> dist(weights.begin(), weights.end());

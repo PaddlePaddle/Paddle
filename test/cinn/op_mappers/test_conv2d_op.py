@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -24,7 +26,7 @@ class TestConv2dOp(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {
             "x": self.random([3, 16, 32, 32], "float32"),
-            "weight": self.random([16, 16, 3, 3], "float32")
+            "weight": self.random([16, 16, 3, 3], "float32"),
         }
         self.data_format = 'NCHW'
 
@@ -32,10 +34,14 @@ class TestConv2dOp(OpMapperTest):
         return "conv2d"
 
     def set_op_inputs(self):
-        x = paddle.static.data('x', self.feed_data["x"].shape,
-                               self.feed_data["x"].dtype)
-        weight = paddle.static.data('weight', self.feed_data["weight"].shape,
-                                    self.feed_data["weight"].dtype)
+        x = paddle.static.data(
+            'x', self.feed_data["x"].shape, self.feed_data["x"].dtype
+        )
+        weight = paddle.static.data(
+            'weight',
+            self.feed_data["weight"].shape,
+            self.feed_data["weight"].dtype,
+        )
         return {'Input': [x], 'Filter': [weight]}
 
     def set_op_attrs(self):
@@ -46,7 +52,7 @@ class TestConv2dOp(OpMapperTest):
             "groups": 1,
             "data_format": self.data_format,
             "padding_algorithm": "EXPLICIT",
-            "use_cudnn": True
+            "use_cudnn": True,
         }
 
     def set_op_outputs(self):
@@ -60,7 +66,7 @@ class TestConv2dNCHWFP16(TestConv2dOp):
     def init_input_data(self):
         self.feed_data = {
             "x": self.random([3, 16, 32, 32], "float16"),
-            "weight": self.random([16, 16, 3, 3], "float16")
+            "weight": self.random([16, 16, 3, 3], "float16"),
         }
         self.data_format = 'NCHW'
 
@@ -72,7 +78,7 @@ class TestConv2dNHWC(TestConv2dOp):
     def init_input_data(self):
         self.feed_data = {
             "x": self.random([3, 32, 32, 16], "float32"),
-            "weight": self.random([16, 16, 3, 3], "float32")
+            "weight": self.random([16, 16, 3, 3], "float32"),
         }
         self.data_format = 'NHWC'
 
@@ -81,7 +87,7 @@ class TestConv2dNHWCFP16(TestConv2dOp):
     def init_input_data(self):
         self.feed_data = {
             "x": self.random([3, 32, 32, 16], "float16"),
-            "weight": self.random([16, 16, 3, 3], "float16")
+            "weight": self.random([16, 16, 3, 3], "float16"),
         }
         self.data_format = 'NHWC'
 

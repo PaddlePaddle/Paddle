@@ -82,8 +82,13 @@ class PhiKernelAdaptor {
       phi::InferMetaContext ctx;
 
       paddle::dialect::OpYamlInfoParser op_yaml_info_parser(yaml_info);
-      ir::BuildInferMetaContext(
-          (*it), name_map, scope_, op_yaml_info_parser, &ctx);
+
+      ir::BuildPhiContext<
+          phi::InferMetaContext,
+          phi::MetaTensor,
+          phi::MetaTensor,
+          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+          false>((*it), name_map, scope_, op_yaml_info_parser, &ctx);
 
       infer_meta_impl->infer_meta_(&ctx);
 
@@ -98,7 +103,11 @@ class PhiKernelAdaptor {
 
       phi::KernelContext kernel_ctx(dev_ctx);
 
-      ir::BuildPhiKernelContext(
+      ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>(
           (*it), name_map, scope_, op_yaml_info_parser, &kernel_ctx);
       kernel_fn(&kernel_ctx);
 

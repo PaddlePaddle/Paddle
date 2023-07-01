@@ -33,17 +33,18 @@ TEST(test01_elementwise_add, basic) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
   Module::Builder builder("module1", target);
 
   auto stages = CreateStages({A, B, C});
-  auto func   = Lower("add1", stages, {A, B, C});
+  auto func = Lower("add1", stages, {A, B, C});
 
   builder.AddFunction(func);
 
   CodeGenC compiler(target);
   Outputs outputs;
-  outputs = outputs.c_header("./test01_elementwise_add.h").c_source("./test01_elementwise_add.cc");
+  outputs = outputs.c_header("./test01_elementwise_add.h")
+                .c_source("./test01_elementwise_add.cc");
   compiler.Compile(builder.Build(), outputs);
 }
 
@@ -62,7 +63,7 @@ TEST(test01_elementwise_add, vectorize) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
   Module::Builder builder("module2", target);
 
   auto func = Lower("add1_vectorize", stages, {A, B, C});
@@ -73,7 +74,8 @@ TEST(test01_elementwise_add, vectorize) {
 
   CodeGenCX86 compiler(target, CodeGenCX86::Feature::AVX256);
   Outputs outputs;
-  outputs = outputs.c_header("./test01_elementwise_add_vectorize.h").c_source("./test01_elementwise_add_vectorize.cc");
+  outputs = outputs.c_header("./test01_elementwise_add_vectorize.h")
+                .c_source("./test01_elementwise_add_vectorize.cc");
   compiler.Compile(builder.Build(), outputs);
 }
 
@@ -87,8 +89,10 @@ auto BuildComputeAtExpr() {
   auto A_cache = Compute(
       {M, N},
       [=](Expr i, Expr j) {
-        auto first = cinn::common::select(i > 0, A(i - 1, j), common::make_const(Float(32), 0.f));
-        auto last  = cinn::common::select(i < M - 1, A(i + 1, j), common::make_const(Float(32), 0.f));
+        auto first = cinn::common::select(
+            i > 0, A(i - 1, j), common::make_const(Float(32), 0.f));
+        auto last = cinn::common::select(
+            i < M - 1, A(i + 1, j), common::make_const(Float(32), 0.f));
         return first + A(i, j) + last;
       },
       "A_cache");
@@ -100,10 +104,10 @@ auto BuildComputeAtExpr() {
 
 TEST(elementwise_add, compute_at) {
   auto _A_B_A_cache_C_ = BuildComputeAtExpr();
-  auto &A              = std::get<0>(_A_B_A_cache_C_);
-  auto &B              = std::get<1>(_A_B_A_cache_C_);
-  auto &A_cache        = std::get<2>(_A_B_A_cache_C_);
-  auto &C              = std::get<3>(_A_B_A_cache_C_);
+  auto &A = std::get<0>(_A_B_A_cache_C_);
+  auto &B = std::get<1>(_A_B_A_cache_C_);
+  auto &A_cache = std::get<2>(_A_B_A_cache_C_);
+  auto &C = std::get<3>(_A_B_A_cache_C_);
 
   auto stages = CreateStages({A, B, A_cache, C});
   stages[A_cache]->ComputeAt2(stages[C], 0);
@@ -113,19 +117,20 @@ TEST(elementwise_add, compute_at) {
 
   auto fn = Lower("fn_compute_at", stages, {A, B, C}, {}, {A_cache}, &builder);
 
-  CodeGenCX86 compiler(common::DefaultHostTarget(), CodeGenCX86::Feature::AVX256);
+  CodeGenCX86 compiler(common::DefaultHostTarget(),
+                       CodeGenCX86::Feature::AVX256);
   Outputs outputs;
-  outputs =
-      outputs.c_header("./test01_elementwise_add_compute_at.h").c_source("./test01_elementwise_add_compute_at.cc");
+  outputs = outputs.c_header("./test01_elementwise_add_compute_at.h")
+                .c_source("./test01_elementwise_add_compute_at.cc");
   compiler.Compile(builder.Build(), outputs);
 }
 
 TEST(elementwise_add, compute_at1) {
   auto _A_B_A_cache_C_ = BuildComputeAtExpr();
-  auto &A              = std::get<0>(_A_B_A_cache_C_);
-  auto &B              = std::get<1>(_A_B_A_cache_C_);
-  auto &A_cache        = std::get<2>(_A_B_A_cache_C_);
-  auto &C              = std::get<3>(_A_B_A_cache_C_);
+  auto &A = std::get<0>(_A_B_A_cache_C_);
+  auto &B = std::get<1>(_A_B_A_cache_C_);
+  auto &A_cache = std::get<2>(_A_B_A_cache_C_);
+  auto &C = std::get<3>(_A_B_A_cache_C_);
 
   auto stages = CreateStages({A, B, A_cache, C});
   stages[A_cache]->ComputeAt2(stages[C], 1);
@@ -133,9 +138,11 @@ TEST(elementwise_add, compute_at1) {
 
   Module::Builder builder("module4", common::DefaultHostTarget());
 
-  auto fn = Lower("fn_compute_at_level1", stages, {A, B, C}, {}, {A_cache}, &builder);
+  auto fn =
+      Lower("fn_compute_at_level1", stages, {A, B, C}, {}, {A_cache}, &builder);
 
-  CodeGenCX86 compiler(common::DefaultHostTarget(), CodeGenCX86::Feature::AVX256);
+  CodeGenCX86 compiler(common::DefaultHostTarget(),
+                       CodeGenCX86::Feature::AVX256);
   Outputs outputs;
   outputs = outputs.c_header("./test01_elementwise_add_compute_at_level1.h")
                 .c_source("./test01_elementwise_add_compute_at_level1.cc");

@@ -45,7 +45,8 @@ class TaskOptimizer {
     std::string from;
     double cost;
     FunctionGroup functions;
-    Result(const std::string& from_type) : from(from_type), cost(std::numeric_limits<double>::max()) {}
+    Result(const std::string& from_type)
+        : from(from_type), cost(std::numeric_limits<double>::max()) {}
   };
 
   Result OptimizeByManual(bool need_measure);
@@ -53,7 +54,9 @@ class TaskOptimizer {
   Result OptimizeByEvolution(const TuningOptions& options);
 
   // call search candidates once by EvolutionarySearch and prune invalid ones
-  std::vector<SearchState> SearchOneRound(const TuningOptions& options, std::vector<MeasureInput>* measure_candidates);
+  std::vector<SearchState> SearchOneRound(
+      const TuningOptions& options,
+      std::vector<MeasureInput>* measure_candidates);
 
  private:
   // the max retry times if continuously get empty result

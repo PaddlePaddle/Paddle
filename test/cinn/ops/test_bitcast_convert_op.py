@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
-
 from struct import pack, unpack
 
+import cinn
+import numpy as np
+from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+import paddle
+
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestBitcastConvertOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -35,9 +37,10 @@ class TestBitcastConvertOp(OpTest):
         packed = pack(data.size * 'i', *data.flatten())
         self.inputs = {"x": data}
         self.outputs = {
-            "y": np.array(unpack('12B', packed), dtype='uint8').reshape((3, 1,
-                                                                         4)),
-            "output_type": "uint8"
+            "y": np.array(unpack('12B', packed), dtype='uint8').reshape(
+                (3, 1, 4)
+            ),
+            "output_type": "uint8",
         }
 
     def build_paddle_program(self, target):
@@ -48,11 +51,12 @@ class TestBitcastConvertOp(OpTest):
         builder = NetBuilder("bitcast_convert")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.bitcast_convert(x, self.outputs["output_type"])
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
         self.cinn_outputs = [res[0]]
 
     def test_check_results(self):
@@ -67,7 +71,7 @@ class TestBitcastConvertCase1(TestBitcastConvertOp):
         self.inputs = {"x": data}
         self.outputs = {
             "y": np.array(unpack('4i', packed), dtype='int32').reshape((4)),
-            "output_type": "int32"
+            "output_type": "int32",
         }
 
 
@@ -78,9 +82,10 @@ class TestBitcastConvertCase2(TestBitcastConvertOp):
         packed = pack(data.size * 'f', *data.flatten())
         self.inputs = {"x": data}
         self.outputs = {
-            "y": np.array(unpack('12d', packed), dtype='float64').reshape((4,
-                                                                           3)),
-            "output_type": "float64"
+            "y": np.array(unpack('12d', packed), dtype='float64').reshape(
+                (4, 3)
+            ),
+            "output_type": "float64",
         }
 
 
@@ -91,11 +96,10 @@ class TestBitcastConvertCase3(TestBitcastConvertOp):
         packed = pack(data.size * 'f', *data.flatten())
         self.inputs = {"x": data}
         self.outputs = {
-            "y":
-            np.array(unpack('48H', packed), dtype='uint16').reshape((4, 3, 2,
-                                                                     2)),
-            "output_type":
-            "uint16"
+            "y": np.array(unpack('48H', packed), dtype='uint16').reshape(
+                (4, 3, 2, 2)
+            ),
+            "output_type": "uint16",
         }
 
 

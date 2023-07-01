@@ -31,7 +31,9 @@
 
 namespace cinn::frontend {
 
-std::vector<float> RunWithProgram(const Program& program, const Target& target, Variable out) {
+std::vector<float> RunWithProgram(const Program& program,
+                                  const Target& target,
+                                  Variable out) {
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   auto scope = hlir::framework::BuildScope(target, graph);
 
@@ -47,13 +49,13 @@ std::vector<float> RunWithProgram(const Program& program, const Target& target, 
 
 TEST(TransposeFolding, FoldTwoFillConstant) {
   NetBuilder builder("net_builder");
-  auto x           = builder.FillConstant<float>({32, 32}, 1.0f, "x");
-  auto y           = builder.FillConstant<float>({32, 32}, 1.0f, "y");
+  auto x = builder.FillConstant<float>({32, 32}, 1.0f, "x");
+  auto y = builder.FillConstant<float>({32, 32}, 1.0f, "y");
   auto transpose_x = builder.Transpose(x, {1, 0});
   auto transpose_y = builder.Transpose(y, {1, 0});
-  auto out         = builder.Add(transpose_x, transpose_y);
-  auto program     = builder.Build();
-  auto target      = common::DefaultTarget();
+  auto out = builder.Add(transpose_x, transpose_y);
+  auto program = builder.Build();
+  auto target = common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;
@@ -89,12 +91,12 @@ TEST(TransposeFolding, FoldTwoFillConstant) {
 
 TEST(TransposeFolding, FoldTwoFillConstantWithSameOuput) {
   NetBuilder builder("net_builder");
-  auto x           = builder.FillConstant<float>({32, 32}, 1.0f, "x");
-  auto y           = builder.FillConstant<float>({32, 32}, 1.0f, "y");
+  auto x = builder.FillConstant<float>({32, 32}, 1.0f, "x");
+  auto y = builder.FillConstant<float>({32, 32}, 1.0f, "y");
   auto transpose_x = builder.Transpose(x, {1, 0});
-  auto out         = builder.Add(y, y);
-  auto program     = builder.Build();
-  auto target      = common::DefaultTarget();
+  auto out = builder.Add(y, y);
+  auto program = builder.Build();
+  auto target = common::DefaultTarget();
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;
@@ -127,13 +129,13 @@ TEST(TransposeFolding, FoldTwoFillConstantWithSameOuput) {
 
 TEST(TransposeFolding, FoldThreeFillConstant) {
   NetBuilder builder("net_builder");
-  auto x             = builder.FillConstant<float>({32, 32}, 1.0f, "x");
-  auto y             = builder.FillConstant<float>({32, 32}, 1.0f, "y");
-  auto z             = builder.FillConstant<float>({32, 32}, 1.0f, "z");
-  auto transpose_x   = builder.Transpose(x, {1, 0});
-  auto out           = builder.Add(y, z);
-  auto program       = builder.Build();
-  auto target        = common::DefaultTarget();
+  auto x = builder.FillConstant<float>({32, 32}, 1.0f, "x");
+  auto y = builder.FillConstant<float>({32, 32}, 1.0f, "y");
+  auto z = builder.FillConstant<float>({32, 32}, 1.0f, "z");
+  auto transpose_x = builder.Transpose(x, {1, 0});
+  auto out = builder.Add(y, z);
+  auto program = builder.Build();
+  auto target = common::DefaultTarget();
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;
   // Program {
@@ -166,15 +168,15 @@ TEST(TransposeFolding, FoldThreeFillConstant) {
 
 TEST(TransposeFolding, FoldThreeFillConstantWithOneDiff) {
   NetBuilder builder("net_builder");
-  auto x           = builder.FillConstant<float>({32, 32}, 1.0f, "x");
-  auto y           = builder.FillConstant<float>({32, 32}, 1.0f, "y");
-  auto z           = builder.FillConstant<float>({32, 32}, 0.0f, "z");
+  auto x = builder.FillConstant<float>({32, 32}, 1.0f, "x");
+  auto y = builder.FillConstant<float>({32, 32}, 1.0f, "y");
+  auto z = builder.FillConstant<float>({32, 32}, 0.0f, "z");
   auto transpose_x = builder.Transpose(x, {1, 0});
-  auto out         = builder.Add(y, z);
-  auto program     = builder.Build();
-  auto target      = common::DefaultTarget();
-  auto graph       = std::make_shared<hlir::framework::Graph>(program, target);
-  auto scope       = hlir::framework::BuildScope(target, graph);
+  auto out = builder.Add(y, z);
+  auto program = builder.Build();
+  auto target = common::DefaultTarget();
+  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+  auto scope = hlir::framework::BuildScope(target, graph);
 
   size_t origin_size = program.size();
   VLOG(1) << "Program Before FillConstantFolding:\n" << program;

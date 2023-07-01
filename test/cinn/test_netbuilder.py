@@ -14,19 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import unittest
+
+import cinn
+import numpy as np
+from cinn import Target, ir, lang, runtime
+from cinn.common import *
+from cinn.framework import *
+from cinn.frontend import *
+
 import paddle
 import paddle.static as static
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
-import sys
 
 enable_gpu = sys.argv.pop()
 
@@ -45,7 +44,8 @@ class TestNetBuilder(unittest.TestCase):
         b = static.data(name='B', shape=[1, 24, 56, 56], dtype='float32')
         c = paddle.add(a, b)
         d = paddle.nn.initializer.NumpyArrayInitializer(
-            np.array(result[2]).reshape((144, 24, 1, 1)).astype('float32'))
+            np.array(result[2]).reshape((144, 24, 1, 1)).astype('float32')
+        )
         res = static.nn.conv2d(
             input=c,
             num_filters=144,
@@ -53,7 +53,8 @@ class TestNetBuilder(unittest.TestCase):
             stride=1,
             padding=0,
             dilation=1,
-            param_attr=d)
+            param_attr=d,
+        )
 
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
@@ -65,11 +66,17 @@ class TestNetBuilder(unittest.TestCase):
         print("result in paddle_verify: \n")
         for i in range(0, output.shape[0]):
             if np.abs(output[i] - result[len(result) - 1][i]) > 1e-4:
-                print("Error! ", i, "-th data has diff with target data:\n",
-                      output[i], " vs: ", result[len(result) - 1][i],
-                      ". Diff is: ", output[i] - result[len(result) - 1][i])
-        self.assertTrue(
-            np.allclose(result[len(result) - 1], output, atol=1e-4))
+                print(
+                    "Error! ",
+                    i,
+                    "-th data has diff with target data:\n",
+                    output[i],
+                    " vs: ",
+                    result[len(result) - 1][i],
+                    ". Diff is: ",
+                    output[i] - result[len(result) - 1][i],
+                )
+        self.assertTrue(np.allclose(result[len(result) - 1], output, atol=1e-4))
 
     def test_basic(self):
         builder = NetBuilder("test_basic")
@@ -86,10 +93,11 @@ class TestNetBuilder(unittest.TestCase):
         tensor_data = [
             np.random.random([1, 24, 56, 56]).astype("float32"),
             np.random.random([1, 24, 56, 56]).astype("float32"),
-            np.random.random([144, 24, 1, 1]).astype("float32")
+            np.random.random([144, 24, 1, 1]).astype("float32"),
         ]
-        result = prog.build_and_get_output(self.target, [a, b, d], tensor_data,
-                                           [e])
+        result = prog.build_and_get_output(
+            self.target, [a, b, d], tensor_data, [e]
+        )
         result = result[0].numpy(self.target).reshape(-1)
         tensor_data.append(result)
         self.paddle_verify_basic(tensor_data)

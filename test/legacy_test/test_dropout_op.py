@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import fluid
@@ -59,306 +60,338 @@ def prim_dropout_wrapper(
     )
 
 
-# class TestDropoutOp(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.prim_op_type = "comp"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((32, 64)).astype('uint8'),
-#         }
-#         # Because prim op compare res with dygraph
-#         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-#         # but in static mode x_grad = []
-#         self.enable_check_static_comp = False
+class TestDropoutOp(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.prim_op_type = "comp"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64)).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
-#     def test_check_grad_normal(self):
-#         # Now in dy2st mode x_grad = [], so set check_prim=False
-#         self.check_grad(['X'], 'Out', check_prim=False)
-
-
-# class TestDropoutOpInput1d(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((2000,)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones(2000).astype('uint8'),
-#         }
-#         # Because prim op compare res with dygraph
-#         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-#         # but in static mode x_grad = []
-#         self.enable_check_static_comp = False
-
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
-
-#     def test_check_grad_normal(self):
-#         # Now in dy2st mode x_grad = [], so set check_prim=False
-#         self.check_grad(['X'], 'Out', check_prim=False)
+    def test_check_grad_normal(self):
+        # Now in dy2st mode x_grad = [], so set check_prim=False
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
-# class TestDropoutOp2(TestDropoutOp):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': np.zeros((32, 64)).astype('float32'),
-#             'Mask': np.zeros((32, 64)).astype('uint8'),
-#         }
+class TestDropoutOp_ZeroDim(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.prim_op_type = "comp"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones(()).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
 
-# class TestDropoutOp3(TestDropoutOp):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((32, 64, 2)).astype('uint8'),
-#         }
-#         # Because prim op compare res with dygraph
-#         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-#         # but in static mode x_grad = []
-#         self.enable_check_static_comp = False
+class TestDropoutOpInput1d(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((2000,)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones(2000).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def test_check_grad_normal(self):
+        # Now in dy2st mode x_grad = [], so set check_prim=False
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestDropoutOp4(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
-#         self.outputs = {
-#             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-#         }
-
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
+class TestDropoutOp2(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': np.zeros((32, 64)).astype('float32'),
+            'Mask': np.zeros((32, 64)).astype('uint8'),
+        }
 
 
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestDropoutOp5(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
-#         self.attrs = {'dropout_prob': 0.75, 'is_test': True}
-#         self.outputs = {
-#             'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-#         }
-
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
+class TestDropoutOp2_ZeroDim(TestDropoutOp2):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random(()).astype("float32")}
+        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': np.zeros(()).astype('float32'),
+            'Mask': np.zeros(()).astype('uint8'),
+        }
 
 
-# class TestDropoutOp6(TestDropoutOp):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {
-#             'dropout_prob': 1.0,
-#             'fix_seed': True,
-#             'is_test': False,
-#             'dropout_implementation': 'upscale_in_train',
-#         }
-#         self.outputs = {
-#             'Out': np.zeros((32, 64)).astype('float32'),
-#             'Mask': np.zeros((32, 64)).astype('uint8'),
-#         }
+class TestDropoutOp3(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64, 2)).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
 
-# class TestDropoutOp7(TestDropoutOp):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
-#         self.attrs = {
-#             'dropout_prob': 0.0,
-#             'fix_seed': True,
-#             'is_test': False,
-#             'dropout_implementation': 'upscale_in_train',
-#         }
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((32, 64, 2)).astype('uint8'),
-#         }
-#         # Because prim op compare res with dygraph
-#         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-#         # but in static mode x_grad = []
-#         self.enable_check_static_comp = False
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestDropoutOp4(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
+        self.outputs = {
+            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
+        }
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
 
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestDropoutOp8(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-#         self.attrs = {
-#             'dropout_prob': 0.35,
-#             'fix_seed': True,
-#             'is_test': True,
-#             'dropout_implementation': 'upscale_in_train',
-#         }
-#         self.outputs = {'Out': self.inputs['X']}
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestDropoutOp5(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
+        self.attrs = {'dropout_prob': 0.75, 'is_test': True}
+        self.outputs = {
+            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
+        }
 
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
 
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestDropoutOp9(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
-#         self.attrs = {
-#             'dropout_prob': 0.75,
-#             'is_test': True,
-#             'dropout_implementation': 'upscale_in_train',
-#         }
-#         self.outputs = {'Out': self.inputs['X']}
-
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
-
-
-# class TestDropoutOpWithSeed(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.inputs = {
-#             "X": np.random.random((32, 64)).astype("float32"),
-#             "Seed": np.asarray([125], dtype="int32"),
-#         }
-#         self.attrs = {
-#             'dropout_prob': 0.0,
-#         }
-#         self.outputs = {
-#             'Out': self.inputs['X'],
-#             'Mask': np.ones((32, 64)).astype('uint8'),
-#         }
-#         # Because prim op compare res with dygraph
-#         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-#         # but in static mode x_grad = []
-#         self.enable_check_static_comp = False
-
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
-
-#     def test_check_grad_normal(self):
-#         # Now in dy2st mode x_grad = [], so set check_prim=False
-#         self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=False)
+class TestDropoutOp6(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 1.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train',
+        }
+        self.outputs = {
+            'Out': np.zeros((32, 64)).astype('float32'),
+            'Mask': np.zeros((32, 64)).astype('uint8'),
+        }
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
-#     "core is not compiled with CUDA or core is not support dropout",
-# )
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestFP16DropoutOp(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.init_test_case()
-
-#         x = np.random.random(self.input_size).astype("float16")
-#         out = x * (1.0 - self.prob)
-#         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-#         self.attrs = {
-#             'dropout_prob': self.prob,
-#             'fix_seed': self.fix_seed,
-#             'is_test': True,
-#         }
-#         self.outputs = {'Out': out}
-
-#     def init_test_case(self):
-#         self.input_size = [32, 64]
-#         self.prob = 0.35
-#         self.fix_seed = True
-
-#     def test_check_output(self):
-#         self.check_output_with_place(
-#             core.CUDAPlace(0), atol=1e-3, check_prim=False
-#         )
-
-#     def test_check_grad_normal(self):
-#         self.check_grad(['X'], 'Out')
+class TestDropoutOp7(TestDropoutOp):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.0,
+            'fix_seed': True,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train',
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64, 2)).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
 
-# @unittest.skipIf(
-#     not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
-#     "core is not compiled with CUDA or core is not support dropout",
-# )
-# @skip_check_grad_ci(reason="For inference, check_grad is not required.")
-# class TestFP16DropoutOp2(TestFP16DropoutOp):
-#     def init_test_case(self):
-#         self.input_size = [32, 64, 3]
-#         self.prob = 0.75
-#         self.fix_seed = False
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestDropoutOp8(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.35,
+            'fix_seed': True,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train',
+        }
+        self.outputs = {'Out': self.inputs['X']}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
 
-# class TestBF16DropoutOp(OpTest):
-#     def setUp(self):
-#         self.op_type = "dropout"
-#         self.python_api = dropout_wapper
-#         self.public_python_api = prim_dropout_wrapper
-#         self.prim_op_type = "comp"
-#         self.dtype = np.uint16
-#         self.enable_cinn = False
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestDropoutOp9(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
+        self.attrs = {
+            'dropout_prob': 0.75,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train',
+        }
+        self.outputs = {'Out': self.inputs['X']}
 
-#         x = np.random.random((32, 64)).astype("float32")
-#         self.inputs = {'X': convert_float_to_uint16(x)}
-#         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
-#         self.outputs = {
-#             'Out': convert_float_to_uint16(
-#                 np.zeros((32, 64)).astype('float32')
-#             ),
-#             'Mask': np.zeros((32, 64)).astype('uint8'),
-#         }
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
-#     def test_check_output(self):
-#         self.check_output(check_prim=False)
 
-#     def test_check_grad_normal(self):
-#         self.check_grad(['X'], 'Out', check_prim=False)
+class TestDropoutOpWithSeed(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.inputs = {
+            "X": np.random.random((32, 64)).astype("float32"),
+            "Seed": np.asarray([125], dtype="int32"),
+        }
+        self.attrs = {
+            'dropout_prob': 0.0,
+        }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64)).astype('uint8'),
+        }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def test_check_grad_normal(self):
+        # Now in dy2st mode x_grad = [], so set check_prim=False
+        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=False)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    "core is not compiled with CUDA or core is not support dropout",
+)
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestFP16DropoutOp(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.init_test_case()
+
+        x = np.random.random(self.input_size).astype("float16")
+        out = x * (1.0 - self.prob)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {
+            'dropout_prob': self.prob,
+            'fix_seed': self.fix_seed,
+            'is_test': True,
+        }
+        self.outputs = {'Out': out}
+
+    def init_test_case(self):
+        self.input_size = [32, 64]
+        self.prob = 0.35
+        self.fix_seed = True
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            core.CUDAPlace(0), atol=1e-3, check_prim=True
+        )
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    "core is not compiled with CUDA or core is not support dropout",
+)
+@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestFP16DropoutOp2(TestFP16DropoutOp):
+    def init_test_case(self):
+        self.input_size = [32, 64, 3]
+        self.prob = 0.75
+        self.fix_seed = False
+
+
+class TestBF16DropoutOp(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.python_api = dropout_wapper
+        self.public_python_api = prim_dropout_wrapper
+        self.prim_op_type = "comp"
+        self.dtype = np.uint16
+        self.enable_cinn = False
+
+        x = np.random.random((32, 64)).astype("float32")
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                np.zeros((32, 64)).astype('float32')
+            ),
+            'Mask': np.zeros((32, 64)).astype('uint8'),
+        }
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
