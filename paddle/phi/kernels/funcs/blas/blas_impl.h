@@ -1050,7 +1050,7 @@ void Blas<phi::CPUContext>::GEMM_FREE(T *data) const {
 #endif
 
 template <>
-template <typename T>
+template <typename T, typename OutT>
 void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  CBLAS_TRANSPOSE transB,
                                  int M,
@@ -1060,7 +1060,7 @@ void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 T *C) const {
+                                 OutT *C) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -1337,7 +1337,7 @@ T Blas<phi::CPUContext>::ASUM(int n, T *x, int inc) const {
 }
 
 template <>
-template <typename T>
+template <typename T, typename OutT>
 void Blas<phi::CPUContext>::GEMV(bool trans_a,
                                  int M,
                                  int N,
@@ -1345,13 +1345,13 @@ void Blas<phi::CPUContext>::GEMV(bool trans_a,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 T *C) const {
+                                 OutT *C) const {
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
 template <>
-template <typename T>
+template <typename T, typename OutT>
 void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1361,7 +1361,7 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T *A,
                                         const T *B,
                                         T beta,
-                                        T *C,
+                                        OutT *C,
                                         int batchCount,
                                         int64_t strideA,
                                         int64_t strideB) const {
@@ -1411,7 +1411,7 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 }
 
 template <>
-template <typename T>
+template <typename T, typename OutT>
 void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1421,7 +1421,7 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T **A,
                                         const T **B,
                                         T beta,
-                                        T **C,
+                                        OutT **C,
                                         int batchCount) const {
 #ifdef PADDLE_WITH_MKLML
   const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
@@ -1680,7 +1680,7 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
             "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
             dim_a.batch_size_,
             dim_b.batch_size_));
-    this->template BatchedGEMM<T>(
+    this->template BatchedGEMM<T, T>(
         transA,
         transB,
         dim_a.height_,

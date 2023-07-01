@@ -81,7 +81,7 @@ class Blas {
  public:
   explicit Blas(const DeviceContext& context) : context_(context) {}
 
-  template <typename T>
+  template <typename T, typename OutT = T>
   void GEMM(CBLAS_TRANSPOSE transA,
             CBLAS_TRANSPOSE transB,
             int M,
@@ -91,7 +91,7 @@ class Blas {
             const T* A,
             const T* B,
             T beta,
-            T* C) const;
+            OutT* C) const;
 
   template <typename T>
   void GEMM(bool transA,
@@ -255,7 +255,7 @@ class Blas {
   template <typename T>
   void VPOW(int n, const T* x, T alpha, T* y) const;
 
-  template <typename T>
+  template <typename T, typename OutT = T>
   void GEMV(bool trans_a,
             int M,
             int N,
@@ -263,7 +263,7 @@ class Blas {
             const T* A,
             const T* B,
             T beta,
-            T* C) const;
+            OutT* C) const;
 
   template <typename T>
   T DOT(int n, const T* x, const T* y) const;
@@ -274,7 +274,7 @@ class Blas {
   template <typename T>
   T ASUM(int n, T* x, int inc) const;
 
-  template <typename T>
+  template <typename T, typename OutT = T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
                    CBLAS_TRANSPOSE transB,
                    int M,
@@ -284,12 +284,12 @@ class Blas {
                    const T* A,
                    const T* B,
                    T beta,
-                   T* C,
+                   OutT* C,
                    int batchCount,
                    int64_t strideA,
                    int64_t strideB) const;
 
-  template <typename T>
+  template <typename T, typename OutT = T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
                    CBLAS_TRANSPOSE transB,
                    int M,
@@ -299,7 +299,7 @@ class Blas {
                    const T** A,
                    const T** B,
                    T beta,
-                   T** C,
+                   OutT** C,
                    int batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \

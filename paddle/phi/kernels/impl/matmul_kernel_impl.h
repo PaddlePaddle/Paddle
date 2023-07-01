@@ -1016,16 +1016,17 @@ void MatmulAMPKernel(const Context& ctx,
                      bool transpose_x,
                      bool transpose_y,
                      DenseTensor* out) {
-  const int x_ndim = x_dims.size();
-  const int y_ndim = y_dims.size();
-
-  // Get data ptr
-  const T* x_data = X.data<T>();
-  const T* y_data = Y.data<T>();
-
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
+  const int x_ndim = x_dims.size();
+  const int y_ndim = y_dims.size();
+  bool flag = false;
+
+  // Get data ptr
+  const T* x_data = x.data<T>();
+  const T* y_data = y.data<T>();
+
+  auto blas = phi::funcs::GetBlas<Context, T>(ctx);
   const int M = transpose_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
   const int K = transpose_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (transpose_y) {
@@ -1067,8 +1068,8 @@ void MatmulAMPKernel(const Context& ctx,
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
-  dev_ctx.template Alloc<T>(Out);
+  out->ResizeAndAllocate(phi::make_ddim(out_broadcast_dims));
+  ctx.template Alloc<T>(out);
 
   const int batch_dim = ndim - 2;
   // broadcast message
@@ -1104,7 +1105,7 @@ void MatmulAMPKernel(const Context& ctx,
               x_data,
               y_data,
               static_cast<T>(flag),
-              dev_ctx.template Alloc<T>(Out));
+              ctx.template Alloc<T>(out));
   } else if (x_batch_size == 1) {
     if (M == 1 && transpose_y) {
       VLOG(3) << "MatMul's case 9";
@@ -1115,7 +1116,7 @@ void MatmulAMPKernel(const Context& ctx,
                 y_data,
                 x_data,
                 static_cast<T>(flag),
-                dev_ctx.template Alloc<T>(Out));
+                ctx.template Alloc<T>(out));
     } else {
       VLOG(3) << "MatMul's case 10";
       blas.BatchedGEMM(transpose_x ? CblasTrans : CblasNoTrans,
@@ -1127,7 +1128,7 @@ void MatmulAMPKernel(const Context& ctx,
                        x_data,
                        y_data,
                        static_cast<T>(flag),
-                       dev_ctx.template Alloc<T>(Out),
+                       ctx.template Alloc<T>(out),
                        out_batch_size,
                        0,
                        K * N);
@@ -1144,7 +1145,7 @@ void MatmulAMPKernel(const Context& ctx,
                 x_data,
                 y_data,
                 static_cast<T>(flag),
-                dev_ctx.template Alloc<T>(Out));
+                ctx.template Alloc<T>(out));
     } else {
       VLOG(3) << "MatMul's case 12";
       blas.BatchedGEMM(CblasTrans,
@@ -1156,7 +1157,7 @@ void MatmulAMPKernel(const Context& ctx,
                        x_data,
                        y_data,
                        static_cast<T>(flag),
-                       dev_ctx.template Alloc<T>(Out),
+                       ctx.template Alloc<T>(out),
                        out_batch_size,
                        M * K,
                        0);
@@ -1172,7 +1173,7 @@ void MatmulAMPKernel(const Context& ctx,
                      x_data,
                      y_data,
                      static_cast<T>(flag),
-                     dev_ctx.template Alloc<T>(Out),
+                     ctx.template Alloc<T>(out),
                      out_batch_size,
                      M * K,
                      K * N);
@@ -1191,7 +1192,7 @@ void MatmulAMPKernel(const Context& ctx,
 
       x_ptr[i] = x_data + x_index * M * K;
       y_ptr[i] = y_data + y_index * K * N;
-      out_ptr[i] = dev_ctx.template Alloc<T>(Out) + i * M * N;
+      out_ptr[i] = ctx.template Alloc<T>(out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 14";

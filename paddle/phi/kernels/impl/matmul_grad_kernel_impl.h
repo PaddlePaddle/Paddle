@@ -2012,4 +2012,14 @@ void MatmulWithFlattenDoubleGradKernel(
   }
 }
 
+template <typename T, typename Context>
+void MatmulAmpGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& out_grad,
+                         bool transpose_x,
+                         bool transpose_y,
+                         DenseTensor* dx,
+                         DenseTensor* dy) {}
+
 }  // namespace phi
