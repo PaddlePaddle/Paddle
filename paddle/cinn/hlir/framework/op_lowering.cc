@@ -35,7 +35,6 @@ using framework::OpPatternKind;
 using framework::shape_t;
 using framework::StrategyFunction;
 
-using lang;
 using common::Type;
 
 using cinn::hlir::op::ExternalApiRegistry;
