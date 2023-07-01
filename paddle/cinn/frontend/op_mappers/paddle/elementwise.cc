@@ -268,31 +268,42 @@ void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 CINN_REGISTER_HELPER(paddle_elementwise) {
   using cinn::frontend::paddle_mappers;
-  CINN_REGISTER_OP_MAPPER(add, AddOpMapper)
-  CINN_REGISTER_OP_MAPPER(elementwise_add,
-                          ElementwiseOpMapper<EltwiseType::kAdd>)
-  CINN_REGISTER_OP_MAPPER(elementwise_add_grad, ElementwiseAddGradOpMapper)
-  CINN_REGISTER_OP_MAPPER(elementwise_mul,
-                          ElementwiseOpMapper<EltwiseType::kMul>)
-  CINN_REGISTER_OP_MAPPER(elementwise_div,
-                          ElementwiseOpMapper<EltwiseType::kDiv>)
-  CINN_REGISTER_OP_MAPPER(elementwise_sub,
-                          ElementwiseOpMapper<EltwiseType::kSub>)
-  CINN_REGISTER_OP_MAPPER(elementwise_pow,
-                          ElementwiseOpMapper<EltwiseType::kPow>)
-  CINN_REGISTER_OP_MAPPER(elementwise_mod,
-                          ElementwiseOpMapper<EltwiseType::kMod>)
-  CINN_REGISTER_OP_MAPPER(elementwise_max,
-                          ElementwiseOpMapper<EltwiseType::kMax>)
-  CINN_REGISTER_OP_MAPPER(elementwise_min,
-                          ElementwiseOpMapper<EltwiseType::kMin>)
-  CINN_REGISTER_OP_MAPPER(sum, SumOpMapper)
-  CINN_REGISTER_OP_MAPPER(cast, CastOpMapper)
-  CINN_REGISTER_OP_MAPPER(pow, PowOpMapper)
+  CINN_REGISTER_OP_MAPPER(add, paddle_mappers::AddOpMapper)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_add,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kAdd>)
+  CINN_REGISTER_OP_MAPPER(elementwise_add_grad,
+                          paddle_mappers::ElementwiseAddGradOpMapper)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_mul,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kMul>)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_div,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kDiv>)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_sub,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kSub>)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_pow,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kPow>)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_mod,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kMod>)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_max,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kMax>)
+  CINN_REGISTER_OP_MAPPER(
+      elementwise_min,
+      paddle_mappers::ElementwiseOpMapper<paddle_mappers::EltwiseType::kMin>)
+  CINN_REGISTER_OP_MAPPER(sum, paddle_mappers::SumOpMapper)
+  CINN_REGISTER_OP_MAPPER(cast, paddle_mappers::CastOpMapper)
+  CINN_REGISTER_OP_MAPPER(pow, paddle_mappers::PowOpMapper)
   CINN_REGISTER_OP_MAPPER(
       grad_add,
-      ElementwiseOpMapper<EltwiseType::kAdd>)  // special elementwise_add for
+      paddle_mappers::ElementwiseOpMapper<
+          paddle_mappers::EltwiseType::kAdd>)  // special elementwise_add for
                                                // gradient accumulation
-  CINN_REGISTER_OP_MAPPER(elementwise_floordiv, FloorDivideOpMapper)
+  CINN_REGISTER_OP_MAPPER(elementwise_floordiv,
+                          paddle_mappers::FloorDivideOpMapper)
   return true;
 }
