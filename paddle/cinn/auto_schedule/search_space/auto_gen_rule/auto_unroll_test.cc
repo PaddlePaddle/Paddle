@@ -24,7 +24,7 @@ namespace cinn {
 namespace auto_schedule {
 
 TEST(AutoUnroll, Init) {
-  using ir;
+  using namespace ir;  // NOLINT
 
   Expr M(100);
   Expr N(4);
@@ -50,7 +50,7 @@ TEST(AutoUnroll, Init) {
 }
 
 TEST(AutoUnroll, UnrollableApply) {
-  using ir;
+  using namespace ir;  // NOLINT
 
   Expr M(100);
   Expr N(4);
