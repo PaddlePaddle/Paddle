@@ -49,6 +49,14 @@
 #include "paddle/fluid/ir/dialect/pd_type.h"
 #include "paddle/phi/core/ddim.h"
 
+// build Conv2dFusionOp
+#include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/ir/core/op_base.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/core/meta_tensor.h"
+
 // Define op1.
 class Operation1 : public ir::Op<Operation1> {
  public:
@@ -340,6 +348,242 @@ class Conv2dBnFusePattern
   }
 };
 
+namespace paddle {
+namespace dialect {
+
+class Conv2dFusionOp
+    : public ir::Op<Conv2dFusionOp, OpYamlInfoInterface, InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd.conv2d_fusion"; }
+  static const char *attributes_name[6];
+  static constexpr uint32_t attributes_num = 6;
+  static OpInfoTuple GetOpInfo();
+  static void Build(ir::Builder &builder,
+                    ir::OperationArgument &argument,
+                    ir::OpResult input_,
+                    ir::OpResult filter_,
+                    ir::Value bias_,
+                    ir::AttributeMap attributes) {
+    std::vector<int> strides;
+    for (size_t i = 0;
+         i < attributes.at("strides").dyn_cast<ir::ArrayAttribute>().size();
+         i++) {
+      strides.push_back(attributes.at("strides")
+                            .dyn_cast<ir::ArrayAttribute>()[i]
+                            .dyn_cast<ir::Int32Attribute>()
+                            .data());
+    }
+
+    std::vector<int> paddings;
+    for (size_t i = 0;
+         i < attributes.at("paddings").dyn_cast<ir::ArrayAttribute>().size();
+         i++) {
+      paddings.push_back(attributes.at("paddings")
+                             .dyn_cast<ir::ArrayAttribute>()[i]
+                             .dyn_cast<ir::Int32Attribute>()
+                             .data());
+    }
+
+    std::string padding_algorithm =
+        attributes.at("padding_algorithm").dyn_cast<ir::StrAttribute>().data();
+
+    std::vector<int> dilations;
+    for (size_t i = 0;
+         i < attributes.at("dilations").dyn_cast<ir::ArrayAttribute>().size();
+         i++) {
+      dilations.push_back(attributes.at("dilations")
+                              .dyn_cast<ir::ArrayAttribute>()[i]
+                              .dyn_cast<ir::Int32Attribute>()
+                              .data());
+    }
+
+    int groups = attributes.at("groups").dyn_cast<ir::Int32Attribute>().data();
+
+    std::string data_format =
+        attributes.at("data_format").dyn_cast<ir::StrAttribute>().data();
+
+    std::vector<ir::OpResult> argument_inputs = {input_, filter_};
+    argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+    std::vector<ir::Attribute> vec_strides;
+    for (size_t i = 0; i < static_cast<size_t>(strides.size()); i++) {
+      ir::Attribute attr_strides =
+          ir::Int32Attribute::get(ir::IrContext::Instance(), strides[i]);
+
+      vec_strides.push_back(attr_strides);
+    }
+    ir::Attribute attr_strides =
+        ir::ArrayAttribute::get(ir::IrContext::Instance(), vec_strides);
+    argument.AddAttribute("strides", attr_strides);
+    std::vector<ir::Attribute> vec_paddings;
+    for (size_t i = 0; i < static_cast<size_t>(paddings.size()); i++) {
+      ir::Attribute attr_paddings =
+          ir::Int32Attribute::get(ir::IrContext::Instance(), paddings[i]);
+
+      vec_paddings.push_back(attr_paddings);
+    }
+    ir::Attribute attr_paddings =
+        ir::ArrayAttribute::get(ir::IrContext::Instance(), vec_paddings);
+    argument.AddAttribute("paddings", attr_paddings);
+    ir::Attribute attr_padding_algorithm =
+        ir::StrAttribute::get(ir::IrContext::Instance(), padding_algorithm);
+    argument.AddAttribute("padding_algorithm", attr_padding_algorithm);
+    std::vector<ir::Attribute> vec_dilations;
+    for (size_t i = 0; i < static_cast<size_t>(dilations.size()); i++) {
+      ir::Attribute attr_dilations =
+          ir::Int32Attribute::get(ir::IrContext::Instance(), dilations[i]);
+
+      vec_dilations.push_back(attr_dilations);
+    }
+    ir::Attribute attr_dilations =
+        ir::ArrayAttribute::get(ir::IrContext::Instance(), vec_dilations);
+    argument.AddAttribute("dilations", attr_dilations);
+    ir::Attribute attr_groups =
+        ir::Int32Attribute::get(ir::IrContext::Instance(), groups);
+    argument.AddAttribute("groups", attr_groups);
+    ir::Attribute attr_data_format =
+        ir::StrAttribute::get(ir::IrContext::Instance(), data_format);
+    argument.AddAttribute("data_format", attr_data_format);
+
+    paddle::dialect::DenseTensorType input =
+        input_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    (void)input;
+    paddle::dialect::DenseTensorType filter =
+        filter_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    (void)filter;
+    paddle::dialect::DenseTensorType bias =
+        bias_.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    (void)bias;
+
+    phi::DenseTensor dense_input(
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
+        phi::DenseTensorMeta(TransToPhiDataType(input.dtype()),
+                             input.dims(),
+                             input.data_layout(),
+                             input.lod(),
+                             input.offset()));
+    phi::MetaTensor meta_input(&dense_input);
+
+    phi::DenseTensor dense_filter(
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
+        phi::DenseTensorMeta(TransToPhiDataType(filter.dtype()),
+                             filter.dims(),
+                             filter.data_layout(),
+                             filter.lod(),
+                             filter.offset()));
+    phi::MetaTensor meta_filter(&dense_filter);
+
+    phi::DenseTensor dense_bias(
+        std::make_unique<paddle::experimental::DefaultAllocator>(
+            paddle::platform::CPUPlace())
+            .get(),
+        phi::DenseTensorMeta(TransToPhiDataType(bias.dtype()),
+                             bias.dims(),
+                             bias.data_layout(),
+                             bias.lod(),
+                             bias.offset()));
+    phi::MetaTensor meta_bias(&dense_bias);
+
+    phi::DenseTensor dense_out;
+    phi::MetaTensor meta_out(&dense_out);
+
+    phi::FusedConvInferMeta(meta_input,
+                            meta_filter,
+                            meta_bias,
+                            meta_bias,
+                            strides,
+                            paddings,
+                            padding_algorithm,
+                            dilations,
+                            groups,
+                            data_format,
+                            "float32",
+                            "relu",
+                            false,
+                            false,
+                            &meta_out,
+                            MetaConfig());
+
+    std::vector<ir::Type> argument_outputs;
+    ir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+        ir::IrContext::Instance(),
+        TransToIrDataType(dense_out.dtype()),
+        dense_out.dims(),
+        dense_out.layout(),
+        dense_out.lod(),
+        dense_out.offset());
+    argument_outputs.push_back(out_dense_tensor_type);
+    argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  }
+
+  void Verify();
+  ir::Value input() { return operand(0); }
+  ir::Value filter() { return operand(1); }
+  ir::OpResult out() { return result(0); }
+  ir::Attribute attribute(const std::string &name) {
+    {
+      PADDLE_ENFORCE(
+          attributes().count(name) > 0,
+          phi::errors::PreconditionNotMet("Attribute is not exist."));
+      return attributes().at(name);
+    }
+  }
+  template <typename T>
+  T attribute(const std::string &name) {
+    {
+      PADDLE_ENFORCE(
+          attributes().count(name) > 0 && attributes().at(name).isa<T>(),
+          phi::errors::PreconditionNotMet("Attribute is not right."));
+      return attributes().at(name).dyn_cast<T>();
+    }
+  }
+
+  // static void InferMeta( phi::InferMetaContext *infer_meta );
+};
+
+}  // namespace dialect
+}  // namespace paddle
+
+class Conv2dAddFusePattern
+    : public ir::OpRewritePattern<paddle::dialect::AddOp> {
+ public:
+  using ir::OpRewritePattern<paddle::dialect::AddOp>::OpRewritePattern;
+  bool MatchAndRewrite(
+      paddle::dialect::AddOp op,
+      ir::PatternRewriter &rewriter) const override {  // NOLINT
+    // The next op should be add.
+    paddle::dialect::Conv2dOp conv2d_op =
+        ir::GetDefiningOpForInput(op)->dyn_cast<paddle::dialect::Conv2dOp>();
+    if (!conv2d_op) return false;
+
+    ir::OpResult conv2d_out = conv2d_op.out();
+    //  if (!conv2d_out.HasOneUse()) return false;
+
+    ir::Value conv2d_filter = conv2d_op.filter();
+
+    ir::OpResult conv2d_filter_result = conv2d_filter.dyn_cast<ir::OpResult>();
+    IR_ENFORCE(conv2d_filter_result);
+
+    ir::Value add_input = op.x();
+    IR_ENFORCE(add_input == conv2d_out);
+
+    ir::Value bias = op.y();
+
+    rewriter.SetInsertionPoint(conv2d_op);
+
+    auto conv2d_fuse_op = rewriter.Build<paddle::dialect::Conv2dFusionOp>(
+        ir::GetDefiningOpForInput<0>(conv2d_op)->result(0),
+        conv2d_filter_result,
+        bias);
+    rewriter.ReplaceOp(op, {conv2d_fuse_op.out()});
+    return true;
+  }
+};
+
 class TestPass : public ir::Pass {
  public:
   TestPass() : ir::Pass("TestPass", 1) {}
@@ -347,6 +591,7 @@ class TestPass : public ir::Pass {
     ir::RewritePatternSet ps(op->ir_context());
     ps.Add<TransposePatternRewrite>(op->ir_context());
     ps.Add<Conv2dBnFusePattern>(op->ir_context());
+    ps.Add<Conv2dAddFusePattern>(op->ir_context());
 
     ir::FrozenRewritePatternSet frozen_ps(std::move(ps));
     ir::GreedyRewriteConfig cfg;
@@ -407,6 +652,9 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
                                                   "NCHW",
                                                   false,
                                                   false);
+
+  paddle::dialect::AddOp add_op = builder.Build<paddle::dialect::AddOp>(
+      conv2d_op.out(), full_bias_op.out());
 
   auto transpose1_op = builder.Build<paddle::dialect::TransposeOp>(
       batch_norm_op.out(), std::vector<int>{0, 2, 3, 1});
