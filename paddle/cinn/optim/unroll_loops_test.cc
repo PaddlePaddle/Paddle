@@ -26,7 +26,7 @@ namespace cinn {
 namespace optim {
 
 TEST(UnrollLoops, unrolled_tag) {
-  using ir;
+  using namespace ir;  // NOLINT
 
   Expr M(100);
   Expr N(4);
@@ -64,7 +64,7 @@ TEST(UnrollLoops, unrolled_tag) {
 }
 
 TEST(UnrollLoops, auto_unroll) {
-  using ir;
+  using namespace ir;  // NOLINT
 
   Expr M(100);
   Expr N(4);
