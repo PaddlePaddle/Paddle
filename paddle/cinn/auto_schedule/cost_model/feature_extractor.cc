@@ -41,7 +41,7 @@
 namespace cinn {
 namespace auto_schedule {
 
-using ::cinn::ir;
+using namespace ::cinn::ir;  // NOLINT
 
 FeatureExtractor::FeatureExtractor() {}
 
