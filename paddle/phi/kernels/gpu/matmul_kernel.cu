@@ -44,6 +44,4 @@ PD_REGISTER_KERNEL(matmul_amp,
                    ALL_LAYOUT,
                    phi::MatmulAMPKernel,
                    float,
-                   double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::bfloat16) {}

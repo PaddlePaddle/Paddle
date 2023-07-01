@@ -1193,7 +1193,7 @@
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
   infer_meta :
-    func : MatmulInferMeta
+    func : MatmulAmpInferMeta
   kernel :
     func : matmul_amp
   backward : matmul_amp_grad

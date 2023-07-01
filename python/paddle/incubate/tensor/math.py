@@ -284,7 +284,7 @@ def segment_max(data, segment_ids, name=None):
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     if in_dygraph_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul_amp(x, y, transpose_x, transpose_y)
     else:
         attrs = {
             'trans_x': transpose_x,
@@ -303,15 +303,15 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
                         'float32',
                         'float64',
                     ],
-                    'matmul',
+                    'matmul_amp',
                 )
 
         __check_input(x, y)
 
-        helper = LayerHelper('matmul_v2', **locals())
+        helper = LayerHelper('matmul_amp', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
-            type='matmul_v2',
+            type='matmul_amp',
             inputs={'X': x, 'Y': y},
             outputs={'Out': out},
             attrs=attrs,

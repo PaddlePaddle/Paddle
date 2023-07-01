@@ -71,6 +71,4 @@ PD_REGISTER_KERNEL(matmul_amp_grad,
                    ALL_LAYOUT,
                    phi::MatmulAmpGradKernel,
                    float,
-                   double,
-                   phi::dtype::float16,
                    phi::dtype::bfloat16) {}
