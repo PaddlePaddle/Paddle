@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from op_mapper_test import OpMapperTest
+
 from cinn.common import *
+from op_mapper_test import OpMapperTest
+
+import paddle
 
 
-@unittest.skipIf(not is_compiled_with_cudnn(),
-                 "x86 test will be skipped due to timeout.")
+@unittest.skipIf(
+    not is_compiled_with_cudnn(), "x86 test will be skipped due to timeout."
+)
 class TestPool2dOp(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {"x": self.random([2, 3, 7, 7], "float64")}
@@ -42,7 +45,8 @@ class TestPool2dOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -57,7 +61,7 @@ class TestPool2dOp(OpMapperTest):
             "ceil_mode": self.ceil_mode,
             "data_format": self.data_format,
             "padding_algorithm": self.padding_algorithm,
-            "use_cudnn": self.use_cudnn
+            "use_cudnn": self.use_cudnn,
         }
 
     def set_op_outputs(self):

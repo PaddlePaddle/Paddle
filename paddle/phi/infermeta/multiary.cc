@@ -2850,6 +2850,61 @@ void SgdInferMeta(const MetaTensor& param,
   }
 }
 
+void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
+                                            const MetaTensor& label,
+                                            const MetaTensor& pos_weight,
+                                            bool normalize,
+                                            int ignore_index,
+                                            MetaTensor* out,
+                                            MetaConfig config) {
+  auto x_dims = x.dims();
+  auto labels_dims = label.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(rank,
+                    labels_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        labels_dims.size()));
+
+  bool check = true;
+  if ((!config.is_runtime) &&
+      (phi::product(x_dims) <= 0 || phi::product(labels_dims) <= 0)) {
+    check = false;
+  }
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        phi::slice_ddim(x_dims, 0, rank),
+        phi::slice_ddim(labels_dims, 0, rank),
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape "
+            "except the last dimension. But received: the shape of "
+            "Input(X) is [%s], the shape of Input(Label) is [%s].",
+            x_dims,
+            labels_dims));
+
+    if (pos_weight) {
+      auto weight_dims = pos_weight.dims();
+      PADDLE_ENFORCE_EQ(
+          phi::slice_ddim(weight_dims, 0, rank),
+          phi::slice_ddim(labels_dims, 0, rank),
+          phi::errors::InvalidArgument(
+              "Input(pos_weight) and Input(Label) shall have the same shape "
+              "But received: the shape of Input(PosWeight) is [%s], "
+              "the shape of Input(Label) is [%s].",
+              weight_dims,
+              labels_dims));
+    }
+  }
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
 void SendUERecvInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          const MetaTensor& src_index,
@@ -3429,6 +3484,33 @@ void FusedConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void FusedRopeInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out_q,
+                        MetaTensor* out_k,
+                        MetaTensor* out_v) {
+  auto input_dims = q.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  if (q) {
+    out_q->set_dims(q.dims());
+    out_q->set_dtype(q.dtype());
+  }
+  if (k) {
+    out_k->set_dims(k.dims());
+    out_k->set_dtype(k.dtype());
+  }
+  if (v) {
+    out_v->set_dims(v.dims());
+    out_v->set_dtype(v.dtype());
+  }
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
@@ -3489,5 +3571,6 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dims({-1});
   out_count->set_dtype(DataType::INT32);
 }
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

@@ -49,7 +49,8 @@ TEST(batch_norm_meta, batch_norm_meta) {
 
   auto a = program.batchnorm(A, Scale, Bias, Mean, Variance, attrs);
 
-  auto b = program.fused_batchnorm_inference(A, Scale, Bias, Mean, Variance, attrs);
+  auto b =
+      program.fused_batchnorm_inference(A, Scale, Bias, Mean, Variance, attrs);
 
   Target target = common::DefaultTarget();
   program.SetInputs({A});
@@ -82,7 +83,7 @@ TEST(reduction, reduce) {
   Program program;
   std::unordered_map<std::string, Program::attr_t> attrs;
   std::vector<int> axis = {1, 2};
-  bool keep_dim         = false;
+  bool keep_dim = false;
 
   auto a = program.reduce_max(A, axis, keep_dim);
   auto b = program.reduce_min(A, axis, keep_dim);

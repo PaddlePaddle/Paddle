@@ -22,7 +22,7 @@ OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple)
   parse();
 }
 
-bool OpYamlInfoParser::IsTensorArrtibute(size_t index) const {
+bool OpYamlInfoParser::IsTensorAttribute(size_t index) const {
   PADDLE_ENFORCE_LT(
       index,
       InputInfo().size(),
@@ -39,27 +39,53 @@ size_t OpYamlInfoParser::InputTensorNumber() const {
 
 const std::string& OpYamlInfoParser::AttrTypeName(
     const std::string& name) const {
-  auto it = map_attr_info_.find(name);
+  auto it = attr_info_.find(name);
 
   PADDLE_ENFORCE_NE(
       it,
-      map_attr_info_.end(),
+      attr_info_.end(),
       phi::errors::NotFound("Not found [%s] in attribute map", name));
   return it->second.type_name;
 }
 
-const std::vector<std::string>& OpYamlInfoParser::InferMetaTensorParams()
-    const {
-  return vec_infer_meta_tensor_params_;
+const std::string& OpYamlInfoParser::TensorAttrTypeName(
+    const std::string& name) const {
+  auto it = input_info_.find(name);
+
+  PADDLE_ENFORCE_NE(it,
+                    input_info_.end(),
+                    phi::errors::NotFound("Not found [%s] in input map", name));
+
+  PADDLE_ENFORCE_EQ(
+      it->second.is_mutable_attribute,
+      true,
+      phi::errors::PreconditionNotMet("[%s] MUST be a tensor attribute", name));
+  return it->second.type_name;
 }
-const std::vector<std::string>& OpYamlInfoParser::InferMetaAttrParams() const {
-  return vec_infer_meta_attr_params_;
+
+const std::vector<std::string>& OpYamlInfoParser::TensorParams(
+    bool is_kernel) const {
+  if (is_kernel) {
+    return kernel_fn_tensor_params_;
+  } else {
+    return infer_meta_tensor_params_;
+  }
 }
-const std::vector<std::string>& OpYamlInfoParser::KernelFnTensorParams() const {
-  return vec_kernel_fn_tensor_params_;
+const std::vector<std::string>& OpYamlInfoParser::AttrParams(
+    bool is_kernel) const {
+  if (is_kernel) {
+    return kernel_fn_attr_params_;
+  } else {
+    return infer_meta_attr_params_;
+  }
 }
-const std::vector<std::string>& OpYamlInfoParser::KernelFnAttrParams() const {
-  return vec_kernel_fn_attr_params_;
+
+const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
+  return std::get<3>(op_info_tuple_);
+}
+
+const std::map<std::string, int>& OpYamlInfoParser::Name2Id() const {
+  return name2id_;
 }
 
 void OpYamlInfoParser::parse() {
@@ -68,41 +94,41 @@ void OpYamlInfoParser::parse() {
   int start_index = 0;
 
   for (size_t i = 0; i < input_info.size(); ++i) {
-    map_name2id_[input_info[i].name] = start_index++;
+    name2id_[input_info[i].name] = start_index++;
 
     if (!input_info[i].is_mutable_attribute) {
       input_tensor_number_++;
     }
 
-    map_input_info_[input_info[i].name] = input_info[i];
+    input_info_[input_info[i].name] = input_info[i];
   }
 
   auto attribute_info = std::get<1>(op_info_tuple_);
   for (size_t i = 0; i < attribute_info.size(); ++i) {
-    map_attr_info_[attribute_info[i].name] = attribute_info[i];
+    attr_info_[attribute_info[i].name] = attribute_info[i];
   }
 
   auto output_info = std::get<2>(op_info_tuple_);
 
   for (size_t i = 0; i < output_info.size(); ++i) {
-    map_output_info_[output_info[i].name] = output_info[i];
+    output_info_[output_info[i].name] = output_info[i];
   }
 
   auto runtime_info = std::get<3>(op_info_tuple_);
 
   for (auto& name : runtime_info.infer_meta_param) {
-    if (map_name2id_.count(name)) {
-      vec_infer_meta_tensor_params_.push_back(name);
+    if (name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+      infer_meta_tensor_params_.push_back(name);
     } else {
-      vec_infer_meta_attr_params_.push_back(name);
+      infer_meta_attr_params_.push_back(name);
     }
   }
 
   for (auto& name : runtime_info.kernel_param) {
-    if (map_name2id_.count(name)) {
-      vec_kernel_fn_tensor_params_.push_back(name);
+    if (name2id_.count(name) && !input_info_[name].is_mutable_attribute) {
+      kernel_fn_tensor_params_.push_back(name);
     } else {
-      vec_kernel_fn_attr_params_.push_back(name);
+      kernel_fn_attr_params_.push_back(name);
     }
   }
 }

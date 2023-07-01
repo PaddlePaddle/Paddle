@@ -44,7 +44,7 @@ std::unique_ptr<backends::SimpleJIT> GetLoweredFunc(int M, int N) {
       {m, n}, [=](Expr i, Expr j) { return x(i, j) + y(i, j); }, "z");
 
   auto stages = CreateStages({z});
-  auto fn     = Lower("fn", stages, {x, y, z});
+  auto fn = Lower("fn", stages, {x, y, z});
 
   ir::Module::Builder builder("some_module", common::DefaultHostTarget());
   builder.AddFunction(fn);
@@ -56,7 +56,7 @@ std::unique_ptr<backends::SimpleJIT> GetLoweredFunc(int M, int N) {
 
 void InstantiateScope(int M, int N, Scope* scope) {
   for (auto& name : std::vector<std::string>({"x", "y", "z"})) {
-    auto* var    = scope->Var<Tensor>(name);
+    auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
     tensor->Resize(Shape{{M, N}});
     auto* data = tensor->mutable_data<float>(common::DefaultHostTarget());
@@ -74,7 +74,7 @@ TEST(Instruction, basic) {
   InstantiateScope(M, N, &scope);
   // create Instruction
   Instruction instr(common::DefaultHostTarget(), &scope, {"x", "y"}, {"z"});
-  auto jit    = GetLoweredFunc(M, N);
+  auto jit = GetLoweredFunc(M, N);
   auto fn_ptr = jit->Lookup("fn");
   CHECK(fn_ptr);
   instr.SetLoweredFunc(reinterpret_cast<void*>(fn_ptr));
@@ -90,28 +90,34 @@ TEST(Instruction, basic) {
     auto* zd = scope.GetTensor("z")->data<float>();
 
     for (int i = 0; i < M * N; i++) {
-      LOG_FIRST_N(INFO, 3) << "data: " << xd[i] << " + " << yd[i] << " = " << zd[i];
+      LOG_FIRST_N(INFO, 3) << "data: " << xd[i] << " + " << yd[i] << " = "
+                           << zd[i];
       ASSERT_NEAR(xd[i] + yd[i], zd[i], 1e-5);
     }
   }
 }
 
 TEST(Instruction, RunWithRawPodArgs) {
-  const int M       = 10;
-  const int N       = 20;
+  const int M = 10;
+  const int N = 20;
   const auto& shape = Shape({M, N});
 
   std::map<std::string, cinn_pod_value_t> name2podargs;
   // case 1: create cinn_pod_value_t arguments dicrectly
-  std::vector<cinn_buffer_t> args_buffer(3);  // store {"x", "y", "z"} buffer objects
-  auto* default_memory_mng = MemoryManager::Global().RetrieveSafely(common::DefaultHostTarget().arch);
+  std::vector<cinn_buffer_t> args_buffer(
+      3);  // store {"x", "y", "z"} buffer objects
+  auto* default_memory_mng =
+      MemoryManager::Global().RetrieveSafely(common::DefaultHostTarget().arch);
 
   int count = 0;
   for (const auto& name : std::vector<std::string>({"x", "y", "z"})) {
     auto* buffer = &args_buffer.at(count++);
-    buffer->resize(reinterpret_cast<const cinn_dimension_t*>(shape.data().data()), shape.size());
-    buffer->memory = reinterpret_cast<uint8_t*>(default_memory_mng->malloc(shape.numel() * sizeof(float)));
-    auto* data     = reinterpret_cast<float*>(buffer->memory);
+    buffer->resize(
+        reinterpret_cast<const cinn_dimension_t*>(shape.data().data()),
+        shape.size());
+    buffer->memory = reinterpret_cast<uint8_t*>(
+        default_memory_mng->malloc(shape.numel() * sizeof(float)));
+    auto* data = reinterpret_cast<float*>(buffer->memory);
     for (int i = 0; i < M * N; i++) {
       data[i] = (rand() * 1.f) / RAND_MAX;  // NOLINT
     }
@@ -119,19 +125,24 @@ TEST(Instruction, RunWithRawPodArgs) {
   }
 
   // create Instruction
-  auto jit    = GetLoweredFunc(M, N);
+  auto jit = GetLoweredFunc(M, N);
   auto fn_ptr = jit->Lookup("fn");
   CHECK(fn_ptr);
-  Instruction instr(common::DefaultHostTarget(), nullptr, {"x", "y"}, {"z"});  // empty scope
+  Instruction instr(
+      common::DefaultHostTarget(), nullptr, {"x", "y"}, {"z"});  // empty scope
   instr.SetLoweredFunc(reinterpret_cast<void*>(fn_ptr));
   instr.Finalize();
 
   auto check_equal_by_element = [&]() {
-    auto xd = reinterpret_cast<float*>(cinn_pod_value_to_buffer_p(&name2podargs.at("x"))->memory);
-    auto yd = reinterpret_cast<float*>(cinn_pod_value_to_buffer_p(&name2podargs.at("y"))->memory);
-    auto zd = reinterpret_cast<float*>(cinn_pod_value_to_buffer_p(&name2podargs.at("z"))->memory);
+    auto xd = reinterpret_cast<float*>(
+        cinn_pod_value_to_buffer_p(&name2podargs.at("x"))->memory);
+    auto yd = reinterpret_cast<float*>(
+        cinn_pod_value_to_buffer_p(&name2podargs.at("y"))->memory);
+    auto zd = reinterpret_cast<float*>(
+        cinn_pod_value_to_buffer_p(&name2podargs.at("z"))->memory);
     for (int i = 0; i < M * N; ++i) {
-      LOG_FIRST_N(INFO, 3) << "data: " << xd[i] << " + " << yd[i] << " = " << zd[i];
+      LOG_FIRST_N(INFO, 3) << "data: " << xd[i] << " + " << yd[i] << " = "
+                           << zd[i];
       ASSERT_NEAR(xd[i] + yd[i], zd[i], 1e-5);
     }
   };
@@ -166,7 +177,9 @@ class TestInstruction : public Instruction {
                   const std::string& func_name)
       : Instruction(target, scope, in_args, out_args, func_name) {}
   void SetArgs(const std::vector<int>& args) { args_ = args; }
-  void SetPodArgs(const std::vector<cinn_pod_value_t>& pod_args) { pod_args_ = pod_args; }
+  void SetPodArgs(const std::vector<cinn_pod_value_t>& pod_args) {
+    pod_args_ = pod_args;
+  }
 
   void RunX(std::string conv_type) {
     if (conv_type == "forward") {
@@ -271,27 +284,52 @@ TEST(Instruction, CONV_FORWARD) {
   int sh = 1, sw = 1;
   int dila_h = 1, dila_w = 1;
 
-  int group             = 1;
-  std::vector<int> args = {in, ic, ih, iw, fn, fc, fh, fw, ph, pw, sh, sw, dila_h, dila_w, group, on, oc, oh, ow};
+  int group = 1;
+  std::vector<int> args = {in,
+                           ic,
+                           ih,
+                           iw,
+                           fn,
+                           fc,
+                           fh,
+                           fw,
+                           ph,
+                           pw,
+                           sh,
+                           sw,
+                           dila_h,
+                           dila_w,
+                           group,
+                           on,
+                           oc,
+                           oh,
+                           ow};
 
   // infer shape
-  auto conv2d           = Operator::Get("conv2d");
-  auto strategy         = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
-  auto infer_shape_func = Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
+  auto conv2d = Operator::Get("conv2d");
+  auto strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
+  auto infer_shape_func =
+      Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
 
   CUDA_CALL(cudaSetDevice(0));
-  auto buffer_x = common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
-  auto buffer_w = common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
-  auto buffer_y = common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
+  auto buffer_x =
+      common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
+  auto buffer_w =
+      common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
+  auto buffer_y =
+      common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
 
   void *dev_x = nullptr, *dev_w = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
   CUDA_CALL(cudaMalloc(&dev_w, buffer_w->memory_size));
   CUDA_CALL(cudaMalloc(&dev_y, buffer_y->memory_size));
 
-  CUDA_CALL(cudaMemcpy(dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
-  CUDA_CALL(cudaMemcpy(dev_w, buffer_w->memory, buffer_w->memory_size, cudaMemcpyHostToDevice));
-  CUDA_CALL(cudaMemcpy(dev_y, buffer_y->memory, buffer_y->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_w, buffer_w->memory, buffer_w->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_y, buffer_y->memory, buffer_y->memory_size, cudaMemcpyHostToDevice));
 
   cinn_buffer_t _x;
   cinn_buffer_t _w;
@@ -337,27 +375,52 @@ TEST(Instruction, CONV_BACKWARD_DATA) {
   int sh = 1, sw = 1;
   int dila_h = 1, dila_w = 1;
 
-  int group             = 1;
-  std::vector<int> args = {in, ic, ih, iw, fn, fc, fh, fw, ph, pw, sh, sw, dila_h, dila_w, group, on, oc, oh, ow};
+  int group = 1;
+  std::vector<int> args = {in,
+                           ic,
+                           ih,
+                           iw,
+                           fn,
+                           fc,
+                           fh,
+                           fw,
+                           ph,
+                           pw,
+                           sh,
+                           sw,
+                           dila_h,
+                           dila_w,
+                           group,
+                           on,
+                           oc,
+                           oh,
+                           ow};
 
   // infer shape
-  auto conv2d           = Operator::Get("conv2d");
-  auto strategy         = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
-  auto infer_shape_func = Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
+  auto conv2d = Operator::Get("conv2d");
+  auto strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
+  auto infer_shape_func =
+      Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
 
   CUDA_CALL(cudaSetDevice(0));
-  auto buffer_x = common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
-  auto buffer_w = common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
-  auto buffer_y = common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
+  auto buffer_x =
+      common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
+  auto buffer_w =
+      common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
+  auto buffer_y =
+      common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
 
   void *dev_x = nullptr, *dev_w = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
   CUDA_CALL(cudaMalloc(&dev_w, buffer_w->memory_size));
   CUDA_CALL(cudaMalloc(&dev_y, buffer_y->memory_size));
 
-  CUDA_CALL(cudaMemcpy(dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
-  CUDA_CALL(cudaMemcpy(dev_w, buffer_w->memory, buffer_w->memory_size, cudaMemcpyHostToDevice));
-  CUDA_CALL(cudaMemcpy(dev_y, buffer_y->memory, buffer_y->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_w, buffer_w->memory, buffer_w->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_y, buffer_y->memory, buffer_y->memory_size, cudaMemcpyHostToDevice));
 
   cinn_buffer_t _x;
   cinn_buffer_t _w;
@@ -404,41 +467,67 @@ TEST(Instruction, CONV_BACKWARD_FILTER) {
   int sh = 1, sw = 1;
   int dila_h = 1, dila_w = 1;
 
-  int group             = 1;
-  std::vector<int> args = {in, ic, ih, iw, fn, fc, fh, fw, ph, pw, sh, sw, dila_h, dila_w, group, on, oc, oh, ow};
+  int group = 1;
+  std::vector<int> args = {in,
+                           ic,
+                           ih,
+                           iw,
+                           fn,
+                           fc,
+                           fh,
+                           fw,
+                           ph,
+                           pw,
+                           sh,
+                           sw,
+                           dila_h,
+                           dila_w,
+                           group,
+                           on,
+                           oc,
+                           oh,
+                           ow};
 
   // infer shape
-  auto conv2d           = Operator::Get("conv2d");
-  auto strategy         = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
-  auto infer_shape_func = Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
+  auto conv2d = Operator::Get("conv2d");
+  auto strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
+  auto infer_shape_func =
+      Operator::GetAttrs<InferShapeFunction>("infershape")[conv2d];
 
   absl::flat_hash_map<std::string, AttrType> attrs_map;
-  attrs_map["padding"]      = std::vector<int>({ph, pw});
-  attrs_map["stride"]       = std::vector<int>({sh, sw});
-  attrs_map["dilation"]     = std::vector<int>({dila_h, dila_w});
-  attrs_map["data_format"]  = std::string("NCHW");
-  attrs_map["conv_type"]    = std::string("backward_filter");
+  attrs_map["padding"] = std::vector<int>({ph, pw});
+  attrs_map["stride"] = std::vector<int>({sh, sw});
+  attrs_map["dilation"] = std::vector<int>({dila_h, dila_w});
+  attrs_map["data_format"] = std::string("NCHW");
+  attrs_map["conv_type"] = std::string("backward_filter");
   attrs_map["output_shape"] = std::vector<int>({fn, fc, fh, fw});
 
-  auto infer_shape = infer_shape_func({{in, ic, ih, iw}, {on, oc, oh, ow}}, attrs_map);
+  auto infer_shape =
+      infer_shape_func({{in, ic, ih, iw}, {on, oc, oh, ow}}, attrs_map);
   ASSERT_EQ(infer_shape[0][0], fn);
   ASSERT_EQ(infer_shape[0][1], fc);
   ASSERT_EQ(infer_shape[0][2], fh);
   ASSERT_EQ(infer_shape[0][3], fw);
 
   CUDA_CALL(cudaSetDevice(0));
-  auto buffer_x = common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
-  auto buffer_w = common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
-  auto buffer_y = common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
+  auto buffer_x =
+      common::BufferBuilder(Float(32), {in, ic, ih, iw}).set_random().Build();
+  auto buffer_w =
+      common::BufferBuilder(Float(32), {fn, fc, fh, fw}).set_random().Build();
+  auto buffer_y =
+      common::BufferBuilder(Float(32), {on, oc, oh, ow}).set_random().Build();
 
   void *dev_x = nullptr, *dev_w = nullptr, *dev_y = nullptr;
   CUDA_CALL(cudaMalloc(&dev_x, buffer_x->memory_size));
   CUDA_CALL(cudaMalloc(&dev_w, buffer_w->memory_size));
   CUDA_CALL(cudaMalloc(&dev_y, buffer_y->memory_size));
 
-  CUDA_CALL(cudaMemcpy(dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
-  CUDA_CALL(cudaMemcpy(dev_w, buffer_w->memory, buffer_w->memory_size, cudaMemcpyHostToDevice));
-  CUDA_CALL(cudaMemcpy(dev_y, buffer_y->memory, buffer_y->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_w, buffer_w->memory, buffer_w->memory_size, cudaMemcpyHostToDevice));
+  CUDA_CALL(cudaMemcpy(
+      dev_y, buffer_y->memory, buffer_y->memory_size, cudaMemcpyHostToDevice));
 
   cinn_buffer_t _x;
   cinn_buffer_t _w;

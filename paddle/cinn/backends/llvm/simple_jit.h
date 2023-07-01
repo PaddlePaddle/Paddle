@@ -50,7 +50,9 @@ namespace backends {
 
 class SimpleJIT {
  public:
-  static std::unique_ptr<SimpleJIT> Create() { return std::unique_ptr<SimpleJIT>(new SimpleJIT); }
+  static std::unique_ptr<SimpleJIT> Create() {
+    return std::unique_ptr<SimpleJIT>(new SimpleJIT);
+  }
 
   /**
    * Runtime link to a module.
@@ -61,7 +63,9 @@ class SimpleJIT {
   template <typename CodeGenT = CodeGenLLVM>
   void Link(ir::Module module, bool optimize = true);
 
-  void Link(llvm::orc::ThreadSafeModule m, bool optimize = true) { llvm::cantFail(jit_->addIRModule(std::move(m))); }
+  void Link(llvm::orc::ThreadSafeModule m, bool optimize = true) {
+    llvm::cantFail(jit_->addIRModule(std::move(m)));
+  }
 
   llvm::JITTargetAddress Lookup(absl::string_view name) {
     return llvm::cantFail(jit_->lookup(AsStringRef(name))).getAddress();

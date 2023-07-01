@@ -52,7 +52,10 @@ CUdeviceptr CreateCudaMemory(const std::vector<int>& shape, const T* data) {
 
   CUdeviceptr cuda_ptr = cuMemAlloc(&cuda_ptr, numel * sizeof(T));
   if (data != nullptr) {
-    CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(cuda_ptr), data, numel * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CALL(cudaMemcpy(reinterpret_cast<void*>(cuda_ptr),
+                         data,
+                         numel * sizeof(T),
+                         cudaMemcpyHostToDevice));
   }
   return cuda_ptr;
 }
@@ -108,13 +111,16 @@ void __launch_bounds__(512) fn_relu_1_kernel(const float* __restrict__ var_1, fl
   ASSERT_FALSE(ptx.empty());
 
   CUDAModule cuda_module(ptx, CUDAModule::Kind::PTX);
-  CUdeviceptr var = CreateCudaMemory<float>(/* shape */ {64 * 112 * 112}, /* data */ nullptr);
-  CUdeviceptr out = CreateCudaMemory<float>(/* shape */ {64 * 112 * 112}, /* data */ nullptr);
+  CUdeviceptr var =
+      CreateCudaMemory<float>(/* shape */ {64 * 112 * 112}, /* data */ nullptr);
+  CUdeviceptr out =
+      CreateCudaMemory<float>(/* shape */ {64 * 112 * 112}, /* data */ nullptr);
 
   void* args[] = {&var, &out};
   dim3 grid(512, 1, 1);
   dim3 block(512, 1, 1);
-  cuda_module.LaunchKernel(/*device_id*/ 0, "fn_relu_1_kernel", grid, block, args);
+  cuda_module.LaunchKernel(
+      /*device_id*/ 0, "fn_relu_1_kernel", grid, block, args);
 }
 
 }  // namespace backends

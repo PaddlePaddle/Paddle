@@ -32,16 +32,18 @@ namespace frontend {
  */
 class Interpreter final {
  public:
-  Interpreter(const std::vector<std::string>& input_names, const std::vector<hlir::framework::shape_t>& input_shapes);
+  Interpreter(const std::vector<std::string>& input_names,
+              const std::vector<hlir::framework::shape_t>& input_shapes);
 
   /**
    * Load a Paddle model.
    * @param model_dir The directory path to the model.
-   * @param params_combined Whether the parameters are composed to a single file.
+   * @param params_combined Whether the parameters are composed to a single
+   * file.
    */
   void LoadPaddleModel(const std::string& model_dir,
                        const Target& target,
-                       bool params_combined          = false,
+                       bool params_combined = false,
                        const std::string& model_name = "");
 
   /**

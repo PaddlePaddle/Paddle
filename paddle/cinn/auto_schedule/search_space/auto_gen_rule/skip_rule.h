@@ -34,11 +34,15 @@ class SkipRule : public AutoGenRule {
 
   std::string GetRuleName() const override;
 
-  RuleApplyType AnalyseApplyType(SearchState state, const std::string& block_name) const override {
+  RuleApplyType AnalyseApplyType(SearchState state,
+                                 const std::string& block_name) const override {
     return RuleApplyType::kApply;
   }
 
-  std::vector<SearchState> ApplyOnBlock(SearchState state, const std::string& block_name) override { return {state}; }
+  std::vector<SearchState> ApplyOnBlock(
+      SearchState state, const std::string& block_name) override {
+    return {state};
+  }
 };
 
 }  // namespace auto_schedule

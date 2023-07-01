@@ -25,8 +25,10 @@ void Layout::Verify() {
     for (auto& axis : axes_) {
       CHECK_EQ(axis->name.size(), 1U);
       auto axis_name = axis->name[0];
-      CHECK((axis_name >= 'A' && axis_name <= 'Z') || (axis_name >= 'a' && axis_name <= 'z'));
-      CHECK(axis_names_.find(axis_name) == axis_names_.npos) << axis_name << " has already exsit.";
+      CHECK((axis_name >= 'A' && axis_name <= 'Z') ||
+            (axis_name >= 'a' && axis_name <= 'z'));
+      CHECK(axis_names_.find(axis_name) == axis_names_.npos)
+          << axis_name << " has already exsit.";
       axis_names_ += axis_name;
     }
     int offset = 'A' - 'a';
@@ -46,12 +48,14 @@ Layout::Layout(const std::string& name) {
   std::vector<Var> axes;
   for (char c : name) {
     if (c >= 'A' && c <= 'Z') {
-      CHECK_EQ(factor, 0) << "Invalid factor " << factor << " before primal axis " << c;
+      CHECK_EQ(factor, 0) << "Invalid factor " << factor
+                          << " before primal axis " << c;
       axes.push_back(ir::Var(std::string(1, c)));
     } else if (c >= '0' && c <= '9') {
       factor = 10 * factor + c - '0';
     } else if (c >= 'a' && c <= 'z') {
-      CHECK_GT(factor, 0) << "Invalid factor " << factor << " for sub-axis " << c;
+      CHECK_GT(factor, 0) << "Invalid factor " << factor << " for sub-axis "
+                          << c;
       axes.push_back(ir::Var(factor, std::string(1, c)));
       factor = 0;
     } else {

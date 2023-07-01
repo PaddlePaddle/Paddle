@@ -45,7 +45,9 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
   TensorInlineExpandMutator(const std::string &tensor_name,
                             std::map<std::string, ir::Tensor> *all_tensor_map,
                             poly::StageMap stages)
-      : tensor_name_(tensor_name), all_tensor_map_(all_tensor_map), stages_(stages) {}
+      : tensor_name_(tensor_name),
+        all_tensor_map_(all_tensor_map),
+        stages_(stages) {}
 
   void operator()(Expr *expr) {
     ir::IRMutator<>::Visit(expr, expr);
@@ -57,7 +59,8 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
 
   void Visit(const ir::_Var_ *expr, Expr *op) override {
     if (inline_code && temp_buffer) {
-      if (utils::Startswith(expr->name, "blockIdx") || (utils::Startswith(expr->name, "threadIdx") && memory_local)) {
+      if (utils::Startswith(expr->name, "blockIdx") ||
+          (utils::Startswith(expr->name, "threadIdx") && memory_local)) {
         *op = ir::Expr(0);
       }
     }
@@ -65,7 +68,8 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
 
   void Visit(const ir::_Tensor_ *op, Expr *expr) override {
     if (inline_code && utils::Endswith(op->name, "_write_cache") &&
-        (*all_tensor_map_).at(op->name)->buffer->memory_type == ir::MemoryType::Heap) {
+        (*all_tensor_map_).at(op->name)->buffer->memory_type ==
+            ir::MemoryType::Heap) {
       auto no_cache_name = op->name.substr(0, op->name.size() - 12);
       VLOG(2) << "no_cache_name: " << no_cache_name;
       CHECK(all_tensor_map_->count(no_cache_name));
@@ -75,30 +79,33 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
 
   void Visit(const ir::For *op, Expr *expr) override {
     CHECK(op->extent.is_constant());
-    int cons_extent                   = (int)op->extent.get_constant();
+    int cons_extent = (int)op->extent.get_constant();
     var_to_extent[op->loop_var->name] = op->extent;
     ir::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::PolyFor *op, Expr *expr) override {
-    auto extent                       = op->ExtractExtent();
+    auto extent = op->ExtractExtent();
     var_to_extent[op->iterator->name] = extent;
     ir::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
-    auto *node   = expr->As<ir::Load>();
+    auto *node = expr->As<ir::Load>();
     auto *tensor = node->tensor.as_tensor();
     if (tensor && tensor->name == tensor_name_) {
-      *expr       = tensor->inline_expanded(op->indices);
+      *expr = tensor->inline_expanded(op->indices);
       inline_code = true;
       ir::IRMutator<>::Visit(expr, expr);
       inline_code = false;
     } else if (inline_code && tensor->buffer.defined()) {
-      bool is_heap = (*all_tensor_map_).at(tensor->name)->buffer->memory_type == ir::MemoryType::Heap;
+      bool is_heap = (*all_tensor_map_).at(tensor->name)->buffer->memory_type ==
+                     ir::MemoryType::Heap;
       if (utils::Endswith(tensor->buffer->name, "_write_cache") && is_heap) {
-        // temp fix: cache_write will change the tensor to the cache tensor wrongly
-        auto no_cache_name = tensor->buffer->name.substr(1, tensor->buffer->name.size() - 13);
+        // temp fix: cache_write will change the tensor to the cache tensor
+        // wrongly
+        auto no_cache_name =
+            tensor->buffer->name.substr(1, tensor->buffer->name.size() - 13);
         if (all_tensor_map_->count(no_cache_name)) {
           ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         } else {
@@ -117,7 +124,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
                  utils::Endswith(tensor->buffer->name, "_read_cache") ||
                  utils::Endswith(tensor->buffer->name, "_temp_buffer")) {
 #ifdef CINN_WITH_CUDA
-        auto axis_names  = stages_[tensor]->axis_names();
+        auto axis_names = stages_[tensor]->axis_names();
         auto compute_ats = stages_[tensor]->GetComputeAts();
         if (compute_ats.size() == 1) {
           int level_tmp;
@@ -127,16 +134,18 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
           std::vector<Var> replace_vars;
           for (int j = 0; j <= level_tmp; j++) {
             if (var_to_extent.count(axis_names[j]) == 0) continue;
-            replace_vars.push_back(Var(var_to_extent[axis_names[j]], axis_names[j]));
+            replace_vars.push_back(
+                Var(var_to_extent[axis_names[j]], axis_names[j]));
           }
           replace_var.push_back(replace_vars);
           tensor_names.push_back(tensor->buffer->name);
         }
 #endif
-        bool keep_buffer       = temp_buffer;
-        temp_buffer            = true;
+        bool keep_buffer = temp_buffer;
+        temp_buffer = true;
         bool keep_memory_local = memory_local;
-        if ((*all_tensor_map_).at(tensor->name)->buffer->memory_type == ir::MemoryType::GPULocal) {
+        if ((*all_tensor_map_).at(tensor->name)->buffer->memory_type ==
+            ir::MemoryType::GPULocal) {
           memory_local = true;
         }
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
@@ -145,7 +154,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
-        temp_buffer  = keep_buffer;
+        temp_buffer = keep_buffer;
         memory_local = keep_memory_local;
       } else {
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
@@ -178,8 +187,9 @@ struct SSANode : public common::GraphNode {
   static constexpr char *__type_info__ = "optim::SSANode";
 };
 
-// TODO(Superjomn) the graph here is not a SSA now, it is flattern for the ir::CollectIRNodes method collects all the
-// tensors recursively, so it can not reserve the level information, fix it.
+// TODO(Superjomn) the graph here is not a SSA now, it is flattern for the
+// ir::CollectIRNodes method collects all the tensors recursively, so it can not
+// reserve the level information, fix it.
 struct SSABuilder : public ir::IRMutator<> {
   common::Graph graph;
 
@@ -193,7 +203,9 @@ struct SSABuilder : public ir::IRMutator<> {
 
     auto *cur_graph_node = graph.RetrieveNode(node->tensor.as_tensor()->name);
     if (!cur_graph_node) {
-      cur_graph_node = graph.RegisterNode(node->tensor.as_tensor()->name, new SSANode(node->tensor.as_tensor()->name));
+      cur_graph_node =
+          graph.RegisterNode(node->tensor.as_tensor()->name,
+                             new SSANode(node->tensor.as_tensor()->name));
     }
 
     auto deps_tensor_names = node->tensor.as_tensor()->GetDependTensorNames();
@@ -209,14 +221,18 @@ struct SSABuilder : public ir::IRMutator<> {
 
 }  // namespace
 
-void ComputeInlineExpand(Expr *expr, poly::StageMap stages, std::map<std::string, ir::Tensor> *all_tensor_map) {
+void ComputeInlineExpand(Expr *expr,
+                         poly::StageMap stages,
+                         std::map<std::string, ir::Tensor> *all_tensor_map) {
   // the inline tensors contained in the expression.
-  auto inline_tensors =
-      ir::CollectIRNodes(*expr, [&](const Expr *x) { return x->as_tensor() && stages[x->as_tensor()]->inlined(); });
+  auto inline_tensors = ir::CollectIRNodes(*expr, [&](const Expr *x) {
+    return x->as_tensor() && stages[x->as_tensor()]->inlined();
+  });
 
   // keep inline expand if any inline tensor exists
-  // NOTE This is a naive method to greedily expand the inline tensors until none exists, a better way is to create a
-  // SSA graph and expand the inline tensors in the reversed dependency order.
+  // NOTE This is a naive method to greedily expand the inline tensors until
+  // none exists, a better way is to create a SSA graph and expand the inline
+  // tensors in the reversed dependency order.
   // TODO(Superjomn) Use the SSA graph to improve this.
   while (!inline_tensors.empty()) {
     for (const auto &t : inline_tensors) {
@@ -224,8 +240,9 @@ void ComputeInlineExpand(Expr *expr, poly::StageMap stages, std::map<std::string
       TensorInlineExpandMutator(tensor->name, all_tensor_map, stages)(expr);
     }
 
-    inline_tensors = ir::CollectLoadTensors(
-        *expr, [&](const Expr *x) { return x->as_tensor() && stages[x->as_tensor()]->inlined(); });
+    inline_tensors = ir::CollectLoadTensors(*expr, [&](const Expr *x) {
+      return x->as_tensor() && stages[x->as_tensor()]->inlined();
+    });
   }
 }
 

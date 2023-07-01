@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -27,7 +28,7 @@ struct KernelAttributeStorage : public ir::AttributeStorage {
 
   explicit KernelAttributeStorage(const ParamKey &key) { kernel_key_ = key; }
 
-  static KernelAttributeStorage *Construct(ParamKey key) {
+  static KernelAttributeStorage *Construct(const ParamKey &key) {
     return new KernelAttributeStorage(key);
   }
 

@@ -53,7 +53,7 @@ std::string axis_name(int level) {
     return kAxises[level];
   }
   // upper level
-  int repeat_num        = 1 + (level / kAxises.size());
+  int repeat_num = 1 + (level / kAxises.size());
   const auto& base_axis = kAxises[level % kAxises.size()];
 
   // if the level greater than kAxis, repeat the axis, like:

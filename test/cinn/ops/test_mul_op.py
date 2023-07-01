@@ -14,19 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
+
 import paddle
 import paddle.nn.functional as F
-import cinn
-from cinn.frontend import *
-from cinn.common import *
-import sys
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestMulOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -34,7 +37,7 @@ class TestMulOp(OpTest):
     def init_case(self):
         self.inputs = {
             "x": np.random.random((16, 64)).astype("float32"),
-            "y": np.random.random((64, 16)).astype("float32")
+            "y": np.random.random((64, 16)).astype("float32"),
         }
 
     def build_paddle_program(self, target):
@@ -52,7 +55,8 @@ class TestMulOp(OpTest):
         out = builder.matmul(x, y)
         prog = builder.build()
         forward_res = self.get_cinn_output(
-            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out])
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
 
         self.cinn_outputs = forward_res
 

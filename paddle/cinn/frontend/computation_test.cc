@@ -62,10 +62,10 @@ Program CreateAddProgram() {
   constexpr int N = 24;
 
   NetBuilder builder("net_builder");
-  auto a       = builder.CreateInput(Float(32), {M, N});
-  auto b       = builder.CreateInput(Float(32), {M, N});
-  auto c       = builder.Relu(a);
-  auto d       = builder.Add(b, c);
+  auto a = builder.CreateInput(Float(32), {M, N});
+  auto b = builder.CreateInput(Float(32), {M, N});
+  auto c = builder.Relu(a);
+  auto d = builder.Add(b, c);
   auto program = builder.Build();
 
   return program;
@@ -82,21 +82,27 @@ TEST(cinn_computation, basic_cpu) {
   auto d = builder.Add(a, c);
 
   auto target = common::DefaultHostTarget();
-  auto comp   = CinnComputation::BuildAndCompile(target, builder);
+  auto comp = CinnComputation::BuildAndCompile(target, builder);
   std::vector<float> hostA(M * N);
   std::vector<float> hostB(M * N);
   std::vector<float> hostD(M * N);
   std::vector<float> hostD_expected(M * N);
   for (int i = 0; i < M * N; i++) {
-    hostA[i]          = static_cast<float>(rand()) / INT_MAX;
-    hostB[i]          = static_cast<float>(rand()) / INT_MAX;
+    hostA[i] = static_cast<float>(rand()) / INT_MAX;  // NOLINT
+    hostB[i] = static_cast<float>(rand()) / INT_MAX;  // NOLINT
     hostD_expected[i] = hostA[i] * 2 + hostB[i];
   }
 
-  comp->SetTensorData("A", reinterpret_cast<void *>(hostA.data()), hostA.size() * sizeof(float));
-  comp->SetTensorData("B", reinterpret_cast<void *>(hostB.data()), hostB.size() * sizeof(float));
+  comp->SetTensorData("A",
+                      reinterpret_cast<void *>(hostA.data()),
+                      hostA.size() * sizeof(float));
+  comp->SetTensorData("B",
+                      reinterpret_cast<void *>(hostB.data()),
+                      hostB.size() * sizeof(float));
   comp->Execute();
-  comp->GetTensorData(d->id, reinterpret_cast<void *>(hostD.data()), hostD.size() * sizeof(float));
+  comp->GetTensorData(d->id,
+                      reinterpret_cast<void *>(hostD.data()),
+                      hostD.size() * sizeof(float));
   for (int i = 0; i < hostD.size(); i++) {
     ASSERT_NEAR(hostD[i], hostD_expected[i], 1e-5);
   }
@@ -114,21 +120,27 @@ TEST(cinn_computation, basic_gpu) {
   auto d = builder.Add(a, c);
 
   auto target = common::DefaultNVGPUTarget();
-  auto comp   = CinnComputation::BuildAndCompile(target, builder);
+  auto comp = CinnComputation::BuildAndCompile(target, builder);
   std::vector<float> hostA(M * N);
   std::vector<float> hostB(M * N);
   std::vector<float> hostD(M * N);
   std::vector<float> hostD_expected(M * N);
   for (int i = 0; i < M * N; i++) {
-    hostA[i]          = static_cast<float>(rand()) / INT_MAX;
-    hostB[i]          = static_cast<float>(rand()) / INT_MAX;
+    hostA[i] = static_cast<float>(rand()) / INT_MAX;  // NOLINT
+    hostB[i] = static_cast<float>(rand()) / INT_MAX;  // NOLINT
     hostD_expected[i] = hostA[i] * 2 + hostB[i];
   }
 
-  comp->SetTensorData("A", reinterpret_cast<void *>(hostA.data()), hostA.size() * sizeof(float));
-  comp->SetTensorData("B", reinterpret_cast<void *>(hostB.data()), hostB.size() * sizeof(float));
+  comp->SetTensorData("A",
+                      reinterpret_cast<void *>(hostA.data()),
+                      hostA.size() * sizeof(float));
+  comp->SetTensorData("B",
+                      reinterpret_cast<void *>(hostB.data()),
+                      hostB.size() * sizeof(float));
   comp->Execute();
-  comp->GetTensorData(d->id, reinterpret_cast<void *>(hostD.data()), hostD.size() * sizeof(float));
+  comp->GetTensorData(d->id,
+                      reinterpret_cast<void *>(hostD.data()),
+                      hostD.size() * sizeof(float));
   for (int i = 0; i < hostD.size(); i++) {
     ASSERT_NEAR(hostD[i], hostD_expected[i], 1e-5);
   }
@@ -137,9 +149,9 @@ TEST(cinn_computation, basic_gpu) {
 
 TEST(cinn_computation, net_builder_cpu) {
   auto program = CreateTestProgram();
-  auto target  = common::DefaultHostTarget();
+  auto target = common::DefaultHostTarget();
   auto compute = CinnComputation::Compile(target, program);
-  auto inputs  = compute->GetInputTensors();
+  auto inputs = compute->GetInputTensors();
   ASSERT_EQ(inputs.size(), 2);
   auto tensorA = inputs[0];
   auto tensorB = inputs[1];
@@ -153,7 +165,7 @@ TEST(cinn_computation, net_builder_cpu) {
   auto load_input = [=](hlir::framework::Tensor t) {
     float *ptr = t->mutable_data<float>(target);
     for (int i = 0; i < t->shape().numel(); i++) {
-      ptr[i] = static_cast<float>(rand()) / INT_MAX;
+      ptr[i] = static_cast<float>(rand()) / INT_MAX;  // NOLINT
     }
   };
 
@@ -171,9 +183,9 @@ TEST(cinn_computation, net_builder_cpu) {
 #ifdef CINN_WITH_CUDA
 TEST(cinn_computation, net_builder_gpu) {
   auto program = CreateTestProgram();
-  auto target  = common::DefaultNVGPUTarget();
+  auto target = common::DefaultNVGPUTarget();
   auto compute = CinnComputation::Compile(target, program);
-  auto inputs  = compute->GetInputTensors();
+  auto inputs = compute->GetInputTensors();
   ASSERT_EQ(inputs.size(), 2);
   auto tensorA = inputs[0];
   auto tensorB = inputs[1];
@@ -192,15 +204,20 @@ TEST(cinn_computation, net_builder_gpu) {
     // ... or async copy to device memory
     // ... not showed here
 
-    // assume tensorB is generated in host memory, needs copy to GPU memory (sync.)
+    // assume tensorB is generated in host memory, needs copy to GPU memory
+    // (sync.)
     std::vector<float> hostB(32 * 24 / 2);
-    compute->SetTensorData(tensorB, reinterpret_cast<void *>(hostB.data()), hostB.size() * sizeof(float));
+    compute->SetTensorData(tensorB,
+                           reinterpret_cast<void *>(hostB.data()),
+                           hostB.size() * sizeof(float));
 
     // execute engine
     compute->Execute();
     // get outputs
     std::vector<float> hostOut(tensorOut->shape().numel());
-    compute->GetTensorData(tensorOut, reinterpret_cast<void *>(hostOut.data()), hostOut.size() * sizeof(float));
+    compute->GetTensorData(tensorOut,
+                           reinterpret_cast<void *>(hostOut.data()),
+                           hostOut.size() * sizeof(float));
   }
 }
 #endif
@@ -208,13 +225,15 @@ TEST(cinn_computation, net_builder_gpu) {
 TEST(cinn_computation, fc_execute_cpu) {
   auto target = common::DefaultHostTarget();
   ASSERT_NE(FLAGS_model_dir, "");
-  auto compute = CinnComputation::CompilePaddleModel(target, FLAGS_model_dir, {"A"}, {{1, 30}}, false);
-  auto inputs  = compute->GetInputTensors();
+  auto compute = CinnComputation::CompilePaddleModel(
+      target, FLAGS_model_dir, {"A"}, {{1, 30}}, false);
+  auto inputs = compute->GetInputTensors();
   ASSERT_EQ(inputs.size(), 1);
   auto A = inputs[0];
   ASSERT_EQ(A->shape().numel(), 1 * 30);
   float *ptrA = A->mutable_data<float>(target);
-  for (int i = 0; i < 30; i++) ptrA[i] = static_cast<float>(rand()) / INT_MAX;
+  for (int i = 0; i < 30; i++)
+    ptrA[i] = static_cast<float>(rand()) / INT_MAX;  // NOLINT
   for (int i = 0; i < 30; i++) ptrA[i] = static_cast<float>(0);
   compute->Execute();
 }
@@ -223,7 +242,8 @@ TEST(cinn_computation, fc_execute_cpu) {
 TEST(cinn_computation, fc_execute_gpu) {
   auto target = common::DefaultNVGPUTarget();
   ASSERT_NE(FLAGS_model_dir, "");
-  auto compute = CinnComputation::CompilePaddleModel(target, FLAGS_model_dir, {"A"}, {{1, 30}}, false);
+  auto compute = CinnComputation::CompilePaddleModel(
+      target, FLAGS_model_dir, {"A"}, {{1, 30}}, false);
 
   auto inputs = compute->GetInputTensors();
   ASSERT_EQ(inputs.size(), 1);
@@ -234,63 +254,68 @@ TEST(cinn_computation, fc_execute_gpu) {
   auto out = outputs[0];
 
   std::vector<float> hostA(30);
-  for (float &v : hostA) v = static_cast<float>(rand()) / INT_MAX;
-  compute->SetTensorData(A, reinterpret_cast<void *>(hostA.data()), hostA.size() * sizeof(float));
+  for (float &v : hostA) v = static_cast<float>(rand()) / INT_MAX;  // NOLINT
+  compute->SetTensorData(
+      A, reinterpret_cast<void *>(hostA.data()), hostA.size() * sizeof(float));
 
   compute->Execute();
 
   std::vector<float> hostOut(30);
-  compute->GetTensorData(out, reinterpret_cast<void *>(hostOut.data()), hostOut.size() * sizeof(float));
+  compute->GetTensorData(out,
+                         reinterpret_cast<void *>(hostOut.data()),
+                         hostOut.size() * sizeof(float));
 }
 #endif
 
 TEST(cinn_computation, decomposer_cpu) {
   // this test only shows the API usage
-  ASSERT_NE(cinn::frontend::ProgramPassRegistry::Global()->Find("Decomposer"), nullptr);
+  ASSERT_NE(cinn::frontend::ProgramPassRegistry::Global()->Find("Decomposer"),
+            nullptr);
   // without decomposer
   {
-    auto prog              = CreateAddProgram();
-    auto target            = common::DefaultHostTarget();
-    auto options           = CinnComputation::DefaultCompileOptions();
+    auto prog = CreateAddProgram();
+    auto target = common::DefaultHostTarget();
+    auto options = CinnComputation::DefaultCompileOptions();
     options.use_decomposer = false;
-    auto compute           = CinnComputation::Compile(target, prog, options);
-    auto names             = compute->GetAllTensorNames();
+    auto compute = CinnComputation::Compile(target, prog, options);
+    auto names = compute->GetAllTensorNames();
     ASSERT_EQ(names.size(), 3);
   }
   // with decomposer
   {
-    auto prog              = CreateAddProgram();
-    auto target            = common::DefaultHostTarget();
-    auto options           = CinnComputation::DefaultCompileOptions();
+    auto prog = CreateAddProgram();
+    auto target = common::DefaultHostTarget();
+    auto options = CinnComputation::DefaultCompileOptions();
     options.use_decomposer = true;
-    auto compute           = CinnComputation::Compile(target, prog, options);
-    auto names             = compute->GetAllTensorNames();
+    auto compute = CinnComputation::Compile(target, prog, options);
+    auto names = compute->GetAllTensorNames();
   }
 }
 
 #ifdef CINN_WITH_CUDA
 TEST(cinn_computation, gpu_stream) {
   // this test only shows the API usage
-  auto target  = common::DefaultNVGPUTarget();
-  auto prog    = CreateAddProgram();
+  auto target = common::DefaultNVGPUTarget();
+  auto prog = CreateAddProgram();
   auto options = CinnComputation::DefaultCompileOptions();
 
   cudaStream_t streams[1];
   cudaStreamCreate(&streams[0]);
-  auto compute = CinnComputation::Compile(target, prog, options, {}, static_cast<void *>(streams[0]));
+  auto compute = CinnComputation::Compile(
+      target, prog, options, {}, static_cast<void *>(streams[0]));
   compute->Execute();
 }
 #endif
 
 TEST(cinn_computation, without_instantiate_variables) {
   // this test only shows the API usage
-  auto target                        = common::DefaultHostTarget();
-  auto prog                          = CreateAddProgram();
-  auto options                       = CinnComputation::DefaultCompileOptions();
+  auto target = common::DefaultHostTarget();
+  auto prog = CreateAddProgram();
+  auto options = CinnComputation::DefaultCompileOptions();
   options.with_instantiate_variables = false;
 
   auto compute = CinnComputation::Compile(target, prog, options);
-  auto names   = compute->GetAllTensorNames();
+  auto names = compute->GetAllTensorNames();
 
   std::map<std::string, cinn_pod_value_t> pod2args;
   // compute->Execute(&pod2args);

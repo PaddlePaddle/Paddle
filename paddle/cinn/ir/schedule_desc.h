@@ -27,11 +27,12 @@
 namespace cinn {
 namespace ir {
 
-// A ScheduleDesc describe the scheduling process of an ir::ModuleExpr, it records
-// all transform/getting operations executed by a corresponding ir::IRSchedule.
-// A ScheduleDesc can be serialized to JSON format and saved to file. For deserializing,
-// it can be re-applied to a new IRSchedule that is initialzied by a semantics-euqal
-// original ir::ModuleExpr, and then achieves the same result.
+// A ScheduleDesc describe the scheduling process of an ir::ModuleExpr, it
+// records all transform/getting operations executed by a corresponding
+// ir::IRSchedule. A ScheduleDesc can be serialized to JSON format and saved to
+// file. For deserializing, it can be re-applied to a new IRSchedule that is
+// initialzied by a semantics-euqal original ir::ModuleExpr, and then achieves
+// the same result.
 
 class IRSchedule;  // forward declartion to avoid cross-reference
 class ScheduleDesc {
@@ -51,14 +52,17 @@ class ScheduleDesc {
   };
 
   /**
-   * \brief Re-applied a scheduling process represented as a proto::ScheduleDesc to a new IRSchedule object.
+   * \brief Re-applied a scheduling process represented as a proto::ScheduleDesc
+   * to a new IRSchedule object.
    * @param desc_proto The proto of the ScheduleDesc to be re-applied.
    * @param sch The original IRSchedule to be replayed the description on.
-   * @param without_post_schedule Determine whether to delete the post schedules.
+   * @param without_post_schedule Determine whether to delete the post
+   * schedules.
    */
-  static std::vector<Expr> ReplayWithProto(const proto::ScheduleDesc& desc_proto,
-                                           IRSchedule* sch,
-                                           bool without_post_schedule = false);
+  static std::vector<Expr> ReplayWithProto(
+      const proto::ScheduleDesc& desc_proto,
+      IRSchedule* sch,
+      bool without_post_schedule = false);
 
   ScheduleDesc() = default;
 
@@ -73,9 +77,11 @@ class ScheduleDesc {
   void Pop();
 
   /**
-   * \brief Replay this description to a new IRSchedule that is initialzied by a semantics-euqal original ModuleExpr.
+   * \brief Replay this description to a new IRSchedule that is initialzied by a
+   * semantics-euqal original ModuleExpr.
    * @param schedule The original IRSchedule to be replayed the description on.
-   * @param without_post_schedule Determine whether to delete the post schedules.
+   * @param without_post_schedule Determine whether to delete the post
+   * schedules.
    */
   void Replay(IRSchedule* schedule, bool without_post_schedule = false) const;
 
@@ -90,13 +96,17 @@ class ScheduleDesc {
   bool Empty() const { return steps_.empty(); }
 
   /**
-   * \brief Fork this ScheduleDesc and update a step of the new ScheduleDesc with a new decision.
+   * \brief Fork this ScheduleDesc and update a step of the new ScheduleDesc
+   * with a new decision.
    * @param step_idx The index of the step to be update.
    * @param decision The new decision.
-   * @param without_post_schedule Determine whether to delete the post schedules.
+   * @param without_post_schedule Determine whether to delete the post
+   * schedules.
    * @return The new ScheduleDesc.
    */
-  ScheduleDesc ForkAndUpdate(int step_idx, utils::Attribute decision, bool without_post_schedule) const;
+  ScheduleDesc ForkAndUpdate(int step_idx,
+                             utils::Attribute decision,
+                             bool without_post_schedule) const;
 
  private:
   std::vector<Step> steps_;  // all operations are recorded in order.

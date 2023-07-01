@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This file implements the class ComputeAtTransform, which help to perform the isl transformation in `compute_at`
-//! optimization.
+//! This file implements the class ComputeAtTransform, which help to perform the
+//! isl transformation in `compute_at` optimization.
 #pragma once
 #include <isl/constraint.h>
 
@@ -46,24 +46,31 @@ std::string GenConsumerParamName(const char* tuple, int id);
 /**
  * \brief The ComputeAt transform implemented in polyhedral way.
  *
- * The current implementation for `ComputeAt` schedule primitive is quite complex, it contains the polyhedral transform
- * before the AST generation, and the several passes after AST generation. This class only contains the polyhedral
- * transform:
+ * The current implementation for `ComputeAt` schedule primitive is quite
+ * complex, it contains the polyhedral transform before the AST generation, and
+ * the several passes after AST generation. This class only contains the
+ * polyhedral transform:
  * 1. Adjust the producer's domain by the consume accesses.
  * 2. Adjust the producer's transform by
- *   a. Insert the preceding level+1 consumer axis to the head of the original producer transform's domain, to make it
- * compute in the level of consumer forloops. b.
- *   b. Adjust the range of the producer's transform by fixing the preceding axis(from the previous step).
+ *   a. Insert the preceding level+1 consumer axis to the head of the original
+ * producer transform's domain, to make it compute in the level of consumer
+ * forloops. b. b. Adjust the range of the producer's transform by fixing the
+ * preceding axis(from the previous step).
  *
  * The latter process after the execution of this class remains, including
  * 1. Get the adjusted shape of the producer after compute_at
  * 2. Update the adjusted buffer's shape
- * 3. Normalize the accesses of the consumers(by making the leftmost access start from zero).
+ * 3. Normalize the accesses of the consumers(by making the leftmost access
+ * start from zero).
  */
 class ComputeAtTransform {
  public:
-  ComputeAtTransform(
-      isl::set pdomain, isl::set cdomain, isl::map access, isl::map ptransform, isl::map ctransform, int level);
+  ComputeAtTransform(isl::set pdomain,
+                     isl::set cdomain,
+                     isl::map access,
+                     isl::map ptransform,
+                     isl::map ctransform,
+                     int level);
 
   void operator()() {
     AdjustPdomain();
@@ -74,13 +81,15 @@ class ComputeAtTransform {
   const isl::map& adjusted_ptransform() const { return adjusted_ptransform_; }
 
   //! Display C code
-  void DisplayC(isl_map* __isl_give pschedule = nullptr, isl_map* __isl_give cschedule = nullptr);
+  void DisplayC(isl_map* __isl_give pschedule = nullptr,
+                isl_map* __isl_give cschedule = nullptr);
 
   //! Re-calculate the producer buffer shape after compute_at transform.
   std::vector<int> GetProducerAdjustedShape() const;
 
-  //! Get the the minimum of the preceding level+1 axis in accesses by assuming all the isl param is zero(for the
-  //! consumer, the preceding level+1 axis is fixed in producer computation).
+  //! Get the the minimum of the preceding level+1 axis in accesses by assuming
+  //! all the isl param is zero(for the consumer, the preceding level+1 axis is
+  //! fixed in producer computation).
   std::vector<int> GetAccessesPrecedingIndicesMinAssumingParamsZero();
 
  protected:

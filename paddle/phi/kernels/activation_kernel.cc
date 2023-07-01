@@ -26,19 +26,11 @@ void Relu6Kernel(const Context& dev_ctx,
   Relu6RawKernel<T, Context>(dev_ctx, x, 6, out);
 }
 
-template <typename T, typename Context>
-void SwishKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 DenseTensor* out) {
-  SwishRawKernel<T, Context>(dev_ctx, x, 1.0, out);
-}
-
 }  // namespace phi
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(relu6, CPU, ALL_LAYOUT, phi::Relu6Kernel, float, double) {}
-PD_REGISTER_KERNEL(swish, CPU, ALL_LAYOUT, phi::SwishKernel, float, double) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(relu6,
@@ -49,28 +41,14 @@ PD_REGISTER_KERNEL(relu6,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(swish,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SwishKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
 #endif
 
 #if defined PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(
     relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
 PD_REGISTER_KERNEL(
     relu6, OneDNN, ONEDNN, phi::Relu6Kernel, float, phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(
-    swish, OneDNN, ONEDNN, phi::SwishKernel, float, phi::dtype::bfloat16) {}
 #endif

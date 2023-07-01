@@ -49,18 +49,21 @@ namespace lang {
 namespace detail {
 
 /**
- * After the AstGen build the forloop from isl exprs, all the ISL Call nodes should be mapped to the corresponding CINN
- * expressions, there should be no remaining.
+ * After the AstGen build the forloop from isl exprs, all the ISL Call nodes
+ * should be mapped to the corresponding CINN expressions, there should be no
+ * remaining.
  */
 void CheckNoIslCallRemains(const Expr* expr);
 
 /**
  * \brief Lower a single group of nodes.
  *
- * We partition the whole computation of a function into several groups, each group is a basic element for ISL
- * polyhedral computation, that is, we transform a group into a isl domain and schedule, and generate ast latter.
+ * We partition the whole computation of a function into several groups, each
+ * group is a basic element for ISL polyhedral computation, that is, we
+ * transform a group into a isl domain and schedule, and generate ast latter.
  *
- * @param group A single schedule group containing several Stages and the scheduling order.
+ * @param group A single schedule group containing several Stages and the
+ * scheduling order.
  * @param tuple_to_expr A map from isl set tuple name to CINN expressions.
  */
 Expr LowerGroup(const poly::ScheduleGroup& group,
@@ -92,9 +95,10 @@ struct CompuGraphNode : public common::GraphNode {
  * @param hide_inline hide inline tensor nodes.
  * @return a graph.
  */
-std::unique_ptr<common::Graph> CreateCompGraph(const std::vector<ir::Tensor>& tensors,
-                                               StageMap stages,
-                                               bool hide_inline = false);
+std::unique_ptr<common::Graph> CreateCompGraph(
+    const std::vector<ir::Tensor>& tensors,
+    StageMap stages,
+    bool hide_inline = false);
 
 class LowerImpl {
  public:
@@ -111,8 +115,8 @@ class LowerImpl {
             const std::vector<Tensor>& tensor_args,
             const std::vector<Var>& scalar_args,
             const std::vector<Tensor>& temp_tensor_args = {},
-            const Target& target                        = common::DefaultHostTarget(),
-            bool support_ir_schedule                    = false);
+            const Target& target = common::DefaultHostTarget(),
+            bool support_ir_schedule = false);
 
   std::vector<ir::LoweredFunc> operator()();
 
@@ -123,13 +127,15 @@ class LowerImpl {
 
   /**
    * \brief generate the argument list of the final output function.
-   * We put the scalar_args in front of tensor_args, e.g. get tensor_args{A,B}, scalar_args{m}, the final argument list
-   * is {m, A, B}, the input and output tensor can be mixed in the tensor_args, the kInput and kOutput token will deduce
-   * from their usage in the computation.
+   * We put the scalar_args in front of tensor_args, e.g. get tensor_args{A,B},
+   * scalar_args{m}, the final argument list is {m, A, B}, the input and output
+   * tensor can be mixed in the tensor_args, the kInput and kOutput token will
+   * deduce from their usage in the computation.
    */
   std::vector<ir::Argument> GenerateFunctionArgumentList(Expr fn_body);
 
-  std::vector<ir::Argument> GenFuncArgForSplitKernel(Expr func_iterator, std::vector<ir::Tensor> temp_tensors);
+  std::vector<ir::Argument> GenFuncArgForSplitKernel(
+      Expr func_iterator, std::vector<ir::Tensor> temp_tensors);
 
   /**
    * \brief generate the body expression of the final output function.
@@ -139,23 +145,26 @@ class LowerImpl {
  private:
   /**
    * \brief Collect the temporary tensors.
-   * A temporary tensor is one that is in the computation graph, not inlined and not in the tensor_args(similar to a
-   * temporary variable inside function).
+   * A temporary tensor is one that is in the computation graph, not inlined and
+   * not in the tensor_args(similar to a temporary variable inside function).
    */
   std::vector<Tensor> CollectTemporaryTensors();
 
   /**
-   * \brief Check both the tensor_args and sclar_args not contain duplication (different arguemnt with the same name).
+   * \brief Check both the tensor_args and sclar_args not contain duplication
+   * (different arguemnt with the same name).
    */
   void CheckArgsUnique();
 
   /**
-   * \brief Get a map, for each tensor in the tensor_args, map from name to itself.
+   * \brief Get a map, for each tensor in the tensor_args, map from name to
+   * itself.
    */
   inline absl::flat_hash_map<std::string, Tensor> GenTensorArgMap();
 
   /**
-   * \brief Get a map, for each tensor in the computation graph, map from name to itself.
+   * \brief Get a map, for each tensor in the computation graph, map from name
+   * to itself.
    */
   inline absl::flat_hash_map<std::string, Tensor> GenAllTensorMap();
 
@@ -172,7 +181,8 @@ class LowerImpl {
    *
    * TODO(Superjomn) remove the field `extra_depend_stages`
    */
-  std::set<std::pair<std::string, std::string>> CollectExtraDependencies() const;
+  std::set<std::pair<std::string, std::string>> CollectExtraDependencies()
+      const;
 
  private:
   const std::string& fn_name_;
@@ -193,7 +203,8 @@ class LowerImpl {
 };
 
 /**
- * \brief Tell whether a tensor contains some GPU related information, such some schedule.
+ * \brief Tell whether a tensor contains some GPU related information, such some
+ * schedule.
  */
 bool TensorContainsGPUInfo(ir::Tensor t, poly::Stage* stage);
 
@@ -203,7 +214,8 @@ bool TensorContainsGPUInfo(ir::Tensor t, poly::Stage* stage);
 struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
   const std::map<std::string, ir::VectorizeInfo>& vectorizes;
 
-  explicit MarkVectorizeMutator(const std::map<std::string /*tensor name*/, ir::VectorizeInfo>& vectorizes)
+  explicit MarkVectorizeMutator(const std::map<std::string /*tensor name*/,
+                                               ir::VectorizeInfo>& vectorizes)
       : vectorizes(vectorizes) {}
 
   void operator()(Expr* expr) { ir::IRMutator<Expr*>::Visit(expr, expr); }
@@ -237,7 +249,9 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
 struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
   std::map<std::string, std::set<int> /*level*/> unrolls;
 
-  explicit MarkUnrollMutator(const std::map<std::string, std::set<int>>& unrolls) : unrolls(unrolls) {}
+  explicit MarkUnrollMutator(
+      const std::map<std::string, std::set<int>>& unrolls)
+      : unrolls(unrolls) {}
 
   void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -271,7 +285,9 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
 struct MarkParallelMutator : public ir::IRMutator<Expr*> {
   std::map<std::string, std::set<int> /*level*/> parallels;
 
-  explicit MarkParallelMutator(const std::map<std::string, std::set<int>>& parallels) : parallels(parallels) {}
+  explicit MarkParallelMutator(
+      const std::map<std::string, std::set<int>>& parallels)
+      : parallels(parallels) {}
 
   void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 

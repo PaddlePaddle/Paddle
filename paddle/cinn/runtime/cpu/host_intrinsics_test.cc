@@ -33,7 +33,9 @@ TEST(tanh, basic) {
   Expr M(10), N(20);
   Placeholder<float> x("x", {M, N});
   auto y = Compute(
-      {M, N}, [&](Expr i, Expr j) { return CallExtern("tanh", {x(i, j)}); }, "y");
+      {M, N},
+      [&](Expr i, Expr j) { return CallExtern("tanh", {x(i, j)}); },
+      "y");
 
   auto stages = CreateStages({y});
 
@@ -49,15 +51,19 @@ TEST(tanh, basic) {
   jit->Link(builder.Build());
 
   auto fn_ptr = jit->Lookup("fn");
-  auto fnp    = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
+  auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf   = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto* out_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_zero().Build();
-  auto args     = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                    .set_random()
+                    .Build();
+  auto* out_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                      .set_zero()
+                      .Build();
+  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
-  auto* x_buf_data   = reinterpret_cast<float*>(x_buf->memory);
+  auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
   auto* out_buf_data = reinterpret_cast<float*>(out_buf->memory);
 
   for (int i = 0; i < x_buf->num_elements(); i++) {
@@ -72,7 +78,8 @@ TEST(find_value_nd, basic) {
   auto y = Compute(
       {N},
       [&](Expr i) {
-        return CallExtern("cinn_host_find_float_nd", {x, M, x({Expr(5), Expr(3)}), i, N});
+        return CallExtern("cinn_host_find_float_nd",
+                          {x, M, x({Expr(5), Expr(3)}), i, N});
       },
       "y");
 
@@ -90,21 +97,25 @@ TEST(find_value_nd, basic) {
   jit->Link(builder.Build());
 
   auto fn_ptr = jit->Lookup("fn");
-  auto fnp    = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
+  auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf   = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto* out_buf = common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
-  auto args     = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                    .set_random()
+                    .Build();
+  auto* out_buf =
+      common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
+  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
-  auto* x_buf_data   = reinterpret_cast<float*>(x_buf->memory);
+  auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
   auto* out_buf_data = reinterpret_cast<int*>(out_buf->memory);
 
   for (int i = 0; i < out_buf->num_elements(); i++) {
     LOG_FIRST_N(INFO, 3) << out_buf_data[i];
     if (out_buf_data[i] != -1) {
-      ASSERT_NEAR(x_buf_data[out_buf_data[i] * 20 + i], x_buf_data[5 * 20 + 3], 1e-5);
+      ASSERT_NEAR(
+          x_buf_data[out_buf_data[i] * 20 + i], x_buf_data[5 * 20 + 3], 1e-5);
     }
   }
 }
@@ -115,7 +126,8 @@ TEST(cinn_host_lt_num_fp32, basic) {
   auto y = Compute(
       {N},
       [&](Expr j) {
-        return CallExtern("cinn_host_lt_num_fp32", {x, M, x({Expr(0), j}), j, N});
+        return CallExtern("cinn_host_lt_num_fp32",
+                          {x, M, x({Expr(0), j}), j, N});
       },
       "y");
 
@@ -133,15 +145,18 @@ TEST(cinn_host_lt_num_fp32, basic) {
   jit->Link(builder.Build());
 
   auto fn_ptr = jit->Lookup("fn");
-  auto fnp    = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
+  auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf   = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto* out_buf = common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
-  auto args     = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                    .set_random()
+                    .Build();
+  auto* out_buf =
+      common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
+  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
-  auto* x_buf_data   = reinterpret_cast<float*>(x_buf->memory);
+  auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
   auto* out_buf_data = reinterpret_cast<int*>(out_buf->memory);
 
   for (int j = 0; j < 20; j++) {
@@ -162,7 +177,8 @@ TEST(cinn_host_gt_num_fp32, basic) {
   auto y = Compute(
       {N},
       [&](Expr j) {
-        return CallExtern("cinn_host_gt_num_fp32", {x, M, x({Expr(0), j}), j, N});
+        return CallExtern("cinn_host_gt_num_fp32",
+                          {x, M, x({Expr(0), j}), j, N});
       },
       "y");
 
@@ -180,15 +196,18 @@ TEST(cinn_host_gt_num_fp32, basic) {
   jit->Link(builder.Build());
 
   auto fn_ptr = jit->Lookup("fn");
-  auto fnp    = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
+  auto fnp = reinterpret_cast<lower_func_ptr_t>(fn_ptr);
   ASSERT_TRUE(fnp);
 
-  auto* x_buf   = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_random().Build();
-  auto* out_buf = common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
-  auto args     = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
+  auto* x_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                    .set_random()
+                    .Build();
+  auto* out_buf =
+      common::BufferBuilder(Int(32), {N.as_int32()}).set_zero().Build();
+  auto args = common::ArgsBuilder().Add(x_buf).Add(out_buf).Build();
   fnp(args.data(), args.size());
 
-  auto* x_buf_data   = reinterpret_cast<float*>(x_buf->memory);
+  auto* x_buf_data = reinterpret_cast<float*>(x_buf->memory);
   auto* out_buf_data = reinterpret_cast<int*>(out_buf->memory);
 
   for (int j = 0; j < 20; j++) {

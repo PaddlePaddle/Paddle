@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestExpandDimsOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -30,7 +32,8 @@ class TestExpandDimsOp(OpTest):
 
     def init_case(self):
         self.x_np = self.random(
-            shape=self.case["x_shape"], dtype=self.case["x_dtype"])
+            shape=self.case["x_shape"], dtype=self.case["x_dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=True)
@@ -43,8 +46,10 @@ class TestExpandDimsOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("expand_dims")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["x_dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["x_dtype"]),
+            self.case["x_shape"],
+            "x",
+        )
         out = builder.expand_dims(x, self.case["axes_shape"])
 
         prog = builder.build()
@@ -53,8 +58,11 @@ class TestExpandDimsOp(OpTest):
         self.cinn_outputs = [res[0]]
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 
@@ -105,38 +113,38 @@ class TestExpandDimsAll(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            #{
+            # {
             #    "x_dtype": "bool",
             #    "axes_dtype": "int32",
-            #},
-            #{
+            # },
+            # {
             #    "x_dtype": "int8",
             #    "axes_dtype": "int32",
-            #},
-            #{
+            # },
+            # {
             #    "x_dtype": "int16",
             #    "axes_dtype": "int32",
-            #},
-            #{
+            # },
+            # {
             #    "x_dtype": "int32",
             #    "axes_dtype": "int32",
-            #},
-            #{
+            # },
+            # {
             #    "x_dtype": "int64",
             #    "axes_dtype": "int32",
-            #},
-            #{
+            # },
+            # {
             #    "x_dtype": "float16",
             #    "max_relative_error": 1e-3,
             #    "axes_dtype": "int32",
-            #},
+            # },
             {
                 "x_dtype": "float32",
             },
-            #{
+            # {
             #    "x_dtype": "float64",
             #    "axes_dtype": "int32",
-            #},
+            # },
         ]
         self.attrs = []
 

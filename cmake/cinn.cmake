@@ -3,18 +3,25 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(DOWNLOAD_MODEL_DIR "${CINN_THIRD_PARTY_PATH}/model")
 
 string(REGEX MATCH "-std=(c\\+\\+[^ ]+)" STD_FLAG "${CMAKE_CXX_FLAGS}")
-if (NOT STD_FLAG)
-  if (NOT CMAKE_CXX_STANDARD)
-    message(STATUS "STD_FLAG and CMAKE_CXX_STANDARD not found, using default flag: -std=c++17")
+if(NOT STD_FLAG)
+  if(NOT CMAKE_CXX_STANDARD)
+    message(
+      STATUS
+        "STD_FLAG and CMAKE_CXX_STANDARD not found, using default flag: -std=c++17"
+    )
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
     set(CMAKE_CXX_STANDARD 17)
   else()
-    message(STATUS "Got CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}, append -std=c++${CMAKE_CXX_STANDARD} to CMAKE_CXX_FLAGS")
+    message(
+      STATUS
+        "Got CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}, append -std=c++${CMAKE_CXX_STANDARD} to CMAKE_CXX_FLAGS"
+    )
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++${CMAKE_CXX_STANDARD}")
   endif()
 else()
   string(REGEX MATCH "([0-9]+)" STD_VALUE "${STD_FLAG}")
-  message(STATUS "Got STD_FLAG=${STD_FLAG}, set CMAKE_CXX_STANDARD=${STD_VALUE}")
+  message(
+    STATUS "Got STD_FLAG=${STD_FLAG}, set CMAKE_CXX_STANDARD=${STD_VALUE}")
   set(CMAKE_CXX_STANDARD ${STD_VALUE})
 endif()
 
@@ -34,7 +41,6 @@ if(WITH_DEBUG)
   add_definitions(-DCINN_WITH_DEBUG)
 endif()
 
-
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
 # clean the code in the future.
@@ -43,13 +49,15 @@ add_definitions(-w)
 include(cmake/cinn/version.cmake)
 # include the customized configures
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
-  file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
+  file(COPY ${PROJECT_SOURCE_DIR}/cmake/cinn/config.cmake
+       DESTINATION ${CMAKE_BINARY_DIR}/cmake/cinn)
 endif()
 include(${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
 
 if(WITH_MKL)
   generate_dummy_static_lib(LIB_NAME "cinn_mklml" GENERATOR "mklml.cmake")
   target_link_libraries(cinn_mklml ${MKLML_LIB} ${MKLML_IOMP_LIB})
+  add_dependencies(cinn_mklml ${MKLML_PROJECT})
   add_definitions(-DCINN_WITH_MKL_CBLAS)
 endif()
 if(WITH_MKLDNN)
@@ -59,8 +67,10 @@ endif()
 if(WITH_GPU)
   message(STATUS "Enable CINN CUDA")
   add_definitions(-DCINN_WITH_CUDA)
-  message(STATUS "Enable CINN CUDNN")
-  add_definitions(-DCINN_WITH_CUDNN)
+  if(WITH_CUDNN)
+    message(STATUS "Enable CINN CUDNN")
+    add_definitions(-DCINN_WITH_CUDNN)
+  endif()
   enable_language(CUDA)
   find_package(CUDA REQUIRED)
   include_directories(${CUDA_INCLUDE_DIRS})
@@ -81,10 +91,14 @@ if(WITH_GPU)
 
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
                                          REQUIRED)
-  find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
-  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
-  find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
-  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64 REQUIRED)
+  find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+                                         /usr/lib /usr/lib64 REQUIRED)
+  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib
+                                       /usr/lib64 REQUIRED)
+  find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+                                         /usr/lib /usr/lib64 REQUIRED)
+  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
+                                             /usr/lib /usr/lib64 REQUIRED)
 endif()
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)
@@ -108,7 +122,7 @@ include(cmake/cinn/external/openmp.cmake)
 include(cmake/cinn/external/jitify.cmake)
 
 if(CINN_ONLY)
-  LINK_LIBRARIES(gflags)
+  link_libraries(gflags)
 endif()
 
 set(LINK_FLAGS
@@ -269,15 +283,18 @@ if(PUBLISH_LIBS)
     POST_BUILD
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinnapi.so
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinnapi.so
-            COMMAND cmake -E copy_directory ${CINN_THIRD_PARTY_PATH}/install
+    COMMAND cmake -E copy_directory ${CINN_THIRD_PARTY_PATH}/install
             ${CMAKE_BINARY_DIR}/dist/third_party DEPENDS cinnapi)
   add_custom_command(
     TARGET cinncore_static
     POST_BUILD
-    COMMAND cmake -E copy ${PROJECT_SOURCE_DIR}/tools/cinn/tutorials_demo/demo.cc
-            ${CMAKE_BINARY_DIR}/dist/demo.cc
-    COMMAND cmake -E copy ${PROJECT_SOURCE_DIR}/tools/cinn/tutorials_demo/build_demo.sh
-            ${CMAKE_BINARY_DIR}/dist/build_demo.sh
+    COMMAND
+      cmake -E copy ${PROJECT_SOURCE_DIR}/tools/cinn/tutorials_demo/demo.cc
+      ${CMAKE_BINARY_DIR}/dist/demo.cc
+    COMMAND
+      cmake -E copy
+      ${PROJECT_SOURCE_DIR}/tools/cinn/tutorials_demo/build_demo.sh
+      ${CMAKE_BINARY_DIR}/dist/build_demo.sh
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinncore_static.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinncore_static.a
     COMMAND

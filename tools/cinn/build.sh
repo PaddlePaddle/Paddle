@@ -16,7 +16,7 @@
 
 set -ex
 workspace=$(cd $(dirname ${BASH_SOURCE[0]})/../..; pwd)
-build_dir_name=${cinn_build:-build_ci}
+build_dir_name=${cinn_build:-build_cinn}
 build_dir=$workspace/${build_dir_name}
 py_version=${py_version:-3.8}
 cinn_whl_path=python/dist/cinn-0.0.0-py3-none-any.whl

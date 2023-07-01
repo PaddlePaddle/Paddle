@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -32,14 +34,15 @@ class TestOneHotOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
         return {
             "depth": self.depth,
             "dtype": self.nptype2paddledtype(self.dtype),
-            "allow_out_of_range": self.allow_out_of_range
+            "allow_out_of_range": self.allow_out_of_range,
         }
 
     def set_op_outputs(self):
@@ -79,14 +82,15 @@ class TestOneHotV2Op(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
         return {
             "depth": self.depth,
             "dtype": self.nptype2paddledtype(self.dtype),
-            "allow_out_of_range": self.allow_out_of_range
+            "allow_out_of_range": self.allow_out_of_range,
         }
 
     def set_op_outputs(self):

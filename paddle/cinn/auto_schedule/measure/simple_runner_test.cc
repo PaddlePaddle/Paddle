@@ -53,15 +53,16 @@ class TestSimpleRunner : public ::testing::Test {
   static frontend::Program CreateAddReluProgram();
   void SetUp() override {
     std::unordered_set<std::string> fetch_ids;
-    auto program             = CreateAddReluProgram();
-    auto graph               = cinn::frontend::Optimize(&program, fetch_ids, target);
-    compiled_scope           = BuildScope(target, graph);
-    graph_compiler           = std::make_unique<GraphCompiler>(target, compiled_scope, graph);
-    auto runtime_program     = graph_compiler->Build();
+    auto program = CreateAddReluProgram();
+    auto graph = cinn::frontend::Optimize(&program, fetch_ids, target);
+    compiled_scope = BuildScope(target, graph);
+    graph_compiler =
+        std::make_unique<GraphCompiler>(target, compiled_scope, graph);
+    auto runtime_program = graph_compiler->Build();
     const auto& instructions = runtime_program->GetRunInstructions();
     ASSERT_EQ(1, instructions.size());
 
-    build_result.compiled_scope  = compiled_scope.get();
+    build_result.compiled_scope = compiled_scope.get();
     build_result.runtime_program = std::move(runtime_program);
 
     task = std::make_unique<TuneTask>();
@@ -71,7 +72,7 @@ class TestSimpleRunner : public ::testing::Test {
     task->target = common::DefaultHostTarget();
 #endif
     task->subgraph = graph->fusion_groups.front();
-    input.task     = task.get();
+    input.task = task.get();
   }
 };
 
@@ -115,18 +116,22 @@ TEST_F(TestSimpleRunner, TimeMeasured) {
   BuildResult build_result;
   build_result.compiled_scope = nullptr;
   std::vector<std::unique_ptr<Instruction>> instructions;
-  instructions.emplace_back(
-      new Instruction(common::DefaultHostTarget(), nullptr, {}, {"empty_placeholder"}, "sleep_fn"));
+  instructions.emplace_back(new Instruction(common::DefaultHostTarget(),
+                                            nullptr,
+                                            {},
+                                            {"empty_placeholder"},
+                                            "sleep_fn"));
   instructions.back()->SetLoweredFunc(reinterpret_cast<void*>(sleep_fn));
   instructions.back()->Finalize();
-  build_result.runtime_program.reset(new hlir::framework::Program(nullptr, std::move(instructions)));
+  build_result.runtime_program.reset(
+      new hlir::framework::Program(nullptr, std::move(instructions)));
 
   // to skip the condition check of params in Instruction::PreparePodArgs
   std::map<std::string, cinn_pod_value_t> preset_args;
   preset_args.emplace("empty_placeholder", cinn_pod_value_t());
   input.execution_args = &preset_args;
 
-  auto runner                  = std::make_unique<SimpleRunner>(2);
+  auto runner = std::make_unique<SimpleRunner>(2);
   MeasureResult measure_result = runner->Run(input, build_result);
   // because the kernel function will sleep 100 us,
   // the cost time of execution and span in total must

@@ -31,11 +31,15 @@ namespace backends {
  */
 class CodeGenCUDA_Host : public CodeGenLLVM {
  public:
-  explicit CodeGenCUDA_Host(llvm::Module *m, llvm::IRBuilder<> *b, const std::shared_ptr<SymbolTable> &vars = nullptr)
+  explicit CodeGenCUDA_Host(llvm::Module *m,
+                            llvm::IRBuilder<> *b,
+                            const std::shared_ptr<SymbolTable> &vars = nullptr)
       : CodeGenLLVM(m, b, vars) {}
 
   using CodeGenLLVM::Visit;
-  llvm::Value *Visit(const ir::_LoweredFunc_ *func) override { return LowerGPUKernelLauncher(func); }
+  llvm::Value *Visit(const ir::_LoweredFunc_ *func) override {
+    return LowerGPUKernelLauncher(func);
+  }
 
  private:
   /**
@@ -43,10 +47,12 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
    *
    * We launch a CUDA kernel in the following way:
    *
-   * 1. a GPU function (called fn) will compiled to PTX and lower by CUDA driver to a function pointer, which we store
-   * as a `void*` type global variable [fn_kernel_ptr] in LLVM module.
-   * 2. when lower the host launcher, we replace the Call of the original kernel [fn] to a Call of
-   * `cinn_call_cuda_kernel` method which is registered as an external function.
+   * 1. a GPU function (called fn) will compiled to PTX and lower by CUDA driver
+   * to a function pointer, which we store as a `void*` type global variable
+   * [fn_kernel_ptr] in LLVM module.
+   * 2. when lower the host launcher, we replace the Call of the original kernel
+   * [fn] to a Call of `cinn_call_cuda_kernel` method which is registered as an
+   * external function.
    *
    */
   llvm::Value *LowerGPUKernelLauncher(const ir::_LoweredFunc_ *func);

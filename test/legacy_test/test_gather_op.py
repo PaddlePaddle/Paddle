@@ -70,6 +70,20 @@ class TestGatherOp(OpTest):
         pass
 
 
+class TestGatherOp_ZeroDim(TestGatherOp):
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = 100
+        self.config_dtype()
+        self.index = 2
+        self.index_type = "int32"
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
 class TestGatherOpFP16(TestGatherOp):
     def config_dtype(self):
         self.x_type = "float16"

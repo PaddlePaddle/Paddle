@@ -24,8 +24,8 @@ namespace pass {
 
 // Program maybe has some unused instructions. `DeadCodeEliminate` will remove
 // these instructions. The way to find unused instructions is to traverse all
-// instructions to determine whether its output is used by other instructions in the
-// same subgraph or in the `fetch_ids`.
+// instructions to determine whether its output is used by other instructions in
+// the same subgraph or in the `fetch_ids`.
 class DeadCodeEliminatePass : public ProgramPass {
  public:
   using ProgramPass::ProgramPass;
@@ -44,7 +44,7 @@ class DeadCodeEliminatePass : public ProgramPass {
     std::unordered_set<int> remove_idxs;
     for (int i = program->size() - 1; i >= 0; --i) {
       const auto& instr = (*program)[i];
-      bool can_remove   = true;
+      bool can_remove = true;
       for (const auto& out : instr->outputs) {
         if (inputs.count(out->id) || fetch_ids.count(out->id)) {
           can_remove = false;
@@ -79,9 +79,11 @@ class DeadCodeEliminatePass : public ProgramPass {
   }
 
  private:
-  bool CheckFetchIds(const Program& program, const std::unordered_set<std::string>& fetch_ids) {
+  bool CheckFetchIds(const Program& program,
+                     const std::unordered_set<std::string>& fetch_ids) {
     if (fetch_ids.empty()) {
-      // If fetch_ids is not specified, all output vars are considered as fetch vars.
+      // If fetch_ids is not specified, all output vars are considered as fetch
+      // vars.
       return false;
     }
 
@@ -96,7 +98,9 @@ class DeadCodeEliminatePass : public ProgramPass {
     bool res = true;
     for (auto& id : fetch_ids) {
       if (!outputs.count(id)) {
-        LOG(WARNING) << id << " in fetch_ids is not output of any instruction in program.";
+        LOG(WARNING)
+            << id
+            << " in fetch_ids is not output of any instruction in program.";
         res = false;
       }
     }
@@ -110,7 +114,8 @@ class DeadCodeEliminatePass : public ProgramPass {
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(DeadCodeEliminate) {
-  CINN_REGISTER_PROGRAM_PASS(DeadCodeEliminate, cinn::frontend::pass::DeadCodeEliminatePass);
+  CINN_REGISTER_PROGRAM_PASS(DeadCodeEliminate,
+                             cinn::frontend::pass::DeadCodeEliminatePass);
 
   return true;
 }

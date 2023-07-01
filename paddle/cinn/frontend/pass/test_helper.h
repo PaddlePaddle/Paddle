@@ -42,9 +42,11 @@ std::vector<T> GeneratedRandomVector(size_t numel) {
 }
 
 template <typename T>
-void CopyFromVector(const std::vector<T>& src, hlir::framework::Tensor tensor, Target target) {
+void CopyFromVector(const std::vector<T>& src,
+                    hlir::framework::Tensor tensor,
+                    Target target) {
   size_t numel = tensor->shape().numel();
-  auto* dst    = tensor->mutable_data<T>(target);
+  auto* dst = tensor->mutable_data<T>(target);
 
 #ifdef CINN_WITH_CUDA
   cudaMemcpy(dst, src.data(), numel * sizeof(T), cudaMemcpyHostToDevice);
@@ -56,7 +58,7 @@ void CopyFromVector(const std::vector<T>& src, hlir::framework::Tensor tensor, T
 template <typename T>
 std::vector<T> CopyToVector(const hlir::framework::Tensor tensor) {
   size_t numel = tensor->shape().numel();
-  auto* src    = tensor->data<T>();
+  auto* src = tensor->data<T>();
 
   std::vector<T> dst(numel);
 #ifdef CINN_WITH_CUDA
@@ -81,14 +83,17 @@ class PassTest {
     CHECK(IsValid(program)) << "The origin program is not valid.";
     int origin_program_size = program.size();
     LOG(INFO) << "Run origin program";
-    std::unordered_map<std::string, std::vector<float>> origin_outputs = Execute(program, input_names, output_names);
+    std::unordered_map<std::string, std::vector<float>> origin_outputs =
+        Execute(program, input_names, output_names);
 
-    std::unordered_set<std::string> fetch_var_ids(output_names.begin(), output_names.end());
+    std::unordered_set<std::string> fetch_var_ids(output_names.begin(),
+                                                  output_names.end());
     ProgramPass::Apply(&program, fetch_var_ids, target_, program_passes);
     int optimized_program_size = program.size();
     CHECK(IsValid(program)) << "The optimized program is not valid.";
     LOG(INFO) << "Run optimized program";
-    std::unordered_map<std::string, std::vector<float>> optimized_outputs = Execute(program, input_names, output_names);
+    std::unordered_map<std::string, std::vector<float>> optimized_outputs =
+        Execute(program, input_names, output_names);
 
     for (auto name : output_names) {
       LOG(INFO) << "Check output name=" << name;
@@ -100,20 +105,23 @@ class PassTest {
   }
 
  protected:
-  std::unordered_map<std::string, std::vector<float>> Execute(const Program& program,
-                                                              const std::vector<std::string>& input_names,
-                                                              const std::vector<std::string>& output_names) {
+  std::unordered_map<std::string, std::vector<float>> Execute(
+      const Program& program,
+      const std::vector<std::string>& input_names,
+      const std::vector<std::string>& output_names) {
     LOG(INFO) << program;
-    std::unordered_set<std::string> fetch_var_ids(output_names.begin(), output_names.end());
-    auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_var_ids, target_);
+    std::unordered_set<std::string> fetch_var_ids(output_names.begin(),
+                                                  output_names.end());
+    auto graph = std::make_shared<hlir::framework::Graph>(
+        program, fetch_var_ids, target_);
     hlir::framework::ApplyPasses(graph.get(), DefaultOpFusionPasses());
 
     auto scope = hlir::framework::BuildScope(target_, graph);
     hlir::framework::GraphCompiler gc(target_, scope, graph);
     hlir::framework::GraphCompiler::CompileOptions options;
     options.with_instantiate_variables = true;
-    auto result                        = gc.Build(options, std::move(fetch_var_ids));
-    auto runtime_program               = std::move(result.runtime_program);
+    auto result = gc.Build(options, std::move(fetch_var_ids));
+    auto runtime_program = std::move(result.runtime_program);
 
     for (auto& name : input_names) {
       SetInputTensor(name, scope);
@@ -122,26 +130,29 @@ class PassTest {
 
     std::unordered_map<std::string, std::vector<float>> outputs;
     for (auto& name : output_names) {
-      auto tensor            = scope->GetTensor(name);
+      auto tensor = scope->GetTensor(name);
       std::vector<float> vec = CopyToVector<float>(tensor);
       outputs.emplace(name, vec);
     }
     return outputs;
   }
 
-  void SetInputTensor(const std::string& name, std::shared_ptr<hlir::framework::Scope> scope) {
+  void SetInputTensor(const std::string& name,
+                      std::shared_ptr<hlir::framework::Scope> scope) {
     scope->Var<hlir::framework::Tensor>(name);
     auto tensor = scope->GetTensor(name);
 
     if (!inputs_.count(name)) {
-      std::vector<float> vec = GeneratedRandomVector<float>(tensor->shape().numel());
+      std::vector<float> vec =
+          GeneratedRandomVector<float>(tensor->shape().numel());
       inputs_.emplace(name, vec);
     }
     auto iter = inputs_.find(name);
     CopyFromVector<float>(iter->second, tensor, target_);
   }
 
-  void CheckOutput(const std::vector<float>& actual, const std::vector<float>& expect) {
+  void CheckOutput(const std::vector<float>& actual,
+                   const std::vector<float>& expect) {
     CHECK_EQ(actual.size(), expect.size());
     for (size_t i = 0; i < expect.size(); ++i) {
       ASSERT_FLOAT_EQ(actual[i], expect[i]);
@@ -168,7 +179,8 @@ class PassTest {
       // The inputs should be feeded, or other instructions' output.
       for (auto& var : instr->inputs) {
         if (!inputs.count(var->id) && !outputs.count(var->id)) {
-          LOG(INFO) << "The input " << var->id << " of " << i << "-th instrution (" << instr
+          LOG(INFO) << "The input " << var->id << " of " << i
+                    << "-th instrution (" << instr
                     << ") is not the output of any other instructions.";
           valid = false;
         }

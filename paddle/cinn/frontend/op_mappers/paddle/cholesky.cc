@@ -19,7 +19,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void CholeskyOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void CholeskyOpMapper(const paddle::cpp::OpDesc& op_desc,
+                      const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
@@ -28,7 +29,7 @@ void CholeskyOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext&
   auto upper = utils::GetAttrOrDefault<bool>(op_desc, "upper", false);
   VLOG(4) << out_name << " = cholesky(" << x_name << ", upper=" << upper << ")";
 
-  auto x   = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
   auto out = ctx.Builder()->Cholesky(x, upper);
 
   ctx.AddVar(out_name, out);
@@ -40,6 +41,7 @@ void CholeskyOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext&
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_cholesky) {
-  CINN_REGISTER_OP_MAPPER(cholesky, cinn::frontend::paddle_mappers::CholeskyOpMapper)
+  CINN_REGISTER_OP_MAPPER(cholesky,
+                          cinn::frontend::paddle_mappers::CholeskyOpMapper)
   return true;
 }

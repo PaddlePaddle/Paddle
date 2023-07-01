@@ -580,7 +580,7 @@ if "%UPLOAD_TP_FILE%"=="ON" (
         echo Download package from https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz
         python -c "import wget;wget.download('https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz')"
         python -c "import shutil;shutil.unpack_archive('bos_new.tar.gz', extract_dir='./bce-python-sdk-new',format='gztar')"
-        python -m pip install bce-python-sdk
+        python -m pip install bce-python-sdk==0.8.74
     )
     if !errorlevel! EQU 0 (
         cd /d %THIRD_PARTY_HOME%
@@ -650,6 +650,10 @@ set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
 pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
+%PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle
+%PYTHON_ROOT%\python.exe -m pip uninstall -y paddlepaddle-gpu
+%PYTHON_ROOT%\python.exe -m pip install %PADDLE_WHL_FILE_WIN%
+
 if %ERRORLEVEL% NEQ 0 (
     echo pip install whl package failed!
     exit /b 1

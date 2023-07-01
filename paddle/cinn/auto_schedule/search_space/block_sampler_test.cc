@@ -24,7 +24,8 @@ namespace auto_schedule {
 std::vector<ir::Expr> CreateTestBlocks() {
   std::vector<ir::Expr> blocks;
   for (int i = 0; i < 3; ++i) {
-    ir::Expr block = ir::ScheduleBlock::Make({}, {}, {}, "block_" + std::to_string(i), ir::Expr());
+    ir::Expr block = ir::ScheduleBlock::Make(
+        {}, {}, {}, "block_" + std::to_string(i), ir::Expr());
     blocks.push_back(ir::ScheduleBlockRealize::Make({}, block));
   }
   return blocks;
@@ -32,9 +33,11 @@ std::vector<ir::Expr> CreateTestBlocks() {
 
 TEST(BlockSampler, Make) {
   std::vector<ir::Expr> mock_blocks = CreateTestBlocks();
-  auto traversal_block_sampler      = BlockSampler::Make(mock_blocks, true, "traversal");
+  auto traversal_block_sampler =
+      BlockSampler::Make(mock_blocks, true, "traversal");
   ASSERT_STREQ(traversal_block_sampler->Name(), "traversal");
-  auto probabilistic_block_sampler = BlockSampler::Make(mock_blocks, true, "probabilistic");
+  auto probabilistic_block_sampler =
+      BlockSampler::Make(mock_blocks, true, "probabilistic");
   ASSERT_STREQ(probabilistic_block_sampler->Name(), "probabilistic");
 }
 
@@ -54,15 +57,17 @@ TEST(TraversalBlockSampler, NextBlock) {
 }
 
 TEST(ProbabilisticBlockSampler, NextBlock) {
-  std::vector<ir::Expr> blocks     = CreateTestBlocks();
-  auto probabilistic_block_sampler = BlockSampler::Make(blocks, false, "probabilistic", 0, {4, 2, 1});
+  std::vector<ir::Expr> blocks = CreateTestBlocks();
+  auto probabilistic_block_sampler =
+      BlockSampler::Make(blocks, false, "probabilistic", 0, {4, 2, 1});
   std::string block_name;
   for (int i = 0; i < 20; ++i) {
     block_name = probabilistic_block_sampler->NextBlock();
     VLOG(6) << "next block name: " << block_name;
   }
 
-  probabilistic_block_sampler = BlockSampler::Make(blocks, true, "probabilistic", 0, {4, 2, 1});
+  probabilistic_block_sampler =
+      BlockSampler::Make(blocks, true, "probabilistic", 0, {4, 2, 1});
   probabilistic_block_sampler->NextBlock();
   probabilistic_block_sampler->NextBlock();
   probabilistic_block_sampler->NextBlock();

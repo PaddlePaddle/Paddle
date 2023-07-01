@@ -14,20 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import unittest
+
+import cinn
+import numpy as np
+from cinn import Target, ir, lang, runtime
+from cinn.common import *
+from cinn.framework import *
+from cinn.frontend import *
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
-import sys
 
 assert len(sys.argv) == 3
 enable_gpu = sys.argv.pop()
@@ -48,7 +47,8 @@ class TestNetBuilder(unittest.TestCase):
         b = static.data(name='B', shape=[24, 56, 56], dtype='float32')
         c = paddle.add(a, b)
         d = paddle.nn.initializer.NumpyArrayInitializer(
-            np.array(inputdata[2]).reshape((144, 24, 1, 1)).astype('float32'))
+            np.array(inputdata[2]).reshape((144, 24, 1, 1)).astype('float32')
+        )
         res = static.nn.conv2d(
             input=c,
             num_filters=144,
@@ -56,7 +56,8 @@ class TestNetBuilder(unittest.TestCase):
             stride=1,
             padding=0,
             dilation=1,
-            param_attr=d)
+            param_attr=d,
+        )
 
         exe = static.Executor(paddle.CPUPlace())
         exe.run(static.default_startup_program())
@@ -105,7 +106,8 @@ class TestCompilePaddleModel(unittest.TestCase):
         A_shape = [4, 30]
         A_data = np.random.random(A_shape).astype("float32")
         computation = Computation.compile_paddle_model(
-            self.target, naive_model_dir, ["A"], [A_shape], False)
+            self.target, naive_model_dir, ["A"], [A_shape], False
+        )
 
         A_tensor = computation.get_tensor("A")
         A_tensor.from_numpy(A_data, self.target)
