@@ -111,23 +111,15 @@ void PaddleDialect::initialize() {
 }
 
 void PaddleDialect::PrintType(ir::Type type, std::ostream &os) const {
-  if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
-    os << "tensor<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
-    os << "selectedrows<";
-    for (auto d : phi::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
+  DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
+
+  os << "tensor<";
+  for (auto d : phi::vectorize(tensor_type.dims())) {
+    os << d;
+    os << "x";
   }
+  tensor_type.dtype().Print(os);
+  os << ">";
 }
 
 void PaddleDialect::PrintAttribute(ir::Attribute attr, std::ostream &os) const {
