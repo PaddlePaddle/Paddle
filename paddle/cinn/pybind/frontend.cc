@@ -935,7 +935,6 @@ void BindFrontend(pybind11::module *m) {
                  << " in CINN! Please check.";
              return self.var_model_to_program_map().at(paddle_name);
            });
-
 }  // namespace frontend
 
 #undef EXPAND_CINN_SUPPORT_TYPE
