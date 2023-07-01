@@ -29,22 +29,35 @@ __all__ = []
 
 class Adan(Optimizer):
     r"""
-    The AdamW optimizer is implemented based on the AdamW Optimization
-    in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
-    it can resolves the problem of L2 regularization failure in the Adam optimizer.
+    The Adan optimizer is implemented based on the Adan Optimization
+    in paper `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing Deep Models <https://arxiv.org/abs/2208.06677>`_.
 
     .. math::
 
-        t & = t + 1
 
-        moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
+        TODO(wangguo): rewrite formula
 
-        moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
+        grad_diff = grad - pre_grad
+        update = grad + beta2 * grad_diff
+        if not vanilla:
+            moment1_out = beta1 * moment1 + (1 - beta1) * grad
+            moment2_out = beta2 * moment2 + (1 - beta2) * grad_diff
+            moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
+        else:
+            moment1_out = beta1 * moment1 + (1 - beta1) * grad + beta2 * (1 - beta2) * grad_diff
+            moment2_out = None
+            moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
 
-        learning\_rate & = learning\_rate *
-            \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
+        denom = (np.sqrt(moment3_out) / np.sqrt(1.0 - beta3_pow)) + epsilon
+        if vanilla:
+            update = moment1_out / (1.0 - beta1_pow) / denom
+        else:
+            update = (moment1_out / (1.0 - beta1_pow) + beta2 * moment2_out / (1.0 - beta2_pow)) / denom
 
-        param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
+        if no_prox:
+            param_out = param * (1 - lr * weight_decay) - update * lr
+        else:
+            param_out = (param - update * lr) / (1 + lr * weight_decay)
 
 
     Args:
@@ -58,17 +71,17 @@ class Adan(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
-            The default value is 0.9.
+            The default value is 0.98.
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
-            The default value is 0.999.
+            The default value is 0.92.
+        beta3 (float|Tensor, optional): The exponential decay rate for the 3rd moment estimates.
+            It should be a float number or a Tensor with shape [1] and data type as float32.
+            The default value is 0.99.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
-        lr_ratio (function|None, optional): If it is not None,
-            the learning rate will be updated with layerwise learning rate ratio.
-            Otherwise, the learning rate is the original.
-            Default: None.
+        weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.0.
+        no_prox (bool, optional): How to perform the decoupled weight decay. The default value is false.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated with weight decay. It only works when we want to specify tensors.
@@ -77,19 +90,11 @@ class Adan(Optimizer):
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
-            The accumulators are updated at every step. Every element of the two moving-average
-            is updated in both dense mode and sparse mode. If the size of parameter is very large,
-            then the update may be very slow. The lazy mode only update the element that has
-            gradient in current mini-batch, so it will be much more faster. But this mode has
-            different semantics with the original Adam algorithm and may lead to different result.
-            The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        vanilla (bool, optional): Whether to use vanilla adan. Default is false.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
-    Notes:
-        **Currently, AdamW doesn't support sparse parameter optimization.**
 
     Examples:
         .. code-block:: python
@@ -101,13 +106,15 @@ class Adan(Optimizer):
             out = linear(inp)
             loss = paddle.mean(out)
 
-            beta1 = paddle.to_tensor([0.9], dtype="float32")
-            beta2 = paddle.to_tensor([0.99], dtype="float32")
+            beta1 = paddle.to_tensor([0.98], dtype="float32")
+            beta2 = paddle.to_tensor([0.92], dtype="float32")
+            beta3 = paddle.to_tensor([0.99], dtype="float32")
 
-            opt = paddle.optimizer.AdamW(learning_rate=0.1,
+            opt = paddle.optimizer.Adan(learning_rate=0.1,
                     parameters=linear.parameters(),
                     beta1=beta1,
                     beta2=beta2,
+                    beta2=beta3,
                     weight_decay=0.01)
             loss.backward()
             opt.step()
@@ -160,7 +167,7 @@ class Adan(Optimizer):
         apply_decay_param_fun=None,
         grad_clip=None,
         multi_precision=False,
-        is_vanilla = False,
+        is_vanilla=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -267,6 +274,7 @@ class Adan(Optimizer):
             'beta2': beta2,
             'beta3': beta3,
             'no_prox': no_prox,
+            'vanilla': is_vanilla,
             'epsilon': epsilon,
             'grad_clip': grad_clip,
         }
@@ -343,7 +351,7 @@ class Adan(Optimizer):
         if self._is_dtype_fp16_or_bf16(acc_dtype):
             acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._pre_grad_str, p, dtype=acc_dtype)
-        
+
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         if not self._is_vanilla:
             self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
@@ -399,7 +407,7 @@ class Adan(Optimizer):
             ):
                 warnings.warn(
                     "Accumulating with FP16 or BF16 in optimizer can lead to poor accuracy or slow convergence."
-                    "Consider using multi_precision=True option of the Adam optimizer."
+                    "Consider using multi_precision=True option of the Adan optimizer."
                 )
             self._add_moments_pows(p)
             self._already_create_accumulater.add(p.name)
@@ -477,7 +485,7 @@ class Adan(Optimizer):
         )
         lr = self._create_param_lr(param_and_grad)
 
-        # create the adamw optimize op
+        # create the adan optimize op
         if framework.in_dygraph_mode():
             _beta1 = (
                 self._beta1
@@ -494,18 +502,18 @@ class Adan(Optimizer):
                 if not isinstance(self._beta3, Variable)
                 else self._beta3.item(0)
             )
-            
+
             _, _, _, _, _, _, _, _, _ = _C_ops.adan_(
                 param_and_grad[0],
                 param_and_grad[1],
                 lr,
                 pre_grad,
                 moment1,
-                moment2,
                 moment3,
                 beta1_pow_acc,
                 beta2_pow_acc,
                 beta3_pow_acc,
+                moment2,
                 master_weight,
                 _beta1,
                 _beta2,
@@ -519,52 +527,32 @@ class Adan(Optimizer):
             )
             return None
         else:
-            _beta1 = (
-                self._beta1
-                if not isinstance(self._beta1, Variable)
-                else self._beta1.item(0)
-            )
-            _beta2 = (
-                self._beta2
-                if not isinstance(self._beta2, Variable)
-                else self._beta2.item(0)
-            )
-            _beta3 = (
-                self._beta3
-                if not isinstance(self._beta3, Variable)
-                else self._beta3.item(0)
-            )
             inputs = {
-                "param": [param_and_grad[0]],
-                "grad": [param_and_grad[1]],
-                "learning_rate": [lr],
-                "moment1": [moment1],
-                "moment2": [moment2],
-                "moment3": [moment3],
-                "pregrad": [pre_grad],
-                "beta1_pow": [beta1_pow_acc],
-                "beta2_pow": [beta2_pow_acc],
-                "beta3_pow": [beta3_pow_acc],
+                "param": param_and_grad[0],
+                "grad": param_and_grad[1],
+                "learning_rate": lr,
+                "pregrad": pre_grad,
+                "moment1": moment1,
+                "moment3": moment3,
+                "beta1_pow": beta1_pow_acc,
+                "beta2_pow": beta2_pow_acc,
+                "beta3_pow": beta3_pow_acc,
             }
 
             outputs = {
-                "param_out": [param_and_grad[0]],
-                "moment1_out": [moment1],
-                "moment2_out": [moment2],
-                "moment3_out": [moment3],
-                "beta1_pow_out": [beta1_pow_acc],
-                "beta2_pow_out": [beta2_pow_acc],
-                "beta3_pow_out": [beta3_pow_acc],
-                "pregrad_out": [pre_grad],
+                "param_out": param_and_grad[0],
+                "pregrad_out": pre_grad,
+                "moment1_out": moment1,
+                "moment3_out": moment3,
+                "beta1_pow_out": beta1_pow_acc,
+                "beta2_pow_out": beta2_pow_acc,
+                "beta3_pow_out": beta3_pow_acc,
             }
             attrs = {
-                'epsilon': self._epsilon,
-                'beta1': _beta1,
-                'beta2': _beta2,
-                'beta3': _beta3,
                 "weight_decay": _weight_decay,
                 "no_prox": self._no_prox,
-                "multi_precision": find_master
+                "multi_precision": find_master,
+                "vanilla": self._is_vanilla,
             }
 
             if isinstance(self._beta1, Variable):
@@ -575,16 +563,24 @@ class Adan(Optimizer):
                 inputs['Beta2Tensor'] = self._beta2
             else:
                 attrs['beta2'] = self._beta2
+            if isinstance(self._beta3, Variable):
+                inputs['Beta3Tensor'] = self._beta3
+            else:
+                attrs['beta3'] = self._beta3
             if isinstance(self._epsilon, Variable):
                 inputs['EpsilonTensor'] = self._epsilon
             else:
                 attrs['epsilon'] = self._epsilon
 
-            if find_master:
-                inputs["MasterParam"] = master_weight
-                outputs["MasterParamOut"] = master_weight
+            if not self._is_vanilla:
+                inputs["moment2"] = moment2
+                outputs["moment2_out"] = moment2
 
-            adamw_op = block.append_op(
+            if find_master:
+                inputs["master_param"] = master_weight
+                outputs["master_param_out"] = master_weight
+
+            adan_op = block.append_op(
                 type=self.type,
                 inputs=inputs,
                 outputs=outputs,
@@ -592,7 +588,7 @@ class Adan(Optimizer):
                 stop_gradient=True,
             )
 
-            return adamw_op
+            return adan_op
 
     def __str__(self):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
@@ -614,7 +610,7 @@ class Adan(Optimizer):
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
-                opt = paddle.optimizer.AdamW(learning_rate = 0.01,
+                opt = paddle.optimizer.Adan(learning_rate = 0.01,
                                             parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
@@ -639,7 +635,7 @@ class Adan(Optimizer):
                             and self.regularization is not None
                         ):
                             raise RuntimeError(
-                                "AdamW don't support weight_decay with sparse parameters, please set it to None."
+                                "Adan don't support weight_decay with sparse parameters, please set it to None."
                             )
                     else:
                         if (
@@ -648,7 +644,7 @@ class Adan(Optimizer):
                             and self.regularization is not None
                         ):
                             raise RuntimeError(
-                                "AdamW don't support weight_decay with sparse parameters, please set it to None."
+                                "Adan don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
 
@@ -671,7 +667,7 @@ class Adan(Optimizer):
                                 and self.regularization is not None
                             ):
                                 raise RuntimeError(
-                                    "AdamW don't support weight_decay with sparse parameters, please set it to None."
+                                    "Adan don't support weight_decay with sparse parameters, please set it to None."
                                 )
                         else:
                             if (
@@ -680,7 +676,7 @@ class Adan(Optimizer):
                                 and self.regularization is not None
                             ):
                                 raise RuntimeError(
-                                    "AdamW don't support weight_decay with sparse parameters, please set it to None."
+                                    "Adan don't support weight_decay with sparse parameters, please set it to None."
                                 )
                         params_grads['params'].append((param, grad_var))
                 params_grads.update(
@@ -695,6 +691,9 @@ class Adan(Optimizer):
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
         self._beta3 = parameters.get('beta3', self._default_dict['beta3'])
         self._no_prox = parameters.get('no_prox', self._default_dict['no_prox'])
+        self._is_vanilla = parameters.get(
+            'vanilla', self._default_dict['vanilla']
+        )
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self._weight_decay = parameters.get(
             'weight_decay', self._default_dict['weight_decay']

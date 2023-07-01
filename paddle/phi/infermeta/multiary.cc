@@ -309,11 +309,11 @@ void AdanInferMeta(const MetaTensor& param,
                    const MetaTensor& learning_rate,
                    const MetaTensor& pre_grad,
                    const MetaTensor& moment1,
-                   const MetaTensor& moment2,
                    const MetaTensor& moment3,
                    const MetaTensor& beta1_pow,
                    const MetaTensor& beta2_pow,
                    const MetaTensor& beta3_pow,
+                   const MetaTensor& moment2,
                    const MetaTensor& master_param,
                    const Scalar& beta1,
                    const Scalar& beta2,
@@ -327,11 +327,11 @@ void AdanInferMeta(const MetaTensor& param,
                    MetaTensor* param_out,
                    MetaTensor* pre_grad_out,
                    MetaTensor* moment1_out,
-                   MetaTensor* moment2_out,
                    MetaTensor* moment3_out,
                    MetaTensor* beta1_pow_out,
                    MetaTensor* beta2_pow_out,
                    MetaTensor* beta3_pow_out,
+                   MetaTensor* moment2_out,
                    MetaTensor* master_param_outs) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_EQ(
@@ -378,26 +378,25 @@ void AdanInferMeta(const MetaTensor& param,
           "received Param dims: [%s], Moment1 dims: [%s].",
           param_dims,
           moment1.dims()));
-    // vanilla mode 
-  if (!vanilla)
-  {
-  PADDLE_ENFORCE_EQ(
-      param_dims,
-      moment2.dims(),
-      errors::InvalidArgument(
-          "Param and Moment2 input of AdamOp should have same dimension. But "
-          "received Param dims: [%s], Moment2 dims: [%s].",
-          param_dims,
-          moment2.dims()));
+  // vanilla mode
+  if (!vanilla) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        moment2.dims(),
+        errors::InvalidArgument(
+            "Param and Moment2 input of AdamOp should have same dimension. But "
+            "received Param dims: [%s], Moment2 dims: [%s].",
+            param_dims,
+            moment2.dims()));
   }
   PADDLE_ENFORCE_EQ(
-  param_dims,
-  moment3.dims(),
-  errors::InvalidArgument(
-      "Param and Moment3 input of AdamOp should have same dimension. But "
-      "received Param dims: [%s], Moment3 dims: [%s].",
       param_dims,
-      moment3.dims()));
+      moment3.dims(),
+      errors::InvalidArgument(
+          "Param and Moment3 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment3 dims: [%s].",
+          param_dims,
+          moment3.dims()));
   param_out->set_dims(param_dims);
   param_out->set_dtype(param.dtype());
 
@@ -406,9 +405,8 @@ void AdanInferMeta(const MetaTensor& param,
 
   moment1_out->set_dims(param_dims);
   moment1_out->set_dtype(moment1.dtype());
-  // vanilla mode 
-  if (!vanilla)
-  {
+  // vanilla mode
+  if (!vanilla) {
     moment2_out->set_dims(param_dims);
     moment2_out->set_dtype(moment2.dtype());
   }

@@ -54,15 +54,13 @@ __global__ void AdanKernelREG(MT beta1,
                               const MT* master_param,
                               MT* master_param_out,
                               int ndim,
-                              bool vanilla
-                              ) {
+                              bool vanilla) {
   MT lr = *lr_;
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
   MT beta3_pow = beta3_pow_;
   MT one = static_cast<MT>(1.0);
-  if (!vanilla)
-  {
+  if (!vanilla) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     for (; id < ndim; id += gridDim.x * blockDim.x) {
       MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -80,8 +78,8 @@ __global__ void AdanKernelREG(MT beta1,
       mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
 
       MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
-      update =
-          (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
+      update = (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) /
+               (denom);
 
       if (no_prox) {
         p = p * (one - lr * weight_decay) - update * lr;
@@ -98,8 +96,7 @@ __global__ void AdanKernelREG(MT beta1,
         master_param_out[id] = p;
       }
     }
-  }else
-  {
+  } else {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     for (; id < ndim; id += gridDim.x * blockDim.x) {
       MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -111,7 +108,8 @@ __global__ void AdanKernelREG(MT beta1,
       MT mom1 = static_cast<MT>(moment1[id]);
       MT mom3 = static_cast<MT>(moment3[id]);
 
-      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g + beta2 * (1 - beta2) * g_diff;
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g +
+             beta2 * (1 - beta2) * g_diff;
       mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
 
       MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
@@ -133,7 +131,6 @@ __global__ void AdanKernelREG(MT beta1,
     }
   }
 }
-
 
 template <typename T, typename TG, typename MT>
 __global__ void AdanKernelMEM(MT beta1,
@@ -166,8 +163,7 @@ __global__ void AdanKernelMEM(MT beta1,
   MT beta2_pow = *beta2_pow_;
   MT beta3_pow = *beta3_pow_;
   MT one = static_cast<MT>(1.0);
-  if (!vanilla)
-  {
+  if (!vanilla) {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     for (; id < ndim; id += gridDim.x * blockDim.x) {
       MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -185,8 +181,8 @@ __global__ void AdanKernelMEM(MT beta1,
       mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
 
       MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
-      update =
-          (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) / (denom);
+      update = (mom1 / (one - beta1_pow) + beta2 * mom2 / (one - beta2_pow)) /
+               (denom);
 
       if (no_prox) {
         p = p * (one - lr * weight_decay) - update * lr;
@@ -203,8 +199,7 @@ __global__ void AdanKernelMEM(MT beta1,
         master_param_out[id] = p;
       }
     }
-  }else
-  {
+  } else {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     for (; id < ndim; id += gridDim.x * blockDim.x) {
       MT p = master_param ? master_param[id] : static_cast<MT>(param[id]);
@@ -216,7 +211,8 @@ __global__ void AdanKernelMEM(MT beta1,
       MT mom1 = static_cast<MT>(moment1[id]);
       MT mom3 = static_cast<MT>(moment3[id]);
 
-      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g + beta2 * (1 - beta2) * g_diff;
+      mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g +
+             beta2 * (1 - beta2) * g_diff;
       mom3 = beta3 * mom3 + (static_cast<MT>(1.0) - beta3) * update * update;
 
       MT denom = (sqrt(mom3) / sqrt(one - beta3_pow)) + epsilon;
@@ -237,9 +233,7 @@ __global__ void AdanKernelMEM(MT beta1,
       }
     }
   }
-  
 }
-
 
 template <typename T>
 __global__ void UpdateBetaPow(T beta1,
@@ -263,11 +257,11 @@ void AdanDenseKernel(const Context& dev_ctx,
                      const DenseTensor& learning_rate,
                      const DenseTensor& pre_grad,
                      const DenseTensor& moment1,
-                     const paddle::optional<DenseTensor>& moment2,
                      const DenseTensor& moment3,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
                      const DenseTensor& beta3_pow,
+                     const paddle::optional<DenseTensor>& moment2,
                      const paddle::optional<DenseTensor>& master_param,
                      const Scalar& beta1,
                      const Scalar& beta2,
@@ -281,11 +275,11 @@ void AdanDenseKernel(const Context& dev_ctx,
                      DenseTensor* param_out,
                      DenseTensor* pre_grad_out,
                      DenseTensor* moment1_out,
-                     DenseTensor* moment2_out,
                      DenseTensor* moment3_out,
                      DenseTensor* beta1_pow_out,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* beta3_pow_out,
+                     DenseTensor* moment2_out,
                      DenseTensor* master_param_outs) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto grad_type = grad.dtype();
@@ -331,21 +325,49 @@ void AdanDenseKernel(const Context& dev_ctx,
       multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                       : nullptr;
 
-  const MPDType* moment2_in_data =
-      vanilla ?  nullptr : moment2->data<MPDType>();
+  const MPDType* moment2_in_data = vanilla ? nullptr : moment2->data<MPDType>();
   MPDType* moment2_out_data =
-      vanilla ?  nullptr : dev_ctx.template Alloc<MPDType>(moment2_out);
+      vanilla ? nullptr : dev_ctx.template Alloc<MPDType>(moment2_out);
 
   // update param and moment
   int threads = 512;
   int blocks = (param.numel() + threads - 1) / threads;
-  if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace() && beta3_pow.place() == CPUPlace()){
+  if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace() &&
+      beta3_pow.place() == CPUPlace()) {
     VLOG(3) << "beta_pow place in cpu";
     // Compute with betapow in REG
     if (grad_type == phi::DataType::FLOAT32) {
       VLOG(3) << "CPU: grad type FLOAT32";
-        AdanKernelREG<T, float, MPDType>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
+      AdanKernelREG<T, float, MPDType>
+          <<<blocks, threads, 0, dev_ctx.stream()>>>(
+              beta1_,
+              beta2_,
+              beta3_,
+              epsilon_,
+              weight_decay_,
+              *beta1_pow.data<MPDType>(),
+              *beta2_pow.data<MPDType>(),
+              *beta3_pow.data<MPDType>(),
+              no_prox,
+              moment1.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment1_out),
+              moment2_in_data,
+              moment2_out_data,
+              moment3.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment3_out),
+              learning_rate.data<MPDType>(),
+              grad.data<float>(),
+              pre_grad.data<float>(),
+              dev_ctx.template Alloc<float>(pre_grad_out),
+              param.data<T>(),
+              dev_ctx.template Alloc<T>(param_out),
+              master_in_data,
+              master_out_data,
+              param.numel(),
+              vanilla);
+    } else {
+      VLOG(3) << "CPU: grad type Not FLOAT32";
+      AdanKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
           beta3_,
@@ -362,47 +384,17 @@ void AdanDenseKernel(const Context& dev_ctx,
           moment3.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment3_out),
           learning_rate.data<MPDType>(),
-          grad.data<float>(),
-          pre_grad.data<float>(),
-          dev_ctx.template Alloc<float>(pre_grad_out),
+          grad.data<T>(),
+          pre_grad.data<T>(),
+          dev_ctx.template Alloc<T>(pre_grad_out),
           param.data<T>(),
           dev_ctx.template Alloc<T>(param_out),
           master_in_data,
           master_out_data,
           param.numel(),
           vanilla);
-      }else
-      {
-        VLOG(3) << "CPU: grad type Not FLOAT32";
-        AdanKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1_,
-            beta2_,
-            beta3_,
-            epsilon_,
-            weight_decay_,
-            *beta1_pow.data<MPDType>(),
-            *beta2_pow.data<MPDType>(),
-            *beta3_pow.data<MPDType>(),
-            no_prox,
-            moment1.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2_in_data,
-            moment2_out_data,
-            moment3.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment3_out),
-            learning_rate.data<MPDType>(),
-            grad.data<T>(),
-            pre_grad.data<T>(),
-            dev_ctx.template Alloc<T>(pre_grad_out),
-            param.data<T>(),
-            dev_ctx.template Alloc<T>(param_out),
-            master_in_data,
-            master_out_data,
-            param.numel(),
-            vanilla
-        );
-      }
-      if (!use_global_beta_pow) {
+    }
+    if (!use_global_beta_pow) {
       // Cpu update
       dev_ctx.template HostAlloc<MPDType>(beta1_pow_out)[0] =
           beta1_ * beta1_pow.data<MPDType>()[0];
@@ -410,76 +402,73 @@ void AdanDenseKernel(const Context& dev_ctx,
           beta2_ * beta2_pow.data<MPDType>()[0];
       dev_ctx.template HostAlloc<MPDType>(beta3_pow_out)[0] =
           beta3_ * beta3_pow.data<MPDType>()[0];
-      }
-      
+    }
 
-  }else{
+  } else {
     VLOG(3) << "beta_pow place in GPU";
-     if (grad_type == phi::DataType::FLOAT32) {
+    if (grad_type == phi::DataType::FLOAT32) {
       VLOG(3) << "GPU: grad type FLOAT32";
       AdanKernelMEM<T, float, MPDType>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1_,
-            beta2_,
-            beta3_,
-            epsilon_,
-            weight_decay_,
-            beta1_pow.data<MPDType>(),
-            beta2_pow.data<MPDType>(),
-            beta3_pow.data<MPDType>(),
-            no_prox,
-            moment1.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2_in_data,
-            moment2_out_data,
-            moment3.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment3_out),
-            learning_rate.data<MPDType>(),
-            grad.data<float>(),
-            pre_grad.data<float>(),
-            dev_ctx.template Alloc<float>(pre_grad_out),
-            param.data<T>(),
-            dev_ctx.template Alloc<T>(param_out),
-            master_in_data,
-            master_out_data,
-            param.numel(),
-            vanilla
+              beta1_,
+              beta2_,
+              beta3_,
+              epsilon_,
+              weight_decay_,
+              beta1_pow.data<MPDType>(),
+              beta2_pow.data<MPDType>(),
+              beta3_pow.data<MPDType>(),
+              no_prox,
+              moment1.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment1_out),
+              moment2_in_data,
+              moment2_out_data,
+              moment3.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment3_out),
+              learning_rate.data<MPDType>(),
+              grad.data<float>(),
+              pre_grad.data<float>(),
+              dev_ctx.template Alloc<float>(pre_grad_out),
+              param.data<T>(),
+              dev_ctx.template Alloc<T>(param_out),
+              master_in_data,
+              master_out_data,
+              param.numel(),
+              vanilla
 
           );
-      }else
-      {
-        VLOG(3) << "GPU: grad type not FLOAT32";
-        AdanKernelMEM<T, T, MPDType>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            beta1_,
-            beta2_,
-            beta3_,
-            epsilon_,
-            weight_decay_,
-            beta1_pow.data<MPDType>(),
-            beta2_pow.data<MPDType>(),
-            beta3_pow.data<MPDType>(),
-            no_prox,
-            moment1.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment1_out),
-            moment2_in_data,
-            moment2_out_data,
-            moment3.data<MPDType>(),
-            dev_ctx.template Alloc<MPDType>(moment3_out),
-            learning_rate.data<MPDType>(),
-            grad.data<T>(),
-            pre_grad.data<T>(),
-            dev_ctx.template Alloc<T>(pre_grad_out),
-            param.data<T>(),
-            dev_ctx.template Alloc<T>(param_out),
-            master_in_data,
-            master_out_data,
-            param.numel(),
-            vanilla
+    } else {
+      VLOG(3) << "GPU: grad type not FLOAT32";
+      AdanKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          beta1_,
+          beta2_,
+          beta3_,
+          epsilon_,
+          weight_decay_,
+          beta1_pow.data<MPDType>(),
+          beta2_pow.data<MPDType>(),
+          beta3_pow.data<MPDType>(),
+          no_prox,
+          moment1.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment1_out),
+          moment2_in_data,
+          moment2_out_data,
+          moment3.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment3_out),
+          learning_rate.data<MPDType>(),
+          grad.data<T>(),
+          pre_grad.data<T>(),
+          dev_ctx.template Alloc<T>(pre_grad_out),
+          param.data<T>(),
+          dev_ctx.template Alloc<T>(param_out),
+          master_in_data,
+          master_out_data,
+          param.numel(),
+          vanilla
 
-          );
-      }
-      if (!use_global_beta_pow) {
+      );
+    }
+    if (!use_global_beta_pow) {
       // Update with gpu
       UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
@@ -491,12 +480,9 @@ void AdanDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<MPDType>(beta1_pow_out),
           dev_ctx.template Alloc<MPDType>(beta2_pow_out),
           dev_ctx.template Alloc<MPDType>(beta3_pow_out));
-      }
-      
+    }
   }
-
 }
-
 
 }  // namespace phi
 
@@ -509,9 +495,9 @@ PD_REGISTER_KERNEL(adan,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, beta3_pow data transform
+  kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
@@ -524,7 +510,7 @@ PD_REGISTER_KERNEL(adan,
     kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(8).SetDataType(phi::DataType::FLOAT32);
   }
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(6).SetBackend(phi::Backend::UNDEFINED);
-  kernel->OutputAt(7).SetBackend(phi::Backend::UNDEFINED);
 }
