@@ -193,7 +193,6 @@ void BuildPhiContext(
       } else {
         phi::DenseTensor* ptr = nullptr;
         OutType out_ptr(ptr);
-        std::cerr << "emplace null ptr " << i << std::endl;
         ctx->EmplaceBackOutput(out_ptr);
       }
 
