@@ -80,8 +80,8 @@ class AssertMsg {
 
 class CheckFusionAccuracyPass {
  public:
-  explicit CheckFusionAccuracyPass(Graph* graph_)
-      : graph_(graph_),
+  explicit CheckFusionAccuracyPass(Graph* graph)
+      : graph_(graph),
         shape_dict_(graph_->GetMutableAttrs<ShapeDict>("infershape")),
         dtype_dict_(graph_->GetMutableAttrs<DtypeDict>("inferdtype")) {}
 

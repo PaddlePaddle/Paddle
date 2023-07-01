@@ -173,6 +173,10 @@ phi::KernelKey GetKernelKey(
     }
   }
 
+  if (kernel_backend == phi::Backend::UNDEFINED) {
+    kernel_backend = paddle::experimental::ParseBackend(place);
+  }
+
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
   return res;
 }

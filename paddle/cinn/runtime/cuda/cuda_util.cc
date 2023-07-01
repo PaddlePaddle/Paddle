@@ -101,7 +101,8 @@ void cinn_call_cuda_kernel(void *kernel_fn,
     cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
     for (int idx = 0; idx < num_args; ++idx) {
       if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t *>()) {
-        kernel_args.emplace_back(&((cinn_buffer_t *)(args[idx]))->memory);
+        kernel_args.emplace_back(
+            &((cinn_buffer_t *)(args[idx]))->memory);  // NOLINT
       } else {
         kernel_args.emplace_back(args[idx].data_addr());
       }
