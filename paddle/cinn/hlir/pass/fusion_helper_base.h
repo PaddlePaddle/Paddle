@@ -28,7 +28,7 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using framework;
+// using framework::Node;
 
 class FusionHelperBase {
  public:
@@ -47,7 +47,7 @@ class FusionHelperBase {
   }
 
  public:
-  OpPatternKind GetOpKind(const framework::Node* node) const {
+  framework::OpPatternKind GetOpKind(const framework::Node* node) const {
     CHECK(op_pattern_dict_->Find(node->op()))
         << "Don't find the pattern of op : " << node->id();
     auto kind = op_pattern_dict_[0][node->op()];
@@ -73,8 +73,9 @@ class FusionHelperBase {
     }
   }
 
-  static std::vector<NodeData*> GetNodeDatas(const Node* node) {
-    std::vector<NodeData*> consumer_node_data;
+  static std::vector<framework::NodeData*> GetNodeDatas(
+      const framework::Node* node) {
+    std::vector<framework::NodeData*> consumer_node_data;
     for (auto& edge : node->outlinks_in_order()) {
       auto output = edge->sink()->safe_as<NodeData>();
       CHECK(output) << "The op \"" << node->id()
@@ -84,20 +85,21 @@ class FusionHelperBase {
     return consumer_node_data;
   }
 
-  NodeData* GetNodeData(const Node* node) const {
-    auto node_data = (*node->outlinks().begin())->sink()->safe_as<NodeData>();
+  framework::NodeData* GetNodeData(const framework::Node* node) const {
+    auto node_data =
+        (*node->outlinks().begin())->sink()->safe_as<framework::NodeData>();
     CHECK(node_data);
     return node_data;
   }
 
-  shape_t GetNodeDataShape(const Node* node) const {
+  shape_t GetNodeDataShape(const framework::Node* node) const {
     auto* node_data = GetNodeData(node);
     CHECK(shape_dict_.count(node_data->id()))
         << "Can't find " << node_data->id() << " 's shape!";
     return shape_dict_.at(node_data->id());
   }
 
-  shape_t GetNodeInputShape(const Node* node) const {
+  shape_t GetNodeInputShape(const framework::Node* node) const {
     auto node_datas = GetProducerNodeData(node);
     CHECK_GT(node_datas.size(), 0);
     CHECK(shape_dict_.count(node_datas[0]->id()))
@@ -105,22 +107,24 @@ class FusionHelperBase {
     return shape_dict_.at(node_datas[0]->id());
   }
 
-  static std::vector<NodeData*> GetProducerNodeData(const Node* node) {
-    std::vector<NodeData*> producer_node_data;
+  static std::vector<framework::NodeData*> GetProducerNodeData(
+      const framework::Node* node) {
+    std::vector<framework::NodeData*> producer_node_data;
     for (auto& edge : node->inlinks_in_order()) {
       auto graph_node = edge->source();
-      auto producer_data = graph_node->safe_as<NodeData>();
+      auto producer_data = graph_node->safe_as<framework::NodeData>();
       CHECK(producer_data);
       producer_node_data.push_back(producer_data);
     }
     return producer_node_data;
   }
 
-  std::vector<Node*> GetProducerNode(const Node* node) const {
-    std::vector<Node*> producer_node;
+  std::vector<framework::Node*> GetProducerNode(
+      const framework::Node* node) const {
+    std::vector<framework::Node*> producer_node;
     for (auto& edge : node->inlinks_in_order()) {
       auto graph_node = edge->source();
-      auto producer_data = graph_node->safe_as<NodeData>();
+      auto producer_data = graph_node->safe_as<framework::NodeData>();
       CHECK(producer_data);
       auto producer = producer_data->source_node.get();
       if (producer) {
@@ -130,11 +134,12 @@ class FusionHelperBase {
     return producer_node;
   }
 
-  std::vector<Node*> GetConsumerNode(const Node* node) const {
-    std::vector<Node*> consumer_nodes;
+  std::vector<framework::Node*> GetConsumerNode(
+      const framework::Node* node) const {
+    std::vector<framework::Node*> consumer_nodes;
     auto node_data = GetNodeData(node);
     for (auto& link : node_data->outlinks()) {
-      auto consumer = link->sink()->safe_as<Node>();
+      auto consumer = link->sink()->safe_as<framework::Node>();
       CHECK(consumer);
       consumer_nodes.push_back(consumer);
     }
@@ -161,7 +166,7 @@ class FusionHelperBase {
     }
   }
 
-  int GetSharedSize(const Node* node) const {
+  int GetSharedSize(const framework::Node* node) const {
     auto producers = GetProducerNodeData(node);
     CHECK_GT(producers.size(), 0);
     auto inshape = shape_dict_.at(producers[0]->id());
@@ -209,11 +214,11 @@ class FusionHelperBase {
   // target
   const common::Target& target_;
   // output node set
-  std::unordered_set<const Node*> output_nodes_set_;
+  std::unordered_set<const framework::Node*> output_nodes_set_;
   // shape dict
   const absl::flat_hash_map<std::string, shape_t>& shape_dict_;
   // op pattern dict
-  const framework::OpValueType<OpPatternKind>* op_pattern_dict_;
+  const framework::OpValueType<framework::OpPatternKind>* op_pattern_dict_;
 };
 
 }  // namespace pass
