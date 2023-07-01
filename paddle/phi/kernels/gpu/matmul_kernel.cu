@@ -38,3 +38,12 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    double,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(matmul_amp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatmulAMPKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

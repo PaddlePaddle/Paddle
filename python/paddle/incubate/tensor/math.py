@@ -280,3 +280,40 @@ def segment_max(data, segment_ids, name=None):
         attrs={"pooltype": "MAX"},
     )
     return out
+
+
+def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+    if in_dygraph_mode():
+        return _C_ops.matmul(x, y, transpose_x, transpose_y)
+    else:
+        attrs = {
+            'trans_x': transpose_x,
+            'trans_y': transpose_y,
+        }
+
+        def __check_input(x, y):
+            var_names = {'x': x, 'y': y}
+            for name, val in var_names.items():
+                check_variable_and_dtype(
+                    val,
+                    name,
+                    [
+                        'uint16',
+                        'float16',
+                        'float32',
+                        'float64',
+                    ],
+                    'matmul',
+                )
+
+        __check_input(x, y)
+
+        helper = LayerHelper('matmul_v2', **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='matmul_v2',
+            inputs={'X': x, 'Y': y},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out

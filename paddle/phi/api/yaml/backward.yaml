@@ -1072,6 +1072,16 @@
     data_type : x
   no_need_buffer : x
 
+- backward_op : matmul_amp_grad
+  forward : matmul_amp (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : matmul_amp_grad
+
 - backward_op : matrix_power_grad
   forward : matrix_power (Tensor x, int n) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int n)
