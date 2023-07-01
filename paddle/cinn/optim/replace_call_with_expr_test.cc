@@ -25,7 +25,7 @@
 namespace cinn {
 namespace optim {
 
-using namespace poly;
+using poly;
 
 }  // namespace optim
 }  // namespace cinn

@@ -28,7 +28,7 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
-using namespace framework;
+using framework;
 
 class FusionHelperBase {
  public:

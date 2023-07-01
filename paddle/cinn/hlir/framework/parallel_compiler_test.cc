@@ -25,7 +25,7 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using namespace frontend;
+using frontend;
 
 TEST(ParallelCompilerTest, Add_TEST_0) {
   frontend::NetBuilder builder("Add_TEST_0");

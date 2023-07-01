@@ -267,7 +267,7 @@ void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc,
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_elementwise) {
-  using namespace cinn::frontend::paddle_mappers;
+  using cinn::frontend::paddle_mappers;
   CINN_REGISTER_OP_MAPPER(add, AddOpMapper)
   CINN_REGISTER_OP_MAPPER(elementwise_add,
                           ElementwiseOpMapper<EltwiseType::kAdd>)

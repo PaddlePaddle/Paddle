@@ -32,8 +32,8 @@
 namespace cinn {
 namespace poly {
 
-using namespace cinn::ir;
-using namespace cinn::lang;
+using cinn::ir;
+using cinn::lang;
 
 TEST(TransIdentityExtentToContextId, basic) {
   isl_ctx* ctx = isl_ctx_alloc();
