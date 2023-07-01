@@ -755,42 +755,6 @@ struct IncrementOpTranscriber : public OpTranscriber {
   }
 };
 
-struct EmbeddingOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(ir::IrContext* ctx,
-                                  ir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "padding_idx") {
-      (*attribute_map)[info.name] = ir::Int64Attribute::get(ctx, -1);
-    } else if (info.name == "sparse") {
-      (*attribute_map)[info.name] = ir::BoolAttribute::get(ctx, false);
-    }
-  }
-};
-
-struct IncrementOpTranscriber : public OpTranscriber {
-  ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext* ctx,
-      const std::string& normalized_op_name,
-      const OpAttributeInfoList& op_attr_infos,
-      const OpDesc& op_desc) override {
-    auto& attribute_translator = AttributeTranslator::instance();
-    ir::AttributeMap attribute_map = {};
-
-    paddle::framework::Attribute legacy_attr;
-    if (op_desc.HasAttr("step")) {
-      legacy_attr = op_desc.GetAttr("step");
-      VLOG(10) << "attribute in " << op_desc.Type() << " step: "
-               << " " << legacy_attr.index();
-      ir::Attribute new_attr = attribute_translator(legacy_attr);
-      attribute_map["value"] = new_attr;
-    } else {
-      attribute_map["value"] = ir::FloatAttribute::get(ctx, 1.0f);
-    }
-
-    return attribute_map;
-  }
-};
-
 // The `assign_value` in static_ops.yaml is different from the one in
 // `legacy_ops.yaml`. For this op we simulate the logic in
 // python/paddle/tensor/creation.py::assign(x, output)

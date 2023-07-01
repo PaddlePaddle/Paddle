@@ -18,117 +18,119 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
+from paddle import fluid
+from paddle.fluid.framework import in_dygraph_mode
 
 paddle.enable_static()
 
 
-# class TestBincountOpAPI(unittest.TestCase):
-#     """Test bincount api."""
+class TestBincountOpAPI(unittest.TestCase):
+    """Test bincount api."""
 
-#     def test_static_graph(self):
-#         startup_program = fluid.Program()
-#         train_program = fluid.Program()
-#         with fluid.program_guard(train_program, startup_program):
-#             inputs = paddle.static.data(name='input', dtype='int64', shape=[7])
-#             weights = paddle.static.data(
-#                 name='weights', dtype='int64', shape=[7]
-#             )
-#             output = paddle.bincount(inputs, weights=weights)
-#             place = fluid.CPUPlace()
-#             if fluid.core.is_compiled_with_cuda():
-#                 place = fluid.CUDAPlace(0)
-#             exe = fluid.Executor(place)
-#             exe.run(startup_program)
-#             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-#             w = np.array([0, 1, 1, 2, 2, 1, 0]).astype(np.int64)
-#             res = exe.run(
-#                 train_program,
-#                 feed={'input': img, 'weights': w},
-#                 fetch_list=[output],
-#             )
-#             actual = np.array(res[0])
-#             expected = np.bincount(img, weights=w)
-#             self.assertTrue(
-#                 (actual == expected).all(),
-#                 msg='bincount output is wrong, out =' + str(actual),
-#             )
+    def test_static_graph(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            inputs = paddle.static.data(name='input', dtype='int64', shape=[7])
+            weights = paddle.static.data(
+                name='weights', dtype='int64', shape=[7]
+            )
+            output = paddle.bincount(inputs, weights=weights)
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+            img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
+            w = np.array([0, 1, 1, 2, 2, 1, 0]).astype(np.int64)
+            res = exe.run(
+                train_program,
+                feed={'input': img, 'weights': w},
+                fetch_list=[output],
+            )
+            actual = np.array(res[0])
+            expected = np.bincount(img, weights=w)
+            self.assertTrue(
+                (actual == expected).all(),
+                msg='bincount output is wrong, out =' + str(actual),
+            )
 
-#     def test_dygraph(self):
-#         with fluid.dygraph.guard():
-#             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-#             inputs = fluid.dygraph.to_variable(inputs_np)
-#             actual = paddle.bincount(inputs)
-#             expected = np.bincount(inputs)
-#             self.assertTrue(
-#                 (actual.numpy() == expected).all(),
-#                 msg='bincount output is wrong, out =' + str(actual.numpy()),
-#             )
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
+            inputs = fluid.dygraph.to_variable(inputs_np)
+            actual = paddle.bincount(inputs)
+            expected = np.bincount(inputs)
+            self.assertTrue(
+                (actual.numpy() == expected).all(),
+                msg='bincount output is wrong, out =' + str(actual.numpy()),
+            )
 
 
-# class TestBincountOpError(unittest.TestCase):
-#     """Test bincount op error."""
+class TestBincountOpError(unittest.TestCase):
+    """Test bincount op error."""
 
-#     def run_network(self, net_func):
-#         with fluid.dygraph.guard():
-#             net_func()
+    def run_network(self, net_func):
+        with fluid.dygraph.guard():
+            net_func()
 
-#     def test_input_value_error(self):
-#         """Test input tensor should be non-negative."""
+    def test_input_value_error(self):
+        """Test input tensor should be non-negative."""
 
-#         def net_func():
-#             input_value = paddle.to_tensor([1, 2, 3, 4, -5])
-#             paddle.bincount(input_value)
+        def net_func():
+            input_value = paddle.to_tensor([1, 2, 3, 4, -5])
+            paddle.bincount(input_value)
 
-#         with self.assertRaises(ValueError):
-#             self.run_network(net_func)
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
 
-#     def test_input_shape_error(self):
-#         """Test input tensor should be 1-D tansor."""
+    def test_input_shape_error(self):
+        """Test input tensor should be 1-D tansor."""
 
-#         def net_func():
-#             input_value = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
-#             paddle.bincount(input_value)
+        def net_func():
+            input_value = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+            paddle.bincount(input_value)
 
-#         with self.assertRaises(ValueError):
-#             self.run_network(net_func)
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
 
-#     def test_minlength_value_error(self):
-#         """Test minlength is non-negative ints."""
+    def test_minlength_value_error(self):
+        """Test minlength is non-negative ints."""
 
-#         def net_func():
-#             input_value = paddle.to_tensor([1, 2, 3, 4, 5])
-#             paddle.bincount(input_value, minlength=-1)
+        def net_func():
+            input_value = paddle.to_tensor([1, 2, 3, 4, 5])
+            paddle.bincount(input_value, minlength=-1)
 
-#         with fluid.dygraph.guard():
-#             if in_dygraph_mode():
-#                 # InvalidArgument for phi BincountKernel
-#                 with self.assertRaises(ValueError):
-#                     self.run_network(net_func)
-#             else:
-#                 # OutOfRange for EqualGreaterThanChecker
-#                 with self.assertRaises(IndexError):
-#                     self.run_network(net_func)
+        with fluid.dygraph.guard():
+            if in_dygraph_mode():
+                # InvalidArgument for phi BincountKernel
+                with self.assertRaises(ValueError):
+                    self.run_network(net_func)
+            else:
+                # OutOfRange for EqualGreaterThanChecker
+                with self.assertRaises(IndexError):
+                    self.run_network(net_func)
 
-#     def test_input_type_errors(self):
-#         """Test input tensor should only contain non-negative ints."""
+    def test_input_type_errors(self):
+        """Test input tensor should only contain non-negative ints."""
 
-#         def net_func():
-#             input_value = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
-#             paddle.bincount(input_value)
+        def net_func():
+            input_value = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
+            paddle.bincount(input_value)
 
-#         with self.assertRaises(TypeError):
-#             self.run_network(net_func)
+        with self.assertRaises(TypeError):
+            self.run_network(net_func)
 
-#     def test_weights_shape_error(self):
-#         """Test weights tensor should have the same shape as input tensor."""
+    def test_weights_shape_error(self):
+        """Test weights tensor should have the same shape as input tensor."""
 
-#         def net_func():
-#             input_value = paddle.to_tensor([1, 2, 3, 4, 5])
-#             weights = paddle.to_tensor([1, 1, 1, 1, 1, 1])
-#             paddle.bincount(input_value, weights=weights)
+        def net_func():
+            input_value = paddle.to_tensor([1, 2, 3, 4, 5])
+            weights = paddle.to_tensor([1, 1, 1, 1, 1, 1])
+            paddle.bincount(input_value, weights=weights)
 
-#         with self.assertRaises(ValueError):
-#             self.run_network(net_func)
+        with self.assertRaises(ValueError):
+            self.run_network(net_func)
 
 
 class TestBincountOp(OpTest):

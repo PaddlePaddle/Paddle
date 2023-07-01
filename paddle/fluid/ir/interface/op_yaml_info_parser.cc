@@ -88,14 +88,6 @@ const std::map<std::string, int>& OpYamlInfoParser::Name2Id() const {
   return name2id_;
 }
 
-const OpRunTimeInfo& OpYamlInfoParser::OpRuntimeInfo() const {
-  return std::get<3>(op_info_tuple_);
-}
-
-const std::map<std::string, int>& OpYamlInfoParser::Name2Id() const {
-  return map_name2id_;
-}
-
 void OpYamlInfoParser::parse() {
   auto input_info = std::get<0>(op_info_tuple_);
 

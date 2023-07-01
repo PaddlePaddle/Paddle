@@ -71,6 +71,13 @@ void BuildPhiContext(
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
     auto index = op_yaml_info.Name2Id().at(t);
     ir::Value ptr = op->operand(index);
+    if (!ptr) {
+      phi::DenseTensor* ptr = nullptr;
+      OutType in_ptr(ptr);
+      std::cerr << "emplace null ptr " << index << std::endl;
+      ctx->EmplaceBackInput(in_ptr);
+      continue;
+    }
     auto in_var_name = name_map.at(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 

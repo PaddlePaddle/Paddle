@@ -90,7 +90,7 @@ TEST(ir_op_info_test, op_op_info_test) {
   EXPECT_EQ(op_yaml_info_parser.IsTensorAttribute(0), true);
 
   std::cerr << "kernel attr param" << std::endl;
-  for (auto& t : kernel_fn_attr_param) {
+  for (auto& t : op_yaml_info_parser.TensorParams()) {
     std::cerr << "tensor attr " << t << std::endl;
   }
 }
