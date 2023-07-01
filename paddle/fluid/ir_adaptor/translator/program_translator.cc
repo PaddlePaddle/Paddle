@@ -121,6 +121,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
         for (const auto& var_name : out_var_names) {
           std::cerr << "feed output var name " << var_name << std::endl;
           feed_names.insert(var_name);
+          // parameter_visited_.insert(var_name);
         }
       }
     }
@@ -137,7 +138,8 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 
         bool is_parameter = (parameter_name_mappings_.find(var_name) !=
                              parameter_name_mappings_.end());
-        // is_parameter &= (parameter_visited_.count(var_name) == 0);
+        is_parameter &= (parameter_visited_.count(var_name) == 0);
+        is_parameter &= (!feed_names.count(var_name));
         if (is_parameter) {
           var_desc = parameter_name_mappings_[var_name];
         }
@@ -181,6 +183,19 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
 }
 
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
+  std::set<std::string> fetch_names;
+  for (auto op_desc : block.AllOps()) {
+    if (op_desc->Type() == "fetch") {
+      for (const auto& n : op_desc->Inputs()) {
+        const auto& out_var_names = n.second;
+        for (const auto& var_name : out_var_names) {
+          std::cerr << "fetch output var name " << var_name << std::endl;
+          fetch_names.insert(var_name);
+        }
+      }
+    }
+  }
+
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
     for (const auto& n : (*op_desc)->Outputs()) {
@@ -189,6 +204,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         bool need_set_parameter_op = (parameter_name_mappings_.find(var_name) !=
                                       parameter_name_mappings_.end());
         need_set_parameter_op &= (parameter_visited_.count(var_name) == 0);
+        // need_set_parameter_op &= (!fetch_names.count(var_name));
         if (need_set_parameter_op) {
           ir::OpResult defining_op_result = param_map_[var_name].value;
           ir::Operation* op = InsertSetParamaterOp(

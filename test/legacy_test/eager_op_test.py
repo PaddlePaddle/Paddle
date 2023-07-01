@@ -1199,6 +1199,7 @@ class OpTest(unittest.TestCase):
                 program = compiled_prog
 
             executor = Executor(place)
+            print("program", program)
             outs = executor.run(
                 program,
                 feed=feed_map,
@@ -2853,6 +2854,7 @@ class OpTest(unittest.TestCase):
                 compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
+            print("grad", prog)
             res = list(
                 map(
                     np.array,

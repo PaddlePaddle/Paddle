@@ -130,6 +130,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     x_name = x.name
     x_shape = x.shape
     x_size = _product(x_shape)
+    print("x name ", x_name)
     x_t = scope.find_var(x_name).get_tensor()
 
     np_type = dtype_to_np_dtype(x.dtype)
@@ -289,6 +290,7 @@ def grad_check(
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
+        print("feeds", feeds)
         exe.run(program, feed=feeds, scope=scope)
 
     # [x_idx, y_idx]

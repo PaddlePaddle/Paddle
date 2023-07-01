@@ -356,6 +356,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
   std::vector<ir::OpResult> op_inputs;
 
   for (const auto& info : input_infos) {
+    std::cerr << "infor name " << info.name << std::endl;
     if (auto special_handler = this->GetSpecialInputHandlers(info.name)) {
       ir::OpResult ret = special_handler(
           ctx, param_map, op_desc, normalized_op_name, info, program);
@@ -372,6 +373,7 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
     std::vector<std::string> legacy_input_vars;
     // return empty OpResult if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
+    std::cerr << "check input " << legacy_input_name << std::endl;
     if (op_desc.HasInput(legacy_input_name)) {
       legacy_input_vars = op_desc.Input(legacy_input_name, true);
     }
@@ -426,20 +428,28 @@ std::vector<ir::OpResult> OpTranscriber::GenerateOperationInput(
       }
     }
 
+    std::cerr << "11 ~" << std::endl;
     // if src type is Tensor
     if (!is_vector) {
+      std::cerr << "not vector " << legacy_input_vars.size() << std::endl;
+      if (legacy_input_vars.size() > 0) {
+        std::cerr << "11  " << legacy_input_vars.size() << std::endl;
+      }
       auto defining_info = (*param_map)[legacy_input_vars[0]];
+      std::cerr << "aa" << std::endl;
       op_inputs.push_back(defining_info.value);
 
       // if src type is Vector<Tesnor> , need an additional `CombineOp` to
       // assemble them.
     } else {
+      std::cerr << "combine" << std::endl;
       auto* combine_op = InsertCombineOperationForTarget(
           ctx, param_map, program, legacy_input_vars);
       op_inputs.push_back(combine_op->result(0));
     }
   }
 
+  std::cerr << "size " << op_inputs.size() << std::endl;
   return op_inputs;
 }
 
@@ -447,6 +457,7 @@ std::tuple<OpOutputTypeList, OpOutputMapping>
 OpTranscriber::GenerateOperationOutput(ir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpOutputInfoList& output_infos) {
+  std::cerr << "generate output" << std::endl;
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
 
@@ -643,6 +654,7 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
   auto op_inputs = this->GenerateOperationInput(
       ctx, param_map, op_desc, op_info.name(), input_infos, program);
 
+  std::cerr << "fin generator input" << std::endl;
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) =
@@ -664,6 +676,31 @@ ir::Operation* OpTranscriber::operator()(ir::IrContext* ctx,
 }
 
 struct CastOpTranscriber : public OpTranscriber {
+  ir::AttributeMap TranslateOpAttribute(
+      ir::IrContext*,
+      const std::string& normalized_op_name,
+      const OpAttributeInfoList& op_attr_infos,
+      const OpDesc& op_desc) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    ir::AttributeMap attribute_map = {};
+    const OpAttributeInfo info = op_attr_infos[0];
+
+    std::string legacy_attr_name("out_dtype");
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr(legacy_attr_name)) {
+      legacy_attr = op_desc.GetAttr(legacy_attr_name);
+    }
+    VLOG(10) << "attribute in " << op_desc.Type()
+             << " name: " << legacy_attr_name << " " << legacy_attr.index();
+    ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
+    attribute_map[info.name] = new_attr;
+
+    return attribute_map;
+  }
+};
+
+struct ReduceOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
       ir::IrContext*,
       const std::string& normalized_op_name,

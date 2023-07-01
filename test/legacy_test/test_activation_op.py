@@ -68,9 +68,9 @@ class TestActivation(OpTest):
 
         self.convert_input_output()
 
-    def test_check_output(self):
-        pass
-        # self.check_output()
+    # def test_check_output(self):
+    #     pass
+    #     # self.check_output()
 
     # def test_check_grad(self):
     #     if self.dtype == np.float16:
@@ -285,7 +285,7 @@ class TestActivation(OpTest):
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
-        self.prim_op_type = "comp"
+        # self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
@@ -307,7 +307,12 @@ class TestSigmoid(TestActivation):
         pass
 
     def test_check_output(self):
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         self.check_output()
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!======")
+
+    def init_shape(self):
+        self.shape = [11, 17]
 
     # def test_check_grad(self):
     #     if self.dtype == np.float16:

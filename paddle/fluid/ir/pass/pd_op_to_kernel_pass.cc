@@ -41,6 +41,7 @@ phi::KernelKey GetKernelKey(
     const phi::Place& place,
     const std::unordered_map<ir::Value, ir::OpResult>& map_value_pair,
     const dialect::OpYamlInfoParser* op_info_parser = nullptr) {
+  std::cerr << "12" << std::endl;
   if (op->name() == "pd.feed") {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
@@ -121,7 +122,7 @@ phi::KernelKey GetKernelKey(
       }
     }
   }
-
+  std::cerr << "22" << std::endl;
   if (op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
@@ -132,6 +133,10 @@ phi::KernelKey GetKernelKey(
       }
 
       auto input_tmp = op->operand(i);
+      if (!input_tmp) {
+        std::cerr << "null input " << std::endl;
+        continue;
+      }
       auto new_input_tmp = map_value_pair.at(input_tmp);
 
       auto input_type = new_input_tmp.type();
@@ -261,6 +266,16 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     if ((*it)->num_operands() > 0) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i);
+        if (!cur_in) {
+          std::cerr << "nullptr " << std::endl;
+          vec_inputs.push_back(ir::OpResult());
+          continue;
+        }
+        PADDLE_ENFORCE_EQ(
+            map_value_pair.count(cur_in),
+            true,
+            phi::errors::PreconditionNotMet(
+                "[%d]'s input of [%s] op MUST in map pair", i, (*it)->name()));
         auto new_in = map_value_pair.at(cur_in);
 
         auto new_in_type = new_in.type();
