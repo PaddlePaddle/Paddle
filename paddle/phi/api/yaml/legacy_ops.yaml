@@ -84,6 +84,7 @@
   kernel :
     func : assign
   backward : assign_grad
+  inplace : (x -> out)
 
 - op : assign_out_
   args : (Tensor x, Tensor output)
@@ -120,6 +121,7 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
+  optional : reserve_space
 
 - op : cast
   args : (Tensor x, DataType dtype)
