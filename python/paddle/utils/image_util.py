@@ -30,7 +30,12 @@ def resize_image(img, target_size):
     resized_size = int(round(img.size[0] * percent)), int(
         round(img.size[1] * percent)
     )
-    img = img.resize(resized_size, Image.ANTIALIAS)
+    try:
+        # For Pillow >= 9.1.0
+        LANCZOS = Image.Resampling.LANCZOS
+    except AttributeError:
+        LANCZOS = Image.LANCZOS
+    img = img.resize(resized_size, LANCZOS)
     return img
 
 

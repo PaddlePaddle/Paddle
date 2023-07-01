@@ -44,10 +44,16 @@ TAR_TARGETHASH = "b6e924de25625d8de591ea690078ad9f"
 TEST_LIST_KEY = "VOCdevkit/VOC2007/ImageSets/Main/test.txt"
 BIN_FULLSIZE = 5348678856
 
+try:
+    # For Pillow >= 9.1.0
+    LANCZOS = Image.Resampling.LANCZOS
+except AttributeError:
+    LANCZOS = Image.LANCZOS
+
 
 def preprocess(img):
     img_width, img_height = img.size
-    img = img.resize((RESIZE_W, RESIZE_H), Image.ANTIALIAS)
+    img = img.resize((RESIZE_W, RESIZE_H), LANCZOS)
     img = np.array(img)
     # HWC to CHW
     if len(img.shape) == 3:

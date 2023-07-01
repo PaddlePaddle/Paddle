@@ -30,7 +30,7 @@ try:
         'lanczos': Image.Resampling.LANCZOS,
         'hamming': Image.Resampling.HAMMING,
     }
-except:
+except AttributeError:
     _pil_interp_from_str = {
         'nearest': Image.NEAREST,
         'bilinear': Image.BILINEAR,
