@@ -32,6 +32,15 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 SelectedRows* out) {
+  std::vector<int64_t> shape_vec = shape.GetData();     
+  auto value = val.to<double>();      
+  std::cout<<"{function_name : full, inputs: { { shape, type: <class 'IntArray'>, shape: "; 
+  std::cout<<"[";
+  for(const auto& i: shape_vec){
+    std:: cout<<i<<", ";
+  }   
+  std::cout<<"]"<<" } } ";
+  std::cout<<", params: [ "<<"val: "<<value<<","<<"type: "<<dtype <<" ]}"<<std::endl;
   phi::FullKernel<T>(dev_ctx, shape, val, dtype, out->mutable_value());
 }
 

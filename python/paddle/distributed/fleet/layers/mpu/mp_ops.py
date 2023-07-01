@@ -296,6 +296,8 @@ def _mp_allreduce(
         return out
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def _c_lookup_table(table, index, start_index=0, name=None):
     """
     Lookup table according to index.

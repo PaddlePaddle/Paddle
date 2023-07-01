@@ -967,6 +967,8 @@ void MatmulKernel(const Context& ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
+  std::cout<<"{function_name : matmul, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, { y, type: <class 'paddle.Tensor'>, shape: " << y.dims() << "} }";
+  std::cout<<", params: [ "<<"transpose_x: "<<transpose_x<<" ,"<<"transpose_y: "<<transpose_y <<"]}"<<std::endl;
   PADDLE_ENFORCE_NE(
       phi::product(x.dims()),
       0,

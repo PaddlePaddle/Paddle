@@ -48,6 +48,8 @@ template <typename T, typename Context>
 void BitwiseNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
+  std::cout<<"{function_name : bitwise_not, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"}"<<", params: [ ]}"<<std::endl;
   dev_ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};

@@ -77,6 +77,8 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
+  std::cout<<"{function_name : divide, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"{ y, type: <class 'paddle.Tensor'>, shape: "<<y.dims()<<"}, }"<<", params: [ ]}"<<std::endl;
   DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 

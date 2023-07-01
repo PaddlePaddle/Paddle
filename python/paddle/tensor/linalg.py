@@ -358,6 +358,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             #                  [4., 3., 2., 1.]])
     """
 
+    from paddle.utils import print_utils
+    @print_utils.print_args
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
         """
         The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.

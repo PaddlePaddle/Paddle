@@ -169,6 +169,8 @@ def log(x, name=None):
         return out
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Scale operator.
@@ -988,6 +990,8 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def maximum(x, y, name=None):
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
@@ -3782,6 +3786,8 @@ def increment(x, value=1.0, name=None):
         return x
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def all(x, axis=None, keepdim=False, name=None):
     """
     Computes the ``logical and`` of tensor elements over the given dimension.

@@ -568,6 +568,8 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
     return out
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     """
     Returns a Tensor filled with random values sampled from a uniform

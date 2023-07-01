@@ -25,6 +25,8 @@ void NumelKernel(const Context& ctx,
   auto place = ctx.GetPlace();
   auto out_data = ctx.template Alloc<int64_t>(out);
 
+  std::cout<<"{function_name : numel, inputs: { { input, type: <class 'paddle.Tensor'>, shape: "<<input.dims()<<" }, ";
+  std::cout<<"}"<<", params: [ ]}"<<std::endl;
   if (place == phi::CPUPlace()) {
     out_data[0] = input.numel();
   } else {

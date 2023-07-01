@@ -82,6 +82,14 @@ void ReshapeKernel(const Context& dev_ctx,
                    const IntArray& shape,
                    DenseTensor* out,
                    DenseTensor* xshape) {
+  std::vector<int64_t> shape_vec = shape.GetData();
+  std::cout<<"{function_name : reshape, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, { shape, type: <class 'IntArray'>, shape: ";
+  std::cout<<"[";
+  for(const auto& i: shape_vec){
+    std:: cout<<i<<", ";
+  }
+  std::cout<<"]"<<" } } ";
+  std::cout<<", params: [ ]}"<<std::endl;
   ReshapeInferKernel(dev_ctx, x, shape, out);
 }
 

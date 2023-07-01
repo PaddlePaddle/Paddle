@@ -26,6 +26,13 @@ void AllKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   auto x_dim = x.dims();
+  std::string str_dims = "";
+  for ( auto dim : dims) {
+    str_dims += std::to_string(dim) ;
+    str_dims += "," ;
+  }
+  std::cout<<"{function_name : all, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" } }";
+  std::cout<<", params: [ "<<"dims: "<<str_dims<<" ,"<<"keep_dim: "<<keep_dim <<"]}"<<std::endl;
   for (int i = 0; i < x_dim.size(); i++) {
     PADDLE_ENFORCE_LT(0,
                       x_dim[i],

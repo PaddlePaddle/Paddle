@@ -33,6 +33,13 @@ void ConcatKernel(const Context& dev_ctx,
                   const Scalar& axis_scalar,
                   DenseTensor* out) {
   int64_t axis = axis_scalar.to<int64_t>();
+  std::cout<<"{function_name : concat, inputs: { { x, type: std::vector<class 'paddle.Tensor'>, shape: ";
+  std::cout<<"[";
+  for(const auto& i: x){
+    std:: cout<<i->dims()<<", ";
+  }
+  std::cout<< " } }";
+  std::cout<<", params: [ " << "axis_scalar: "<< axis_scalar.to<double>() <<"]}"<<std::endl;
 
   axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
 

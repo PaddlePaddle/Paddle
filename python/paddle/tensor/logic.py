@@ -582,6 +582,8 @@ def greater_equal(x, y, name=None):
         return out
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 @templatedoc()
 def greater_than(x, y, name=None):
     """
@@ -791,6 +793,8 @@ def less_than(x, y, name=None):
         return out
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 @templatedoc()
 def not_equal(x, y, name=None):
     """
@@ -1047,6 +1051,8 @@ def bitwise_xor(x, y, out=None, name=None):
     )
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def bitwise_not(x, out=None, name=None):
     r"""
 

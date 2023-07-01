@@ -1183,6 +1183,8 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     return out
 
 
+from paddle.utils import print_utils
+@print_utils.print_args
 def full(shape, fill_value, dtype=None, name=None):
     """
 

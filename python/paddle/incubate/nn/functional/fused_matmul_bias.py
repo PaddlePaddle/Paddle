@@ -68,7 +68,8 @@ def fused_matmul_bias(
     )
     return out
 
-
+from paddle.utils import print_utils
+@print_utils.print_args
 def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
     """
     Fully-connected linear transformation operator. This method requires CUDA version >= 11.6.

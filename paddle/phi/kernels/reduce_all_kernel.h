@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include <iostream>
 
 namespace phi {
 
