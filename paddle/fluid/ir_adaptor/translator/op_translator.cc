@@ -696,26 +696,31 @@ struct CastOpTranscriber : public OpTranscriber {
 
 struct ReduceOpTranscriber : public OpTranscriber {
   ir::AttributeMap TranslateOpAttribute(
-      ir::IrContext*,
+      ir::IrContext* ctx,
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
+    auto base_attr_map = OpTranscriber::TranslateOpAttribute(
+        ctx, normalized_op_name, op_attr_infos, op_desc);
     auto& attribute_translator = AttributeTranslator::instance();
-    ir::AttributeMap attribute_map = {};
     const OpAttributeInfo info = op_attr_infos[0];
 
-    std::string legacy_attr_name("out_dtype");
+    std::string reduce_all_str = "reduce_all";
+    if (op_desc.HasAttr(reduce_all_str)) {
+      auto reduce_all_attr = op_desc.GetAttr(reduce_all_str);
+      bool reduce_all_value = &paddle::get<bool>(reduce_all_attr);
 
-    paddle::framework::Attribute legacy_attr;
-    if (op_desc.HasAttr(legacy_attr_name)) {
-      legacy_attr = op_desc.GetAttr(legacy_attr_name);
+      if (reduce_all_value == true) {
+        std::vector<int32_t> vec_empty;
+        std::cerr << "info type " << info.type_name << std::endl;
+        ir::Attribute new_attr =
+            attribute_translator(info.type_name, vec_empty);
+
+        base_attr_map[info.name] = new_attr;
+      }
     }
-    VLOG(10) << "attribute in " << op_desc.Type()
-             << " name: " << legacy_attr_name << " " << legacy_attr.index();
-    ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
-    attribute_map[info.name] = new_attr;
 
-    return attribute_map;
+    return base_attr_map;
   }
 };
 

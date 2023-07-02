@@ -23,6 +23,7 @@ template <typename T, typename Context>
 void FetchKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
+  std::cerr << "shape  " << x.dims() << std::endl;
   phi::Copy(dev_ctx, x, phi::CPUPlace(), true, out);
 }
 }  // namespace phi
