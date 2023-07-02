@@ -414,7 +414,7 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
   auto transpose2_op = builder.Build<paddle::dialect::TransposeOp>(
       transpose1_op.out(), std::vector<int>{0, 3, 1, 2});
 
-  builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out");
+  builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out", 0);
 }
 
 // TODO(wilber): Add a normal test.
@@ -429,7 +429,7 @@ TEST(pattern_rewrite, Patterns) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(ir::CreateDCEPass());
+  pm.AddPass(ir::CreateDcePass());
   program.Print(std::cout);
   std::cout << std::endl;
   pm.Run(&program);
