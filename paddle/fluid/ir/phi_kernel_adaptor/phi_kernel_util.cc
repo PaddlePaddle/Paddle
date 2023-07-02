@@ -48,6 +48,7 @@ void BuildScope(ir::Block* block,
                 std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
+  std::cerr << "build scope " << std::endl;
   // int count = name_map->size();
   int count = 0;
   for (auto it = block->begin(); it != block->end(); ++it) {
@@ -123,14 +124,16 @@ void BuildScope(ir::Block* block,
     if (input_num > 0) {
       for (size_t i = 0; i < input_num; ++i) {
         auto ptr = (*it)->operand(i);
-        std::string name;
-        if (name_map->find(ptr) != name_map->end()) {
-          name = name_map->at(ptr);
-        } else {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
-              i,
-              op_name));
+        if (ptr) {
+          std::string name;
+          if (name_map->find(ptr) != name_map->end()) {
+            name = name_map->at(ptr);
+          } else {
+            PADDLE_THROW(phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op_name));
+          }
         }
       }
     }
@@ -149,7 +152,6 @@ void BuildScope(ir::Block* block,
         }
         auto var = scope->Var(name);
         // Only support DenseTensor or Vector<DenseTensor>
-
         if (!ptr.type()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type()
