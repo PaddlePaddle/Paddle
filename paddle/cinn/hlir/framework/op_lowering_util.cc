@@ -722,8 +722,9 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,
       need_reduce_last_count *= inshape[i];
     }
   }
-  int warp_reduce_need_sm_count = ceil((need_reduce_last_count * 32) /
-                                       float(target.get_max_threads_per_sm()));
+  int warp_reduce_need_sm_count =
+      ceil((need_reduce_last_count * 32) /
+           static_cast<float>(target.get_max_threads_per_sm()));
   // Set Num_max_threads to 32 is Warp Reduce
   if (target.get_multi_processor_count() < warp_reduce_need_sm_count) {
     max_num_threads = 32;
@@ -805,7 +806,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target, true);
     // fuse axis before reduce to bind blockidx.
-    for (int idx = 0; idx < int(inshape.size() - axes.size()) - 1; ++idx) {
+    for (int idx = 0; idx < static_cast<int>(inshape.size() - axes.size()) - 1;
+         ++idx) {
       ir_sch.Fuse(block_name, {0, 1});
     }
   }
