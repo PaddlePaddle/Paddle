@@ -26,6 +26,7 @@ namespace auto_parallel {
 
 // matmul rule
 REGISTER_SPMD_RULE(matmul, MatmulSPMDRule);
+REGISTER_SPMD_RULE(elementwise, ElementwiseSPMDRule);
 
 // matmul rule
 REGISTER_SPMD_RULE(layer_norm, LayerNormSPMDRule);

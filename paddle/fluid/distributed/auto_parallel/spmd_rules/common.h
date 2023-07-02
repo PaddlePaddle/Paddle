@@ -67,22 +67,12 @@ class SPMDRuleBase {
   inline const T ExtractAttr(
       const std::string& name,
       const paddle::framework::AttributeMap& attrs) const {
-    auto& attr = GetAttr(name, attrs);
-
-    // In order to get bool attr properly
-    framework::proto::AttrType attr_type =
-        static_cast<framework::proto::AttrType>(attr.index() - 1);
-    if (attr_type == framework::proto::AttrType::INT) {
-      if (std::is_same<bool, T>::value) {
-        return static_cast<bool>(PADDLE_GET_CONST(int, attr));
-      }
-    }
-
-    return PADDLE_GET_CONST(T, attr);
+    auto attr = GetAttr(name, attrs);
+    return *paddle::framework::ExtractAttribute<T>(name)(attr);
   }
 
-  const Attribute& GetAttr(const std::string& name,
-                           const paddle::framework::AttributeMap& attrs) const {
+  Attribute GetAttr(const std::string& name,
+                    const paddle::framework::AttributeMap& attrs) const {
     auto iter = attrs.find(name);
     PADDLE_ENFORCE_NE(iter,
                       attrs.end(),
