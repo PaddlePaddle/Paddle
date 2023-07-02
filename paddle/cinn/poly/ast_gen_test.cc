@@ -33,7 +33,6 @@ namespace cinn {
 namespace poly {
 
 using namespace cinn::ir;  // NOLINT
-using cinn::lang;
 
 TEST(TransIdentityExtentToContextId, basic) {
   isl_ctx* ctx = isl_ctx_alloc();
