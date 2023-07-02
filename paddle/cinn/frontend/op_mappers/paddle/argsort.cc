@@ -45,10 +45,10 @@ void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc,
   ctx.AddVar(indices_name, idx);
   ctx.AddVarModelToProgram(indices_name, idx->id);
 
-  // TODO: return the sorted tensor here. Now out[1] is a temporary tensor.
-  // this is because output 'Out' is never uesd in Paddle API, but CINN need to
-  // return 2 output vars to meet the op defination, this should be resolved
-  // after sort op restructured.
+  // TODO(lanxianghit): return the sorted tensor here. Now out[1] is a temporary
+  // tensor. this is because output 'Out' is never uesd in Paddle API, but CINN
+  // need to return 2 output vars to meet the op defination, this should be
+  // resolved after sort op restructured.
   ctx.AddVar(out_name, out[1]);
   ctx.AddVarModelToProgram(out_name, out[1]->id);
 }
