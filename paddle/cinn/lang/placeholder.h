@@ -44,7 +44,9 @@ class Placeholder {
   Expr operator()(Expr a) const { return Call({a}); }
   Expr operator()(Expr a, Expr b) const { return Call({a, b}); }
   Expr operator()(Expr a, Expr b, Expr c) const { return Call({a, b, c}); }
-  Expr operator()(Expr a, Expr b, Expr c, Expr d) const { return Call({a, b, c, d}); }
+  Expr operator()(Expr a, Expr b, Expr c, Expr d) const {
+    return Call({a, b, c, d});
+  }
   Expr operator()(const std::vector<Expr> &indices) const;
   // @}
 
@@ -77,24 +79,31 @@ Expr Placeholder<T>::Call(const std::vector<Expr> &indices) const {
 }
 
 template <typename T>
-Placeholder<T>::Placeholder(const std::string &name, const std::vector<int> &shape) {
+Placeholder<T>::Placeholder(const std::string &name,
+                            const std::vector<int> &shape) {
   std::vector<Expr> _shape;
   for (int v : shape) _shape.push_back(Expr(v));
   Init(name, _shape);
 }
 
 template <typename T>
-Placeholder<T>::Placeholder(const std::string &name, const std::vector<Expr> &shape) {
+Placeholder<T>::Placeholder(const std::string &name,
+                            const std::vector<Expr> &shape) {
   Init(name, shape);
 }
 
-ir::Tensor CreatePlaceHolder(const std::vector<int> &shape, Type type, const std::string &name);
+ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
+                             Type type,
+                             const std::string &name);
 
-ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape, Type type, const std::string &name);
+ir::Tensor CreatePlaceHolder(const std::vector<Expr> &shape,
+                             Type type,
+                             const std::string &name);
 
 /// ------- details -------
 template <typename T>
-void Placeholder<T>::Init(const std::string &name, const std::vector<Expr> &shape) {
+void Placeholder<T>::Init(const std::string &name,
+                          const std::vector<Expr> &shape) {
   ir::Var buffer_ptr(Context::Global().NewName("buffer"));
   buffer_ptr->set_type(type_of<T>());
 
@@ -102,7 +111,8 @@ void Placeholder<T>::Init(const std::string &name, const std::vector<Expr> &shap
   Expr offset(0);
 
   std::vector<ir::Var> axis;
-  for (int i = 0; i < shape.size(); i++) axis.emplace_back(common::axis_name(i));
+  for (int i = 0; i < shape.size(); i++)
+    axis.emplace_back(common::axis_name(i));
 
   auto op = ir::PlaceholderOp::Make(name, shape, type_of<T>());
 

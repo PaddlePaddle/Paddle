@@ -37,7 +37,7 @@ void CodeGen(ir::LoweredFunc& func) {
   Module::Builder builder("module_builder", target);
 
   builder.AddFunction(func);
-  auto module   = builder.Build();
+  auto module = builder.Build();
   auto compiler = backends::Compiler::Create(target);
 
   std::string code = "";
@@ -49,22 +49,27 @@ void CodeGen(ir::LoweredFunc& func) {
 
   CodeGenCX86 codegen(target, CodeGenCX86::Feature::AVX512);
   codegen.SetInlineBuiltinCodes(false);
-  auto source_code = codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
+  auto source_code =
+      codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   LOG(INFO) << "compiled code of " << func->name << "is:\n\n\n" << source_code;
 #endif
 }
 
 void Compile(NetBuilder& net_builder) {
   auto program = net_builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
   RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
 
-  auto& dtype_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>("inferdtype");
-  auto& shape_dict = graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>("infershape");
+  auto& dtype_dict =
+      graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
+          "inferdtype");
+  auto& shape_dict =
+      graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
+          "infershape");
 
   OpLowerer op_lowerer(dtype_dict, shape_dict, target);
   for (auto& fusion_op : graph->fusion_groups) {
@@ -129,25 +134,28 @@ TEST(OP_LOWERING, Reduce_With_Last_Axis_1) {
 
 TEST(OP_LOWERING, Reduce_Fuse_Broadcast_With_Output) {
   NetBuilder net_builder("Reduce_Fuse_Broadcast_With_Output");
-  auto layer_norm_51__tmp_1 = net_builder.CreateInput(Float(32), {256}, "layer_norm_51__tmp_1");
-  auto var_3216             = net_builder.CreateInput(Float(32), {256, 60}, "var_3216");
-  auto var_3202             = net_builder.CreateInput(Float(32), {1, 60}, "var_3202");
-  auto var_3212             = net_builder.CreateInput(Float(32), {256, 60}, "var_3212");
+  auto layer_norm_51__tmp_1 =
+      net_builder.CreateInput(Float(32), {256}, "layer_norm_51__tmp_1");
+  auto var_3216 = net_builder.CreateInput(Float(32), {256, 60}, "var_3216");
+  auto var_3202 = net_builder.CreateInput(Float(32), {1, 60}, "var_3202");
+  auto var_3212 = net_builder.CreateInput(Float(32), {256, 60}, "var_3212");
 
-  auto var_3206         = net_builder.Reshape(layer_norm_51__tmp_1, {256, 1});
-  auto composite_tmp_8  = net_builder.FillConstant<float>({256, 1}, 1e-5, "composite_tmp_8");
-  auto var_3214         = net_builder.Add(var_3206, composite_tmp_8);
-  auto composite_tmp_10 = net_builder.FillConstant<float>({256, 1}, 1.0, "composite_tmp_10");
-  auto var_3220         = net_builder.Divide(composite_tmp_10, var_3214);
-  auto var_3226         = net_builder.Sqrt(var_3220);
-  auto var_3224         = net_builder.Scale(var_3220, -1.0, 0.0, true);
-  auto var_3366         = net_builder.BroadcastTo(var_3224, {256, 60});
-  auto var_3228         = net_builder.Multiply(var_3366, var_3216);
-  auto var_3368         = net_builder.BroadcastTo(var_3202, {256, 60});
-  auto var_3236         = net_builder.Multiply(var_3228, var_3212);
-  auto var_3244         = net_builder.Multiply(var_3236, var_3368);
-  auto var_3252         = net_builder.ReduceSum(var_3244, {1}, true);
-  auto var_3232         = net_builder.Scale(var_3226, 0.0166667, 0.0, true);
+  auto var_3206 = net_builder.Reshape(layer_norm_51__tmp_1, {256, 1});
+  auto composite_tmp_8 =
+      net_builder.FillConstant<float>({256, 1}, 1e-5, "composite_tmp_8");
+  auto var_3214 = net_builder.Add(var_3206, composite_tmp_8);
+  auto composite_tmp_10 =
+      net_builder.FillConstant<float>({256, 1}, 1.0, "composite_tmp_10");
+  auto var_3220 = net_builder.Divide(composite_tmp_10, var_3214);
+  auto var_3226 = net_builder.Sqrt(var_3220);
+  auto var_3224 = net_builder.Scale(var_3220, -1.0, 0.0, true);
+  auto var_3366 = net_builder.BroadcastTo(var_3224, {256, 60});
+  auto var_3228 = net_builder.Multiply(var_3366, var_3216);
+  auto var_3368 = net_builder.BroadcastTo(var_3202, {256, 60});
+  auto var_3236 = net_builder.Multiply(var_3228, var_3212);
+  auto var_3244 = net_builder.Multiply(var_3236, var_3368);
+  auto var_3252 = net_builder.ReduceSum(var_3244, {1}, true);
+  auto var_3232 = net_builder.Scale(var_3226, 0.0166667, 0.0, true);
 
   Compile(net_builder);
 }
@@ -168,7 +176,7 @@ TEST(OP_LOWERING, Reduce_Fuse_Broadcast_Layernorm) {
     // constant w
     auto E = net_builder.FillConstant<float>({h}, 1024.0f, "E");
     // mean
-    auto F  = net_builder.Divide(C, E);
+    auto F = net_builder.Divide(C, E);
     auto FF = net_builder.BroadcastTo(F, {h, w}, {0});
     // mean x*x
     auto G = net_builder.Divide(D, E);
@@ -181,7 +189,7 @@ TEST(OP_LOWERING, Reduce_Fuse_Broadcast_Layernorm) {
     // eps + delta
     auto K = net_builder.Add(I, J);
     // var
-    auto L  = net_builder.Sqrt(K);
+    auto L = net_builder.Sqrt(K);
     auto LL = net_builder.BroadcastTo(L, {h, w}, {0});
     // x - mean
     auto M = net_builder.Subtract(A, FF);
@@ -515,16 +523,16 @@ TEST(OP_LOWERING, Elementwise_Test_Reshape_After_Reduce) {
 TEST(OP_LOWERING, Elementwise_Test_Reshape_Fuse_Concat) {
   NetBuilder net_builder("Elementwise_Test_Reshape_Fuse_Concat");
   {
-    auto A  = net_builder.CreateInput(Float(32), {8, 8, 8, 8}, "A");
-    auto B  = net_builder.Reshape(A, {16, 16, 16});
-    auto C  = net_builder.CreateInput(Float(32), {16, 16}, "C");
-    auto D  = net_builder.CreateInput(Float(32), {16, 16}, "D");
+    auto A = net_builder.CreateInput(Float(32), {8, 8, 8, 8}, "A");
+    auto B = net_builder.Reshape(A, {16, 16, 16});
+    auto C = net_builder.CreateInput(Float(32), {16, 16}, "C");
+    auto D = net_builder.CreateInput(Float(32), {16, 16}, "D");
     auto DT = net_builder.Transpose(D, {1, 0});
-    auto E  = net_builder.Add(C, DT);
-    auto F  = net_builder.BroadcastTo(E, {16, 16, 16}, {1, 2});
-    auto G  = net_builder.Add(B, F);
-    auto H  = net_builder.CreateInput(Float(32), {16, 16, 16}, "H");
-    auto I  = net_builder.Concat({G, H}, 2);
+    auto E = net_builder.Add(C, DT);
+    auto F = net_builder.BroadcastTo(E, {16, 16, 16}, {1, 2});
+    auto G = net_builder.Add(B, F);
+    auto H = net_builder.CreateInput(Float(32), {16, 16, 16}, "H");
+    auto I = net_builder.Concat({G, H}, 2);
   }
 
   Compile(net_builder);
@@ -563,7 +571,7 @@ TEST(OP_LOWERING, Elementwise_TEST_Split_2) {
 TEST(OP_LOWERING, Elementwise_TEST_0) {
   NetBuilder net_builder("Elementwise_TEST_0");
   {
-    auto x  = net_builder.FillConstant<float>({1}, 128.0, "x");
+    auto x = net_builder.FillConstant<float>({1}, 128.0, "x");
     auto o1 = net_builder.Scale(x, -1.0, 0.0);
     auto o2 = net_builder.Scale(x, -1.0, 0.0);
   }
@@ -1195,11 +1203,12 @@ TEST(OP_LOWERING, Reduce_Fusion_Test_21) {
 */
 
 TEST(OpFusionPass, Block_Reduce_Fuse_Broadcast) {
-  int sm_count              = common::DefaultNVGPUTarget().get_multi_processor_count();
-  int max_threads_per_sm    = common::DefaultNVGPUTarget().get_max_threads_per_sm();
+  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int max_threads_per_sm =
+      common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
-  int h                     = warp_reduce_threshold - 10;
-  int w                     = 256;
+  int h = warp_reduce_threshold - 10;
+  int w = 256;
   NetBuilder net_builder("Block_Reduce_Fuse_Broadcast");
   // create model
   {
@@ -1212,11 +1221,12 @@ TEST(OpFusionPass, Block_Reduce_Fuse_Broadcast) {
 }
 
 TEST(OpFusionPass, Block_Reduce_Fuse_Elementwise) {
-  int sm_count              = common::DefaultNVGPUTarget().get_multi_processor_count();
-  int max_threads_per_sm    = common::DefaultNVGPUTarget().get_max_threads_per_sm();
+  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int max_threads_per_sm =
+      common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
-  int h                     = warp_reduce_threshold - 10;
-  int w                     = 256;
+  int h = warp_reduce_threshold - 10;
+  int w = 256;
   NetBuilder net_builder("Block_Reduce_Fuse_Elementwise");
   // create model
   {
@@ -1229,11 +1239,12 @@ TEST(OpFusionPass, Block_Reduce_Fuse_Elementwise) {
   Compile(net_builder);
 }
 TEST(OpFusionPass, Warp_Reduce_Fuse_Broadcast) {
-  int sm_count              = common::DefaultNVGPUTarget().get_multi_processor_count();
-  int max_threads_per_sm    = common::DefaultNVGPUTarget().get_max_threads_per_sm();
+  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int max_threads_per_sm =
+      common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
-  int h                     = warp_reduce_threshold + 10;
-  int w                     = 256;
+  int h = warp_reduce_threshold + 10;
+  int w = 256;
   NetBuilder net_builder("Warp_Reduce_Fuse_Broadcast");
   // create model
   {
@@ -1246,11 +1257,12 @@ TEST(OpFusionPass, Warp_Reduce_Fuse_Broadcast) {
 }
 
 TEST(OpFusionPass, Warp_Reduce_Fuse_Elementwise) {
-  int sm_count              = common::DefaultNVGPUTarget().get_multi_processor_count();
-  int max_threads_per_sm    = common::DefaultNVGPUTarget().get_max_threads_per_sm();
+  int sm_count = common::DefaultNVGPUTarget().get_multi_processor_count();
+  int max_threads_per_sm =
+      common::DefaultNVGPUTarget().get_max_threads_per_sm();
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
-  int h                     = warp_reduce_threshold + 10;
-  int w                     = 256;
+  int h = warp_reduce_threshold + 10;
+  int w = 256;
   NetBuilder net_builder("Warp_Reduce_Fuse_Elementwise");
   // create model
   {

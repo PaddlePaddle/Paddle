@@ -188,8 +188,10 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "c_softmax_with_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
+#ifndef PADDLE_WITH_XPU
       // slower than fp32
       "conv2d_transpose",
+#endif
       // default fp32 can avoid return inf when the sum value large than 65504
       "reduce_sum",
   });

@@ -32,7 +32,7 @@ namespace framework {
 void PrintGraphPass(Graph* src) {
   std::string res;
   auto store_node = std::get<0>(src->topological_order());
-  int index       = 0;
+  int index = 0;
   for (auto& i : store_node) {
     if (i->is_type<Node>()) {
       res += std::to_string(index) + ":";
@@ -45,7 +45,9 @@ void PrintGraphPass(Graph* src) {
 }
 
 CINN_REGISTER_PASS(PrintGraph)
-    .describe("This pass just save the visulization Graph to g.attrs[\"print_graph\"].")
+    .describe(
+        "This pass just save the visulization Graph to "
+        "g.attrs[\"print_graph\"].")
     .set_change_structure(false)
     .provide_graph_attr("print_graph")
     .set_body(PrintGraphPass);
@@ -54,12 +56,12 @@ TEST(Operator, GetAttrs) {
   frontend::Program prog;
   frontend::Variable a("A");
   frontend::Variable b("B");
-  Type t  = Float(32);
+  Type t = Float(32);
   a->type = t;
   b->type = t;
-  auto c  = prog.add(a, b);
-  auto d  = prog.add(c, b);
-  auto e  = prog.add(c, d);
+  auto c = prog.add(a, b);
+  auto d = prog.add(c, b);
+  auto e = prog.add(c, d);
   ASSERT_EQ(prog.size(), 3);
   Graph* g = new Graph(prog, common::DefaultHostTarget());
   ApplyPass(g, "PrintGraph");

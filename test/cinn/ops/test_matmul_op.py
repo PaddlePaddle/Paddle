@@ -15,18 +15,21 @@
 # limitations under the License.
 
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
 import paddle.nn.functional as F
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestMatmulOp(OpTest):
     def setUp(self):
         # print(f'{self.__class__.__name__}: {self.case}')
@@ -41,7 +44,8 @@ class TestMatmulOp(OpTest):
             x,
             y,
             transpose_x=self.case["transx"],
-            transpose_y=self.case["transy"])
+            transpose_y=self.case["transy"],
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=True)
@@ -54,31 +58,40 @@ class TestMatmulOp(OpTest):
             x,
             y,
             transpose_x=self.case["transx"],
-            transpose_y=self.case["transy"])
+            transpose_y=self.case["transy"],
+        )
 
     def build_cinn_program(self, target):
         builder = NetBuilder("matmul")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["x_shape"], "x"
+        )
         y = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["y_shape"],
-            "y")
+            self.nptype2cinntype(self.case["dtype"]), self.case["y_shape"], "y"
+        )
         out = self.cinn_func(builder, x, y)
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, y], [self.x_np, self.y_np], [out], passes=list())
+            prog, target, [x, y], [self.x_np, self.y_np], [out], passes=list()
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         # 1e-6 is same as the atol parameter of np.allclose
-        max_absolute_error = self.case[
-            "max_absolute_error"] if "max_absolute_error" in self.case else 1e-6
+        max_absolute_error = (
+            self.case["max_absolute_error"]
+            if "max_absolute_error" in self.case
+            else 1e-6
+        )
         self.check_outputs_and_grads(
             max_relative_error=max_relative_error,
-            max_absolute_error=max_absolute_error)
+            max_absolute_error=max_absolute_error,
+        )
 
 
 class TestMatmulOpShapeDtype(TestCaseHelper):
@@ -128,7 +141,7 @@ class TestMatmulOpShapeDtype(TestCaseHelper):
             {
                 "dtype": "float16",
                 "max_relative_error": 1e-2,
-                "max_absolute_error": 1e-2
+                "max_absolute_error": 1e-2,
             },
             {
                 "dtype": "float32",
@@ -213,7 +226,8 @@ class TestMatmulTransposePass(TestMatmulOp):
             x,
             y,
             transpose_x=self.case["transx"],
-            transpose_y=self.case["transy"])
+            transpose_y=self.case["transy"],
+        )
         return paddle.transpose(out, self.case["perm"])
 
     def cinn_func(self, builder, x, y):
@@ -221,7 +235,8 @@ class TestMatmulTransposePass(TestMatmulOp):
             x,
             y,
             transpose_x=self.case["transx"],
-            transpose_y=self.case["transy"])
+            transpose_y=self.case["transy"],
+        )
         return builder.transpose(out, self.case["perm"])
 
 

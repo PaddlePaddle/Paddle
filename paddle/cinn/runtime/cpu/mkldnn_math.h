@@ -21,8 +21,13 @@
 
 // define some C APIs
 extern "C" {
-void cinn_cpu_mkldnn_softmax_fp32(
-    int batch, int channel, int h, int w, int axis, cinn_buffer_t* inputs, cinn_buffer_t* out);
+void cinn_cpu_mkldnn_softmax_fp32(int batch,
+                                  int channel,
+                                  int h,
+                                  int w,
+                                  int axis,
+                                  cinn_buffer_t* inputs,
+                                  cinn_buffer_t* out);
 
 void cinn_cpu_mkldnn_conv2d_nchw_fp32(int batch_size,
                                       int c_in,

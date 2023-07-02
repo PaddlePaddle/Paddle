@@ -14,18 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from random import seed
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
+from random import seed
+
 import cinn
-from cinn.frontend import *
+import numpy as np
 from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestRandIntOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -39,13 +42,15 @@ class TestRandIntOp(OpTest):
 
     def build_paddle_program(self, target):
         out = paddle.randint(
-            shape=self.shape, low=self.min, high=self.max, dtype=self.dtype)
+            shape=self.shape, low=self.min, high=self.max, dtype=self.dtype
+        )
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("randint")
-        out = builder.randint(self.shape, self.min, self.max, self.seed,
-                              self.dtype)
+        out = builder.randint(
+            self.shape, self.min, self.max, self.seed, self.dtype
+        )
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [], [], [out], passes=[])
         self.cinn_outputs = [res[0]]

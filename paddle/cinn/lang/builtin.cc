@@ -48,13 +48,22 @@ Expr logic_or(const std::vector<Expr>& conds) {
 }
 
 //! extern call op
-#define EXTERN_CALL_IMP(name__, target__) \
-  Expr name__(Expr e) { return ir::Call::Make(e->type(), #target__, {e}, {}, ir::CallType::Extern); }
+#define EXTERN_CALL_IMP(name__, target__)                     \
+  Expr name__(Expr e) {                                       \
+    return ir::Call::Make(                                    \
+        e->type(), #target__, {e}, {}, ir::CallType::Extern); \
+  }
 
-#define EXTERN_CALL_IMP_NO_VEC(name__, target__)                                                               \
-  Expr name__(Expr e) {                                                                                        \
-    return ir::Call::Make(                                                                                     \
-        e->type(), #target__, {e}, {}, ir::CallType::Extern, ir::FunctionRef(), 0, {{"vectorizable", false}}); \
+#define EXTERN_CALL_IMP_NO_VEC(name__, target__)      \
+  Expr name__(Expr e) {                               \
+    return ir::Call::Make(e->type(),                  \
+                          #target__,                  \
+                          {e},                        \
+                          {},                         \
+                          ir::CallType::Extern,       \
+                          ir::FunctionRef(),          \
+                          0,                          \
+                          {{"vectorizable", false}}); \
   }
 
 EXTERN_CALL_IMP(Exp, exp);
@@ -87,11 +96,13 @@ EXTERN_CALL_IMP(Popc, popc);
 #undef EXTERN_CALL_IMP
 #undef EXTERN_CALL_IMP_NO_VEC
 
-#define EXTERN_BINARY_CALL_IMP(name__, target__)                                                \
-  Expr name__(Expr a, Expr b) {                                                                 \
-    CHECK_EQ(a.type(), b.type()) << #name__ << "'s inputs type not equal, where a:" << a.type() \
-                                 << " but b:" << b.type();                                      \
-    return ir::Call::Make(a->type(), #target__, {a, b}, {}, ir::CallType::Extern);              \
+#define EXTERN_BINARY_CALL_IMP(name__, target__)                       \
+  Expr name__(Expr a, Expr b) {                                        \
+    CHECK_EQ(a.type(), b.type())                                       \
+        << #name__ << "'s inputs type not equal, where a:" << a.type() \
+        << " but b:" << b.type();                                      \
+    return ir::Call::Make(                                             \
+        a->type(), #target__, {a, b}, {}, ir::CallType::Extern);       \
   }
 
 EXTERN_BINARY_CALL_IMP(Remainder, mod)
@@ -106,7 +117,9 @@ Expr Zero(const Type& type) { return ir::Zero(type); }
 Expr One(const Type& type) { return ir::One(type); }
 
 Expr FloorDivide(Expr a, Expr b) {
-  CHECK_EQ(a.type(), b.type()) << "FloorDivide's inputs type not equal, where a:" << a.type() << " but b:" << b.type();
+  CHECK_EQ(a.type(), b.type())
+      << "FloorDivide's inputs type not equal, where a:" << a.type()
+      << " but b:" << b.type();
   if (a.type().is_float()) {
     return Floor(a / b);
   } else if (a.type().is_uint()) {
@@ -114,8 +127,10 @@ Expr FloorDivide(Expr a, Expr b) {
   } else {
     auto div = a / b;
     auto mod = a % b;
-    auto ret = ir::Select::Make(
-        ir::EQ::Make(mod, common::make_const(a.type(), 0)), div, div - common::make_const(a.type(), 1));
+    auto ret =
+        ir::Select::Make(ir::EQ::Make(mod, common::make_const(a.type(), 0)),
+                         div,
+                         div - common::make_const(a.type(), 1));
     return ir::Select::Make((a > 0 && b > 0) || (a < 0 && b < 0), div, ret);
   }
 }
@@ -193,7 +208,7 @@ Expr Epsilon(const Type& type) {
 }
 
 Expr Abs(Expr e) {
-  Type type      = e->type();
+  Type type = e->type();
   Type bool_type = Bool(type.lanes());
   if (type.is_uint()) {
     return e;

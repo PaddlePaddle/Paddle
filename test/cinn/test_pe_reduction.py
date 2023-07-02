@@ -15,13 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import cinn
 import numpy as np
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn import Target
-from cinn import pe
+from cinn import Target, ir, lang, pe, runtime
 from cinn.common import *
 from cinn.poly import create_stages
 
@@ -39,7 +36,7 @@ class TestPEReduction(unittest.TestCase):
         self.reduction_data = []
 
     def test_reduction_0(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("sum", pe.reduce_sum, np.sum),
             ("prod", pe.reduce_prod, np.prod),
         ]:
@@ -47,7 +44,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [], True)
 
     def test_reduction_1(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("sum", pe.reduce_sum, np.sum),
             ("prod", pe.reduce_prod, np.prod),
         ]:
@@ -55,7 +52,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [], False)
 
     def test_reduction_2(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("sum", pe.reduce_sum, np.sum),
             ("prod", pe.reduce_prod, np.prod),
         ]:
@@ -63,7 +60,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [0], False)
 
     def test_reduction_3(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("sum", pe.reduce_sum, np.sum),
             ("prod", pe.reduce_prod, np.prod),
         ]:
@@ -71,7 +68,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [0], True)
 
     def test_reduction_4(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("sum", pe.reduce_sum, np.sum),
             ("prod", pe.reduce_prod, np.prod),
         ]:
@@ -79,7 +76,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [1], False)
 
     def test_reduction_5(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("sum", pe.reduce_sum, np.sum),
             ("prod", pe.reduce_prod, np.prod),
         ]:
@@ -87,7 +84,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [1], True)
 
     def test_reduction_6(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("max", pe.reduce_max, np.max),
             ("min", pe.reduce_min, np.min),
         ]:
@@ -95,7 +92,7 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [1], True)
 
     def test_reduction_7(self):
-        for (fn_name, pe_fn, np_fn) in [
+        for fn_name, pe_fn, np_fn in [
             ("max", pe.reduce_max, np.max),
             ("min", pe.reduce_min, np.min),
         ]:
@@ -103,10 +100,13 @@ class TestPEReduction(unittest.TestCase):
             self.reduction_tester(fn_name, pe_fn, np_fn, [1], False)
 
     def reduction_tester(self, fn_name, cinn_fn, np_fn, axes, keep_dims):
-        m, n = [ir.Expr(_) for _ in (
-            self.m,
-            self.n,
-        )]
+        m, n = [
+            ir.Expr(_)
+            for _ in (
+                self.m,
+                self.n,
+            )
+        ]
         x = lang.Placeholder("float32", "x", [m, n])
         func_name = "test_" + fn_name
         y = cinn_fn(x.to_tensor(), axes, keep_dims)
@@ -129,10 +129,11 @@ class TestPEReduction(unittest.TestCase):
             np.allclose(
                 out_buf.numpy(),
                 self.create_target_data(x_data, np_fn, axes, keep_dims),
-                atol=1e-4))
+                atol=1e-4,
+            )
+        )
 
     def create_target_data(self, x_data, np_target_fn, axes, keep_dims):
-
         axes_tuple = tuple(axes)
         if len(axes) == 0:
             axes_tuple = None
@@ -141,7 +142,8 @@ class TestPEReduction(unittest.TestCase):
     def create_data(self, axes, keep_dims):
         if not self.reduction_data:
             x_data = np.around(
-                np.random.randn(self.m, self.n).astype("float32"), 2)
+                np.random.randn(self.m, self.n).astype("float32"), 2
+            )
             x = runtime.cinn_buffer_t(x_data, runtime.cinn_x86_device)
             if keep_dims:
                 output_shape = [self.m, self.n]
@@ -165,11 +167,14 @@ class TestPEReduction(unittest.TestCase):
 
             out = runtime.cinn_buffer_t(
                 np.zeros(output_shape).astype("float32"),
-                runtime.cinn_x86_device)
+                runtime.cinn_x86_device,
+            )
             self.reduction_data = [
-                x_data, x, out,
+                x_data,
+                x,
+                out,
                 runtime.cinn_pod_value_t(x),
-                runtime.cinn_pod_value_t(out)
+                runtime.cinn_pod_value_t(out),
             ]
 
         return self.reduction_data

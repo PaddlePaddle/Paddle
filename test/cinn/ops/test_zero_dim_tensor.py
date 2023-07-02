@@ -15,12 +15,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
+
 import cinn
-from cinn.frontend import *
+import numpy as np
 from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
 def cinn_dtype_convert(dtype_str):
@@ -38,8 +40,9 @@ def cinn_dtype_convert(dtype_str):
 ####  TestElementwiseAddGrad  ####
 ##################################
 # 1) x is 0D, y is 0D
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestElementwiseAddGrad(OpTest):
     def setUp(self):
         np.random.seed(2023)
@@ -58,8 +61,9 @@ class TestElementwiseAddGrad(OpTest):
         out = paddle.add(x, y)
 
         self.paddle_outputs = [out]
-        self.paddle_grads = self.get_paddle_grads([out], [x, y],
-                                                  [self.inputs["dout"]])
+        self.paddle_grads = self.get_paddle_grads(
+            [out], [x, y], [self.inputs["dout"]]
+        )
 
     def build_cinn_program(self, target):
         builder = NetBuilder("add")
@@ -69,14 +73,18 @@ class TestElementwiseAddGrad(OpTest):
         out = builder.elementwise_add(x, y)
 
         dout = builder.create_input(
-            Float(32), self.inputs["dout"].shape, "dout")
+            Float(32), self.inputs["dout"].shape, "dout"
+        )
         x_grad, y_grad = builder.elementwise_add_grad(dout, x, y)
 
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, y, dout],
+            prog,
+            target,
+            [x, y, dout],
             [self.inputs["x"], self.inputs["y"], self.inputs["dout"]],
-            [out, x_grad, y_grad])
+            [out, x_grad, y_grad],
+        )
 
         out, x_grad, y_grad = res
         self.cinn_outputs = [out]
@@ -103,8 +111,9 @@ class TestElementwiseAddGrad1(TestElementwiseAddGrad):
 ##################################
 #### TestElementwiseBinaryOp  ####
 ##################################
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestElementwiseBinaryOp_0DTo0D(OpTest):
     def setUp(self):
         np.random.seed(2023)
@@ -137,14 +146,17 @@ class TestElementwiseBinaryOp_0DTo0D(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("binary_op")
         x = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x")
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
         y = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["y"].shape, "y")
+            cinn_dtype_convert(self.dtype), self.inputs["y"].shape, "y"
+        )
         out = self.cinn_func(builder, x, y)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.inputs["x"], self.inputs["y"]], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
 
         self.cinn_outputs = res
         self.assertEqual(res[0].shape, self.target_shape)
@@ -162,14 +174,12 @@ class TestElementwiseBinaryOp_NdTo0d(TestElementwiseBinaryOp_0DTo0D):
         self.target_shape = (3, 5)
 
 
-def create_unit_test(parent,
-                     test_name,
-                     fn_paddle,
-                     fn_cinn,
-                     dtype="float32",
-                     **kwargs):
-    @OpTestTool.skip_if(not is_compiled_with_cuda(),
-                        "x86 test will be skipped due to timeout.")
+def create_unit_test(
+    parent, test_name, fn_paddle, fn_cinn, dtype="float32", **kwargs
+):
+    @OpTestTool.skip_if(
+        not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+    )
     class TestClass(parent):
         def setUp(self):
             super().setUp()
@@ -191,227 +201,279 @@ def create_unit_test(parent,
 
 
 # NOTE: CINN only supports x's rank >= y's rank, hence no need to test scenario: x is 0D, y is ND
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "sub", paddle.subtract,
-                 "builder.subtract")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "sub", paddle.subtract,
-                 "builder.subtract")
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "mul1", paddle.multiply,
-                 "builder.multiply")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "mul1", paddle.multiply,
-                 "builder.multiply")
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "mul2", paddle.multiply,
-                 "builder.elementwise_mul")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "mul2", paddle.multiply,
-                 "builder.elementwise_mul")
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "div", paddle.divide,
-                 "builder.divide")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "div", paddle.divide,
-                 "builder.divide")
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "sub", paddle.subtract, "builder.subtract"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d, "sub", paddle.subtract, "builder.subtract"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "mul1", paddle.multiply, "builder.multiply"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d, "mul1", paddle.multiply, "builder.multiply"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D,
+    "mul2",
+    paddle.multiply,
+    "builder.elementwise_mul",
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d,
+    "mul2",
+    paddle.multiply,
+    "builder.elementwise_mul",
+)
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "div", paddle.divide, "builder.divide"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d, "div", paddle.divide, "builder.divide"
+)
 # # Paddle'atan2 only supports 0D + 0D -> 0D
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "atan2", paddle.atan2,
-                 "builder.atan2")
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "atan2", paddle.atan2, "builder.atan2"
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "floor_divide",
     paddle.floor_divide,
     "builder.floor_divide",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "floor_divide",
     paddle.floor_divide,
     "builder.floor_divide",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "mod",
     paddle.mod,
     "builder.mod",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "mod",
     paddle.mod,
     "builder.mod",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "remainder",
     paddle.remainder,
     "builder.remainder",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "remainder",
     paddle.remainder,
     "builder.remainder",
-    dtype="int64")
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "max", paddle.maximum,
-                 "builder.max")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "max", paddle.maximum,
-                 "builder.max")
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "min", paddle.minimum,
-                 "builder.min")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "min", paddle.minimum,
-                 "builder.min")
-create_unit_test(TestElementwiseBinaryOp_0DTo0D, "pow", paddle.pow,
-                 "builder.pow")
-create_unit_test(TestElementwiseBinaryOp_NdTo0d, "pow", paddle.pow,
-                 "builder.pow")
+    dtype="int64",
+)
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "max", paddle.maximum, "builder.max"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d, "max", paddle.maximum, "builder.max"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "min", paddle.minimum, "builder.min"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d, "min", paddle.minimum, "builder.min"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_0DTo0D, "pow", paddle.pow, "builder.pow"
+)
+create_unit_test(
+    TestElementwiseBinaryOp_NdTo0d, "pow", paddle.pow, "builder.pow"
+)
 
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "logical_and",
     paddle.logical_and,
     "builder.logical_and",
-    dtype="bool")
+    dtype="bool",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "logical_and",
     paddle.logical_and,
     "builder.logical_and",
-    dtype="bool")
+    dtype="bool",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "logical_or",
     paddle.logical_or,
     "builder.logical_or",
-    dtype="bool")
+    dtype="bool",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "logical_or",
     paddle.logical_or,
     "builder.logical_or",
-    dtype="bool")
+    dtype="bool",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "logical_xor",
     paddle.logical_xor,
     "builder.logical_xor",
-    dtype="bool")
+    dtype="bool",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "logical_xor",
     paddle.logical_xor,
     "builder.logical_xor",
-    dtype="bool")
+    dtype="bool",
+)
 
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "bitwise_and",
     paddle.bitwise_and,
     "builder.bitwise_and",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "bitwise_and",
     paddle.bitwise_and,
     "builder.bitwise_and",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "bitwise_or",
     paddle.bitwise_or,
     "builder.bitwise_or",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "bitwise_or",
     paddle.bitwise_or,
     "builder.bitwise_or",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "bitwise_xor",
     paddle.bitwise_xor,
     "builder.bitwise_xor",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "bitwise_xor",
     paddle.bitwise_xor,
     "builder.bitwise_xor",
-    dtype="int64")
+    dtype="int64",
+)
 
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "equal",
     paddle.equal,
     "builder.equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "equal",
     paddle.equal,
     "builder.equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "not_equal",
     paddle.not_equal,
     "builder.not_equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "not_equal",
     paddle.not_equal,
     "builder.not_equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "greater_than",
     paddle.greater_than,
     "builder.greater_than",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "greater_than",
     paddle.greater_than,
     "builder.greater_than",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "greater_equal",
     paddle.greater_equal,
     "builder.greater_equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "greater_equal",
     paddle.greater_equal,
     "builder.greater_equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "less_than",
     paddle.less_than,
     "builder.less_than",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "less_than",
     paddle.less_than,
     "builder.less_than",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_0DTo0D,
     "less_equal",
     paddle.less_equal,
     "builder.less_equal",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(
     TestElementwiseBinaryOp_NdTo0d,
     "less_equal",
     paddle.less_equal,
     "builder.less_equal",
-    dtype="int64")
+    dtype="int64",
+)
 
 
 ######################
 #### TestUnaryOp  ####
 ######################
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestUnaryOp(OpTest):
     def setUp(self):
         np.random.seed(2023)
@@ -442,12 +504,12 @@ class TestUnaryOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("unary_op")
         x = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x")
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
         out = self.cinn_func(builder, x)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
         self.assertEqual(res[0].shape, self.target_shape)
@@ -457,12 +519,11 @@ class TestUnaryOp(OpTest):
 
 
 create_unit_test(TestUnaryOp, "tanh", paddle.tanh, "builder.tanh")
-create_unit_test(TestUnaryOp, "relu", paddle.nn.functional.relu,
-                 "builder.relu")
-create_unit_test(TestUnaryOp, "gelu", paddle.nn.functional.gelu,
-                 "builder.gelu")
-create_unit_test(TestUnaryOp, "sigmoid", paddle.nn.functional.sigmoid,
-                 "builder.sigmoid")
+create_unit_test(TestUnaryOp, "relu", paddle.nn.functional.relu, "builder.relu")
+create_unit_test(TestUnaryOp, "gelu", paddle.nn.functional.gelu, "builder.gelu")
+create_unit_test(
+    TestUnaryOp, "sigmoid", paddle.nn.functional.sigmoid, "builder.sigmoid"
+)
 create_unit_test(TestUnaryOp, "exp", paddle.exp, "builder.exp")
 create_unit_test(TestUnaryOp, "erf", paddle.erf, "builder.erf")
 create_unit_test(TestUnaryOp, "rsqrt", paddle.rsqrt, "builder.rsqrt")
@@ -491,18 +552,21 @@ create_unit_test(
     "logical_not",
     paddle.logical_not,
     "builder.logical_not",
-    dtype="bool")
+    dtype="bool",
+)
 create_unit_test(
     TestUnaryOp,
     "bitwise_not",
     paddle.bitwise_not,
     "builder.bitwise_not",
-    dtype="int64")
+    dtype="int64",
+)
 create_unit_test(TestUnaryOp, "negative", paddle.neg, "builder.negative")
 create_unit_test(TestUnaryOp, "sign", paddle.sign, "builder.sign")
 create_unit_test(TestUnaryOp, "abs", paddle.abs, "builder.abs")
-create_unit_test(TestUnaryOp, "reciprocal", paddle.reciprocal,
-                 "builder.reciprocal")
+create_unit_test(
+    TestUnaryOp, "reciprocal", paddle.reciprocal, "builder.reciprocal"
+)
 
 
 # acosh requires input value > 1.0, specific init_input instead of using create_unit_test
@@ -523,8 +587,9 @@ class TestUnaryOp_acosh(TestUnaryOp):
 #######################
 #### TestSundryOp  ####
 #######################
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestScaleOp(OpTest):
     def setUp(self):
         np.random.seed(2023)
@@ -546,12 +611,12 @@ class TestScaleOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("reduce_op")
         x = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x")
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
         out = builder.scale(x, 2.0, 1.0)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
         self.assertEqual(res[0].shape, self.target_shape)
@@ -560,8 +625,9 @@ class TestScaleOp(OpTest):
         self.check_outputs_and_grads()
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestSumOp(OpTest):
     def setUp(self):
         np.random.seed(2023)
@@ -585,14 +651,17 @@ class TestSumOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("reduce_op")
         x = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x")
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
         y = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["y"].shape, "y")
+            cinn_dtype_convert(self.dtype), self.inputs["y"].shape, "y"
+        )
         out = builder.sum([x, y])
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.inputs["x"], self.inputs["y"]], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
 
         self.cinn_outputs = res
         self.assertEqual(res[0].shape, self.target_shape)
@@ -601,8 +670,9 @@ class TestSumOp(OpTest):
         self.check_outputs_and_grads()
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestDropoutOp(OpTest):
     def setUp(self):
         np.random.seed(2023)
@@ -624,12 +694,12 @@ class TestDropoutOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("reduce_op")
         x = builder.create_input(
-            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x")
+            cinn_dtype_convert(self.dtype), self.inputs["x"].shape, "x"
+        )
         out = builder.dropout_infer(x, 1.0)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
         self.assertEqual(res[0].shape, self.target_shape)

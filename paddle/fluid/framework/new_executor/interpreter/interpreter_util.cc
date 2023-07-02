@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/ir/dialect/pd_dialect.h"
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
+#include "paddle/fluid/ir/interface/op_yaml_info_parser.h"
 #include "paddle/fluid/ir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
@@ -951,32 +952,33 @@ void BuildOpFuncList(
     auto attr_map = (*it)->attributes();
 
     auto op_name = attr_map.at("op_name").dyn_cast<::ir::StrAttribute>().data();
+    op_func_node.phi_op_name_ = op_name;
 
     if (op_name == "builtin.combine" || op_name == "pd.feed") {
       VLOG(6) << "skip process " << op_name;
       continue;
     }
 
-    op_func_node.phi_op_name_ = op_name;
-
     ::ir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
 
     auto impl =
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-    auto yaml_info = impl->get_op_info_();
-
-    auto attr_info = std::get<1>(yaml_info);
 
     op_func_node.infer_meta_interface_ =
         op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
 
     VLOG(6) << "op name" << op_func_node.phi_op_name_;
-
-    ::ir::BuildInferMetaContext((*it),
-                                value_2_name_map,
-                                scope,
-                                yaml_info,
-                                &(op_func_node.infer_meta_context_));
+    dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
+    ::ir::BuildPhiContext<
+        phi::InferMetaContext,
+        phi::MetaTensor,
+        phi::MetaTensor,
+        paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
+        false>((*it),
+               value_2_name_map,
+               scope,
+               op_yaml_info_parser,
+               &(op_func_node.infer_meta_context_));
 
     auto kernel_name =
         attr_map.at("kernel_name").dyn_cast<ir::StrAttribute>().data();
@@ -993,10 +995,14 @@ void BuildOpFuncList(
                       true,
                       "not found kernel for [%s]",
                       kernel_name);
-    ::ir::BuildPhiKernelContext((*it),
+    ::ir::BuildPhiContext<phi::KernelContext,
+                          const phi::TensorBase*,
+                          phi::TensorBase*,
+                          paddle::small_vector<const phi::TensorBase*>,
+                          true>((*it),
                                 value_2_name_map,
                                 scope,
-                                yaml_info,
+                                op_yaml_info_parser,
                                 &(op_func_node.kernel_context_),
                                 &(op_func_node.input_index),
                                 &(op_func_node.output_index));

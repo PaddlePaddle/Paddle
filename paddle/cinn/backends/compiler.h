@@ -73,11 +73,13 @@ class Compiler final {
   void* Lookup(absl::string_view fn_name);
 
  private:
-  void CompileCudaModule(const ir::Module& module, const std::string& code = "");
+  void CompileCudaModule(const ir::Module& module,
+                         const std::string& code = "");
 
   void CompileX86Module(const ir::Module& module);
 
-  explicit Compiler(const Target& target) : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}
+  explicit Compiler(const Target& target)
+      : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}
 
   CINN_DISALLOW_COPY_AND_ASSIGN(Compiler);
 

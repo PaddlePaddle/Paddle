@@ -11,18 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/phi/core/compat/op_utils.h"
+
+#pragma once
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-KernelSignature CumsumOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("cumsum_grad",
-                         {"X", "Out@GRAD"},
-                         {"axis", "flatten", "exclusive", "reverse"},
-                         {"X@GRAD"});
-}
+template <typename T, typename Context>
+void FusedRopeGradKernel(const Context& dev_ctx,
+                         const DenseTensor& dout_q,
+                         const paddle::optional<DenseTensor>& dout_k,
+                         const paddle::optional<DenseTensor>& dout_v,
+                         DenseTensor* dq,
+                         DenseTensor* dk,
+                         DenseTensor* dv);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(cumsum_grad, phi::CumsumOpArgumentMapping);

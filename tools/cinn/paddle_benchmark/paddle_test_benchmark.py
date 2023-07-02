@@ -14,10 +14,11 @@
 
 import argparse
 import time
+
 import numpy as np
-from paddle.fluid.core import AnalysisConfig
-from paddle.fluid.core import create_paddle_predictor
+
 import paddle.inference as paddle_infer
+from paddle.fluid.core import AnalysisConfig, create_paddle_predictor
 
 
 def main():
@@ -62,8 +63,9 @@ def parse_args():
 
 
 def set_config(args):
-    config = AnalysisConfig(args.model_dir + '/__model__',
-                            args.model_dir + '/params')
+    config = AnalysisConfig(
+        args.model_dir + '/__model__', args.model_dir + '/params'
+    )
     config.enable_profile()
     config.enable_use_gpu(1000, 1)
     # Enable TensorRT
@@ -73,13 +75,14 @@ def set_config(args):
         min_subgraph_size=3,
         precision_mode=paddle_infer.PrecisionType.Float32,
         use_static=False,
-        use_calib_mode=False)
+        use_calib_mode=False,
+    )
     config.enable_memory_optim()
     config.gpu_device_id()
     config.switch_use_feed_fetch_ops(False)
     config.switch_specify_input_names(True)
     config.switch_ir_optim(True)
-    #To test cpu backend, just uncomment the following 2 lines.
+    # To test cpu backend, just uncomment the following 2 lines.
     # config.switch_ir_optim(True)
     # config.disable_gpu()
     # config.enable_mkldnn()

@@ -20,7 +20,8 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void RollOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void RollOpMapper(const paddle::cpp::OpDesc& op_desc,
+                  const OpMapperContext& ctx) {
   // input
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
@@ -31,27 +32,31 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   // attr shifts and axis
   CHECK(op_desc.HasAttr("shifts"));
   CHECK(op_desc.HasAttr("axis"));
-  std::vector<int> shifts = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shifts", {1}));
-  std::vector<int> axis   = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "axis", {}));
+  std::vector<int> shifts = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shifts", {1}));
+  std::vector<int> axis = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "axis", {}));
 
-  auto x                        = ctx.GetVar(x_name);
-  auto vec_x_dims               = std::vector<int>(x->shape);
+  auto x = ctx.GetVar(x_name);
+  auto vec_x_dims = std::vector<int>(x->shape);
   std::vector<int> output_shape = vec_x_dims;
 
   // check axis and shifts and when axis is None, we should flatten x.
   bool axis_None = false;
   if (axis.size() == 0) {
-    CHECK_EQ(shifts.size(), 1) << "shifts.size() should be equal to 1 when axis is None";
+    CHECK_EQ(shifts.size(), 1)
+        << "shifts.size() should be equal to 1 when axis is None";
     axis.push_back(0);
-    axis_None       = true;
+    axis_None = true;
     int reshape_num = 1;
     for (int i = 0; i < vec_x_dims.size(); ++i) {
       reshape_num *= vec_x_dims[i];
     }
     vec_x_dims = std::vector<int>{reshape_num};
-    x          = ctx.Builder()->Reshape(x, vec_x_dims);
+    x = ctx.Builder()->Reshape(x, vec_x_dims);
   } else {
-    CHECK_EQ(shifts.size(), axis.size()) << "shifts.size() should be equal to axis.size()";
+    CHECK_EQ(shifts.size(), axis.size())
+        << "shifts.size() should be equal to axis.size()";
   }
 
   // preprocessing the shifts and axis
@@ -59,8 +64,10 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   std::unordered_map<int, int> axis_to_shifts;
   for (int i = 0; i < shifts_size; ++i) {
     int vec_x_dims_size = vec_x_dims.size();
-    CHECK_GE(axis[i], -vec_x_dims_size) << "axis value should be >= " << -vec_x_dims_size;
-    CHECK_LT(axis[i], vec_x_dims_size) << "axis value should be < " << vec_x_dims_size;
+    CHECK_GE(axis[i], -vec_x_dims_size)
+        << "axis value should be >= " << -vec_x_dims_size;
+    CHECK_LT(axis[i], vec_x_dims_size)
+        << "axis value should be < " << vec_x_dims_size;
     if (axis[i] < 0) {
       axis[i] += vec_x_dims_size;
     }
@@ -80,11 +87,13 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx
   // use Split + Concat for each shift
   for (const auto& pair : axis_to_shifts) {
     if (pair.second > 0) {
-      int length        = vec_x_dims[pair.first];
-      auto front_slice  = ctx.Builder()->Slice(output, {pair.first}, {0}, {length - pair.second});
-      auto behind_slice = ctx.Builder()->Slice(output, {pair.first}, {length - pair.second}, {length});
+      int length = vec_x_dims[pair.first];
+      auto front_slice = ctx.Builder()->Slice(
+          output, {pair.first}, {0}, {length - pair.second});
+      auto behind_slice = ctx.Builder()->Slice(
+          output, {pair.first}, {length - pair.second}, {length});
       auto split_output = std::vector<Variable>{behind_slice, front_slice};
-      output            = ctx.Builder()->Concat(split_output, pair.first);
+      output = ctx.Builder()->Concat(split_output, pair.first);
     }
   }
 

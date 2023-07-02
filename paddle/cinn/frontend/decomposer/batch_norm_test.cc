@@ -26,7 +26,8 @@ struct Offset {
   int h;
   int w;
 
-  Offset(int arg_n, int arg_c, int arg_h, int arg_w) : n(arg_n), c(arg_c), h(arg_h), w(arg_w) {}
+  Offset(int arg_n, int arg_c, int arg_h, int arg_w)
+      : n(arg_n), c(arg_c), h(arg_h), w(arg_w) {}
 
   int operator()(int idx_n, int idx_c, int idx_h, int idx_w) const {
     return idx_n * c * h * w + idx_c * h * w + idx_h * w + idx_w;
@@ -67,7 +68,9 @@ void ComputeBatchNormTrainRef(const std::vector<T>& x,
 
   // sum
   memset(saved_mean->data(), 0, sizeof(T) * c);
-  auto func_sum_x = [=](int in, int ic, int ih, int iw) { saved_mean->at(ic) += x[offset(in, ic, ih, iw)]; };
+  auto func_sum_x = [=](int in, int ic, int ih, int iw) {
+    saved_mean->at(ic) += x[offset(in, ic, ih, iw)];
+  };
   Loop(func_sum_x, n, c, h, w);
 
   // saved mean
@@ -75,14 +78,16 @@ void ComputeBatchNormTrainRef(const std::vector<T>& x,
   for (int ic = 0; ic < c; ++ic) {
     // Checking result of saved_mean:
     // output[saved_mean], var_name=var_5, shape={32}
-    // - Total 0 different results, offset=0, 0.00527001 vs 0.00527001, maximum_relative_diff=0(absolute_diff=0)
+    // - Total 0 different results, offset=0, 0.00527001 vs 0.00527001,
+    // maximum_relative_diff=0(absolute_diff=0)
     saved_mean->at(ic) /= element_count;
   }
 
   // square_sum
   std::vector<float> x_square_mean(c, 0);
   auto func_sum_square_x = [&](int in, int ic, int ih, int iw) {
-    x_square_mean.at(ic) += x[offset(in, ic, ih, iw)] * x[offset(in, ic, ih, iw)];
+    x_square_mean.at(ic) +=
+        x[offset(in, ic, ih, iw)] * x[offset(in, ic, ih, iw)];
   };
   Loop(func_sum_square_x, n, c, h, w);
 
@@ -95,11 +100,14 @@ void ComputeBatchNormTrainRef(const std::vector<T>& x,
   for (int ic = 0; ic < c; ++ic) {
     // Checking results of saved_variance and std_variance:
     // output[saved_variance], var_name=var_6, shape={32}
-    // - Total 0 different results, offset=0, 0.336347 vs 0.336347, maximum_relative_diff=0(absolute_diff=0)
-    // output[std_variance], var_name=std_variance, shape={32}
-    // - Total 0 different results, offset=0, 0.579963 vs 0.579963, maximum_relative_diff=0(absolute_diff=0)
-    saved_variance->at(ic) = x_square_mean[ic] - (saved_mean->at(ic) * saved_mean->at(ic));
-    std_variance[ic]       = sqrt(saved_variance->at(ic) + epsilon);
+    // - Total 0 different results, offset=0, 0.336347 vs 0.336347,
+    // maximum_relative_diff=0(absolute_diff=0) output[std_variance],
+    // var_name=std_variance, shape={32}
+    // - Total 0 different results, offset=0, 0.579963 vs 0.579963,
+    // maximum_relative_diff=0(absolute_diff=0)
+    saved_variance->at(ic) =
+        x_square_mean[ic] - (saved_mean->at(ic) * saved_mean->at(ic));
+    std_variance[ic] = sqrt(saved_variance->at(ic) + epsilon);
   }
 
   // compute output
@@ -110,7 +118,8 @@ void ComputeBatchNormTrainRef(const std::vector<T>& x,
     // output[y_nobias], var_name=y_nobias, shape={16, 32, 16, 16}
     // - Total 0 different results, offset=32104, -0.000488288 vs -0.000488288,
     // maximum_relative_diff=1.19208e-07(absolute_diff=5.82077e-11)
-    y_nobias[idx] = (x[idx] - saved_mean->at(ic)) * scale[ic] / std_variance[ic];
+    y_nobias[idx] =
+        (x[idx] - saved_mean->at(ic)) * scale[ic] / std_variance[ic];
   };
   Loop(func_y_nobias, n, c, h, w);
 
@@ -119,10 +128,13 @@ void ComputeBatchNormTrainRef(const std::vector<T>& x,
     // Checking result of y:
     // output[y], var_name=var_4, shape={16, 32, 16, 16}
     // - Total 80 different results, offset=126409, 1.81794e-06 vs 1.80304e-06,
-    // maximum_relative_diff=0.00826446(absolute_diff=1.49012e-08) For the following case:
-    //   idx=126409, y[idx]=1.80304e-06, y_nobias[idx]=0.2033332, bias[ic]=-0.2033314
+    // maximum_relative_diff=0.00826446(absolute_diff=1.49012e-08) For the
+    // following case:
+    //   idx=126409, y[idx]=1.80304e-06, y_nobias[idx]=0.2033332,
+    //   bias[ic]=-0.2033314
     // The computing result of CPU and GPU may have some difference, like
-    //   i=126409, 1.8179417e-06 vs 1.8030405e-06, relative_diff=0.0082644625, absolute_diff=1.4901161e-08
+    //   i=126409, 1.8179417e-06 vs 1.8030405e-06, relative_diff=0.0082644625,
+    //   absolute_diff=1.4901161e-08
     // This case is considered reasonable.
     y->at(idx) = y_nobias[idx] + bias[ic];
   };
@@ -135,32 +147,42 @@ void ComputeBatchNormTrainRef(const std::vector<T>& x,
     // Checking result of new_moving_mean and new_moving_variance:
     // output[new_moving_mean], var_name=var_7, shape={32}
     // - Total 0 different results, offset=9, 0.00123065 vs 0.00123065,
-    // maximum_relative_diff=9.45967e-08(absolute_diff=1.16415e-10) output[new_moving_variance], var_name=var_8,
-    // shape={32}
+    // maximum_relative_diff=9.45967e-08(absolute_diff=1.16415e-10)
+    // output[new_moving_variance], var_name=var_8, shape={32}
     // - Total 0 different results, offset=16, -0.00140787 vs -0.00140787,
     // maximum_relative_diff=5.29211e-06(absolute_diff=7.45058e-09)
-    new_moving_mean->at(ic)     = moving_mean[ic] * factor_0 + saved_mean->at(ic) * factor_1;
-    new_moving_variance->at(ic) = moving_variance[ic] * factor_0 + saved_variance->at(ic) * factor_1;
+    new_moving_mean->at(ic) =
+        moving_mean[ic] * factor_0 + saved_mean->at(ic) * factor_1;
+    new_moving_variance->at(ic) =
+        moving_variance[ic] * factor_0 + saved_variance->at(ic) * factor_1;
   }
 }
 
 TEST(Decomposer, BatchNormTrain) {
   int n = 16, c = 128, h = 14, w = 14;
-  float epsilon           = 1e-5;
-  float momentum          = 0.9f;
+  float epsilon = 1e-5;
+  float momentum = 0.9f;
   std::string data_layout = "NCHW";
-  bool is_test            = false;
+  bool is_test = false;
   NetBuilder net_builder("batch_norm_train");
   std::vector<std::string> output_names;
   {
-    auto x               = net_builder.CreateInput(Float(32), {n, c, h, w}, "x");
-    auto scale           = net_builder.CreateInput(Float(32), {c}, "scale");
-    auto bias            = net_builder.CreateInput(Float(32), {c}, "bias");
-    auto moving_mean     = net_builder.CreateInput(Float(32), {c}, "moving_mean");
-    auto moving_variance = net_builder.CreateInput(Float(32), {c}, "moving_variance");
+    auto x = net_builder.CreateInput(Float(32), {n, c, h, w}, "x");
+    auto scale = net_builder.CreateInput(Float(32), {c}, "scale");
+    auto bias = net_builder.CreateInput(Float(32), {c}, "bias");
+    auto moving_mean = net_builder.CreateInput(Float(32), {c}, "moving_mean");
+    auto moving_variance =
+        net_builder.CreateInput(Float(32), {c}, "moving_variance");
 
-    auto outputs =
-        net_builder.BatchNorm(x, scale, bias, moving_mean, moving_variance, epsilon, momentum, data_layout, is_test);
+    auto outputs = net_builder.BatchNorm(x,
+                                         scale,
+                                         bias,
+                                         moving_mean,
+                                         moving_variance,
+                                         epsilon,
+                                         momentum,
+                                         data_layout,
+                                         is_test);
     for (auto output : outputs) {
       output_names.push_back(output->id);
     }
@@ -168,7 +190,10 @@ TEST(Decomposer, BatchNormTrain) {
   auto program = net_builder.Build();
 
   auto target = common::DefaultTarget();
-  RunDecomposer(&program, target, cinn::frontend::DefaultTrainingOptimizeOptions().program_passes, output_names);
+  RunDecomposer(&program,
+                target,
+                cinn::frontend::DefaultTrainingOptimizeOptions().program_passes,
+                output_names);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
@@ -180,14 +205,16 @@ TEST(Decomposer, BatchNormTrain) {
 
   // set input
   float precision = 1e-3;
-  std::vector<float> x(n * c * h * w), scale(c), bias(c), moving_mean(c), moving_variance(c);
+  std::vector<float> x(n * c * h * w), scale(c), bias(c), moving_mean(c),
+      moving_variance(c);
   InitRandomVector<float>(&x, n * c * h * w, 0.0f, 1.0f, precision);
   InitRandomVector<float>(&scale, c, 0.0f, 1.0f, precision);
   InitRandomVector<float>(&bias, c, 10.0f, 20.0f, precision);
   InitRandomVector<float>(&moving_mean, c, 0.0f, 1.0f, precision);
   InitRandomVector<float>(&moving_variance, c, 0.0f, 1.0f, precision);
 
-  std::vector<float> y(n * c * h * w), new_moving_mean(c), new_moving_variance(c), saved_mean(c), saved_variance(c);
+  std::vector<float> y(n * c * h * w), new_moving_mean(c),
+      new_moving_variance(c), saved_mean(c), saved_variance(c);
   ComputeBatchNormTrainRef<float>(x,
                                   scale,
                                   bias,
@@ -206,21 +233,26 @@ TEST(Decomposer, BatchNormTrain) {
                                   momentum);
 
   std::vector<std::pair<std::string, std::vector<float>>> inputs = {
-      {"x", x}, {"scale", scale}, {"bias", bias}, {"moving_mean", moving_mean}, {"moving_variance", moving_variance}};
+      {"x", x},
+      {"scale", scale},
+      {"bias", bias},
+      {"moving_mean", moving_mean},
+      {"moving_variance", moving_variance}};
   for (auto& input : inputs) {
     scope->Var<hlir::framework::Tensor>(input.first);
     auto tensor = scope->GetTensor(input.first);
-    auto* data  = tensor->mutable_data<float>(target);
+    auto* data = tensor->mutable_data<float>(target);
     CopyFromVector(input.second, tensor, target);
   }
   run_program->Execute();
 
-  std::unordered_map<std::string, std::pair<std::string, std::vector<float>>> outputs_ref = {
-      {"new_moving_variance", {output_names[4], new_moving_variance}},
-      {"new_moving_mean", {output_names[3], new_moving_mean}},
-      {"saved_variance", {output_names[2], saved_variance}},
-      {"saved_mean", {output_names[1], saved_mean}},
-      {"y", {output_names[0], y}}};
+  std::unordered_map<std::string, std::pair<std::string, std::vector<float>>>
+      outputs_ref = {
+          {"new_moving_variance", {output_names[4], new_moving_variance}},
+          {"new_moving_mean", {output_names[3], new_moving_mean}},
+          {"saved_variance", {output_names[2], saved_variance}},
+          {"saved_mean", {output_names[1], saved_mean}},
+          {"y", {output_names[0], y}}};
 
   for (auto& iter : outputs_ref) {
     auto output = iter.second;
@@ -228,7 +260,8 @@ TEST(Decomposer, BatchNormTrain) {
     std::vector<float> data(tensor->shape().numel());
     CopyToVector(tensor, &data);
 
-    LOG(INFO) << "output[" << iter.first << "], var_name=" << output.first << ", shape=" << tensor->shape().data();
+    LOG(INFO) << "output[" << iter.first << "], var_name=" << output.first
+              << ", shape=" << tensor->shape().data();
     CheckOutput<float>(data, output.second, 1e-8, 1e-4);
   }
 }
@@ -251,7 +284,9 @@ void ComputeBatchNormGradRef(const std::vector<T>& y_grad,
 
   // bias_grad
   memset(bias_grad->data(), 0, sizeof(T) * c);
-  auto func_bias_grad = [=](int in, int ic, int ih, int iw) { bias_grad->at(ic) += y_grad[offset(in, ic, ih, iw)]; };
+  auto func_bias_grad = [=](int in, int ic, int ih, int iw) {
+    bias_grad->at(ic) += y_grad[offset(in, ic, ih, iw)];
+  };
   Loop(func_bias_grad, n, c, h, w);
 
   // std_variance
@@ -274,7 +309,7 @@ void ComputeBatchNormGradRef(const std::vector<T>& y_grad,
   // std_norm_grad
   std::vector<T> std_norm_grad(n * c * h * w);
   auto func_std_norm_grad = [&](int in, int ic, int ih, int iw) {
-    int idx            = offset(in, ic, ih, iw);
+    int idx = offset(in, ic, ih, iw);
     std_norm_grad[idx] = y_grad[idx] * scale[ic];
   };
   Loop(func_std_norm_grad, n, c, h, w);
@@ -282,7 +317,7 @@ void ComputeBatchNormGradRef(const std::vector<T>& y_grad,
   // x_mean_diff_grad
   std::vector<T> x_mean_diff_grad(n * c * h * w);
   auto func_x_mean_diff_grad = [&](int in, int ic, int ih, int iw) {
-    int idx               = offset(in, ic, ih, iw);
+    int idx = offset(in, ic, ih, iw);
     x_mean_diff_grad[idx] = std_norm_grad[idx] / std_variance[ic];
   };
   Loop(func_x_mean_diff_grad, n, c, h, w);
@@ -291,7 +326,9 @@ void ComputeBatchNormGradRef(const std::vector<T>& y_grad,
   std::vector<T> std_variance_grad(c, 0);
   auto func_std_variance_grad = [&](int in, int ic, int ih, int iw) {
     int idx = offset(in, ic, ih, iw);
-    std_variance_grad[ic] += -1.0f * std_norm_grad[idx] * (x[idx] - save_mean[ic]) / (save_variance[ic] + epsilon);
+    std_variance_grad[ic] += -1.0f * std_norm_grad[idx] *
+                             (x[idx] - save_mean[ic]) /
+                             (save_variance[ic] + epsilon);
   };
   Loop(func_std_variance_grad, n, c, h, w);
 
@@ -305,7 +342,7 @@ void ComputeBatchNormGradRef(const std::vector<T>& y_grad,
   float element_count = static_cast<float>(n * h * w);
   std::vector<T> x_grad_0(n * c * h * w);
   auto func_x_grad_0 = [&](int in, int ic, int ih, int iw) {
-    int idx       = offset(in, ic, ih, iw);
+    int idx = offset(in, ic, ih, iw);
     x_grad_0[idx] = x[idx] * (variance_grad_without_mul[ic] / element_count);
   };
   Loop(func_x_grad_0, n, c, h, w);
@@ -322,26 +359,29 @@ void ComputeBatchNormGradRef(const std::vector<T>& y_grad,
   }
 
   auto func_x_grad = [=](int in, int ic, int ih, int iw) {
-    int idx         = offset(in, ic, ih, iw);
-    x_grad->at(idx) = x_mean_diff_grad[idx] + x_grad_0[idx] - minus_mean_grad[ic];
+    int idx = offset(in, ic, ih, iw);
+    x_grad->at(idx) =
+        x_mean_diff_grad[idx] + x_grad_0[idx] - minus_mean_grad[ic];
   };
   Loop(func_x_grad, n, c, h, w);
 }
 
 TEST(Decomposer, BatchNormGrad) {
   int n = 16, c = 128, h = 14, w = 14;
-  int num       = n * c * h * w;
+  int num = n * c * h * w;
   float epsilon = 1e-5;
   NetBuilder net_builder("batch_norm_grad");
   std::vector<std::string> output_names;
   {
-    auto y_grad         = net_builder.CreateInput(Float(32), {n, c, h, w}, "y_grad");
-    auto x              = net_builder.CreateInput(Float(32), {n, c, h, w}, "x");
-    auto scale          = net_builder.CreateInput(Float(32), {c}, "scale");
-    auto saved_mean     = net_builder.CreateInput(Float(32), {c}, "saved_mean");
-    auto saved_variance = net_builder.CreateInput(Float(32), {c}, "saved_variance");
+    auto y_grad = net_builder.CreateInput(Float(32), {n, c, h, w}, "y_grad");
+    auto x = net_builder.CreateInput(Float(32), {n, c, h, w}, "x");
+    auto scale = net_builder.CreateInput(Float(32), {c}, "scale");
+    auto saved_mean = net_builder.CreateInput(Float(32), {c}, "saved_mean");
+    auto saved_variance =
+        net_builder.CreateInput(Float(32), {c}, "saved_variance");
 
-    auto outputs = net_builder.BatchNormGrad(y_grad, x, scale, saved_mean, saved_variance, epsilon);
+    auto outputs = net_builder.BatchNormGrad(
+        y_grad, x, scale, saved_mean, saved_variance, epsilon);
     for (auto output : outputs) {
       output_names.push_back(output->id);
     }
@@ -349,7 +389,10 @@ TEST(Decomposer, BatchNormGrad) {
   auto program = net_builder.Build();
 
   auto target = common::DefaultTarget();
-  RunDecomposer(&program, target, cinn::frontend::DefaultTrainingOptimizeOptions().program_passes, output_names);
+  RunDecomposer(&program,
+                target,
+                cinn::frontend::DefaultTrainingOptimizeOptions().program_passes,
+                output_names);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
@@ -361,7 +404,8 @@ TEST(Decomposer, BatchNormGrad) {
 
   // set input
   float precision = 1e-3;
-  std::vector<float> y_grad(num), x(num), scale(c), saved_mean(c, 0), saved_variance(c, 0);
+  std::vector<float> y_grad(num), x(num), scale(c), saved_mean(c, 0),
+      saved_variance(c, 0);
   InitRandomVector(&y_grad, num, 0.0f, 1.0f, precision);
   InitRandomVector(&x, num, 0.0f, 1.0f, precision);
   InitRandomVector(&scale, c, 0.0f, 1.0f, precision);
@@ -376,11 +420,16 @@ TEST(Decomposer, BatchNormGrad) {
   float element_count = static_cast<float>(n * h * w);
   for (int ic = 0; ic < c; ++ic) {
     saved_mean[ic] /= element_count;
-    saved_variance[ic] = saved_variance[ic] / element_count - saved_mean[ic] * saved_mean[ic];
+    saved_variance[ic] =
+        saved_variance[ic] / element_count - saved_mean[ic] * saved_mean[ic];
   }
 
   std::vector<std::pair<std::string, std::vector<float>>> inputs = {
-      {"y_grad", y_grad}, {"x", x}, {"scale", scale}, {"saved_mean", saved_mean}, {"saved_variance", saved_variance}};
+      {"y_grad", y_grad},
+      {"x", x},
+      {"scale", scale},
+      {"saved_mean", saved_mean},
+      {"saved_variance", saved_variance}};
   for (auto& input : inputs) {
     scope->Var<hlir::framework::Tensor>(input.first);
     auto tensor = scope->GetTensor(input.first);
@@ -389,13 +438,24 @@ TEST(Decomposer, BatchNormGrad) {
   run_program->Execute();
 
   std::vector<float> x_grad(num), scale_grad(c), bias_grad(c);
-  ComputeBatchNormGradRef(
-      y_grad, x, scale, saved_mean, saved_variance, n, c, h, w, &x_grad, &scale_grad, &bias_grad, epsilon);
+  ComputeBatchNormGradRef(y_grad,
+                          x,
+                          scale,
+                          saved_mean,
+                          saved_variance,
+                          n,
+                          c,
+                          h,
+                          w,
+                          &x_grad,
+                          &scale_grad,
+                          &bias_grad,
+                          epsilon);
 
-  std::unordered_map<std::string, std::pair<std::string, std::vector<float>>> output_refs = {
-      {"bias_grad", {output_names[2], bias_grad}},
-      {"scale_grad", {output_names[1], scale_grad}},
-      {"x_grad", {output_names[0], x_grad}}};
+  std::unordered_map<std::string, std::pair<std::string, std::vector<float>>>
+      output_refs = {{"bias_grad", {output_names[2], bias_grad}},
+                     {"scale_grad", {output_names[1], scale_grad}},
+                     {"x_grad", {output_names[0], x_grad}}};
 
   for (auto& iter : output_refs) {
     auto output = iter.second;
@@ -403,7 +463,8 @@ TEST(Decomposer, BatchNormGrad) {
     std::vector<float> data(tensor->shape().numel());
     CopyToVector(tensor, &data);
 
-    LOG(INFO) << "output[" << iter.first << "], var_name=" << output.first << ", shape=" << tensor->shape().data();
+    LOG(INFO) << "output[" << iter.first << "], var_name=" << output.first
+              << ", shape=" << tensor->shape().data();
     if (iter.first == "x_grad") {
       // TODO(Xreki): fix the precision check of x_grad.
       // CheckOutput<float>(data, output.second, 1e-8, 1e-1);

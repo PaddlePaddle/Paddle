@@ -26,7 +26,8 @@ std::unique_ptr<Schedule> NaiveScheduler::BuildSchedule() {
   for (auto &group : groups_) {
     std::vector<Stage *> status;
     CHECK_EQ(group.nodes.size(), 1UL);
-    NaiveGroupScheduler scheduler(const_cast<Stage *>(group.nodes.front()->stage));
+    NaiveGroupScheduler scheduler(
+        const_cast<Stage *>(group.nodes.front()->stage));
     scheduler.Build();
   }
 
@@ -38,7 +39,7 @@ std::unique_ptr<Schedule> NaiveScheduler::BuildSchedule() {
 
 void NaiveScheduler::PartitionGroups() {
   // treat each node as a unique group, collect the groups in topological order.
-  auto topo_order      = schedule_graph_.topological_order();  // NOLINT
+  auto topo_order = schedule_graph_.topological_order();  // NOLINT
   auto &nodes_in_order = std::get<0>(topo_order);
   auto &edges_in_order = std::get<1>(topo_order);
 

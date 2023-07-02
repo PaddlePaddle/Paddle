@@ -42,7 +42,8 @@ TEST(TransIdentityExtentToContextId, basic) {
   LOG(INFO) << new_set;
 
   ASSERT_EQ(utils::GetStreamCnt(new_set),
-            "[_const_0] -> { s[i, j, k] : _const_0 <= 1 and 0 <= i <= 11 and 0 <= j <= _const_0 and 13 <= k <= 31 }");
+            "[_const_0] -> { s[i, j, k] : _const_0 <= 1 and 0 <= i <= 11 and 0 "
+            "<= j <= _const_0 and 13 <= k <= 31 }");
 }
 
 TEST(TransIdentityExtentToContextId, basic1) {
@@ -69,18 +70,24 @@ TEST(AstGen_Build, not_delete_length1_loop) {
           len1_shape[i] = Expr(1);
         }
       }
-      LOG(INFO) << "index_length1 hint = " << index_length1[0] << index_length1[1] << index_length1[2]
-                << index_length1[3];
+      LOG(INFO) << "index_length1 hint = " << index_length1[0]
+                << index_length1[1] << index_length1[2] << index_length1[3];
       Placeholder<float> A("A", len1_shape);
       Tensor B = lang::Compute(
-          len1_shape, [&](const std::vector<Expr>& indice) { return lang::Relu(A(indice), 0); }, "relu_test");
+          len1_shape,
+          [&](const std::vector<Expr>& indice) {
+            return lang::Relu(A(indice), 0);
+          },
+          "relu_test");
 
       StageMap stage_map = CreateStages({B});
       std::vector<cinn::poly::Stage*> stages;
       stages.push_back(stage_map[B]);
 
-      std::unique_ptr<Schedule> schedule =
-          poly::CreateSchedule(stages, poly::ScheduleKind::Poly, std::vector<std::pair<std::string, std::string>>());
+      std::unique_ptr<Schedule> schedule = poly::CreateSchedule(
+          stages,
+          poly::ScheduleKind::Poly,
+          std::vector<std::pair<std::string, std::string>>());
 
       for (auto& group : schedule->groups) {
         isl::set context(Context::isl_ctx(), "{:}");
@@ -94,8 +101,8 @@ TEST(AstGen_Build, not_delete_length1_loop) {
 
         std::stringstream ss;
         ss << e;
-        std::string expr_str             = ss.str();
-        std::string target_str           = R"ROC(poly_for (i, 0, (i <= 9), 1)
+        std::string expr_str = ss.str();
+        std::string target_str = R"ROC(poly_for (i, 0, (i <= 9), 1)
 {
   poly_for (j, 0, (j <= 9), 1)
   {
@@ -108,12 +115,12 @@ TEST(AstGen_Build, not_delete_length1_loop) {
     }
   }
 })ROC";
-        int pos                          = -1;
+        int pos = -1;
         std::vector<char> iterator_names = {'i', 'j', 'k', 'a'};
         for (int i = 0; i < origin_shape.size(); ++i) {
           pos = target_str.find("9", pos + 1);
           if (index_length1[i] == 1) {
-            target_str[pos]                                 = '0';
+            target_str[pos] = '0';
             target_str[target_str.rfind(iterator_names[i])] = '0';
           }
         }

@@ -24,7 +24,7 @@ namespace cinn {
 namespace utils {
 
 // attribute type defs
-using Attribute    = absl::variant<bool,
+using Attribute = absl::variant<bool,
                                 float,
                                 int,
                                 std::string,
@@ -40,7 +40,7 @@ using AttributeMap = absl::flat_hash_map<std::string, Attribute>;
 
 // shape type defs
 using ShapeType = std::vector<int32_t>;
-using DimType   = ShapeType::value_type;
+using DimType = ShapeType::value_type;
 
 }  // namespace utils
 }  // namespace cinn

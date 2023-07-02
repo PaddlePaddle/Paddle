@@ -15,15 +15,17 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestScatterAssignOpBase(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -32,12 +34,14 @@ class TestScatterAssignOpBase(OpTest):
 
     def prepare_inputs(self):
         self.inputs["x"] = self.random(self.case["x_shape"]).astype(
-            self.case["x_dtype"])
+            self.case["x_dtype"]
+        )
         self.inputs["y"] = self.random(self.case["y_shape"]).astype(
-            self.case["y_dtype"])
+            self.case["y_dtype"]
+        )
         self.inputs["index"] = np.random.randint(
-            0, self.case["index_upper"],
-            size=self.case["index_size"]).astype("int32")
+            0, self.case["index_upper"], size=self.case["index_size"]
+        ).astype("int32")
         self.axis = self.case["axis"]
 
     def build_paddle_program(self, target):
@@ -46,7 +50,7 @@ class TestScatterAssignOpBase(OpTest):
 
         out = x
         axis = self.axis
-        while (axis < 0):
+        while axis < 0:
             axis += len(self.inputs["x"].shape)
 
         if axis == 0:
@@ -66,8 +70,9 @@ class TestScatterAssignOpBase(OpTest):
                 for j in range(self.inputs["x"].shape[1]):
                     for k in range(self.inputs["x"].shape[2]):
                         for l in range(self.inputs["index"].shape[0]):
-                            out[i][j][k][self.inputs["index"]
-                                         [l]] = y[i][j][k][l]
+                            out[i][j][k][self.inputs["index"][l]] = y[i][j][k][
+                                l
+                            ]
         else:
             self.assertTrue(False, "Axis {} No Implement".format(self.axis))
 
@@ -78,19 +83,29 @@ class TestScatterAssignOpBase(OpTest):
         builder = NetBuilder("scatter_assign")
         x = builder.create_input(
             OpTest.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         y = builder.create_input(
             OpTest.nptype2cinntype(self.inputs["y"].dtype),
-            self.inputs["y"].shape, "y")
+            self.inputs["y"].shape,
+            "y",
+        )
         index = builder.create_input(
             OpTest.nptype2cinntype(self.inputs["index"].dtype),
-            self.inputs["index"].shape, "index")
+            self.inputs["index"].shape,
+            "index",
+        )
         out = builder.scatter_assign(x, y, index, self.axis)
 
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x, y, index],
-            [self.inputs["x"], self.inputs["y"], self.inputs["index"]], [out])
+            prog,
+            target,
+            [x, y, index],
+            [self.inputs["x"], self.inputs["y"], self.inputs["index"]],
+            [out],
+        )
 
         self.cinn_outputs = [res[0]]
 
@@ -108,42 +123,39 @@ class TestScatterAssignOp(TestCaseHelper):
                 "y_shape": [1],
                 "index_upper": 10,
                 "index_size": 1,
-                "axis": -1
+                "axis": -1,
             },
             {
                 "x_shape": [10, 5],
                 "y_shape": [3, 5],
                 "index_upper": 10,
                 "index_size": 3,
-                "axis": 0
+                "axis": 0,
             },
             {
                 "x_shape": [10, 5, 5],
                 "y_shape": [10, 5, 4],
                 "index_upper": 5,
                 "index_size": 4,
-                "axis": -1
+                "axis": -1,
             },
             {
                 "x_shape": [10, 5, 5, 7],
                 "y_shape": [10, 5, 2, 7],
                 "index_upper": 5,
                 "index_size": 2,
-                "axis": -2
+                "axis": -2,
             },
             {
                 "x_shape": [10, 5, 1024, 2048],
                 "y_shape": [10, 5, 2, 2048],
                 "index_upper": 5,
                 "index_size": 2,
-                "axis": -2
+                "axis": -2,
             },
         ]
         self.dtypes = [
-            {
-                "x_dtype": "float32",
-                "y_dtype": "float32"
-            },
+            {"x_dtype": "float32", "y_dtype": "float32"},
         ]
         self.attrs = []
 
@@ -211,10 +223,7 @@ class TestScatterAssignOpAttribute(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "x_dtype": "float32",
-                "y_dtype": "float32"
-            },
+            {"x_dtype": "float32", "y_dtype": "float32"},
         ]
         self.attrs = []
 
@@ -229,30 +238,15 @@ class TestScatterAssignOpDtype(TestCaseHelper):
                 "y_shape": [10, 5, 15, 7],
                 "index_upper": 20,
                 "index_size": 15,
-                "axis": -2
+                "axis": -2,
             },
         ]
         self.dtypes = [
-            {
-                "x_dtype": "float16",
-                "y_dtype": "float16"
-            },
-            {
-                "x_dtype": "float32",
-                "y_dtype": "float32"
-            },
-            {
-                "x_dtype": "float64",
-                "y_dtype": "float64"
-            },
-            {
-                "x_dtype": "int32",
-                "y_dtype": "int32"
-            },
-            {
-                "x_dtype": "int64",
-                "y_dtype": "int64"
-            },
+            {"x_dtype": "float16", "y_dtype": "float16"},
+            {"x_dtype": "float32", "y_dtype": "float32"},
+            {"x_dtype": "float64", "y_dtype": "float64"},
+            {"x_dtype": "int32", "y_dtype": "int32"},
+            {"x_dtype": "int64", "y_dtype": "int64"},
         ]
         self.attrs = []
 

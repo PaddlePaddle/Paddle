@@ -13,17 +13,20 @@
 # limitations under the License.
 
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestDropoutInferOp(OpTest):
     def setUp(self):
         """Preparation before unittest"""
@@ -35,7 +38,8 @@ class TestDropoutInferOp(OpTest):
         """Construct inputs and attributes for unittest"""
         # We initialize the input data using numpy
         self.x_np = self.random(
-            shape=self.case["x_shape"], dtype=self.case["x_dtype"])
+            shape=self.case["x_shape"], dtype=self.case["x_dtype"]
+        )
         if self.case["mode"] is 'upscale_in_train':
             self.case["cinn_mode"] = 'upscale_in_train'
         elif self.case["mode"] is 'downscale_in_infer':
@@ -49,7 +53,8 @@ class TestDropoutInferOp(OpTest):
         x = paddle.to_tensor(self.x_np, stop_gradient=True)
         # Test dropout op
         out = paddle.nn.functional.dropout(
-            x, p=self.case["p"], mode=self.case["mode"], training=False)
+            x, p=self.case["p"], mode=self.case["mode"], training=False
+        )
         # Set paddle output
         self.paddle_outputs = [out]
 
@@ -58,8 +63,10 @@ class TestDropoutInferOp(OpTest):
         builder = NetBuilder("dropout_infer")
         # Create input tensor for CINN
         x = builder.create_input(
-            self.nptype2cinntype(self.case["x_dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["x_dtype"]),
+            self.case["x_shape"],
+            "x",
+        )
         # Test dropout op
         out = builder.dropout_infer(x, self.case["p"], self.case["cinn_mode"])
         # Build CINN program and get result
@@ -69,8 +76,11 @@ class TestDropoutInferOp(OpTest):
 
     def test_check_results(self):
         """Check if the result of Paddle is consistent with the result of CINN"""
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 
@@ -82,39 +92,42 @@ class TestDropoutInferAll(TestCaseHelper):
         # Set base class for test cases
         self.cls = TestDropoutInferOp
         # Initialize shape for test cases
-        self.inputs = [{
-            "x_shape": [1],
-        }, {
-            "x_shape": [1024],
-        }, {
-            "x_shape": [512, 256],
-        }, {
-            "x_shape": [128, 64, 32],
-        }, {
-            "x_shape": [16, 8, 4, 2],
-        }, {
-            "x_shape": [16, 8, 4, 2, 1],
-        }]
+        self.inputs = [
+            {
+                "x_shape": [1],
+            },
+            {
+                "x_shape": [1024],
+            },
+            {
+                "x_shape": [512, 256],
+            },
+            {
+                "x_shape": [128, 64, 32],
+            },
+            {
+                "x_shape": [16, 8, 4, 2],
+            },
+            {
+                "x_shape": [16, 8, 4, 2, 1],
+            },
+        ]
         # Initialize dtype for test cases
-        self.dtypes = [{
-            "x_dtype": "float32",
-        }, {
-            "x_dtype": "float64",
-        }]
+        self.dtypes = [
+            {
+                "x_dtype": "float32",
+            },
+            {
+                "x_dtype": "float64",
+            },
+        ]
         # Initialize attributes for test cases
-        self.attrs = [{
-            "p": 0.1,
-            "mode": "upscale_in_train"
-        }, {
-            "p": 0.5,
-            "mode": "downscale_in_infer"
-        }, {
-            "p": 0.7,
-            "mode": "upscale_in_train"
-        }, {
-            "p": 0.9,
-            "mode": "downscale_in_infer"
-        }]
+        self.attrs = [
+            {"p": 0.1, "mode": "upscale_in_train"},
+            {"p": 0.5, "mode": "downscale_in_infer"},
+            {"p": 0.7, "mode": "upscale_in_train"},
+            {"p": 0.9, "mode": "downscale_in_infer"},
+        ]
 
 
 if __name__ == "__main__":

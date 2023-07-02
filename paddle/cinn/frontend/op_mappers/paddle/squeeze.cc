@@ -19,10 +19,11 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void Squeeze2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void Squeeze2OpMapper(const paddle::cpp::OpDesc& op_desc,
+                      const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  auto x      = ctx.GetVar(x_name);
+  auto x = ctx.GetVar(x_name);
 
   auto axes = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axes");
 
@@ -57,7 +58,8 @@ void Squeeze2OpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext&
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_squeeze) {
-  CINN_REGISTER_OP_MAPPER(squeeze2, cinn::frontend::paddle_mappers::Squeeze2OpMapper)
+  CINN_REGISTER_OP_MAPPER(squeeze2,
+                          cinn::frontend::paddle_mappers::Squeeze2OpMapper)
 
   return true;
 }
