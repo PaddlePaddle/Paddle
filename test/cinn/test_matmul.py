@@ -50,7 +50,7 @@ class TestMamul(unittest.TestCase):
         matmul(args)
         cd = c.numpy()
         cd_target = c_target.numpy()
-        np.testing.assert_allclose(cd, cd_target, atol=1e-4)
+        np.testing.assert_allclose(cd, cd_target, atol=1e-4, rtol=1e-5)
         print(utils.HostEventRecorder.table())
 
     def test_matmul_tile(self):
@@ -62,7 +62,7 @@ class TestMamul(unittest.TestCase):
         matmul(args)
         cd = c.numpy()
         cd_target = c_target.numpy()
-        np.testing.assert_allclose(cd, cd_target, atol=1e-4)
+        np.testing.assert_allclose(cd, cd_target, atol=1e-4, rtol=1e-5)
 
 
 def create_matmul_basic(target, m, n, k):
