@@ -359,7 +359,7 @@ class Conv2dFusionOp
   static const char *attributes_name[6];
   static constexpr uint32_t attributes_num = 6;
   static OpInfoTuple GetOpInfo();
-  static void Build(ir::Builder *builder,
+  static void Build(ir::Builder &builder,
                     ir::OperationArgument &argument,
                     ir::OpResult input_,
                     ir::OpResult filter_,
