@@ -111,23 +111,44 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
     parameter_name_mappings_[var->Name()] = var;
   }
 
+  std::unordered_set<std::string> inner_defining_variables;
+
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
-        bool need_get_parameter_op = (parameter_name_mappings_.find(var_name) !=
-                                      parameter_name_mappings_.end());
-        need_get_parameter_op &= (parameter_visited_.count(var_name) == 0);
+        if (no_cast_var_names.count(var_name) != 0) continue;
+        VarDesc* var_desc = nullptr;
+
+        bool is_parameter = (parameter_name_mappings_.find(var_name) !=
+                             parameter_name_mappings_.end());
+        is_parameter &= (parameter_visited_.count(var_name) == 0);
+        if (is_parameter) {
+          var_desc = parameter_name_mappings_[var_name];
+        }
+        bool is_unseen_variable =
+            (inner_defining_variables.count(var_name) == 0);
+        if (is_unseen_variable) {
+          var_desc = block.FindVarRecursive(var_name);
+        }
+
+        bool need_get_parameter_op = is_parameter || is_unseen_variable;
         if (need_get_parameter_op) {
-          ir::Operation* op =
-              InsertGetParamaterOp(ctx_, parameter_name_mappings_[var_name]);
+          ir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_[var_name] = VariableDefiningInfo(op->result(0));
           VLOG(10) << "[op translated][get parameter]" << op;
 
           program_->SetParameter(var_name, nullptr);
           parameter_visited_.insert(var_name);
+          inner_defining_variables.insert(var_name);
         }
+      }
+    }
+    for (const auto& n : op_desc->Outputs()) {
+      const auto& output_var_names = n.second;
+      for (const auto& var_name : output_var_names) {
+        inner_defining_variables.insert(var_name);
       }
     }
   }
@@ -137,7 +158,7 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
   auto& op_translator = OpTranslator::instance();
   for (auto op : block.AllOps()) {
     OpTranslateFn& fn = op_translator[op->Type()];
-    ir::Operation* operation = fn(ctx_, &param_map_, program_, *op);
+    ir::Operation* operation = fn(ctx_, &param_map_, *op, program_);
     VLOG(10) << "[op translated][special]" << operation;
   }
 }
