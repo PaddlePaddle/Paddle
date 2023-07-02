@@ -359,7 +359,7 @@ class Conv2dFusionOp
   static const char *attributes_name[6];
   static constexpr uint32_t attributes_num = 6;
   static OpInfoTuple GetOpInfo();
-  static void Build(ir::Builder &builder,
+  static void Build(ir::Builder *builder,
                     ir::OperationArgument &argument,
                     ir::OpResult input_,
                     ir::OpResult filter_,
@@ -653,11 +653,25 @@ void BuildProgram(ir::Builder &builder) {  // NOLINT
                                                   false,
                                                   false);
 
+  paddle::dialect::FullOp full_filter_2_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 3, 3, 3},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+  paddle::dialect::Conv2dOp conv2d_2_op =
+      builder.Build<paddle::dialect::Conv2dOp>(batch_norm_op.out(),
+                                               full_filter_2_op.out());
+  paddle::dialect::FullOp full_bias_2_op =
+      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64},
+                                             1.5,
+                                             phi::DataType::FLOAT32,
+                                             phi::CPUPlace());
+
   paddle::dialect::AddOp add_op = builder.Build<paddle::dialect::AddOp>(
-      conv2d_op.out(), full_bias_op.out());
+      conv2d_2_op.out(), full_bias_2_op.out());
 
   auto transpose1_op = builder.Build<paddle::dialect::TransposeOp>(
-      batch_norm_op.out(), std::vector<int>{0, 2, 3, 1});
+      add_op.out(), std::vector<int>{0, 2, 3, 1});
 
   auto transpose2_op = builder.Build<paddle::dialect::TransposeOp>(
       transpose1_op.out(), std::vector<int>{0, 3, 1, 2});
