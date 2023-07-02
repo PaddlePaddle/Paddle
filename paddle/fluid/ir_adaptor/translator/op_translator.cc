@@ -916,6 +916,8 @@ struct FetchOpTranscriber : public OpTranscriber {
     OpOutputTypeList op_output_types;
     ir::AttributeMap attribute_map = {
         {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
+        {"col",
+         ir::Int32Attribute::get(ctx, op_desc.GetAttrIfExists<int>("col"))},
     };
 
     op_output_types.push_back(op_inputs[0].type());
