@@ -3337,6 +3337,10 @@ function run_setup(){
     rm -rf ${PADDLE_ROOT}/dist 2>/dev/null || true
     # Delete previous built paddle cache
     rm -rf ${PADDLE_ROOT}/build/python/paddle 2>/dev/null || true
+    echp "clean all ccache"
+    ccache -C
+    rm -rf ${CCACHE_DIR}
+    rm -rf ${CACHE_DIR}
 
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
