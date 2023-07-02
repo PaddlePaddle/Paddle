@@ -31,6 +31,7 @@ namespace pass {
 using framework::Graph;
 using framework::Node;
 using framework::NodeData;
+using framework::Operator;
 using framework::OpPatternKind;
 using framework::shape_t;
 
