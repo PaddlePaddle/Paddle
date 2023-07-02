@@ -28,6 +28,7 @@ namespace cinn {
 namespace hlir {
 namespace pass {
 
+using framework::Graph;
 using framework::Node;
 using framework::NodeData;
 using framework::OpPatternKind;
