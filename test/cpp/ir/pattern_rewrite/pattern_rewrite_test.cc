@@ -54,8 +54,8 @@
 #include "paddle/fluid/ir/interface/op_yaml_info.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 // Define op1.
 class Operation1 : public ir::Op<Operation1> {
@@ -506,7 +506,7 @@ class Conv2dFusionOp
                             false,
                             false,
                             &meta_out,
-                            MetaConfig());
+                            phi::MetaConfig());
 
     std::vector<ir::Type> argument_outputs;
     ir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
