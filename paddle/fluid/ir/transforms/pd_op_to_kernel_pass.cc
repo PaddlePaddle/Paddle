@@ -223,7 +223,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
         auto result_type = (*it)->result(i).type();
         if (!result_type) {
-          std::cerr << "null type" << std::endl;
           op_output_types.push_back(result_type);
         } else if (result_type.isa<dialect::DenseTensorType>()) {
           auto allocated_dense_tensor_dtype =

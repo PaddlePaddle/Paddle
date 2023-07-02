@@ -63,7 +63,6 @@ void BuildScope(ir::Block* block,
       for (size_t i = 0; i < input_num; ++i) {
         auto var = scope->Var("fetch");
         auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-        // for now only support one fetch
         int index =
             (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
         fetch_list->resize(index + 1);
