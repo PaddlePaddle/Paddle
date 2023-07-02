@@ -121,7 +121,7 @@ phi::KernelKey GetKernelKey(
       }
     }
   }
-  std::cerr << "22" << std::endl;
+
   if (op->num_operands() > 0) {
     paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
@@ -133,7 +133,6 @@ phi::KernelKey GetKernelKey(
 
       auto input_tmp = op->operand(i);
       if (!input_tmp) {
-        std::cerr << "null input " << std::endl;
         continue;
       }
       auto new_input_tmp = map_value_pair.at(input_tmp);
@@ -269,7 +268,6 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         auto cur_in = (*it)->operand(i);
         if (!cur_in) {
-          std::cerr << "nullptr " << std::endl;
           vec_inputs.push_back(ir::OpResult());
           continue;
         }

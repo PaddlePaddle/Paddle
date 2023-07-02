@@ -48,9 +48,7 @@ void BuildScope(ir::Block* block,
                 std::unordered_map<ir::Value, std::string>* name_map) {
   std::unordered_map<ir::Value, int> map_test;
 
-  std::cerr << "build scope " << std::endl;
-  // int count = name_map->size();
-  int count = 0;
+  int count = name_map->size();
   for (auto it = block->begin(); it != block->end(); ++it) {
     size_t input_num = (*it)->num_operands();
     auto attr_map = (*it)->attributes();
@@ -125,15 +123,13 @@ void BuildScope(ir::Block* block,
       for (size_t i = 0; i < input_num; ++i) {
         auto ptr = (*it)->operand(i);
         if (ptr) {
-          std::string name;
-          if (name_map->find(ptr) != name_map->end()) {
-            name = name_map->at(ptr);
-          } else {
-            PADDLE_THROW(phi::errors::PreconditionNotMet(
-                "input should in name map, [%d] 'th input of [%s] op",
-                i,
-                op_name));
-          }
+          PADDLE_ENFORCE_NE(
+              name_map->find(ptr),
+              name_map->end(),
+              phi::errors::PreconditionNotMet(
+                  "input should in name map, [%d] 'th input of [%s] op",
+                  i,
+                  op_name));
         }
       }
     }

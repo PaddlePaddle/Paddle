@@ -74,7 +74,6 @@ void BuildPhiContext(
     if (!ptr) {
       phi::DenseTensor* ptr = nullptr;
       OutType in_ptr(ptr);
-      std::cerr << "emplace null ptr " << index << std::endl;
       ctx->EmplaceBackInput(in_ptr);
       continue;
     }
