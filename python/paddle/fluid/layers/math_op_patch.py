@@ -323,7 +323,7 @@ def monkey_patch_variable():
         """
         return len(self.shape)
 
-    def _ndimension_(self):
+    def ndimension(self):
         """
         Returns the dimension of current Variable
 
@@ -344,7 +344,7 @@ def monkey_patch_variable():
         """
         return len(self.shape)
 
-    def _dim_(self):
+    def dim(self):
         """
         Returns the dimension of current Variable
 
@@ -551,8 +551,8 @@ def monkey_patch_variable():
         ('append', append),
         ('item', _item),
         ('pop', pop),
-        ('dim', _dim_),
-        ('ndimension', _ndimension_),
+        ('dim', dim),
+        ('ndimension', ndimension),
         ('ndim', _ndim_),
         (
             '__add__',
