@@ -1260,7 +1260,7 @@ class Variable(metaclass=VariableMetaClass):
         In Static Graph Mode:
 
         .. code-block:: python
-            :name: code-example1
+            :name: code-example-1
 
             import paddle.fluid as fluid
             cur_program = fluid.Program()
@@ -1272,7 +1272,7 @@ class Variable(metaclass=VariableMetaClass):
         In Dygraph  Mode:
 
         .. code-block:: python
-            :name: code-example2
+            :name: code-example-2
 
             import paddle.fluid as fluid
             import numpy as np
@@ -5747,7 +5747,7 @@ class Program:
 
         Examples:
             .. code-block:: python
-                :name: code-example1
+                :name: code-example-1
 
                 import paddle
                 import paddle.static as static
@@ -5781,7 +5781,7 @@ class Program:
                 after :code:`clone`:
 
             .. code-block:: python
-                :name: code-example2
+                :name: code-example-2
 
                 import paddle
 
@@ -5799,7 +5799,7 @@ class Program:
 
             1. To clone a test program, the sample code is:
                 .. code-block:: python
-                    :name: code-example3
+                    :name: code-example-3
 
                     import paddle
                     import paddle.static as static
@@ -5852,7 +5852,7 @@ class Program:
 
             2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
-                    :name: code-example4
+                    :name: code-example-4
 
                     import paddle
                     import paddle.static as static

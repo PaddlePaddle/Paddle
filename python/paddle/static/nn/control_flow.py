@@ -899,9 +899,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         surprised users who expected a lazy semantics.
 
         Examples:
-
             .. code-block:: python
-                :name: code-example1
+                :name: code-example-1
 
                 import paddle
 
@@ -936,7 +935,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example2
+            :name: code-example-2
 
             import paddle
 
