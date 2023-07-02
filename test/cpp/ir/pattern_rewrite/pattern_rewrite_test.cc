@@ -429,7 +429,7 @@ TEST(pattern_rewrite, Patterns) {
 
   ir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  pm.AddPass(ir::CreateDCEPass());
+  pm.AddPass(ir::CreateDcePass());
   program.Print(std::cout);
   std::cout << std::endl;
   pm.Run(&program);
