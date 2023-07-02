@@ -476,7 +476,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
         absl::get<std::vector<TYPE>>(value), out_type[0], tensor_name);       \
   }
 
-    if (false) {
+    if (false) {  // NOLINT
     }
     EXPAND_ATTR_TYPE(EXPAND_VALUE_TO_TENSOR)
     else {  // NOLINT
@@ -517,7 +517,7 @@ std::vector<shape_t> InferShapeForAssignValue(
     shape.emplace_back(absl::get<std::vector<TYPE>>(value).size()); \
   }
 
-  if (false) {
+  if (false) {  // NOLINT
   }
   EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_SHAPE)
   else {  // NOLINT
@@ -558,7 +558,7 @@ std::vector<Type> InferDtypeForAssignValue(
     out_type = common::type_of<TYPE>();                          \
   }
 
-    if (false) {
+    if (false) {  // NOLINT
     }
     EXPAND_ATTR_TYPE(EXPAND_ATTR_TO_GET_DTYPE)
     else {  // NOLINT

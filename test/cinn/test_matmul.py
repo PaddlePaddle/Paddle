@@ -15,13 +15,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
+
 import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn import Target
-from cinn import utils
+import numpy as np
+from cinn import Target, ir, lang, runtime, utils
 from cinn.poly import create_stages
 
 
