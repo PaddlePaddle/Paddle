@@ -201,8 +201,8 @@ class TestAmpScaler(unittest.TestCase):
                 data = paddle.rand([10, 1024])
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             scaled_data = scaler.scale(data)
-            np.testing.assert_array_equal(
-                scaled_data.numpy(), data.numpy() * 1024
+            self.assertEqual(
+                np.array_equal(scaled_data.numpy(), data.numpy() * 1024), True
             )
 
     def test_scale(self):
