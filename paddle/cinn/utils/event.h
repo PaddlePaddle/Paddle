@@ -69,7 +69,7 @@ class Summary {
  public:
   struct Ratio {
     double value;
-    Ratio(double val) : value(val){};  // NOLINT
+    Ratio(double val) : value(val) {}  // NOLINT
     std::string ToStr() const { return std::to_string(value); }
   };
 
