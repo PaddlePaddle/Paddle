@@ -7242,7 +7242,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example1
+            :name: code-example-1
 
             import paddle
 
@@ -7258,7 +7258,7 @@ def program_guard(main_program, startup_program=None):
 
     Examples:
         .. code-block:: python
-            :name: code-example2
+            :name: code-example-2
 
             import paddle
 
