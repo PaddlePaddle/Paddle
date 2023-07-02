@@ -213,7 +213,7 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
         << node->base << "is not a pure math!";
     CHECK(common::IsPureMath(node->stride))
         << node->stride << "is not a pure math!";
-    ;
+
     Simplify(&node->base);
     Simplify(&node->stride);
   }
