@@ -3340,8 +3340,6 @@ function run_setup(){
     echo "clean all ccache"
     ccache -C
     ccache -c
-    rm -rf ${CCACHE_DIR}
-    rm -rf ${CACHE_DIR}
 
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
