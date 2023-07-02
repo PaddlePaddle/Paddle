@@ -193,7 +193,7 @@ void RunDecomposer(Program* prog,
                    const std::vector<std::string>& fetch_ids = {});
 
 template <typename T>
-void RunAndCheckShape(NetBuilder& builder,
+void RunAndCheckShape(NetBuilder& builder,  // NOLINT
                       const std::vector<std::string>& input_names,
                       const std::vector<std::string>& output_names,
                       const std::vector<std::vector<int>>& output_shapes,
@@ -238,7 +238,7 @@ void RunAndCheckShape(NetBuilder& builder,
 }
 
 template <typename T>
-void RunAndCheck(NetBuilder& builder,
+void RunAndCheck(NetBuilder& builder,  // NOLINT
                  const std::vector<std::string>& input_names,
                  const std::vector<std::string>& output_names,
                  const std::vector<std::vector<int>>& output_shapes,

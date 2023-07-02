@@ -58,7 +58,7 @@ class CinnComputation {
    */
   static std::shared_ptr<CinnComputation> BuildAndCompile(
       const Target &target,
-      NetBuilder &builder,
+      NetBuilder &builder,  // NOLINT
       const CompileOptions &options = DefaultCompileOptions(),
       const std::vector<Variable> &outputs = {},
       void *stream = nullptr);
@@ -76,7 +76,7 @@ class CinnComputation {
    */
   static std::shared_ptr<CinnComputation> Compile(
       const Target &target,
-      Program &program,
+      Program &program,  // NOLINT
       const CompileOptions &options = DefaultCompileOptions(),
       const std::vector<Variable> &outputs = {},
       void *stream = nullptr);
@@ -129,7 +129,9 @@ class CinnComputation {
    * @param data address of the memory buffer to store tensor's data
    * @param size size of the memory buffer
    */
-  void SetTensorData(hlir::framework::Tensor &t, void *data, size_t size);
+  void SetTensorData(hlir::framework::Tensor &t,  // NOLINT
+                     void *data,
+                     size_t size);
 
   /**
    * set the data of a tensor (specified by it's name) from user specified
@@ -147,7 +149,9 @@ class CinnComputation {
    * @param data address of the memory buffer to store tensor's data
    * @param size size of the memory buffer
    */
-  void GetTensorData(hlir::framework::Tensor &t, void *data, size_t size);
+  void GetTensorData(hlir::framework::Tensor &t,  // NOLINT
+                     void *data,
+                     size_t size);
   /**
    * copy the data of a tensor (specified by it's name) to user specified
    * buffer. if tensor is in NVGPU device memory, cudaMemcpy is used.

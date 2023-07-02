@@ -75,7 +75,7 @@ class PassTest {
  public:
   PassTest() { target_ = common::DefaultTarget(); }
 
-  int RunAndCheck(NetBuilder& builder,
+  int RunAndCheck(NetBuilder& builder,  // NOLINT
                   const std::vector<std::string>& program_passes,
                   const std::vector<std::string>& input_names,
                   const std::vector<std::string>& output_names) {

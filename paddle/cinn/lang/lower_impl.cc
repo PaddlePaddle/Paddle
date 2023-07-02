@@ -49,7 +49,7 @@ void CheckNoIslCallRemains(Expr* expr) {
   }
 }
 
-void BindBuffer(StageMap& stages) {
+void BindBuffer(StageMap& stages) {  // NOLINT
   absl::flat_hash_map<std::string, ir::_Tensor_*> tensor_map;
   for (auto& stage : stages) {
     tensor_map[stage.second->tensor()->name] = stage.second->tensor();
@@ -71,13 +71,13 @@ void BindBuffer(StageMap& stages) {
   }
 }
 
-Expr LowerGroup(
-    const poly::ScheduleGroup& group,
-    const std::map<std::string, Expr>& tuple_to_expr,
-    std::map<std::string, ir::Tensor>* global_tensor_map,
-    std::unordered_map<std::string, std::vector<Expr>>& resized_buffer_cache,
-    StageMap stage_map,
-    ir::CudaAxisInfo* cuda_axis_info) {
+Expr LowerGroup(const poly::ScheduleGroup& group,
+                const std::map<std::string, Expr>& tuple_to_expr,
+                std::map<std::string, ir::Tensor>* global_tensor_map,
+                std::unordered_map<std::string, std::vector<Expr>>&
+                    resized_buffer_cache,  // NOLINT
+                StageMap stage_map,
+                ir::CudaAxisInfo* cuda_axis_info) {
   BindBuffer(stage_map);
   std::vector<poly::Stage*> stages;
   for (auto& node : group.nodes) {

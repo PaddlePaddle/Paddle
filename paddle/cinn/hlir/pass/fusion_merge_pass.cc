@@ -176,7 +176,7 @@ class FusionMergePassHelper : public FusionHelperBase {
 
   bool HorizontalFusion(
       GroupPtr producer,
-      std::unordered_set<GroupPtr, Hasher, Comparator>& consumers) {
+      const std::unordered_set<GroupPtr, Hasher, Comparator>& consumers) {
     VLOG(3) << "HorizontalFusion...!";
     if (consumers.size() <= 1) {
       return false;
@@ -249,7 +249,7 @@ class FusionMergePassHelper : public FusionHelperBase {
     return updated;
   }
 
-  void HorizontalFuse(GroupList& consumers) {
+  void HorizontalFuse(GroupList& consumers) {  // NOLINT
     VLOG(3) << "HorizontalFuse Groups...";
     // create fusion group
     auto fused_group = std::make_shared<Graph::Group>();
@@ -400,8 +400,8 @@ class FusionMergePassHelper : public FusionHelperBase {
   }
 
   bool VerticalFusion(
-      GroupPtr& producer,
-      std::unordered_set<GroupPtr, Hasher, Comparator>& consumers,
+      const GroupPtr& producer,
+      const std::unordered_set<GroupPtr, Hasher, Comparator>& consumers,
       bool recompute) {
     VLOG(3) << "VerticalFusion, Number of Consumers : " << consumers.size();
     auto& relation = fusion_relation_map_[producer->op_pattern_kind];
@@ -482,9 +482,9 @@ class FusionMergePassHelper : public FusionHelperBase {
     return false;
   }
 
-  void VerticalFuse(
-      GroupPtr& producer,
-      std::unordered_set<GroupPtr, Hasher, Comparator>& fusionable_consumers) {
+  void VerticalFuse(const GroupPtr& producer,
+                    const std::unordered_set<GroupPtr, Hasher, Comparator>&
+                        fusionable_consumers) {
     VLOG(3) << "VerticalFuse...!";
     GroupList fused_groups;
     GroupPtr master_fuesd_group(nullptr);
@@ -669,17 +669,17 @@ class FusionMergePassHelper : public FusionHelperBase {
     }
   }
 
-  void RecomputeEleGraph(
-      const GroupPtr& producer,
-      std::unordered_set<GroupPtr, Hasher, Comparator>& fusionable_consumers) {
+  void RecomputeEleGraph(const GroupPtr& producer,
+                         std::unordered_set<GroupPtr, Hasher, Comparator>&
+                             fusionable_consumers) {  // NOLINT
     if (producer->op_pattern_kind != framework::kElementWise) {
       SelectConsumerToFuse(producer, fusionable_consumers);
     }
   }
 
-  void SelectConsumerToFuse(
-      const GroupPtr& producer,
-      std::unordered_set<GroupPtr, Hasher, Comparator>& fusionable_consumers) {
+  void SelectConsumerToFuse(const GroupPtr& producer,
+                            std::unordered_set<GroupPtr, Hasher, Comparator>&
+                                fusionable_consumers) {  // NOLINT
     // if is const op
     if (is_const_group(this, producer)) {
       std::unordered_set<GroupPtr, Hasher, Comparator> candidates;

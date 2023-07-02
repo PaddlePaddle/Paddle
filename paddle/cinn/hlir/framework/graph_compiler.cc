@@ -1643,7 +1643,7 @@ std::shared_ptr<Scope> BuildScope(Target target,
 std::vector<ir::LoweredFunc> GetFuncFromImpl(
     const std::shared_ptr<OpImpl>& impl,
     const common::CINNValuePack& cinn_inputs,
-    std::vector<ir::Tensor>& all_arg_tensors,
+    std::vector<ir::Tensor>& all_arg_tensors,  // NOLINT
     const std::vector<std::string>& input_output_nodes,
     const std::string& node_id,
     const Target& target) {

@@ -96,7 +96,7 @@ class ScheduleImpl {
                   int write_buffer_index,
                   const std::string& memory_type);
   void SyncThreads(const Expr& ir_node, bool after_node = true);
-  void SetBuffer(Expr& block,
+  void SetBuffer(Expr& block,  // NOLINT
                  const std::string& memory_type,
                  bool fixed = false);
   Expr Reorder(const std::vector<Expr>& loops);
@@ -114,7 +114,7 @@ class ScheduleImpl {
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
   Expr AddUnitLoop(const Expr& block) const;
   void Annotate(const Expr& block, const std::string& key, const attr_t& value);
-  void Unannotate(Expr& block, const std::string& key);
+  void Unannotate(Expr& block, const std::string& key);  // NOLINT
   void FlattenLoops(const std::vector<Expr>& loops,
                     const bool force_flat = false);
   void CopyTransformAndLoopInfo(const Expr& block, const Expr& block_target);

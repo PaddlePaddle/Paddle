@@ -92,8 +92,8 @@ ir::Tensor GetTensor(
 
 std::vector<ir::Tensor> CollectInputTensor(
     const Node* node,
-    std::vector<ir::Tensor>& func_args,
-    std::unordered_map<std::string, ir::Tensor>& tensor_map,
+    std::vector<ir::Tensor>& func_args,                       // NOLINT
+    std::unordered_map<std::string, ir::Tensor>& tensor_map,  // NOLINT
     const absl::flat_hash_map<std::string, Type>& type_dict,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict) {
   std::vector<ir::Tensor> tensors;
@@ -543,7 +543,7 @@ bool WithoutLastDimInReduce(const std::vector<int>& shape,
   }
 }
 
-void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,
+void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
                            const std::string& block_name,
                            const std::vector<int>& axes,
                            const common::Target& target,
@@ -593,7 +593,7 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,
   }
 }
 
-void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,
+void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                  const std::string& block_name,
                                  const std::vector<int>& inshape,
                                  const std::vector<int>& axes,
@@ -707,7 +707,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,
   ir_sch.Reorder(block_name, new_order);
 }
 
-void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,
+void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
                               const std::string& block_name,
                               const std::vector<int>& inshape,
                               const std::vector<int>& axes,
@@ -972,7 +972,7 @@ Node* GetMasterToComputeAt(
 }
 
 void LoopAssignReduce(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const Node* reducer,
     const Target& target,
@@ -1215,8 +1215,8 @@ class RemoveExpr : public ir::IRMutator<> {
 };
 
 void MergeLoops(ir::Expr root,
-                std::vector<ir::Expr>& src,
-                std::vector<ir::Expr>& dst,
+                std::vector<ir::Expr>& src,  // NOLINT
+                std::vector<ir::Expr>& dst,  // NOLINT
                 int index) {
   if (index < 0) {
     return;
@@ -1245,7 +1245,7 @@ void MergeLoops(ir::Expr root,
 }
 
 void InsertSyncThread(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
@@ -1316,7 +1316,7 @@ class InsertExpr : public ir::IRMutator<> {
 };
 
 void MergeReduceToReduce(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const Node* node,
     const Node* master,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
@@ -1504,7 +1504,7 @@ void MergeReduceToReduce(
 }
 
 void MergeReduceLoop(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     Node* node,
     const Node* master,
     const absl::flat_hash_map<std::string, shape_t>& shape_dict,
@@ -1609,7 +1609,7 @@ class FindExprInBlock : public ir::IRMutator<> {
 };
 
 void LoopComputeAt(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     Node* node,
     const Node* master,
     const GroupPtr& group,
@@ -1710,7 +1710,7 @@ std::unordered_set<Node*> GetMasters(
 }
 
 void SyncThreadWithShared(
-    ir::IRSchedule& ir_sch,
+    ir::IRSchedule& ir_sch,  // NOLINT
     const GroupPtr& group,
     const std::unordered_set<Node*>& nodes_inline,
     const std::unordered_set<Node*>& nodes_set,
