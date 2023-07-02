@@ -1009,13 +1009,13 @@ void MatmulWithFlattenKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void MatmulAMPKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     bool transpose_x,
-                     bool transpose_y,
-                     DenseTensor* out) {
+template <typename Context, typename T, typename Tx, typename Ty, typename Tout>
+void MatmulAmpFunction(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out,
+                       bool transpose_x,
+                       bool transpose_y) {
   const std::vector<std::int64_t> x_dims = vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = vectorize(y.dims());
   const int x_ndim = x_dims.size();
@@ -1023,8 +1023,8 @@ void MatmulAMPKernel(const Context& ctx,
   bool flag = false;
 
   // Get data ptr
-  const T* x_data = x.data<T>();
-  const T* y_data = y.data<T>();
+  const Tx* x_data = x.data<Tx>();
+  const Ty* y_data = y.data<Ty>();
 
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
   const int M = transpose_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
@@ -1096,92 +1096,92 @@ void MatmulAMPKernel(const Context& ctx,
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
-    blas.GEMM(transpose_x ? CblasTrans : CblasNoTrans,
-              transpose_y ? CblasTrans : CblasNoTrans,
-              M,
-              N,
-              K,
-              static_cast<T>(1),
-              x_data,
-              y_data,
-              static_cast<T>(flag),
-              ctx.template Alloc<float>(out));
-  } else if (x_batch_size == 1) {
-    if (M == 1 && transpose_y) {
-      VLOG(3) << "MatMul's case 9";
-      blas.GEMV(false,
-                y_batch_size * N,
-                K,
-                static_cast<T>(1),
-                y_data,
-                x_data,
-                static_cast<T>(flag),
-                ctx.template Alloc<float>(out));
-    } else {
-      VLOG(3) << "MatMul's case 10";
-      blas.BatchedGEMM(transpose_x ? CblasTrans : CblasNoTrans,
-                       transpose_y ? CblasTrans : CblasNoTrans,
-                       M,
-                       N,
-                       K,
-                       static_cast<T>(1),
-                       x_data,
-                       y_data,
-                       static_cast<T>(flag),
-                       ctx.template Alloc<float>(out),
-                       out_batch_size,
-                       0,
-                       K * N);
-    }
-  } else if (y_batch_size == 1) {
-    if (!transpose_x) {
-      VLOG(3) << "MatMul's case 11";
-      blas.GEMM(CblasNoTrans,
-                transpose_y ? CblasTrans : CblasNoTrans,
-                x_batch_size * M,
-                N,
-                K,
-                static_cast<T>(1),
-                x_data,
-                y_data,
-                static_cast<T>(flag),
-                ctx.template Alloc<float>(out));
-    } else {
-      VLOG(3) << "MatMul's case 12";
-      blas.BatchedGEMM(CblasTrans,
-                       transpose_y ? CblasTrans : CblasNoTrans,
-                       M,
-                       N,
-                       K,
-                       static_cast<T>(1),
-                       x_data,
-                       y_data,
-                       static_cast<T>(flag),
-                       ctx.template Alloc<float>(out),
-                       out_batch_size,
-                       M * K,
-                       0);
-    }
-  } else if (!is_broadcast_dims) {
-    VLOG(3) << "MatMul's case 13";
-    blas.BatchedGEMM(transpose_x ? CblasTrans : CblasNoTrans,
+    blas.GEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
                      transpose_y ? CblasTrans : CblasNoTrans,
                      M,
                      N,
                      K,
-                     static_cast<T>(1),
+                     static_cast<Tout>(1),
                      x_data,
                      y_data,
-                     static_cast<T>(flag),
-                     ctx.template Alloc<float>(out),
-                     out_batch_size,
-                     M * K,
-                     K * N);
+                     static_cast<Tout>(flag),
+                     ctx.template Alloc<Tout>(out));
+  } else if (x_batch_size == 1) {
+    if (M == 1 && transpose_y) {
+      VLOG(3) << "MatMul's case 9";
+      blas.GEMVWrapper(false,
+                       y_batch_size * N,
+                       K,
+                       static_cast<Tout>(1),
+                       y_data,
+                       x_data,
+                       static_cast<Tout>(flag),
+                       ctx.template Alloc<Tout>(out));
+    } else {
+      VLOG(3) << "MatMul's case 10";
+      blas.BatchedGEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                              transpose_y ? CblasTrans : CblasNoTrans,
+                              M,
+                              N,
+                              K,
+                              static_cast<Tout>(1),
+                              x_data,
+                              y_data,
+                              static_cast<Tout>(flag),
+                              ctx.template Alloc<Tout>(out),
+                              out_batch_size,
+                              0,
+                              K * N);
+    }
+  } else if (y_batch_size == 1) {
+    if (!transpose_x) {
+      VLOG(3) << "MatMul's case 11";
+      blas.GEMMWrapper(CblasNoTrans,
+                       transpose_y ? CblasTrans : CblasNoTrans,
+                       x_batch_size * M,
+                       N,
+                       K,
+                       static_cast<Tout>(1),
+                       x_data,
+                       y_data,
+                       static_cast<Tout>(flag),
+                       ctx.template Alloc<Tout>(out));
+    } else {
+      VLOG(3) << "MatMul's case 12";
+      blas.BatchedGEMMWrapper(CblasTrans,
+                              transpose_y ? CblasTrans : CblasNoTrans,
+                              M,
+                              N,
+                              K,
+                              static_cast<Tout>(1),
+                              x_data,
+                              y_data,
+                              static_cast<Tout>(flag),
+                              ctx.template Alloc<Tout>(out),
+                              out_batch_size,
+                              M * K,
+                              0);
+    }
+  } else if (!is_broadcast_dims) {
+    VLOG(3) << "MatMul's case 13";
+    blas.BatchedGEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                            transpose_y ? CblasTrans : CblasNoTrans,
+                            M,
+                            N,
+                            K,
+                            static_cast<Tout>(1),
+                            x_data,
+                            y_data,
+                            static_cast<Tout>(flag),
+                            ctx.template Alloc<Tout>(out),
+                            out_batch_size,
+                            M * K,
+                            K * N);
   } else {
     // in the case, can't use stridedgemm
-    std::vector<const T*> x_ptr(out_batch_size);
-    std::vector<const T*> y_ptr(out_batch_size);
-    std::vector<float*> out_ptr(out_batch_size);
+    std::vector<const Tx*> x_ptr(out_batch_size);
+    std::vector<const Ty*> y_ptr(out_batch_size);
+    std::vector<Tout*> out_ptr(out_batch_size);
     std::vector<std::int64_t> index(batch_dim, 0);
     for (std::int64_t i = 0; i < out_batch_size; ++i) {
       // using the index to get offset
@@ -1192,22 +1192,33 @@ void MatmulAMPKernel(const Context& ctx,
 
       x_ptr[i] = x_data + x_index * M * K;
       y_ptr[i] = y_data + y_index * K * N;
-      out_ptr[i] = ctx.template Alloc<float>(out) + i * M * N;
+      out_ptr[i] = ctx.template Alloc<Tout>(out) + i * M * N;
       IndexIncreaseFromDims(batch_dim, out_broadcast_dims.data(), index.data());
     }
     VLOG(3) << "MatMul's case 14";
-    blas.BatchedGEMM(transpose_x ? CblasTrans : CblasNoTrans,
-                     transpose_y ? CblasTrans : CblasNoTrans,
-                     M,
-                     N,
-                     K,
-                     static_cast<T>(1),
-                     x_ptr.data(),
-                     y_ptr.data(),
-                     static_cast<T>(flag),
-                     out_ptr.data(),
-                     out_batch_size);
+    blas.BatchedGEMMWrapper(transpose_x ? CblasTrans : CblasNoTrans,
+                            transpose_y ? CblasTrans : CblasNoTrans,
+                            M,
+                            N,
+                            K,
+                            static_cast<Tout>(1),
+                            x_ptr.data(),
+                            y_ptr.data(),
+                            static_cast<Tout>(flag),
+                            out_ptr.data(),
+                            out_batch_size);
   }
+}
+
+template <typename T, typename Context>
+void MatmulAMPKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     bool transpose_x,
+                     bool transpose_y,
+                     DenseTensor* out) {
+  MatmulAmpFunction<Context, T, T, T, float>(
+      ctx, x, y, out, transpose_x, transpose_y);
 }
 
 }  // namespace phi

@@ -840,7 +840,7 @@ struct CUBlas<phi::dtype::complex<double>> {
 };
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  CBLAS_TRANSPOSE transB,
                                  int M,
@@ -850,7 +850,7 @@ void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 OutT *C) const {
+                                 T *C) const {
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
   int lda = (transA == CblasNoTrans) ? K : M;
@@ -1053,17 +1053,17 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 }
 
 template <>
-template <>
-inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
-                                        CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
-                                        phi::dtype::bfloat16 alpha,
-                                        const phi::dtype::bfloat16 *A,
-                                        const phi::dtype::bfloat16 *B,
-                                        phi::dtype::bfloat16 beta,
-                                        float *C) const {
+template <typename Ta, typename Tb, typename Tc>
+inline void Blas<phi::GPUContext>::GEMMWrapper(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               Tc alpha,
+                                               const Ta *A,
+                                               const Tb *B,
+                                               Tc beta,
+                                               Tc *C) const {
 #if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
@@ -1090,6 +1090,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   if (use_tensor_op_math) {
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
+  auto Type_a = std::is_same<Ta, float>::value ? CUDA_R_32F : CUDA_R_16BF;
+  auto Type_b = std::is_same<Tb, float>::value ? CUDA_R_32F : CUDA_R_16BF;
+  auto Type_c = std::is_same<Tc, float>::value ? CUDA_R_32F : CUDA_R_16BF;
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
 
   context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -1101,14 +1104,14 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                                           K,
                                                           &h_alpha,
                                                           B,
-                                                          CUDA_R_16BF,
+                                                          Type_b,
                                                           ldb,
                                                           A,
-                                                          CUDA_R_16BF,
+                                                          Type_a,
                                                           lda,
                                                           &h_beta,
                                                           C,
-                                                          CUDA_R_32F,
+                                                          Type_c,
                                                           N,
                                                           CUDA_R_32F,
                                                           algo));
@@ -1408,7 +1411,7 @@ void Blas<phi::GPUContext>::VCOPY(int n, const T *x, T *y) const {
 }
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                  int M,
                                  int N,
@@ -1416,7 +1419,7 @@ void Blas<phi::GPUContext>::GEMV(bool trans_a,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 OutT *C) const {
+                                 T *C) const {
   cublasOperation_t cuTransA = !trans_a ? CUBLAS_OP_T : CUBLAS_OP_N;
 
   context_.CublasCall([&](cublasHandle_t handle) {
@@ -1466,28 +1469,28 @@ inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
 }
 
 template <>
-template <>
-inline void Blas<phi::GPUContext>::GEMV(bool trans_a,
-                                        int M,
-                                        int N,
-                                        phi::dtype::bfloat16 alpha,
-                                        const phi::dtype::bfloat16 *A,
-                                        const phi::dtype::bfloat16 *B,
-                                        phi::dtype::bfloat16 beta,
-                                        float *C) const {
+template <typename Ta, typename Tb, typename Tc>
+inline void Blas<phi::GPUContext>::GEMVWrapper(bool trans_a,
+                                               int M,
+                                               int N,
+                                               Tc alpha,
+                                               const Ta *A,
+                                               const Tb *B,
+                                               Tc beta,
+                                               Tc *C) const {
   // Because cublas doesn't support bfloat gemv, we use cublasHgemm to achieve
   // it.
   if (trans_a) {
-    this->template GEMM<phi::dtype::bfloat16, float>(
+    this->template GEMMWrapper<Tb, Ta, Tc>(
         CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
   } else {
-    this->template GEMM<phi::dtype::bfloat16, float>(
+    this->template GEMMWrapper<Ta, Tb, Tc>(
         CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
   }
 }
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1497,7 +1500,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T *A,
                                         const T *B,
                                         T beta,
-                                        OutT *C,
+                                        T *C,
                                         int batchCount,
                                         int64_t strideA,
                                         int64_t strideB) const {
@@ -1676,20 +1679,20 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 }
 
 template <>
-template <>
-inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
-                                               CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
-                                               phi::dtype::bfloat16 alpha,
-                                               const phi::dtype::bfloat16 *A,
-                                               const phi::dtype::bfloat16 *B,
-                                               phi::dtype::bfloat16 beta,
-                                               float *C,
-                                               int batchCount,
-                                               int64_t strideA,
-                                               int64_t strideB) const {
+template <typename Ta, typename Tb, typename Tc>
+inline void Blas<phi::GPUContext>::BatchedGEMMWrapper(CBLAS_TRANSPOSE transA,
+                                                      CBLAS_TRANSPOSE transB,
+                                                      int M,
+                                                      int N,
+                                                      int K,
+                                                      Tc alpha,
+                                                      const Ta *A,
+                                                      const Tb *B,
+                                                      Tc beta,
+                                                      Tc *C,
+                                                      int batchCount,
+                                                      int64_t strideA,
+                                                      int64_t strideB) const {
 #if CUDA_VERSION >= 11000
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
@@ -1710,6 +1713,9 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   if (use_tensor_op_math) {
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
+  auto Type_a = std::is_same<Ta, float>::value ? CUDA_R_32F : CUDA_R_16BF;
+  auto Type_b = std::is_same<Tb, float>::value ? CUDA_R_32F : CUDA_R_16BF;
+  auto Type_c = std::is_same<Tc, float>::value ? CUDA_R_32F : CUDA_R_16BF;
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
 
   context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -1722,16 +1728,16 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                  K,
                                                  &h_alpha,
                                                  B,
-                                                 CUDA_R_16BF,
+                                                 Type_b,
                                                  ldb,
                                                  strideB,
                                                  A,
-                                                 CUDA_R_16BF,
+                                                 Type_a,
                                                  lda,
                                                  strideA,
                                                  &h_beta,
                                                  C,
-                                                 CUDA_R_32F,
+                                                 Type_c,
                                                  ldc,
                                                  strideC,
                                                  batchCount,
@@ -1747,7 +1753,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 }
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1757,10 +1763,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T **A,
                                         const T **B,
                                         T beta,
-                                        OutT **C,
+                                        T **C,
                                         int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
-    this->template GEMM<T, OutT>(
+    this->template GEMM<T>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }
@@ -1799,6 +1805,25 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                int batchCount) const {
   for (int k = 0; k < batchCount; ++k) {
     this->template GEMM<phi::dtype::bfloat16>(
+        transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
+  }
+}
+
+template <>
+template <typename Ta, typename Tb, typename Tc>
+inline void Blas<phi::GPUContext>::BatchedGEMMWrapper(CBLAS_TRANSPOSE transA,
+                                                      CBLAS_TRANSPOSE transB,
+                                                      int M,
+                                                      int N,
+                                                      int K,
+                                                      Tc alpha,
+                                                      const Ta **A,
+                                                      const Tb **B,
+                                                      Tc beta,
+                                                      Tc **C,
+                                                      int batchCount) const {
+  for (int k = 0; k < batchCount; ++k) {
+    this->template GEMMWrapper<Ta, Tb, Tc>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
 }

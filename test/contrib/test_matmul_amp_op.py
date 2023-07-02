@@ -21,6 +21,7 @@ from paddle.fluid import core
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
+    convert_uint16_to_float,
     get_numeric_gradient,
 )
 from paddle.fluid.tests.unittests.testsuite import create_op
@@ -48,12 +49,6 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             Y = np.transpose(Y, tuple(dim))
 
     Out = np.matmul(X, Y)
-    if not Out.shape:
-        # We do not support 0-dimensional Tensors (scalars). So where
-        # np.matmul outputs a scalar, we must convert to a Tensor of
-        # shape (1, ) instead.
-        # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float64")
     return Out
 
 
@@ -110,8 +105,15 @@ class TestMatMulAmpOp(OpTest):
         self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
         self.outputs = {'out': result}
 
+    def checker(self, outs):
+        outs = convert_uint16_to_float(outs)
+        np.testing.assert_allclose(outs, self.outputs['out'])
+
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(
+            checker=self.checker, place=place
+        )
 
     def get_numeric_grad(self, place, check_name):
         scope = core.Scope()
@@ -120,36 +122,34 @@ class TestMatMulAmpOp(OpTest):
             scope, self.op_type, self.inputs, self.outputs, self.attrs
         )
         return get_numeric_gradient(
-            place, scope, op, self.inputs_fp32, check_name, ['Out']
+            place, scope, op, self.inputs_fp32, check_name, ['out']
         )
 
     def test_check_grad_x(self):
         place = core.CUDAPlace(0)
-        numeric_grads = self.get_numeric_grad(place, 'X')
+        numeric_grads = self.get_numeric_grad(place, 'x')
         self.check_grad_with_place(
             place,
-            ['X'],
-            'Out',
-            no_grad_set={'Y'},
+            ['x'],
+            'out',
+            no_grad_set={'y'},
             user_defined_grads=[numeric_grads],
         )
 
     def test_check_grad_y(self):
         place = core.CUDAPlace(0)
-        numeric_grads = self.get_numeric_grad(place, 'Y')
+        numeric_grads = self.get_numeric_grad(place, 'y')
         self.check_grad_with_place(
             place,
-            ['Y'],
-            'Out',
-            no_grad_set={'X'},
+            ['y'],
+            'out',
+            no_grad_set={'x'},
             user_defined_grads=[numeric_grads],
         )
 
     def test_check_grad(self):
-        if core.is_compiled_with_rocm():
-            self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-2)
-        else:
-            self.check_grad(['X', 'Y'], 'Out')
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['x', 'y'], 'out')
 
 
 if __name__ == "__main__":

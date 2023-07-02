@@ -1050,7 +1050,7 @@ void Blas<phi::CPUContext>::GEMM_FREE(T *data) const {
 #endif
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  CBLAS_TRANSPOSE transB,
                                  int M,
@@ -1060,7 +1060,7 @@ void Blas<phi::CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 OutT *C) const {
+                                 T *C) const {
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
@@ -1337,7 +1337,7 @@ T Blas<phi::CPUContext>::ASUM(int n, T *x, int inc) const {
 }
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::CPUContext>::GEMV(bool trans_a,
                                  int M,
                                  int N,
@@ -1345,13 +1345,13 @@ void Blas<phi::CPUContext>::GEMV(bool trans_a,
                                  const T *A,
                                  const T *B,
                                  T beta,
-                                 OutT *C) const {
+                                 T *C) const {
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
 }
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1361,7 +1361,7 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T *A,
                                         const T *B,
                                         T beta,
-                                        OutT *C,
+                                        T *C,
                                         int batchCount,
                                         int64_t strideA,
                                         int64_t strideB) const {
@@ -1411,7 +1411,7 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 }
 
 template <>
-template <typename T, typename OutT>
+template <typename T>
 void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1421,7 +1421,7 @@ void Blas<phi::CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         const T **A,
                                         const T **B,
                                         T beta,
-                                        OutT **C,
+                                        T **C,
                                         int batchCount) const {
 #ifdef PADDLE_WITH_MKLML
   const int lda = (std::max)((transA == CblasNoTrans) ? K : M, 1);
@@ -1680,7 +1680,67 @@ void Blas<DeviceContext>::MatMul(const T *mat_a,
             "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
             dim_a.batch_size_,
             dim_b.batch_size_));
-    this->template BatchedGEMM<T, T>(
+    this->template BatchedGEMM<T>(
+        transA,
+        transB,
+        dim_a.height_,
+        dim_b.width_,
+        dim_a.width_,
+        alpha,
+        mat_a,
+        mat_b,
+        beta,
+        mat_out,
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_,
+        dim_b.stride_);
+  }
+}
+
+template <typename DeviceContext>
+template <typename Ta, typename Tb, typename Tc>
+void Blas<DeviceContext>::MatMulWrapper(const Ta *mat_a,
+                                        const MatDescriptor &dim_a,
+                                        const Tb *mat_b,
+                                        const MatDescriptor &dim_b,
+                                        Tc alpha,
+                                        Tc *mat_out,
+                                        Tc beta) const {
+  PADDLE_ENFORCE_EQ(
+      dim_a.width_,
+      dim_b.height_,
+      phi::errors::InvalidArgument(
+          "The fisrt matrix width should be same as second matrix height,"
+          "but received fisrt matrix width %d"
+          ", second matrix height %d",
+          dim_a.width_,
+          dim_b.height_));
+
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    this->template GEMMWrapper(transA,
+                               transB,
+                               dim_a.height_,
+                               dim_b.width_,
+                               dim_a.width_,
+                               alpha,
+                               mat_a,
+                               mat_b,
+                               beta,
+                               mat_out);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dim_a.batch_size_ == dim_b.batch_size_ || dim_a.batch_size_ == 0 ||
+            dim_b.batch_size_ == 0,
+        true,
+        phi::errors::InvalidArgument(
+            "dim_a.batch_size should be equal to dim_b.batch_size, or "
+            "one of dim_a.batch_size and dim_b.batch_size should be 0. "
+            "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
+            dim_a.batch_size_,
+            dim_b.batch_size_));
+    this->template BatchedGEMMWrapper(
         transA,
         transB,
         dim_a.height_,

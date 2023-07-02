@@ -1081,6 +1081,7 @@
     param : [x, y]
   kernel :
     func : matmul_amp_grad
+    data_type : x
 
 - backward_op : matrix_power_grad
   forward : matrix_power (Tensor x, int n) -> Tensor(out)
