@@ -36,7 +36,7 @@ struct VectorTypeStorage : public TypeStorage {
   /// \brief Each derived TypeStorage must define a Construc method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
-  static VectorTypeStorage *Construct(ParamKey key) {
+  static VectorTypeStorage *Construct(const ParamKey &key) {
     return new VectorTypeStorage(key);
   }
 

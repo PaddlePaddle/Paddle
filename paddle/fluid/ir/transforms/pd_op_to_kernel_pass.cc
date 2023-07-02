@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-#include "paddle/fluid/ir/pass/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/ir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir/dialect/kernel_attribute.h"
 #include "paddle/fluid/ir/dialect/kernel_dialect.h"
@@ -173,6 +173,10 @@ phi::KernelKey GetKernelKey(
     }
   }
 
+  if (kernel_backend == phi::Backend::UNDEFINED) {
+    kernel_backend = paddle::experimental::ParseBackend(place);
+  }
+
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
   return res;
 }
@@ -214,7 +218,9 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     if ((*it)->num_results() > 0) {
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
         auto result_type = (*it)->result(i).type();
-        if (result_type.isa<dialect::DenseTensorType>()) {
+        if (!result_type) {
+          op_output_types.push_back(result_type);
+        } else if (result_type.isa<dialect::DenseTensorType>()) {
           auto allocated_dense_tensor_dtype =
               paddle::dialect::AllocatedDenseTensorType::get(
                   ctx,
