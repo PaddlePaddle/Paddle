@@ -134,6 +134,7 @@ class TestMLPAutoParallelizer(unittest.TestCase):
             distributed_startup_program,
             distributed_main_program,
         ) = optimizer.minimize(loss, start_program)
+
         suffix = core.kAutoParallelSuffix()
         for block in distributed_main_program.blocks:
             for op in block.ops:

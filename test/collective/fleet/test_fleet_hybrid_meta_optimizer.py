@@ -761,7 +761,9 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         main_prog_op_types = [op.type for op in main_prog_ops]
 
         # global, sharding, pp_send, pp_recv
-        print(f"debug startup_prog_op_types: {startup_prog_op_types}, startup_prog: {startup_prog.to_string(True)}")
+        print(
+            f"debug startup_prog_op_types: {startup_prog_op_types}, startup_prog: {startup_prog.to_string(True)}"
+        )
         self.assertEqual(
             startup_prog_op_types,
             [

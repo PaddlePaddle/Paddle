@@ -164,6 +164,9 @@ class ProcessGroup:
                 "and 'export MASTER_ADDR=54612'. Or you can start your training"
                 "with paddle.distributed.run module."
             )
+            logger.info(
+                f"get_default_store master_endpoints: {endpoints}, all endpoints: {os.getenv('PADDLE_TRAINER_ENDPOINTS')}"
+            )
             master_addr, master_port = endpoints.split(":")
             master_port = int(master_port)
             is_master = genv.rank == 0
@@ -194,9 +197,11 @@ class ProcessGroup:
 
             if core.is_compiled_with_cuda():
                 store = get_default_store()
+                place = core.CUDAPlace(genv.device_id)
                 core.CommContextManager.create_nccl_comm_context(
-                    store, genv.device_id, 0, genv.rank, genv.world_size
+                    store, genv.device_id, ring_id, genv.rank, genv.world_size
                 )
+                core.set_device_comm_context(place, ring_id)
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
@@ -229,28 +234,34 @@ class ProcessGroup:
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
-            # barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle.distributed.barrier()
-            # paddle._legacy_C_ops.barrier(
-            #    barrier_tensor, barrier_tensor, 'ring_id', ring_id
-            # )
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.all_reduce(
+                barrier_tensor,
+                'reduce_type',
+                paddle.distributed.ReduceOp.SUM,
+                'ring_id',
+                ring_id,
+            )
 
             # NOTE(zhiqiu): to avoid send/recv hang in lazy init
             if self._group_type == 'p2p':
                 alltoall_tmp = paddle.empty(
                     shape=[self.nranks, self.nranks], dtype="int32"
                 )
-                paddle._legacy_C_ops.alltoall(
+                paddle._legacy_C_ops.all_to_all(
                     alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
                 )
                 paddle.device.cuda.synchronize()
 
         if self.nranks > 1:
-            # barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle.distributed.barrier()
-        # paddle._legacy_C_ops.barrier(
-        #    barrier_tensor, barrier_tensor, 'ring_id', 0
-        # )
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.all_reduce(
+                barrier_tensor,
+                'reduce_type',
+                paddle.distributed.ReduceOp.SUM,
+                'ring_id',
+                ring_id,
+            )
 
         self._is_instantiate = True
 

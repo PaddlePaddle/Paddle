@@ -114,6 +114,7 @@ def start_local_trainers(
     current_env.pop("https_proxy", None)
 
     procs = []
+    idx = 0
     for t in pod.trainers:
         proc_env = {
             "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
@@ -140,7 +141,15 @@ def start_local_trainers(
 
         fn = None
 
-        proc = subprocess.Popen(cmd.split(" "), env=current_env)
+        path0 = f"/tmp/tr{idx}_err_{os.getpid()}.log"
+        tr0_pipe = open(path0, "w")
+        proc = subprocess.Popen(
+            cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=tr0_pipe,
+            env=current_env,
+        )
+        tr0_pipe.close()
 
         tp = TrainerProc()
         tp.proc = proc
@@ -149,6 +158,7 @@ def start_local_trainers(
         tp.cmd = cmd
 
         procs.append(tp)
+        idx += 1
 
     return procs
 
