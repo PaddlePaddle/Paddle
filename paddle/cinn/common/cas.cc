@@ -123,10 +123,11 @@ Expr ProductGetNonConstantPart(Expr u) {
     }
     if (nonconstant_operands.empty()) {
       return make_const(u->type(), 1);
-    } else if (nonconstant_operands.size() == 1)
+    } else if (nonconstant_operands.size() == 1) {
       return nonconstant_operands.front();
-    else
+    } else {
       return Product::Make(nonconstant_operands);
+    }
   }
   return u;
 }

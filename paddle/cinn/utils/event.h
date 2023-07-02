@@ -69,7 +69,7 @@ class Summary {
  public:
   struct Raito {
     double value;
-    Raito(double val) : value(val){};
+    Raito(double val) : value(val) {}
     std::string ToStr() const { return std::to_string(value); }
   };
 

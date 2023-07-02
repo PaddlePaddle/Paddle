@@ -759,8 +759,9 @@ std::vector<ir::Tensor> ReduceInternal(const ir::Tensor& A,
           A, axes, keep_dim, output_name, Reduce##name, initial, reduce_type); \
       if (rs.size() == 0) {                                                    \
         return {Reduce##name(A, axes, keep_dim, output_name)};                 \
-      } else                                                                   \
+      } else {                                                                 \
         return rs;                                                             \
+      }                                                                        \
     }                                                                          \
   }
 
@@ -801,7 +802,7 @@ bool WithoutLastDimInReduce(const std::vector<ir::Expr>& inshape,
   } else {
     return false;
   }
-};
+}
 
 using BlockReduceFunc =
     std::function<std::vector<ir::Tensor>(const ir::Tensor&,

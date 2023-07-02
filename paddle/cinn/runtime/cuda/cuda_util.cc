@@ -665,7 +665,7 @@ std::string debug_cudnn_tensor_format(cudnnTensorFormat_t tensor_format) {
       return "NHWC";
     default:
       LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
-  };
+  }
   return "";
 }
 
@@ -681,7 +681,7 @@ std::string debug_cudnn_tensor_dtype(cudnnDataType_t tensor_dtype) {
       return "float64";
     default:
       LOG(FATAL) << "Only support float16/bfloat16/float32/float64 now!";
-  };
+  }
   return "";
 }
 
@@ -697,7 +697,7 @@ std::string debug_cudnn_pool_mode(cudnnPoolingMode_t pool_mode) {
       return "avg_exclulude_padding";
     default:
       LOG(FATAL) << "Pool only support max and avg now!";
-  };
+  }
   return "";
 }
 
