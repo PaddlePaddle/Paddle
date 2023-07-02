@@ -143,6 +143,7 @@ class TCPStore : public Store {
 
   bool _is_master;
   int _num_workers;
+  static std::once_flag init_flag_;
 };
 
 }  // namespace distributed
