@@ -20,6 +20,7 @@
 
 #include "paddle/ir/core/attribute.h"
 #include "paddle/ir/core/attribute_base.h"
+#include "paddle/ir/core/type.h"
 #include "paddle/ir/core/utils.h"
 
 namespace ir {
@@ -129,6 +130,27 @@ struct ArrayAttributeStorage : public AttributeStorage {
  private:
   Attribute *data_ = nullptr;
   size_t length_ = 0;
+};
+
+struct TypeAttributeStorage : public AttributeStorage {
+  using ParamKey = Type;
+
+  explicit TypeAttributeStorage(const ParamKey &key) : value_(key) {}
+
+  static TypeAttributeStorage *Construct(ParamKey key) {
+    return new TypeAttributeStorage(key);
+  }
+
+  static std::size_t HashValue(const ParamKey &key) {
+    return std::hash<Type>()(key);
+  }
+
+  bool operator==(const ParamKey &key) const { return value_ == key; }
+
+  ParamKey GetAsKey() const { return value_; }
+
+ private:
+  Type value_;
 };
 
 }  // namespace ir
