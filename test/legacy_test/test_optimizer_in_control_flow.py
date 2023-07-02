@@ -93,7 +93,7 @@ def static(
         hidden, prediction = double_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=LR)
-        sgd = optimizer.SGD(learning_rate=LR)
+        sgd = paddle.optimizer.SGD(learning_rate=LR)
 
         id = paddle.static.data('id', [1], 'int32')
         two = paddle.tensor.fill_constant([1], 'int32', 2)

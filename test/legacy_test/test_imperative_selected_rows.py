@@ -97,7 +97,7 @@ class TestSimpleNet(unittest.TestCase):
                     adam = paddle.optimizer.SGD(
                         learning_rate=0.001,
                         parameters=simplenet.parameters(),
-                        weight_decay=grad_clip,
+                        grad_clip=grad_clip,
                     )
                     input_emb, emb = simplenet(input)
                     input_emb.retain_grads()

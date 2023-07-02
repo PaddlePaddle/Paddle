@@ -680,7 +680,7 @@ class TestLookaheadOptimizer(unittest.TestCase):
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
 
-        sgd = optimizer.SGD(learning_rate=0.01)
+        sgd = paddle.optimizer.SGD(learning_rate=0.01)
         lookahead = optimizer.LookaheadOptimizer(sgd, alpha=0.5, k=5)
         with framework.program_guard(program, init_program):
             opts, _ = lookahead.minimize(mean_out)
@@ -793,7 +793,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -824,7 +824,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -856,7 +856,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out.name])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -888,7 +888,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([mul_out, b2_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -920,7 +920,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([mul_out, b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -951,7 +951,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b2_out, mul_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -983,7 +983,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([mul_x, b2_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -1011,7 +1011,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
 
     def test_apply_gradients(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         # apply backward
@@ -1049,7 +1049,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
 
     def test_load(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         try:
@@ -1072,7 +1072,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             [op.type for op in mean_out.block.ops],
             ["mul", "dropout", "elementwise_add", "elementwise_add", "mean"],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -1117,7 +1117,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 "mean",
             ],
         )
-        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
@@ -1323,7 +1323,7 @@ class TestGradientMergeOptimizer(unittest.TestCase):
             ["mul", "elementwise_add", "mean"],
         )
 
-        opt = optimizer.SGD(learning_rate=1.0)
+        opt = paddle.optimizer.SGD(learning_rate=1.0)
         opt = optimizer.GradientMergeOptimizer(opt, k_steps=4)
         with framework.program_guard(main_program, init_program):
             ops, params_grads = opt.minimize(cost)
