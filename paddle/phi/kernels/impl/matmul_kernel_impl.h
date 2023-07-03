@@ -1075,7 +1075,7 @@ void MatmulAmpFunction(const Context& ctx,
                        ctx.template Alloc<Tout>(out));
     } else {
       const int M = y_dims[y_ndim - 1];
-      const int batch_size = Y.numel() / (M * N);
+      const int batch_size = y.numel() / (M * N);
       if (batch_size == 1) {
         VLOG(3) << "MatMul's case 3";
         blas.GEMVWrapper(true,
@@ -1108,7 +1108,7 @@ void MatmulAmpFunction(const Context& ctx,
 
   if (y_ndim == 1) {
     const int N = y.numel();
-    if (trans_x) {
+    if (transpose_x) {
       PADDLE_ENFORCE_EQ(
           x_dims[x_ndim - 2],
           N,
@@ -1132,7 +1132,7 @@ void MatmulAmpFunction(const Context& ctx,
                                        x_dims[x_ndim - 1]));
     }
     std::vector<std::int64_t> out_dims(x_ndim - 1);
-    if (trans_x) {
+    if (transpose_x) {
       std::copy_n(x_dims.cbegin(), x_ndim - 2, out_dims.begin());
       out_dims.back() = x_dims.back();
     } else {
@@ -1141,7 +1141,7 @@ void MatmulAmpFunction(const Context& ctx,
     out->ResizeAndAllocate(phi::make_ddim(out_dims));
     ctx.template Alloc<T>(out);
 
-    if (trans_x) {
+    if (transpose_x) {
       const int M = x_dims[x_ndim - 1];
       const int batch_size = x.numel() / (M * N);
       if (batch_size == 1) {
@@ -1171,7 +1171,7 @@ void MatmulAmpFunction(const Context& ctx,
                                 0);
       }
     } else {
-      const int M = X.numel() / N;
+      const int M = x.numel() / N;
       VLOG(3) << "MatMul's case 7";
       blas.GEMVWrapper(false,
                        M,
