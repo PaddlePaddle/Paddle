@@ -1185,7 +1185,7 @@ void LoopAssignReduce(
 // The struct used to remove the original block in ComputeAt.
 class RemoveExpr : public ir::IRMutator<> {
  public:
-  RemoveExpr(const Expr& target) : target_(target) {}
+  explicit RemoveExpr(const Expr& target) : target_(target) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
