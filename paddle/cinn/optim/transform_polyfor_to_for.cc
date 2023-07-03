@@ -89,21 +89,24 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
     if (!(lt_n || le_n)) return;
 
     // check the lhs is the iterator
-    bool can_extract_extent = (lt_n && lt_n->a().as_var() && lt_n->a().as_var()->name == op->iterator->name) ||
-                              (le_n && le_n->a().as_var() && le_n->a().as_var()->name == op->iterator->name);
+    bool can_extract_extent =
+        (lt_n && lt_n->a().as_var() &&
+         lt_n->a().as_var()->name == op->iterator->name) ||
+        (le_n && le_n->a().as_var() &&
+         le_n->a().as_var()->name == op->iterator->name);
 
     if (!can_extract_extent) {
       if (node->condition.As<ir::LE>()) {
         auto le = node->condition.As<ir::LE>();
         CHECK(le->a().As<ir::Sub>());
         CHECK_EQ(le->b().As<ir::IntImm>()->value, 0UL);
-        auto sub        = le->a().As<ir::Sub>();
+        auto sub = le->a().As<ir::Sub>();
         node->condition = ir::LE::Make(sub->a(), sub->b());
       } else if (node->condition.As<ir::LT>()) {
         auto lt = node->condition.As<ir::LT>();
         CHECK(lt->a().As<ir::Sub>());
         CHECK_EQ(lt->b().As<ir::IntImm>()->value, 0UL);
-        auto sub        = lt->a().As<ir::Sub>();
+        auto sub = lt->a().As<ir::Sub>();
         node->condition = ir::LT::Make(sub->a(), sub->b());
       } else {
         LOG(FATAL) << "Unkown Type!";
@@ -116,12 +119,17 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
 
     Expr lhs = lt_n ? lt_n->a() : le_n->a();
     Expr rhs = lt_n ? lt_n->b() : PlusOneWithMinMax(le_n->b());
-    rhs      = common::AutoSimplify(rhs);
+    rhs = common::AutoSimplify(rhs);
 
     if (op->is_vectorized()) CHECK(op->vectorize_info().valid());
 
-    Expr new_for =
-        ir::For::Make(op->iterator, op->init, rhs, op->for_type(), op->device_api, op->body, op->vectorize_info());
+    Expr new_for = ir::For::Make(op->iterator,
+                                 op->init,
+                                 rhs,
+                                 op->for_type(),
+                                 op->device_api,
+                                 op->body,
+                                 op->vectorize_info());
     *expr = new_for;
 
     Visit(&new_for.As<ir::For>()->body);
@@ -130,7 +138,9 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
 
 }  // namespace
 
-void TransformPolyForToFor(Expr* expr, bool auto_separate) { PolyForWithSimpleConditionToForMutator()(expr); }
+void TransformPolyForToFor(Expr* expr, bool auto_separate) {
+  PolyForWithSimpleConditionToForMutator()(expr);
+}
 
 }  // namespace optim
 }  // namespace cinn

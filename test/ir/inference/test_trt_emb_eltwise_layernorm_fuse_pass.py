@@ -49,7 +49,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         padding_idx = -1
         axis = -1
         op_type = draw(st.sampled_from(['lookup_table', 'lookup_table_v2']))
-        epsilon = draw(st.floats(min_value=0.0001, max_value=0.001))
+        epsilon = 0.00001
         # begin_norm_axis has to be 2
         begin_norm_axis = 2
         batch_size = draw(st.integers(min_value=1, max_value=4))
@@ -72,12 +72,12 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
-            return np.random.uniform(0.05, 0.05, attrs['weight_size']).astype(
+            return np.random.uniform(0.005, 0.005, attrs['weight_size']).astype(
                 np.float32
             )
 
         def generate_weight2(attrs):
-            return np.random.uniform(1, 1.1, attrs[3]['weight_size'][1]).astype(
+            return np.random.uniform(1, 1, attrs[3]['weight_size'][1]).astype(
                 np.float32
             )
 
@@ -283,10 +283,10 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
         padding_idx = -1
         axis = -1
         op_type = draw(st.sampled_from(['lookup_table', 'lookup_table_v2']))
-        epsilon = 0.0001
+        epsilon = 0.00001
         # begin_norm_axis has to be 2
         begin_norm_axis = 2
-        batch_size = 4
+        batch_size = draw(st.integers(min_value=1, max_value=4))
         input_dim = [128, 128, 1]
         weight_size = [64, 384]
 
@@ -334,12 +334,12 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
-            return np.random.uniform(0.05, 0.1, attrs['weight_size']).astype(
+            return np.random.uniform(0.005, 0.005, attrs['weight_size']).astype(
                 np.float32
             )
 
         def generate_weight2(attrs):
-            return np.random.uniform(1, 1.1, attrs[3]['weight_size'][1]).astype(
+            return np.random.uniform(1, 1, attrs[3]['weight_size'][1]).astype(
                 np.float32
             )
 

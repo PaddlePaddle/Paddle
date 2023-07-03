@@ -1,1 +1,3 @@
-FROM registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda11.2-cudnn8-gcc82
+# Use SHA to specify the docker image to prevent the use of old cache images
+# TAG: latest-dev-cuda11.2-cudnn8.2-trt8.0-gcc82
+FROM registry.baidubce.com/paddlepaddle/paddle@sha256:ac757bc25c341814284ceafb274c55e36ea7dcf026a265d14f885a0fa60368f8

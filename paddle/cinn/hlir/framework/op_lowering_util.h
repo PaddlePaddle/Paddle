@@ -24,18 +24,21 @@ namespace framework {
 
 std::vector<NodeData*> GetInputNodeData(const Node* node);
 
-ir::Tensor GetTensor(const NodeData* node_data,
-                     const absl::flat_hash_map<std::string, Type>& type_dict,
-                     const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+ir::Tensor GetTensor(
+    const NodeData* node_data,
+    const absl::flat_hash_map<std::string, Type>& type_dict,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
-std::vector<ir::Tensor> CollectInputTensor(const Node* node,
-                                           std::vector<ir::Tensor>& func_args,
-                                           std::unordered_map<std::string, ir::Tensor>& tensor_map,
-                                           const absl::flat_hash_map<std::string, Type>& type_dict,
-                                           const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+std::vector<ir::Tensor> CollectInputTensor(
+    const Node* node,
+    std::vector<ir::Tensor>& func_args,
+    std::unordered_map<std::string, ir::Tensor>& tensor_map,
+    const absl::flat_hash_map<std::string, Type>& type_dict,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
-std::unordered_map<Node*, Node*> BuildVirtualConsumer(const GroupPtr& group,
-                                                      const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+std::unordered_map<Node*, Node*> BuildVirtualConsumer(
+    const GroupPtr& group,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
 NodeData* GetNodeData(const Node* node);
 
@@ -45,17 +48,22 @@ std::vector<Node*> GetConsumers(const Node* node);
 
 bool IsConstOp(const framework::Node* node);
 
-std::vector<Node*> GetConsumersInSet(const Node* node, const std::unordered_set<Node*>& node_set);
+std::vector<Node*> GetConsumersInSet(const Node* node,
+                                     const std::unordered_set<Node*>& node_set);
 
-std::vector<Node*> TopologicalOrder(const GroupPtr& group, const std::unordered_map<Node*, Node*>& virtual_consumers);
+std::vector<Node*> TopologicalOrder(
+    const GroupPtr& group,
+    const std::unordered_map<Node*, Node*>& virtual_consumers);
 
-std::vector<Node*> BFSTopologicalOrderWithPriority(const GroupPtr& group,
-                                                   const std::unordered_map<Node*, Node*>& virtual_consumers,
-                                                   const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+std::vector<Node*> BFSTopologicalOrderWithPriority(
+    const GroupPtr& group,
+    const std::unordered_map<Node*, Node*>& virtual_consumers,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
 Node* FindGlobalReducer(const std::vector<Node*>& nodes_in_order);
 
-Node* FindNearestReducer(const Node* node, const std::unordered_set<Node*>& nodes_set);
+Node* FindNearestReducer(const Node* node,
+                         const std::unordered_set<Node*>& nodes_set);
 
 bool CanbeInline(Node* node,
                  const std::vector<Node*> consumers,
@@ -65,37 +73,42 @@ bool CanbeInline(Node* node,
                  const std::unordered_set<Node*>& nodes_set,
                  const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
-Node* GetMasterToComputeAt(Node* node,
-                           const std::vector<Node*>& nodes_in_order,
-                           const std::unordered_set<Node*>& nodes_inline,
-                           const std::unordered_set<Node*>& nodes_set,
-                           const std::unordered_map<Node*, Node*>& virtual_consumers,
-                           const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+Node* GetMasterToComputeAt(
+    Node* node,
+    const std::vector<Node*>& nodes_in_order,
+    const std::unordered_set<Node*>& nodes_inline,
+    const std::unordered_set<Node*>& nodes_set,
+    const std::unordered_map<Node*, Node*>& virtual_consumers,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
-std::unordered_set<Node*> GetMasters(Node* node,
-                                     const std::unordered_set<Node*>& nodes_inline,
-                                     const std::unordered_set<Node*>& nodes_set);
+std::unordered_set<Node*> GetMasters(
+    Node* node,
+    const std::unordered_set<Node*>& nodes_inline,
+    const std::unordered_set<Node*>& nodes_set);
 
-void LoopAssignReduce(ir::IRSchedule& ir_sch,
-                      const Node* node,
-                      const Node* reducer,
-                      const Target& target,
-                      const std::unordered_map<std::string, ir::Tensor>& tensor_map,
-                      const absl::flat_hash_map<std::string, shape_t>& shape_dict);
+void LoopAssignReduce(
+    ir::IRSchedule& ir_sch,
+    const Node* node,
+    const Node* reducer,
+    const Target& target,
+    const std::unordered_map<std::string, ir::Tensor>& tensor_map,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict);
 
-void LoopComputeAt(ir::IRSchedule& ir_sch,
-                   Node* node,
-                   const Node* master,
-                   const GroupPtr& group,
-                   const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-                   const std::unordered_map<std::string, ir::Tensor>& tensor_map);
+void LoopComputeAt(
+    ir::IRSchedule& ir_sch,
+    Node* node,
+    const Node* master,
+    const GroupPtr& group,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const std::unordered_map<std::string, ir::Tensor>& tensor_map);
 
-void SyncThreadWithShared(ir::IRSchedule& ir_sch,
-                          const GroupPtr& group,
-                          const std::unordered_set<Node*>& nodes_inline,
-                          const std::unordered_set<Node*>& nodes_set,
-                          const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-                          const std::unordered_map<std::string, ir::Tensor>& tensor_map);
+void SyncThreadWithShared(
+    ir::IRSchedule& ir_sch,
+    const GroupPtr& group,
+    const std::unordered_set<Node*>& nodes_inline,
+    const std::unordered_set<Node*>& nodes_set,
+    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
+    const std::unordered_map<std::string, ir::Tensor>& tensor_map);
 
 }  // namespace framework
 }  // namespace hlir

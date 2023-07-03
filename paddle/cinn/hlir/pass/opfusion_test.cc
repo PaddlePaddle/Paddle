@@ -55,11 +55,11 @@ TEST(complex2, complex2) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
   attrs1["epsilon"] = static_cast<float>(0.001);
@@ -110,11 +110,11 @@ TEST(complex1, complex1) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
   attrs1["epsilon"] = static_cast<float>(0.001);
@@ -242,11 +242,11 @@ TEST(conv_bn_conv, conv_bn_conv) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
   attrs1["epsilon"] = static_cast<float>(0.001);
@@ -299,11 +299,11 @@ TEST(fuse_conv_add, fuse_conv_add) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   auto c = program.conv2d(A, B, attrs);
   auto d = program.elementwise_add(c, C, 1);
@@ -353,11 +353,11 @@ TEST(conv_add_mul, conv_add_mul) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
   attrs1["epsilon"] = static_cast<float>(0.001);
@@ -405,11 +405,11 @@ TEST(fuse_conv_add1, fuse_conv_add1) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({1, 1});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({0, 0});
+  attrs["stride"] = std::vector<int>({1, 1});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({0, 0});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   auto c = program.conv2d(A, B, attrs);
   auto d = program.elementwise_add(c, C);
@@ -493,17 +493,18 @@ TEST(conv_bn, conv_bn) {
 
   Program program;
   absl::flat_hash_map<std::string, Program::attr_t> attrs;
-  attrs["stride"]        = std::vector<int>({2, 2});
-  attrs["dilation"]      = std::vector<int>({1, 1});
-  attrs["padding"]       = std::vector<int>({3, 3});
+  attrs["stride"] = std::vector<int>({2, 2});
+  attrs["dilation"] = std::vector<int>({1, 1});
+  attrs["padding"] = std::vector<int>({3, 3});
   std::string src_layout = "NCHW";
-  attrs["data_format"]   = src_layout;
+  attrs["data_format"] = src_layout;
 
   absl::flat_hash_map<std::string, Program::attr_t> attrs1;
   attrs1["epsilon"] = static_cast<float>(0.001);
 
   auto c = program.conv2d(A, B, attrs);
-  auto d = program.fused_batchnorm_inference(c, Scale, Bias, Mean, Variance, attrs1);
+  auto d =
+      program.fused_batchnorm_inference(c, Scale, Bias, Mean, Variance, attrs1);
 
   Target target = common::DefaultTarget();
   program.SetInputs({A, B, Scale, Bias, Mean, Variance});

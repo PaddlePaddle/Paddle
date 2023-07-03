@@ -27,13 +27,17 @@ namespace auto_schedule {
 AutoGenRule::AutoGenRule(const common::Target& target) : target_(&target) {}
 
 int AutoGenRule::NumberApplicable() const {
-  CHECK_GE(num_applicable_, 0) << "Call " << GetRuleName() << "::NumberApplicable() without initialization.";
+  CHECK_GE(num_applicable_, 0)
+      << "Call " << GetRuleName()
+      << "::NumberApplicable() without initialization.";
   return num_applicable_;
 }
 
 void AutoGenRule::ApplyRandomly() {
-  CHECK_GT(num_applicable_, 0) << "Call " << GetRuleName() << "::ApplyRandomly() with NumberApplicable() == 0";
-  int index = rand() % num_applicable_;
+  CHECK_GT(num_applicable_, 0)
+      << "Call " << GetRuleName()
+      << "::ApplyRandomly() with NumberApplicable() == 0";
+  int index = rand() % num_applicable_;  // NOLINT
   return Apply(index);
 }
 

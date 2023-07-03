@@ -29,7 +29,8 @@ namespace auto_schedule {
  */
 class ExprCostModel : public XgbCostModel {
  public:
-  virtual float Predict(const ir::ModuleExpr& sample, const common::Target& target) const;
+  virtual float Predict(const ir::ModuleExpr& sample,
+                        const common::Target& target) const;
   void Train(const std::vector<const ir::ModuleExpr*>& samples,
              const std::vector<float>& labels,
              const common::Target& target);

@@ -35,6 +35,8 @@ void BuiltinDialect::initialize() {
                 Int32Type,
                 Int64Type,
                 BoolType,
+                Complex64Type,
+                Complex128Type,
                 VectorType>();
 
   RegisterAttributes<StrAttribute,
@@ -44,7 +46,8 @@ void BuiltinDialect::initialize() {
                      PointerAttribute,
                      Int32Attribute,
                      Int64Attribute,
-                     ArrayAttribute>();
+                     ArrayAttribute,
+                     TypeAttribute>();
 
   RegisterOps<ModuleOp,
               GetParameterOp,

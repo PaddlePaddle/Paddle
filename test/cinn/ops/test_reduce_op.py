@@ -15,19 +15,22 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
+
 import cinn
-from cinn.frontend import *
+import numpy as np
 from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 paddle.seed(2)
 np.random.seed(2)
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestReduceBaseOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -59,8 +62,7 @@ class TestReduceBaseOp(OpTest):
         out = self.cinn_func(builder, x)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -152,9 +154,7 @@ class TestReduceSumCase10(TestReduceSumOp):
 
 class TestReduceSumCase11(TestReduceSumOp):
     def init_case(self):
-        self.inputs = {
-            "x": self.random([32, 32, 32, 32], "float32", -0.1, 0.1)
-        }
+        self.inputs = {"x": self.random([32, 32, 32, 32], "float32", -0.1, 0.1)}
         self.dim = [0, 2, 3]
         self.keep_dim = False
 
@@ -187,9 +187,7 @@ class TestReduceSumCase14(TestReduceSumOp):
 class TestReduceSumCase15(TestReduceSumOp):
     def init_case(self):
         # data shape from resnet50 bs=32
-        self.inputs = {
-            "x": self.random([32, 64, 56, 56], "float32", -0.1, 0.1)
-        }
+        self.inputs = {"x": self.random([32, 64, 56, 56], "float32", -0.1, 0.1)}
         self.dim = [0, 2, 3]
         self.keep_dim = False
 
@@ -201,9 +199,7 @@ class TestReduceSumCase15(TestReduceSumOp):
 class TestReduceSumCase16(TestReduceSumOp):
     def init_case(self):
         # data shape from resnet50 NHWC bs=32
-        self.inputs = {
-            "x": self.random([32, 56, 56, 64], "float32", -0.1, 0.1)
-        }
+        self.inputs = {"x": self.random([32, 56, 56, 64], "float32", -0.1, 0.1)}
         self.dim = [0, 1, 2]
         self.keep_dim = False
 
@@ -257,9 +253,9 @@ class TestReduceSumINT32(TestReduceSumOp):
         return builder.create_input(Int(32), shape, name)
 
     def paddle_func(self, x):
-        return paddle.sum(
-            x, axis=self.dim,
-            keepdim=self.keep_dim).cast(self.inputs["x"].dtype)
+        return paddle.sum(x, axis=self.dim, keepdim=self.keep_dim).cast(
+            self.inputs["x"].dtype
+        )
 
 
 class TestReduceSumINT32Case1(TestReduceSumINT32):
@@ -370,9 +366,9 @@ class TestReduceProdINT32(TestReduceProdOp):
         return builder.create_input(Int(32), shape, name)
 
     def paddle_func(self, x):
-        return paddle.prod(
-            x, axis=self.dim,
-            keepdim=self.keep_dim).cast(self.inputs["x"].dtype)
+        return paddle.prod(x, axis=self.dim, keepdim=self.keep_dim).cast(
+            self.inputs["x"].dtype
+        )
 
 
 class TestReduceProdINT64(TestReduceProdOp):
@@ -458,9 +454,9 @@ class TestReduceMaxINT32(TestReduceMaxOp):
         return builder.create_input(Int(32), shape, name)
 
     def paddle_func(self, x):
-        return paddle.max(
-            x, axis=self.dim,
-            keepdim=self.keep_dim).cast(self.inputs["x"].dtype)
+        return paddle.max(x, axis=self.dim, keepdim=self.keep_dim).cast(
+            self.inputs["x"].dtype
+        )
 
 
 class TestReduceMaxINT64(TestReduceMaxOp):
@@ -546,9 +542,9 @@ class TestReduceMinINT32(TestReduceMinOp):
         return builder.create_input(Int(32), shape, name)
 
     def paddle_func(self, x):
-        return paddle.min(
-            x, axis=self.dim,
-            keepdim=self.keep_dim).cast(self.inputs["x"].dtype)
+        return paddle.min(x, axis=self.dim, keepdim=self.keep_dim).cast(
+            self.inputs["x"].dtype
+        )
 
 
 class TestReduceMinINT64(TestReduceMinOp):

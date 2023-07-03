@@ -83,8 +83,9 @@ class OpNameNormalizer {
       std::string data = "@GRAD";
 
       size_t first_grad_pos = arg_name.find(target);
-      std::string legacy_name =
-          this->GetLegacyArgName(op_type, arg_name.substr(0, first_grad_pos));
+      size_t type_pos = op_type.find(target);
+      std::string legacy_name = this->GetLegacyArgName(
+          op_type.substr(0, type_pos), arg_name.substr(0, first_grad_pos));
       legacy_name += arg_name.substr(first_grad_pos);
       for (size_t pos = 0;
            legacy_name.npos != (pos = legacy_name.find(target, pos));

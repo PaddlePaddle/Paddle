@@ -13,17 +13,20 @@
 # limitations under the License.
 
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestReduceOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -31,30 +34,37 @@ class TestReduceOp(OpTest):
 
     def prepare_inputs(self):
         self.x_np = self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=True)
         if self.case["op_type"] == "sum":
             out = paddle.sum(
-                x, axis=self.case["axis"], keepdim=self.case["keepdim"])
+                x, axis=self.case["axis"], keepdim=self.case["keepdim"]
+            )
             if self.case["dtype"] == "int32":
                 out = out.cast(self.case["dtype"])
         elif self.case["op_type"] == "prod":
             out = paddle.prod(
-                x, axis=self.case["axis"], keepdim=self.case["keepdim"])
+                x, axis=self.case["axis"], keepdim=self.case["keepdim"]
+            )
         elif self.case["op_type"] == "max":
             out = paddle.max(
-                x, axis=self.case["axis"], keepdim=self.case["keepdim"])
+                x, axis=self.case["axis"], keepdim=self.case["keepdim"]
+            )
         elif self.case["op_type"] == "min":
             out = paddle.min(
-                x, axis=self.case["axis"], keepdim=self.case["keepdim"])
+                x, axis=self.case["axis"], keepdim=self.case["keepdim"]
+            )
         elif self.case["op_type"] == "all":
             out = paddle.all(
-                x, axis=self.case["axis"], keepdim=self.case["keepdim"])
+                x, axis=self.case["axis"], keepdim=self.case["keepdim"]
+            )
         elif self.case["op_type"] == "any":
             out = paddle.any(
-                x, axis=self.case["axis"], keepdim=self.case["keepdim"])
+                x, axis=self.case["axis"], keepdim=self.case["keepdim"]
+            )
         else:
             out = paddle.assign(x)
         self.paddle_outputs = [out]
@@ -62,25 +72,22 @@ class TestReduceOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("reduce")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x")
+            self.nptype2cinntype(self.case["dtype"]), self.case["shape"], "x"
+        )
         if self.case["op_type"] == "sum":
-            out = builder.reduce_sum(x, self.case["axis"],
-                                     self.case["keepdim"])
+            out = builder.reduce_sum(x, self.case["axis"], self.case["keepdim"])
         elif self.case["op_type"] == "prod":
-            out = builder.reduce_prod(x, self.case["axis"],
-                                      self.case["keepdim"])
+            out = builder.reduce_prod(
+                x, self.case["axis"], self.case["keepdim"]
+            )
         elif self.case["op_type"] == "max":
-            out = builder.reduce_max(x, self.case["axis"],
-                                     self.case["keepdim"])
+            out = builder.reduce_max(x, self.case["axis"], self.case["keepdim"])
         elif self.case["op_type"] == "min":
-            out = builder.reduce_min(x, self.case["axis"],
-                                     self.case["keepdim"])
+            out = builder.reduce_min(x, self.case["axis"], self.case["keepdim"])
         elif self.case["op_type"] == "all":
-            out = builder.reduce_all(x, self.case["axis"],
-                                     self.case["keepdim"])
+            out = builder.reduce_all(x, self.case["axis"], self.case["keepdim"])
         elif self.case["op_type"] == "any":
-            out = builder.reduce_any(x, self.case["axis"],
-                                     self.case["keepdim"])
+            out = builder.reduce_any(x, self.case["axis"], self.case["keepdim"])
         else:
             out = builder.identity(x)
         prog = builder.build()
@@ -88,8 +95,11 @@ class TestReduceOp(OpTest):
         self.cinn_outputs = res
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 
@@ -133,38 +143,14 @@ class TestReduceAll(TestCaseHelper):
             },
         ]
         self.attrs = [
-            {
-                "op_type": "sum",
-                "keepdim": True
-            },
-            {
-                "op_type": "sum",
-                "keepdim": False
-            },
-            {
-                "op_type": "prod",
-                "keepdim": True
-            },
-            {
-                "op_type": "prod",
-                "keepdim": False
-            },
-            {
-                "op_type": "max",
-                "keepdim": True
-            },
-            {
-                "op_type": "max",
-                "keepdim": False
-            },
-            {
-                "op_type": "min",
-                "keepdim": True
-            },
-            {
-                "op_type": "min",
-                "keepdim": False
-            },
+            {"op_type": "sum", "keepdim": True},
+            {"op_type": "sum", "keepdim": False},
+            {"op_type": "prod", "keepdim": True},
+            {"op_type": "prod", "keepdim": False},
+            {"op_type": "max", "keepdim": True},
+            {"op_type": "max", "keepdim": False},
+            {"op_type": "min", "keepdim": True},
+            {"op_type": "min", "keepdim": False},
         ]
 
 
@@ -201,14 +187,8 @@ class TestReduceDtype(TestCaseHelper):
             },
         ]
         self.attrs = [
-            {
-                "op_type": "sum",
-                "keepdim": True
-            },
-            {
-                "op_type": "sum",
-                "keepdim": False
-            },
+            {"op_type": "sum", "keepdim": True},
+            {"op_type": "sum", "keepdim": False},
         ]
 
 

@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -36,17 +38,19 @@ class TestMulOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         y = paddle.static.data(
             name='y',
             shape=self.feed_data['y'].shape,
-            dtype=self.feed_data['y'].dtype)
+            dtype=self.feed_data['y'].dtype,
+        )
         return {'X': [x], 'Y': [y]}
 
     def set_op_attrs(self):
         return {
             "x_num_col_dims": self.x_num_col_dims,
-            "y_num_col_dims": self.y_num_col_dims
+            "y_num_col_dims": self.y_num_col_dims,
         }
 
     def set_op_outputs(self):

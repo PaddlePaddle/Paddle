@@ -41,6 +41,14 @@ TypeTranslator::TypeTranslator() {
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::UInt8Type::get(ctx);
        }},
+      {VarType::INT8,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int8Type::get(ctx);
+       }},
+      {VarType::INT16,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Int16Type::get(ctx);
+       }},
       {VarType::INT32,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Int32Type::get(ctx);
@@ -49,6 +57,10 @@ TypeTranslator::TypeTranslator() {
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Int64Type::get(ctx);
        }},
+      {VarType::FP16,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Float16Type::get(ctx);
+       }},
       {VarType::FP32,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Float32Type::get(ctx);
@@ -56,6 +68,18 @@ TypeTranslator::TypeTranslator() {
       {VarType::FP64,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
          return ir::Float64Type::get(ctx);
+       }},
+      {VarType::BF16,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::BFloat16Type::get(ctx);
+       }},
+      {VarType::COMPLEX64,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Complex64Type::get(ctx);
+       }},
+      {VarType::COMPLEX128,
+       [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {
+         return ir::Complex128Type::get(ctx);
        }},
       {VarType::LOD_TENSOR,
        [&](ir::IrContext* ctx, const VarDesc& var_desc) -> ir::Type {

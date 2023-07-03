@@ -15,16 +15,19 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
+
 import cinn
-from cinn.frontend import *
+import numpy as np
 from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestBinaryOp(OpTest):
     def setUp(self):
         self.init_case()
@@ -55,18 +58,24 @@ class TestBinaryOp(OpTest):
         def get_unsqueeze_axis(x_rank, y_rank, axis):
             self.assertTrue(
                 x_rank >= y_rank,
-                "The rank of x should be greater or equal to that of y.")
+                "The rank of x should be greater or equal to that of y.",
+            )
             axis = axis if axis >= 0 else x_rank - y_rank
-            unsqueeze_axis = np.arange(0, axis).tolist() + np.arange(
-                axis + y_rank, x_rank).tolist()
+            unsqueeze_axis = (
+                np.arange(0, axis).tolist()
+                + np.arange(axis + y_rank, x_rank).tolist()
+            )
 
             return unsqueeze_axis
 
         unsqueeze_axis = get_unsqueeze_axis(
-            len(self.inputs["x"].shape), len(self.inputs["y"].shape),
-            self.axis)
-        y_t = paddle.unsqueeze(
-            y, axis=unsqueeze_axis) if len(unsqueeze_axis) > 0 else y
+            len(self.inputs["x"].shape), len(self.inputs["y"].shape), self.axis
+        )
+        y_t = (
+            paddle.unsqueeze(y, axis=unsqueeze_axis)
+            if len(unsqueeze_axis) > 0
+            else y
+        )
         out = self.paddle_func(x, y_t)
 
         self.paddle_outputs = [out]
@@ -75,15 +84,20 @@ class TestBinaryOp(OpTest):
         builder = NetBuilder("binary_elementwise_test")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         y = builder.create_input(
             self.nptype2cinntype(self.inputs["y"].dtype),
-            self.inputs["y"].shape, "y")
+            self.inputs["y"].shape,
+            "y",
+        )
         out = self.cinn_func(builder, x, y, axis=self.axis)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.inputs["x"], self.inputs["y"]], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.inputs["x"], self.inputs["y"]], [out]
+        )
 
         self.cinn_outputs = res
 
@@ -158,13 +172,17 @@ class TestMultiplyOp(TestBinaryOp):
 class TestFloorDivideOp(TestBinaryOp):
     def get_x_data(self):
         # avoid random generate 0
-        return self.random([32, 64], 'int32', 1, 100) * np.random.choice(
-            [-1, 1], [1])[0]
+        return (
+            self.random([32, 64], 'int32', 1, 100)
+            * np.random.choice([-1, 1], [1])[0]
+        )
 
     def get_y_data(self):
         # avoid random generate 0
-        return self.random([32, 64], 'int32', 1, 100) * np.random.choice(
-            [-1, 1], [1])[0]
+        return (
+            self.random([32, 64], 'int32', 1, 100)
+            * np.random.choice([-1, 1], [1])[0]
+        )
 
     def paddle_func(self, x, y):
         return paddle.floor_divide(x, y)
@@ -183,12 +201,16 @@ class TestModOp(TestBinaryOp):
 
 class TestModCase1(TestModOp):
     def get_x_data(self):
-        return self.random([32, 64], 'int32', 1, 100) * np.random.choice(
-            [-1, 1], [1])[0]
+        return (
+            self.random([32, 64], 'int32', 1, 100)
+            * np.random.choice([-1, 1], [1])[0]
+        )
 
     def get_y_data(self):
-        return self.random([32, 64], 'int32', 1, 100) * np.random.choice(
-            [-1, 1], [1])[0]
+        return (
+            self.random([32, 64], 'int32', 1, 100)
+            * np.random.choice([-1, 1], [1])[0]
+        )
 
 
 class TestRemainderOp(TestBinaryOp):
@@ -202,12 +224,16 @@ class TestRemainderOp(TestBinaryOp):
 
 class TestRemainderCase1(TestRemainderOp):
     def get_x_data(self):
-        return self.random([32, 64], 'int32', 1, 100) * np.random.choice(
-            [-1, 1], [1])[0]
+        return (
+            self.random([32, 64], 'int32', 1, 100)
+            * np.random.choice([-1, 1], [1])[0]
+        )
 
     def get_y_data(self):
-        return self.random([32, 64], 'int32', 1, 100) * np.random.choice(
-            [-1, 1], [1])[0]
+        return (
+            self.random([32, 64], 'int32', 1, 100)
+            * np.random.choice([-1, 1], [1])[0]
+        )
 
 
 class TestMaxOp(TestBinaryOp):

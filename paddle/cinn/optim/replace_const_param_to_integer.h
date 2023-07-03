@@ -18,7 +18,8 @@
 namespace cinn::optim {
 
 /**
- * Replace the constant parameter(included in ISL param) to the corresponding integer.
+ * Replace the constant parameter(included in ISL param) to the corresponding
+ * integer.
  *
  * e.g.
  *

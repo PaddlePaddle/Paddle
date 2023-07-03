@@ -15,11 +15,12 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
+import paddle
 
 INT32_MAX = (1 << 31) - 1
 INT32_MIN = -(1 << 31)
@@ -37,7 +38,7 @@ def count_leading_zeros(integer, dtype):
     if integer < 0:
         return 0
     mask = 1 << (bits - 1)
-    integer &= (mask - 1)
+    integer &= mask - 1
     clz = 0
     while mask > 0 and integer & mask == 0:
         clz += 1
@@ -45,8 +46,9 @@ def count_leading_zeros(integer, dtype):
     return clz
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestClzOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -59,8 +61,11 @@ class TestClzOp(OpTest):
         high = INT32_MAX if dtype == "int32" else INT64_MAX
         x = self.random(self.case["shape"], dtype, low=low, high=high)
         y = list(
-            map(lambda num: count_leading_zeros(num, dtype),
-                x.reshape(-1).tolist()))
+            map(
+                lambda num: count_leading_zeros(num, dtype),
+                x.reshape(-1).tolist(),
+            )
+        )
         self.inputs = {"x": x}
         self.outputs = {"y": np.array(y).reshape(x.shape).astype(dtype)}
 
@@ -72,11 +77,12 @@ class TestClzOp(OpTest):
         builder = NetBuilder("clz")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.clz(x)
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
         self.cinn_outputs = res
 
     def test_check_results(self):
@@ -126,12 +132,8 @@ class TestClzOpShapeDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = []
 

@@ -70,7 +70,7 @@ Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
   CHECK(ramp);
   CHECK(other);
   if (ramp->lanes == other->lanes) {
-    Expr base_add   = common::AutoSimplify(ramp->base + other->base);
+    Expr base_add = common::AutoSimplify(ramp->base + other->base);
     Expr stride_add = common::AutoSimplify(ramp->stride + other->stride);
     VLOG(2) << base_add;
     VLOG(2) << stride_add;
@@ -81,15 +81,16 @@ Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
 }
 
 Expr RampRelatedAdd(Expr a, Expr b) {
-  auto *a_ramp      = a.As<ir::Ramp>();
-  auto *b_ramp      = b.As<ir::Ramp>();
+  auto *a_ramp = a.As<ir::Ramp>();
+  auto *b_ramp = b.As<ir::Ramp>();
   auto *a_broadcast = a.As<ir::Broadcast>();
   auto *b_broadcast = b.As<ir::Broadcast>();
   if (a_ramp && !b_ramp && (b->type().lanes() == 1 || b_broadcast)) {
     return RampRelatedAdd(a_ramp, b);
   } else if (!a_ramp && b_ramp && (a->type().lanes() == 1 || a_broadcast)) {
     return RampRelatedAdd(b_ramp, a);
-  } else if (!a_ramp && !b_ramp && !a->type().is_vector() && !b->type().is_vector()) {
+  } else if (!a_ramp && !b_ramp && !a->type().is_vector() &&
+             !b->type().is_vector()) {
     return a + b;
   } else if (a_ramp && b_ramp) {  // a_ramp && b_ramp
     return RampRelatedAdd(a_ramp, b_ramp);
@@ -99,22 +100,24 @@ Expr RampRelatedAdd(Expr a, Expr b) {
     return RampRelatedAdd(b_broadcast, a);
   } else if (a_broadcast && b_broadcast) {
     CHECK_EQ(a_broadcast->lanes, b_broadcast->lanes);
-    return ir::Broadcast::Make(a_broadcast->value + b_broadcast->value, a_broadcast->lanes);
+    return ir::Broadcast::Make(a_broadcast->value + b_broadcast->value,
+                               a_broadcast->lanes);
   } else {
     CINN_NOT_IMPLEMENTED
   }
 }
 
 Expr RampRelatedMul(Expr a, Expr b) {
-  auto *a_ramp      = a.As<ir::Ramp>();
-  auto *b_ramp      = b.As<ir::Ramp>();
+  auto *a_ramp = a.As<ir::Ramp>();
+  auto *b_ramp = b.As<ir::Ramp>();
   auto *a_broadcast = a.As<ir::Broadcast>();
   auto *b_broadcast = b.As<ir::Broadcast>();
   if (a_ramp && !b_ramp && (!b->type().is_vector() || b_broadcast)) {
     return RampRelatedMul(a_ramp, b);
   } else if (!a_ramp && b_ramp && (a->type().is_vector() || a_broadcast)) {
     return RampRelatedMul(b_ramp, a);
-  } else if (!a_ramp && !b_ramp && !a->type().is_vector() && !b->type().is_vector()) {
+  } else if (!a_ramp && !b_ramp && !a->type().is_vector() &&
+             !b->type().is_vector()) {
     return a * b;
   } else if (a_ramp && b_ramp) {  // a_ramp && b_ramp
     return RampRelatedMul(a_ramp, b_ramp);
@@ -124,7 +127,8 @@ Expr RampRelatedMul(Expr a, Expr b) {
     return RampRelatedMul(b_broadcast, a);
   } else if (a_broadcast && b_broadcast) {
     CHECK_EQ(a_broadcast->lanes, b_broadcast->lanes);
-    return ir::Broadcast::Make(a_broadcast->value * b_broadcast->value, a_broadcast->lanes);
+    return ir::Broadcast::Make(a_broadcast->value * b_broadcast->value,
+                               a_broadcast->lanes);
   } else {
     VLOG(3) << "a,b: " << a << " " << b;
     CINN_NOT_IMPLEMENTED
@@ -133,7 +137,8 @@ Expr RampRelatedMul(Expr a, Expr b) {
 
 }  // namespace
 
-Expr IndiceToAbsOffset(const std::vector<Expr> &shape, const std::vector<Expr> &indices) {
+Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
+                       const std::vector<Expr> &indices) {
   VLOG(3) << "Begin IndiceToAbsOffset";
   VLOG(3) << "shape is : " << utils::Join(shape, ",");
   VLOG(3) << "indices is : " << utils::Join(indices, ",");
@@ -155,13 +160,15 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape, const std::vector<Expr> &
   return common::AutoSimplify(res);
 }
 
-Expr IndiceToAbsOffset(const std::vector<int> &shape, const std::vector<Expr> &indices) {
+Expr IndiceToAbsOffset(const std::vector<int> &shape,
+                       const std::vector<Expr> &indices) {
   std::vector<Expr> shape_;
   for (int v : shape) shape_.push_back(Expr(v));
   return IndiceToAbsOffset(shape, indices);
 }
 
-Expr PrecedingAxisToAbsOffset(const std::vector<Expr> &shape, int preceding_n_axis) {
+Expr PrecedingAxisToAbsOffset(const std::vector<Expr> &shape,
+                              int preceding_n_axis) {
   std::vector<Expr> indices;
   for (int i = 0; i < preceding_n_axis; i++) indices.push_back(shape[i]);
   return IndiceToAbsOffset(shape, indices);
@@ -200,8 +207,8 @@ void Substitute(Expr *expr, const std::map<const ir::_Var_ *, Expr> &var_map) {
 }
 
 bool is_zero(Expr v) {
-  v             = AutoSimplify(v);
-  auto *int_n   = v.As<ir::IntImm>();
+  v = AutoSimplify(v);
+  auto *int_n = v.As<ir::IntImm>();
   auto *float_n = v.As<ir::FloatImm>();
 
   if (int_n) return int_n->value == 0;
@@ -216,11 +223,13 @@ Expr CastIfNeeded(Expr body, Type type) {
 
 bool MathEqual(const Expr &a, const Expr &b) {
   auto c = a - b;
-  c      = AutoSimplify(c);
+  c = AutoSimplify(c);
   return is_zero(c);
 }
 
-Expr select(Expr cond, Expr true_value, Expr false_value) { return ir::Select::Make(cond, true_value, false_value); }
+Expr select(Expr cond, Expr true_value, Expr false_value) {
+  return ir::Select::Make(cond, true_value, false_value);
+}
 
 Expr and_all(const std::vector<Expr> &conds) {
   CHECK(!conds.empty());
@@ -241,7 +250,8 @@ Expr or_all(const std::vector<Expr> &conds) {
 }
 
 void CheckTensorUniqueInExpr(Expr expr) {
-  auto tensor_uniq = ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
+  auto tensor_uniq =
+      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
   absl::flat_hash_map<std::string, const ir::_Tensor_ *> tensor_names;
   for (auto &t : tensor_uniq) {
     auto *tp = t.as_tensor();
@@ -249,7 +259,8 @@ void CheckTensorUniqueInExpr(Expr expr) {
       tensor_names[tp->name] = tp;
     } else {
       CHECK_EQ(tensor_names[tp->name], tp)
-          << "Found tensor not unique [" << tp->name << "]\nThe original expression is \n"
+          << "Found tensor not unique [" << tp->name
+          << "]\nThe original expression is \n"
           << expr;
     }
   }
@@ -259,8 +270,10 @@ void CheckBufferUniqueInExpr(Expr expr) {
   // the buffers exists in tensor and lowered functions.
   CheckTensorUniqueInExpr(expr);
 
-  auto tensors = ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
-  auto funcs   = ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_lowered_func(); });
+  auto tensors =
+      ir::CollectIRNodes(expr, [](const Expr *x) { return x->as_tensor(); });
+  auto funcs = ir::CollectIRNodes(
+      expr, [](const Expr *x) { return x->as_lowered_func(); });
 
   absl::flat_hash_map<std::string, const ir::_Buffer_ *> buffer_name;
   auto check_buffer_uniq = [&](const ir::_Buffer_ *b) {
@@ -323,12 +336,14 @@ Expr cast(Expr e, Type type) {
   return ir::Cast::Make(type, e);
 }
 
-std::vector<std::string> GatherItersToTensorProducer(const std::string &target_tensor_name, Expr *expr) {
+std::vector<std::string> GatherItersToTensorProducer(
+    const std::string &target_tensor_name, Expr *expr) {
   struct Visitor : public ir::IRMutator<> {
     std::vector<std::string> iters;
     const std::string &target_tensor_name;
 
-    explicit Visitor(const std::string &target_tensor_name) : target_tensor_name(target_tensor_name) {}
+    explicit Visitor(const std::string &target_tensor_name)
+        : target_tensor_name(target_tensor_name) {}
 
     std::vector<std::string> operator()(Expr *expr) {
       ir::IRMutator<>::Visit(expr, expr);
@@ -339,7 +354,7 @@ std::vector<std::string> GatherItersToTensorProducer(const std::string &target_t
       if (op->tensor.as_tensor()->name == target_tensor_name) {
         CHECK(iters.empty());
         for (auto &e : for_stack) {
-          auto *for_n     = e->As<ir::For>();
+          auto *for_n = e->As<ir::For>();
           auto *polyfor_n = e->As<ir::PolyFor>();
           if (for_n) {
             iters.push_back(for_n->loop_var->name);
@@ -367,7 +382,8 @@ std::vector<std::string> GatherItersToTensorProducer(const std::string &target_t
   return Visitor(target_tensor_name)(expr);
 }
 
-std::vector<Expr *> GetForloopStackToStore(Expr *expr, const std::string &tensor_name) {
+std::vector<Expr *> GetForloopStackToStore(Expr *expr,
+                                           const std::string &tensor_name) {
   VLOG(4) << "search store " << tensor_name << " in expr:\n";
   VLOG(4) << *expr;
   struct Mutator : public ir::IRMutator<> {
@@ -376,7 +392,8 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr, const std::string &tensor
 
     std::string tensor_name;
 
-    explicit Mutator(const std::string &tensor_name) : tensor_name(tensor_name) {}
+    explicit Mutator(const std::string &tensor_name)
+        : tensor_name(tensor_name) {}
 
     std::vector<Expr *> operator()(Expr *expr) {
       ir::IRMutator<>::Visit(expr, expr);
@@ -397,7 +414,9 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr, const std::string &tensor
       if (!found) forloop_stack.pop_back();
     }
 
-    void Visit(const ir::Store *op, Expr *expr) { found = op->tensor.as_tensor()->name == tensor_name; }
+    void Visit(const ir::Store *op, Expr *expr) {
+      found = op->tensor.as_tensor()->name == tensor_name;
+    }
   };
 
   return Mutator(tensor_name)(expr);

@@ -142,6 +142,13 @@ class TestFullLikeOp1(OpTest):
         pass
 
 
+class TestFullLikeOp1_ZeroDim(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 5
+        self.shape = []
+        self.dtype = np.float32
+
+
 class TestFullLikeOp2(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 1000

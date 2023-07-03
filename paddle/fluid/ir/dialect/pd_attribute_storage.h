@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/attribute_base.h"
 #include "paddle/ir/core/utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
@@ -28,7 +29,7 @@ struct IntArrayAttributeStorage : public ir::AttributeStorage {
 
   explicit IntArrayAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static IntArrayAttributeStorage *Construct(ParamKey key) {
+  static IntArrayAttributeStorage *Construct(const ParamKey &key) {
     return new IntArrayAttributeStorage(key);
   }
 
@@ -58,7 +59,7 @@ struct DataTypeAttributeStorage : public ir::AttributeStorage {
 
   explicit DataTypeAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static DataTypeAttributeStorage *Construct(ParamKey key) {
+  static DataTypeAttributeStorage *Construct(const ParamKey &key) {
     return new DataTypeAttributeStorage(key);
   }
 
@@ -79,7 +80,7 @@ struct PlaceAttributeStorage : public ir::AttributeStorage {
 
   explicit PlaceAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static PlaceAttributeStorage *Construct(ParamKey key) {
+  static PlaceAttributeStorage *Construct(const ParamKey &key) {
     return new PlaceAttributeStorage(key);
   }
 
@@ -98,7 +99,7 @@ struct DataLayoutAttributeStorage : public ir::AttributeStorage {
 
   explicit DataLayoutAttributeStorage(const ParamKey &key) { data_ = key; }
 
-  static DataLayoutAttributeStorage *Construct(ParamKey key) {
+  static DataLayoutAttributeStorage *Construct(const ParamKey &key) {
     return new DataLayoutAttributeStorage(key);
   }
 

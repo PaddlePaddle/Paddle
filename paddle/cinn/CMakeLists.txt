@@ -1,4 +1,4 @@
-if (WITH_TESTING)
+if(WITH_TESTING)
   cinn_cc_library(cinn_gtest_main SRCS gtest_main.cc DEPS gtest gflags)
 endif()
 
@@ -18,6 +18,7 @@ endif()
 add_subdirectory(frontend)
 
 # Download a model
-download_and_uncompress("${DOWNLOAD_MODEL_DIR}" "${PADDLE_RESOURCE_URL}" "lite_naive_model.tar.gz")
+download_and_uncompress("${DOWNLOAD_MODEL_DIR}" "${PADDLE_RESOURCE_URL}"
+                        "lite_naive_model.tar.gz")
 
 core_gather_headers()

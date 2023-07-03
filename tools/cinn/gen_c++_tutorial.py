@@ -23,12 +23,12 @@ This script helps to extract the tutorial content from a C++ source file.
 #  - @ROC, the code block inside a C++ multi-line string guard `ROC()ROC`,
 #          display as a markdown code block.
 
+import logging
 import sys
 from typing import List
-import logging
 
 
-class Markdown(object):
+class Markdown:
     '''
     A simple markdown generator.
     '''
@@ -60,9 +60,11 @@ class Markdown(object):
             else:
                 tail_valid_offset += 1
         logging.warning("block0: %s" % block)
-        block = block[pre_valid_offset:
-                      -tail_valid_offset] if tail_valid_offset > 0 else block[
-                          pre_valid_offset:]
+        block = (
+            block[pre_valid_offset:-tail_valid_offset]
+            if tail_valid_offset > 0
+            else block[pre_valid_offset:]
+        )
         logging.warning("block1: %s" % block)
         if not block:
             return
@@ -90,7 +92,7 @@ class Mark:
     roc = "@ROC"
 
 
-class ContentGenerator(object):
+class ContentGenerator:
     '''
     Interface for some content passed into the parser.
     '''
@@ -102,7 +104,7 @@ class ContentGenerator(object):
         pass
 
 
-class Parser(object):
+class Parser:
     DOC_COMMENT_PREFIX = "//!"
 
     def __init__(self):
@@ -120,8 +122,9 @@ class Parser(object):
                     self.doc.code_block('c++', self.code_block)
                     self.code_block = []
 
-                line_striped = line_striped[len(self.DOC_COMMENT_PREFIX
-                                                ):].strip()
+                line_striped = line_striped[
+                    len(self.DOC_COMMENT_PREFIX) :
+                ].strip()
 
                 if line_striped.startswith(Mark.h1):
                     self.eat_h1(line_striped)
@@ -142,13 +145,13 @@ class Parser(object):
                 self.code_block.append(line)
 
     def eat_h1(self, content: str) -> None:
-        self.doc.h1(content[len(Mark.h1):].strip())
+        self.doc.h1(content[len(Mark.h1) :].strip())
 
     def eat_h2(self, content: str) -> None:
-        self.doc.h2(content[len(Mark.h2):].strip())
+        self.doc.h2(content[len(Mark.h2) :].strip())
 
     def eat_h3(self, content: str) -> None:
-        self.doc.h3(content[len(Mark.h3):].strip())
+        self.doc.h3(content[len(Mark.h3) :].strip())
 
     def eat_ignore_next(self, content: ContentGenerator) -> None:
         content.get_line()
@@ -173,7 +176,7 @@ class Parser(object):
         The parameter header is `//! @ROC[c++]`.
         '''
         assert "ROC" in header
-        lang = header[len("@ROC["):-1]
+        lang = header[len("@ROC[") : -1]
 
         logging.warning("eating ROC")
 

@@ -74,7 +74,8 @@ void VarDesc::SetShape(const std::vector<int64_t> &dims) {
 void VarDesc::SetTensorDescNum(size_t num) {
   switch (desc_->type().type()) {
     case framework_proto::VarType::READER: {
-      auto *lod_tensors_ptr = desc_->mutable_type()->mutable_reader()->mutable_lod_tensor();
+      auto *lod_tensors_ptr =
+          desc_->mutable_type()->mutable_reader()->mutable_lod_tensor();
       lod_tensors_ptr->Clear();
       for (size_t i = 0; i < num; ++i) {
         lod_tensors_ptr->Add();
@@ -101,20 +102,25 @@ size_t VarDesc::GetTensorDescNum() const {
   return 0;
 }
 
-void VarDesc::SetShapes(const std::vector<std::vector<int64_t>> &multiple_dims) {
+void VarDesc::SetShapes(
+    const std::vector<std::vector<int64_t>> &multiple_dims) {
   if (multiple_dims.size() != GetTensorDescNum()) {
     VLOG(3) << "WARNING: The number of given shapes(" << multiple_dims.size()
-            << ") doesn't match the existing tensor number(" << GetTensorDescNum()
+            << ") doesn't match the existing tensor number("
+            << GetTensorDescNum()
             << "). The Reader is going to be reinitialized.";
     SetTensorDescNum(multiple_dims.size());
   }
-  std::vector<framework_proto::VarType::TensorDesc *> tensors = mutable_tensor_descs();
+  std::vector<framework_proto::VarType::TensorDesc *> tensors =
+      mutable_tensor_descs();
   for (size_t i = 0; i < multiple_dims.size(); ++i) {
     VectorToRepeated(multiple_dims[i], tensors[i]->mutable_dims());
   }
 }
 
-std::vector<int64_t> VarDesc::GetShape() const { return RepeatedToVector(tensor_desc().dims()); }
+std::vector<int64_t> VarDesc::GetShape() const {
+  return RepeatedToVector(tensor_desc().dims());
+}
 
 std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
   std::vector<framework_proto::VarType::TensorDesc> descs = tensor_descs();
@@ -150,14 +156,18 @@ void VarDesc::SetDataType(VarDescAPI::VarDataType data_type) {
 #undef SET_DATA_TYPE_CASE_ITEM
 }
 
-void VarDesc::SetDataTypes(const std::vector<framework_proto::VarType::Type> &multiple_data_type) {
+void VarDesc::SetDataTypes(
+    const std::vector<framework_proto::VarType::Type> &multiple_data_type) {
   if (multiple_data_type.size() != GetTensorDescNum()) {
-    VLOG(3) << "WARNING: The number of given data types(" << multiple_data_type.size()
-            << ") doesn't match the existing tensor number(" << GetTensorDescNum()
+    VLOG(3) << "WARNING: The number of given data types("
+            << multiple_data_type.size()
+            << ") doesn't match the existing tensor number("
+            << GetTensorDescNum()
             << "). The Reader is going to be reinitialized.";
     SetTensorDescNum(multiple_data_type.size());
   }
-  std::vector<framework_proto::VarType::TensorDesc *> tensor_descs = mutable_tensor_descs();
+  std::vector<framework_proto::VarType::TensorDesc *> tensor_descs =
+      mutable_tensor_descs();
   for (size_t i = 0; i < multiple_data_type.size(); ++i) {
     tensor_descs[i]->set_data_type(multiple_data_type[i]);
   }
@@ -215,26 +225,33 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
       desc_->mutable_type()->mutable_tensor_array()->set_lod_level(lod_level);
       break;
     default:
-      LOG(FATAL) << "Setting 'lod_level' is not supported by the type of var %s." << this->Name();
+      LOG(FATAL)
+          << "Setting 'lod_level' is not supported by the type of var %s."
+          << this->Name();
   }
 }
 
 void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
   if (multiple_lod_level.size() != GetTensorDescNum()) {
-    VLOG(3) << "WARNING: The number of given lod_levels(" << multiple_lod_level.size()
-            << ") doesn't match the existing tensor number(" << GetTensorDescNum()
+    VLOG(3) << "WARNING: The number of given lod_levels("
+            << multiple_lod_level.size()
+            << ") doesn't match the existing tensor number("
+            << GetTensorDescNum()
             << "). The Reader is going to be reinitialized.";
     SetTensorDescNum(multiple_lod_level.size());
   }
   switch (desc_->type().type()) {
     case framework_proto::VarType::READER: {
       size_t i = 0;
-      for (auto &lod_tensor : *desc_->mutable_type()->mutable_reader()->mutable_lod_tensor()) {
+      for (auto &lod_tensor :
+           *desc_->mutable_type()->mutable_reader()->mutable_lod_tensor()) {
         lod_tensor.set_lod_level(multiple_lod_level[i++]);
       }
     } break;
     default:
-      LOG(FATAL) << "Setting 'lod_levels' is not supported by the type of var %s." << this->Name();
+      LOG(FATAL)
+          << "Setting 'lod_levels' is not supported by the type of var %s."
+          << this->Name();
   }
 }
 
@@ -245,7 +262,9 @@ int32_t VarDesc::GetLoDLevel() const {
     case framework_proto::VarType::LOD_TENSOR_ARRAY:
       return desc_->type().tensor_array().lod_level();
     default:
-      LOG(FATAL) << "Getting 'lod_level' is not supported by the type of var %s." << this->Name();
+      LOG(FATAL)
+          << "Getting 'lod_level' is not supported by the type of var %s."
+          << this->Name();
   }
   return 0;
 }
@@ -261,7 +280,9 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
       return res;
       break;
     default:
-      LOG(FATAL) << "Getting 'lod_levels' is not supported by the type of var %s." << this->Name();
+      LOG(FATAL)
+          << "Getting 'lod_levels' is not supported by the type of var %s."
+          << this->Name();
   }
   return std::vector<int32_t>();
 }
@@ -277,12 +298,15 @@ const framework_proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
     case framework_proto::VarType::LOD_TENSOR_ARRAY:
       return desc_->type().tensor_array().tensor();
     default:
-      LOG(FATAL) << "Getting 'tensor_desc' is not supported by the type of var %s." << this->Name();
+      LOG(FATAL)
+          << "Getting 'tensor_desc' is not supported by the type of var %s."
+          << this->Name();
   }
   return framework_proto::VarDesc().type().lod_tensor().tensor();
 }
 
-std::vector<framework_proto::VarType::TensorDesc> VarDesc::tensor_descs() const {
+std::vector<framework_proto::VarType::TensorDesc> VarDesc::tensor_descs()
+    const {
   CHECK(desc_->has_type()) << "The var type hasn't been set.";
   std::vector<framework_proto::VarType::TensorDesc> res;
   res.reserve(GetTensorDescNum());
@@ -293,9 +317,10 @@ std::vector<framework_proto::VarType::TensorDesc> VarDesc::tensor_descs() const 
       }
       return res;
     default:
-      LOG(FATAL) << "Getting 'tensor_descs' is not supported by the type of var "
-                    "%s."
-                 << this->Name();
+      LOG(FATAL)
+          << "Getting 'tensor_descs' is not supported by the type of var "
+             "%s."
+          << this->Name();
   }
   return std::vector<framework_proto::VarType::TensorDesc>();
 }
@@ -319,21 +344,24 @@ framework_proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
   return nullptr;
 }
 
-std::vector<framework_proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
+std::vector<framework_proto::VarType::TensorDesc *>
+VarDesc::mutable_tensor_descs() {
   CHECK(desc_->has_type()) << "The var type hasn't been set.";
   CHECK(desc_->type().has_type()) << "The var type hasn't been set.";
   std::vector<framework_proto::VarType::TensorDesc *> res;
   res.reserve(GetTensorDescNum());
   switch (desc_->type().type()) {
     case framework_proto::VarType::READER:
-      for (auto &lod_tensor : *desc_->mutable_type()->mutable_reader()->mutable_lod_tensor()) {
+      for (auto &lod_tensor :
+           *desc_->mutable_type()->mutable_reader()->mutable_lod_tensor()) {
         res.push_back(lod_tensor.mutable_tensor());
       }
       return res;
     default:
-      LOG(FATAL) << "Getting 'tensor_descs' is not supported by the type of var "
-                    "%s."
-                 << this->Name();
+      LOG(FATAL)
+          << "Getting 'tensor_descs' is not supported by the type of var "
+             "%s."
+          << this->Name();
   }
   return std::vector<framework_proto::VarType::TensorDesc *>();
 }

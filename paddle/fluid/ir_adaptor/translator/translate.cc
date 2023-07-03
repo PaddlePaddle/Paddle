@@ -30,13 +30,8 @@ using Program = ::ir::Program;
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
   ir::IrContext* ctx = ir::IrContext::Instance();
-  std::cout << "TranslateLegacyProgramToProgram 1" << std::endl;
   ctx->GetOrRegisterDialect<dialect::PaddleDialect>();
-  std::cout << "TranslateLegacyProgramToProgram 2" << std::endl;
-  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  std::cout << "TranslateLegacyProgramToProgram 3" << std::endl;
   auto program = std::make_unique<Program>(ctx);
-  std::cout << "TranslateLegacyProgramToProgram 4" << std::endl;
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
   std::cout << "TranslateLegacyProgramToProgram 5" << std::endl;

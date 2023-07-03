@@ -94,7 +94,8 @@ IR_DEFINE_EXPLICIT_TYPE_ID(AddOp)
 
 struct CountOpAnalysis {
   explicit CountOpAnalysis(ir::Operation *container_op) {
-    IR_ENFORCE(container_op->num_regions() > 0, true);
+    IR_ENFORCE(container_op->num_regions() > 0,
+               "op must be a container with zero or multiple regions.");
 
     LOG(INFO) << "In CountOpAnalysis, op is " << container_op->name() << "\n";
     for (size_t i = 0; i < container_op->num_regions(); ++i) {
@@ -247,10 +248,9 @@ TEST(pass_manager, PassManager) {
 
   // (7) Def SetParameterOp(c, "c")
   auto op4 = builder.Build<ir::SetParameterOp>(op3->result(0), "c");
-  EXPECT_EQ(op4->operand(0).source().type().dialect().id(),
-            paddle_dialect->id());
+  EXPECT_EQ(op4->operand(0).type().dialect().id(), paddle_dialect->id());
   Interface *c_interface =
-      op4->operand(0).type().dialect().GetRegisteredInterface<Interface>();
+      op4->op_operand(0).type().dialect().GetRegisteredInterface<Interface>();
   //   ir::Parameter *parameter_c =
   //       c_interface->VariableToParameter(variable_c.get());
 

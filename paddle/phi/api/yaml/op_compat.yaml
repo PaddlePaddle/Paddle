@@ -509,7 +509,7 @@
     out : Out
 
 - op : concat
-  backward : concat_grad
+  backward : concat_grad, concat_double_grad
   inputs:
     x: X
   outputs:
@@ -520,8 +520,11 @@
     axis :
       data_type : int
       tensor_name : AxisTensor
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+  get_expected_kernel_type :
+    concat : GetConcatExpectedKernelType
 
 - op : conditional_block
   backward : conditional_block_grad
@@ -663,7 +666,7 @@
   scalar:
     axis:
       data_type : int
-      tensor_name: AxisTensor
+      support_tensor : true
 
 - op : data_norm
   backward : data_norm_grad
@@ -844,6 +847,16 @@
   attrs :
     uplo : UPLO
 
+- op : einsum
+  backward : einsum_grad
+  inputs :
+    x : Operands
+  outputs:
+    {out : Out, inner_cache: InnerCache, xshape : XShape}
+  drop_empty_grad: [x_grad]
+  extra:
+    outputs: [inner_cache, xshape]
+
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
@@ -916,7 +929,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : expand (expand_v2)
-  backward : expand_grad (expand_v2_grad)
+  backward : expand_grad (expand_v2_grad), expand_double_grad(expand_v2_double_grad)
   inputs :
     x : X
   attrs :
@@ -930,6 +943,7 @@
       tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+  manual_signature : [expand, expand_grad]
 
 - op : expand_as (expand_as_v2)
   backward : expand_as_grad (expand_as_v2_grad)
@@ -1057,9 +1071,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : floor_divide (elementwise_floordiv)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [floor_divide]
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
@@ -1891,6 +1911,15 @@
   outputs :
     out : Out
 
+- op : norm
+  backward : norm_grad
+  inputs :
+    x : X
+  outputs :
+    {out : Out, norm : Norm}
+  extra :
+    outputs : [norm]
+
 - op : not_equal
   inputs :
     {x : X, y : Y}
@@ -2033,15 +2062,27 @@
   backward : prod_grad (reduce_prod_grad)
   inputs:
     x : X
-  attrs:
-    { dims : dim,  keep_dim : keep_dim}
   outputs:
     out : Out
+  attrs:
+    { dims : dim,  keep_dim : keep_dim}
   int_array:
     dims :
       data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false]
+  get_expected_kernel_type :
+    prod : GetReduceExpectedKernelType
+    prod_grad : GetReduceGradExpectedKernelType
+  manual_signature : [prod]
+
+- op : psroi_pool
+  backward : psroi_pool_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    out : Out
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -2114,9 +2155,15 @@
     attrs : [bool use_mkldnn = false]
 
 - op : remainder (elementwise_mod)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [remainder]
 
 - op : renorm
   backward : renorm_grad
@@ -2166,6 +2213,20 @@
   outputs:
     { out : Out, dropout_state_out : DropoutState, state : State, reserve : Reserve}
   drop_empty_grad : [pre_state_grad, weight_list_grad]
+
+- op : roi_align
+  backward : roi_align_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    out : Out
+
+- op : roi_pool
+  backward : roi_pool_grad
+  inputs :
+    {x : X, boxes : ROIs, boxes_num : RoisNum}
+  outputs :
+    {out : Out, arg_max : Argmax}
 
 - op : roll
   backward : roll_grad
@@ -2571,7 +2632,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :

@@ -14,17 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestIsCloseOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -35,9 +37,11 @@ class TestIsCloseOp(OpTest):
             self.x_np = np.full(shape=self.case["shape"], fill_value=np.nan)
         else:
             self.x_np = self.random(
-                shape=self.case["shape"], dtype=self.case["dtype"])
+                shape=self.case["shape"], dtype=self.case["dtype"]
+            )
         self.y_np = self.x_np + self.random(
-            shape=self.case["shape"], dtype=self.case["dtype"])
+            shape=self.case["shape"], dtype=self.case["dtype"]
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=False)
@@ -45,21 +49,26 @@ class TestIsCloseOp(OpTest):
         shape = paddle.broadcast_shape(x.shape, y.shape)
         x = paddle.broadcast_to(x, shape)
         y = paddle.broadcast_to(y, shape)
-        out = paddle.isclose(x, y, self.case["rtol"], self.case["atol"],
-                             self.case["equal_nan"])
+        out = paddle.isclose(
+            x, y, self.case["rtol"], self.case["atol"], self.case["equal_nan"]
+        )
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("isclose")
         x = builder.create_input(
-            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x")
+            self.nptype2cinntype(self.x_np.dtype), self.x_np.shape, "x"
+        )
         y = builder.create_input(
-            self.nptype2cinntype(self.y_np.dtype), self.y_np.shape, "y")
-        out = builder.isclose(x, y, self.case["rtol"], self.case["atol"],
-                              self.case["equal_nan"])
+            self.nptype2cinntype(self.y_np.dtype), self.y_np.shape, "y"
+        )
+        out = builder.isclose(
+            x, y, self.case["rtol"], self.case["atol"], self.case["equal_nan"]
+        )
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.x_np, self.y_np], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.x_np, self.y_np], [out]
+        )
         self.cinn_outputs = res
 
     def test_check_results(self):

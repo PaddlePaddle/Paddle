@@ -49,11 +49,14 @@ void GetReduceDimsForY(const std::vector<int>& dy_shape,
   VLOG(3) << "The reduce_dims for Y: " << utils::Join(*reduce_dims, ",");
 }
 
-void elementwise_add(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 2UL) << " 2 input tensors for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL) << "1 output tensor for " << instr->op_type;
-  auto x      = instr->inputs[0];
-  auto y      = instr->inputs[1];
+void elementwise_add(const Instruction& instr,
+                     const DecomposerContext& context) {
+  CHECK_EQ(instr->inputs.size(), 2UL)
+      << " 2 input tensors for " << instr->op_type;
+  CHECK_EQ(instr->outputs.size(), 1UL)
+      << "1 output tensor for " << instr->op_type;
+  auto x = instr->inputs[0];
+  auto y = instr->inputs[1];
   auto output = instr->outputs[0];
 
   int axis = -1;
@@ -62,15 +65,15 @@ void elementwise_add(const Instruction& instr, const DecomposerContext& context)
   }
 
   if (x->shape.size() >= y->shape.size()) {
-    axis          = axis >= 0 ? axis : x->shape.size() - y->shape.size();
+    axis = axis >= 0 ? axis : x->shape.size() - y->shape.size();
     auto* builder = context.builder();
 
     Variable out;
     Variable bcast_x = x;
     Variable bcast_y = y;
 
-    // e.g., x.shape = [4, 1, 3], y.shape = [2, 3], aixs = 1 out.shape = [4, 2, 3]
-    // bcast_axes_x = [0, 1, 2], bcast_axes_y = [1, 2]
+    // e.g., x.shape = [4, 1, 3], y.shape = [2, 3], aixs = 1 out.shape = [4, 2,
+    // 3] bcast_axes_x = [0, 1, 2], bcast_axes_y = [1, 2]
     if (x->shape != output->shape) {
       std::vector<int> bcast_axes_x(x->shape.size());
       std::iota(bcast_axes_x.begin(), bcast_axes_x.end(), 0);
@@ -89,7 +92,7 @@ void elementwise_add(const Instruction& instr, const DecomposerContext& context)
     // map the the output of decomposed operator to the original.
     context.MapOutToOrigin(out, output);
   } else {
-    axis          = axis >= 0 ? axis : y->shape.size() - x->shape.size();
+    axis = axis >= 0 ? axis : y->shape.size() - x->shape.size();
     auto* builder = context.builder();
 
     Variable out;
@@ -115,17 +118,21 @@ void elementwise_add(const Instruction& instr, const DecomposerContext& context)
   }
 }
 
-void elementwise_add_grad(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 3UL) << " 3 input tensors for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 2UL) << "2 output tensors for " << instr->op_type;
+void elementwise_add_grad(const Instruction& instr,
+                          const DecomposerContext& context) {
+  CHECK_EQ(instr->inputs.size(), 3UL)
+      << " 3 input tensors for " << instr->op_type;
+  CHECK_EQ(instr->outputs.size(), 2UL)
+      << "2 output tensors for " << instr->op_type;
   auto dout = instr->inputs[0];
-  auto dx   = instr->outputs[0];
-  auto dy   = instr->outputs[1];
-  int axis  = instr.GetAttrs<int>("axis");
+  auto dx = instr->outputs[0];
+  auto dy = instr->outputs[1];
+  int axis = instr.GetAttrs<int>("axis");
   if (axis < 0 && dx->shape.size() < dy->shape.size()) {
-    LOG(FATAL) << "Please make sure x'rank greater than or equal to y'rank when axis = -1";
+    LOG(FATAL) << "Please make sure x'rank greater than or equal to y'rank "
+                  "when axis = -1";
   }
-  axis          = axis >= 0 ? axis : dx->shape.size() - dy->shape.size();
+  axis = axis >= 0 ? axis : dx->shape.size() - dy->shape.size();
   auto* builder = context.builder();
 
   Variable dx_t;
@@ -150,7 +157,7 @@ void elementwise_add_grad(const Instruction& instr, const DecomposerContext& con
     // may be some extra "1" in the front or back of dy_res's shape. So
     // the dt_res needs to be reshaped.
     auto dy_res = builder->ReduceSum(dout, y_reduce_dims, true);
-    dy_t        = builder->Reshape(dy_res, dy->shape);
+    dy_t = builder->Reshape(dy_res, dy->shape);
   }
 
   // map the the output of decomposed operator to the original.
@@ -163,13 +170,15 @@ void elementwise_add_grad(const Instruction& instr, const DecomposerContext& con
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(broadcast_decomposers) {
-  CINN_DECOMPOSER_REGISTER(elementwise_add, cinn::frontend::decomposer::elementwise_add);
+  CINN_DECOMPOSER_REGISTER(elementwise_add,
+                           cinn::frontend::decomposer::elementwise_add);
 
   return true;
 }
 
 CINN_REGISTER_HELPER(broadcast_grad_decomposers) {
-  CINN_DECOMPOSER_REGISTER(elementwise_add_grad, cinn::frontend::decomposer::elementwise_add_grad);
+  CINN_DECOMPOSER_REGISTER(elementwise_add_grad,
+                           cinn::frontend::decomposer::elementwise_add_grad);
 
   return true;
 }
