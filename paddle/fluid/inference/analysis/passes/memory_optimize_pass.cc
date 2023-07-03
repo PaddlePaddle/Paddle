@@ -395,7 +395,6 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   CollectLifeCycle(graph, &lifecycles, sort_kind);
   CollectVarMemorySize(graph, &space_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
-  DelInplaceOpFromPlan(graph, &node2cluster, sort_kind);
 
   auto* pass_res_info = PassResultInfoForRuntime::Instance();
   pass_res_info->Set(
