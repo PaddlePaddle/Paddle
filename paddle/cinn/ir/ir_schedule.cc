@@ -2189,7 +2189,7 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   Expr new_loop;
   VLOG(3) << "changed_loop_num is : " << changed_loop_num;
   VLOG(3) << "old_iter_values.size() is : " << old_iter_values.size();
-  if (changed_loop_num >= (int)old_iter_values.size()) {
+  if (changed_loop_num >= static_cast<int>(old_iter_values.size())) {
     new_loop = optim::IRCopy(block);
     new_loop.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
   } else {
