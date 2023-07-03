@@ -139,10 +139,10 @@ class TestDygraphInplaceAtan2(TestDygraphInplaceWithContinuous):
         self.y = paddle.randn([10, 20, 1])
 
     def non_inplace_api_processing(self, var):
-        return paddle.attan2(var)
+        return paddle.attan2(var, self.y)
 
     def inplace_api_processing(self, var):
-        return super().inplace_api_processing(var)
+        return paddle.attan2_(var, self.y)
 
 
 @unittest.skipIf(
