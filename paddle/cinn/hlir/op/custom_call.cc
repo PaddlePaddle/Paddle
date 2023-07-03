@@ -27,7 +27,7 @@
 #include "paddle/cinn/utils/string.h"
 
 #ifdef CINN_WITH_CUDNN
-#include <cudnn.h>
+#include "cudnn.h"
 #endif
 
 namespace cinn {

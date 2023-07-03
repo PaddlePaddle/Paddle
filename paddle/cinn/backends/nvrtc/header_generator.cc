@@ -15,7 +15,7 @@
 #include "paddle/cinn/backends/nvrtc/header_generator.h"
 
 #include "glog/logging.h"
-#include "jitify.hpp"  // NOLINT
+#include "jitify.hpp"
 
 namespace cinn {
 namespace backends {
