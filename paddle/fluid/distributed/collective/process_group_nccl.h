@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
@@ -176,14 +177,28 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                                          bool sync_op,
                                                          bool use_calc_stream);
 
-  void BroadcastUniqueNCCLID(ncclUniqueId* nccl_id);
+  void BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
+                             bool is_p2p_op = false,
+                             const std::string& p2p_key = "",
+                             int p2p_rank = 0);
 
-  void CreateNCCLEnvCache(const Place& place, const std::string& place_key);
+  void CreateNCCLEnvCache(const Place& place,
+                          const std::string& place_key,
+                          CommType comm_type,
+                          int p2p_rank = 0);
 
-  void SyncCalcStream(const Place& place);
+  void SyncCalcStream(const Place& place, const std::string& place_key);
 
-  std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
+  std::shared_ptr<ProcessGroup::Task> Collective(
       std::function<void(ncclComm_t, gpuStream_t)> fn,
+      const phi::DenseTensor& tensor,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> Point2Point(
+      std::function<void(ncclComm_t, gpuStream_t, int)> fn,
+      int peer,
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
@@ -200,7 +215,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
-  std::unordered_map<std::string, std::vector<phi::GPUContext*>> places_to_ctx_;
+  static thread_local uint64_t s_group_call_counter;
+
+  uint64_t nccl_comm_count_{0};
 };
 
 }  //  namespace distributed

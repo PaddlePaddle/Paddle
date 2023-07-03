@@ -1116,7 +1116,7 @@ def init_parallel_env():
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
-        paddle.distributed.barrier(group=group)
+        # paddle.distributed.barrier(group=group)
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}

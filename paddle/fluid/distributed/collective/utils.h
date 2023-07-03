@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -26,6 +27,14 @@ inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
   tensor_flattened.ShareDataWith(tensor);
   tensor_flattened.Resize({tensor.numel()});
   return tensor_flattened.Slice(offset, offset + numel);
+}
+
+inline bool IsP2POP(CommType comm_type, bool is_batch_p2p = false) {
+  if (is_batch_p2p) {
+    return false;
+  } else {
+    return comm_type == CommType::SEND || comm_type == CommType::RECV;
+  }
 }
 
 }  //  namespace distributed

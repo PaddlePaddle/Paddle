@@ -164,14 +164,24 @@ class HybridCommunicateGroup:
             )
         )
 
+        # create comm group for pipe parallel
+        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+        # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
+        # if batch_isend_irecv is the first collective operation, all ranks of
+        # the pipeline group must participate in this call. In order to avoid
+        # this situation, we perform a collective communication in advance and
+        # create a communicator.
+        paddle.distributed.all_reduce(
+            paddle.zeros([1], dtype="int32"),
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self._pp_comm_group,
+        )
+
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
-
-        # create comm group for pipe parallel
-        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
