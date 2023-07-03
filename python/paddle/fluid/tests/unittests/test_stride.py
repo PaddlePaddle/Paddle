@@ -653,10 +653,8 @@ class TestStride(unittest.TestCase):
 
 class TestStrideCPU(TestStride):
     def test_stride_cpu(self):
-        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('cpu')
         self.call_stride()
-        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
 
 @unittest.skipIf(
@@ -665,10 +663,8 @@ class TestStrideCPU(TestStride):
 )
 class TestStrideGPU(TestStride):
     def test_stride_gpu(self):
-        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": True})
         paddle.set_device('gpu')
         self.call_stride()
-        paddle.fluid.set_flags({"FLAGS_use_stride_kernel": False})
 
 
 class TestToStaticCheck(unittest.TestCase):
