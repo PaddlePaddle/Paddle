@@ -509,7 +509,7 @@
     out : Out
 
 - op : concat
-  backward : concat_grad
+  backward : concat_grad, concat_double_grad
   inputs:
     x: X
   outputs:
@@ -520,8 +520,11 @@
     axis :
       data_type : int
       tensor_name : AxisTensor
+  drop_empty_grad : [x_grad]
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
+  get_expected_kernel_type :
+    concat : GetConcatExpectedKernelType
 
 - op : conditional_block
   backward : conditional_block_grad
@@ -769,7 +772,7 @@
     attrs : ['int[] slots = {}']
 
 - op : divide (elementwise_div)
-  backward : divide_grad (elementwise_div)
+  backward : divide_grad (elementwise_div_grad)
   inputs :
     {x: X, y : Y}
   outputs :
@@ -843,6 +846,16 @@
     {eigenvalues : Eigenvalues, eigenvectors : Eigenvectors}
   attrs :
     uplo : UPLO
+
+- op : einsum
+  backward : einsum_grad
+  inputs :
+    x : Operands
+  outputs:
+    {out : Out, inner_cache: InnerCache, xshape : XShape}
+  drop_empty_grad: [x_grad]
+  extra:
+    outputs: [inner_cache, xshape]
 
 - op : elementwise_pow
   backward : elementwise_pow_grad
@@ -1056,9 +1069,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : floor_divide (elementwise_floordiv)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [floor_divide]
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
@@ -1776,6 +1795,8 @@
 
 - op : mish
   backward : mish_grad
+  inputs:
+    lambda:  threshold
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2132,9 +2153,15 @@
     attrs : [bool use_mkldnn = false]
 
 - op : remainder (elementwise_mod)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
+  manual_signature : [remainder]
 
 - op : renorm
   backward : renorm_grad
@@ -2838,6 +2865,8 @@
   get_expected_kernel_type :
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
+
+- op: full_batch_size_like (fill_constant_batch_size_like)
 
 - op: lu
   backward: lu_grad

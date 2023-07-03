@@ -20,6 +20,6 @@
 namespace ir {
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateDCEPass();
+IR_API std::unique_ptr<Pass> CreateDcePass();
 
 }  // namespace ir
