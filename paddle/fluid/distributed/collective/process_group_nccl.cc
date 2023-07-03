@@ -638,8 +638,7 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
   std::string store_key;
 
   if (!is_p2p_op) {
-    store_key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" +
-                std::to_string(nccl_comm_count_++);
+    store_key = "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/0";
   } else {
     store_key =
         "ProcessGroupNCCL/nccl_ids/" + std::to_string(gid_) + "/" + p2p_key;
@@ -689,8 +688,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
   VLOG(3) << "Get nccl comm: " << nccl_comm << " for place_key: " << place_key
-          << " on rank: " << rank << " nranks: " << num_ranks
-          << " comm type: " << comm_type;
+          << " on rank: " << rank << " nranks: " << num_ranks;
 
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
   comm_ctx->set_nccl_comm(nccl_comm);

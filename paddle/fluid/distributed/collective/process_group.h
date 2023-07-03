@@ -15,7 +15,6 @@
 #pragma once
 
 #include <chrono>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -50,11 +49,6 @@ enum class CommType : std::uint8_t {
   BARRIER = 11,
   UNKNOWN = 100,
 };
-
-inline std::ostream& operator<<(std::ostream& os, const CommType& obj) {
-  os << static_cast<std::underlying_type<CommType>::type>(obj);
-  return os;
-}
 
 class ProcessGroup {
  public:
