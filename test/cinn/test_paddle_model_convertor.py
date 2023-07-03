@@ -21,11 +21,10 @@ import sys
 import unittest
 
 import numpy as np
-from cinn.common import DefaultNVGPUTarget, is_compiled_with_cuda
+from cinn.common import DefaultNVGPUTarget
 from cinn.frontend import PaddleModelConvertor
 from cinn.runtime import seed as cinn_seed
 from op_mappers.op_mapper_test import OpMapperTest
-from ops.op_test import OpTestTool
 
 import paddle
 
