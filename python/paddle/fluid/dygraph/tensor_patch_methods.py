@@ -26,7 +26,7 @@ from .. import unique_name
 from ..framework import (
     Variable,
     Parameter,
-    _getitem_impl_,
+    _getitem_static,
     _setitem_impl_,
     EagerParamBase,
     in_dygraph_mode,
@@ -740,7 +740,7 @@ def monkey_patch_tensor():
         if contain_tensor(item) or is_list_tuple(item, int):
             # 1. Call _getitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
-            return _getitem_impl_(self, item)
+            return _getitem_static(self, item)
 
         else:
             # 2. Call c++ func getitem_index_not_tensor to speedup.
