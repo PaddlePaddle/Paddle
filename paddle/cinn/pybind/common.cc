@@ -30,7 +30,6 @@ namespace cinn::pybind {
 using common::bfloat16;
 using common::CINNValue;
 using common::float16;
-using common::Object;
 using common::Target;
 using common::Type;
 using utils::GetStreamCnt;
