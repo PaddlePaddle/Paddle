@@ -356,12 +356,7 @@ class Conv2dFusionOp
  public:
   using Op::Op;
   static const char *name() { return "pd.conv2d_fusion"; }
-  static const char *attributes_name[6] = {"strides",
-                                           "paddings",
-                                           "padding_algorithm",
-                                           "dilations",
-                                           "groups",
-                                           "data_format"};
+  static const char *attributes_name[6];
   static constexpr uint32_t attributes_num = 6;
   static OpInfoTuple GetOpInfo();
   static void Build(ir::Builder &builder,
