@@ -101,7 +101,8 @@ void cinn_call_cuda_kernel(void *kernel_fn,
     cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
     for (int idx = 0; idx < num_args; ++idx) {
       if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t *>()) {
-        kernel_args.emplace_back(&((cinn_buffer_t *)(args[idx]))->memory);
+        kernel_args.emplace_back(
+            &((cinn_buffer_t *)(args[idx]))->memory);  // NOLINT
       } else {
         kernel_args.emplace_back(args[idx].data_addr());
       }
@@ -664,7 +665,7 @@ std::string debug_cudnn_tensor_format(cudnnTensorFormat_t tensor_format) {
       return "NHWC";
     default:
       LOG(FATAL) << "Only support NCHW and NHWC data layout\n";
-  };
+  }
   return "";
 }
 
@@ -680,7 +681,7 @@ std::string debug_cudnn_tensor_dtype(cudnnDataType_t tensor_dtype) {
       return "float64";
     default:
       LOG(FATAL) << "Only support float16/bfloat16/float32/float64 now!";
-  };
+  }
   return "";
 }
 
@@ -696,7 +697,7 @@ std::string debug_cudnn_pool_mode(cudnnPoolingMode_t pool_mode) {
       return "avg_exclulude_padding";
     default:
       LOG(FATAL) << "Pool only support max and avg now!";
-  };
+  }
   return "";
 }
 
@@ -1971,7 +1972,7 @@ class CurandGenerator {
     CURAND_CALL(curandCreateGenerator(&generator_, CURAND_RNG_PSEUDO_DEFAULT));
   }
 
-  CurandGenerator(curandRngType rng_type) {
+  explicit CurandGenerator(curandRngType rng_type) {
     CURAND_CALL(curandCreateGenerator(&generator_, rng_type));
   }
 
@@ -1979,13 +1980,13 @@ class CurandGenerator {
 
   curandGenerator_t &GetGenerator() { return generator_; }
 
-  CurandGenerator &SetOffset(unsigned long long offset = 0ULL) {
+  CurandGenerator &SetOffset(uint64_t offset = 0ULL) {
     CURAND_CALL(curandSetGeneratorOffset(generator_, offset));
     VLOG(4) << "Set curand generator offset to: " << offset;
     return *this;
   }
 
-  CurandGenerator &SetSeed(unsigned long long seed = 0ULL) {
+  CurandGenerator &SetSeed(uint64_t seed = 0ULL) {
     // set global seed if seed is zero
     auto rand_seed = (seed == 0ULL) ? RandomSeed::GetOrSet() : seed;
     if (rand_seed != 0ULL && rand_seed != seed_) {
@@ -2009,7 +2010,7 @@ class CurandGenerator {
 
  private:
   curandGenerator_t generator_;
-  unsigned long long seed_ = 0ULL;
+  uint64_t seed_ = 0ULL;
   cudaStream_t stream_ = nullptr;
 };
 

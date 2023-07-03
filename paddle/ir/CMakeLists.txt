@@ -35,6 +35,10 @@ endfunction()
 
 if(WITH_SHARED_IR)
   add_definitions(-DIR_DLL_EXPORT)
+else()
+  if(WIN32)
+    add_definitions(-DIR_API)
+  endif()
 endif()
 
 add_subdirectory(core)

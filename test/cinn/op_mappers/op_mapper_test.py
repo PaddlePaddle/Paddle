@@ -14,19 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ast import arg
-import os
 import logging
+import os
+import sys
+from ast import arg
 
-import paddle
-from paddle.static import Variable as PaddleVariable
-from paddle.fluid.layer_helper import LayerHelper
-
-from cinn.frontend import NetBuilder, PaddleModelConvertor
 from cinn.common import is_compiled_with_cuda
 from cinn.framework import Scope
+from cinn.frontend import NetBuilder, PaddleModelConvertor
 
-import sys
+import paddle
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.static import Variable as PaddleVariable
 
 sys.path.append("/work/dev_CINN/build/python/tests")
 from test.cinn.ops.op_test import OpTest, OpTestTool
@@ -39,7 +38,7 @@ paddle.enable_static()
 
 class OpMapperTest(OpTest):
     def __init__(self, *args, **kwargs):
-        super(OpMapperTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._init_place()
         self.init_input_data()
 

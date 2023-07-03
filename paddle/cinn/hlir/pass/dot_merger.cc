@@ -126,8 +126,8 @@ class DotBuilder {
         shape_dict_{graph_->GetMutableAttrs<shape_dict_t>("infershape")} {}
 
   framework::Graph* graph() const { return graph_; }
-  const dtype_dict_t& dtype_dict() const { return dtype_dict_; };
-  const shape_dict_t& shape_dict() const { return shape_dict_; };
+  const dtype_dict_t& dtype_dict() const { return dtype_dict_; }
+  const shape_dict_t& shape_dict() const { return shape_dict_; }
 
   // Currently the constructor of `NodeData` needs to pass in `Shared<Node>`.
   NodeData* Var(common::Shared<Node>& producer) {  // NOLINT

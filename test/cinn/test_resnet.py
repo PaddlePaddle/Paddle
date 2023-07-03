@@ -14,19 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import unittest
+
+import cinn
+import numpy as np
+from cinn import Target, ir, lang, runtime
+from cinn.common import *
+from cinn.framework import *
+from cinn.frontend import *
+
 import paddle as paddle
 import paddle.fluid as fluid
-from cinn.frontend import *
-from cinn import Target
-from cinn.framework import *
-import unittest
-import cinn
-from cinn import runtime
-from cinn import ir
-from cinn import lang
-from cinn.common import *
-import numpy as np
-import sys
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -84,7 +83,7 @@ class TestLoadResnetModel(unittest.TestCase):
                     ". Diff is: ",
                     out[i] - target_result[i],
                 )
-        self.assertTrue(np.allclose(out, target_result, atol=1e-3))
+        np.testing.assert_allclose(out, target_result, atol=1e-3)
 
     def test_model(self):
         self.apply_test()

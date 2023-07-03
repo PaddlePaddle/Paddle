@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import subprocess
+import sys
 
 
 def main():
@@ -35,7 +35,7 @@ def main():
     srcs.append(')ROC"')
     srcs.append(');\n')
 
-    cmd = "{} --version".format(llvm_config)
+    cmd = f"{llvm_config} --version"
     version = (
         subprocess.check_output(cmd, shell=True)
         .decode('utf-8')

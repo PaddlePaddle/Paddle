@@ -143,7 +143,7 @@ inline std::vector<float> RunProgram(
 
 struct OptimizeConfig {
   struct PassGroup;
-  OptimizeConfig(const PassGroup& program_passes)
+  explicit OptimizeConfig(const PassGroup& program_passes)
       : program_passes{program_passes} {
     if (FLAGS_cinn_use_op_fusion) {
       graph_passes = {{"OpFusionPass", "FusionMergePass"},

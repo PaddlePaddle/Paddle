@@ -54,7 +54,7 @@ class ScheduleParam {
   int Count(const std::string &key) { return param_data.count(key); }
 
  private:
-  ScheduleParam(common::Target::Arch arch);
+  explicit ScheduleParam(common::Target::Arch arch);
   absl::flat_hash_map<std::string,
                       absl::flat_hash_map<std::string, std::vector<int>>>
       param_data;

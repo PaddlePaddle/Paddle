@@ -44,7 +44,7 @@ using ConditionFunction = std::function<bool(
 // code generation.
 class FusionMergePassHelper : public FusionHelperBase {
  public:
-  FusionMergePassHelper(const Graph* graph) : FusionHelperBase(graph) {
+  explicit FusionMergePassHelper(const Graph* graph) : FusionHelperBase(graph) {
     fusion_groups_ = graph->fusion_groups;
     // init fusion relation.
     InitFusionRelation();
@@ -249,7 +249,7 @@ class FusionMergePassHelper : public FusionHelperBase {
     return updated;
   }
 
-  void HorizontalFuse(GroupList& consumers) {  // NOLINT
+  void HorizontalFuse(const GroupList& consumers) {
     VLOG(3) << "HorizontalFuse Groups...";
     // create fusion group
     auto fused_group = std::make_shared<Graph::Group>();
@@ -463,14 +463,14 @@ class FusionMergePassHelper : public FusionHelperBase {
       if (!recompute) {
         return false;
       } else {
-        RecomputeEleGraph(producer, fuse_consumers_unsafe);
+        RecomputeEleGraph(producer, &fuse_consumers_unsafe);
         VerticalFuse(producer, fuse_consumers_unsafe);
         return true;
       }
     }
 
     if (fuse_consumers.size()) {
-      SelectConsumerToFuse(producer, fuse_consumers);
+      SelectConsumerToFuse(producer, &fuse_consumers);
     }
 
     // if fusionable consumers exist
@@ -669,21 +669,21 @@ class FusionMergePassHelper : public FusionHelperBase {
     }
   }
 
-  void RecomputeEleGraph(const GroupPtr& producer,
-                         std::unordered_set<GroupPtr, Hasher, Comparator>&
-                             fusionable_consumers) {  // NOLINT
+  void RecomputeEleGraph(
+      const GroupPtr& producer,
+      std::unordered_set<GroupPtr, Hasher, Comparator>* fusionable_consumers) {
     if (producer->op_pattern_kind != framework::kElementWise) {
       SelectConsumerToFuse(producer, fusionable_consumers);
     }
   }
 
-  void SelectConsumerToFuse(const GroupPtr& producer,
-                            std::unordered_set<GroupPtr, Hasher, Comparator>&
-                                fusionable_consumers) {  // NOLINT
+  void SelectConsumerToFuse(
+      const GroupPtr& producer,
+      std::unordered_set<GroupPtr, Hasher, Comparator>* fusionable_consumers) {
     // if is const op
     if (is_const_group(this, producer)) {
       std::unordered_set<GroupPtr, Hasher, Comparator> candidates;
-      for (auto& consumer : fusionable_consumers) {
+      for (auto& consumer : *fusionable_consumers) {
         // if can be output node.
         if (is_same_shape(this, producer, consumer)) {
           candidates.insert(consumer);
@@ -707,10 +707,10 @@ class FusionMergePassHelper : public FusionHelperBase {
       CHECK_GE(producer->consumer_groups.size(), candidates.size());
       if (producer->consumer_groups.size() == 0 && candidates.size() == 0 &&
           output_nodes_set_.count(producer->CollectNodes()[0]) == 0) {
-        producer->belong_groups.insert(*fusionable_consumers.begin());
+        producer->belong_groups.insert(*fusionable_consumers->begin());
       }
 
-      fusionable_consumers = candidates;
+      *fusionable_consumers = candidates;
       return;
     }
     // 1 to 1 fusion.
@@ -720,7 +720,7 @@ class FusionMergePassHelper : public FusionHelperBase {
 
     if (FLAGS_enhance_vertical_fusion_with_recompute) {
       std::vector<GroupPtr> candidates;
-      for (auto& consumer : fusionable_consumers) {
+      for (auto& consumer : *fusionable_consumers) {
         if (consumer->op_pattern_kind == framework::kElementWise) {
           candidates.push_back(consumer);
           continue;
@@ -764,13 +764,13 @@ class FusionMergePassHelper : public FusionHelperBase {
              return lhs->op_pattern_kind < rhs->op_pattern_kind;
            });
 
-      fusionable_consumers.clear();
+      fusionable_consumers->clear();
       if (candidates.size()) {
-        fusionable_consumers.insert(*candidates.begin());
+        fusionable_consumers->insert(*candidates.begin());
       }
     } else {
       std::unordered_set<GroupPtr, Hasher, Comparator> candidates;
-      for (auto& consumer : fusionable_consumers) {
+      for (auto& consumer : *fusionable_consumers) {
         if (consumer->op_pattern_kind == framework::kElementWise) {
           candidates.insert(consumer);
           continue;
@@ -787,9 +787,9 @@ class FusionMergePassHelper : public FusionHelperBase {
         }
       }
 
-      fusionable_consumers.clear();
+      fusionable_consumers->clear();
       if (candidates.size()) {
-        fusionable_consumers.insert(*candidates.begin());
+        fusionable_consumers->insert(*candidates.begin());
       }
     }
   }

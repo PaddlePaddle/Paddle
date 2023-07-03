@@ -2662,7 +2662,7 @@ int gcd(int a, int b) {
 int MaxFactorLessThan(int a, int b) {
   CHECK_GT(a, b);
   int res = 1;
-  for (int i = 2; i <= (int)sqrt((double)a); i++) {
+  for (int i = 2; i <= static_cast<int>(sqrt(static_cast<double>(a))); i++) {
     if (a % i == 0) {
       if (i <= b) res = std::max(res, i);
       if (a / i <= b) res = std::max(res, a / i);
@@ -2814,8 +2814,9 @@ void CudaSplitSchedule(common::CINNValuePack *arg_pack,
       stages[last_output]->Bind(0, "blockIdx.x");
       stages[last_output]->Bind(1, "threadIdx.x");
       compute_at_level++;
-    } else
+    } else {
       stages[last_output]->Bind(0, "threadIdx.x");
+    }
   }
 
   for (int i = 0; i < out_tensors.size() - 1; i++) {

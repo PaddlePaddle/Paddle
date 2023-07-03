@@ -741,14 +741,15 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
                 << "'s shape is : " << utils::Join(tensor->shape, ",");
         for (auto& expr : tensor->shape) {
           CHECK(expr.is_constant());
-          int_shape.push_back((int)expr.get_constant());
+          int_shape.push_back(static_cast<int>(expr.get_constant()));
         }
         for (auto& var : tensor->reduce_axis) {
           CHECK(var->lower_bound.defined());
           CHECK(var->upper_bound.defined());
           CHECK(common::is_zero(var->lower_bound));
           CHECK(var->upper_bound.is_constant());
-          int_shape.push_back((int)var->upper_bound.get_constant());
+          int_shape.push_back(
+              static_cast<int>(var->upper_bound.get_constant()));
         }
         // create block itervars, i0,i1...
         std::vector<Var> block_vars;
