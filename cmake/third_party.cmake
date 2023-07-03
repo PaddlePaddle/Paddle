@@ -259,14 +259,33 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
   )# adds --depth=1 arg to git clone of External_Projects
 endif()
 
+include(external/zlib) # download, build, install zlib
+include(external/gflags) # download, build, install gflags
+include(external/glog) # download, build, install glog
+
 ########################### include third_party according to flags ###############################
+if(WITH_CINN)
+  if(WITH_MKL)
+    add_definitions(-DCINN_WITH_MKL_CBLAS)
+  endif()
+  if(WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_MKLDNN)
+  endif()
+  include(cmake/generic.cmake)
+  include(cmake/cinn/system.cmake)
+  include(cmake/cinn/core.cmake)
+  include(cmake/cinn/external/absl.cmake)
+  include(cmake/cinn/nvrtc.cmake)
+  include(cmake/cinn/nvtx.cmake)
+  include(cmake/cinn/external/llvm.cmake)
+  include(cmake/cinn/external/isl.cmake)
+  include(cmake/cinn/external/ginac.cmake)
+  include(cmake/cinn/external/openmp.cmake)
+  include(cmake/cinn/external/jitify.cmake)
+endif()
 
 # cinn_only includes third-party libraries separately
 if(CINN_ONLY)
-  set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
-  include(external/zlib)
-  include(external/gflags)
-  include(external/glog)
   include(external/gtest)
   include(external/protobuf)
   if(WITH_PYTHON)
@@ -281,18 +300,6 @@ if(CINN_ONLY)
   return()
 endif()
 
-if(WITH_CINN)
-  if(WITH_MKL)
-    add_definitions(-DCINN_WITH_MKL_CBLAS)
-  endif()
-  if(WITH_MKLDNN)
-    add_definitions(-DCINN_WITH_MKLDNN)
-  endif()
-endif()
-
-include(external/zlib) # download, build, install zlib
-include(external/gflags) # download, build, install gflags
-include(external/glog) # download, build, install glog
 include(external/eigen) # download eigen3
 include(external/threadpool) # download threadpool
 include(external/dlpack) # download dlpack
