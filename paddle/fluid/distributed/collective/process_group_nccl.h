@@ -214,7 +214,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
-  static thread_local uint64_t s_group_call_counter;
+  static uint64_t s_group_call_counter;
 };
 
 }  //  namespace distributed
