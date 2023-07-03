@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_CINN_RUNTIME_CUDA_TEST_UTIL_H_
+#define PADDLE_CINN_RUNTIME_CUDA_TEST_UTIL_H_
+
 #include <numeric>
 #include <vector>
 
@@ -54,3 +57,5 @@ class Vector {
 }  // namespace cuda
 }  // namespace runtime
 }  // namespace cinn
+
+#endif  // PADDLE_CINN_RUNTIME_CUDA_TEST_UTIL_H_

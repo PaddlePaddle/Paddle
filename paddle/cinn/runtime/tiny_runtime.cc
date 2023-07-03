@@ -21,7 +21,7 @@
 #include <thread>
 #include <vector>
 
-#include "cinn_runtime.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
 
 extern "C" {
 int max_num_workers = std::thread::hardware_concurrency();

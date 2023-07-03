@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_CINN_FRONTEND_PASS_PASS_TEST_HELPER_H_
+#define PADDLE_CINN_FRONTEND_PASS_PASS_TEST_HELPER_H_
+
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
@@ -240,3 +243,5 @@ inline bool CompareProgramPassResult(
 
 }  // namespace frontend
 }  // namespace cinn
+
+#endif  // PADDLE_CINN_FRONTEND_PASS_PASS_TEST_HELPER_H_

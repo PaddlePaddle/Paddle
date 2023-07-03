@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_CINN_FRONTEND_COMPUTATION_H_
+#define PADDLE_CINN_FRONTEND_COMPUTATION_H_
+
 #include <iostream>
 
 #include "paddle/cinn/frontend/net_builder.h"
@@ -169,3 +172,5 @@ class CinnComputation {
 
 }  // namespace frontend
 }  // namespace cinn
+
+#endif  // PADDLE_CINN_FRONTEND_COMPUTATION_H_
