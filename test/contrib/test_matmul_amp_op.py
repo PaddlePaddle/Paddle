@@ -101,19 +101,17 @@ class TestMatMulAmpOp(OpTest):
                 'x': x,
                 'y': y,
             }
-        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+        self.attrs = {'transpose_x': self.trans_x, 'transpose_y': self.trans_y}
         self.outputs = {'out': result}
 
     def checker(self, outs):
         np.testing.assert_allclose(
-            outs[0], self.outputs['out'], rtol=0.01, atop=0.01
+            outs[0], self.outputs['out'], rtol=0.01, atol=0.01
         )
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(
-            checker=self.checker, place=place
-        )
+        self.check_output_with_place_customized(self.checker, place)
 
     def get_numeric_grad(self, place, check_name):
         scope = core.Scope()
