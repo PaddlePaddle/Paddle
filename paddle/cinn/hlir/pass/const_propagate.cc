@@ -65,7 +65,8 @@ void ConstPropagatePass(Graph* graph) {
 CINN_REGISTER_HELPER(ConstPropagate) {
   CINN_REGISTER_PASS(ConstPropagate)
       .describe(
-          "This pass will propagate const node_datas and mark the op_node with the attr[\"pre_run\"] if inputs are all "
+          "This pass will propagate const node_datas and mark the op_node with "
+          "the attr[\"pre_run\"] if inputs are all "
           "constants;")
       .set_change_structure(false)
       .provide_graph_attr("pre_run")

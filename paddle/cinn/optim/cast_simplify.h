@@ -23,7 +23,8 @@ namespace cinn::optim {
  *
  * There are several patterns:
  * 1. the source and target type are the same, drop the Cast node
- * 2. for intermediate numbers, just replace the Cast node with a Node of the target type
+ * 2. for intermediate numbers, just replace the Cast node with a Node of the
+ * target type
  */
 void CastSimplify(Expr* e);
 

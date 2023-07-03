@@ -30,21 +30,31 @@ using ir::Expr;
 using ir::Tensor;
 using lang::Compute;
 
-#define HLIR_IMP_UNARY_PE(name__)                                                                          \
-  std::vector<ir::Tensor> name__(const Tensor& A, const std::string& output_name) {                        \
-    return {Compute(                                                                                       \
-        A->shape, [=](const std::vector<Expr>& indice) { return lang::name__(A(indice)); }, output_name)}; \
+#define HLIR_IMP_UNARY_PE(name__)                                  \
+  std::vector<ir::Tensor> name__(const Tensor& A,                  \
+                                 const std::string& output_name) { \
+    return {Compute(                                               \
+        A->shape,                                                  \
+        [=](const std::vector<Expr>& indice) {                     \
+          return lang::name__(A(indice));                          \
+        },                                                         \
+        output_name)};                                             \
   }
 
-#define HLIR_MKL_IMP_UNARY_PE(name__, ex_name__)                                                     \
-  std::vector<ir::Tensor> name__##MKL(const Tensor& A, const std::string& output_name) {             \
-    CHECK(A->type().is_float()) << "type should be float or double but get " << A->type();           \
-    std::string fn_name = "cinn_mkl_" #ex_name__ "_v_fp" + std::to_string(A->type().bits());         \
-    auto call           = Compute(                                                                   \
-        {Expr(1)}, [=]() -> Expr { return lang::CallExtern(fn_name, {A}); }, output_name); \
-    auto out = call->TupleGet(0);                                                                    \
-    out->WithBuffer(A->type());                                                                      \
-    return {out, call};                                                                              \
+#define HLIR_MKL_IMP_UNARY_PE(name__, ex_name__)                           \
+  std::vector<ir::Tensor> name__##MKL(const Tensor& A,                     \
+                                      const std::string& output_name) {    \
+    CHECK(A->type().is_float())                                            \
+        << "type should be float or double but get " << A->type();         \
+    std::string fn_name =                                                  \
+        "cinn_mkl_" #ex_name__ "_v_fp" + std::to_string(A->type().bits()); \
+    auto call = Compute(                                                   \
+        {Expr(1)},                                                         \
+        [=]() -> Expr { return lang::CallExtern(fn_name, {A}); },          \
+        output_name);                                                      \
+    auto out = call->TupleGet(0);                                          \
+    out->WithBuffer(A->type());                                            \
+    return {out, call};                                                    \
   }
 
 HLIR_MKL_IMP_UNARY_PE(Exp, exp);
@@ -108,7 +118,9 @@ HLIR_IMP_UNARY_PE(Cbrt);
 HLIR_IMP_UNARY_PE(Clz);
 HLIR_IMP_UNARY_PE(Popc);
 
-ir::Tensor Squeeze(const ir::Tensor& A, const std::vector<int>& axes, const std::string& output_name) {
+ir::Tensor Squeeze(const ir::Tensor& A,
+                   const std::vector<int>& axes,
+                   const std::string& output_name) {
   std::vector<int> position;
   std::vector<Expr> output_shape;
   if (axes.size()) {
@@ -170,17 +182,20 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
             idx.push_back(indice[i]);
           }
         }
-        CHECK_EQ(idx.size(), A->shape.size()) << "The index size not equal with the input rank.";
+        CHECK_EQ(idx.size(), A->shape.size())
+            << "The index size not equal with the input rank.";
         return A(idx);
       },
       UniqName(output_name));
 }
 
-ir::Tensor Reshape(const ir::Tensor& A, const std::vector<int>& new_shape, const std::string& name) {
+ir::Tensor Reshape(const ir::Tensor& A,
+                   const std::vector<int>& new_shape,
+                   const std::string& name) {
   std::vector<Expr> new_expr_shape;
   std::vector<Expr> A_expr_shape = A->shape;
-  int input_total_size           = 1;
-  int output_total_size          = 1;
+  int input_total_size = 1;
+  int output_total_size = 1;
   for (auto& i : A_expr_shape) {
     CHECK(i.is_constant()) << "Input tensor's shape should be constant value.";
     input_total_size *= static_cast<int>(i.get_constant());
@@ -190,7 +205,8 @@ ir::Tensor Reshape(const ir::Tensor& A, const std::vector<int>& new_shape, const
     new_expr_shape.push_back(Expr(i));
   }
   CHECK_EQ(input_total_size, output_total_size)
-      << "In op reshape, the input tensor and output tensor's total size should be equal, please check!";
+      << "In op reshape, the input tensor and output tensor's total size "
+         "should be equal, please check!";
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
@@ -210,19 +226,31 @@ ir::Tensor Reshape(const ir::Tensor& A, const std::vector<int>& new_shape, const
   return res;
 }
 
-ir::Tensor Cast(const ir::Tensor& A, const Type& dtype, const std::string& name) {
+ir::Tensor Cast(const ir::Tensor& A,
+                const Type& dtype,
+                const std::string& name) {
   auto res = Compute(
-      A->shape, [=](const std::vector<Expr>& indices) { return ir::Cast::Make(dtype, A(indices)); }, name);
+      A->shape,
+      [=](const std::vector<Expr>& indices) {
+        return ir::Cast::Make(dtype, A(indices));
+      },
+      name);
   return res;
 }
 
-ir::Tensor Arange(
-    const float start, const float stop, const float step, const Type& dtype, const std::string& output_name) {
-  int num        = static_cast<int>(std::ceil((stop - start) / step));
+ir::Tensor Arange(const float start,
+                  const float stop,
+                  const float step,
+                  const Type& dtype,
+                  const std::string& output_name) {
+  int num = static_cast<int>(std::ceil((stop - start) / step));
   ir::Tensor res = lang::Compute(
       {Expr(num)},
       [=](const std::vector<ir::Expr>& indices) {
-        return ir::Cast::Make(dtype, Expr(start) + Expr(step) * ir::Cast::Make(common::F32(), indices[0]));
+        return ir::Cast::Make(
+            dtype,
+            Expr(start) +
+                Expr(step) * ir::Cast::Make(common::F32(), indices[0]));
       },
       output_name);
   return res;

@@ -200,6 +200,9 @@ class PD_INFER_DECL Predictor {
   ///
   void RegisterOutputHook(const OutputTensorHookFunc& hookfunc);
 
+  /// The same as RegisterOutputHook.
+  void RegisterInputHook(const InputTensorHookFunc& hookfunc);
+
   ///
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.

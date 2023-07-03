@@ -22,13 +22,13 @@ namespace {
 // TODO(wilber): After support SideEffectTrait, Only NoSideEffectTrait op can be
 // removed by dce pass.
 // Now just a naive implementation.
-class DCEPass : public ir::Pass {
+class DcePass : public ir::Pass {
  public:
-  DCEPass() : ir::Pass("DCEPass", 0) {}
+  DcePass() : ir::Pass("DcePass", 0) {}
 
   void Run(ir::Operation *op) override {
     auto module_op = op->dyn_cast<ir::ModuleOp>();
-    IR_ENFORCE(module_op, "DCEPass should run on module op.");
+    IR_ENFORCE(module_op, "DcePass should run on module op.");
     auto *block = module_op.block();
     std::vector<ir::Operation> erased_op;
     for (auto it = block->begin(); it != block->end(); ++it) {
@@ -39,6 +39,7 @@ class DCEPass : public ir::Pass {
       for (uint32_t i = 0; i < (*it)->num_results(); ++i) {
         use_empty &= (*it)->result(i).use_empty();
       }
+      // TODO(wilber): Support Terminator trait.
       if (use_empty && (*it)->name() != "pd.fetch") {
         erased_op.push_back(**it);
       }
@@ -56,6 +57,6 @@ class DCEPass : public ir::Pass {
 
 namespace ir {
 
-std::unique_ptr<Pass> CreateDCEPass() { return std::make_unique<DCEPass>(); }
+std::unique_ptr<Pass> CreateDcePass() { return std::make_unique<DcePass>(); }
 
 }  // namespace ir

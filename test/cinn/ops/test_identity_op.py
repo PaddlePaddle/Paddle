@@ -15,11 +15,13 @@
 # limitations under the License.
 
 import unittest
+
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-from cinn.frontend import *
-from cinn.common import *
 
 
 @OpTestTool.skip_if(

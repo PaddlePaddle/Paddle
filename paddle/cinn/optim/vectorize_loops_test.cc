@@ -57,14 +57,14 @@ TEST(Vectorize, replace_var) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
 
   ir::Module::Builder builder("module1", target);
   builder.AddFunction(ir::LoweredFunc(func.As<ir::_LoweredFunc_>()));
 
   CodeGenC codegen(target);
   codegen.SetInlineBuiltinCodes(false);
-  auto out        = codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
+  auto out = codegen.Compile(builder.Build(), CodeGenC::OutputKind::CImpl);
   auto target_out = R"ROC(
 #include <cinn_runtime.h>
 #include <stdio.h>
@@ -101,7 +101,7 @@ TEST(Vectorize, TestMarkVectorize) {
   Target target;
   target.arch = Target::Arch ::X86;
   target.bits = Target::Bit ::k32;
-  target.os   = Target::OS ::Linux;
+  target.os = Target::OS ::Linux;
 
   Placeholder<float> A("A", {M, N});
   Placeholder<float> B("B", {M, N});
@@ -196,10 +196,11 @@ TEST(Vectorize, vectorize) {
     Placeholder<float> C("C", std::vector<int>{{10}});
 
     auto expr = Load::Make(ir::Tensor(A), {a * 2 + b * 2});
-    expr      = expr + 10.f * expr;
+    expr = expr + 10.f * expr;
     detail::Vectorize(a, 16, &expr);
     EXPECT_EQ(GetStreamCnt(expr),
-              "(A[Ramp(((b * 2) + (0 * 2)),(1 * 2),16)] + (Broadcast(10.0000000f,16) * A[Ramp(((b * 2) + (0 * 2)),(1 * "
+              "(A[Ramp(((b * 2) + (0 * 2)),(1 * 2),16)] + "
+              "(Broadcast(10.0000000f,16) * A[Ramp(((b * 2) + (0 * 2)),(1 * "
               "2),16)]))");
   }
 }
@@ -216,7 +217,7 @@ TEST(Vectorize, single_for) {
                               ir::Load::Make(ir::Tensor(A), {Expr(loop_var)}),
                               ir::Load::Make(ir::Tensor(B), {Expr(loop_var)})),
                           {Expr(loop_var)});
-  body      = ir::Block::Make({body});
+  body = ir::Block::Make({body});
 
   VectorizeInfo vectorize_info(0, 16);
   auto forloop = ir::For::Make(loop_var,
@@ -244,7 +245,7 @@ TEST(Vectorize, cuda_vectorize) {
   auto stages = CreateStages({C});
   stages[C]->Vectorize(1, 4);
   Target target = common::DefaultNVGPUTarget();
-  auto func     = Lower("matmul", stages, {A, B, C}, {}, {}, nullptr, target);
+  auto func = Lower("matmul", stages, {A, B, C}, {}, {}, nullptr, target);
 
   auto target_expr = R"ROC(
 function matmul (_A, _B, _C)
@@ -281,7 +282,7 @@ TEST(Vectorize, cuda_vectorize_with_constant) {
   auto stages = CreateStages({C});
   stages[C]->Vectorize(1, 4);
   Target target = common::DefaultNVGPUTarget();
-  auto func     = Lower("mul_const", stages, {A, C}, {}, {}, nullptr, target);
+  auto func = Lower("mul_const", stages, {A, C}, {}, {}, nullptr, target);
 }
 
 }  // namespace optim

@@ -19,9 +19,13 @@
 namespace cinn {
 namespace common {
 
-PythonInterpreterGuard::PythonInterpreterGuard() { pybind11::initialize_interpreter(); }
+PythonInterpreterGuard::PythonInterpreterGuard() {
+  pybind11::initialize_interpreter();
+}
 
-PythonInterpreterGuard::~PythonInterpreterGuard() { pybind11::finalize_interpreter(); }
+PythonInterpreterGuard::~PythonInterpreterGuard() {
+  pybind11::finalize_interpreter();
+}
 
 PythonInterpreterGuard& PythonInterpreterGuard::Guard() {
   static PythonInterpreterGuard guard;

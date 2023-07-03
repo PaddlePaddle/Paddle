@@ -50,14 +50,14 @@ TEST(RecordEvent, HOST) {
 
   LOG(INFO) << HostEventRecorder::Table();
   /*
-    40: ------------------------->     Profiling Report     <-------------------------
-    40:
-    40:  Category             Name                 CostTime(ms)         Ratio in Category(%)  Ratio in Total(%)
-    40:
-    40:  Ordinary             evs_op_0             9725.647664          100.000000           99.999827
-    40:  Instruction          evs_op_3             0.006967             100.000000           0.000072
-    40:  Compile              evs_op_1             0.005083             51.536044            0.000052
-    40:  Compile              evs_op_2             0.004780             48.463956            0.000049
+    40: ------------------------->     Profiling Report
+    <------------------------- 40: 40:  Category             Name CostTime(ms)
+    Ratio in Category(%)  Ratio in Total(%) 40: 40:  Ordinary evs_op_0
+    9725.647664          100.000000           99.999827 40:  Instruction
+    evs_op_3             0.006967             100.000000           0.000072 40:
+    Compile              evs_op_1             0.005083             51.536044
+    0.000052 40:  Compile              evs_op_2 0.004780             48.463956
+    0.000049
   */
 
   LOG(INFO) << "Usage 2: Nested RecordEvent for HOST";

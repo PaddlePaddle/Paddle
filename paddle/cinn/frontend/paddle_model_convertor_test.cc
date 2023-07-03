@@ -28,7 +28,7 @@ namespace frontend {
 template <typename T>
 void RandomInput(const Target& target,
                  hlir::framework::Tensor tensor,
-                 T low  = static_cast<T>(0),
+                 T low = static_cast<T>(0),
                  T high = static_cast<T>(1)) {
   std::vector<T> vec;
   InitRandomVector<T>(&vec, tensor->shape().numel(), low, high);
@@ -36,7 +36,10 @@ void RandomInput(const Target& target,
 }
 
 template <>
-void RandomInput<bool>(const Target& target, hlir::framework::Tensor tensor, bool low, bool high) {
+void RandomInput<bool>(const Target& target,
+                       hlir::framework::Tensor tensor,
+                       bool low,
+                       bool high) {
   std::vector<int> vec_int;
   InitRandomVector<int>(&vec_int, tensor->shape().numel(), 0, 1);
 
@@ -54,7 +57,8 @@ void RunProgram(const Target& target, Program* prog) {
     input_names.emplace_back(var->id);
   }
 
-  LOG(INFO) << "The Program's inputs are [" << cinn::utils::Join(input_names, ", ") << "]";
+  LOG(INFO) << "The Program's inputs are ["
+            << cinn::utils::Join(input_names, ", ") << "]";
 
   auto passes = DefaultTrainingOptimizeOptions();
 
@@ -93,8 +97,9 @@ TEST(PaddleModelConvertor, basic) {
   model_transform.LoadModel(FLAGS_model_dir);
   auto program = model_transform();
 
-  const auto& var_map                  = model_transform.var_map();
-  const auto& var_model_to_program_map = model_transform.var_model_to_program_map();
+  const auto& var_map = model_transform.var_map();
+  const auto& var_model_to_program_map =
+      model_transform.var_model_to_program_map();
 
   ASSERT_FALSE(var_map.empty());
   ASSERT_FALSE(var_model_to_program_map.empty());

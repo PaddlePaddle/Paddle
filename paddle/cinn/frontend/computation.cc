@@ -40,15 +40,16 @@ struct ComputationContext {
   std::unordered_map<std::string, std::string> varmap_paddle2program;
 };
 
-std::shared_ptr<ComputationContext> CompileProgram(const Target &target,
-                                                   Program &program,
-                                                   const std::vector<Variable> &outputs,
-                                                   std::shared_ptr<hlir::framework::Scope> scope,
-                                                   const CinnComputation::CompileOptions &options,
-                                                   void *stream) {
+std::shared_ptr<ComputationContext> CompileProgram(
+    const Target &target,
+    Program &program,
+    const std::vector<Variable> &outputs,
+    std::shared_ptr<hlir::framework::Scope> scope,
+    const CinnComputation::CompileOptions &options,
+    void *stream) {
   std::shared_ptr<ComputationContext> ctx(new ComputationContext());
-  ctx->stream          = stream;
-  ctx->target          = target;
+  ctx->stream = stream;
+  ctx->target = target;
   ctx->compile_options = options;
   if (ctx->compile_options.use_decomposer) {
     ProgramPass::Apply(&program, {}, target, {"Decomposer"});
@@ -71,14 +72,16 @@ std::shared_ptr<ComputationContext> CompileProgram(const Target &target,
   }
 
   ctx->scope = hlir::framework::BuildScope(target, ctx->graph, scope);
-  ctx->graph_compiler.reset(new hlir::framework::GraphCompiler(target, ctx->scope, ctx->graph));
+  ctx->graph_compiler.reset(
+      new hlir::framework::GraphCompiler(target, ctx->scope, ctx->graph));
 
   std::unordered_set<std::string> fetch_var_ids;
   for (auto &out : outputs) {
     fetch_var_ids.insert(out->id);
   }
 
-  ctx->program = ctx->graph_compiler->Build(options, std::move(fetch_var_ids)).runtime_program;
+  ctx->program = ctx->graph_compiler->Build(options, std::move(fetch_var_ids))
+                     .runtime_program;
   if (ctx->compile_options.do_prerun) {
     ctx->program->PreRun();
   }
@@ -116,11 +119,12 @@ std::shared_ptr<CinnComputation> CinnComputation::CompilePaddleModel(
   for (int idx = 0; idx < input_names.size(); ++idx) {
     input_shape_map[input_names[idx]] = input_shapes[idx];
   }
-  auto loadedProgram          = LoadPaddleProgram(model_path, scope.get(), input_shape_map, params_combined, target);
-  auto &program               = std::get<0>(loadedProgram);
-  auto &varmap                = std::get<1>(loadedProgram);
+  auto loadedProgram = LoadPaddleProgram(
+      model_path, scope.get(), input_shape_map, params_combined, target);
+  auto &program = std::get<0>(loadedProgram);
+  auto &varmap = std::get<1>(loadedProgram);
   auto &varmap_paddle2program = std::get<2>(loadedProgram);
-  auto &fetch_names           = std::get<3>(loadedProgram);
+  auto &fetch_names = std::get<3>(loadedProgram);
 
   // std::vector<Variable> input_vars;
   // for (int i = 0; i < input_names.size(); i++) {
@@ -137,7 +141,8 @@ std::shared_ptr<CinnComputation> CinnComputation::CompilePaddleModel(
     output_vars.push_back(varmap.at(name));
   }
 
-  std::shared_ptr<ComputationContext> ctx = CompileProgram(target, *program, output_vars, scope, options, stream);
+  std::shared_ptr<ComputationContext> ctx =
+      CompileProgram(target, *program, output_vars, scope, options, stream);
   for (auto &v : varmap) {
     ctx->varmap[v.first] = v.second;
   }
@@ -145,45 +150,52 @@ std::shared_ptr<CinnComputation> CinnComputation::CompilePaddleModel(
     ctx->varmap_paddle2program[v.first] = v.second;
   }
 
-  auto computation      = std::make_shared<CinnComputation>();
+  auto computation = std::make_shared<CinnComputation>();
   computation->context_ = std::move(ctx);
 
   return computation;
 }
 
-std::shared_ptr<CinnComputation> CinnComputation::BuildAndCompile(const Target &target,
-                                                                  NetBuilder &builder,
-                                                                  const CompileOptions &options,
-                                                                  const std::vector<Variable> &outputs,
-                                                                  void *stream) {
+std::shared_ptr<CinnComputation> CinnComputation::BuildAndCompile(
+    const Target &target,
+    NetBuilder &builder,
+    const CompileOptions &options,
+    const std::vector<Variable> &outputs,
+    void *stream) {
   auto program = builder.Build();
   return Compile(target, program, options, outputs, stream);
 }
 
-std::shared_ptr<CinnComputation> CinnComputation::Compile(const Target &target,
-                                                          Program &program,
-                                                          const CompileOptions &options,
-                                                          const std::vector<Variable> &outputs,
-                                                          void *stream) {
+std::shared_ptr<CinnComputation> CinnComputation::Compile(
+    const Target &target,
+    Program &program,
+    const CompileOptions &options,
+    const std::vector<Variable> &outputs,
+    void *stream) {
   std::vector<Variable> output_vars = outputs;
   if (output_vars.empty()) {
     output_vars.push_back(program[program.size() - 1].GetOutput(0));
   }
 
-  std::shared_ptr<ComputationContext> ctx = CompileProgram(target, program, output_vars, nullptr, options, stream);
+  std::shared_ptr<ComputationContext> ctx =
+      CompileProgram(target, program, output_vars, nullptr, options, stream);
 
-  auto computation      = std::make_shared<CinnComputation>();
+  auto computation = std::make_shared<CinnComputation>();
   computation->context_ = std::move(ctx);
 
   return computation;
 }
 
-void CinnComputation::SetTensorData(const std::string &tname, void *data, size_t size) {
+void CinnComputation::SetTensorData(const std::string &tname,
+                                    void *data,
+                                    size_t size) {
   hlir::framework::Tensor t = GetTensor(tname);
   SetTensorData(t, data, size);
 }
 
-void CinnComputation::SetTensorData(hlir::framework::Tensor &t, void *data, size_t size) {
+void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
+                                    void *data,
+                                    size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
   if (context_->target.arch == Target::Arch::NVGPU) {
@@ -198,7 +210,9 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t, void *data, size
     CINN_NOT_IMPLEMENTED
   }
 }
-void CinnComputation::GetTensorData(hlir::framework::Tensor &t, void *data, size_t size) {
+void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
+                                    void *data,
+                                    size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
   CHECK_EQ(size, t->shape().numel() * t->type().bytes());
   if (context_->target.arch == Target::Arch::NVGPU) {
@@ -214,14 +228,20 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t, void *data, size
   }
 }
 
-void CinnComputation::GetTensorData(const std::string &tname, void *data, size_t size) {
+void CinnComputation::GetTensorData(const std::string &tname,
+                                    void *data,
+                                    size_t size) {
   hlir::framework::Tensor t = GetTensor(tname);
   GetTensorData(t, data, size);
 }
 
-std::vector<hlir::framework::Tensor> CinnComputation::GetInputTensors() { return context_->inputs; }
+std::vector<hlir::framework::Tensor> CinnComputation::GetInputTensors() {
+  return context_->inputs;
+}
 
-std::vector<hlir::framework::Tensor> CinnComputation::GetOutputTensors() { return context_->outputs; }
+std::vector<hlir::framework::Tensor> CinnComputation::GetOutputTensors() {
+  return context_->outputs;
+}
 
 hlir::framework::Tensor CinnComputation::GetTensor(const std::string &tname) {
   if (context_->scope->FindVar(tname)) {
@@ -230,12 +250,14 @@ hlir::framework::Tensor CinnComputation::GetTensor(const std::string &tname) {
   auto it = context_->varmap_paddle2program.find(tname);
   if (it == context_->varmap_paddle2program.end()) {
     LOG(FATAL) << "No variable called [" << tname
-               << "] found in computation\nThe existing vars: " << utils::Join(context_->scope->var_names(), ", ");
+               << "] found in computation\nThe existing vars: "
+               << utils::Join(context_->scope->var_names(), ", ");
   }
   return context_->scope->GetTensor(it->second);
 }
 
-void CinnComputation::Execute(const std::map<std::string, cinn_pod_value_t> *name2podargs) {
+void CinnComputation::Execute(
+    const std::map<std::string, cinn_pod_value_t> *name2podargs) {
   context_->program->Execute(name2podargs, context_->stream);
 }
 

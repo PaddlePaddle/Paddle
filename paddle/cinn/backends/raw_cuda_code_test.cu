@@ -26,7 +26,8 @@ __global__ void elementwise_add_kernel(const float* __restrict__ A,
       if ((threadIdx.x < 1024)) {
         {
           C[((1024 * blockIdx.x) + threadIdx.x)] =
-              (A[((1024 * blockIdx.x) + threadIdx.x)] + B[((1024 * blockIdx.x) + threadIdx.x)]);
+              (A[((1024 * blockIdx.x) + threadIdx.x)] +
+               B[((1024 * blockIdx.x) + threadIdx.x)]);
         }
       }
     }

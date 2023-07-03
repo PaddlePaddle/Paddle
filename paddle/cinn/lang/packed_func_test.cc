@@ -27,7 +27,7 @@ TEST(Function, test) {
   PackedFunc::body_t func_body = [](Args args, RetValue* ret) {
     int a = args[0];
     int b = args[1];
-    *ret  = (a + b);
+    *ret = (a + b);
   };
   PackedFunc func(func_body);
 
@@ -38,12 +38,12 @@ TEST(Function, test) {
 TEST(Function, test1) {
   PackedFunc::body_t body = [](Args args, RetValue* ret) {
     auto* msg = static_cast<const char*>(args[0]);
-    (*ret)    = msg;
+    (*ret) = msg;
   };
 
   PackedFunc func(body);
   const char* msg = "hello world";
-  char* c         = func(msg);
+  char* c = func(msg);
   LOG(INFO) << static_cast<char*>(c);
 }
 
@@ -84,8 +84,8 @@ TEST(Function, ReturnMultiValue) {
   PackedFunc func(body);
 
   common::CINNValuePack ret = func(1, 2);
-  int c                     = ret[0];
-  int d                     = ret[1];
+  int c = ret[0];
+  int d = ret[1];
 
   EXPECT_EQ(c, 3);
   EXPECT_EQ(d, -1);

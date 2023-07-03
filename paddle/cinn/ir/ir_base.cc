@@ -98,7 +98,9 @@ Expr One(const Type &type) {
   return Expr();
 }
 
-Expr::Expr(const Var &var) { *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&var); }
+Expr::Expr(const Var &var) {
+  *static_cast<IrNodeRef *>(this) = *static_cast<const IrNodeRef *>(&var);
+}
 bool Expr::as_bool() const {
   CHECK(type().is_uint(1));
   return As<UIntImm>()->value;
@@ -166,7 +168,9 @@ Expr::operator Var() {
   return ir::Var(x);
 }
 
-bool Expr::is_constant() const { return As<IntImm>() || As<UIntImm>() || As<FloatImm>(); }
+bool Expr::is_constant() const {
+  return As<IntImm>() || As<UIntImm>() || As<FloatImm>();
+}
 
 double Expr::get_constant() const {
   CHECK(is_constant()) << *this << " is not constant! Please check.";
@@ -183,7 +187,9 @@ const _Buffer_ *Expr::as_buffer() const { return As<_Buffer_>(); }
 Buffer Expr::as_buffer_ref() const { return Buffer(&Reference(as_buffer())); }
 
 _LoweredFunc_ *Expr::as_lowered_func() { return As<_LoweredFunc_>(); }
-const _LoweredFunc_ *Expr::as_lowered_func() const { return As<_LoweredFunc_>(); }
+const _LoweredFunc_ *Expr::as_lowered_func() const {
+  return As<_LoweredFunc_>();
+}
 
 _Module_ *Expr::as_module() { return As<_Module_>(); }
 const _Module_ *Expr::as_module() const { return As<_Module_>(); }
@@ -202,7 +208,9 @@ LoweredFunc Expr::as_lowered_func_ref() const {
 
 _Tensor_ *Expr::as_tensor() { return As<_Tensor_>(); }
 const _Tensor_ *Expr::as_tensor() const { return As<_Tensor_>(); }
-ir::Tensor Expr::as_tensor_ref() const { return ir::Tensor(&Reference(as_tensor())); }
+ir::Tensor Expr::as_tensor_ref() const {
+  return ir::Tensor(&Reference(as_tensor()));
+}
 
 _Var_ *Expr::as_var() { return As<_Var_>(); }
 const _Var_ *Expr::as_var() const { return As<_Var_>(); }

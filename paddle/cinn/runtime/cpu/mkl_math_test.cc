@@ -29,7 +29,9 @@ namespace cinn {
 namespace runtime {
 namespace cpu {
 
-cinn_buffer_t *CreateBuffer(const std::vector<int> shape, bool random = true, int set_value = 0) {
+cinn_buffer_t *CreateBuffer(const std::vector<int> shape,
+                            bool random = true,
+                            int set_value = 0) {
   if (random) {
     return common::BufferBuilder(Float(32), shape).set_random().Build();
   } else if (set_value != 0) {
@@ -39,8 +41,11 @@ cinn_buffer_t *CreateBuffer(const std::vector<int> shape, bool random = true, in
 }
 
 template <typename FuncRuntime>
-void TestCallElementwise(
-    const std::string &fn_name, FuncRuntime fn_runtime, bool is_elementwise, Type type = Float(32), int set_value = 0) {
+void TestCallElementwise(const std::string &fn_name,
+                         FuncRuntime fn_runtime,
+                         bool is_elementwise,
+                         Type type = Float(32),
+                         int set_value = 0) {
   Expr M(10);
   Expr N(10);
   Placeholder<float> x("x", {M, N});
@@ -50,11 +55,17 @@ void TestCallElementwise(
   std::vector<ir::Tensor> lower_args({x});
   if (is_elementwise) {
     out = Compute(
-        {M, N}, [&](Var i, Var j) -> Expr { return lang::CallExtern(fn_name, {x(i, j)}); }, fn_name + "_out");
+        {M, N},
+        [&](Var i, Var j) -> Expr {
+          return lang::CallExtern(fn_name, {x(i, j)});
+        },
+        fn_name + "_out");
     lower_args.push_back(out);
   } else {
     auto comp_out = Compute(
-        {Expr(1)}, [&]() -> Expr { return lang::CallExtern(fn_name, {x}); }, fn_name + "_out");
+        {Expr(1)},
+        [&]() -> Expr { return lang::CallExtern(fn_name, {x}); },
+        fn_name + "_out");
     out = comp_out->TupleGet(0);
     out->WithBuffer(Float(32));
     lower_args.push_back(out);
@@ -71,7 +82,7 @@ void TestCallElementwise(
 
   LOG(INFO) << "func:\n" << func;
 
-  auto jit    = backends::ExecutionEngine::Create({});
+  auto jit = backends::ExecutionEngine::Create({});
   auto module = builder.Build();
 
   jit->Link(module);
@@ -85,7 +96,8 @@ void TestCallElementwise(
   } else {
     A_buf = CreateBuffer({10, 10});
   }
-  auto *B_buf = common::BufferBuilder(type, {10, 10}).set_align(type.bits()).Build();
+  auto *B_buf =
+      common::BufferBuilder(type, {10, 10}).set_align(type.bits()).Build();
 
   cinn_pod_value_t a_arg(A_buf), b_arg(B_buf);
   cinn_pod_value_t args[] = {a_arg, b_arg};
@@ -109,16 +121,24 @@ bool isnan(float e) { return std::isnan(e); }
 bool isfinite(float e) { return std::isfinite(e); }
 bool isinf(float e) { return std::isinf(e); }
 
-#define TEST_MKL_MATH_FP32(test_name__, is_elementwise) \
-  TEST(mkl_math, test_name__) { TestCallElementwise(#test_name__, test_name__##f, is_elementwise); }
-#define TEST_CINN_MKL_MATH_FP32(test_name__, is_elementwise)                                 \
-  TEST(mkl_math, test_name__) {                                                              \
-    TestCallElementwise("cinn_mkl_" #test_name__ "_v_fp32", test_name__##f, is_elementwise); \
+#define TEST_MKL_MATH_FP32(test_name__, is_elementwise)                \
+  TEST(mkl_math, test_name__) {                                        \
+    TestCallElementwise(#test_name__, test_name__##f, is_elementwise); \
   }
-#define TEST_MKL_MATH_FP32_BOOL(test_name__, is_elementwise) \
-  TEST(mkl_math, test_name__) { TestCallElementwise(#test_name__, test_name__, is_elementwise, Bool()); }
-#define TEST_MKL_MATH_FP32_SET(test_name__, is_elementwise, value) \
-  TEST(mkl_math, test_name__) { TestCallElementwise(#test_name__, test_name__##f, is_elementwise, Float(32), value); }
+#define TEST_CINN_MKL_MATH_FP32(test_name__, is_elementwise)                 \
+  TEST(mkl_math, test_name__) {                                              \
+    TestCallElementwise(                                                     \
+        "cinn_mkl_" #test_name__ "_v_fp32", test_name__##f, is_elementwise); \
+  }
+#define TEST_MKL_MATH_FP32_BOOL(test_name__, is_elementwise)                \
+  TEST(mkl_math, test_name__) {                                             \
+    TestCallElementwise(#test_name__, test_name__, is_elementwise, Bool()); \
+  }
+#define TEST_MKL_MATH_FP32_SET(test_name__, is_elementwise, value)       \
+  TEST(mkl_math, test_name__) {                                          \
+    TestCallElementwise(                                                 \
+        #test_name__, test_name__##f, is_elementwise, Float(32), value); \
+  }
 
 TEST_CINN_MKL_MATH_FP32(exp, false)
 TEST_CINN_MKL_MATH_FP32(erf, false)
@@ -146,7 +166,9 @@ TEST_CINN_MKL_MATH_FP32(tanh, false)
 TEST_MKL_MATH_FP32_BOOL(isfinite, true)
 TEST_MKL_MATH_FP32_BOOL(isinf, true)
 
-TEST(mkl_math, tanh_v_fp32) { TestCallElementwise("cinn_mkl_tanh_v_fp32", tanhf, false); }
+TEST(mkl_math, tanh_v_fp32) {
+  TestCallElementwise("cinn_mkl_tanh_v_fp32", tanhf, false);
+}
 
 TEST(cinn_cpu_mkl_gemm_fp32, test) {
   Expr M(30);
@@ -191,17 +213,23 @@ TEST(cinn_cpu_mkl_gemm_fp32, test) {
 
   LOG(INFO) << "func:\n" << func;
 
-  auto jit    = backends::SimpleJIT::Create();
+  auto jit = backends::SimpleJIT::Create();
   auto module = builder.Build();
 
   jit->Link(module, /*optimize=*/true);
-  auto fn     = jit->Lookup("fn");
+  auto fn = jit->Lookup("fn");
   auto fn_ptr = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   // test with real data
-  auto *A_buf = common::BufferBuilder(Float(32), {M.as_int32(), K.as_int32()}).set_random().Build();
-  auto *B_buf = common::BufferBuilder(Float(32), {K.as_int32(), N.as_int32()}).set_random().Build();
-  auto *C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()}).set_zero().Build();
+  auto *A_buf = common::BufferBuilder(Float(32), {M.as_int32(), K.as_int32()})
+                    .set_random()
+                    .Build();
+  auto *B_buf = common::BufferBuilder(Float(32), {K.as_int32(), N.as_int32()})
+                    .set_random()
+                    .Build();
+  auto *C_buf = common::BufferBuilder(Float(32), {M.as_int32(), N.as_int32()})
+                    .set_zero()
+                    .Build();
 
   auto args = common::ArgsBuilder().Add(A_buf).Add(B_buf).Add(C_buf).Build();
 
