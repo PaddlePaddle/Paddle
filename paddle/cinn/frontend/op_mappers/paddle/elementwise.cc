@@ -56,12 +56,12 @@ EXPAND_ELTWISETYPE_STRING(kMin, " min ")
 template <EltwiseType Type>
 struct OpBuilder {};
 
-#define ELTWISE_SPEC(enum_t, function)                             \
-  template <>                                                      \
-  struct OpBuilder<enum_t> {                                       \
-    constexpr static Variable (NetBuilder::*func)(const Variable&, \
-                                                  const Variable&, \
-                                                  int){&function}; \
+#define ELTWISE_SPEC(enum_t, function)                                        \
+  template <>                                                                 \
+  struct OpBuilder<enum_t> {                                                  \
+    constexpr static Variable (NetBuilder::*func)(const Variable&,            \
+                                                  const Variable&,            \
+                                                  int){&function}; /*NOLINT*/ \
   }
 ELTWISE_SPEC(EltwiseType::kAdd, NetBuilder::Add);
 ELTWISE_SPEC(EltwiseType::kDiv, NetBuilder::Divide);
@@ -267,7 +267,15 @@ void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc,
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_elementwise) {
-  using namespace cinn::frontend::paddle_mappers;
+  using cinn::frontend::paddle_mappers::AddOpMapper;
+  using cinn::frontend::paddle_mappers::CastOpMapper;
+  using cinn::frontend::paddle_mappers::ElementwiseAddGradOpMapper;
+  using cinn::frontend::paddle_mappers::ElementwiseOpMapper;
+  using cinn::frontend::paddle_mappers::EltwiseType;
+  using cinn::frontend::paddle_mappers::FloorDivideOpMapper;
+  using cinn::frontend::paddle_mappers::PowOpMapper;
+  using cinn::frontend::paddle_mappers::SumOpMapper;
+
   CINN_REGISTER_OP_MAPPER(add, AddOpMapper)
   CINN_REGISTER_OP_MAPPER(elementwise_add,
                           ElementwiseOpMapper<EltwiseType::kAdd>)

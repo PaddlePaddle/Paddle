@@ -36,7 +36,6 @@ using framework::shape_t;
 using framework::StrategyFunction;
 
 using common::Type;
-using namespace lang;
 
 using cinn::hlir::op::ExternalApiRegistry;
 

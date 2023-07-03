@@ -730,7 +730,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     if (forloop->is_vectorized()) {
       Context::info_rgt().Get<int>("vectorized_forloop_count")++;
 
-      CHECK(forloop->vectorize_info().factor > 0);
+      CHECK_GT(forloop->vectorize_info().factor, 0);
 
       CHECK(is_zero(forloop->min));
       Expr for_extent = common::AutoSimplify(forloop->extent);

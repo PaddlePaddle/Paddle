@@ -52,7 +52,7 @@ void saxpy(float a, float *x, float *y, float *out, size_t n)
 
 TEST(CUDAModule, float16) {
   using common::float16;
-  using namespace runtime::cuda::util;
+  using runtime::cuda::util::Vector;
 
   auto generate_ptx = [] {
     backends::nvrtc::Compiler compiler;
@@ -121,7 +121,7 @@ TEST(CUDAModule, float16) {
 
 TEST(CUDAModule, bfloat16) {
   using common::bfloat16;
-  using namespace runtime::cuda::util;
+  using runtime::cuda::util::Vector;
 
   auto generate_ptx = [] {
     backends::nvrtc::Compiler compiler;

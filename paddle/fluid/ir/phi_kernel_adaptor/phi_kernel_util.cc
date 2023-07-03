@@ -62,8 +62,9 @@ void BuildScope(ir::Block* block,
       for (size_t i = 0; i < input_num; ++i) {
         auto var = scope->Var("fetch");
         auto fetch_list = var->GetMutable<paddle::framework::FetchList>();
-        // for now only support one fetch
-        fetch_list->resize(1);
+        int index =
+            (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
+        fetch_list->resize(index + 1);
       }
       continue;
     }
@@ -148,7 +149,11 @@ void BuildScope(ir::Block* block,
         }
         auto var = scope->Var(name);
         // Only support DenseTensor or Vector<DenseTensor>
-        if (ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+
+        if (!ptr.type()) {
+          var->GetMutable<phi::DenseTensor>();
+        } else if (ptr.type()
+                       .isa<paddle::dialect::AllocatedDenseTensorType>()) {
           var->GetMutable<phi::DenseTensor>();
         } else if (ptr.type().isa<ir::VectorType>()) {
           auto tensor_array =
