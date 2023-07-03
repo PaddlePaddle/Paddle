@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_CINN_FRONTEND_PASS_TRANSPOSE_FOLDING_BASE_H_
-#define PADDLE_CINN_FRONTEND_PASS_TRANSPOSE_FOLDING_BASE_H_
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -231,5 +230,3 @@ class TransposeFoldingBase : public ProgramPass {
 };
 
 }  // namespace cinn::frontend::pass
-
-#endif  // PADDLE_CINN_FRONTEND_PASS_TRANSPOSE_FOLDING_BASE_H_

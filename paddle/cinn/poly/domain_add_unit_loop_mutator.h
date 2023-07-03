@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_CINN_POLY_DOMAIN_ADD_UNIT_LOOP_MUTATOR_H_
-#define PADDLE_CINN_POLY_DOMAIN_ADD_UNIT_LOOP_MUTATOR_H_
+#pragma once
 
 #include <tuple>
 #include <vector>
@@ -53,5 +52,3 @@ class DomainAddUnitLoopMutator : public ir::IRMutator<> {
 
 }  // namespace poly
 }  // namespace cinn
-
-#endif  // PADDLE_CINN_POLY_DOMAIN_ADD_UNIT_LOOP_MUTATOR_H_
