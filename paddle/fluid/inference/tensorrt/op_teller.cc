@@ -79,6 +79,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("set_value");
     teller_set.insert("index_select");
     int8_teller_set.insert("index_select");
+    int8_teller_set.insert("einsum");
+    teller_set.insert("einsum");
 #endif
   }
 
@@ -2427,6 +2429,22 @@ if (dtype ==  framework::proto::VarType::BOOL)
 #if !IS_TRT_VERSION_GE(8200)
       return false;
 #endif
+      auto inputs = desc.Inputs();
+      if (inputs.find("StartsTensorList") != inputs.end()) {
+        if (desc.Input("StartsTensorList").size() >= 1) {
+          return false;
+        }
+      }
+      if (inputs.find("EndsTensorList") != inputs.end()) {
+        if (desc.Input("EndsTensorList").size() >= 1) {
+          return false;
+        }
+      }
+      if (inputs.find("StepsTensorList") != inputs.end()) {
+        if (desc.Input("StepsTensorList").size() >= 1) {
+          return false;
+        }
+      }
       if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
             desc.HasAttr("steps"))) {
         VLOG(3) << "the " << op_type
@@ -2450,41 +2468,19 @@ if (dtype ==  framework::proto::VarType::BOOL)
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {
-      auto* block = desc.Block();
-      auto x_var_name = desc.Input("X")[0];
-
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto x_dtype = x_var_desc->GetDataType();
-
-      if (!(x_dtype == framework::proto::VarType::FP32 ||
-            x_dtype == framework::proto::VarType::FP16)) {
-        return false;
-      }
-
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "top_k/top_k_v2 does not support 1-dimensional input in "
-                   "tensorrt";
-        return false;
-      }
       if (desc.HasAttr("axis")) {
         int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis == 0) {
+        if (!with_dynamic_shape && axis == 0) {
           VLOG(3) << "top_k_v2 does not support axis == 0 in "
-                     "tensorrt";
+                     "tensorrt static shape.";
           return false;
         }
       }
       if (desc.HasAttr("sorted")) {
         bool sorted = PADDLE_GET_CONST(bool, desc.GetAttr("sorted"));
         if (!sorted) {
-          VLOG(3) << "top_k_v2 does not support results not sorted in "
+          VLOG(3) << op_type
+                  << " does not support results not sorted in "
                      "tensorrt";
           return false;
         }
@@ -2597,7 +2593,7 @@ if (dtype ==  framework::proto::VarType::BOOL)
         return false;
       }
     }
-    if (op_type == "lookup_table") {
+    if (op_type == "lookup_table" || op_type == "lookup_table_v2") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
                    "static shape yet";
@@ -2742,6 +2738,39 @@ if (dtype ==  framework::proto::VarType::BOOL)
                    "using TRT TemporalShift layer.";
         return false;
       }
+    }
+
+    if (op_type == "einsum") {
+#if !IS_TRT_VERSION_GE(8200)
+      VLOG(3) << "einsum is not supported when TensorRT < 8.2";
+      return false;
+#else
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the einsum does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto operand_inputs = desc.Input("Operands");
+      if (operand_inputs.size() > 2) {
+        VLOG(3) << "TensorRT currently supports up to 2 input tensors"
+                << "to einsum but operation had" << operand_inputs.size()
+                << "input tensors !";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto equation = PADDLE_GET_CONST(std::string, desc.GetAttr("equation"));
+      if (equation.find("...") != std::string::npos) {
+        VLOG(3) << "TensorRT currently does not support ellipses !";
+        return false;
+      }
+#endif
     }
 
     if (use_no_calib_int8) {

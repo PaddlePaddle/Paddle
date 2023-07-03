@@ -79,12 +79,12 @@ void NaiveExecutor::Run() {
                                 platform::NvtxRangeColor::Green);
 #endif
 
+    for (auto &func : input_hookfuncs_) {
+      func(op.get(), scope_);
+    }
 
-    // According to reuse table, we share the out tensor's holder.
-    if (reuse_cache_.count(op.get())) {
-      for (auto &it : reuse_cache_[op.get()]) {
-        it.first->ShareBufferWith(*cluster_buffer_[it.second], true);
-      }
+    if (op->Type() == "while") {
+      op->SetOutputHooks(output_hookfuncs_);
     }
 
 
@@ -189,7 +189,7 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    for (auto &func : hookfuncs_) {
+    for (auto &func : output_hookfuncs_) {
       func(op.get(), scope_);
     }
   }
@@ -270,7 +270,11 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 }
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
-  hookfuncs_.push_back(hookfunc);
+  output_hookfuncs_.push_back(hookfunc);
+}
+
+void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
+  input_hookfuncs_.push_back(hookfunc);
 }
 
 void NaiveExecutor::MakeReusePlan(

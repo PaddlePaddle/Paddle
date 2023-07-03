@@ -47,7 +47,8 @@ set(PYBIND_DEPS
     jit_property
     prim_utils
     static_tensor_operants
-    type_info)
+    type_info
+    auto_parallel)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -84,6 +85,10 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+endif()
+
+if(WITH_XPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)

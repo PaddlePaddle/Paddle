@@ -10,9 +10,9 @@ set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 
 if(NOT DEFINED XPU_BASE_DATE)
-  set(XPU_BASE_DATE "20230602")
+  set(XPU_BASE_DATE "20230620")
 endif()
-set(XPU_XCCL_BASE_VERSION "1.0.49.2")
+set(XPU_XCCL_BASE_VERSION "1.0.53.5")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20230602")
 endif()
@@ -92,9 +92,6 @@ set(XPU_XFT_URL "${XPU_XFT_BASE_URL}/${XPU_XFT_DIR_NAME}.tar.gz")
 set(XPU_XPTI_URL
     "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
-set(XPU_PACK_DEPENCE_URL
-    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
-    CACHE STRING "" FORCE)
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
@@ -133,11 +130,11 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
     bash ${CMAKE_SOURCE_DIR}/tools/xpu/check_xpu_dependence.sh ${XPU_BASE_URL}
-    ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
-    pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
-    ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
-    ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME} [ -n "$WITH_XPTI" ] && bash
+    ${XPU_XCCL_BASE_URL} && bash
+    ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
+    ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
+    ${XPU_XCCL_DIR_NAME} && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
+    get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
     ${XPU_XPTI_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1

@@ -142,7 +142,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
         if (out_node->outputs.size() == 0L) remove_nodes.emplace(out_node);
       }
       op->Run(*local_scope, platform::CPUPlace());
-      folded_op_num ++;
+      folded_op_num++;
       for (auto out_node : op_node->outputs) {
         // this out_node is useless, do not set it persistable
         if (out_node->outputs.size() == 0L) continue;
@@ -168,7 +168,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     }
     delete local_scope;
   }
-  LOG(INFO) << folded_op_num <<" Ops are folded";
+  LOG(INFO) << folded_op_num << " Ops are folded";
 }
 
 }  // namespace ir
