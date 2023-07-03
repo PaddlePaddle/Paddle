@@ -3484,6 +3484,33 @@ void FusedConvInferMeta(const MetaTensor& input,
                 config);
 }
 
+void FusedRopeInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out_q,
+                        MetaTensor* out_k,
+                        MetaTensor* out_v) {
+  auto input_dims = q.dims();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+  if (q) {
+    out_q->set_dims(q.dims());
+    out_q->set_dtype(q.dtype());
+  }
+  if (k) {
+    out_k->set_dims(k.dims());
+    out_k->set_dtype(k.dtype());
+  }
+  if (v) {
+    out_v->set_dims(v.dims());
+    out_v->set_dtype(v.dtype());
+  }
+}
+
 void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& gate,
                   const MetaTensor& bmm0,
@@ -3543,6 +3570,52 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out->set_dtype(row.dtype());
   out_count->set_dims({-1});
   out_count->set_dtype(DataType::INT32);
+}
+
+void LLMInt8MatMulInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[1],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[1] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[1]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[0];
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
+}
+
+void WeightOnlyMatMulInferMeta(const MetaTensor& x,
+                               const MetaTensor& weight,
+                               MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2UL,
+      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE_EQ(
+      x_dims[x_dims.size() - 1],
+      w_dims[0],
+      errors::InvalidArgument(
+          "Input(X) dim[-1] and Input(Weight) dim[0] should be euqal."
+          "But received Input(X) dim[-1](%s) != Input(Weight) dim[0](%s)",
+          x_dims[x_dims.size() - 1],
+          w_dims[0]));
+  auto out_dims = x_dims;
+  out_dims[out_dims.size() - 1] = w_dims[1];
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
 }
 
 }  // namespace phi

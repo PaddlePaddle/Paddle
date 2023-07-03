@@ -74,11 +74,13 @@ class CustomPassManager : public PassManagerT {
   void add(llvm::Pass *pass) override {
     if (print_passes_) {
       if (is_function_pass_manager_) {
-        VLOG(1) << "llvm run function pass[" << std::string(pass->getPassName()) << "]";
+        VLOG(1) << "llvm run function pass[" << std::string(pass->getPassName())
+                << "]";
       }
 
       if (is_module_pass_manager_) {
-        VLOG(1) << "llvm run module pass[" << std::string(pass->getPassName()) << "]";
+        VLOG(1) << "llvm run module pass[" << std::string(pass->getPassName())
+                << "]";
       }
     }
     // static bool add_pass = true;
@@ -107,12 +109,14 @@ class CustomPassManager : public PassManagerT {
  private:
   static constexpr bool is_function_pass_manager_ =
       std::is_same<llvm::legacy::FunctionPassManager, PassManagerT>::value;
-  static constexpr bool is_module_pass_manager_ = std::is_same<llvm::legacy::PassManager, PassManagerT>::value;
+  static constexpr bool is_module_pass_manager_ =
+      std::is_same<llvm::legacy::PassManager, PassManagerT>::value;
   bool print_passes_;
 };
 
-using CustomFunctionPassManager = CustomPassManager<llvm::legacy::FunctionPassManager>;
-using CustomModulePassManager   = CustomPassManager<llvm::legacy::PassManager>;
+using CustomFunctionPassManager =
+    CustomPassManager<llvm::legacy::FunctionPassManager>;
+using CustomModulePassManager = CustomPassManager<llvm::legacy::PassManager>;
 }  // namespace
 
 LLVMModuleOptimizer::LLVMModuleOptimizer(llvm::TargetMachine *machine,
@@ -122,8 +126,9 @@ LLVMModuleOptimizer::LLVMModuleOptimizer(llvm::TargetMachine *machine,
     : opt_level_(opt_level), print_passes_(print_passes), machine_(machine) {}
 
 void LLVMModuleOptimizer::operator()(llvm::Module *m) {
-  auto machine =
-      std::move(llvm::cantFail(llvm::cantFail(llvm::orc::JITTargetMachineBuilder::detectHost()).createTargetMachine()));
+  auto machine = std::move(llvm::cantFail(
+      llvm::cantFail(llvm::orc::JITTargetMachineBuilder::detectHost())
+          .createTargetMachine()));
   auto fpm = std::make_unique<CustomFunctionPassManager>(print_passes_, m);
   // fpm->add(llvm::createTargetTransformInfoWrapperPass(llvm::TargetIRAnalysis()));
   // fpm->add(llvm::createInstructionCombiningPass());
@@ -141,15 +146,18 @@ void LLVMModuleOptimizer::operator()(llvm::Module *m) {
 
   auto mpm = std::make_unique<CustomModulePassManager>(print_passes_);
   // mpm->add(llvm::createTargetTransformInfoWrapperPass(llvm::TargetIRAnalysis()));
-  // LOG(INFO) << "llvm run pass: target machine: name[" << machine_->getTarget().getName() << "]";
-  // LOG(INFO) << "llvm run pass: target machine: cpu[" << machine_->getTargetCPU().str() << "]";
-  fpm->add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
-  mpm->add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
-  auto builder           = std::make_unique<llvm::PassManagerBuilder>();
-  builder->OptLevel      = opt_level_;
-  builder->Inliner       = llvm::createFunctionInliningPass();
+  // LOG(INFO) << "llvm run pass: target machine: name[" <<
+  // machine_->getTarget().getName() << "]"; LOG(INFO) << "llvm run pass: target
+  // machine: cpu[" << machine_->getTargetCPU().str() << "]";
+  fpm->add(llvm::createTargetTransformInfoWrapperPass(
+      machine->getTargetIRAnalysis()));
+  mpm->add(llvm::createTargetTransformInfoWrapperPass(
+      machine->getTargetIRAnalysis()));
+  auto builder = std::make_unique<llvm::PassManagerBuilder>();
+  builder->OptLevel = opt_level_;
+  builder->Inliner = llvm::createFunctionInliningPass();
   builder->LoopVectorize = true;
-  builder->SLPVectorize  = true;
+  builder->SLPVectorize = true;
 #if LLVM_VERSION_MAJOR >= 11
   machine->adjustPassManager(*builder);
 #endif

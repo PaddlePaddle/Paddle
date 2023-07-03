@@ -56,7 +56,8 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
   auto can_find_custom_call_deny_op = [](const std::string& op) {
     return FLAGS_cinn_custom_call_deny_ops.find(op) != std::string::npos;
   };
-  bool is_gemm_use_cublas = FLAGS_cinn_use_custom_call && !can_find_custom_call_deny_op("matmul") &&
+  bool is_gemm_use_cublas = FLAGS_cinn_use_custom_call &&
+                            !can_find_custom_call_deny_op("matmul") &&
                             !can_find_custom_call_deny_op("cublas_gemm") &&
                             !can_find_custom_call_deny_op("cublas_matmul");
   if (is_gemm_use_cublas) {
@@ -105,9 +106,10 @@ OptimizeOptions DefaultTrainingOptimizeOptions() {
 #endif
 
   // WARNING: the pass must be the last pass !!!
-  if (!cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_check_fusion_accuracy_pass)) {
-    // Check the correct of fusion kernels, if the results not satisfied 'allclose(rtol=1e-05f, atol=1e-08f)', report
-    // error and exited.
+  if (!cinn::runtime::CheckStringFlagFalse(
+          FLAGS_cinn_check_fusion_accuracy_pass)) {
+    // Check the correct of fusion kernels, if the results not satisfied
+    // 'allclose(rtol=1e-05f, atol=1e-08f)', report error and exited.
     options.graph_passes.emplace_back("CheckFusionAccuracyPass");
     options.graph_passes.emplace_back("TransToCustomCallPass");
   }
@@ -122,16 +124,19 @@ std::vector<std::string> DefaultOpFusionPasses() {
   return passes;
 }
 
-std::shared_ptr<hlir::framework::Graph> Optimize(frontend::Program* program,
-                                                 const std::unordered_set<std::string>& fetch_ids,
-                                                 common::Target target,
-                                                 const OptimizeOptions& options) {
+std::shared_ptr<hlir::framework::Graph> Optimize(
+    frontend::Program* program,
+    const std::unordered_set<std::string>& fetch_ids,
+    common::Target target,
+    const OptimizeOptions& options) {
   cinn::hlir::framework::PassPrinter::GetInstance()->Begin(fetch_ids);
   // Apply program passes
   VLOG(3) << "Before frontend::ProgramPass::Apply";
-  frontend::ProgramPass::Apply(program, fetch_ids, target, options.program_passes);
+  frontend::ProgramPass::Apply(
+      program, fetch_ids, target, options.program_passes);
   // Apply graph passes
-  auto graph = std::make_shared<hlir::framework::Graph>(*program, fetch_ids, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(*program, fetch_ids, target);
 
   VLOG(3) << "Before hlir::framework::ApplyPasses";
   hlir::framework::ApplyPasses(graph.get(), options.graph_passes);
@@ -139,17 +144,19 @@ std::shared_ptr<hlir::framework::Graph> Optimize(frontend::Program* program,
   return graph;
 }
 
-std::shared_ptr<hlir::framework::Graph> Optimize(frontend::Program* program,
-                                                 const std::unordered_set<std::string>& fetch_ids,
-                                                 common::Target target,
-                                                 const std::vector<std::string>& passes) {
+std::shared_ptr<hlir::framework::Graph> Optimize(
+    frontend::Program* program,
+    const std::unordered_set<std::string>& fetch_ids,
+    common::Target target,
+    const std::vector<std::string>& passes) {
   OptimizeOptions options;
 
   bool enbale_fusion = false;
   if (!passes.empty()) {
     for (const auto& pass : passes) {
       auto* p_pass = ProgramPassRegistry::Global()->Find(pass);
-      auto* g_pass = Registry<hlir::framework::PassFunctionRegister>::Global()->Find(pass);
+      auto* g_pass =
+          Registry<hlir::framework::PassFunctionRegister>::Global()->Find(pass);
       if (p_pass) {
         options.program_passes.emplace_back(pass);
       } else if (g_pass) {
@@ -158,7 +165,8 @@ std::shared_ptr<hlir::framework::Graph> Optimize(frontend::Program* program,
           enbale_fusion = true;
         }
       } else {
-        LOG(FATAL) << "Pass " << pass << " unsupported in CINN! Please check.\n";
+        LOG(FATAL) << "Pass " << pass
+                   << " unsupported in CINN! Please check.\n";
       }
     }
 

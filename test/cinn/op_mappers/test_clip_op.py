@@ -14,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import random
 import unittest
+
 from op_mapper_test import OpMapperTest
+
+import paddle
 
 
 class TestClipOp(OpMapperTest):
@@ -35,7 +37,8 @@ class TestClipOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         return {'X': [x]}
 
     def set_op_attrs(self):
@@ -115,7 +118,7 @@ class TestClipOpMaxTensor(TestClipOp):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "float32", -1.0, 1.0),
-            'max_input': self.random([1], "float32")
+            'max_input': self.random([1], "float32"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -124,11 +127,13 @@ class TestClipOpMaxTensor(TestClipOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         max_input = paddle.static.data(
             name='max_input',
             shape=self.feed_data['max_input'].shape,
-            dtype=self.feed_data['max_input'].dtype)
+            dtype=self.feed_data['max_input'].dtype,
+        )
         return {'X': [x], 'Max': [max_input]}
 
 
@@ -136,7 +141,7 @@ class TestClipOpMaxTensorInt32(TestClipOpMaxTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "int32"),
-            'max_input': self.random([1], "int32")
+            'max_input': self.random([1], "int32"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -146,7 +151,7 @@ class TestClipOpMaxTensorFloat64(TestClipOpMaxTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "float64"),
-            'max_input': self.random([1], "float64")
+            'max_input': self.random([1], "float64"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -156,7 +161,7 @@ class TestClipOpMaxTensorTypeCast(TestClipOpMaxTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "float64"),
-            'max_input': self.random([1], "float32")
+            'max_input': self.random([1], "float32"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -166,7 +171,7 @@ class TestClipOpMinTensor(TestClipOp):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "float32"),
-            'min_input': self.random([1], "float32")
+            'min_input': self.random([1], "float32"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -175,11 +180,13 @@ class TestClipOpMinTensor(TestClipOp):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         min_input = paddle.static.data(
             name='min_input',
             shape=self.feed_data['min_input'].shape,
-            dtype=self.feed_data['min_input'].dtype)
+            dtype=self.feed_data['min_input'].dtype,
+        )
         return {'X': [x], 'Min': [min_input]}
 
     def set_op_attrs(self):
@@ -190,7 +197,7 @@ class TestClipOpMinTensorInt32(TestClipOpMinTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "int32"),
-            'min_input': self.random([1], "int32")
+            'min_input': self.random([1], "int32"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -200,7 +207,7 @@ class TestClipOpMinTensorFloat64(TestClipOpMinTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "float64"),
-            'min_input': self.random([1], "float64")
+            'min_input': self.random([1], "float64"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()
@@ -210,7 +217,7 @@ class TestClipOpMinTensorTypeCast(TestClipOpMinTensor):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], "float64"),
-            'min_input': self.random([1], "float32")
+            'min_input': self.random([1], "float32"),
         }
         self.min_val = -random.random()
         self.max_val = random.random()

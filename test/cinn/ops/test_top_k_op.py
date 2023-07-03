@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from cinn.frontend import *
 from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper, run_test
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestTopKOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -30,9 +32,7 @@ class TestTopKOp(OpTest):
         self.prepare_inputs()
 
     def prepare_inputs(self):
-        self.inputs = {
-            "x": self.random(self.case["shape"], self.case["dtype"])
-        }
+        self.inputs = {"x": self.random(self.case["shape"], self.case["dtype"])}
         self.k = self.case["k"]
         self.axis = self.case["axis"]
         self.largest = self.case["largest"]
@@ -48,11 +48,14 @@ class TestTopKOp(OpTest):
         builder = NetBuilder("topk")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.top_k(x, self.k, self.axis, self.largest)
         prog = builder.build()
         forward_res = self.get_cinn_output(
-            prog, target, [x], [self.inputs["x"]], [out[0], out[1]])
+            prog, target, [x], [self.inputs["x"]], [out[0], out[1]]
+        )
         self.cinn_outputs = forward_res
 
     def test_check_results(self):
@@ -90,50 +93,17 @@ class TestTopKOpShapeTest(TestCaseHelper):
         self.class_name = "TestTopKOpShapeTest"
         self.cls = TestTopKOp
         self.inputs = [
-            {
-                "shape": [512],
-                "k": 3
-            },
-            {
-                "shape": [1024],
-                "k": 10
-            },
-            {
-                "shape": [1200],
-                "k": 1024
-            },
-            {
-                "shape": [64, 16],
-                "k": 3
-            },
-            {
-                "shape": [4, 32, 8],
-                "k": 4
-            },
-            {
-                "shape": [16, 8, 4, 2],
-                "k": 5
-            },
-            {
-                "shape": [2, 8, 4, 2, 5],
-                "k": 1
-            },
-            {
-                "shape": [4, 8, 1, 2, 16],
-                "k": 3
-            },
-            {
-                "shape": [1],
-                "k": 1
-            },
-            {
-                "shape": [1, 1, 1, 1],
-                "k": 1
-            },
-            {
-                "shape": [1, 1, 1, 1, 1],
-                "k": 1
-            },
+            {"shape": [512], "k": 3},
+            {"shape": [1024], "k": 10},
+            {"shape": [1200], "k": 1024},
+            {"shape": [64, 16], "k": 3},
+            {"shape": [4, 32, 8], "k": 4},
+            {"shape": [16, 8, 4, 2], "k": 5},
+            {"shape": [2, 8, 4, 2, 5], "k": 1},
+            {"shape": [4, 8, 1, 2, 16], "k": 3},
+            {"shape": [1], "k": 1},
+            {"shape": [1, 1, 1, 1], "k": 1},
+            {"shape": [1, 1, 1, 1, 1], "k": 1},
         ]
         self.dtypes = [{"dtype": "float32"}]
         self.attrs = [{"axis": 0, "largest": True}]
@@ -158,18 +128,10 @@ class TestTopKOpDtypeTest(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
-            {
-                "dtype": "int32"
-            },
-            {
-                "dtype": "int64"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
+            {"dtype": "int32"},
+            {"dtype": "int64"},
         ]
         self.attrs = [{"axis": 0, "largest": True, "k": 3}]
 
@@ -185,26 +147,10 @@ class TestTopKOpAxisTest(TestCaseHelper):
         ]
         self.dtypes = [{"dtype": "float32"}]
         self.attrs = [
-            {
-                "axis": 0,
-                "largest": True,
-                "k": 3
-            },
-            {
-                "axis": 1,
-                "largest": True,
-                "k": 3
-            },
-            {
-                "axis": 2,
-                "largest": True,
-                "k": 3
-            },
-            {
-                "axis": 3,
-                "largest": True,
-                "k": 3
-            },
+            {"axis": 0, "largest": True, "k": 3},
+            {"axis": 1, "largest": True, "k": 3},
+            {"axis": 2, "largest": True, "k": 3},
+            {"axis": 3, "largest": True, "k": 3},
         ]
 
 
@@ -219,46 +165,14 @@ class TestTopKOpKTest(TestCaseHelper):
         ]
         self.dtypes = [{"dtype": "float32"}]
         self.attrs = [
-            {
-                "axis": 0,
-                "largest": True,
-                "k": 8
-            },
-            {
-                "axis": 1,
-                "largest": True,
-                "k": 4
-            },
-            {
-                "axis": 2,
-                "largest": True,
-                "k": 2
-            },
-            {
-                "axis": 3,
-                "largest": True,
-                "k": 1
-            },
-            {
-                "axis": 0,
-                "largest": True,
-                "k": 20
-            },
-            {
-                "axis": 1,
-                "largest": True,
-                "k": 10
-            },
-            {
-                "axis": 2,
-                "largest": True,
-                "k": 10
-            },
-            {
-                "axis": 3,
-                "largest": True,
-                "k": 5
-            },
+            {"axis": 0, "largest": True, "k": 8},
+            {"axis": 1, "largest": True, "k": 4},
+            {"axis": 2, "largest": True, "k": 2},
+            {"axis": 3, "largest": True, "k": 1},
+            {"axis": 0, "largest": True, "k": 20},
+            {"axis": 1, "largest": True, "k": 10},
+            {"axis": 2, "largest": True, "k": 10},
+            {"axis": 3, "largest": True, "k": 5},
         ]
 
 
@@ -273,26 +187,10 @@ class TestTopKOpAscendingTest(TestTopKOpShapeTest):
         ]
         self.dtypes = [{"dtype": "float32"}]
         self.attrs = [
-            {
-                "axis": 0,
-                "largest": False,
-                "k": 3
-            },
-            {
-                "axis": 1,
-                "largest": False,
-                "k": 3
-            },
-            {
-                "axis": 2,
-                "largest": False,
-                "k": 3
-            },
-            {
-                "axis": 3,
-                "largest": False,
-                "k": 3
-            },
+            {"axis": 0, "largest": False, "k": 3},
+            {"axis": 1, "largest": False, "k": 3},
+            {"axis": 2, "largest": False, "k": 3},
+            {"axis": 3, "largest": False, "k": 3},
         ]
 
 

@@ -15,15 +15,17 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
 from cinn.common import *
 from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
 
+import paddle
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestCholeskyOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -34,14 +36,16 @@ class TestCholeskyOp(OpTest):
         if "batch_dim" in self.case and self.case["batch_dim"] > 0:
             x = []
             for _ in range(self.case["batch_dim"]):
-                matrix = self.random(self.case["shape"], self.case["dtype"],
-                                     -1.0, 1.0)
+                matrix = self.random(
+                    self.case["shape"], self.case["dtype"], -1.0, 1.0
+                )
                 matrix_t = np.transpose(matrix, [1, 0])
                 x.append(np.dot(matrix, matrix_t))
             x = np.stack(x)
         else:
-            matrix = self.random(self.case["shape"], self.case["dtype"], -1.0,
-                                 1.0)
+            matrix = self.random(
+                self.case["shape"], self.case["dtype"], -1.0, 1.0
+            )
             matrix_t = np.transpose(matrix, [1, 0])
             x = np.dot(matrix, matrix_t)
         self.inputs = {"x": x}
@@ -56,11 +60,14 @@ class TestCholeskyOp(OpTest):
         builder = NetBuilder("cholesky")
         x = builder.create_input(
             self.nptype2cinntype(self.inputs["x"].dtype),
-            self.inputs["x"].shape, "x")
+            self.inputs["x"].shape,
+            "x",
+        )
         out = builder.cholesky(x, self.upper)
         prog = builder.build()
         res = self.get_cinn_output(
-            prog, target, [x], [self.inputs["x"]], [out], passes=[])
+            prog, target, [x], [self.inputs["x"]], [out], passes=[]
+        )
         self.cinn_outputs = [res[0]]
 
     def test_check_results(self):
@@ -83,14 +90,10 @@ class TestCholeskyOpShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "upper": False
-            },
+            {"upper": False},
         ]
 
 
@@ -107,23 +110,12 @@ class TestCholeskyOpLargeShape(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "float64"},
         ]
         self.attrs = [
-            {
-                "upper": False,
-                "batch_dim": 2
-            },
-            {
-                "upper": False,
-                "batch_dim": 4
-            },
-            {
-                "upper": True,
-                "batch_dim": 8
-            },
+            {"upper": False, "batch_dim": 2},
+            {"upper": False, "batch_dim": 4},
+            {"upper": True, "batch_dim": 8},
         ]
 
 
@@ -143,17 +135,11 @@ class TestCholeskyOpDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = [
-            {
-                "upper": False
-            },
+            {"upper": False},
         ]
 
 
@@ -173,23 +159,12 @@ class TestCholeskyOpBatch(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
+            {"dtype": "float32"},
         ]
         self.attrs = [
-            {
-                "upper": False,
-                "batch_dim": 1
-            },
-            {
-                "upper": False,
-                "batch_dim": 4
-            },
-            {
-                "upper": False,
-                "batch_dim": 8
-            },
+            {"upper": False, "batch_dim": 1},
+            {"upper": False, "batch_dim": 4},
+            {"upper": False, "batch_dim": 8},
         ]
 
 
@@ -209,12 +184,8 @@ class TestCholeskyOpAttrs(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "float32"
-            },
-            {
-                "dtype": "float64"
-            },
+            {"dtype": "float32"},
+            {"dtype": "float64"},
         ]
         self.attrs = [
             {

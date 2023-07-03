@@ -38,22 +38,27 @@ void SetInputData(const hlir::framework::Tensor& tensor, Target target) {
   }
 #ifdef CINN_WITH_CUDA
   if (target == common::DefaultNVGPUTarget()) {
-    cudaMemcpy(data, host_memory.data(), tensor->shape().numel() * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(data,
+               host_memory.data(),
+               tensor->shape().numel() * sizeof(float),
+               cudaMemcpyHostToDevice);
     return;
   }
 #endif
   CHECK(target == common::DefaultHostTarget());
   std::copy(host_memory.begin(), host_memory.end(), data);
 }
-std::vector<std::vector<float>> RunWithProgram(const Program& program,
-                                               const Target& target,
-                                               const std::vector<std::string>& input_names,
-                                               const std::vector<std::string>& out_ids) {
+std::vector<std::vector<float>> RunWithProgram(
+    const Program& program,
+    const Target& target,
+    const std::vector<std::string>& input_names,
+    const std::vector<std::string>& out_ids) {
   std::unordered_set<std::string> fetch_list;
   for (auto id : out_ids) {
     fetch_list.insert(id);
   }
-  auto graph = std::make_shared<hlir::framework::Graph>(program, fetch_list, target);
+  auto graph =
+      std::make_shared<hlir::framework::Graph>(program, fetch_list, target);
   auto scope = hlir::framework::BuildScope(target, graph);
 
   for (const auto& in_name : input_names) {
@@ -69,18 +74,19 @@ std::vector<std::vector<float>> RunWithProgram(const Program& program,
 
   std::vector<std::vector<float>> outputs;
   for (const auto& out_id : out_ids) {
-    outputs.emplace_back(GetTensorData<float>(scope->GetTensor(out_id), target));
+    outputs.emplace_back(
+        GetTensorData<float>(scope->GetTensor(out_id), target));
   }
   return outputs;
 }
 
 TEST(TransposeCollapsing, FuseTwoTranspose) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_t     = builder.Transpose(x, {0, 2, 1});
-  auto out     = builder.Transpose(x_t, {2, 1, 0});
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_t = builder.Transpose(x, {0, 2, 1});
+  auto out = builder.Transpose(x_t, {2, 1, 0});
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 
@@ -114,12 +120,12 @@ TEST(TransposeCollapsing, FuseTwoTranspose) {
 
 TEST(TransposeCollapsing, FuseThreeTranspose) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Transpose(x, {0, 2, 1});
-  auto x_2t    = builder.Transpose(x_1t, {2, 1, 0});
-  auto out     = builder.Transpose(x_2t, {1, 2, 0});
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Transpose(x, {0, 2, 1});
+  auto x_2t = builder.Transpose(x_1t, {2, 1, 0});
+  auto out = builder.Transpose(x_2t, {1, 2, 0});
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 
@@ -154,11 +160,11 @@ TEST(TransposeCollapsing, FuseThreeTranspose) {
 
 TEST(TransposeCollapsing, RemoveUselessTranspose) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_t     = builder.Transpose(x, {0, 1, 2});
-  auto out     = builder.Add(x, x_t);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_t = builder.Transpose(x, {0, 1, 2});
+  auto out = builder.Add(x, x_t);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 
@@ -190,10 +196,10 @@ TEST(TransposeCollapsing, RemoveUselessTranspose) {
 
 TEST(TransposeCollapsing, ReplaceUselessTransposeWithIndentity) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto out     = builder.Transpose(x, {0, 1, 2});
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto out = builder.Transpose(x, {0, 1, 2});
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 
@@ -227,13 +233,13 @@ TEST(TransposeCollapsing, ReplaceUselessTransposeWithIndentity) {
 
 TEST(TransposeCollapsing, FuseTransposeToUseless) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Transpose(x, {0, 2, 1});
-  auto x_2t    = builder.Transpose(x_1t, {0, 2, 1});
-  auto x_3t    = builder.Transpose(x_2t, {0, 2, 1});
-  auto out     = builder.Add(x_3t, x_3t);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Transpose(x, {0, 2, 1});
+  auto x_2t = builder.Transpose(x_1t, {0, 2, 1});
+  auto x_3t = builder.Transpose(x_2t, {0, 2, 1});
+  auto out = builder.Add(x_3t, x_3t);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 
@@ -270,17 +276,18 @@ TEST(TransposeCollapsing, FuseTransposeToUseless) {
 
 TEST(TransposeCollapsing, FuseTransposeWithMultiOutput) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Transpose(x, {0, 2, 1});
-  auto x_2t    = builder.Transpose(x_1t, {2, 0, 1});
-  auto x_3t    = builder.Transpose(x_2t, {2, 1, 0});
-  auto out1    = builder.Sqrt(x_1t);
-  auto out2    = builder.Sqrt(x_2t);
-  auto out3    = builder.Sqrt(x_3t);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Transpose(x, {0, 2, 1});
+  auto x_2t = builder.Transpose(x_1t, {2, 0, 1});
+  auto x_3t = builder.Transpose(x_2t, {2, 1, 0});
+  auto out1 = builder.Sqrt(x_1t);
+  auto out2 = builder.Sqrt(x_2t);
+  auto out3 = builder.Sqrt(x_3t);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
-  std::initializer_list<std::string> fetch_list = {out1->id, out2->id, out3->id};
+  std::initializer_list<std::string> fetch_list = {
+      out1->id, out2->id, out3->id};
 
   size_t origin_size = program.size();
   VLOG(1) << "Program before pass:\n" << program;
@@ -321,15 +328,15 @@ TEST(TransposeCollapsing, FuseTransposeWithMultiOutput) {
 
 TEST(TransposeCollapsing, FuseTwoSecTranspose) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto x_1t    = builder.Transpose(x, {0, 2, 1});
-  auto x_2t    = builder.Transpose(x_1t, {2, 1, 0});
-  auto out1    = builder.Reshape(x_2t, {5, 3, 4});
-  auto x_3t    = builder.Transpose(out1, {0, 2, 1});
-  auto x_4t    = builder.Transpose(x_3t, {2, 1, 0});
-  auto out2    = builder.Sqrt(x_4t);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto x_1t = builder.Transpose(x, {0, 2, 1});
+  auto x_2t = builder.Transpose(x_1t, {2, 1, 0});
+  auto out1 = builder.Reshape(x_2t, {5, 3, 4});
+  auto x_3t = builder.Transpose(out1, {0, 2, 1});
+  auto x_4t = builder.Transpose(x_3t, {2, 1, 0});
+  auto out2 = builder.Sqrt(x_4t);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out1->id, out2->id};
 
@@ -370,12 +377,12 @@ TEST(TransposeCollapsing, FuseTwoSecTranspose) {
 
 TEST(TransposeCollapsing, FuseTwoHorizontalTranspose) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto y_t1    = builder.Transpose(x, {0, 2, 1});
-  auto y_t2    = builder.Transpose(x, {0, 2, 1});
-  auto out     = builder.Add(y_t1, y_t2);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto y_t1 = builder.Transpose(x, {0, 2, 1});
+  auto y_t2 = builder.Transpose(x, {0, 2, 1});
+  auto out = builder.Add(y_t1, y_t2);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 
@@ -411,13 +418,13 @@ TEST(TransposeCollapsing, FuseTwoHorizontalTranspose) {
 
 TEST(TransposeCollapsing, FuseVerAndHorTranspose) {
   NetBuilder builder("net_builder");
-  auto x       = builder.CreateInput(Float(32), {4, 5, 3}, "X");
-  auto y_t1    = builder.Transpose(x, {0, 2, 1});
-  auto y_t2    = builder.Transpose(y_t1, {2, 1, 0});
-  auto y_t3    = builder.Transpose(x, {1, 2, 0});
-  auto out     = builder.Add(y_t2, y_t3);
+  auto x = builder.CreateInput(Float(32), {4, 5, 3}, "X");
+  auto y_t1 = builder.Transpose(x, {0, 2, 1});
+  auto y_t2 = builder.Transpose(y_t1, {2, 1, 0});
+  auto y_t3 = builder.Transpose(x, {1, 2, 0});
+  auto out = builder.Add(y_t2, y_t3);
   auto program = builder.Build();
-  auto target  = common::DefaultTarget();
+  auto target = common::DefaultTarget();
 
   std::initializer_list<std::string> fetch_list = {out->id};
 

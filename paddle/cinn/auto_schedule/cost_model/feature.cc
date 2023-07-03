@@ -49,7 +49,8 @@ Feature::Feature(const common::Target& target)
       parent_indices_(1, -1) {}
 
 std::vector<float> Feature::ToFixedSizeVector() {
-  std::vector<float> ret(LoopBlockFeature::kTotalSize + 1, 0);  // LoopBlockFeature::kTotalSize plus 1 for target
+  std::vector<float> ret(LoopBlockFeature::kTotalSize + 1,
+                         0);  // LoopBlockFeature::kTotalSize plus 1 for target
 
   if (target_ == common::DefaultNVGPUTarget()) {
     ret[0] = 1;
@@ -58,13 +59,13 @@ std::vector<float> Feature::ToFixedSizeVector() {
   // loop[i] feature count should multiply iter_multi_num[i]
   std::vector<int> iter_multi_num;
   for (size_t i = 0; i < stack_encoded_feature_.size(); ++i) {
-    int j                                = 1;
+    int j = 1;
     const LoopBlockFeature& loop_feature = stack_encoded_feature_[i];
-    int loop_prod                        = 1;
-    int parent_prod                      = 1;
+    int loop_prod = 1;
+    int parent_prod = 1;
     if (i != 0) {
       parent_prod = iter_multi_num[parent_indices_[i]];
-      loop_prod   = parent_prod * loop_feature.loop_length;
+      loop_prod = parent_prod * loop_feature.loop_length;
     }
     iter_multi_num.push_back(loop_prod);
 
@@ -165,11 +166,17 @@ void Feature::IntoLoopBlock() {
   current_loop_block_index_ = stack_encoded_feature_.size() - 1;
 }
 
-void Feature::ExitLoopBlock() { current_loop_block_index_ = parent_indices_[current_loop_block_index_]; }
+void Feature::ExitLoopBlock() {
+  current_loop_block_index_ = parent_indices_[current_loop_block_index_];
+}
 
-LoopBlockFeature& Feature::CurrentLoopBlock() { return stack_encoded_feature_[current_loop_block_index_]; }
+LoopBlockFeature& Feature::CurrentLoopBlock() {
+  return stack_encoded_feature_[current_loop_block_index_];
+}
 
-const LoopBlockFeature& Feature::CurrentLoopBlock() const { return stack_encoded_feature_[current_loop_block_index_]; }
+const LoopBlockFeature& Feature::CurrentLoopBlock() const {
+  return stack_encoded_feature_[current_loop_block_index_];
+}
 
 }  // namespace auto_schedule
 }  // namespace cinn

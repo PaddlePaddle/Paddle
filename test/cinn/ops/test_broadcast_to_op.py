@@ -14,14 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 import sys
+import unittest
+
+import cinn
+import numpy as np
+from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 
 class TestBroadcastToOp(OpTest):
@@ -45,11 +47,11 @@ class TestBroadcastToOp(OpTest):
         builder = NetBuilder("BroadcastTo")
         x = builder.create_input(Float(32), self.inputs["x"].shape, "x")
         out = builder.broadcast_to(
-            x, out_shape=self.out_shape, broadcast_axes=self.broadcast_axes)
+            x, out_shape=self.out_shape, broadcast_axes=self.broadcast_axes
+        )
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 
@@ -119,8 +121,7 @@ class TestBroadcastToOpNoAxes(OpTest):
         out = builder.broadcast_to(x, out_shape=self.out_shape)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]],
-                                   [out])
+        res = self.get_cinn_output(prog, target, [x], [self.inputs["x"]], [out])
 
         self.cinn_outputs = res
 

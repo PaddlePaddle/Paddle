@@ -14,16 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import cinn
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
         # print(f"\n{self.__class__.__name__}: {self.case}")
@@ -34,14 +36,19 @@ class TestGaussianRandomOp(OpTest):
             shape=self.case["shape"],
             mean=self.case["mean"],
             std=self.case["std"],
-            dtype=self.case["dtype"])
+            dtype=self.case["dtype"],
+        )
         self.paddle_outputs = [out]
 
     def build_cinn_program(self, target):
         builder = NetBuilder("gaussian_random")
-        out = builder.gaussian_random(self.case["shape"], self.case["mean"],
-                                      self.case["std"], self.case["seed"],
-                                      self.case["dtype"])
+        out = builder.gaussian_random(
+            self.case["shape"],
+            self.case["mean"],
+            self.case["std"],
+            self.case["seed"],
+            self.case["dtype"],
+        )
         prog = builder.build()
         res = self.get_cinn_output(prog, target, [], [], [out], passes=[])
         self.cinn_outputs = res
@@ -52,7 +59,8 @@ class TestGaussianRandomOp(OpTest):
         # by CINN and Paddle are not the same, but they all conform to the
         # Uniform distribution.
         self.check_outputs_and_grads(
-            max_relative_error=10000, max_absolute_error=10000)
+            max_relative_error=10000, max_absolute_error=10000
+        )
 
 
 class TestGaussianRandomOpShape(TestCaseHelper):

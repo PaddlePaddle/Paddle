@@ -15,7 +15,9 @@
 # limitations under the License.
 
 import unittest
+
 from op_mapper_test import OpMapperTest
+
 import paddle
 
 
@@ -23,7 +25,7 @@ class TestTriangularSolveOp(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([32, 32], "float32"),
-            'y': self.random([32, 128], "float32")
+            'y': self.random([32, 128], "float32"),
         }
 
     def set_op_type(self):
@@ -33,11 +35,13 @@ class TestTriangularSolveOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         y = paddle.static.data(
             name='y',
             shape=self.feed_data['y'].shape,
-            dtype=self.feed_data['y'].dtype)
+            dtype=self.feed_data['y'].dtype,
+        )
         return {'X': [x], 'Y': [y]}
 
     def set_op_attrs(self):

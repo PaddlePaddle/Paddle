@@ -47,7 +47,9 @@ int SizeOfType(framework_proto::VarType::Type type) {
   return -1;
 }
 
-void TensorFromStream(std::istream &is, hlir::framework::_Tensor_ *tensor, const common::Target &target) {
+void TensorFromStream(std::istream &is,
+                      hlir::framework::_Tensor_ *tensor,
+                      const common::Target &target) {
   using Type = framework_proto::VarType::Type;
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -66,7 +68,8 @@ void TensorFromStream(std::istream &is, hlir::framework::_Tensor_ *tensor, const
 
   // read tensor
   std::vector<int32_t> dims_vec;
-  std::copy(desc.dims().begin(), desc.dims().end(), std::back_inserter(dims_vec));
+  std::copy(
+      desc.dims().begin(), desc.dims().end(), std::back_inserter(dims_vec));
   hlir::framework::Shape dims(dims_vec);
   tensor->Resize(dims);
   void *buf;
@@ -93,14 +96,17 @@ void TensorFromStream(std::istream &is, hlir::framework::_Tensor_ *tensor, const
     is.read(static_cast<char *>(buf), size);
   } else if (target.arch == Target::Arch::NVGPU) {
 #ifdef CINN_WITH_CUDA
-    if (desc.data_type() != Type::VarType_Type_FP32) LOG(FATAL) << "[CUDA] The type is not fp32!!";
+    if (desc.data_type() != Type::VarType_Type_FP32)
+      LOG(FATAL) << "[CUDA] The type is not fp32!!";
     auto *data = tensor->mutable_data<float>(target);
     tensor->set_type(Float(32));
     std::vector<float> temp(tensor->shape().numel());
     // LOG(INFO) <<"[CUDA] The tensor's size is "<< tensor->shape().numel();
     is.read(reinterpret_cast<char *>(temp.data()), size);
-    CUDA_CALL(cudaMemcpy(
-        reinterpret_cast<void *>(data), temp.data(), tensor->shape().numel() * sizeof(float), cudaMemcpyHostToDevice));
+    CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
+                         temp.data(),
+                         tensor->shape().numel() * sizeof(float),
+                         cudaMemcpyHostToDevice));
 #else
     LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
 #endif
@@ -109,7 +115,9 @@ void TensorFromStream(std::istream &is, hlir::framework::_Tensor_ *tensor, const
   }
 }
 
-void LoadLoDTensor(std::istream &is, hlir::framework::Variable *var, const common::Target &target) {
+void LoadLoDTensor(std::istream &is,
+                   hlir::framework::Variable *var,
+                   const common::Target &target) {
   auto &tensor = absl::get<hlir::framework::Tensor>(*var);
   uint32_t version{};
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
@@ -123,7 +131,8 @@ void LoadLoDTensor(std::istream &is, hlir::framework::Variable *var, const commo
     uint64_t size;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     std::vector<uint64_t> tmp(size / sizeof(uint64_t));
-    is.read(reinterpret_cast<char *>(tmp.data()), static_cast<std::streamsize>(size));
+    is.read(reinterpret_cast<char *>(tmp.data()),
+            static_cast<std::streamsize>(size));
     // lod[i] = tmp;
   }
 
@@ -142,8 +151,10 @@ void ReadBinaryFile(const std::string &filename, std::string *contents) {
   fin.close();
 }
 
-std::unique_ptr<framework_proto::ProgramDesc> LoadProgram(const std::string &path, bool program_from_memory) {
-  std::unique_ptr<framework_proto::ProgramDesc> main_program(new framework_proto::ProgramDesc);
+std::unique_ptr<framework_proto::ProgramDesc> LoadProgram(
+    const std::string &path, bool program_from_memory) {
+  std::unique_ptr<framework_proto::ProgramDesc> main_program(
+      new framework_proto::ProgramDesc);
   if (!program_from_memory) {
     std::string desc_str;
     ReadBinaryFile(path, &desc_str);
@@ -157,15 +168,19 @@ std::unique_ptr<framework_proto::ProgramDesc> LoadProgram(const std::string &pat
 void LoadParams(const std::string &path) {}
 
 // Load directly to CPU, and latter transfer to other devices.
-void LoadParam(const std::string &path, hlir::framework::Variable *out, const common::Target &target) {
+void LoadParam(const std::string &path,
+               hlir::framework::Variable *out,
+               const common::Target &target) {
   std::ifstream fin(path, std::ios::binary);
   CHECK(fin.is_open()) << "failed to open file " << path;
   LoadLoDTensor(fin, out, target);
 }
 
 bool IsPersistable(const cpp::VarDesc &var) {
-  if (var.Persistable() && var.GetType() != cpp::VarDescAPI::Type::FEED_MINIBATCH &&
-      var.GetType() != cpp::VarDescAPI::Type::FETCH_LIST && var.GetType() != cpp::VarDescAPI::Type::RAW) {
+  if (var.Persistable() &&
+      var.GetType() != cpp::VarDescAPI::Type::FEED_MINIBATCH &&
+      var.GetType() != cpp::VarDescAPI::Type::FETCH_LIST &&
+      var.GetType() != cpp::VarDescAPI::Type::RAW) {
     return true;
   }
   return false;
@@ -177,7 +192,7 @@ void LoadCombinedParamsPb(const std::string &path,
                           bool params_from_memory,
                           const common::Target &target) {
   CHECK(scope);
-  auto prog             = cpp_prog;
+  auto prog = cpp_prog;
   auto &main_block_desc = *prog.GetBlock<cpp::BlockDesc>(0);
 
   // Get vars
@@ -192,9 +207,11 @@ void LoadCombinedParamsPb(const std::string &path,
   // Load vars
   auto load_var_func = [&](std::istream &is) {
     for (size_t i = 0; i < paramlist.size(); ++i) {
-      auto *var = scope->Var<hlir::framework::Tensor>(utils::TransValidVarName(paramlist[i]));
+      auto *var = scope->Var<hlir::framework::Tensor>(
+          utils::TransValidVarName(paramlist[i]));
       // Error checking
-      CHECK(static_cast<bool>(is)) << "There is a problem with loading model parameters";
+      CHECK(static_cast<bool>(is))
+          << "There is a problem with loading model parameters";
       LoadLoDTensor(is, var, target);
     }
     is.peek();
@@ -228,13 +245,14 @@ void LoadModelPb(const std::string &model_dir,
   VLOG(3) << "param_file is: " << param_file;
   // Load model
   VLOG(4) << "Start load model program...";
-  std::string prog_path       = model_dir + "/__model__";
+  std::string prog_path = model_dir + "/__model__";
   std::string param_file_temp = param_file;
   if (combined) {
     // prog_path = model_file;
     param_file_temp = model_dir + "/params";
   }
-  framework_proto::ProgramDesc pb_proto_prog = *LoadProgram(prog_path, model_from_memory);
+  framework_proto::ProgramDesc pb_proto_prog =
+      *LoadProgram(prog_path, model_from_memory);
   pb::ProgramDesc pb_prog(&pb_proto_prog);
   // Transform to cpp::ProgramDesc
   TransformProgramDescAnyToCpp(pb_prog, cpp_prog);
@@ -242,15 +260,18 @@ void LoadModelPb(const std::string &model_dir,
   // Load Params
   // NOTE: Only main block be used now.
   VLOG(4) << "Start load model params...";
-  CHECK(!(!combined && model_from_memory)) << "If you want use the model_from_memory,"
-                                           << " you should load the combined model using cfg.set_model_buffer "
-                                              "interface.";
+  CHECK(!(!combined && model_from_memory))
+      << "If you want use the model_from_memory,"
+      << " you should load the combined model using cfg.set_model_buffer "
+         "interface.";
   if (combined) {
-    LoadCombinedParamsPb(param_file_temp, scope, *cpp_prog, model_from_memory, target);
+    LoadCombinedParamsPb(
+        param_file_temp, scope, *cpp_prog, model_from_memory, target);
   } else {
     auto main_block = pb_proto_prog.blocks(0);
     for (auto &var : main_block.vars()) {
-      if (var.name() == "feed" || var.name() == "fetch" || !var.persistable()) continue;
+      if (var.name() == "feed" || var.name() == "fetch" || !var.persistable())
+        continue;
 
       std::string file_path = model_dir + "/" + var.name();
       VLOG(4) << "reading weight " << var.name();
@@ -258,7 +279,10 @@ void LoadModelPb(const std::string &model_dir,
       std::ifstream file(file_path, std::ios::binary);
       switch (var.type().type()) {
         case framework_proto::VarType_Type_LOD_TENSOR:
-          LoadLoDTensor(file, scope->Var<hlir::framework::Tensor>(utils::TransValidVarName(var.name())), target);
+          LoadLoDTensor(file,
+                        scope->Var<hlir::framework::Tensor>(
+                            utils::TransValidVarName(var.name())),
+                        target);
           break;
         default:
           LOG(FATAL) << "unknown weight type";

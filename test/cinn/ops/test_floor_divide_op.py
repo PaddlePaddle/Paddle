@@ -15,18 +15,21 @@
 # limitations under the License.
 
 import unittest
+
+import cinn
 import numpy as np
+from cinn.common import *
+from cinn.frontend import *
 from op_test import OpTest, OpTestTool
 from op_test_helper import TestCaseHelper
+
 import paddle
 import paddle.nn.functional as F
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestFloorDivideOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -37,12 +40,14 @@ class TestFloorDivideOp(OpTest):
             shape=self.case["x_shape"],
             dtype=self.case["x_dtype"],
             low=self.case["x_low"],
-            high=self.case["x_high"])
+            high=self.case["x_high"],
+        )
         self.y_np = self.random(
             shape=self.case["y_shape"],
             dtype=self.case["y_dtype"],
             low=self.case["y_low"],
-            high=self.case["y_high"])
+            high=self.case["y_high"],
+        )
 
     def build_paddle_program(self, target):
         x = paddle.to_tensor(self.x_np, stop_gradient=True)
@@ -55,22 +60,30 @@ class TestFloorDivideOp(OpTest):
     def build_cinn_program(self, target):
         builder = NetBuilder("pow")
         x = builder.create_input(
-            self.nptype2cinntype(self.case["x_dtype"]), self.case["x_shape"],
-            "x")
+            self.nptype2cinntype(self.case["x_dtype"]),
+            self.case["x_shape"],
+            "x",
+        )
         y = builder.create_input(
-            self.nptype2cinntype(self.case["y_dtype"]), self.case["y_shape"],
-            "y")
+            self.nptype2cinntype(self.case["y_dtype"]),
+            self.case["y_shape"],
+            "y",
+        )
         out = builder.floor_divide(x, y)
 
         prog = builder.build()
-        res = self.get_cinn_output(prog, target, [x, y],
-                                   [self.x_np, self.y_np], [out])
+        res = self.get_cinn_output(
+            prog, target, [x, y], [self.x_np, self.y_np], [out]
+        )
 
         self.cinn_outputs = res
 
     def test_check_results(self):
-        max_relative_error = self.case[
-            "max_relative_error"] if "max_relative_error" in self.case else 1e-5
+        max_relative_error = (
+            self.case["max_relative_error"]
+            if "max_relative_error" in self.case
+            else 1e-5
+        )
         self.check_outputs_and_grads(max_relative_error=max_relative_error)
 
 

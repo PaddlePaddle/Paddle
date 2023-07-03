@@ -56,7 +56,8 @@ using framework::StrategyFunction;
 TEST(SliceAssign, SliceAssign_Op) {
   // code gen
   auto slice_assign = Operator::Get("slice_assign");
-  auto strategy     = Operator::GetAttrs<StrategyFunction>("CINNStrategy")[slice_assign];
+  auto strategy =
+      Operator::GetAttrs<StrategyFunction>("CINNStrategy")[slice_assign];
 
   int m = 64;
   int n = 32;
@@ -66,9 +67,9 @@ TEST(SliceAssign, SliceAssign_Op) {
 
   // set attrs
   NodeAttr attrs;
-  attrs.attr_store["axis"]    = std::vector<int>{0, 1};
-  attrs.attr_store["starts"]  = std::vector<int>{16, 16};
-  attrs.attr_store["ends"]    = std::vector<int>{32, 32};
+  attrs.attr_store["axis"] = std::vector<int>{0, 1};
+  attrs.attr_store["starts"] = std::vector<int>{16, 16};
+  attrs.attr_store["ends"] = std::vector<int>{32, 32};
   attrs.attr_store["strides"] = std::vector<int>{1, 1};
 
   std::vector<Type> out_type{Float(32)};
@@ -80,26 +81,31 @@ TEST(SliceAssign, SliceAssign_Op) {
 #else
   auto target = common::DefaultHostTarget();
 #endif
-  auto impl = OpStrategy::SelectImpl(strategy(attrs, inputs, out_type, {output_shape}, target));
+  auto impl = OpStrategy::SelectImpl(
+      strategy(attrs, inputs, out_type, {output_shape}, target));
 
   std::string func_name = "slice_assign";
 
   if (FLAGS_cinn_ir_schedule) {
-    std::string out_name             = "output";
-    common::CINNValuePack cinn_input = common::CINNValuePack{
-        {common::CINNValue(input.tensor()), common::CINNValue(assign.tensor()), common::CINNValue(out_name)}};
+    std::string out_name = "output";
+    common::CINNValuePack cinn_input =
+        common::CINNValuePack{{common::CINNValue(input.tensor()),
+                               common::CINNValue(assign.tensor()),
+                               common::CINNValue(out_name)}};
     std::vector<std::string> input_output_names{"input", "assign", out_name};
 
-    auto funcs = framework::GetFuncFromImpl(impl, cinn_input, inputs, input_output_names, func_name, target);
+    auto funcs = framework::GetFuncFromImpl(
+        impl, cinn_input, inputs, input_output_names, func_name, target);
 
     for (auto func : funcs) {
       LOG(INFO) << "Test Operator_BroadcastTo's Strategy, func is :\n" << func;
     }
   } else {
     common::CINNValuePack cinn_input =
-        common::CINNValuePack{{common::CINNValue(input.tensor()), common::CINNValue(assign.tensor())}};
+        common::CINNValuePack{{common::CINNValue(input.tensor()),
+                               common::CINNValue(assign.tensor())}};
     common::CINNValuePack rets = impl->fcompute(cinn_input);
-    rets                       = impl->fschedule(rets);
+    rets = impl->fschedule(rets);
 
     // the last element is a StageMap
     for (int i = 0; i < rets->size() - 1; i++) {
@@ -109,7 +115,8 @@ TEST(SliceAssign, SliceAssign_Op) {
       }
     }
 
-    auto func = lang::LowerVec("slice_assign", rets.back(), inputs, {}, {}, nullptr, target);
+    auto func = lang::LowerVec(
+        "slice_assign", rets.back(), inputs, {}, {}, nullptr, target);
     for (auto& f : func) {
       LOG(INFO) << "Test Strategy Codegen:\n" << f;
     }

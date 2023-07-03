@@ -14,24 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-from op_test_helper import TestCaseHelper
-import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 import logging
 import os
+import unittest
 from itertools import product
+
+import cinn
+import numpy as np
+from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+from op_test_helper import TestCaseHelper
+
+import paddle
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="gather")
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestGatherOp(OpTest):
     def setUp(self):
         print(f"\nRunning {self.__class__.__name__}: {self.case}")
@@ -46,8 +49,7 @@ class TestGatherOp(OpTest):
         # Paddle does not support negative axis values.
         axis = axis if axis >= 0 else len(x_shape) + axis
         x = np.random.randn(*x_shape).astype(dtype)
-        index = np.random.randint(0, x_shape[axis],
-                                  index_shape).astype("int32")
+        index = np.random.randint(0, x_shape[axis], index_shape).astype("int32")
         self.data = [x, index]
         x = paddle.to_tensor(x, stop_gradient=False)
         index = paddle.to_tensor(index, stop_gradient=False)
@@ -78,78 +80,25 @@ class TestGatherOpAll(TestCaseHelper):
         self.cls = TestGatherOp
         # note: The possible values of axis are related to x, so axis is added in self.inputs
         self.inputs = [
-            {
-                "x": [128],
-                "index": [64],
-                "axis": 0
-            },
-            {
-                "x": [16, 32],
-                "index": [32],
-                "axis": 0
-            },
-            {
-                "x": [16, 32],
-                "index": [32],
-                "axis": 1
-            },
-            {
-                "x": [8, 16, 32],
-                "index": [16],
-                "axis": -3
-            },
-            {
-                "x": [8, 16, 32],
-                "index": [8],
-                "axis": -2
-            },
-            {
-                "x": [8, 16, 32],
-                "index": [8],
-                "axis": -1
-            },
-            {
-                "x": [8, 16, 32],
-                "index": [4],
-                "axis": 2
-            },
-            {
-                "x": [16, 8, 4, 64],
-                "index": [4],
-                "axis": 2
-            },
-            {
-                "x": [16, 8, 4, 1024],
-                "index": [4],
-                "axis": 2
-            },
-            {
-                "x": [16, 8, 4, 1],
-                "index": [4],
-                "axis": 2
-            },
-            {
-                "x": [1, 1, 1, 1],
-                "index": [4],
-                "axis": 2
-            },
+            {"x": [128], "index": [64], "axis": 0},
+            {"x": [16, 32], "index": [32], "axis": 0},
+            {"x": [16, 32], "index": [32], "axis": 1},
+            {"x": [8, 16, 32], "index": [16], "axis": -3},
+            {"x": [8, 16, 32], "index": [8], "axis": -2},
+            {"x": [8, 16, 32], "index": [8], "axis": -1},
+            {"x": [8, 16, 32], "index": [4], "axis": 2},
+            {"x": [16, 8, 4, 64], "index": [4], "axis": 2},
+            {"x": [16, 8, 4, 1024], "index": [4], "axis": 2},
+            {"x": [16, 8, 4, 1], "index": [4], "axis": 2},
+            {"x": [1, 1, 1, 1], "index": [4], "axis": 2},
         ]
-        self.dtypes = [{
-            "x_dtype": "int16",
-            "y_dtype": "int64"
-        }, {
-            "x_dtype": "int32",
-            "y_dtype": "int64"
-        }, {
-            "x_dtype": "int64",
-            "y_dtype": "int64"
-        }, {
-            "x_dtype": "float32",
-            "y_dtype": "int64"
-        }, {
-            "x_dtype": "float64",
-            "y_dtype": "int64"
-        }]
+        self.dtypes = [
+            {"x_dtype": "int16", "y_dtype": "int64"},
+            {"x_dtype": "int32", "y_dtype": "int64"},
+            {"x_dtype": "int64", "y_dtype": "int64"},
+            {"x_dtype": "float32", "y_dtype": "int64"},
+            {"x_dtype": "float64", "y_dtype": "int64"},
+        ]
         self.attrs = []
 
 

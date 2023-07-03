@@ -17,9 +17,29 @@
 #include <list>
 
 #include "paddle/ir/core/block.h"
+#include "paddle/ir/core/ir_context.h"
 #include "paddle/ir/core/operation.h"
 
 namespace ir {
+class Type;
+class UInt8Type;
+class Int8Type;
+class VectorType;
+class BFloat16Type;
+class Float32Type;
+class Float64Type;
+class Int16Type;
+class BoolType;
+class Complex64Type;
+class Complex128Type;
+class StrAttribute;
+class BoolAttribute;
+class FloatAttribute;
+class DoubleAttribute;
+class Int32Attribute;
+class Int64Attribute;
+class ArrayAttribute;
+class PointerAttribute;
 
 ///
 /// \brief Unified interface of the Attribute class. Derivation of all Attribute
@@ -89,6 +109,26 @@ class Builder {
     Operation *op = Build(std::move(argument));
     return op->dyn_cast<OpTy>();
   }
+
+  IR_API UInt8Type uint8_type();
+  IR_API Int8Type int8_type();
+  IR_API VectorType vec_type(const std::vector<Type> &);
+  IR_API BFloat16Type bfloat16_type();
+  IR_API Float32Type float32_type();
+  IR_API Float64Type float64_type();
+  IR_API Int16Type int16_type();
+  IR_API BoolType bool_type();
+  IR_API Complex64Type complex64_type();
+  IR_API Complex128Type complex128_type();
+
+  IR_API StrAttribute str_attr(const std::string &value);
+  IR_API BoolAttribute bool_attr(bool value);
+  IR_API FloatAttribute float_attr(float value);
+  IR_API DoubleAttribute double_attr(double value);
+  IR_API Int32Attribute int32_attr(int32_t value);
+  IR_API Int64Attribute int64_attr(int64_t value);
+  IR_API ArrayAttribute array_attr(const std::vector<Attribute> &value);
+  IR_API PointerAttribute pointer_attr(void *value);
 
  private:
   Operation *Insert(Operation *op);

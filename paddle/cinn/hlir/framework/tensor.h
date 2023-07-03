@@ -39,11 +39,14 @@ struct Shape {
 
   void SetData(const std::vector<dim_t>& data) { data_ = data; }
 
-  const std::vector<dim_t>& data() const CINN_RESULT_SHOULD_USE { return data_; }
+  const std::vector<dim_t>& data() const CINN_RESULT_SHOULD_USE {
+    return data_;
+  }
   std::vector<dim_t>& data() CINN_RESULT_SHOULD_USE { return data_; }
   size_t size() const CINN_RESULT_SHOULD_USE { return data_.size(); }
   uint32_t numel() const CINN_RESULT_SHOULD_USE {
-    return std::accumulate(data_.begin(), data_.end(), 1, [](dim_t a, dim_t b) { return a * b; });
+    return std::accumulate(
+        data_.begin(), data_.end(), 1, [](dim_t a, dim_t b) { return a * b; });
   }
 
  private:
@@ -58,7 +61,9 @@ class _Tensor_ : public Object {
 
   void Resize(const Shape& shape) {
     shape_ = shape;
-    buffer_->data()->resize(reinterpret_cast<const cinn_dimension_t*>(shape.data().data()), shape.size());
+    buffer_->data()->resize(
+        reinterpret_cast<const cinn_dimension_t*>(shape.data().data()),
+        shape.size());
   }
 
   inline void* mutable_data(const Target& target, const Type& type) {

@@ -124,11 +124,7 @@ class ScheduleImpl {
                     const bool force_flat = false);
   void CopyTransformAndLoopInfo(const Expr& block, const Expr& block_target);
   void CopyTransformAndLoopInfo(const std::string& block_name,
-                                const std::string& block_target_name);
   Expr SampleCategorical(utils::LinearRandomEngine::StateType* rand_seed,
-                         const std::vector<int>& candidates,
-                         const std::vector<float>& probs);
-
  private:
   void Replace(const Expr& src_sref, const Expr& tgt_stmt);
 

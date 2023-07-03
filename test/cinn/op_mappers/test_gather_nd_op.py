@@ -15,8 +15,10 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_mapper_test import OpMapperTest, logger
+
 import paddle
 
 
@@ -24,7 +26,7 @@ class TestGatherNdOp(OpMapperTest):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], 'float32'),
-            'index': np.array([[1]], dtype='int32')
+            'index': np.array([[1]], dtype='int32'),
         }
 
     def set_op_type(self):
@@ -34,11 +36,13 @@ class TestGatherNdOp(OpMapperTest):
         x = paddle.static.data(
             name='x',
             shape=self.feed_data['x'].shape,
-            dtype=self.feed_data['x'].dtype)
+            dtype=self.feed_data['x'].dtype,
+        )
         index = paddle.static.data(
             name='index',
             shape=self.feed_data['index'].shape,
-            dtype=self.feed_data['index'].dtype)
+            dtype=self.feed_data['index'].dtype,
+        )
         return {'X': [x], 'Index': [index]}
 
     def set_op_attrs(self):
@@ -55,7 +59,7 @@ class TestGatherNdCase1(TestGatherNdOp):
     def init_input_data(self):
         self.feed_data = {
             'x': self.random([2, 3, 4], 'float32'),
-            'index': np.array([[1, 2, 3]], dtype='int32')
+            'index': np.array([[1, 2, 3]], dtype='int32'),
         }
 
 

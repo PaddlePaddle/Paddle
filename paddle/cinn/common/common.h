@@ -63,7 +63,8 @@ static void CheckVarNameValid(const absl::string_view name) {
         name.find('\n') == std::string::npos &&  //
         name.find('\r') == std::string::npos)
       << "Some invalid character found";
-  CHECK(!common::IsAxisNameReserved(std::string(name))) << "The name [" << name << "] is reserved for internal axis";
+  CHECK(!common::IsAxisNameReserved(std::string(name)))
+      << "The name [" << name << "] is reserved for internal axis";
 }
 
 }  // namespace cinn

@@ -9,7 +9,6 @@ gather_srcs(
   ir_base.cc
   ir_schedule.cc
   ir_schedule_error.cc
-  ir_schedule_util.cc
   ir_visitor.cc
   ir_printer.cc
   ir_mutator.cc

@@ -14,23 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import cinn
-from cinn.frontend import *
-from cinn.common import *
 import logging
 import os
+import unittest
 from itertools import product
+
+import cinn
+import numpy as np
+from cinn.common import *
+from cinn.frontend import *
+from op_test import OpTest, OpTestTool
+
+import paddle
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="gather_nd")
 
 
-@OpTestTool.skip_if(not is_compiled_with_cuda(),
-                    "x86 test will be skipped due to timeout.")
+@OpTestTool.skip_if(
+    not is_compiled_with_cuda(), "x86 test will be skipped due to timeout."
+)
 class TestGatherNdOp(OpTest):
     def setUp(self):
         self.data = []
@@ -45,8 +48,9 @@ class TestGatherNdOp(OpTest):
             x_shape = inputs["x"]
             index_shape = inputs["index"]
             x = np.random.randn(*x_shape).astype(dtype)
-            index = np.random.randint(0, min(x_shape),
-                                      index_shape).astype("int32")
+            index = np.random.randint(0, min(x_shape), index_shape).astype(
+                "int32"
+            )
             self.data.append([x, index])
             x = paddle.to_tensor(x, stop_gradient=False)
             index = paddle.to_tensor(index, stop_gradient=False)
@@ -58,12 +62,14 @@ class TestGatherNdOp(OpTest):
         for i, (inputs, dtype) in enumerate(product(self.inputs, self.dtypes)):
             builder = NetBuilder("gather")
             x = builder.create_input(
-                self.nptype2cinntype(dtype), inputs["x"], "x")
+                self.nptype2cinntype(dtype), inputs["x"], "x"
+            )
             index = builder.create_input(Int(32), inputs["index"], "index")
             out = builder.gather_nd(x, index)
             prog = builder.build()
-            res = self.get_cinn_output(prog, target, [x, index], self.data[i],
-                                       [out])
+            res = self.get_cinn_output(
+                prog, target, [x, index], self.data[i], [out]
+            )
             logger.debug(" -- The output of CINN:\n{}".format(res))
             self.cinn_outputs.extend(res)
 

@@ -20,26 +20,34 @@ namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
-void StridedSliceOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperContext& ctx) {
+void StridedSliceOpMapper(const paddle::cpp::OpDesc& op_desc,
+                          const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("Input").size(), 1UL);
   auto x_name = op_desc.Input("Input").front();
   CHECK_EQ(op_desc.Output("Out").size(), 1UL);
   auto out_name = op_desc.Output("Out").front();
 
   CHECK(op_desc.HasAttr("starts"));
-  auto starts = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int>>(op_desc, "starts"));
+  auto starts = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "starts"));
   CHECK(op_desc.HasAttr("ends"));
-  auto ends = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ends"));
+  auto ends = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ends"));
   CHECK(op_desc.HasAttr("axes"));
-  auto axes = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axes"));
+  auto axes = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axes"));
   CHECK(op_desc.HasAttr("strides"));
-  auto strides = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides"));
+  auto strides = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides"));
   CHECK(op_desc.HasAttr("infer_flags"));
-  auto infer_flags   = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int>>(op_desc, "infer_flags"));
-  auto decrease_axis = utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int>>(op_desc, "decrease_axis"));
+  auto infer_flags = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "infer_flags"));
+  auto decrease_axis = utils::ToShapeType(
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "decrease_axis"));
 
-  auto x   = ctx.GetVar(x_name);
-  auto out = ctx.Builder()->Slice(x, axes, starts, ends, infer_flags, strides, decrease_axis);
+  auto x = ctx.GetVar(x_name);
+  auto out = ctx.Builder()->Slice(
+      x, axes, starts, ends, infer_flags, strides, decrease_axis);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
@@ -50,6 +58,7 @@ void StridedSliceOpMapper(const paddle::cpp::OpDesc& op_desc, const OpMapperCont
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(paddle_strided_slice) {
-  CINN_REGISTER_OP_MAPPER(strided_slice, cinn::frontend::paddle_mappers::StridedSliceOpMapper)
+  CINN_REGISTER_OP_MAPPER(strided_slice,
+                          cinn::frontend::paddle_mappers::StridedSliceOpMapper)
   return true;
 }

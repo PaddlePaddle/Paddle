@@ -30,11 +30,14 @@ class TestErfOp(OpTest):
         self.public_python_api = paddle.erf
         self.python_api = paddle.erf
         self.dtype = self._init_dtype()
-        self.x_shape = [11, 17]
+        self.init_shape()
         x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
         y_ref = erf(x).astype(self.dtype)
         self.inputs = {'X': x}
         self.outputs = {'Out': y_ref}
+
+    def init_shape(self):
+        self.x_shape = [11, 17]
 
     def _init_dtype(self):
         return "float64"
@@ -44,6 +47,11 @@ class TestErfOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestErfOp_ZeroDim(TestErfOp):
+    def init_shape(self):
+        self.x_shape = []
 
 
 class TestErfLayer(unittest.TestCase):

@@ -14,22 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle as paddle
-import numpy as np
-import unittest
-import math
-import cinn
-from cinn import frontend
-from cinn import runtime
-from cinn import lang
-from cinn import framework
-from cinn import ir
-from cinn import common
-from cinn.poly import create_stages
 import logging
-from test_utils import SingleOpTester
-import pool_utils
+import math
+import unittest
+
+import cinn
 import conv2d_utils
+import numpy as np
+import pool_utils
+from cinn import common, framework, frontend, ir, lang, runtime
+from cinn.poly import create_stages
+from test_utils import SingleOpTester
+
+import paddle as paddle
 
 
 class OpTest_relu(SingleOpTester):
@@ -46,8 +43,8 @@ class OpTest_relu6(SingleOpTester):
     def create_target_data(self, inputs_data, attrs):
         [X] = inputs_data
         return np.minimum(
-            np.maximum(X,
-                       np.zeros(np.array(X).shape).astype("float32")), 6)
+            np.maximum(X, np.zeros(np.array(X).shape).astype("float32")), 6
+        )
 
     def test_op(self):
         attrs = framework.NodeAttr()
@@ -74,13 +71,20 @@ class OpTest_conv2d_nchw(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, False)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, False
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None, "conv2d",
-                        self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 class OpTest_conv2d_nchw_1(SingleOpTester):
@@ -102,13 +106,20 @@ class OpTest_conv2d_nchw_1(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, False)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, False
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None, "conv2d",
-                        self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 class OpTest_conv2d_nchw_group(SingleOpTester):
@@ -130,13 +141,20 @@ class OpTest_conv2d_nchw_group(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, False)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, False
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None, "conv2d",
-                        self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 class OpTest_conv2d_nchw_depthwise(SingleOpTester):
@@ -158,13 +176,20 @@ class OpTest_conv2d_nchw_depthwise(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, False)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, False
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None, "conv2d",
-                        self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 class OpTest_conv2d_nhwc_group(SingleOpTester):
@@ -186,13 +211,20 @@ class OpTest_conv2d_nhwc_group(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, False)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, False
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None, "conv2d",
-                        self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 class OpTest_conv2d_nhwc_depthwise(SingleOpTester):
@@ -214,13 +246,20 @@ class OpTest_conv2d_nhwc_depthwise(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, False)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, False
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None, "conv2d",
-                        self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 # test channel multiplier format
@@ -243,13 +282,20 @@ class OpTest_depthwise_conv2d_nchw(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, True)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, True
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None,
-                        "depthwise_conv2d", self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "depthwise_conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 # test channel multiplier format
@@ -272,13 +318,20 @@ class OpTest_depthwise_conv2d_nhwc(SingleOpTester):
         self.attrs.set_attr("data_format", self.data_format)
 
     def create_target_data(self, inputs_data, attrs):
-        return conv2d_utils.conv2d_native(inputs_data, self.input_size,
-                                          self.filter_size, self.attrs, True)
+        return conv2d_utils.conv2d_native(
+            inputs_data, self.input_size, self.filter_size, self.attrs, True
+        )
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([self.input_size, self.filter_size], None,
-                        "depthwise_conv2d", self.attrs, 0, True)
+        self.to_test_op(
+            [self.input_size, self.filter_size],
+            None,
+            "depthwise_conv2d",
+            self.attrs,
+            0,
+            True,
+        )
 
 
 class OpTest_pool1d(SingleOpTester):
@@ -453,13 +506,18 @@ class OpTest_batchnorm(SingleOpTester):
         c = X.shape[1]
         for i in range(0, c):
             X[:, i, :, :] = (X[:, i, :, :] - Mean[i]) / math.sqrt(
-                Variance[i] + 0.00001) * Scale[i] + Bias[i]
+                Variance[i] + 0.00001
+            ) * Scale[i] + Bias[i]
         return X
 
     def test_op(self):
         attrs = framework.NodeAttr()
-        self.to_test_op([[1, 64, 112, 112], [64], [64], [64], [64]],
-                        [[1, 64, 112, 112]], "batch_norm", attrs)
+        self.to_test_op(
+            [[1, 64, 112, 112], [64], [64], [64], [64]],
+            [[1, 64, 112, 112]],
+            "batch_norm",
+            attrs,
+        )
 
 
 class OpTest_softmax_0(SingleOpTester):
@@ -467,15 +525,22 @@ class OpTest_softmax_0(SingleOpTester):
         [X] = inputs_data
         Y = np.zeros(X.shape).astype("float32")
         for i in range(0, Y.shape[1]):
-            Y[:, i, :] = np.exp(X[:, i, :]) / np.sum(
-                np.exp(X), axis=1, keepdims=True)[:, 0, :]
+            Y[:, i, :] = (
+                np.exp(X[:, i, :])
+                / np.sum(np.exp(X), axis=1, keepdims=True)[:, 0, :]
+            )
         return Y
 
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", 1)
-        self.to_test_op([[12, 224, 224]], [[12, 224, 224], [12, 224, 224]],
-                        "softmax", attrs, 0)
+        self.to_test_op(
+            [[12, 224, 224]],
+            [[12, 224, 224], [12, 224, 224]],
+            "softmax",
+            attrs,
+            0,
+        )
 
 
 class OpTest_softmax_1(SingleOpTester):
@@ -483,15 +548,22 @@ class OpTest_softmax_1(SingleOpTester):
         [X] = inputs_data
         Y = np.zeros(X.shape).astype("float32")
         for i in range(0, Y.shape[2]):
-            Y[:, :, i] = np.exp(X[:, :, i]) / np.sum(
-                np.exp(X), axis=2, keepdims=True)[:, :, 0]
+            Y[:, :, i] = (
+                np.exp(X[:, :, i])
+                / np.sum(np.exp(X), axis=2, keepdims=True)[:, :, 0]
+            )
         return Y
 
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", -1)
-        self.to_test_op([[12, 224, 224]], [[12, 224, 224], [12, 224, 224]],
-                        "softmax", attrs, 0)
+        self.to_test_op(
+            [[12, 224, 224]],
+            [[12, 224, 224], [12, 224, 224]],
+            "softmax",
+            attrs,
+            0,
+        )
 
 
 class OpTest_softmax_2(SingleOpTester):
@@ -499,15 +571,22 @@ class OpTest_softmax_2(SingleOpTester):
         [X] = inputs_data
         Y = np.zeros(X.shape).astype("float32")
         for i in range(0, Y.shape[0]):
-            Y[i, :, :] = np.exp(X[i, :, :]) / np.sum(
-                np.exp(X), axis=0, keepdims=True)[0, :, :]
+            Y[i, :, :] = (
+                np.exp(X[i, :, :])
+                / np.sum(np.exp(X), axis=0, keepdims=True)[0, :, :]
+            )
         return Y
 
     def test_op(self):
         attrs = framework.NodeAttr()
         attrs.set_attr("axis", 0)
-        self.to_test_op([[12, 224, 224]], [[12, 224, 224], [12, 224, 224]],
-                        "softmax", attrs, 0)
+        self.to_test_op(
+            [[12, 224, 224]],
+            [[12, 224, 224], [12, 224, 224]],
+            "softmax",
+            attrs,
+            0,
+        )
 
 
 class OpTest_sigmoid(SingleOpTester):
@@ -558,16 +637,19 @@ class OpTest_dropout_infer_0(SingleOpTester):
     def create_target_data(self, inputs_data, attrs):
         [X] = inputs_data
         assert "dropout_implementation" in self.attrs.attr_store
-        if self.attrs.attr_store[
-                "dropout_implementation"] == "downgrade_in_infer":
+        if (
+            self.attrs.attr_store["dropout_implementation"]
+            == "downgrade_in_infer"
+        ):
             return X * (1 - self.attrs.attr_store["dropout_prob"])
         else:
             return X
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([[2, 1280, 2, 2]], [[2, 1280, 2, 2]], "dropout_infer",
-                        self.attrs)
+        self.to_test_op(
+            [[2, 1280, 2, 2]], [[2, 1280, 2, 2]], "dropout_infer", self.attrs
+        )
 
 
 class OpTest_dropout_infer_1(SingleOpTester):
@@ -579,16 +661,19 @@ class OpTest_dropout_infer_1(SingleOpTester):
     def create_target_data(self, inputs_data, attrs):
         [X] = inputs_data
         assert "dropout_implementation" in self.attrs.attr_store
-        if self.attrs.attr_store[
-                "dropout_implementation"] == "downgrade_in_infer":
+        if (
+            self.attrs.attr_store["dropout_implementation"]
+            == "downgrade_in_infer"
+        ):
             return X * (1 - self.attrs.attr_store["dropout_prob"])
         else:
             return X
 
     def test_op(self):
         self.init_testcase()
-        self.to_test_op([[2, 1280, 2, 2]], [[2, 1280, 2, 2]], "dropout_infer",
-                        self.attrs)
+        self.to_test_op(
+            [[2, 1280, 2, 2]], [[2, 1280, 2, 2]], "dropout_infer", self.attrs
+        )
 
 
 if __name__ == "__main__":
