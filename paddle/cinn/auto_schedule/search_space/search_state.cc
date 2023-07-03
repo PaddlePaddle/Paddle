@@ -91,7 +91,7 @@ class DfsWithExprsFields : public ir::IRVisitor {
 // Generate a reduce hash of a AST tree by combining hash of each AST node
 class IrNodesStructuralHash : public DfsWithExprsFields {
  public:
-  IrNodesStructuralHash(size_t init_key) : hash_key_(init_key) {}
+  explicit IrNodesStructuralHash(size_t init_key) : hash_key_(init_key) {}
   size_t operator()(const Expr* expr) {
     Visit(expr);
     return hash_key_;

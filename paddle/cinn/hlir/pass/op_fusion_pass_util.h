@@ -315,7 +315,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
   };
 
   for (auto node : consumer->nodes_set) {
-    if (helper->GetOpKind(node) != kBroadcast) {
+    if (helper->GetOpKind(node) != framework::kBroadcast) {
       continue;
     }
 
