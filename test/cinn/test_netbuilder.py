@@ -76,7 +76,7 @@ class TestNetBuilder(unittest.TestCase):
                     ". Diff is: ",
                     output[i] - result[len(result) - 1][i],
                 )
-        self.assertTrue(np.allclose(result[len(result) - 1], output, atol=1e-4))
+        np.testing.assert_allclose(result[len(result) - 1], output, atol=1e-4)
 
     def test_basic(self):
         builder = NetBuilder("test_basic")

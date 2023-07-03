@@ -155,9 +155,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     auto blocks = ir_sch.GetAllBlocks();
-    // TODO: It needs to be rewritten according to the reduction_min operator to
-    // improve performance. Do not use local variables, because the size will
-    // exceed the limit.
+    // TODO(zhhsplendid): It needs to be rewritten according to the
+    // reduction_min operator to improve performance. Do not use local
+    // variables, because the size will exceed the limit.
     ir_sch.SetBuffer(blocks[0], "local");
     ir_sch.SetBuffer(blocks[1], "local");
     int64_t prod_size = std::accumulate(output_shapes[0].begin(),
@@ -181,7 +181,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
 std::vector<shape_t> InferShapeForArgmin(
     const std::vector<shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
-  CHECK(inputs_shape.size() == 1UL);
+  CHECK_EQ(inputs_shape.size(), 1UL);
   auto ndim = inputs_shape[0].size();
   CHECK_GT(ndim, 0) << "tensor's dim must be more than 0";
   int axis;

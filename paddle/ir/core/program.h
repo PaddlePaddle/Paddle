@@ -54,8 +54,9 @@ class IR_API Program {
 
   Block* block() { return module_.block(); }
 
-  Parameter* GetParameter(std::string name) const;
-  void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
+  Parameter* GetParameter(const std::string& name) const;
+  void SetParameter(const std::string& name,
+                    std::unique_ptr<Parameter>&& parameter);
 
   ParameterMap& parameters() { return parameters_; }
   void set_parameters(ParameterMap&& parameters) {

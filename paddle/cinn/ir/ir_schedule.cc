@@ -1216,7 +1216,7 @@ struct LoopReconstructor : public ir::IRMutator<> {
 
 struct FixLocalBufferSize : public ir::IRMutator<> {
  public:
-  FixLocalBufferSize(const std::string& tensor_name)
+  explicit FixLocalBufferSize(const std::string& tensor_name)
       : tensor_name_(tensor_name) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
@@ -1697,7 +1697,8 @@ void ScheduleImpl::ReverseComputeInline(const Expr& schedule_block) {
 
 struct FindBlockParent : public ir::IRMutator<> {
  public:
-  FindBlockParent(const std::string& block_name) : block_name_(block_name) {}
+  explicit FindBlockParent(const std::string& block_name)
+      : block_name_(block_name) {}
 
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 
@@ -2142,8 +2143,9 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         !vars[i]->is_reduce_axis && !vars_target[i]->is_reduce_axis) {
       new_iter_values.push_back(iter_values_target[i]);
       VLOG(3) << "new_iter_values.push_back " << iter_values_target[i];
-    } else
+    } else {
       break;
+    }
   }
 
   if (new_iter_values.empty())

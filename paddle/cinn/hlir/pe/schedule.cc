@@ -2814,8 +2814,9 @@ void CudaSplitSchedule(common::CINNValuePack *arg_pack,
       stages[last_output]->Bind(0, "blockIdx.x");
       stages[last_output]->Bind(1, "threadIdx.x");
       compute_at_level++;
-    } else
+    } else {
       stages[last_output]->Bind(0, "threadIdx.x");
+    }
   }
 
   for (int i = 0; i < out_tensors.size() - 1; i++) {

@@ -25,8 +25,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using namespace frontend;
-
 TEST(ParallelCompilerTest, Add_TEST_0) {
   frontend::NetBuilder builder("Add_TEST_0");
   auto A = builder.CreateInput(Float(32), {128, 128}, "A");
@@ -52,7 +50,7 @@ TEST(ParallelCompilerTest, Conv2d_Test_0) {
 
   auto target = common::DefaultNVGPUTarget();
   auto program = builder.Build();
-  auto graph = Optimize(&program, {}, target);
+  auto graph = frontend::Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
   ParallelCompiler::CompileOptions option;
@@ -70,7 +68,7 @@ TEST(ParallelCompilerTest, Matmul_Test_0) {
 
   auto target = common::DefaultNVGPUTarget();
   auto program = builder.Build();
-  auto graph = Optimize(&program, {}, target);
+  auto graph = frontend::Optimize(&program, {}, target);
   auto scope = BuildScope(target, graph);
 
   ParallelCompiler::CompileOptions option;

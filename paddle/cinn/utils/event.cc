@@ -76,9 +76,9 @@ std::string Summary::Format(const std::vector<HostEvent> &events) {
   }
   // Calculate Ratio
   for (auto &item : items) {
-    item.sub_raito =
+    item.sub_ratio =
         item.info.duration_ / category_cost[item.info.type_] * 100.0;
-    item.total_raito = item.info.duration_ / total_cost * 100.0;
+    item.total_ratio = item.info.duration_ / total_cost * 100.0;
   }
 
   std::sort(items.begin(), items.end());
@@ -113,8 +113,8 @@ std::string Summary::AsStr(const std::vector<Item> &items, int data_width) {
     std::vector<std::string> infos = {EventTypeToString(item.info.type_),
                                       item.info.annotation_,
                                       std::to_string(item.info.duration_),
-                                      item.sub_raito.ToStr(),
-                                      item.total_raito.ToStr()};
+                                      item.sub_ratio.ToStr(),
+                                      item.total_ratio.ToStr()};
     idx = 0;
     for (auto &info : infos) {
       pad_size = widths[idx] > info.size() ? widths[idx] - info.size() : 1;
