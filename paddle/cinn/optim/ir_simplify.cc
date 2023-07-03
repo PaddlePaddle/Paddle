@@ -213,7 +213,7 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
         << node->base << "is not a pure math!";
     CHECK(common::IsPureMath(node->stride))
         << node->stride << "is not a pure math!";
-    ;
+
     Simplify(&node->base);
     Simplify(&node->stride);
   }
@@ -261,7 +261,7 @@ struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
 };
 
 struct SimplifyBlocksMutator : public ir::IRMutator<> {
-  explicit SimplifyBlocksMutator() {}
+  SimplifyBlocksMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
@@ -320,7 +320,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {
   absl::flat_hash_map<std::string, common::CasInterval> var_intervals;
-  explicit SimplifyForLoopsMutator() {}
+  SimplifyForLoopsMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 

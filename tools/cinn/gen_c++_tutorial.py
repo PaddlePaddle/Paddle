@@ -28,7 +28,7 @@ import sys
 from typing import List
 
 
-class Markdown(object):
+class Markdown:
     '''
     A simple markdown generator.
     '''
@@ -92,7 +92,7 @@ class Mark:
     roc = "@ROC"
 
 
-class ContentGenerator(object):
+class ContentGenerator:
     '''
     Interface for some content passed into the parser.
     '''
@@ -104,7 +104,7 @@ class ContentGenerator(object):
         pass
 
 
-class Parser(object):
+class Parser:
     DOC_COMMENT_PREFIX = "//!"
 
     def __init__(self):

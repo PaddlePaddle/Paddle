@@ -40,7 +40,7 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper : public FusionHelperBase {
  public:
-  OpFusionPassHelper(const Graph* graph) : FusionHelperBase(graph) {
+  explicit OpFusionPassHelper(const Graph* graph) : FusionHelperBase(graph) {
     // init fusion relation
     InitFusionRelation();
     // filter node data, create group for each node

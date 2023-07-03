@@ -26,7 +26,7 @@ namespace optim {
 namespace {
 
 struct BufferUFNode : public common::UnionFindNode {
-  BufferUFNode(const std::string& x) : tensor_name(x) {}
+  explicit BufferUFNode(const std::string& x) : tensor_name(x) {}
 
   const char* type_info() const override { return __type_info__; }
 
@@ -38,7 +38,8 @@ const char* BufferUFNode::__type_info__ = "BufferUFNode";
 
 struct IRReplaceTensorMutator : ir::IRMutator<> {
   const std::map<std::string, ir::Tensor>& tensor_map;
-  IRReplaceTensorMutator(const std::map<std::string, ir::Tensor>& tensor_map)
+  explicit IRReplaceTensorMutator(
+      const std::map<std::string, ir::Tensor>& tensor_map)
       : tensor_map(tensor_map) {}
   void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
