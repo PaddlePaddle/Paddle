@@ -354,14 +354,13 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("Input dimension index must be larger "
                                    "equal than 0, but received: %s.",
                                    x_batch_size_dim));
-  PADDLE_ENFORCE_GT(input_dim_size,
-                    x_batch_size_dim,
-                    phi::errors::InvalidArgument(
-                        "Input dimension size must be larger than "
-                        "input dimension index, but received input "
-                        "dimension size: %s, input dimension index: %s.",
-                        input_dim_size,
-                        x_batch_size_dim));
+  PADDLE_ENFORCE(input_dim_size > x_batch_size_dim || input_dim_size == -1,
+                 phi::errors::InvalidArgument(
+                     "Input dimension size must be larger than "
+                     "input dimension index, but received input "
+                     "dimension size: %s, input dimension index: %s.",
+                     input_dim_size,
+                     x_batch_size_dim));
 
   int output_dim_size = static_cast<int>(shape.size());
   PADDLE_ENFORCE_GE(
