@@ -31,34 +31,46 @@ class Adan(Optimizer):
     r"""
     The Adan optimizer is implemented based on the Adan Optimization
     in paper `Adan: Adaptive Nesterov Momentum Algorithm for Faster Optimizing Deep Models <https://arxiv.org/abs/2208.06677>`_.
-
+    
+    Adan
     .. math::
 
+        t &= t + 1
 
-        TODO(wangguo): rewrite formula
+        grad\_diff & = grad - pre\_grad
 
-        grad_diff = grad - pre_grad
-        update = grad + beta2 * grad_diff
-        if not vanilla:
-            moment1_out = beta1 * moment1 + (1 - beta1) * grad
-            moment2_out = beta2 * moment2 + (1 - beta2) * grad_diff
-            moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
-        else:
-            moment1_out = beta1 * moment1 + (1 - beta1) * grad + beta2 * (1 - beta2) * grad_diff
-            moment2_out = None
-            moment3_out = beta3 * moment3 + (1 - beta3) * (update * update)
+        updata & = grad + {\beta}_2 * grad\_diff
 
-        denom = (np.sqrt(moment3_out) / np.sqrt(1.0 - beta3_pow)) + epsilon
-        if vanilla:
-            update = moment1_out / (1.0 - beta1_pow) / denom
-        else:
-            update = (moment1_out / (1.0 - beta1_pow) + beta2 * moment2_out / (1.0 - beta2_pow)) / denom
+        moment1\_out & = {\beta}_1 * moment1 + (1 - {\beta}_1) * grad
 
-        if no_prox:
-            param_out = param * (1 - lr * weight_decay) - update * lr
-        else:
-            param_out = (param - update * lr) / (1 + lr * weight_decay)
+        moemnt2\_out & = {\beta}_2 * moment2 + (1 - {\beta}_2) * grad\_diff
 
+        moemnt3\_out  = {\beta}_3 * moment3 + (1 - {\beta}_3) * updata * updata
+
+        denom & = \frac{\sqrt{moment3\_out}} {1 - {\beta}3\_pow} + epsilon
+
+        update & = \frac{\frac{moment1\_out} {1 - beta1\_pow} + {\beta}_2 * \frac{moment2\_out} {1.0 - beta2\_pow}}{denom}
+
+        param\_out & = param * (1 - learning\_rate* weight\_decay) - update * learning\_rate
+
+    Vinilla Adan
+    .. math::
+
+        t &= t + 1 \
+
+        grad\_diff &= grad - pre\_grad
+
+        updata &= grad + {\beta}_2 * grad\_diff
+
+        moment1\_out &= {\beta}_1 * moment1 + (1 - {\beta}_1) * grad + {\beta}_2 *(1 - {\beta}_2) * grad\_diff
+
+        moemnt3\_out &= {\beta}_3 * moment3 + (1 - {\beta}_3) * updata * updata
+
+        denom &= \frac{\sqrt{moment3\_out}} {1 - {\beta}3\_pow} + epsilon
+
+        update &= \frac{\frac{moment1\_out} {1 - beta1\_pow}}{denom}
+
+        param\_out &= param * (1 - learning\_rate* weight\_decay) - update * learning\_rate
 
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
