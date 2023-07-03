@@ -174,8 +174,8 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, -1])
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, -1])
 
-        self.x_dist_tensor_spec = [64, 1, 1, 12]
-        self.y_dist_tensor_spec = [64, 32, 12]
+        self.x_dist_tensor_spec.shape = [64, 1, 1, 12]
+        self.y_dist_tensor_spec.shape = [64, 32, 12]
         # [0, -1, -1, -1], [-1, -1, -1] --> [0, -1, -1, -1], [-1, -1, -1], [0, -1, -1, -1]
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1, -1])

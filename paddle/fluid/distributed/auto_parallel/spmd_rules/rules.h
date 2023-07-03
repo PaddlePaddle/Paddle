@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/layer_norm_spmd_rule.h"
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/elementwise_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/replicated_spmd_rule.h"
 
