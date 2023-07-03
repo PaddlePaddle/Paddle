@@ -1027,6 +1027,164 @@ void MatmulAmpFunction(const Context& ctx,
   const Ty* y_data = y.data<Ty>();
 
   auto blas = phi::funcs::GetBlas<Context, T>(ctx);
+
+  if (x_ndim == 1) {
+    const int N = x.numel();
+    if (trans_y) {
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 1],
+          N,
+          phi::errors::InvalidArgument("Input(Y) has error dim."
+                                       "Y'dims[%d] must be equal to %d"
+                                       "But received Y'dims[%d] is %d",
+                                       y_ndim - 1,
+                                       N,
+                                       y_ndim - 1,
+                                       y_dims[y_ndim - 1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          y_dims[y_ndim - 2],
+          N,
+          phi::errors::InvalidArgument("Input(Y) has error dim."
+                                       "Y'dims[%d] must be equal to %d"
+                                       "But received Y'dims[%d] is %d",
+                                       y_ndim - 2,
+                                       N,
+                                       y_ndim - 2,
+                                       y_dims[y_ndim - 2]));
+    }
+    std::vector<std::int64_t> out_dims(y_ndim - 1);
+    if (trans_y) {
+      std::copy_n(y_dims.cbegin(), y_ndim - 1, out_dims.begin());
+    } else {
+      std::copy_n(y_dims.cbegin(), y_ndim - 2, out_dims.begin());
+      out_dims.back() = y_dims.back();
+    }
+    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    dev_ctx.template Alloc<Tout>(out);
+    if (trans_y) {
+      const int M = Y.numel() / N;
+      VLOG(3) << "MatMul's case 2";
+      blas.GEMVWrapper(false,
+                       M,
+                       N,
+                       static_cast<Tout>(1),
+                       y_data,
+                       x_data,
+                       static_cast<Tout>(flag),
+                       dev_ctx.template Alloc<Tout>(Out));
+    } else {
+      const int M = y_dims[y_ndim - 1];
+      const int batch_size = Y.numel() / (M * N);
+      if (batch_size == 1) {
+        VLOG(3) << "MatMul's case 3";
+        blas.GEMVWrapper(true,
+                         N,
+                         M,
+                         static_cast<Tout>(1),
+                         y_data,
+                         x_data,
+                         static_cast<Tout>(flag),
+                         dev_ctx.template Alloc<Tout>(out));
+      } else {
+        VLOG(3) << "MatMul's case 4";
+        blas.BatchedGEMMWrapper(CblasTrans,
+                                CblasNoTrans,
+                                M,
+                                1,
+                                N,
+                                static_cast<Tout>(1),
+                                y_data,
+                                x_data,
+                                static_cast<Tout>(flag),
+                                dev_ctx.template Alloc<Tout>(Out),
+                                batch_size,
+                                M * N,
+                                0);
+      }
+    }
+    return;
+  }
+
+  if (y_ndim == 1) {
+    const int N = y.numel();
+    if (trans_x) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[x_ndim - 2],
+          N,
+          phi::errors::InvalidArgument("Input(X) has error dim."
+                                       "X'dims[%d] must be equal to %d"
+                                       "But received X'dims[%d] is %d",
+                                       x_ndim - 2,
+                                       N,
+                                       x_ndim - 2,
+                                       x_dims[x_ndim - 2]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          x_dims[x_ndim - 1],
+          N,
+          phi::errors::InvalidArgument("Input(X) has error dim."
+                                       "X'dims[%d] must be equal to %d"
+                                       "But received X'dims[%d] is %d",
+                                       x_ndim - 1,
+                                       N,
+                                       x_ndim - 1,
+                                       x_dims[x_ndim - 1]));
+    }
+    std::vector<std::int64_t> out_dims(x_ndim - 1);
+    if (trans_x) {
+      std::copy_n(x_dims.cbegin(), x_ndim - 2, out_dims.begin());
+      out_dims.back() = x_dims.back();
+    } else {
+      std::copy_n(x_dims.cbegin(), x_ndim - 1, out_dims.begin());
+    }
+    Out->ResizeAndAllocate(phi::make_ddim(out_dims));
+    dev_ctx.template Alloc<T>(Out);
+
+    if (trans_x) {
+      const int M = x_dims[x_ndim - 1];
+      const int batch_size = x.numel() / (M * N);
+      if (batch_size == 1) {
+        VLOG(3) << "MatMul's case 5";
+        blas.GEMVWrapper(true,
+                         N,
+                         M,
+                         static_cast<Tout>(1),
+                         x_data,
+                         y_data,
+                         static_cast<Tout>(flag),
+                         dev_ctx.template Alloc<Tout>(out));
+      } else {
+        VLOG(3) << "MatMul's case 6";
+        blas.BatchedGEMMWrapper(CblasTrans,
+                                CblasNoTrans,
+                                M,
+                                1,
+                                N,
+                                static_cast<Tout>(1),
+                                x_data,
+                                y_data,
+                                static_cast<Tout>(flag),
+                                dev_ctx.template Alloc<Tout>(Out),
+                                batch_size,
+                                M * N,
+                                0);
+      }
+    } else {
+      const int M = X.numel() / N;
+      VLOG(3) << "MatMul's case 7";
+      blas.GEMVWrapper(false,
+                       M,
+                       N,
+                       static_cast<Tout>(1),
+                       x_data,
+                       y_data,
+                       static_cast<Tout>(flag),
+                       dev_ctx.template Alloc<Tout>(out));
+    }
+    return;
+  }
+
   const int M = transpose_x ? x_dims[x_ndim - 1] : x_dims[x_ndim - 2];
   const int K = transpose_x ? x_dims[x_ndim - 2] : x_dims[x_ndim - 1];
   if (transpose_y) {

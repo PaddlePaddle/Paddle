@@ -21,7 +21,6 @@ from paddle.fluid import core
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
-    convert_uint16_to_float,
     get_numeric_gradient,
 )
 from paddle.fluid.tests.unittests.testsuite import create_op
@@ -106,8 +105,7 @@ class TestMatMulAmpOp(OpTest):
         self.outputs = {'out': result}
 
     def checker(self, outs):
-        outs = convert_uint16_to_float(outs)
-        np.testing.assert_allclose(outs, self.outputs['out'])
+        np.testing.assert_allclose(outs[0], self.outputs['out'])
 
     def test_check_output(self):
         place = core.CUDAPlace(0)

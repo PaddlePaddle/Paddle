@@ -133,9 +133,6 @@ void MatMulGPU(const phi::GPUContext& dev_ctx,
                bool trans_b,
                DenseTensor* out,
                bool flag = false) {
-  VLOG(3) << "============ before ==============";
-  dev_ctx.template Alloc<Tout>(out);
-  VLOG(3) << "============ after ==============";
   auto blas = phi::funcs::GetBlas<phi::GPUContext, Tout>(dev_ctx);
   auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
   auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(b.dims(), 0, trans_b);
@@ -296,16 +293,6 @@ void MatmulGradKernel(const Context& dev_ctx,
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
   int ndim = dout_dims.size();
-
-  // Case1 : x's or y's dim = 1
-  if (x_ndim == 1 && y_ndim == 1) {
-    if (dx) dev_ctx.template Alloc<T>(dx);
-    if (dy) dev_ctx.template Alloc<T>(dy);
-    if (out_grad.numel() == 1) {
-      DotGradFunction<Context, T>()(dev_ctx, &x, &y, &out_grad, dx, dy);
-      return;
-    }
-  }
 
   bool is_broadcast = true;
   if (x_ndim <= 2 || y_ndim <= 2) {
@@ -2102,6 +2089,16 @@ void MatmulAmpGradFuntion(const Context& dev_ctx,
   int x_ndim = x_dims.size();
   int y_ndim = y_dims.size();
   int ndim = dout_dims.size();
+
+  // Case1 : x's or y's dim = 1
+  if (x_ndim == 1 && y_ndim == 1) {
+    if (dx) dev_ctx.template Alloc<Tx>(dx);
+    if (dy) dev_ctx.template Alloc<Ty>(dy);
+    if (out_grad.numel() == 1) {
+      DotGradFunction<Context, T>()(dev_ctx, &x, &y, &out_grad, dx, dy);
+      return;
+    }
+  }
 
   bool is_broadcast = true;
   if (x_ndim <= 2 || y_ndim <= 2) {
