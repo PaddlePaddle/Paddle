@@ -233,8 +233,7 @@ function(select_nvcc_arch_flags out_variable out_arch_bin)
       string(APPEND nvcc_archs_bin_list " ${arch}")
     endif()
   endforeach()
-  set(CMAKE_CUDA_ARCHITECTURES "35")
-  message(STATUS "CMAKE_CUDA_ARCHITECTURES:" ${CMAKE_CUDA_ARCHITECTURES})
+
   # Tell NVCC to add PTX intermediate code for the specified architectures
   foreach(arch ${cuda_arch_ptx})
     string(APPEND nvcc_flags
