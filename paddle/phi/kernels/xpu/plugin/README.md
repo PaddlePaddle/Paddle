@@ -10,7 +10,7 @@ Modify ./example/build.sh to set the path of XDNN and XRE.
 $ ./build.sh
 $ ./run.sh
 ```
-## Build with PaddlePaddle
+## Build with PaddlePaddle.
 ### Copy to the source code of PaddlePaddle.
 ```
 $ cp -rf plugin <path_to_paddle_source_code>/paddle/phi/xpu
