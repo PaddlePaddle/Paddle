@@ -1194,6 +1194,7 @@
   output : Tensor
   infer_meta :
     func : MatmulAmpInferMeta
+    param: [x, y, transpose_x, transpose_y]
   kernel :
     func : matmul_amp
   backward : matmul_amp_grad
