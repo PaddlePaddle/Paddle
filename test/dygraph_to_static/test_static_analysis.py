@@ -201,7 +201,6 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
     def test_var_env(self):
-
         for i, func in enumerate(test_funcs):
             var_type = result_var_type[i]
             test_source_code = inspect.getsource(func)

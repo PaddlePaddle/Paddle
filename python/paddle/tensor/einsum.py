@@ -491,7 +491,6 @@ def plan_summation(
     for ax, dim1, dim2 in zip(
         range(n_bcast, ndim), op1_view[n_bcast:], op2_view[n_bcast:]
     ):
-
         if (dim1 != -1) != (dim2 != -1):
             if dim1 != -1:
                 J1.append(ax)

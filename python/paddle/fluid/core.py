@@ -397,6 +397,7 @@ def set_paddle_lib_path():
 
 set_paddle_lib_path()
 
+
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy
 # FLAGS_prim_backward: Open or close backward prim strategy

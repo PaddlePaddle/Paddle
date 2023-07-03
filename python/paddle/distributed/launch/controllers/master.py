@@ -136,7 +136,6 @@ class HTTPMaster(Master):
         self._stop_server()
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
-
         if size < 2:
             return [value], 0
 

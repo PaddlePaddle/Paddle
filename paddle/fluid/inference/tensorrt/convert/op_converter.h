@@ -140,14 +140,6 @@ class OpConverter {
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                               op_desc.Type()));
         }
-        // lookup_table_v2 == lookup_table
-        if (op_desc.Type() == "lookup_table_v2") {
-          it = Registry<OpConverter>::Global().Lookup("lookup_table");
-          PADDLE_ENFORCE_NOT_NULL(
-              it,
-              platform::errors::Unimplemented("no OpConverter for optype [%s]",
-                                              op_desc.Type()));
-        }
         if (!it) {
           it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
         }
@@ -373,6 +365,13 @@ class OpConverter {
     engine->ClearWeights();
   }
 
+  nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
+    layer->setOutputType(0, dtype);
+    layer->getOutput(0)->setType(dtype);
+    return layer->getOutput(0);
+  }
+
   // rank(result) = rank(input)
   nvinfer1::ITensor* Gather(nvinfer1::ITensor* input,
                             const std::vector<int32_t> indices,
@@ -381,6 +380,59 @@ class OpConverter {
     auto* result =
         TRT_ENGINE_ADD_LAYER(engine_, Gather, *input, *indices_tensor, axis)
             ->getOutput(0);
+    return result;
+  }
+
+  nvinfer1::ITensor* Unsqueeze(nvinfer1::ITensor* input,
+                               const std::vector<int32_t> axis) {
+    const auto dims = input->getDimensions();
+    const std::unordered_set<int32_t> axis_data(axis.begin(), axis.end());
+    std::vector<int32_t> subscripts(dims.nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    for (const auto& axis_value : axis_data) {
+      subscripts.insert(subscripts.begin() + axis_value, dims.nbDims);
+    }
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Gather,
+                             *Concat(std::vector<nvinfer1::ITensor*>{
+                                 input_shape, Add1DConstantLayer(1)}),
+                             *Add1DConstantLayer(subscripts),
+                             0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
+    return result;
+  }
+
+  nvinfer1::ITensor* Squeeze(nvinfer1::ITensor* input,
+                             const std::vector<int32_t> axis) {
+    const auto dims = input->getDimensions();
+    std::vector<int32_t> subscripts(dims.nbDims);
+    std::iota(subscripts.begin(), subscripts.end(), 0);
+    auto p =
+        std::remove_if(subscripts.begin(), subscripts.end(), [axis](int x) {
+          return std::find(axis.begin(), axis.end(), x) != axis.end();
+        });
+    subscripts.resize(p - subscripts.begin());
+
+    nvinfer1::ITensor* input_shape{nullptr};
+    if (engine_->with_dynamic_shape()) {
+      input_shape = Shape(input);
+    } else {
+      input_shape = Add1DConstantLayer(dims);
+    }
+
+    auto* new_dim =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, Gather, *input_shape, *Add1DConstantLayer(subscripts), 0)
+            ->getOutput(0);
+    auto result = Reshape(input, new_dim);
     return result;
   }
 
@@ -406,7 +458,23 @@ class OpConverter {
                              nvinfer1::ITensor* newShape,
                              const std::string& name = "") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    shuffle->setInput(1, *newShape);
+    if (engine_->with_dynamic_shape()) {
+      shuffle->setInput(1, *newShape);
+    } else {
+      auto shape = newShape->getDimensions();
+      shuffle->setReshapeDimensions(shape);
+    }
+    if (name != "") {
+      shuffle->setName(name.c_str());
+    }
+    return shuffle->getOutput(0);
+  }
+
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::Dims shape,
+                             const std::string& name = "") {
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setReshapeDimensions(shape);
     if (name != "") {
       shuffle->setName(name.c_str());
     }
@@ -515,6 +583,14 @@ class OpConverter {
                              *a,
                              *b,
                              nvinfer1::ElementWiseOperation::kFLOOR_DIV)
+            ->getOutput(0);
+    return c;
+  }
+
+  nvinfer1::ITensor* Pow(nvinfer1::ITensor* a, nvinfer1::ITensor* b) {
+    nvinfer1::ITensor* c =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, ElementWise, *a, *b, nvinfer1::ElementWiseOperation::kPOW)
             ->getOutput(0);
     return c;
   }

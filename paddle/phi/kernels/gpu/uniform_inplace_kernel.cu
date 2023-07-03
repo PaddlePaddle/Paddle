@@ -67,7 +67,7 @@ void UniformInplaceKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min, max);
     funcs::distribution_and_transform<T>(ctx, out, dist, trans);

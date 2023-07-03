@@ -78,8 +78,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 
         if binary_op and x.dtype != y.dtype:
             raise ValueError(
-                "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
-                % (op_name, x.dtype, y.dtype)
+                f"(InvalidArgument) The DataType of {op_name} Op's Variable must be consistent, but received {x.dtype} and {y.dtype}."
             )
 
         if out is None:
@@ -199,8 +198,8 @@ def logical_xor(x, y, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float16, float32, float64.
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, float16, float32, float64.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, float16, float32, float64.
         out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 

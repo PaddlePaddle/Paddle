@@ -19,9 +19,13 @@ import tempfile
 
 import numpy as np
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
 from paddle import fluid
-from paddle.fluid import framework, layers, nets
+from paddle.fluid import framework, layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
 
@@ -101,7 +105,6 @@ def get_usr_combined_features():
 
 
 def get_mov_combined_features():
-
     MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
 
     mov_id = paddle.static.data(name='movie_id', shape=[-1, 1], dtype='int64')

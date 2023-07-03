@@ -93,9 +93,6 @@ class TestFullOpError(unittest.TestCase):
             )
             output = paddle.full_like(input_data, 2.0)
 
-            def test_input_dtype():
-                paddle.full_like
-
             self.assertRaises(
                 TypeError,
                 paddle.full_like,
@@ -143,6 +140,13 @@ class TestFullLikeOp1(OpTest):
 
     def if_enable_cinn(self):
         pass
+
+
+class TestFullLikeOp1_ZeroDim(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 5
+        self.shape = []
+        self.dtype = np.float32
 
 
 class TestFullLikeOp2(TestFullLikeOp1):
