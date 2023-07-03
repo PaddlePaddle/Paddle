@@ -17,7 +17,7 @@
 #include <array>
 #include <functional>
 
-#include "cinn/common/bfs_visitor.h"
+#include "paddle/cinn/common/bfs_visitor.h"
 
 namespace cinn {
 namespace common {

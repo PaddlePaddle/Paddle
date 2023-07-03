@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/topo_visitor.h"
+#include "paddle/cinn/common/topo_visitor.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>

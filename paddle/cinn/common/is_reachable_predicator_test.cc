@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cinn/common/is_reachable_predicator.h"
+#include "paddle/cinn/common/is_reachable_predicator.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>

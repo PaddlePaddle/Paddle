@@ -23,7 +23,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "cinn/common/dfs_visitor.h"
+#include "paddle/cinn/common/dfs_visitor.h"
 
 namespace cinn {
 namespace common {
