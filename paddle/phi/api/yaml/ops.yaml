@@ -1197,6 +1197,7 @@
     param: [x, y, transpose_x, transpose_y]
   kernel :
     func : matmul_amp
+    param: [x, y, transpose_x, transpose_y]
   backward : matmul_amp_grad
 
 - op : matrix_nms

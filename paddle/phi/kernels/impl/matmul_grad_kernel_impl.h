@@ -2268,9 +2268,26 @@ void MatmulAmpGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          bool transpose_x,
                          bool transpose_y,
+                         int dx_type,
+                         int dy_type,
                          DenseTensor* dx,
                          DenseTensor* dy) {
-  MatmulAmpGradFuntion<Context, T, T, T, float>(
-      dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  if (dx_type == 22 && dy_type == 22) {
+    MatmulAmpGradFuntion<Context,
+                         T,
+                         phi::dtype::bfloat16,
+                         phi::dtype::bfloat16,
+                         float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  } else if (dx_type == 22 && dy_type == 5) {
+    MatmulAmpGradFuntion<Context, T, phi::dtype::bfloat16, float, float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  } else if (dx_type == 5 && dy_type == 22) {
+    MatmulAmpGradFuntion<Context, T, float, phi::dtype::bfloat16, float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  } else {
+    MatmulAmpGradFuntion<Context, T, float, float, float>(
+        dev_ctx, x, y, out_grad, dx, dy, transpose_x, transpose_y);
+  }
 }
 }  // namespace phi

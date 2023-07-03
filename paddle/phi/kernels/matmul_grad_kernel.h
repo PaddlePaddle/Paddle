@@ -91,6 +91,8 @@ void MatmulAmpGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          bool transpose_x,
                          bool transpose_y,
+                         int dx_type,
+                         int dy_type,
                          DenseTensor* dx,
                          DenseTensor* dy);
 

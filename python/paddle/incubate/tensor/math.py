@@ -14,8 +14,8 @@
 
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.utils import deprecated
 
 __all__ = []
