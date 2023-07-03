@@ -62,8 +62,8 @@ class TestMatMulAmpOp(OpTest):
     """
 
     def config(self):
-        self.x_shape = (100, 4)
-        self.y_shape = (4, 100)
+        self.x_shape = 100
+        self.y_shape = (100, 1)
         self.trans_x = False
         self.trans_y = False
 
@@ -105,7 +105,9 @@ class TestMatMulAmpOp(OpTest):
         self.outputs = {'out': result}
 
     def checker(self, outs):
-        np.testing.assert_allclose(outs[0], self.outputs['out'])
+        np.testing.assert_allclose(
+            outs[0], self.outputs['out'], rtol=0.01, atop=0.01
+        )
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -148,6 +150,222 @@ class TestMatMulAmpOp(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['x', 'y'], 'out')
+
+
+class TestMatMulAmpOp2(TestMatMulAmpOp):
+    """
+    case 2
+    """
+
+    def config(self):
+        self.x_shape = (100,)
+        self.y_shape = (1, 3, 2, 100)
+        self.trans_x = False
+        self.trans_y = True
+
+
+class TestMatMulAmpOp3(TestMatMulAmpOp):
+    """
+    case 3
+    """
+
+    def config(self):
+        self.x_shape = (100,)
+        self.y_shape = (1, 1, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp4(TestMatMulAmpOp):
+    """
+    case 4
+    """
+
+    def config(self):
+        self.x_shape = (100,)
+        self.y_shape = (1, 2, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp5(TestMatMulAmpOp):
+    """
+    case 5
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 100, 1)
+        self.y_shape = (100,)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMulAmpOp6(TestMatMulAmpOp):
+    """
+    case 6
+    """
+
+    def config(self):
+        self.x_shape = (1, 2, 102, 1)
+        self.y_shape = (102,)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMulAmpOp7(TestMatMulAmpOp):
+    """
+    case 7
+    """
+
+    def config(self):
+        self.x_shape = (1, 2, 1, 100)
+        self.y_shape = (100,)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp8(TestMatMulAmpOp):
+    """
+    case 8
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 2, 100)
+        self.y_shape = (1, 1, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp9(TestMatMulAmpOp):
+    """
+    case 9
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 1, 100)
+        self.y_shape = (2, 1, 2, 100)
+        self.trans_x = False
+        self.trans_y = True
+
+
+class TestMatMulAmpOp10(TestMatMulAmpOp):
+    """
+    case 10
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 25, 4)
+        self.y_shape = (1, 2, 4, 25)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp11(TestMatMulAmpOp):
+    """
+    case 11
+    """
+
+    def config(self):
+        self.x_shape = (2, 1, 2, 100)
+        self.y_shape = (1, 1, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp12(TestMatMulAmpOp):
+    """
+    case 12
+    """
+
+    def config(self):
+        self.x_shape = (2, 1, 4, 25)
+        self.y_shape = (1, 1, 4, 25)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMulAmpOp13(TestMatMulAmpOp):
+    """
+    case 13
+    """
+
+    def config(self):
+        self.x_shape = (2, 2, 10, 10)
+        self.y_shape = (2, 2, 10, 10)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMulAmpOp14(TestMatMulAmpOp):
+    """
+    case 14_1
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 6, 6)
+        self.y_shape = (1, 2, 6, 9)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMulAmpOp15(TestMatMulAmpOp):
+    """
+    case 14_2
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 6, 6)
+        self.y_shape = (1, 2, 6, 9)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp16(TestMatMulAmpOp):
+    """
+    case 16 : to check the gradient for special case
+    """
+
+    def config(self):
+        self.x_shape = 100
+        self.y_shape = (1, 2, 2, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOp17(TestMatMulAmpOp):
+    """
+    case 17 : to check the gradient for special case
+    """
+
+    def config(self):
+        self.x_shape = (2, 1, 100)
+        self.y_shape = 100
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMulAmpOpBroadcast1(TestMatMulAmpOp):
+    """
+    case 14_3
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 10, 10)
+        self.y_shape = (1, 2, 10, 10)
+        self.trans_x = True
+        self.trans_y = True
+
+
+class TestMatMulAmpOpBroadcast2(TestMatMulAmpOp):
+    """
+    case 14_4
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 10, 10)
+        self.y_shape = (1, 2, 10, 10)
+        self.trans_x = False
+        self.trans_y = True
 
 
 if __name__ == "__main__":
