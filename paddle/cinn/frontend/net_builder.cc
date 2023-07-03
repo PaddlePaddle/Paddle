@@ -995,7 +995,6 @@ Variable NetBuilder::DropoutInfer(const Variable& a,
 
 Variable NetBuilder::Sum(const std::vector<Variable>& inputs) {
   return CustomInstr("sum", inputs, {}).front();
-  ;
 }
 
 Variable NetBuilder::Arange(const float start,
@@ -1030,7 +1029,6 @@ Variable NetBuilder::Matmul(const Variable& x,
              {x, y},
              {{"trans_a", trans_x}, {"trans_b", trans_y}, {"alpha", alpha}})
       .front();
-  ;
 }
 
 Variable NetBuilder::GaussianRandom(const std::vector<int>& shape,

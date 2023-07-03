@@ -110,7 +110,7 @@ class TestLoadResnetModel(unittest.TestCase):
                     out[i] - target_result[i],
                 )
         # TODO(thisjiang): revert atol to 1e-3 after fix inference mul problem
-        self.assertTrue(np.allclose(out, target_result, atol=1e-1))
+        np.testing.assert_allclose(out, target_result, atol=1e-1)
 
     def test_model(self):
         self.apply_test()
