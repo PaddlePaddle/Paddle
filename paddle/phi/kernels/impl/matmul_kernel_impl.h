@@ -1063,7 +1063,7 @@ void MatmulAmpFunction(const Context& ctx,
     out->ResizeAndAllocate(phi::make_ddim(out_dims));
     ctx.template Alloc<Tout>(out);
     if (transpose_y) {
-      const int M = Y.numel() / N;
+      const int M = y.numel() / N;
       VLOG(3) << "MatMul's case 2";
       blas.GEMVWrapper(false,
                        M,
