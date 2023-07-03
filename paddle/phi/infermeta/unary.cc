@@ -1923,7 +1923,7 @@ void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void IsfiniteInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(x.dims());
+  out->set_dims(phi::make_ddim({1}));
   out->set_dtype(DataType::BOOL);
 }
 

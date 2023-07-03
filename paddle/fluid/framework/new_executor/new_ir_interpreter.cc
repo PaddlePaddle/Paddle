@@ -216,7 +216,9 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
       HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
   if (fetch_var && need_fetch) {
+    std::cerr << "fetch here" << std::endl;
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+    std::cerr << "after fetch " << std::endl;
 #ifdef PADDLE_WITH_CUDA
     if (platform::IsCUDAGraphCapturing()) {
       PADDLE_ENFORCE_EQ(fetch_list.empty(),

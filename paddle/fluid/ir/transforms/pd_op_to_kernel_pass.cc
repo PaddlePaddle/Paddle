@@ -34,7 +34,7 @@
 namespace paddle {
 namespace dialect {
 
-const int init_on_gpu_threashold = 1000;
+const int init_on_gpu_threashold = 1000000000;
 
 phi::KernelKey GetKernelKey(
     ir::Operation* op,
@@ -213,6 +213,7 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
     auto kernel_key =
         GetKernelKey(*it, cpu_place, map_value_pair, op_info_parser);
     VLOG(6) << "kernel type " << kernel_key;
+
     // create new Op
 
     // only for single output
@@ -225,12 +226,35 @@ std::unique_ptr<ir::Program> PdOpLowerToKernelPass(ir::Program* prog) {
         if (!result_type) {
           op_output_types.push_back(result_type);
         } else if (result_type.isa<dialect::DenseTensorType>()) {
+          // auto type1 = result_type.dyn_cast<dialect::DenseTensorType>();
+          // ir::Type data_type1 = ir::Float32Type::get(ctx);
+          // if(  kernel_key.dtype() == phi::DataType::BOOL)
+          // {
+          //   std::cerr << "change data type to bool" << std::endl;
+          //   data_type1 = ir::BoolType::get(ctx);
+          // }
+          // if(  (*it)->name() == "pd.isnan" )
+          // {
+          //   data_type1 = ir::BoolType::get(ctx);
+          //  }
+          // auto allocated_dense_tensor_dtype =
+          //   paddle::dialect::AllocatedDenseTensorType::get(
+          //       ctx,
+          //       phi::TransToPhiPlace(kernel_key.backend()),
+          //       data_type1,
+          //       type1.dims(),
+          //       type1.data_layout(),
+          //       type1.lod(),
+          //       type1.offset() );
+          //  op_output_types.push_back(allocated_dense_tensor_dtype);
+
           auto allocated_dense_tensor_dtype =
               paddle::dialect::AllocatedDenseTensorType::get(
                   ctx,
                   phi::TransToPhiPlace(kernel_key.backend()),
                   result_type.dyn_cast<dialect::DenseTensorType>());
           op_output_types.push_back(allocated_dense_tensor_dtype);
+
         } else if (result_type.isa<ir::VectorType>()) {
           std::vector<ir::Type> vec_inner_types;
           auto base_types = result_type.dyn_cast<ir::VectorType>().data();

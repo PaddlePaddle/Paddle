@@ -52,6 +52,7 @@ void BuildScope(ir::Block* block,
   // int count = name_map->size();
   int count = 0;
   for (auto it = block->begin(); it != block->end(); ++it) {
+    VLOG(6) << "begin to process op " << (*it)->name() << std::endl;
     size_t input_num = (*it)->num_operands();
     auto attr_map = (*it)->attributes();
     std::string op_name = (*it)->name();
@@ -66,6 +67,7 @@ void BuildScope(ir::Block* block,
         int index =
             (*it)->attributes().at("col").dyn_cast<ir::Int32Attribute>().data();
         fetch_list->resize(index + 1);
+        (*fetch_list)[index] = phi::DenseTensor();
       }
       continue;
     }
@@ -180,6 +182,8 @@ void BuildScope(ir::Block* block,
       }
     }
   }
+
+  VLOG(6) << "fin build scope" << std::endl;
 }
 
 }  // namespace ir
