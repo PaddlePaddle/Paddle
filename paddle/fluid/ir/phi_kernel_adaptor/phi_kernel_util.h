@@ -148,6 +148,8 @@ void BuildPhiContext(
           attr_map[t].dyn_cast<paddle::dialect::DataTypeAttribute>().data());
     } else if (attr_type_name == "ir::Int32Attribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int32Attribute>().data());
+    } else if (attr_type_name == "ir::Int64Attribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::Int64Attribute>().data());
     } else if (attr_type_name == "ir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::FloatAttribute>().data());
     } else if (attr_type_name == "ir::BoolAttribute") {
@@ -183,6 +185,45 @@ void BuildPhiContext(
         PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
                                                 attr_type_name));
       }
+    } else if (attr_type_name == "ir::ArrayAttribute<ir::FloatAttribute>") {
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      std::vector<float> vec_res;
+      if (array_list.size() > 0) {
+        if (array_list[0].isa<ir::FloatAttribute>()) {
+          for (size_t i = 0; i < array_list.size(); ++i) {
+            vec_res.push_back(
+                array_list[i].dyn_cast<ir::FloatAttribute>().data());
+          }
+
+        } else {
+          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
+                                                  attr_type_name));
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
+    } else if (attr_type_name == "ir::ArrayAttribute<ir::Int64Attribute>") {
+      std::cerr << "int64 array" << std::endl;
+      auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
+      std::cerr << "len " << array_list.size() << std::endl;
+
+      std::vector<int64_t> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<ir::Int64Attribute>(),
+            true,
+            phi::errors::PreconditionNotMet(
+                "Element in array list MUST be ir::Int64Attribute "));
+        std::cerr << "int 64" << std::endl;
+
+        for (size_t i = 0; i < array_list.size(); ++i) {
+          std::cerr << "i  " << i << "\t"
+                    << array_list[i].dyn_cast<ir::Int64Attribute>().data()
+                    << std::endl;
+          vec_res.push_back(
+              array_list[i].dyn_cast<ir::Int64Attribute>().data());
+        }
+      }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
