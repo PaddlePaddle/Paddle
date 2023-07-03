@@ -152,7 +152,7 @@ void BuildPhiContext(
         std::vector<int32_t> vec_res;
         for (size_t i = 0; i < array_list.size(); ++i) {
           vec_res.push_back(
-              array_list[0].dyn_cast<ir::Int32Attribute>().data());
+              array_list[i].dyn_cast<ir::Int32Attribute>().data());
         }
         ctx->EmplaceBackAttr(vec_res);
       } else {
