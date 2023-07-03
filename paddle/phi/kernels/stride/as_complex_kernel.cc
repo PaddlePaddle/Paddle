@@ -39,22 +39,14 @@ void AsComplexStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(as_complex,
-                   CPU,
-                   STRIDED,
-                   phi::AsComplexStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+PD_REGISTER_KERNEL(
+    as_complex, CPU, STRIDED, phi::AsComplexStridedKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(as_complex,
-                   GPU,
-                   STRIDED,
-                   phi::AsComplexStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+PD_REGISTER_KERNEL(
+    as_complex, GPU, STRIDED, phi::AsComplexStridedKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif
