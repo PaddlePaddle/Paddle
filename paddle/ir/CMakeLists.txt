@@ -45,6 +45,7 @@ add_subdirectory(core)
 add_subdirectory(pass)
 add_subdirectory(pattern_rewrite)
 add_subdirectory(transforms)
+add_subdirectory(pdll)
 
 if(WIN32)
   if(WITH_SHARED_IR)
