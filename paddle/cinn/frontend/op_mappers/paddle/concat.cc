@@ -122,7 +122,7 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("X").size(), 1UL);
   auto x_name = op_desc.Input("X").front();
-  ;
+
   CHECK_GE(op_desc.Output("Out").size(), 1UL);
   auto out_names = op_desc.Output("Out");
 

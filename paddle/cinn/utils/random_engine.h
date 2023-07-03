@@ -109,7 +109,7 @@ double SampleUniformDouble(double min,
 template <typename T>
 int SampleDiscreteFromDistribution(const std::vector<T>& weights,
                                    LinearRandomEngine::StateType* rand_seed) {
-  CHECK(weights.size() > 0);
+  CHECK_GT(weights.size(), 0);
   LinearRandomEngine engine(rand_seed);
   std::discrete_distribution<int> dist(weights.begin(), weights.end());
   return dist(engine);

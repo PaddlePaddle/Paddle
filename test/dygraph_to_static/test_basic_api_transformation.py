@@ -368,9 +368,9 @@ def dyfunc_NaturalExpDecay():
 
 
 def dyfunc_NoamDecay():
-    noam_decay = fluid.dygraph.NoamDecay(100, 100)
+    noam_decay = paddle.optimizer.lr.NoamDecay(100, 100)
     lr = noam_decay()
-    return lr
+    return paddle.to_tensor(lr)
 
 
 def dyfunc_PiecewiseDecay():
@@ -385,9 +385,11 @@ def dyfunc_PolynomialDecay():
     start_lr = 0.01
     total_step = 5000
     end_lr = 0
-    pd = fluid.dygraph.PolynomialDecay(start_lr, total_step, end_lr, power=1.0)
+    pd = paddle.optimizer.lr.PolynomialDecay(
+        start_lr, total_step, end_lr, power=1.0
+    )
     lr = pd()
-    return lr
+    return paddle.to_tensor(lr)
 
 
 class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
@@ -511,6 +513,13 @@ class TestDygraphBasicApi_PiecewiseDecay(TestDygraphBasicApi_CosineDecay):
 class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_PolynomialDecay
+
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            fluid.default_startup_program.random_seed = SEED
+            fluid.default_main_program.random_seed = SEED
+            res = self.dygraph_func()
+            return res
 
 
 def _dygraph_fn():

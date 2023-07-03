@@ -37,15 +37,15 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
   ///
   using ParamKey = std::tuple<phi::Place, dialect::DenseTensorType>;
 
-  AllocatedDenseTensorTypeStorage(phi::Place place,
-                                  dialect::DenseTensorType type)
+  AllocatedDenseTensorTypeStorage(const phi::Place& place,
+                                  const dialect::DenseTensorType& type)
       : place_(place), dense_tensor_type_(type) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
-  static AllocatedDenseTensorTypeStorage *Construct(ParamKey key) {
+  static AllocatedDenseTensorTypeStorage* Construct(const ParamKey& key) {
     return new AllocatedDenseTensorTypeStorage(std::get<0>(key),
                                                std::get<1>(key));
   }
@@ -53,7 +53,7 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
   ///
   /// \brief Each derived TypeStorage must provide a HashValue method.
   ///
-  static std::size_t HashValue(const ParamKey &key) {
+  static std::size_t HashValue(const ParamKey& key) {
     std::size_t hash_value = 0;
     // hash place
     hash_value = ir::hash_combine(hash_value, std::get<0>(key).HashValue());
@@ -74,7 +74,7 @@ struct AllocatedDenseTensorTypeStorage : public ir::TypeStorage {
   ///
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
-  bool operator==(const ParamKey &key) const {
+  bool operator==(const ParamKey& key) const {
     return ParamKey(place_, dense_tensor_type_) == key;
   }
 

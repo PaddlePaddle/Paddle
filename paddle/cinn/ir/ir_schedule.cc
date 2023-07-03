@@ -2142,8 +2142,9 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         !vars[i]->is_reduce_axis && !vars_target[i]->is_reduce_axis) {
       new_iter_values.push_back(iter_values_target[i]);
       VLOG(3) << "new_iter_values.push_back " << iter_values_target[i];
-    } else
+    } else {
       break;
+    }
   }
 
   if (new_iter_values.empty())

@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-from cinn import Target
-from cinn.frontend import *
-from cinn.common import *
-from cinn.runtime import seed as cinn_seed
-import numpy as np
-import paddle
 import logging
-from contextlib import contextmanager
 import os
-
 import struct
+import unittest
+from contextlib import contextmanager
+
+import numpy as np
+from cinn import Target
+from cinn.common import *
+from cinn.frontend import *
+from cinn.runtime import seed as cinn_seed
+
+import paddle
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="op_test")

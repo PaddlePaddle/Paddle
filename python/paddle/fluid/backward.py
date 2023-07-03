@@ -2489,9 +2489,11 @@ def calc_gradient_helper(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
 
-    # only for composite to add grad_op input,
-    # tmp_targets includes targets and other outputs
-    # of the same forward op who create targets
+    # only for composite to add grad_var of the last forward op
+    # who has more than one output, but targets only has one,
+    # so targets_gradients only add one grad_var,
+    # eg: op1 -> op2 -> var1 / var2 targets = var1,
+    # targets_gradients = var1_grad, need to add var2_grad here.
     tmp_targets = targets
 
     if core._is_bwd_prim_enabled():

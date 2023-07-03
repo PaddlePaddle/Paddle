@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import paddle
 import paddle.static as static
-import numpy as np
 
 
 def conv2d_native(inputs_data, input_shape, filter_size, attrs, is_depthwise):

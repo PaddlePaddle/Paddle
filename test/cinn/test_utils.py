@@ -14,18 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import math
-import numpy as np
-import cinn
-from cinn import frontend
-from cinn import runtime
-from cinn import lang
-from cinn import framework
-from cinn import ir
-from cinn import common
-from cinn.poly import create_stages
 import logging
+import math
+import unittest
+
+import cinn
+import numpy as np
+from cinn import common, framework, frontend, ir, lang, runtime
+from cinn.poly import create_stages
 
 
 class SingleOpTester(unittest.TestCase):
@@ -148,7 +144,7 @@ class SingleOpTester(unittest.TestCase):
         out_result = out[len(out) - 1].numpy()
         if out_index != None:
             out_result = out[out_index].numpy()
-        self.assertTrue(np.allclose(out_result, correct_result, atol=1e-4))
+        np.testing.assert_allclose(out_result, correct_result, atol=1e-4)
 
     def __lower(self, op_name, inputs, output_shapes, attrs):
         types = [common.Float(32)]
