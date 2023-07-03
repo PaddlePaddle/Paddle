@@ -102,7 +102,8 @@ repos:
         exclude:  |
             (?x)^(
                 paddle/cinn/.+|
-                test/cpp/cinn/.+
+                test/cpp/cinn/.+|
+                paddle/utils/flat_hash_map.h+
             )$
 # For CMake files
 -   repo: local
