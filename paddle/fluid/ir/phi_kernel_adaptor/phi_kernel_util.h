@@ -148,17 +148,19 @@ void BuildPhiContext(
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<ir::BoolAttribute>().data());
     } else if (attr_type_name == "ir::ArrayAttribute<ir::Int32Attribute>") {
       auto array_list = attr_map[t].dyn_cast<ir::ArrayAttribute>().data();
-      if (array_list[0].isa<ir::Int32Attribute>()) {
-        std::vector<int32_t> vec_res;
+      std::vector<int32_t> vec_res;
+      if (array_list.size() > 0) {
+        PADDLE_ENFORCE_EQ(
+            array_list[0].isa<ir::Int32Attribute>(),
+            true,
+            phi::errors::Unimplemented(
+                "the 0th elementwise MUST be ir::Int32Attribute"));
         for (size_t i = 0; i < array_list.size(); ++i) {
           vec_res.push_back(
-              array_list[0].dyn_cast<ir::Int32Attribute>().data());
+              array_list[i].dyn_cast<ir::Int32Attribute>().data());
         }
-        ctx->EmplaceBackAttr(vec_res);
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                attr_type_name));
       }
+      ctx->EmplaceBackAttr(vec_res);
     } else if (attr_type_name == "paddle::dialect::PlaceAttribute") {
       ctx->EmplaceBackAttr(
           attr_map[t].dyn_cast<paddle::dialect::PlaceAttribute>().data());
