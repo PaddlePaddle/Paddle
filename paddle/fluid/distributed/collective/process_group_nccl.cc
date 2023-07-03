@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/nccl_tools.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -35,7 +34,7 @@ constexpr int64_t kWaitBlockTImeout = 10;
 namespace paddle {
 namespace distributed {
 
-thread_local uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
+uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      int rank,
@@ -706,7 +705,6 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
 void ProcessGroupNCCL::SyncCalcStream(const Place& place,
                                       const std::string& place_key) {
-  // const std::string& key = GetKeyFromPlace(place);
   auto& calc_event = place_to_calc_event_.at(place_key);
   const auto* calc_ctx = place_to_calc_ctx_.at(place_key);
   const auto* comm_ctx = place_to_comm_ctx_.at(place_key).get();

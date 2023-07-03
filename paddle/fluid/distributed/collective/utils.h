@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -28,6 +26,22 @@ inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
   tensor_flattened.Resize({tensor.numel()});
   return tensor_flattened.Slice(offset, offset + numel);
 }
+
+enum class CommType : std::uint8_t {
+  BROADCAST = 0,
+  ALLREDUCE = 1,
+  ALLREDUCE_SPARSE = 2,  // TODO(shenliang03): to support sparse in allreduce
+  REDUCE = 3,
+  ALLGATHER = 4,
+  GATHER = 5,
+  SCATTER = 6,
+  REDUCE_SCATTER = 7,
+  ALLTOALL = 8,
+  SEND = 9,
+  RECV = 10,
+  BARRIER = 11,
+  UNKNOWN = 100,
+};
 
 inline bool IsP2POP(CommType comm_type, bool is_batch_p2p = false) {
   if (is_batch_p2p) {

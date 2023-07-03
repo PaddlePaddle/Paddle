@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/types.h"
+#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"  // NOTE: this header is required somewhere
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
@@ -33,22 +34,6 @@ namespace paddle {
 namespace distributed {
 
 constexpr int kIgnoreId = -1;
-
-enum class CommType : std::uint8_t {
-  BROADCAST = 0,
-  ALLREDUCE = 1,
-  ALLREDUCE_SPARSE = 2,  // TODO(shenliang03): to support sparse in allreduce
-  REDUCE = 3,
-  ALLGATHER = 4,
-  GATHER = 5,
-  SCATTER = 6,
-  REDUCE_SCATTER = 7,
-  ALLTOALL = 8,
-  SEND = 9,
-  RECV = 10,
-  BARRIER = 11,
-  UNKNOWN = 100,
-};
 
 class ProcessGroup {
  public:

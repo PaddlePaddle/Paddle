@@ -22,7 +22,6 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
