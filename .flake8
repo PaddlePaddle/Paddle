@@ -27,13 +27,3 @@ ignore =
 per-file-ignores =
     # These files need tabs for testing.
     test/dygraph_to_static/test_error.py:E101,W191
-    # Temporarily ignore CINN files, it will fix later
-    test/cinn/**:
-        E126,
-        E231,
-        E251,
-        E401,
-        W291,
-        W504,
-    tools/cinn/**:
-        E401,
